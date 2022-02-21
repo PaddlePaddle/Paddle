@@ -34,6 +34,8 @@ namespace imperative {
 
 enum class AmpLevel;
 
+enum class AmpDtype;
+
 using GarbageCollectorMap =
     std::map<platform::Place,
              std::unique_ptr<paddle::framework::GarbageCollector>>;
@@ -69,7 +71,7 @@ class Tracer {
                const platform::Place& place, bool trace_backward,
                const std::map<std::string, std::string>& inplace_map = {},
                paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
-               bool override_default_attr_map = true);
+               bool use_default_attr_map = true);
 
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
@@ -83,7 +85,7 @@ class Tracer {
                const NameTensorMap& outs, paddle::framework::AttributeMap attrs,
                const paddle::platform::Place& place,
                paddle::framework::AttributeMap* default_attrs,
-               bool override_default_attr_map,
+               bool use_default_attr_map,
                const std::map<std::string, std::string>& inplace_map = {});
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
@@ -131,6 +133,27 @@ class Tracer {
 
   AmpLevel GetAmpLevel() const { return amp_level_; }
 
+  void SetAmpDtype(std::string amp_dtype) {
+    VLOG(4) << "set amp_dtype to " << amp_dtype;
+    if (amp_dtype == "float16") {
+      amp_dtype_ = phi::DataType::FLOAT16;
+    } else if (amp_dtype == "bfloat16") {
+      amp_dtype_ = phi::DataType::BFLOAT16;
+    } else {
+      amp_dtype_ = phi::DataType::FLOAT32;
+    }
+  }
+
+  std::string GetAmpDtype() const {
+    if (amp_dtype_ == phi::DataType::FLOAT16) {
+      return std::string("float16");
+    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+      return std::string("bfloat16");
+    } else {
+      return std::string("float32");
+    }
+  }
+
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
 
@@ -143,6 +166,7 @@ class Tracer {
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
   static thread_local AmpLevel amp_level_;
+  static thread_local phi::DataType amp_dtype_;
 };
 
 // To access static variable current_tracer

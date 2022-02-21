@@ -21,11 +21,11 @@ namespace cub = hipcub;
 #endif
 
 #include <algorithm>
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/where_index_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -139,7 +139,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     dev_ctx.Wait();
 
     int64_t true_num = *h_total_true_num;
-    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
+    out->Resize(phi::make_ddim({static_cast<int64_t>(true_num), rank}));
     auto out_data = out->mutable_data<int64_t>(context.GetPlace());
 
     if (true_num == 0) {
@@ -158,6 +158,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(where_index, ops::CUDAWhereIndexKernel<int64_t>,
                         ops::CUDAWhereIndexKernel<int>,
+                        ops::CUDAWhereIndexKernel<int16_t>,
                         ops::CUDAWhereIndexKernel<bool>,
                         ops::CUDAWhereIndexKernel<float>,
                         ops::CUDAWhereIndexKernel<double>);

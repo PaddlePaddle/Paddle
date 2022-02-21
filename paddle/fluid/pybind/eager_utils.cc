@@ -23,9 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace pybind {
@@ -42,33 +42,33 @@ extern PyTypeObject* g_cudapinnedplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 
-int TensorDtype2NumpyDtype(pten::DataType dtype) {
+int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
-    case pten::DataType::BOOL:
+    case phi::DataType::BOOL:
       return pybind11::detail::npy_api::NPY_BOOL_;
-    case pten::DataType::INT8:
+    case phi::DataType::INT8:
       return pybind11::detail::npy_api::NPY_INT8_;
-    case pten::DataType::UINT8:
+    case phi::DataType::UINT8:
       return pybind11::detail::npy_api::NPY_UINT8_;
-    case pten::DataType::INT16:
+    case phi::DataType::INT16:
       return pybind11::detail::npy_api::NPY_INT16_;
-    case pten::DataType::INT32:
+    case phi::DataType::INT32:
       return pybind11::detail::npy_api::NPY_INT32_;
-    case pten::DataType::INT64:
+    case phi::DataType::INT64:
       return pybind11::detail::npy_api::NPY_INT64_;
-    case pten::DataType::FLOAT16:
+    case phi::DataType::FLOAT16:
       return pybind11::detail::NPY_FLOAT16_;
-    case pten::DataType::FLOAT32:
+    case phi::DataType::FLOAT32:
       return pybind11::detail::npy_api::NPY_FLOAT_;
-    case pten::DataType::FLOAT64:
+    case phi::DataType::FLOAT64:
       return pybind11::detail::npy_api::NPY_DOUBLE_;
-    case pten::DataType::COMPLEX64:
+    case phi::DataType::COMPLEX64:
       return pybind11::detail::NPY_COMPLEX64;
-    case pten::DataType::COMPLEX128:
+    case phi::DataType::COMPLEX128:
       return pybind11::detail::NPY_COMPLEX128;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Unknow pten::DataType, the int value = %d.",
+          "Unknow phi::DataType, the int value = %d.",
           static_cast<int>(dtype)));
       return 0;
   }
@@ -179,7 +179,7 @@ paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
-        "EagerTensor, but got %s",
+        "EagerVariable, but got %s",
         arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
@@ -309,7 +309,7 @@ framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
-        "EagerTensor, but got %s",
+        "EagerVariable, but got %s",
         arg_pos + 1, reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
@@ -597,6 +597,7 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
 
   if (PyList_Check(list)) {
     Py_ssize_t len = PyList_Size(list);
+    result.reserve(static_cast<size_t>(len));
     if (len == 0) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensors, but got "
@@ -609,6 +610,7 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     }
   } else if (PyTuple_Check(list)) {
     Py_ssize_t len = PyTuple_Size(list);
+    result.reserve(static_cast<size_t>(len));
     if (len == 0) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "%s(): argument '%s' (position %d) must be list of Tensors, but got "
@@ -632,9 +634,11 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
   return result;
 }
 
-paddle::experimental::Tensor* GetEagerTensorPtrFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable) {
+paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
+                                                   const std::string& arg_name,
+                                                   PyObject* args,
+                                                   ssize_t arg_idx,
+                                                   bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
 
   if (PyTuple_Check(obj)) {
@@ -654,7 +658,7 @@ paddle::experimental::Tensor* GetEagerTensorPtrFromArgs(
   return &(reinterpret_cast<TensorObject*>(obj)->tensor);
 }
 
-std::vector<paddle::experimental::Tensor*> GetEagerTensorPtrListFromArgs(
+std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable) {
   PyObject* list = PyTuple_GET_ITEM(args, arg_idx);

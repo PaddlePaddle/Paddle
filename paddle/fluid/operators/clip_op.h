@@ -112,9 +112,9 @@ class ClipKernel : public framework::OpKernel<T> {
         trans(context.template device_context<DeviceContext>(), x_data,
               x_data + numel, out_data, ClipFunctor<T>(min, max));
       }
-    } else if (x_var->IsType<pten::SelectedRows>()) {
-      auto* x = context.Input<pten::SelectedRows>("X");
-      auto* out = context.Output<pten::SelectedRows>("Out");
+    } else if (x_var->IsType<phi::SelectedRows>()) {
+      auto* x = context.Input<phi::SelectedRows>("X");
+      auto* out = context.Output<phi::SelectedRows>("Out");
       PADDLE_ENFORCE_NE(x, out, platform::errors::InvalidArgument(
                                     "Inplace clip is not allowed "
                                     "when x is SelectedRows"));

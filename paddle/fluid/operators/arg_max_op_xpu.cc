@@ -42,14 +42,14 @@ class ArgMaxXPUKernel : public framework::OpKernel<T> {
     const bool& flatten = ctx.Attr<bool>("flatten");
     framework::DDim x_dims;
     if (flatten) {
-      x_dims = framework::make_ddim({x->numel()});
+      x_dims = phi::make_ddim({x->numel()});
       // if flatten, the axis just as 0
       axis = 0;
     } else {
       x_dims = x->dims();
       if (axis < 0) axis += x_dims.size();
     }
-    auto xdims_vec = framework::vectorize<int>(x_dims);
+    auto xdims_vec = phi::vectorize<int>(x_dims);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     int r = xpu::argmax(dev_ctx.x_context(), x->data<T>(), out->data<int64_t>(),
                         xdims_vec, axis);
