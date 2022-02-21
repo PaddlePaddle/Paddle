@@ -30,7 +30,7 @@ class NPUReduceMeanOpKernel : public framework::OpKernel<T> {
     auto dims = ctx.Attr<std::vector<int>>("dim");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
 
-    auto input_dims_vec = framework::vectorize(input->dims());
+    auto input_dims_vec = phi::vectorize(input->dims());
     if (reduce_all) {
       dims.clear();
       for (size_t i = 0; i < input_dims_vec.size(); i++) {
@@ -58,7 +58,7 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
 
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
-    auto input_dims_vec = framework::vectorize(input->dims());
+    auto input_dims_vec = phi::vectorize(input->dims());
 
     int reduce_numel = 1;
     if (reduce_all) {
@@ -90,7 +90,7 @@ class NPUReduceMeanGradOpKernel : public framework::OpKernel<T> {
       tmp_output_dims_vec[d] = 1;
     }
     tmp_output_grad.ShareDataWith(*output_grad);
-    tmp_output_grad.Resize(framework::make_ddim(tmp_output_dims_vec));
+    tmp_output_grad.Resize(phi::make_ddim(tmp_output_dims_vec));
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
     NpuElementWiseOpBroadcast<T>(dev_ctx, input_grad, &tmp_output_grad, 0,

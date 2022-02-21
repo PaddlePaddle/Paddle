@@ -32,7 +32,7 @@ class GatherNdXPUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -45,8 +45,8 @@ class GatherNdXPUKernel : public framework::OpKernel<T> {
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
 
-    auto x_shape = paddle::framework::vectorize<int>(x->dims());
-    auto index_shape = paddle::framework::vectorize<int>(index->dims());
+    auto x_shape = phi::vectorize<int>(x->dims());
+    auto index_shape = phi::vectorize<int>(index->dims());
     if (index_shape.size() == 1) {
       index_shape.insert(index_shape.begin(), 1);
     }

@@ -19,7 +19,6 @@ limitations under the License. */
 #include "pybind11/pybind11.h"
 
 #define EAGER_TRY try {
-#define EAGER_SYNC_TRY try {
 #define EAGER_CATCH_AND_THROW_RETURN_NULL             \
   }                                                   \
   catch (...) {                                       \

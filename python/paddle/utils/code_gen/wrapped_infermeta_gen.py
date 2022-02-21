@@ -16,7 +16,7 @@ import os
 import yaml
 import argparse
 
-from api_base import BaseAPI
+from api_gen import ForwardAPI
 
 
 def get_wrapped_infermeta_name(api_name):
@@ -24,34 +24,40 @@ def get_wrapped_infermeta_name(api_name):
 
 
 def gene_wrapped_infermeta_and_register(api):
-    if api.is_base_api:
+    if api.is_base_api and not api.is_dygraph_api:
         register_code = f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{api.infer_meta['func']});"""
+PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']});"""
 
         if api.infer_meta['param'] is not None:
+            kernel_params = api.kernel['param']
+            if kernel_params is None:
+                kernel_params = api.inputs['names'] + api.attrs['names']
+            if kernel_params == api.infer_meta['param']:
+                return '', '', register_code
+
+            assert len(api.infer_meta['param']) <= len(kernel_params), \
+                 f"{api.api} api: Parameters error. The params of infer_meta should be a subset of kernel params."
+
             tensor_type_map = {
                 'const Tensor&': 'const MetaTensor&',
                 'const std::vector<Tensor>&': 'const std::vector<MetaTensor>&',
                 'Tensor': 'MetaTensor*',
                 'std::vector<Tensor>': 'std::vector<MetaTensor>*',
             }
+
             wrapped_infermeta_name = get_wrapped_infermeta_name(api.api)
             args = []
-            check_args = []
             for input_name in api.inputs['names']:
-                args.append(tensor_type_map[api.inputs['input_info'][
-                    input_name]] + ' ' + input_name)
-                check_args.append(input_name)
+                if input_name in kernel_params:
+                    args.append(tensor_type_map[api.inputs['input_info'][
+                        input_name]] + ' ' + input_name)
             for attr_name in api.attrs['names']:
-                args.append(api.attrs['attr_info'][attr_name][0] + ' ' +
-                            attr_name)
-                check_args.append(attr_name)
+                if attr_name in kernel_params:
+                    args.append(api.attrs['attr_info'][attr_name][0] + ' ' +
+                                attr_name)
             for i, out_type in enumerate(api.outputs['types']):
                 args.append(tensor_type_map[out_type] + ' ' + api.outputs[
                     'names'][i])
-
-            if check_args == api.infer_meta['param']:
-                return '', '', register_code
 
             invoke_param = api.infer_meta['param']
             invoke_param.extend(api.outputs['names'])
@@ -67,7 +73,7 @@ void {wrapped_infermeta_name}({", ".join(args)}) {{
 """
 
             register_code = f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{get_wrapped_infermeta_name(api.kernel['func'])});"""
+PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{get_wrapped_infermeta_name(api.kernel['func'][0])});"""
 
             return declare_code, defind_code, register_code
         else:
@@ -76,44 +82,30 @@ PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{get_wrapped_infermeta_nam
         return '', '', ''
 
 
-def gene_infermeta_register(api):
-    if api.is_base_api:
-        if api.infer_meta['param'] is None:
-            return f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{api.infer_meta['func']});"""
-
-        else:
-            return f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func']}, pten::{get_wrapped_infermeta_name(api.kernel['func'])});"""
-
-    else:
-        return ''
-
-
 def header_include():
     return """
-#include "paddle/pten/core/meta_tensor.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
 """
 
 
 def source_include(header_file_path):
     return f"""
 #include "{header_file_path}"
-#include "paddle/pten/core/infermeta_utils.h"
-#include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/infermeta/multiary.h"
-#include "paddle/pten/infermeta/nullary.h"
-#include "paddle/pten/infermeta/unary.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/infermeta/unary.h"
 """
 
 
 def api_namespace():
     return ("""
-namespace pten {
+namespace phi {
 """, """
-}  // namespace pten
+}  // namespace phi
 """)
 
 
@@ -131,14 +123,14 @@ def generate_wrapped_infermeta_and_register(api_yaml_path, header_file_path,
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/pten/infermeta/generated.h"
+    include_header_file = "paddle/phi/infermeta/generated.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
     infermeta_register_code = ''
 
     for api in apis:
-        api_item = BaseAPI(api)
+        api_item = ForwardAPI(api)
         declare_code, defind_code, register_code = gene_wrapped_infermeta_and_register(
             api_item)
         header_file.write(declare_code)
@@ -164,12 +156,12 @@ def main():
     parser.add_argument(
         '--wrapped_infermeta_header_path',
         help='output of generated wrapped_infermeta header code file',
-        default='paddle/pten/infermeta/generated.h')
+        default='paddle/phi/infermeta/generated.h')
 
     parser.add_argument(
         '--wrapped_infermeta_source_path',
         help='output of generated wrapped_infermeta source code file',
-        default='paddle/pten/infermeta/generated.cc')
+        default='paddle/phi/infermeta/generated.cc')
 
     options = parser.parse_args()
 

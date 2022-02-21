@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
 
@@ -37,7 +38,8 @@ class EmptyKernel : public framework::OpKernel<T> {
     auto shape = GetShape(context);
     out_tensor->Resize(shape);
 
-    out_tensor->mutable_data(context.GetPlace(), dtype);
+    out_tensor->mutable_data(context.GetPlace(),
+                             framework::TransToPtenDataType(dtype));
   }
 };
 

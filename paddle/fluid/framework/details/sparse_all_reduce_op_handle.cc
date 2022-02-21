@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "dgc/dgc.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
@@ -24,7 +25,7 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DECLARE_bool(sync_nccl_allreduce);
 
@@ -65,7 +66,8 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
 }
 
 void SparseAllReduceOpHandle::RunImplEncoded() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::UserDefined, 2);
 
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
@@ -151,7 +153,9 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     auto &out = *outs[i];
     float *out_tensor_buf = out.data<float>();
 
-    dtype = (dtype == -1) ? platform::ToNCCLDataType(in.type()) : dtype;
+    dtype = (dtype == -1) ? platform::ToNCCLDataType(
+                                framework::TransToProtoVarType(in.dtype()))
+                          : dtype;
     in_numel = (in_numel == 0) ? static_cast<size_t>(in.numel()) : in_numel;
     PADDLE_ENFORCE_EQ(in_numel % 2, 0,
                       platform::errors::InvalidArgument(
@@ -276,6 +280,8 @@ bool SparseAllReduceOpHandle::IsEncoded() {
 }
 
 void SparseAllReduceOpHandle::RunImpl() {
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   if (!IsEncoded()) {
     AllReduceOpHandle::RunImpl();
     return;

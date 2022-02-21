@@ -524,7 +524,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   // transpose input according to that permutation
   framework::DDim transposed_input_shape = in_sizes.transpose(dim_permute);
   std::vector<int64_t> transposed_input_shape_ =
-      framework::vectorize(transposed_input_shape);
+      phi::vectorize(transposed_input_shape);
   framework::Tensor transposed_input;
   transposed_input.Resize(transposed_input_shape);
   const auto place = ctx.GetPlace();
@@ -541,7 +541,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   std::copy(transposed_input_shape_.begin() + batch_ndim,
             transposed_input_shape_.end(), collapsed_input_shape_.begin() + 1);
   const framework::DDim collapsed_input_shape =
-      framework::make_ddim(collapsed_input_shape_);
+      phi::make_ddim(collapsed_input_shape_);
   transposed_input.Resize(collapsed_input_shape);
   framework::Tensor& collapsed_input = transposed_input;
 
@@ -552,7 +552,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
     collapsed_output_shape_[1 + i] = out_sizes[axes[i]];
   }
   const framework::DDim collapsed_output_shape =
-      framework::make_ddim(collapsed_output_shape_);
+      phi::make_ddim(collapsed_output_shape_);
   framework::Tensor collapsed_output;
   collapsed_output.Resize(collapsed_output_shape);
   collapsed_output.mutable_data(place, out->type());
@@ -566,18 +566,19 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   }
 
   // input & output stride
-  const framework::DDim input_stride = framework::stride(collapsed_input_shape);
-  const framework::DDim output_stride =
-      framework::stride(collapsed_output_shape);
+  const framework::DDim input_stride = phi::stride(collapsed_input_shape);
+  const framework::DDim output_stride = phi::stride(collapsed_output_shape);
 
   // make a DFTI_DESCRIPTOR
   DftiDescriptor desc =
-      _plan_mkl_fft(x->type(), out->type(), input_stride, output_stride,
-                    signal_sizes, normalization, forward);
+      _plan_mkl_fft(framework::TransToProtoVarType(x->dtype()),
+                    framework::TransToProtoVarType(out->dtype()), input_stride,
+                    output_stride, signal_sizes, normalization, forward);
 
   const FFTTransformType fft_type = GetFFTTransformType(x->type(), out->type());
   if (fft_type == FFTTransformType::C2R && forward) {
-    framework::Tensor collapsed_input_conj(collapsed_input.type());
+    framework::Tensor collapsed_input_conj(
+        framework::TransToProtoVarType(collapsed_input.dtype()));
     collapsed_input_conj.mutable_data<Ti>(collapsed_input.dims(),
                                           ctx.GetPlace());
     // conjugate the input
@@ -589,7 +590,8 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
     MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
         desc.get(), collapsed_input_conj.data(), collapsed_output.data()));
   } else if (fft_type == FFTTransformType::R2C && !forward) {
-    framework::Tensor collapsed_output_conj(collapsed_output.type());
+    framework::Tensor collapsed_output_conj(
+        framework::TransToProtoVarType(collapsed_output.dtype()));
     collapsed_output_conj.mutable_data<To>(collapsed_output.dims(),
                                            ctx.GetPlace());
     MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(
@@ -696,10 +698,9 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x->dims();
-    const std::vector<size_t> in_sizes =
-        framework::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = phi::vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
     const int64_t data_size = sizeof(C);
     std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
                    [&](std::ptrdiff_t s) { return s * data_size; });
@@ -729,10 +730,9 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x->dims();
-    const std::vector<size_t> in_sizes =
-        framework::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = phi::vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
@@ -740,10 +740,9 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
     }
 
     const auto& output_dim = out->dims();
-    const std::vector<size_t> out_sizes =
-        framework::vectorize<size_t>(output_dim);
+    const std::vector<size_t> out_sizes = phi::vectorize<size_t>(output_dim);
     std::vector<std::ptrdiff_t> out_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(output_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(output_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(out_strides.begin(), out_strides.end(),
@@ -776,10 +775,9 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x->dims();
-    const std::vector<size_t> in_sizes =
-        framework::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = phi::vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
@@ -787,10 +785,9 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
     }
 
     const auto& output_dim = out->dims();
-    const std::vector<size_t> out_sizes =
-        framework::vectorize<size_t>(output_dim);
+    const std::vector<size_t> out_sizes = phi::vectorize<size_t>(output_dim);
     std::vector<std::ptrdiff_t> out_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(output_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(output_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(out_strides.begin(), out_strides.end(),

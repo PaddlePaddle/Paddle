@@ -44,7 +44,7 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);
       std::vector<int64_t> new_dim = {index_dims[0], 1};
-      tmp_tensor.Resize(framework::make_ddim(new_dim));
+      tmp_tensor.Resize(phi::make_ddim(new_dim));
       index = &tmp_tensor;
     }
 
@@ -68,7 +68,8 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
     };
 
     if (overwrite) {
-      if (x->type() == framework::proto::VarType::INT64) {
+      if (framework::TransToProtoVarType(x->dtype()) ==
+          framework::proto::VarType::INT64) {
         NpuOpRunner::TypeAdapter(
             {*x, *index, *updates}, {*out}, {}, dev_ctx, op_func_update,
             {framework::proto::VarType::INT32, framework::proto::VarType::INT32,
@@ -80,7 +81,8 @@ class ScatterNPUKernel : public framework::OpKernel<T> {
         runner_update.Run(dev_ctx.stream());
       }
     } else {
-      if (x->type() == framework::proto::VarType::INT64) {
+      if (framework::TransToProtoVarType(x->dtype()) ==
+          framework::proto::VarType::INT64) {
         NpuOpRunner::TypeAdapter(
             {*x, *index, *updates}, {*out}, {}, dev_ctx, op_func_add,
             {framework::proto::VarType::INT32, framework::proto::VarType::INT32,
