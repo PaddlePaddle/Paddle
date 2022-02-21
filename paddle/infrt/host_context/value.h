@@ -127,8 +127,8 @@ class Value : public common::Object {
 
   template <typename T>
   T& get() {
-    LOG(INFO) << data.index();
-    CHECK(data.template is<T>());
+    CHECK(data.template is<T>()) << "typeid: " << data.index()
+                                 << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
 

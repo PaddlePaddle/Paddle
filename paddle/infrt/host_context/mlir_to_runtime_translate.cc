@@ -274,25 +274,6 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
             << GetValue(operand) << " vs " << arg_value;
   }
 
-  // process results
-  llvm::SmallVector<Value*, 4> res_values;
-  for (int i = 0, e = op->getNumResults(); i < e; i++) {
-    auto res = op->getResult(i);
-    res_values.push_back(AddValue(res));
-
-    VLOG(3) << "* op mlir res: " << DumpToString(res) << " " << GetValue(res);
-  }
-  impl_->cur_op->SetResults(res_values);
-
-#ifdef INFRT_DEBUG
-  {
-    VLOG(3) << "check result";
-    for (int i = 0; i < impl_->cur_op->frame().GetNumResults(); i++) {
-      VLOG(3) << "+ res value: " << impl_->cur_op->frame().GetResults()[i];
-    }
-  }
-#endif
-
   // process attributes
   auto attrs = op->getAttrs();
 
@@ -324,6 +305,25 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
       LOG(FATAL) << "Not supported attribute type";
     }
   }
+
+  // process results
+  llvm::SmallVector<Value*, 4> res_values;
+  for (int i = 0, e = op->getNumResults(); i < e; i++) {
+    auto res = op->getResult(i);
+    res_values.push_back(AddValue(res));
+
+    VLOG(3) << "* op mlir res: " << DumpToString(res) << " " << GetValue(res);
+  }
+  impl_->cur_op->SetResults(res_values);
+
+#ifdef INFRT_DEBUG
+  {
+    VLOG(3) << "check result";
+    for (int i = 0; i < impl_->cur_op->frame().GetNumResults(); i++) {
+      VLOG(3) << "+ res value: " << impl_->cur_op->frame().GetResults()[i];
+    }
+  }
+#endif
 
   // process regions, we treat regions as attribute.
   auto num_regions = op->getNumRegions();
