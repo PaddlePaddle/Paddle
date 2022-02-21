@@ -21,5 +21,4 @@ register_unity_group(cu
 register_unity_group(cu frobenius_norm_op.cu)
 register_unity_group(cu logsumexp_op.cu)
 register_unity_group(cu reduce_max_op.cu)
-register_unity_group(cu reduce_mean_op.cu)
 register_unity_group(cu reduce_min_op.cu)

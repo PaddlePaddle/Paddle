@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -186,6 +187,42 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
+}
+
+void HuberLossInferMeta(const MetaTensor& input,
+                        const MetaTensor& label,
+                        float delta,
+                        MetaTensor* out,
+                        MetaTensor* residual,
+                        MetaConfig config) {
+  auto input_dims = input.dims();
+  auto label_dims = label.dims();
+
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    label_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(input) rank and Input(label) rank should be "
+                        "same, but received input rank(%d) != label rank(%d)",
+                        input_dims.size(),
+                        label_dims.size()));
+
+  bool contain_unknown_dim = phi::contain_unknown_dim(input_dims) ||
+                             phi::contain_unknown_dim(label_dims);
+  if (config.is_runtime || !contain_unknown_dim) {
+    PADDLE_ENFORCE_EQ(
+        input_dims,
+        label_dims,
+        phi::errors::InvalidArgument(
+            "The Input(input) and Input(label) should have the same "
+            "shape, but received input shape [%s] != label shape [%s]",
+            input_dims,
+            label_dims));
+  }
+
+  auto out_dims = label_dims;
+  residual->set_dims(out_dims);
+  out->set_dims(out_dims);
+  out->share_lod(input);
 }
 
 }  // namespace phi

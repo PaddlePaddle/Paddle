@@ -25,6 +25,8 @@ cc_library(meta_tensor SRCS meta_tensor.cc DEPS tensor_base tensor_meta dense_te
 cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
 cc_library(selected_rows SRCS selected_rows_impl.cc DEPS dense_tensor pten_enforce ddim)
 
+cc_library(pten_custom_kernel SRCS custom_kernel.cc DEPS kernel_factory convert_utils)
+
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
     add_dependencies(dense_tensor mkldnn)
