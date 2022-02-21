@@ -13,21 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
+
 #include <algorithm>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_MLU)
+    defined(PADDLE_WITH_MLU) || defined(PADDLE_WITH_ASCEND_CL)
+#define USE_DEVICE
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-DECLARE_uint64(reallocate_gpu_memory_in_mb);
-#endif
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
+
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace memory {
@@ -35,12 +33,37 @@ namespace detail {
 
 BuddyAllocator::BuddyAllocator(
     std::unique_ptr<SystemAllocator> system_allocator, size_t min_chunk_size,
-    size_t max_chunk_size, size_t extra_padding_size)
+    size_t max_chunk_size, size_t extra_padding_size,
+    const std::string dev_type)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
       extra_padding_size_(extra_padding_size),
       cache_(system_allocator->UseGpu()),
-      system_allocator_(std::move(system_allocator)) {}
+      system_allocator_(std::move(system_allocator)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (!dev_type.empty()) {
+    init_allocate_size_func_ = [dev_type]() {
+      return platform::DeviceManager::GetInitAllocSize(
+          platform::PlaceHelper::CreatePlace(dev_type));
+    };
+    re_allocate_size_func_ = [dev_type]() {
+      return platform::DeviceManager::GetReallocSize(
+          platform::PlaceHelper::CreatePlace(dev_type));
+    };
+  } else {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    init_allocate_size_func_ = &platform::GpuInitAllocSize;
+    re_allocate_size_func_ = &platform::GpuReallocSize;
+#elif defined(PADDLE_WITH_ASCEND_CL)
+    init_allocate_size_func_ = &platform::NPUInitAllocSize;
+    re_allocate_size_func_ = &platform::NPUReallocSize;
+#elif defined(PADDLE_WITH_MLU)
+    init_allocate_size_func_ = &platform::MLUInitAllocSize;
+    re_allocate_size_func_ = &platform::MLUReallocSize;
+#endif
+  }
+#endif
+}
 
 BuddyAllocator::~BuddyAllocator() {
   VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
@@ -180,33 +203,24 @@ uint64_t BuddyAllocator::Release() {
   std::lock_guard<std::mutex> lock(mutex_);
   int num = 0;
   uint64_t bytes = 0;
-  bool del_flag = false;
   for (auto iter = pool_.begin(); iter != pool_.end();) {
     auto remain_size = std::get<1>(*iter);
     auto remain_ptr = std::get<2>(*iter);
-    for (auto& chunk : chunks_) {
-      auto init_size = std::get<1>(chunk);
-      auto init_ptr = std::get<2>(chunk);
-
-      if (init_size == remain_size && init_ptr == remain_ptr) {
-        ++num;
-        bytes += init_size;
-        total_free_ -= init_size;
-        auto block = static_cast<MemoryBlock*>(std::get<2>(chunk));
-        system_allocator_->Free(init_ptr, init_size, std::get<0>(chunk));
-        cache_.Invalidate(block);
-        del_flag = true;
-        break;
-      }
-    }
-
-    if (del_flag) {
+    auto found = chunks_.find({remain_size, remain_ptr});
+    if (found != chunks_.end()) {
+      size_t index = found->second;
+      ++num;
+      bytes += remain_size;
+      total_free_ -= remain_size;
+      auto block = static_cast<MemoryBlock*>(remain_ptr);
+      system_allocator_->Free(remain_ptr, remain_size, index);
+      cache_.Invalidate(block);
       iter = pool_.erase(iter);
     } else {
       iter++;
     }
   }
-  VLOG(10) << "Release " << num << " chunk, Free " << bytes << " bytes.";
+  VLOG(10) << "Release " << num << " chunks, Free " << bytes << " bytes.";
   return bytes;
 }
 
@@ -233,50 +247,20 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   size_t allocate_bytes = max_chunk_size_;
   size_t index = 0;
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  allocate_bytes = DeviceAllocateSize(init_allocate_size_func_,
+                                      re_allocate_size_func_, request_bytes);
+#else
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (system_allocator_->UseGpu()) {
-    if ((total_used_ + total_free_) == 0) {
-      // Compute the allocation size for gpu for the first allocation.
-      allocate_bytes = std::max(platform::GpuInitAllocSize(), request_bytes);
-    } else {
-      // Compute the re-allocation size, we store the re-allocation size when
-      // user set FLAGS_reallocate_gpu_memory_in_mb to fix value.
-      if (realloc_size_ == 0 || FLAGS_reallocate_gpu_memory_in_mb == 0ul) {
-        realloc_size_ = platform::GpuReallocSize();
-      }
-      allocate_bytes = std::max(realloc_size_, request_bytes);
-    }
-  }
+  allocate_bytes = DeviceAllocateSize(&platform::GpuInitAllocSize,
+                                      &platform::GpuReallocSize, request_bytes);
+#elif defined(PADDLE_WITH_ASCEND_CL)
+  allocate_bytes = DeviceAllocateSize(&platform::NPUInitAllocSize,
+                                      &platform::NPUReallocSize, request_bytes);
+#elif defined(PADDLE_WITH_MLU)
+  allocate_bytes = DeviceAllocateSize(&platform::MLUInitAllocSize,
+                                      &platform::MLUReallocSize, request_bytes);
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (system_allocator_->UseGpu()) {
-    if ((total_used_ + total_free_) == 0) {
-      // Compute the allocation size for gpu for the first allocation.
-      allocate_bytes = std::max(platform::NPUInitAllocSize(), request_bytes);
-    } else {
-      // Compute the re-allocation size, we store the re-allocation size when
-      // user set FLAGS_reallocate_gpu_memory_in_mb to fix value.
-      if (realloc_size_ == 0 || FLAGS_reallocate_gpu_memory_in_mb == 0ul) {
-        realloc_size_ = platform::NPUReallocSize();
-      }
-      allocate_bytes = std::max(realloc_size_, request_bytes);
-    }
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  if (system_allocator_->UseGpu()) {
-    if ((total_used_ + total_free_) == 0) {
-      // Compute the allocation size for mlu for the first allocation.
-      allocate_bytes = std::max(platform::MLUInitAllocSize(), request_bytes);
-    } else {
-      // Compute the re-allocation size, we store the re-allocation size when
-      // user set FLAGS_reallocate_gpu_memory_in_mb to fix value.
-      if (realloc_size_ == 0 || FLAGS_reallocate_gpu_memory_in_mb == 0ul) {
-        realloc_size_ = platform::MLUReallocSize();
-      }
-      allocate_bytes = std::max(realloc_size_, request_bytes);
-    }
-  }
 #endif
 
   // Allocate a new block
@@ -293,7 +277,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   total_free_ += allocate_bytes;
 
   // record the chunk.
-  chunks_.insert(IndexSizeAddress(index, allocate_bytes, p));
+  chunks_.insert({{allocate_bytes, p}, index});
 
   // dump the block into pool
   return pool_.insert(IndexSizeAddress(index, allocate_bytes, p)).first;
@@ -348,6 +332,31 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
   }
 
   return block;
+}
+
+size_t BuddyAllocator::DeviceAllocateSize(
+    std::function<size_t()> init_allocate_size_func,
+    std::function<size_t()> re_allocate_size_func, size_t request_bytes) {
+  size_t allocate_bytes = max_chunk_size_;
+#if defined(USE_DEVICE)
+  const bool use_gpu = system_allocator_->UseGpu();
+  VLOG(10) << "use_gpu " << use_gpu << ", total_used " << total_used_
+           << ", total_free " << total_free_;
+  if (use_gpu) {
+    if (total_used_ == 0 && total_free_ == 0) {
+      // Compute the allocation size for gpu for the first allocation.
+      allocate_bytes = std::max(init_allocate_size_func(), request_bytes);
+    } else {
+      // Compute the re-allocation size, we store the re-allocation size when
+      // user set FLAGS_reallocate_gpu_memory_in_mb to fix value.
+      if (realloc_size_ == 0 || FLAGS_reallocate_gpu_memory_in_mb == 0ul) {
+        realloc_size_ = re_allocate_size_func();
+      }
+      allocate_bytes = std::max(realloc_size_, request_bytes);
+    }
+  }
+#endif
+  return allocate_bytes;
 }
 
 }  // namespace detail

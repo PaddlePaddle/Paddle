@@ -1088,6 +1088,7 @@ SIXTH_PARALLEL_JOB_NEW = [
     'test_fill_any_op',
     'test_frame_op',
     'test_linalg_pinv_op',
+    'test_linalg_lstsq_op',
     'test_gumbel_softmax_op',
     'test_matrix_power_op',
     'test_multi_dot_op',

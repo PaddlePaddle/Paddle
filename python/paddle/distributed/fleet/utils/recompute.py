@@ -63,7 +63,8 @@ def swith_rng_state(rng_state):
 class RecomputeFunction(PyLayer):
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
-        check_recompute_necessary(args)
+        if framework._dygraph_tracer()._has_grad:
+            check_recompute_necessary(args)
 
         # store for recomputing 
         ctx.run_function = run_function
@@ -106,6 +107,15 @@ class RecomputeFunction(PyLayer):
         else:
             raise ValueError("unsupported amp level: {}".format(
                 tracer._amp_level))
+
+        if tracer._amp_dtype == 'float16':
+            ctx.amp_dtype = 'float16'
+        elif tracer._amp_dtype in ('bfloat16', 'float32'):
+            ctx.amp_dtype = 'bfloat16'
+        else:
+            raise ValueError("unsupported amp dtype: {}".format(
+                tracer._amp_dtype))
+
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -136,7 +146,8 @@ class RecomputeFunction(PyLayer):
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,
                             custom_black_list=ctx.amp_black_list,
-                            level=ctx.amp_level):
+                            level=ctx.amp_level,
+                            dtype=ctx.amp_dtype):
                         detached_inputs = detach_variable(tuple(inputs))
                         outputs = ctx.run_function(*detached_inputs)
             else:
@@ -144,7 +155,8 @@ class RecomputeFunction(PyLayer):
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
                         custom_black_list=ctx.amp_black_list,
-                        level=ctx.amp_level):
+                        level=ctx.amp_level,
+                        dtype=ctx.amp_dtype):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 

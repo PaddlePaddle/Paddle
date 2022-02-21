@@ -106,9 +106,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if place is None:
         place = _current_expected_place()
     elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
-                                core.CUDAPlace, core.NPUPlace, core.XPUPlace)):
+                                core.CUDAPlace, core.NPUPlace, core.XPUPlace,
+                                core.CustomPlace)):
         raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace"
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.CustomPlace"
         )
 
     #Todo(zhouwei): Support allocate tensor on any other specified card
@@ -116,12 +117,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             _current_expected_place(), core.CUDAPlace) and place._get_device_id(
             ) != _current_expected_place()._get_device_id():
         place = _current_expected_place()
-
-    if _in_eager_mode():
-        if dtype is None:
-            dtype = paddle.get_default_dtype()
-        return core.eager.to_tensor(data,
-                                    convert_dtype(dtype), place, stop_gradient)
 
     if not isinstance(data, np.ndarray):
 
@@ -172,12 +167,16 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if dtype and convert_dtype(dtype) != data.dtype:
         data = data.astype(convert_dtype(dtype))
 
-    return paddle.Tensor(
-        value=data,
-        place=place,
-        persistable=False,
-        zero_copy=False,
-        stop_gradient=stop_gradient)
+    # TOOD(jiabin): Support kwargs in eager tensor constructor
+    if _in_eager_mode() and isinstance(data, np.ndarray):
+        return core.eager.Tensor(data, place, False, False, None, stop_gradient)
+    else:
+        return paddle.Tensor(
+            value=data,
+            place=place,
+            persistable=False,
+            zero_copy=False,
+            stop_gradient=stop_gradient)
 
 
 def full_like(x, fill_value, dtype=None, name=None):
@@ -220,11 +219,13 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     helper = LayerHelper("full_like", **locals())
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x',
+        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
         'full_like')
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full_like/zeros_like/ones_like')
+    check_dtype(
+        dtype, 'dtype',
+        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
+        'full_like/zeros_like/ones_like')
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
@@ -1158,8 +1159,7 @@ def empty_like(x, dtype=None, name=None):
 
 def assign(x, output=None):
     """
- 
- 
+
     The OP copies the :attr:`x` to the :attr:`output`.
  
     Parameters:
@@ -1190,6 +1190,36 @@ def assign(x, output=None):
     check_type(x, 'x', (Variable, np.ndarray, list, tuple, float, int, bool),
                'assign')
     return tensor.assign(x, output)
+
+
+def clone(x, name=None):
+    """
+    Returns a copy of input Tensor. It will always have a Tensor copy. 
+    
+    In addition, This function is derivable, so gradients will flow back from the output to input.
+
+    Parameters:
+        x (Tensor): The input Tensor.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns: A Tensor copied from ``input`` .
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones([2])
+            x.stop_gradient = False
+            clone_x = paddle.clone(x)
+
+            y = clone_x**3
+            y.backward()
+            print(clone_x.grad)          # [3]
+            print(x.grad)                # [3]
+    """
+    return x.clone()
 
 
 #NOTE(zhiqiu): not public 

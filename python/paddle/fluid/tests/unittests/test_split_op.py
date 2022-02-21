@@ -16,7 +16,7 @@ from __future__ import print_function
 import paddle
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard, core
 
@@ -26,12 +26,19 @@ class TestSplitOp(OpTest):
         self._set_op_type()
         self.dtype = self.get_dtype()
         axis = 1
-        x = np.random.random((4, 5, 6)).astype(self.dtype)
-        out = np.split(x, [2, 3], axis)
-        self.inputs = {'X': x}
+        if self.dtype == np.uint16:
+            x = np.random.random((4, 5, 6)).astype(np.float32)
+            out = np.split(x, [2, 3], axis)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.outputs = {'Out': [('out%d' % i, convert_float_to_uint16(out[i])) \
+                for i in range(len(out))]}
+        else:
+            x = np.random.random((4, 5, 6)).astype(self.dtype)
+            out = np.split(x, [2, 3], axis)
+            self.inputs = {'X': x}
+            self.outputs = {'Out': [('out%d' % i, out[i]) \
+                for i in range(len(out))]}
         self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-            for i in range(len(out))]}
 
     def get_dtype(self):
         return "float64"
@@ -225,6 +232,30 @@ def create_test_fp16(parent):
 
 
 create_test_fp16(TestSplitOp)
+
+#----------------Split Bf16----------------
+
+
+def create_test_bf16(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestSplitBf16(parent):
+        def get_dtype(self):
+            return np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            pass
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
+    TestSplitBf16.__name__ = cls_name
+    globals()[cls_name] = TestSplitBf16
+
+
+create_test_bf16(TestSplitOp)
 
 
 class TestSplitAPI(unittest.TestCase):

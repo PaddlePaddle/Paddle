@@ -28,7 +28,7 @@ from .cost_model import estimate_cost
 from .dist_op import DistributedOperator
 from .process_group import _g_process_group_map
 from .process_group import ProcessGroup, get_process_group
-from .completion import is_elementwise_like_op
+from .operators.common import is_elementwise_op
 from .operators.common import get_distributed_operator_impl_container
 from .utils import update_op_dims_mapping_by_default_dist_impl
 from .utils import update_op_dims_mapping_by_elementwise_like_dist_impl
@@ -84,34 +84,22 @@ class PlanFilter:
 
     @staticmethod
     def check_dims_mapping_for_special_op(op, op_dist_attr, vars):
-        if op.type == "layer_norm":
-            bias_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                op.input("Bias")[0])
-            scale_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                op.input("Scale")[0])
-            x_dims_mapping = op_dist_attr.get_input_dims_mapping(
-                op.input("X")[0])
-            mean_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                op.output("Mean")[0])
-            variance_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                op.output("Variance")[0])
-            y_dims_mapping = op_dist_attr.get_output_dims_mapping(
-                op.output("Y")[0])
-            if x_dims_mapping != y_dims_mapping:
-                return False
-
-            if scale_dims_mapping[0] != x_dims_mapping[-1]:
-                return False
-
-            if bias_dims_mapping[0] != y_dims_mapping[-1]:
-                return False
-
-            if mean_dims_mapping[0] != x_dims_mapping[0]:
-                return False
-
-            if variance_dims_mapping[0] != x_dims_mapping[0]:
-                return False
-
+        # NOTE: Those ops has some partition limits, and will be solved when corresponding dist op implemented in the future. 
+        if op.type == "elementwise_add" or op.type == 'layer_norm' or op.type == "softmax_with_cross_entropy":
+            for name in op.input_arg_names:
+                for item in op_dist_attr.get_input_dims_mapping(name):
+                    if item != -1:
+                        return False
+            for name in op.output_arg_names:
+                for item in op_dist_attr.get_output_dims_mapping(name):
+                    if item != -1:
+                        return False
+        if op.type == "lookup_table_v2":
+            for name in op.input_arg_names:
+                if name == 'pos_embeddings':
+                    for item in op_dist_attr.get_input_dims_mapping(name):
+                        if item != -1:
+                            return False
         return True
 
 
@@ -237,7 +225,7 @@ class PlanSpace:
 
             dist_op = DistributedOperator(op, op_dist_attr)
             if dist_op_impl_container is None:
-                if is_elementwise_like_op(op.type):
+                if is_elementwise_op(op.type):
                     changed = True
                     valid = True
                     try:
@@ -250,7 +238,8 @@ class PlanSpace:
                                 op, dist_op.dist_attr, vars
                         ) and PlanFilter.check_dims_mapping_for_special_op(
                                 op, dist_op.dist_attr, vars):
-                            dist_op.dist_attr.impl_idx = -1
+                            dist_op.dist_attr.impl_type = "elementwise"
+                            dist_op.dist_attr.impl_idx = 0
                             op_valid_dist_attrs.append(dist_op.dist_attr)
                     continue
                 else:
@@ -266,16 +255,18 @@ class PlanSpace:
                                 op, dist_op.dist_attr, vars
                         ) and PlanFilter.check_dims_mapping_for_special_op(
                                 op, dist_op.dist_attr, vars):
-                            dist_op.dist_attr.impl_idx = -2
+                            dist_op.dist_attr.impl_type = "default"
+                            dist_op.dist_attr.impl_idx = 0
                             op_valid_dist_attrs.append(dist_op.dist_attr)
                     continue
 
             # if op has distributed implements, find all valid dist attr of this op
-            impls = dist_op_impl_container.get_impls()
+            impls = dist_op_impl_container.impls
             for idx, impl in enumerate(impls):
                 if impl.is_auto_compatible(dist_op):
                     if PlanFilter.check_dims_mapping_for_op(
                             op, dist_op.dist_attr, vars):
+                        dist_op.dist_attr.impl_type = dist_op.serial_op.type
                         dist_op.dist_attr.impl_idx = idx
                         op_valid_dist_attrs.append(dist_op.dist_attr)
 
@@ -290,7 +281,8 @@ class PlanSpace:
             for var_name in op.output_arg_names:
                 op_dist_attr.set_output_dims_mapping(
                     vars[var_name], [-1 for i in vars[var_name].shape])
-            dist_op.dist_attr.impl_idx = -1
+            dist_op.dist_attr.impl_type = "default"
+            dist_op.dist_attr.impl_idx = 0
             op_valid_dist_attrs.append(dist_op.dist_attr)
 
         return op_valid_dist_attrs
@@ -386,14 +378,19 @@ class SearchAlgorithm:
 
 
 class MCMC(SearchAlgorithm):
-    def __init__(self, serial_program_info, max_search_times=5):
+    def __init__(self, serial_program_info, parallelizer, max_search_times=5):
         super(MCMC, self).__init__("mcmc")
         self._serial_program_info = serial_program_info
         self._max_search_times = max_search_times
+        self._parallelizer = parallelizer
 
     @property
     def serial_program_info(self):
         return self._serial_program_info
+
+    @property
+    def parallelizer(self):
+        return self._parallelizer
 
     @property
     def max_search_times(self):
@@ -417,13 +414,14 @@ class MCMC(SearchAlgorithm):
                                         var_name) == dims_mapping:
                                     dist_context.set_op_dist_attr_for_program(
                                         search_op, op_dist_attr)
-                                    tensor_dist_attr = TensorDistributedAttribute(
-                                    )
-                                    tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
-                                    tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
-                                        var_name)
-                                    dist_context.set_tensor_dist_attr_for_program(
-                                        vars[var_name], tensor_dist_attr)
+                                    for name in search_op.output_arg_names:
+                                        tensor_dist_attr = TensorDistributedAttribute(
+                                        )
+                                        tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+                                        tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
+                                            name)
+                                        dist_context.set_tensor_dist_attr_for_program(
+                                            vars[name], tensor_dist_attr)
                                     has_changed = True
                                     break
                         if has_changed:
@@ -483,7 +481,7 @@ class MCMC(SearchAlgorithm):
         cost = None
         # get all distributed programs
         all_dist_main_program = get_all_distributed_main_program(
-            self.serial_program_info, dist_context)
+            self.serial_program_info, dist_context, self.parallelizer)
         pipeline_config = [
             process_mesh.processes for process_mesh in pipeline_process_meshes
         ] if pipeline_process_meshes is not None else None
@@ -829,8 +827,10 @@ class MCMC(SearchAlgorithm):
 
 
 class Planner:
-    def __init__(self, serial_program_info, algorithm_config=None):
+    def __init__(self, serial_program_info, parallelizer,
+                 algorithm_config=None):
         self._serial_program_info = serial_program_info
+        self._parallelizer = parallelizer
         self._algorithm_config = algorithm_config
         self._algorithm_searcher = self.create_algorithm_searcher(
             algorithm_config)
@@ -847,6 +847,10 @@ class Planner:
     def algorithm_searcher(self):
         return self._algorithm_searcher
 
+    @property
+    def parallelizer(self):
+        return self._parallelizer
+
     def create_algorithm_searcher(self, algorithm_config):
         name = algorithm_config.get("name", None)
         assert name is not None, "Invalid algorithm config."
@@ -856,9 +860,9 @@ class Planner:
             # NOTE: Only GPU clusters are supported now.
             max_search_times = algorithm_config.get("max_search_times", None)
             algorithm_searcher = MCMC(
-                self.serial_program_info,
+                self.serial_program_info, self.parallelizer,
                 max_search_times) if max_search_times is not None else MCMC(
-                    self.serial_program_info)
+                    self.serial_program_info, self.parallelizer)
         else:
             raise NotImplementedError(
                 "Other search algorithms have not been supported now.")

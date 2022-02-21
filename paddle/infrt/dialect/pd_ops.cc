@@ -14,24 +14,30 @@
 
 #include "paddle/infrt/dialect/pd_ops.h"
 
-#include "mlir/IR/Matchers.h"
-#include "mlir/IR/PatternMatch.h"
+#include <mlir/IR/Matchers.h>
+#include <mlir/IR/PatternMatch.h>
+#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
 #include "paddle/infrt/dialect/infrt_base.h"
+
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/pd_ops.cpp.inc"  // NOLINT
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/pd_extra_ops.cpp.inc"  // NOLINT
+
+#include "paddle/infrt/dialect/rewrite.hpp.inc"  // NOLINT
 
 namespace mlir {
 namespace pd {
-
-#define GET_OP_CLASSES
-#include "paddle/infrt/dialect/pd_ops.hpp.inc"
-#undef GET_OP_CLASSES
 
 PaddleDialect::PaddleDialect(MLIRContext *context)
     : Dialect("pd", context, TypeID::get<PaddleDialect>()) {
   addOperations<
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/pd_ops.cpp.inc"  // NOLINT
+      ,
+#define GET_OP_LIST
+#include "paddle/infrt/dialect/pd_extra_ops.cpp.inc"  // NOLINT
       >();
-#undef GET_OP_LIST
 }
 
 mlir::Operation *PaddleDialect::materializeConstant(mlir::OpBuilder &builder,
@@ -40,12 +46,6 @@ mlir::Operation *PaddleDialect::materializeConstant(mlir::OpBuilder &builder,
                                                     mlir::Location loc) {
   return builder.create<ConstantOp>(loc, value);
 }
-
-#define GET_OP_CLASSES
-#include "paddle/infrt/dialect/pd_ops.cpp.inc"  // NOLINT
-#undef GET_OP_CLASSES
-
-#include "paddle/infrt/dialect/rewrite.hpp.inc"  // NOLINT
 
 void ConstantOp::build(OpBuilder &builder,
                        OperationState &state,
@@ -71,11 +71,11 @@ LogicalResult ConstantOp::inferReturnTypes(
   inferredReturnTypes.push_back(attributes.get("value").getType());
   return success();
 }
-::mlir::OpFoldResult ConstantOp::fold(
-    ::llvm::ArrayRef<::mlir::Attribute> operands) {
+mlir::OpFoldResult ConstantOp::fold(
+    ::llvm::ArrayRef<mlir::Attribute> operands) {
   return value();
 }
-
+/*
 LogicalResult ElementwiseAdd::inferReturnTypes(
     MLIRContext *context,
     Optional<Location> location,
@@ -86,12 +86,15 @@ LogicalResult ElementwiseAdd::inferReturnTypes(
   inferredReturnTypes.push_back(operands[0].getType());
   return success();
 }
-void ElementwiseAdd::getCanonicalizationPatterns(
-    ::mlir::OwningRewritePatternList &results, ::mlir::MLIRContext *context) {
+*/
+
+void Elementwise_addOp::getCanonicalizationPatterns(
+    mlir::OwningRewritePatternList &results, mlir::MLIRContext *context) {
   results.insert<FuseMulAdd>(context);
 }
 
-::mlir::OpFoldResult ElementwiseAdd::fold(
+/*
+mlir::OpFoldResult ElementwiseAdd::fold(
     llvm::ArrayRef<mlir::Attribute> operands) {
   if (getElementTypeOrSelf(getType()).isa<FloatType>()) {
     if (!operands[0] || !operands[1]) return {};
@@ -159,19 +162,19 @@ LogicalResult MulOp::inferReturnTypes(
 }
 
 void ReluOp::getCanonicalizationPatterns(
-    ::mlir::OwningRewritePatternList &results, ::mlir::MLIRContext *context) {
+    mlir::OwningRewritePatternList &results, mlir::MLIRContext *context) {
   results.insert<FuseFCRelu>(context);
 }
 
 void FusedRepeatedFCRelu::getCanonicalizationPatterns(
-    ::mlir::OwningRewritePatternList &results, ::mlir::MLIRContext *context) {
+    mlir::OwningRewritePatternList &results, mlir::MLIRContext *context) {
   results.insert<FuseRepeatedFCRelu2>(context);
 }
 
 void BatchNormOp::getCanonicalizationPatterns(
-    ::mlir::OwningRewritePatternList &results, ::mlir::MLIRContext *context) {
+    mlir::OwningRewritePatternList &results, mlir::MLIRContext *context) {
   results.insert<FuseBatchNormWithConvPattern>(context);
-}
+}*/
 
 }  // namespace pd
 }  // namespace mlir

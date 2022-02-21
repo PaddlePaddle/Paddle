@@ -144,6 +144,15 @@ class AllReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
   bool IsEncoded(const std::string &p_name) const;
 };
 
+class NoReduceSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
+ protected:
+  void InsertCollectiveOp(ir::Graph *result, ir::Node *node,
+                          const std::string &p_name,
+                          const std::string &g_name) const override {}
+
+  void InsertPostprocessOps(ir::Graph *result) const override {}
+};
+
 class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
  protected:
   void InsertCollectiveOp(ir::Graph *result, ir::Node *node,

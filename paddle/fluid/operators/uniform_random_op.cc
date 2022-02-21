@@ -27,7 +27,7 @@ namespace {
 template <typename T>
 inline void UniformRealDistribution(T *data, const int64_t &size,
                                     const float &min, const float &max,
-                                    const unsigned int &seed) {
+                                    const unsigned int seed) {
   VLOG(4) << "[CPU] UniformRandomKernel<T>";
   std::uniform_real_distribution<T> dist(static_cast<T>(min),
                                          static_cast<T>(max));
@@ -41,8 +41,7 @@ inline void UniformRealDistribution(T *data, const int64_t &size,
 template <>
 inline void UniformRealDistribution(paddle::platform::bfloat16 *data,
                                     const int64_t &size, const float &min,
-                                    const float &max,
-                                    const unsigned int &seed) {
+                                    const float &max, const unsigned int seed) {
   VLOG(4) << "[CPU] UniformRandomKernel<bfloat16>";
   std::uniform_real_distribution<float> dist(min, max);
   auto engine = paddle::framework::GetCPURandomEngine(seed);
@@ -74,16 +73,16 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       }
     }
 
-    if (out_var->IsType<framework::SelectedRows>()) {
-      auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
+    if (out_var->IsType<phi::SelectedRows>()) {
+      auto *selected_rows = out_var->GetMutable<phi::SelectedRows>();
       tensor = selected_rows->mutable_value();
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
       if (!new_shape.empty()) shape = new_shape;
-      tensor->Resize(framework::make_ddim(shape));
+      tensor->Resize(phi::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
     } else if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
-      if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
+      if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of Output(out) in uniform_random_op must be Tensor, "
@@ -153,7 +152,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
                             "Please check the Attr(shape)'s size of"
                             "Op(fluid.layers.uniform_random).)"));
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+      ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
 
       return;
     }
@@ -172,7 +171,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
         num_ele *= shape_dims[i];
       }
       auto vec_dims = std::vector<int64_t>(num_ele, -1);
-      auto out_dims = framework::make_ddim(vec_dims);
+      auto out_dims = phi::make_ddim(vec_dims);
       ctx->SetOutputDim("Out", out_dims);
       return;
     }
@@ -188,7 +187,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     for (auto dim : shape) {
       tensor_shape.push_back(static_cast<int64_t>(dim));
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(tensor_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(tensor_shape));
   }
 
  protected:

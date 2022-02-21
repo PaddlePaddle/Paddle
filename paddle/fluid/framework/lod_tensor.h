@@ -20,24 +20,25 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
-}  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
 
-namespace paddle {
-namespace framework {
+using LoDTensor = phi::DenseTensor;
+
+// Split Tensor and copy to each place specified in places.
+std::vector<LoDTensor> SplitLoDTensor(
+    const LoDTensor& src, const std::vector<platform::Place> places);
+
+void MergeLoDTensor(LoDTensor* target,
+                    const std::vector<const LoDTensor*>& lod_tensors,
+                    platform::Place dst_place);
 
 /*
  * LoD is short for Level of Details.
@@ -55,9 +56,6 @@ namespace framework {
  *    0 2 5 7 10 12 15 20
  */
 using LoD = std::vector<Vector<size_t>>;
-
-std::ostream& operator<<(std::ostream& os, const LoD& lod);
-std::ostream& operator<<(std::ostream& os, const LoDTensor& t);
 
 std::string LoDToString(const LoD& lod);
 
@@ -101,72 +99,6 @@ bool CheckLoD(const LoD& in, int tensor_height = -1);
  *     tensor_height>0.
  */
 bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
-
-/*
- * LoDTensor (Level of details Tensor)
- * see https://en.wikipedia.org/wiki/Level_of_details for reference.
- */
-class LoDTensor : public Tensor {
- public:
-  LoDTensor() : Tensor() {}
-
-  explicit LoDTensor(const LoD& lod) : lod_(lod) {}
-
-  void set_lod(const LoD& lod) { lod_ = lod; }
-
-  const LoD& lod() const { return lod_; }
-
-  LoD* mutable_lod() { return &lod_; }
-
-  /*
-   * Get the start offset and end offset of an  element from LoD.
-   */
-  std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const {
-    PADDLE_ENFORCE_LT(
-        level, NumLevels(),
-        platform::errors::InvalidArgument(
-            "The input level of LoD is invalid, it should be less than LoD "
-            "size. The input level is %zu, the LoD size is %zu.",
-            level, NumLevels()));
-    PADDLE_ENFORCE_LT(elem, NumElements(level),
-                      platform::errors::InvalidArgument(
-                          "The input element of LoD is invalid, it should be "
-                          "less than the number of elements in its level."
-                          "The input element is %zu, the number of elements in "
-                          "its level is %zu.",
-                          elem, NumElements(level)));
-    return std::make_pair((lod_)[level][elem], (lod_)[level][elem + 1]);
-  }
-
-  /*
-   * Number of LoDTensor's levels, each level has units of data, for example,
-   * in the sentence's view, article, paragraph, sentence are 3 levels.
-   */
-  size_t NumLevels() const { return lod_.size(); }
-  /*
-   * Number of elements in a level.
-   */
-  size_t NumElements(size_t level = 0) const {
-    PADDLE_ENFORCE_LT(
-        level, NumLevels(),
-        platform::errors::InvalidArgument(
-            "The input level of LoD is invalid, it should be less than LoD "
-            "size. The input level is %zu, the LoD size is %zu.",
-            level, NumLevels()));
-    // the last offset is the end of last element
-    return (lod_)[level].size() - 1;
-  }
-
-  // Split LoDTensor and copy to each place specified in places.
-  std::vector<LoDTensor> SplitLoDTensor(
-      const std::vector<platform::Place> places) const;
-
-  void MergeLoDTensor(const std::vector<const LoDTensor*>& lod_tensors,
-                      platform::Place place);
-
- private:
-  LoD lod_;
-};
 
 /*
  * Expand the `source` to fit the LoD of `lod`. For example, a `source`
@@ -225,8 +157,6 @@ LoDTensor LodExpand(const LoDTensor& source, const LoD& lod, size_t level,
 std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
     const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
-void AppendLoD(LoD* lod, const LoD& lod_length);
-
 /*
  * Serialize/Desiralize LoDTensor to std::ostream
  * You can pass ofstream or ostringstream to serilize to file
@@ -240,18 +170,6 @@ void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);
-
-/*
- * Convert between length-based LoD and offset-based LoD.
- * The implementation of LoDTensor class use offset-based LoD.
- * However, we want to expose the more user-friendly length-based
- * LoD to the Python side instead.
- *
- * Example:
- * If offset_lod = [[0, 2, 3],[0, 3, 5, 9]]
- * then length_lod = [[2, 1], [3, 2, 4]]
- */
-LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
 
 LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
 

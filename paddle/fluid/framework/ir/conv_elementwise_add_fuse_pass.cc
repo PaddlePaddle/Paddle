@@ -57,7 +57,7 @@ ConvElementwiseAddFusePass::ConvElementwiseAddFusePass() {
       .AddAttr("dilations")
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -97,6 +97,13 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_NODES;
 
     auto base_op_desc = *conv_op->Op()->Proto();
+    auto data_format =
+        conv_op->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_elementwise_add_fuse_pass is enabled, "
+                                 "it's wrong if data_format of conv is not "
+                                 "NCHW.";
+    }
     std::string bias_name = elementwise_add_in_y->Name();
     std::string output_name = elementwise_add_out->Name();
 

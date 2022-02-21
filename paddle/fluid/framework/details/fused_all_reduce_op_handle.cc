@@ -13,10 +13,12 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/fused_all_reduce_op_handle.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
 DECLARE_bool(allreduce_record_one_event);
@@ -66,7 +68,8 @@ FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
 }
 
 void FusedAllReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   VLOG(4) << this->DebugString();
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -102,7 +105,7 @@ void FusedAllReduceOpHandle::RunImpl() {
   gpuStream_t compute_stream{nullptr};
 
   if (FLAGS_allreduce_record_one_event) {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, places_[0]);
+    auto gpu_place = platform::CUDAPlace(places_[0].GetDeviceId());
     compute_stream =
         platform::DeviceContextPool::Instance().GetByPlace(gpu_place)->stream();
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
@@ -220,17 +223,17 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
         g_tensor.begin(), g_tensor.end(),
         [](const std::pair<std::string, const LoDTensor *> &grad1,
            const std::pair<std::string, const LoDTensor *> &grad2) -> bool {
-          return grad1.second->data<void>() < grad2.second->data<void>();
+          return grad1.second->data() < grad2.second->data();
         });
 
     size_t size_of_dtype = framework::SizeOfType(dtype);
     for (size_t k = 1; k < g_tensor.size(); ++k) {
-      const void *cur_address = g_tensor.at(k - 1).second->data<void>();
+      const void *cur_address = g_tensor.at(k - 1).second->data();
       int64_t len = g_tensor.at(k - 1).second->numel();
       auto offset = platform::Alignment(len * size_of_dtype, places_[0]);
       void *infer_next_address = reinterpret_cast<void *>(
           reinterpret_cast<uintptr_t>(cur_address) + offset);
-      const void *next_address = g_tensor.at(k).second->data<void>();
+      const void *next_address = g_tensor.at(k).second->data();
 
       VLOG(10) << string::Sprintf(
           "Input[%d](%s) address: 0X%02x, Input[%d](%s) address: 0X%02x, Infer "
@@ -267,7 +270,7 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
   std::vector<const void *> lod_tensor_data;
   lod_tensor_data.reserve(place_num);
   for (size_t scope_idx = 0; scope_idx < place_num; ++scope_idx) {
-    auto data = grads_tensor.at(scope_idx).at(0).second->data<void>();
+    auto data = grads_tensor.at(scope_idx).at(0).second->data();
     lod_tensor_data.emplace_back(data);
   }
   std::vector<std::string> grad_var_names;
@@ -291,7 +294,7 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
           var, platform::errors::NotFound(
                    "The variable '%s' is not found in local scope.", var_name));
       auto &lod_tensor = var->Get<LoDTensor>();
-      if (!is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
+      if (!platform::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
       }
     }
@@ -336,7 +339,8 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
   size_t size_of_dtype = 0;
   for (size_t i = 0; i < grad_tensor.size(); ++i) {
     // Get dtype
-    auto ele_dtype = grad_tensor.at(i).second->type();
+    auto ele_dtype =
+        framework::TransToProtoVarType(grad_tensor.at(i).second->dtype());
     if (i == 0) {
       *dtype = ele_dtype;
       size_of_dtype = framework::SizeOfType(ele_dtype);

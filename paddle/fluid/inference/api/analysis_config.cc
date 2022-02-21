@@ -189,10 +189,12 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_oss_);
+  CP_MEMBER(trt_with_interleaved_);
   CP_MEMBER(trt_tuned_dynamic_shape_);
   CP_MEMBER(trt_allow_build_at_runtime_);
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
+  CP_MEMBER(trt_use_inspector_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -425,6 +427,8 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_use_dla_ = true;
   trt_dla_core_ = dla_core;
 }
+
+void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
@@ -864,6 +868,8 @@ std::string AnalysisConfig::Summary() {
                                                         : "false"});
 
       os.InsertRow({"tensorrt_use_oss", trt_use_oss_ ? "true" : "false"});
+      os.InsertRow({"tensorrt_with_interleaved",
+                    trt_with_interleaved_ ? "true" : "false"});
       os.InsertRow({"tensorrt_use_dla", trt_use_dla_ ? "true" : "false"});
       if (trt_use_dla_) {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});

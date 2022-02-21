@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace platform {
@@ -27,9 +29,24 @@ struct ForRange {
   void operator()(Function func) const;
 };
 
+// NOTE: After the pten kernel is migrated, it needs to be deleted.
 template <>
 struct ForRange<CPUDeviceContext> {
   ForRange(const CPUDeviceContext& dev_ctx, size_t limit) : limit_(limit) {}
+
+  template <typename Function>
+  void operator()(Function func) const {
+    for (size_t i = 0; i < limit_; ++i) {
+      func(i);
+    }
+  }
+
+  size_t limit_;
+};
+
+template <>
+struct ForRange<phi::CPUContext> {
+  ForRange(const phi::CPUContext& dev_ctx, size_t limit) : limit_(limit) {}
 
   template <typename Function>
   void operator()(Function func) const {
@@ -56,6 +73,7 @@ __global__ static void ForRangeElemwiseOp(Function func, size_t limit) {
   }
 }
 
+// NOTE: After the pten kernel is migrated, it needs to be deleted.
 template <>
 struct ForRange<CUDADeviceContext> {
   ForRange(const CUDADeviceContext& dev_ctx, size_t limit)
@@ -87,6 +105,40 @@ struct ForRange<CUDADeviceContext> {
   }
 
   const CUDADeviceContext& dev_ctx_;
+  size_t limit_;
+};
+
+template <>
+struct ForRange<phi::GPUContext> {
+  ForRange(const phi::GPUContext& dev_ctx, size_t limit)
+      : dev_ctx_(dev_ctx), limit_(static_cast<size_t>(limit)) {}
+
+  template <typename Function>
+  inline void operator()(Function func) const {
+#ifdef __HIPCC__
+    // HIP will throw core dump when threads > 256
+    constexpr int num_threads = 256;
+#elif WITH_NV_JETSON
+    // JETSON_NANO will throw core dump when threads > 128
+    int num_thread = 256;
+    platform::ChangeThreadNum(dev_ctx_, &num_thread, 128);
+    const int num_threads = num_thread;
+#else
+    constexpr int num_threads = 1024;
+#endif
+    size_t block_size = limit_ <= num_threads ? limit_ : num_threads;
+    size_t grid_size = (limit_ + num_threads - 1) / num_threads;
+
+    if (grid_size == 1) {
+      ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
+          func);
+    } else {
+      ForRangeElemwiseOp<<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
+          func, limit_);
+    }
+  }
+
+  const phi::GPUContext& dev_ctx_;
   size_t limit_;
 };
 

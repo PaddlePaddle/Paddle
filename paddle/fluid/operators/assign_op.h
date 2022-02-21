@@ -19,15 +19,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Variable;
 }  // namespace framework
 }  // namespace paddle
@@ -53,9 +50,8 @@ class AssignFunctor {
     }
   }
 
-  void operator()(const framework::SelectedRows &rows) const {
-    framework::SelectedRows &out_rows =
-        *out_->GetMutable<framework::SelectedRows>();
+  void operator()(const phi::SelectedRows &rows) const {
+    phi::SelectedRows &out_rows = *out_->GetMutable<phi::SelectedRows>();
     out_rows.set_rows(rows.rows());
     out_rows.set_height(rows.height());
     auto &t = rows.value();
@@ -76,7 +72,7 @@ class AssignFunctor {
                    framework::LoDTensor *out) const {
     if (lod_tensor.numel() == 0) return;
     auto &out_tensor = *out;
-    TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
+    paddle::framework::TensorCopy(lod_tensor, lod_tensor.place(), &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 

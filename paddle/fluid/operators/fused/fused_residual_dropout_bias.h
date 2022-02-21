@@ -115,12 +115,12 @@ __global__ void FusedResidualDropoutBias(
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
   const T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
-  math::ReluFunctor<T> relu;
+  phi::funcs::ReluFunctor<T> relu;
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
       FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, false, false,
-                                        math::ReluFunctor<T>>(
+                                        phi::funcs::ReluFunctor<T>>(
           r, i, cols, &state, dropout_prob, factor, src, residual, bias, dst,
           mask, is_test, nullptr, nullptr, relu);
     }
@@ -141,7 +141,7 @@ void LaunchResidualDropoutBias(const uint32_t rows, const uint32_t cols,
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
     if (residual == dst) return;
-    auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto cuda_place = ctx.GetPlace();
     memory::Copy(cuda_place, dst, cuda_place, residual, rows * cols * sizeof(T),
                  ctx.stream());
     if (!is_test) {

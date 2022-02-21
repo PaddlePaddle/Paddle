@@ -29,15 +29,11 @@
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using LoDTensor = framework::LoDTensor;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 template <typename T>
 using Vector = framework::Vector<T>;
-#else
-template <typename T>
-using Vector = framework::CPUVector<T>;
-#endif
 
 template <typename T>
 class FilterByInstagKernel : public framework::OpKernel<T> {
@@ -105,15 +101,14 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // expected auto = T
     size_t x1_embed_size = x1->dims()[1];
     if (out_lods.size() - 1 > 0) {
-      out->Resize(framework::make_ddim(
-          {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
-      map->Resize(framework::make_ddim({(int64_t)out_lods.size() - 1, 3}));
-      loss_weight->Resize(
-          framework::make_ddim({(int64_t)out_lods.size() - 1, 1}));
+      out->Resize(
+          phi::make_ddim({(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
+      map->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 3}));
+      loss_weight->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 1}));
     } else {
-      out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
-      map->Resize(framework::make_ddim({1, 3}));
-      loss_weight->Resize(framework::make_ddim({1, 1}));
+      out->Resize(phi::make_ddim({1, (int64_t)x1_embed_size}));
+      map->Resize(phi::make_ddim({1, 3}));
+      loss_weight->Resize(phi::make_ddim({1, 1}));
     }
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());

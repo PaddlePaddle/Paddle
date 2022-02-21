@@ -23,10 +23,6 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-using framework::ir::Graph;
-using framework::ir::Node;
-using framework::OpDesc;
-
 #define REGISTER_HANDLER(name, func) \
   static bool __UNUSED_##name =      \
       paddle::platform::ipu::RegisterHandler(#name, func)
@@ -58,6 +54,8 @@ Node *GetOutputVarNodeByVarName(const std::string &var_name,
                                 const Node *op_node);
 
 const bool is_float_equal(float a, float b, float eps = 1e-8);
+const int GetOutputVarDtype(const Node *node,
+                            const std::string &output_name = "Out");
 
 }  // namespace ipu
 }  // namespace platform

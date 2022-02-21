@@ -68,7 +68,7 @@ class TestElementwiseOpGradGrad {
   }
 
   void Setup() {
-    size_t numel = static_cast<size_t>(framework::product(dims_));
+    size_t numel = static_cast<size_t>(phi::product(dims_));
     // init vars in scope and feed inputs
     for (auto in_name : inputs_) {
       InitVarInScope(in_name);
@@ -85,11 +85,11 @@ class TestElementwiseOpGradGrad {
       auto src = feed_datas_[in_name].data();
       auto src_place = platform::CPUPlace();
       if (platform::is_cpu_place(place_)) {
-        auto dst_place = BOOST_GET_CONST(platform::CPUPlace, place_);
+        auto dst_place = place_;
         memory::Copy(dst_place, dst, src_place, src, bytes);
       } else if (platform::is_gpu_place(place_)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        auto dst_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+        auto dst_place = place_;
         memory::Copy(dst_place, dst, src_place, src, bytes, nullptr);
 #else
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -125,7 +125,7 @@ class TestElementwiseOpGradGrad {
         cpu_out = out_tensor;
       }
       auto *out_ptr = cpu_out.data<T>();
-      size_t numel = static_cast<size_t>(framework::product(dims_));
+      size_t numel = static_cast<size_t>(phi::product(dims_));
 #ifdef PADDLE_WITH_HIP
       auto is_equal = std::equal(
           out_ptr, out_ptr + numel, expected_outs_[out_name].data(),

@@ -47,11 +47,6 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
                                    expected_kernel_type.place_,
                                    tensor.layout());
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("full_like", {}, {"value"}, {"Out"});
-  }
 };
 
 class FillAnyLikeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -99,6 +94,7 @@ REGISTER_OPERATOR(
 
 REGISTER_OP_CPU_KERNEL(
     fill_any_like,
+    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, float>,

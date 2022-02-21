@@ -833,7 +833,7 @@ func (config *Config) AllPasses() []string {
 ///
 func (config *Config) Summary() string {
 	cSummary := C.PD_ConfigSummary(config.c)
-	summary := C.GoString(cSummary)
-	C.free(unsafe.Pointer(cSummary))
+	summary := C.GoString(cSummary.data)
+	C.PD_CstrDestroy(cSummary)
 	return summary
 }

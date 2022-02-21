@@ -18,11 +18,12 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -53,23 +54,23 @@ struct FillConstantVisitor {
                  * = nullptr) const {
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(dev_ctx_.GetPlace())) {
-      Tensor tensor_tmp(dtype_);
+      Tensor tensor_tmp(framework::TransToPtenDataType(dtype_));
       tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
 
       const auto &runner =
           NpuOpRunner("FillD", {tensor_tmp}, {*tensor_},
-                      {{"dims", framework::vectorize(tensor_->dims())}});
+                      {{"dims", phi::vectorize(tensor_->dims())}});
       auto stream =
           context_.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
       runner.Run(stream);
     } else {
-      math::SetConstant<DeviceContext, T> set_constant;
+      phi::funcs::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
     }
 #else
-    math::SetConstant<DeviceContext, T> set_constant;
+    phi::funcs::SetConstant<DeviceContext, T> set_constant;
     set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
 #endif
   }
@@ -191,9 +192,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     // Alloc the continuous space
     auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
     void *fused_tensor_ptr =
-        fused_tensor
-            ->Resize(framework::make_ddim({static_cast<int64_t>(numel)}))
-            .mutable_data(context.GetPlace(), dtype);
+        fused_tensor->Resize(phi::make_ddim({static_cast<int64_t>(numel)}))
+            .mutable_data(context.GetPlace(),
+                          framework::TransToPtenDataType(dtype));
     VLOG(10) << "Fused tensor addr " << fused_tensor_ptr;
 
     // Init the continuous space
@@ -260,8 +261,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                       size_of_dtype
                 : len;
       ss << "output(" << out_var_names[i] << ")  dim:(" << dim << ")"
-         << " address: " << out_tensors[i]->data<void>() << " len: " << len
-         << ", ";
+         << " address: " << out_tensors[i]->data() << " len: " << len << ", ";
       offset += len;
     }
     PADDLE_ENFORCE_EQ(
@@ -300,9 +300,8 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                                     place, align_size) /
                     size_of_dtype
               : static_cast<size_t>(size);
-      const void *ptr = lod_tensors[i]->IsInitialized()
-                            ? lod_tensors[i]->data<void>()
-                            : nullptr;
+      const void *ptr =
+          lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
       VLOG(4) << size << " " << len;
       ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
          << ") "
@@ -344,7 +343,7 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
       int64_t numel = 0;
       auto dims = ctx->GetInputsDim("Input");
       for (const auto &dim : dims) {
-        auto size = framework::product(dim);
+        auto size = phi::product(dim);
         auto len = use_align
                        ? alignment(static_cast<size_t>(size) * size_of_dtype,
                                    align_size) /
@@ -352,8 +351,8 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
                        : static_cast<size_t>(size);
         numel += len;
       }
-      ctx->SetOutputDim("FusedOutput", framework::make_ddim({numel}));
-      VLOG(4) << "FusedOutput size:" << framework::make_ddim({numel});
+      ctx->SetOutputDim("FusedOutput", phi::make_ddim({numel}));
+      VLOG(4) << "FusedOutput size:" << phi::make_ddim({numel});
     }
   }
 

@@ -61,6 +61,8 @@ function init() {
     # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
     export FLAGS_call_stack_level=2
 
+    export FLAGS_use_curand=True
+
     # set CI_SKIP_CPP_TEST if only *.py changed
     # In order to avoid using in some CI(such as daily performance), the current
     # branch must not be `${BRANCH}` which is usually develop.
@@ -224,7 +226,9 @@ function cmake_base() {
         -DWITH_PSLIB=${WITH_PSLIB:-OFF}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
+        -DWITH_CNCL=${WITH_CNCL:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
+        -DWITH_MLU=${WITH_MLU:-OFF}
         -DLITE_GIT_TAG=release/v2.10
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
@@ -236,6 +240,8 @@ function cmake_base() {
         -DON_INFER=${ON_INFER:-OFF}
         -DWITH_HETERPS=${WITH_HETERPS:-OFF}
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
+        -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
+        -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -272,6 +278,8 @@ EOF
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=release/v2.10 \
         -DWITH_XPU=${WITH_XPU:-OFF} \
+        -DWITH_MLU=${WITH_MLU:-OFF} \
+        -DWITH_CNCL=${WITH_CNCL:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
@@ -283,6 +291,8 @@ EOF
         -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
+        -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
+        -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -446,6 +456,14 @@ function cmake_gen_and_build() {
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
+function get_build_time_file() {
+    python ${PADDLE_ROOT}/tools/analysis_build_time.py
+    cat ${PADDLE_ROOT}/tools/buildTime.txt
+    today=$(date "+%Y-%m-%d")
+    mkdir -p /paddle_targets_buildtime_record
+    cp ${PADDLE_ROOT}/tools/buildTime.txt /paddle_targets_buildtime_record/${today}-buildTime.txt
+}
+
 function build_mac() {
     set +e
     mkdir -p ${PADDLE_ROOT}/build
@@ -575,7 +593,7 @@ EOF
         export http_proxy=
         export https_proxy=
         set -x
-
+        
         set +ex
         if [ "$1" == "cp36-cp36m" ]; then
             pip3.6 uninstall -y paddlepaddle
@@ -650,7 +668,7 @@ EOF
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -1487,7 +1505,11 @@ function show_ut_retry_result() {
         exit 8;
     else
         retry_unittests_ut_name=$(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
-        retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=4) {print $2}}')
+        if [ "$SYSTEM" == "Darwin" ]; then
+            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
+        else
+            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=4) {print $2}}')
+        fi
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
             echo "There are failed tests, which have been successful after re-run:"
@@ -1717,6 +1739,7 @@ function parallel_test_base_xpu() {
 EOF
 
 set +x
+        export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
@@ -1736,6 +1759,8 @@ set +x
 set -x
         ut_endTime_s=`date +%s`
         echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        python ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/xpu/get_test_cover_info.py
+        unset XPU_OP_LIST_DIR
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
@@ -2339,11 +2364,11 @@ function collect_ccache_hits() {
 
 function test_op_benchmark() {
     # The PR will pass quickly when get approval from specific person.
-    # Xreki 12538138, luotao1 6836917, Avin0323 23427135
+    # Xreki 12538138, luotao1 6836917, ZzSean 32410583
     set +x
     approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
     if [ "${approval_line}" != "" ]; then
-        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 23427135 12538138 6836917)
+        APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917)
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "TRUE" ]; then
             echo "==================================="
@@ -2470,6 +2495,10 @@ function build_pr_and_develop() {
     mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
 }
 
+function build_develop() {
+    #git checkout -b develop_base_pr upstream/$BRANCH
+    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+}
 
 function main() {
     local CMD=$1 
@@ -2480,7 +2509,12 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_pr_dev)
-        build_pr_and_develop 
+        build_pr_and_develop
+        ;;
+      build_dev_test)
+        #build_develop
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        get_build_time_file
         ;;
       build_and_check)
         set +e

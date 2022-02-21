@@ -63,7 +63,7 @@ class Controller {
   void SetCurrentTracer(
       const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
     tracer_ = tracer;
-    VLOG(6) << "Set current tracer: " << tracer_;
+    VLOG(6) << "Set current tracer for Controller: " << tracer_;
   }
 
   bool InEagerMode() const { return in_eager_mode_; }

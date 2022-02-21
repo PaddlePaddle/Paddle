@@ -17,6 +17,7 @@ import re
 import logging
 import numpy as np
 import shutil
+from inspect import isgeneratorfunction
 from .... import io
 from .... import core
 from .... import framework
@@ -136,6 +137,7 @@ class PostTrainingQuantization(object):
                  params_filename=None,
                  batch_generator=None,
                  sample_generator=None,
+                 data_loader=None,
                  batch_size=10,
                  batch_nums=None,
                  algo="KL",
@@ -175,6 +177,9 @@ class PostTrainingQuantization(object):
                 calibrate data for DataLoader, and it only returns a sample every
                 time. Note that, sample_generator and batch_generator, only one
                 should be set. Beisdes, sample_generator dose not support lod tensor.
+            data_loader(Python Generator, Paddle.io.DataLoader, optional): The
+                Generator or Dataloader provides calibrate data, and it could
+                return a batch every time.
             batch_size(int, optional): The batch size of DataLoader. Default is 10.
             batch_nums(int, optional): If batch_nums is not None, the number of 
                 calibrate data is batch_size*batch_nums. If batch_nums is None, use 
@@ -279,8 +284,11 @@ class PostTrainingQuantization(object):
         assert executor is not None, "The executor cannot be None."
         assert model_dir is not None, "The model_dir cannot be None."
         assert any([gen is not None] for gen in [sample_generator,
-            batch_generator]), "The sample_generator and batch_generator " \
-            "cannot be None in the same time."
+            batch_generator, data_loader]), "The sample_generator, batch_generator " \
+            "and data_loader cannot be None in the same time."
+        if data_loader is not None:
+            assert isinstance(data_loader, (io.DataLoader, type(isgeneratorfunction))), \
+                "data_loader only accepts `paddle.io.DataLoader` or Generator instance."
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert algo in self._support_algo_type, \
             "The algo should be KL, hist, mse, avg, abs_max or min_max."
@@ -323,7 +331,7 @@ class PostTrainingQuantization(object):
         self._program = None
         self._feed_list = None
         self._fetch_list = None
-        self._data_loader = None
+        self._data_loader = data_loader
 
         self._out_scale_op_list = _out_scale_op_list
         self._quantized_weight_var_name = set()
@@ -473,6 +481,9 @@ class PostTrainingQuantization(object):
 
         feed_vars = [framework._get_var(str(var_name), self._program) \
             for var_name in self._feed_list]
+
+        if self._data_loader is not None:
+            return
         self._data_loader = io.DataLoader.from_generator(
             feed_list=feed_vars, capacity=3 * self._batch_size, iterable=True)
         if self._sample_generator is not None:

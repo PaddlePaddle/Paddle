@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -144,9 +145,9 @@ void MaxIoU(const framework::Tensor& iou, framework::Tensor* max_iou) {
 
 static void AppendProposals(framework::Tensor* dst, int64_t offset,
                             const framework::Tensor& src) {
-  auto* out_data = dst->data<void>();
-  auto* to_add_data = src.data<void>();
-  size_t size_of_t = framework::SizeOfType(src.type());
+  auto* out_data = dst->data();
+  auto* to_add_data = src.data();
+  size_t size_of_t = framework::DataTypeSize(src.dtype());
   offset *= size_of_t;
   std::memcpy(
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(out_data) + offset),

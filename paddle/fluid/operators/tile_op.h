@@ -35,7 +35,8 @@ inline std::vector<int> get_repeat_times(
     if (platform::is_gpu_place(repeat_tensor->place()) ||
         platform::is_xpu_place(repeat_tensor->place()) ||
         platform::is_npu_place(repeat_tensor->place())) {
-      TensorCopySync(*repeat_tensor, platform::CPUPlace(), &cpu_repeat_tensor);
+      paddle::framework::TensorCopySync(*repeat_tensor, platform::CPUPlace(),
+                                        &cpu_repeat_tensor);
       repeat_data = cpu_repeat_tensor.data<int>();
     }
     auto vec_repeat_times =
@@ -54,7 +55,7 @@ inline std::vector<int> get_repeat_times(
           platform::is_xpu_place(tensor->place()) ||
           platform::is_npu_place(tensor->place())) {
         framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_repeat_times.push_back(*temp.data<int32_t>());
       } else {
         vec_repeat_times.push_back(*tensor->data<int32_t>());
@@ -143,7 +144,7 @@ class TileKernel : public framework::OpKernel<T> {
               "be positive integers, but the value received is %d.",
               repeat_times[i]));
     }
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = phi::vectorize<int>(in_dims);
     if (repeat_times.size() < vec_in_dims.size()) {
       int diff = vec_in_dims.size() - repeat_times.size();
       repeat_times.insert(repeat_times.begin(), diff, 1);
@@ -163,7 +164,7 @@ class TileKernel : public framework::OpKernel<T> {
       bcast_dims[i] = repeat_times[i];
     }
 
-    framework::DDim new_in_dims = framework::make_ddim(vec_in_dims);
+    framework::DDim new_in_dims = phi::make_ddim(vec_in_dims);
     framework::DDim out_dims(new_in_dims);
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       out_dims[i] *= repeat_times[i];
@@ -194,7 +195,7 @@ class TileGradKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto repeat_times = get_repeat_times(context);
     auto x_dims = x->dims();
-    auto vec_in_dims = framework::vectorize<int>(x_dims);
+    auto vec_in_dims = phi::vectorize<int>(x_dims);
     if (repeat_times.size() < vec_in_dims.size()) {
       int diff = vec_in_dims.size() - repeat_times.size();
       repeat_times.insert(repeat_times.begin(), diff, 1);

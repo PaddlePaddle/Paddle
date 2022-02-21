@@ -98,8 +98,7 @@ static int ExpandByMemoryCopy(const platform::CUDADeviceContext& context,
   auto out_data = out->data<T>();
   auto x_data = x.data<T>();
 
-  const auto& gpu_place =
-      BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+  const auto& gpu_place = context.GetPlace();
 
   int x_item_length = x.numel() / x.dims()[0];
   int out_offset = 0;
@@ -184,7 +183,7 @@ struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
                   const framework::Vector<size_t>& x_lod, /*expand source lod*/
                   const framework::Vector<size_t>& ref_lod, /*expand based lod*/
                   LoDTensor* dx) {
-    int x_item_length = framework::product(dx->dims()) / dx->dims()[0];
+    int x_item_length = phi::product(dx->dims()) / dx->dims()[0];
     framework::Vector<size_t> out_offset(x_lod.size());
     GetOutputOffset(x_lod, ref_lod, &out_offset);
 

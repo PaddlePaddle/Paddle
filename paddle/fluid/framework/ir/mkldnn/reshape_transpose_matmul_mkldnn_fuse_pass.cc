@@ -16,6 +16,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -178,3 +179,8 @@ void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(ir::Graph *graph) const {
 
 REGISTER_PASS(reshape_transpose_matmul_mkldnn_fuse_pass,
               paddle::framework::ir::ReshapeTransposeMatmulMkldnnFusePass);
+
+REGISTER_PASS_CAPABILITY(reshape_transpose_matmul_mkldnn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
+            "matmul", 1));

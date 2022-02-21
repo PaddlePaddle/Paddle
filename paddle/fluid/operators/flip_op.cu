@@ -56,7 +56,7 @@ class FlipKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gplace = ctx.GetPlace();
     auto cplace = platform::CPUPlace();
     auto& dev_ctx = ctx.template device_context<CUDADeviceContext>();
 
@@ -81,9 +81,9 @@ class FlipKernel<platform::CUDADeviceContext, T>
       }
     }
 
-    auto x_stride = framework::stride(x_dims);
-    std::vector<int64_t> x_dims_v = framework::vectorize(x_dims);
-    std::vector<int64_t> x_stride_v = framework::vectorize(x_stride);
+    auto x_stride = phi::stride(x_dims);
+    std::vector<int64_t> x_dims_v = phi::vectorize(x_dims);
+    std::vector<int64_t> x_stride_v = phi::vectorize(x_stride);
 
     int bytes = total_dims * sizeof(int64_t);
     auto x_strides_array_tmp = memory::Alloc(dev_ctx, bytes);

@@ -192,7 +192,7 @@ class Momentum(Optimizer):
 
     def _update_regularization(self, weight_decay):
         reg_method = ""
-        reg_coeff = 0
+        reg_coeff = 0.0
 
         if (isinstance(weight_decay, L2DecayRegularizer)):
             reg_method = "l2_decay"
@@ -306,7 +306,7 @@ class Momentum(Optimizer):
             # the param's regularization has been done before, we avoid do l2decay in momentum.
             elif param.regularizer is not None:
                 regularization_method = ""
-                regularization_coeff = 0
+                regularization_coeff = 0.0
 
         find_master = self._multi_precision and param_and_grad[
             0].dtype == core.VarDesc.VarType.FP16
@@ -380,7 +380,7 @@ class Momentum(Optimizer):
                 if isinstance(param.regularizer, L2DecayRegularizer):
                     regularization_method = "l2_decay"
                     regularization_coeff = param.regularizer._regularization_coeff
-                else:
+                elif param.regularizer is not None:
                     regularization_method = ""
                     regularization_coeff = 0.0
             if param.dtype == paddle.float32:
@@ -464,8 +464,7 @@ class Momentum(Optimizer):
         multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
         for key in multi_tensor_list:
             if len(self._param_dict[key]) > 0:
-                if key == 'FP32_LODTensor':
-                    self._multi_precision = False
+                find_master = self._multi_precision and key == 'FP16_LODTensor'
 
                 if framework.in_dygraph_mode():
                     _, _, _ = _C_ops.merged_momentum(
@@ -478,7 +477,7 @@ class Momentum(Optimizer):
                         self._regularization_method_dict[key],
                         'regularization_coeff',
                         self._regularization_coeff_dict[key], 'multi_precision',
-                        self._multi_precision)
+                        find_master)
                 else:
                     inputs = {
                         "Param": self._param_dict[key],
@@ -498,11 +497,11 @@ class Momentum(Optimizer):
                         "regularization_coeff":
                         self._regularization_coeff_dict[key],
                     }
-                    if self._multi_precision:
+                    if find_master:
                         inputs["MasterParam"] = self._master_weight_dict[key]
                         outputs["MasterParamOut"] = self._master_weight_dict[
                             key]
-                        attrs["multi_precision"] = self._multi_precision
+                        attrs["multi_precision"] = find_master
                     target_block.append_op(
                         type="merged_momentum",
                         inputs=inputs,

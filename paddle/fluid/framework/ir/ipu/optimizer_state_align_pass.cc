@@ -14,23 +14,19 @@
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_state_align_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/platform/device/ipu/common.h"
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_names.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-
-using paddle::platform::ipu::IpuBackend;
-using framework::ir::Graph;
-using framework::ir::Node;
 
 void IpuOptimizerStateAlignPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter IpuOptimizerStateAlignPass::ApplyImpl";
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  auto ipu_backend = IpuBackend::GetInstance();
+  auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
   const auto* scope_ = ipu_backend->GetScope();
 
   for (auto* node : graph->Nodes()) {

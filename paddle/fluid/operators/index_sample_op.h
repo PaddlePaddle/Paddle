@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "gflags/gflags.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -44,8 +45,10 @@ void IndexSampleInner(const framework::ExecutionContext &context,
 
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
-  TensorToVector(input, context.device_context(), &input_vec);
-  TensorToVector(index, context.device_context(), &index_vec);
+  paddle::framework::TensorToVector(input, context.device_context(),
+                                    &input_vec);
+  paddle::framework::TensorToVector(index, context.device_context(),
+                                    &index_vec);
 
   std::vector<T> res(index_ids_num);
   for (int i = 0; i < index_ids_num; i++) {
@@ -72,7 +75,7 @@ void IndexSampleInner(const framework::ExecutionContext &context,
     res[i] = v;
   }
 
-  auto ddim = framework::make_ddim({batch_size, index_length});
+  auto ddim = phi::make_ddim({batch_size, index_length});
   output->mutable_data<T>(context.GetPlace());
   framework::TensorFromVector(res, context.device_context(), output);
   output->Resize(ddim);
@@ -91,7 +94,8 @@ class IndexSampleKernel : public framework::OpKernel<T> {
     auto *out_var = ctx.OutputVar("Out");
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
 
-    const auto &index_type = index_tensor.type();
+    const auto &index_type =
+        framework::TransToProtoVarType(index_tensor.dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -117,8 +121,10 @@ void IndexSampleGradInner(const framework::ExecutionContext &context,
                           LoDTensor *x_grad) {
   std::vector<T> out_grad_vec;
   std::vector<IndexT> index_vec;
-  TensorToVector(out_grad, context.device_context(), &out_grad_vec);
-  TensorToVector(index, context.device_context(), &index_vec);
+  paddle::framework::TensorToVector(out_grad, context.device_context(),
+                                    &out_grad_vec);
+  paddle::framework::TensorToVector(index, context.device_context(),
+                                    &index_vec);
 
   auto index_dims = index.dims();
   auto x_grad_dims = x_grad->dims();
@@ -165,7 +171,8 @@ class IndexSampleGradKernel : public framework::OpKernel<T> {
     auto &out_grad_tensor = out_grad_var->Get<LoDTensor>();
     auto *x_grad_tensor = x_grad_var->GetMutable<framework::LoDTensor>();
 
-    const auto &index_type = index_tensor.type();
+    const auto &index_type =
+        framework::TransToProtoVarType(index_tensor.dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,

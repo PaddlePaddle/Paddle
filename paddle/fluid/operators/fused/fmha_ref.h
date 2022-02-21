@@ -99,7 +99,7 @@ class FMHARef {
     // q*k^t, batched_gemm
     CBLAS_TRANSPOSE transA = CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasTrans;
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int gemm_batch_size = batch_size_ * num_head_;
     int gemm_m = seq_len_;
     int gemm_n = seq_len_;
@@ -119,7 +119,8 @@ class FMHARef {
       ins.emplace_back(src_mask_tensor);
       outs.emplace_back(src_mask_out_tensor);
       int elewise_add_axis = -1;
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
+                                                     T, T>(
           dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
 
       SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
@@ -173,7 +174,7 @@ class FMHARef {
       Tensor* softmax_out_grad_tensor, Tensor* src_mask_out_grad_tensor,
       Tensor* qk_out_grad_tensor, Tensor* transpose_2_out_grad_tensor,
       Tensor* src_mask_grad_tensor, Tensor* qkv_input_grad_tensor) {
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
     int k_size = q_size;
     int softmax_axis = -1;

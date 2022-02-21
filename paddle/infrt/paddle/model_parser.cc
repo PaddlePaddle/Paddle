@@ -22,7 +22,8 @@
 #include "paddle/infrt/common/target.h"
 #include "paddle/infrt/common/type.h"
 
-namespace infrt::paddle {
+namespace infrt {
+namespace paddle {
 
 int SizeOfType(framework_proto::VarType::Type type) {
   using Type = framework_proto::VarType::Type;
@@ -169,4 +170,5 @@ void LoadParam(const std::string &path, _Variable *out, const Target &target) {
   LoadLoDTensor(fin, out, target);
 }
 
-}  // namespace infrt::paddle
+}  // namespace paddle
+}  // namespace infrt

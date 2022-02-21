@@ -340,6 +340,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->thread_id_ = 0;
   this->thread_num_ = 1;
   this->parse_ins_id_ = false;
+  this->parse_uid_ = false;
   this->parse_content_ = false;
   this->parse_logkey_ = false;
   this->enable_pv_merge_ = false;
@@ -496,6 +497,11 @@ void InMemoryDataFeed<T>::SetCurrentPhase(int current_phase) {
 template <typename T>
 void InMemoryDataFeed<T>::SetParseInsId(bool parse_ins_id) {
   parse_ins_id_ = parse_ins_id;
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetParseUid(bool parse_uid) {
+  parse_uid_ = parse_uid;
 }
 
 template <typename T>
@@ -986,7 +992,7 @@ void MultiSlotDataFeed::PutToFeedVec(
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1047,6 +1053,7 @@ void MultiSlotInMemoryDataFeed::Init(
       use_slots_shape_.push_back(local_shape);
     }
   }
+  uid_slot_ = multi_slot_desc.uid_slot();
   feed_vec_.resize(use_slots_.size());
   const int kEstimatedFeasignNumPerSlot = 5;  // Magic Number
   for (size_t i = 0; i < all_slot_num; i++) {
@@ -1160,6 +1167,19 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
               "\nWe detect the feasign number of this slot is %d, "
               "which is illegal.",
               str, i, num));
+#ifdef PADDLE_WITH_PSLIB
+      if (parse_uid_ && all_slots_[i] == uid_slot_) {
+        PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
+                       platform::errors::PreconditionNotMet(
+                           "The uid has to be uint64 and single.\n"
+                           "please check this error line: %s",
+                           str));
+
+        char* uidptr = endptr;
+        uint64_t feasign = (uint64_t)strtoull(uidptr, &uidptr, 10);
+        instance->uid_ = feasign;
+      }
+#endif
       if (idx != -1) {
         if (all_slots_type_[i][0] == 'f') {  // float
           for (int j = 0; j < num; ++j) {
@@ -1362,7 +1382,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1462,7 +1482,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1504,7 +1524,7 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
               "The actual data size of slot is %lld"
               ", and its declaration is %lld.",
               use_slots_[i].c_str(), total_dims, total_instance));
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 }
@@ -1924,7 +1944,7 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -2455,7 +2475,7 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
         info.local_shape[info.inductive_shape_index] =
             total_instance / info.total_dims_without_inductive;
       }
-      feed->Resize(framework::make_ddim(info.local_shape));
+      feed->Resize(phi::make_ddim(info.local_shape));
     } else {
       LoD data_lod{slot_offset};
       feed_vec_[j]->set_lod(data_lod);

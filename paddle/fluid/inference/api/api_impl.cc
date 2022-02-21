@@ -209,7 +209,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto &input = feed_tensors_[i];
-    framework::DDim ddim = framework::make_ddim(inputs[i].shape);
+    framework::DDim ddim = phi::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
       input_ptr = input.mutable_data<int64_t>(ddim, place_);
@@ -243,7 +243,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
           platform::DeviceContextPool::Instance();
       auto *dev_ctx =
           static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
-      auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+      auto dst_gpu_place = place_;
       memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(), dev_ctx->stream());
@@ -253,7 +253,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #endif
     } else if (platform::is_xpu_place(place_)) {
 #ifdef PADDLE_WITH_XPU
-      auto dst_xpu_place = BOOST_GET_CONST(platform::XPUPlace, place_);
+      auto dst_xpu_place = place_;
       memory::Copy(dst_xpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length());
@@ -267,7 +267,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
           platform::DeviceContextPool::Instance();
       auto *dev_ctx =
           static_cast<const platform::NPUDeviceContext *>(pool.Get(place_));
-      auto dst_npu_place = BOOST_GET_CONST(platform::NPUPlace, place_);
+      auto dst_npu_place = place_;
       memory::Copy(dst_npu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(), dev_ctx->stream());
@@ -297,7 +297,7 @@ template <typename T>
 void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
                                         PaddleTensor *output) {
   // set shape.
-  auto shape = framework::vectorize(fetch.dims());
+  auto shape = phi::vectorize(fetch.dims());
   output->shape.assign(shape.begin(), shape.end());
   // set data.
   const T *data = fetch.data<T>();
@@ -327,7 +327,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
     auto fetch = BOOST_GET_CONST(framework::LoDTensor, fetch_var);
-    auto type = fetch.type();
+    auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];
     if (type == framework::DataTypeTrait<float>::DataType()) {

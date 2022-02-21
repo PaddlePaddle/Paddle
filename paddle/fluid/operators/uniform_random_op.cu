@@ -18,7 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/distribution_helper.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
+
+DECLARE_bool(use_curand);
+
 namespace paddle {
 namespace operators {
 
@@ -106,16 +111,16 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
       }
     }
 
-    if (out_var->IsType<framework::SelectedRows>()) {
-      auto* selected_rows = out_var->GetMutable<framework::SelectedRows>();
+    if (out_var->IsType<phi::SelectedRows>()) {
+      auto* selected_rows = out_var->GetMutable<phi::SelectedRows>();
       tensor = selected_rows->mutable_value();
       auto shape = context.Attr<std::vector<int64_t>>("shape");
       if (!new_shape.empty()) shape = new_shape;
-      tensor->Resize(framework::make_ddim(shape));
+      tensor->Resize(phi::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
     } else if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
-      if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
+      if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of Output(out) in uniform_random_op must be Tensor, "
@@ -123,7 +128,9 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
     }
-    T* data = tensor->mutable_data<T>(context.GetPlace());
+    auto& dev_cxt =
+        context.template device_context<platform::CUDADeviceContext>();
+    T* data = tensor->mutable_data<T>(dev_cxt.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     bool seed_flag = false;
     if (seed == 0) {
@@ -141,17 +148,24 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     T diag_val = static_cast<T>(context.Attr<float>("diag_val"));
     thrust::counting_iterator<int64_t> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
+    int device_id = context.GetPlace().GetDeviceId();
     auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
     if (gen_cuda->GetIsInitPy() && seed_flag) {
-      auto seed_offset = gen_cuda->IncrementOffset(1);
-      int64_t gen_offset = size * seed_offset.second;
-      thrust::transform(
-          index_sequence_begin, index_sequence_begin + size,
-          thrust::device_ptr<T>(data),
-          UniformGeneratorOffset<T>(min, max, seed_offset.first, diag_num,
-                                    diag_step, diag_val, gen_offset));
+      if (FLAGS_use_curand) {
+        using MT = typename details::MPTypeTrait<T>::Type;
+        distribution::uniform_distribution<MT> dist;
+        distribution::uniform_transform<MT> trans(min, max);
+        distribution::distribution_and_transform<T>(dev_cxt, tensor, dist,
+                                                    trans);
+      } else {
+        auto seed_offset = gen_cuda->IncrementOffset(1);
+        int64_t gen_offset = size * seed_offset.second;
+        thrust::transform(
+            index_sequence_begin, index_sequence_begin + size,
+            thrust::device_ptr<T>(data),
+            UniformGeneratorOffset<T>(min, max, seed_offset.first, diag_num,
+                                      diag_step, diag_val, gen_offset));
+      }
     } else {
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,

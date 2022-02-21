@@ -18,8 +18,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/slice_op.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 namespace paddle {
 namespace operators {
 
@@ -121,6 +121,7 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
     // stride must not be zero
     if (starts[axis_index] < 0) {
       starts[axis_index] = starts[axis_index] + axis_size;
+      starts[axis_index] = std::max<int64_t>(starts[axis_index], 0);
     }
     if (ends[axis_index] < 0) {
       if (!(ends[axis_index] == -1 &&
@@ -137,11 +138,6 @@ static void StridedSliceFunctor(int64_t* starts, int64_t* ends,
       } else {
         ends[axis_index] = starts[axis_index] + 1;
       }
-    }
-
-    if ((starts[axis_index] < 0) && (axis_size > 0)) {
-      starts[axis_index] += axis_size;
-      starts[axis_index] = std::max<int64_t>(starts[axis_index], 0);
     }
 
     if (strides[axis_index] < 0) {
@@ -208,7 +204,7 @@ class StridedSliceKernel : public framework::OpKernel<T> {
     bool is_input_var_array = input_var->IsType<LoDTensorArray>();
     if (is_input_var_array) {
       const int64_t size = input_var->Get<framework::LoDTensorArray>().size();
-      in_dims = framework::make_ddim({size});
+      in_dims = phi::make_ddim({size});
     } else {
       in_dims = context.Input<framework::Tensor>("Input")->dims();
     }
@@ -262,7 +258,7 @@ class StridedSliceKernel : public framework::OpKernel<T> {
     StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
                         decrease_axis, out_dims_vector.data(), axes.size(),
                         false);
-    framework::DDim out_dims(framework::make_ddim(out_dims_vector));
+    framework::DDim out_dims(phi::make_ddim(out_dims_vector));
 
     std::vector<int> reverse_vector(starts.size(), 0);
     StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
@@ -303,7 +299,7 @@ class StridedSliceKernel : public framework::OpKernel<T> {
       if (new_out_shape.size() == 0) {
         new_out_shape.push_back(1);
       }
-      out_dims_origin = framework::make_ddim(new_out_shape);
+      out_dims_origin = phi::make_ddim(new_out_shape);
     }
 
     bool need_reverse = false;
@@ -376,7 +372,8 @@ class StridedSliceKernel : public framework::OpKernel<T> {
         auto* out_tensor = &out_array->at(out_offset);
 
         out_tensor->set_lod(in_tensor.lod());
-        TensorCopy(in_tensor, context.GetPlace(), out_tensor);
+        paddle::framework::TensorCopy(in_tensor, context.GetPlace(),
+                                      out_tensor);
       }
 
     } else {
@@ -461,7 +458,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
       const int64_t size =
           context.Input<framework::LoDTensorArray>("Input")->size();
 
-      out_dims = framework::make_ddim({size});
+      out_dims = phi::make_ddim({size});
     } else {
       out_dims =
           context.Output<framework::Tensor>(framework::GradVarName("Input"))
@@ -608,7 +605,8 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
                   in_offset));
 
           d_out_tensor->set_lod(in_tensor.lod());
-          TensorCopy(in_tensor, context.GetPlace(), d_out_tensor);
+          paddle::framework::TensorCopy(in_tensor, context.GetPlace(),
+                                        d_out_tensor);
 
         } else {
           d_out_tensor->Resize(dim);
@@ -617,7 +615,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
             d_out_tensor->mutable_data<T>(context.GetPlace());
           }
 
-          math::SetConstant<DeviceContext, T> set_zero;
+          phi::funcs::SetConstant<DeviceContext, T> set_zero;
           set_zero(dev_ctx, d_out_tensor, static_cast<T>(0));
         }
       }
@@ -630,7 +628,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
 
       d_out->mutable_data<T>(context.GetPlace());
 
-      math::SetConstant<DeviceContext, T> set_zero;
+      phi::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(dev_ctx, d_out, static_cast<T>(0));
 
       auto in_dims = d_input->dims();

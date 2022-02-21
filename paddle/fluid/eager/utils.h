@@ -18,7 +18,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 
 namespace egr {
 
@@ -88,19 +88,20 @@ class EagerUtils {
   /**
    * We have to use autograd_meta and multi_autograd_meta to initialize
    * autograd_meta for tensor, since we can't init it in
-   * egr::EagerTensor's
+   * egr::EagerVariable's
    * constructor (it's abstract class there)
    *
    * **/
-  static AutogradMeta* autograd_meta(egr::EagerTensor* target);
+  static AutogradMeta* autograd_meta(paddle::experimental::Tensor* target);
 
-  static std::vector<AutogradMeta*> multi_autograd_meta(
-      std::vector<egr::EagerTensor>* targets);
+  static std::vector<AutogradMeta*> autograd_meta(
+      std::vector<paddle::experimental::Tensor>* targets);
 
-  static std::pair<size_t, size_t> OutRankInfo(const egr::EagerTensor& target);
+  static std::pair<size_t, size_t> OutRankInfo(
+      const paddle::experimental::Tensor& target);
 
   static std::shared_ptr<GradNodeBase> grad_node(
-      const egr::EagerTensor& target);
+      const paddle::experimental::Tensor& target);
 
   // Set history is used to set backward info during forward process, it will
   // set forward var's autograd meta's grad node as current backward node.
@@ -115,10 +116,14 @@ class EagerUtils {
   static void SetOutRankWithSlot(AutogradMeta* target, size_t slot_id);
 
   // This method will return an AutogradMeta pointer unsafely.
-  static AutogradMeta* nullable_autograd_meta(const egr::EagerTensor& target);
-  static AutogradMeta* unsafe_autograd_meta(const egr::EagerTensor& target);
+  static AutogradMeta* nullable_autograd_meta(
+      const paddle::experimental::Tensor& target);
+  static std::vector<AutogradMeta*> nullable_autograd_meta(
+      const std::vector<paddle::experimental::Tensor>& targets);
+  static AutogradMeta* unsafe_autograd_meta(
+      const paddle::experimental::Tensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(
-      const std::vector<egr::EagerTensor>& targets);
+      const std::vector<paddle::experimental::Tensor>& targets);
 
   template <typename T, typename... Args>
   static bool ComputeRequireGrad(T trace_backward, Args&&... args) {
@@ -138,31 +143,54 @@ class EagerUtils {
   }
 
   // TensorWrapper Utils
-  static egr::EagerTensor RecoverTensorWrapper(
-      egr::TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);
-  static std::vector<egr::EagerTensor> RecoverTensorWrapper(
-      std::vector<egr::TensorWrapper>* tw,
+  static paddle::experimental::Tensor RecoverTensorWrapper(
+      TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);
+  static std::vector<paddle::experimental::Tensor> RecoverTensorWrapper(
+      std::vector<TensorWrapper>* tw,
       const std::shared_ptr<GradNodeBase>& grad_node);
 
   // Intermidate needed remove this once we don't need legacy
-  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
-      egr::EagerTensor* tensor);
-  static std::vector<std::shared_ptr<egr::EagerTensor>> TrySyncToVars(
-      std::vector<egr::EagerTensor>* tensors);
-
-  static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
-      const egr::EagerTensor& tensor);
-  static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToVars(
-      const std::vector<egr::EagerTensor>& tensors);
-  static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
-      const egr::EagerTensor& tensor);
-  static std::vector<std::shared_ptr<egr::EagerTensor>> SyncToTensors(
-      const std::vector<egr::EagerTensor>& tensors);
-  static std::vector<std::shared_ptr<EagerTensor>> ConstructDuplicableOutput(
+  // Inner Method
+  static std::shared_ptr<egr::EagerVariable> TrySyncToVar(
+      const paddle::experimental::Tensor& tensor);
+  // Basic Input
+  static std::vector<std::shared_ptr<egr::EagerVariable>> TrySyncToVars(
+      const paddle::experimental::Tensor& tensor);
+  // Basic Output
+  static std::vector<std::shared_ptr<egr::EagerVariable>> TrySyncToVars(
+      paddle::experimental::Tensor* tensor);
+  // Multi Output
+  static std::vector<std::shared_ptr<egr::EagerVariable>> TrySyncToVars(
+      const std::vector<paddle::experimental::Tensor*>& tensors);
+  // Multi Input
+  static std::vector<std::shared_ptr<egr::EagerVariable>> TrySyncToVars(
+      const std::vector<paddle::experimental::Tensor>& tensors);
+  // Construct empty output
+  static std::vector<std::shared_ptr<EagerVariable>> CreateVars(
       const size_t num);
-  static std::vector<egr::EagerTensor> GetOutputs(
-      const std::vector<std::shared_ptr<EagerTensor>>& outs);
-  static egr::EagerTensor GetOutput(const std::shared_ptr<EagerTensor>& outs);
+  // Construct Tensor From var
+  static std::vector<paddle::experimental::Tensor> GetOutputs(
+      const std::vector<std::shared_ptr<EagerVariable>>& outs);
+  static paddle::experimental::Tensor GetOutput(
+      const std::shared_ptr<EagerVariable>& out);
+  // Sync Back to origin output Tensor
+  static void OverwriteOutputs(const std::shared_ptr<EagerVariable>& out,
+                               paddle::experimental::Tensor* tensor);
+  static void OverwriteOutputs(const paddle::experimental::Tensor& out,
+                               paddle::experimental::Tensor* tensor);
+  static void OverwriteOutputs(
+      const std::vector<std::shared_ptr<EagerVariable>>& outs,
+      const std::vector<paddle::experimental::Tensor*>& tensors);
+  static void OverwriteOutputs(
+      const std::vector<paddle::experimental::Tensor>& outs,
+      const std::vector<paddle::experimental::Tensor*>& tensors);
+  // end Intermidate needed
+
+  static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);
+  static void CheckAndRetainGrad(
+      const std::vector<paddle::experimental::Tensor>& tensors);
+  static std::shared_ptr<egr::GradNodeBase> GetGradAccumulationNode(
+      const paddle::experimental::Tensor& tensor);
 };
 
 }  // namespace egr

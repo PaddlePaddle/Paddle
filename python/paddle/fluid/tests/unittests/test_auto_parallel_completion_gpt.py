@@ -31,6 +31,7 @@ from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.distributed.fleet import fleet
 import paddle.static as static
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
@@ -817,10 +818,9 @@ class TestGPTAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = gpt_pretrain_forward(train_program,
                                                             start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_gpt_mp(self):
@@ -834,10 +834,9 @@ class TestGPTAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = gpt_pretrain_forward(train_program,
                                                             start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_gpt_dp_mp(self):
@@ -852,10 +851,9 @@ class TestGPTAutoCompletion(unittest.TestCase):
         dist_context = DistributedContext()
         train_program, start_program = gpt_pretrain_forward(train_program,
                                                             start_program)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
 

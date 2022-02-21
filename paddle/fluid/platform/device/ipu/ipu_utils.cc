@@ -12,22 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+#include <cmath>
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-void* PaddleIArray::data() { return tensor_->data<void>(); }
+void* PaddleIArray::data() { return tensor_.data(); }
 
 popart::DataType PaddleIArray::dataType() const {
-  return VarType2PopartType(tensor_->type());
+  return PdDataType2PopartType(tensor_.dtype());
 }
 
-std::size_t PaddleIArray::rank() const { return tensor_->dims().size(); }
+std::size_t PaddleIArray::rank() const { return tensor_.dims().size(); }
 
 int64_t PaddleIArray::dim(size_t index) const {
-  return tensor_->dims().at(index);
+  return tensor_.dims().at(index);
 }
 
 std::size_t PaddleIArray::nelms() const {
@@ -65,8 +66,41 @@ popart::DataType VarType2PopartType(
     case framework::proto::VarType::COMPLEX128:
       return popart::DataType::COMPLEX128;
     default:
-      PADDLE_THROW(paddle::platform::errors::Unavailable(
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported Paddle var type."));
+  }
+}
+
+popart::DataType PdDataType2PopartType(
+    const paddle::experimental::DataType type) {
+  switch (type) {
+    case paddle::experimental::DataType::UINT8:
+      return popart::DataType::UINT8;
+    case paddle::experimental::DataType::INT8:
+      return popart::DataType::INT8;
+    case paddle::experimental::DataType::INT16:
+      return popart::DataType::INT16;
+    case paddle::experimental::DataType::INT32:
+      return popart::DataType::INT32;
+    case paddle::experimental::DataType::INT64:
+      return popart::DataType::INT64;
+    case paddle::experimental::DataType::BOOL:
+      return popart::DataType::BOOL;
+    case paddle::experimental::DataType::FLOAT64:
+      return popart::DataType::DOUBLE;
+    case paddle::experimental::DataType::FLOAT32:
+      return popart::DataType::FLOAT;
+    case paddle::experimental::DataType::FLOAT16:
+      return popart::DataType::FLOAT16;
+    case paddle::experimental::DataType::BFLOAT16:
+      return popart::DataType::BFLOAT16;
+    case paddle::experimental::DataType::COMPLEX64:
+      return popart::DataType::COMPLEX64;
+    case paddle::experimental::DataType::COMPLEX128:
+      return popart::DataType::COMPLEX128;
+    default:
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported Paddle data type."));
   }
 }
 
@@ -148,6 +182,32 @@ bool GetBoolEnv(std::string str) {
       val = true;
     return val;
   }
+}
+
+std::vector<std::pair<std::string, std::string>> GetOptPrePostfix(
+    const std::string& opt_type) {
+  // format: {popart_tensor_id, paddle_tensor_id}, ...
+  std::vector<std::pair<std::string, std::string>> pre_post_fix;
+
+  if (opt_type == "adam" || opt_type == "lamb") {
+    pre_post_fix.push_back(std::make_pair("", ""));
+    pre_post_fix.push_back(std::make_pair("Accl1___", "_moment1_0"));
+    pre_post_fix.push_back(std::make_pair("Accl2___", "_moment2_0"));
+    pre_post_fix.push_back(std::make_pair("Step___", "_beta1_pow_acc_0"));
+  } else if (opt_type == "sgd" || opt_type == "momentum") {
+    // sgd
+    pre_post_fix.push_back(std::make_pair("", ""));
+  } else {
+    pre_post_fix.push_back(std::make_pair("", ""));
+    //
+  }
+
+  return pre_post_fix;
+}
+
+int RequestIpus(const int num_ipus) {
+  // num_ipus must be pow(2, n);
+  return std::pow(2, ceil(log2(num_ipus)));
 }
 
 }  // namespace ipu

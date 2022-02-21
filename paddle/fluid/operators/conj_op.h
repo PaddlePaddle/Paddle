@@ -17,11 +17,9 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
-// only can include the headers in paddle/pten/api dirs
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/include/core.h"
-#include "paddle/pten/kernels/cpu/conj_kernel.h"
-#include "paddle/pten/kernels/cuda/conj_kernel.h"
+// only can include the headers in paddle/phi/api dirs
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -36,11 +34,12 @@ class ConjKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace(), size_t(x->numel() * sizeof(T)));
 
     auto& dev_ctx = context.device_context<DeviceContext>();
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-    auto pt_out = paddle::experimental::MakePtenDenseTensor(*out);
 
     // call new kernel
-    pten::Conj<T>(dev_ctx, *pt_x.get(), pt_out.get());
+    phi::ConjKernel<T>(
+        static_cast<const typename paddle::framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *x, out);
   }
 };
 

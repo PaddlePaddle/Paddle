@@ -18,19 +18,18 @@
 #include <mlir/IR/Dialect.h>
 #include <mlir/IR/DialectImplementation.h>
 #include <mlir/IR/MLIRContext.h>
-#include <mlir/IR/StandardTypes.h>
 #include <mlir/IR/TypeUtilities.h>
 #include <mlir/IR/Types.h>
 
 #include "paddle/infrt/dialect/infrt_base.hpp.inc"
 
-namespace infrt::dialect {
+namespace infrt {
+namespace dialect {
 
-class INFRTDialect : public ::mlir::Dialect {
-  explicit INFRTDialect(::mlir::MLIRContext *context)
-      : ::mlir::Dialect(getDialectNamespace(),
-                        context,
-                        ::mlir::TypeID::get<INFRTDialect>()) {
+class INFRTDialect : public mlir::Dialect {
+  explicit INFRTDialect(mlir::MLIRContext *context)
+      : mlir::Dialect(
+            getDialectNamespace(), context, mlir::TypeID::get<INFRTDialect>()) {
     initialize();
   }
 
@@ -41,15 +40,12 @@ class INFRTDialect : public ::mlir::Dialect {
                  mlir::DialectAsmPrinter &printer) const override;
 
   void initialize();
-  friend class ::mlir::MLIRContext;
+  friend class mlir::MLIRContext;
 
  public:
   static ::llvm::StringRef getDialectNamespace() { return "infrt"; }
 };
-
-}  // namespace infrt::dialect
-
-namespace mlir {
+}  // namespace dialect
 
 template <typename T>
 static mlir::IntegerAttr createI32Attr(mlir::OpBuilder &b,  // NOLINT
@@ -58,16 +54,16 @@ static mlir::IntegerAttr createI32Attr(mlir::OpBuilder &b,  // NOLINT
   return b.getIntegerAttr(b.getI32Type(), constant);
 }
 
-static mlir::ValueRange cvtValueToValueRange(const mlir::Value &operand) {
-  return mlir::ValueRange(operand);
+static mlir::SmallVector<mlir::Value, 4> cvtValueToValueRange(
+    const mlir::Value &operand) {
+  return mlir::SmallVector<mlir::Value, 4>(1, operand);
 }
 
-static mlir::ValueRange concatTwoValueRange(mlir::ValueRange operand_0,
-                                            mlir::ValueRange operand_1) {
-  mlir::SmallVector<::mlir::Value, 4> operands;
+static mlir::SmallVector<mlir::Value, 4> concatTwoValueRange(
+    mlir::ValueRange operand_0, mlir::ValueRange operand_1) {
+  mlir::SmallVector<mlir::Value, 4> operands;
   operands.append(operand_0.begin(), operand_0.end());
   operands.append(operand_1.begin(), operand_1.end());
   return operands;
 }
-
-}  // namespace mlir
+}  // namespace infrt

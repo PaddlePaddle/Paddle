@@ -26,8 +26,8 @@ void TestSequencePoolingSum(const DeviceContext &context,
 
   // construct out_grad's tensor in cpu
   const size_t out_first_dim = lod[0].size() - 1;
-  auto out_dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(out_first_dim), second_dim});
+  auto out_dims =
+      phi::make_ddim({static_cast<int64_t>(out_first_dim), second_dim});
 
   cpu_out_grad.mutable_data<T>(out_dims, paddle::platform::CPUPlace());
   for (int64_t i = 0; i < cpu_out_grad.numel(); ++i) {
@@ -39,13 +39,13 @@ void TestSequencePoolingSum(const DeviceContext &context,
   if (paddle::platform::is_cpu_place(place)) {
     out_grad = cpu_out_grad;
   } else {
-    TensorCopySync(cpu_out_grad, place, &out_grad);
+    paddle::framework::TensorCopySync(cpu_out_grad, place, &out_grad);
   }
 
   // construct in_grad
   in_grad.set_lod(lod);
-  auto in_dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(lod[0].back()), second_dim});
+  auto in_dims =
+      phi::make_ddim({static_cast<int64_t>(lod[0].back()), second_dim});
   in_grad.mutable_data<T>(in_dims, place);
 
   // check tensor contruction result
@@ -73,7 +73,8 @@ void TestSequencePoolingSum(const DeviceContext &context,
   if (paddle::platform::is_cpu_place(place)) {
     cpu_in_grad = in_grad;
   } else {
-    TensorCopySync(in_grad, paddle::platform::CPUPlace(), &cpu_in_grad);
+    paddle::framework::TensorCopySync(in_grad, paddle::platform::CPUPlace(),
+                                      &cpu_in_grad);
     cpu_in_grad.set_lod(in_grad.lod());
   }
 

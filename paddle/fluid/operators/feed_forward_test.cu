@@ -20,14 +20,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/fused/attn_feed_forward.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
 USE_OP(matmul);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 
 // get paddle matmul op results as baseline
 template <typename T>
@@ -50,8 +50,8 @@ void GetLinearOp(const std::vector<T> &x, const std::vector<T> &y,
   auto x_ptr = tensor_x->mutable_data<T>(ctx.GetPlace());
   auto y_ptr = tensor_y->mutable_data<T>(ctx.GetPlace());
   auto z_ptr = tensor_out->mutable_data<T>(ctx.GetPlace());
-  auto size_x = static_cast<size_t>(framework::product(x_dim));
-  auto size_y = static_cast<size_t>(framework::product(y_dim));
+  auto size_x = static_cast<size_t>(phi::product(x_dim));
+  auto size_y = static_cast<size_t>(phi::product(y_dim));
   auto size_z = x_dim[0] * x_dim[1] * y_dim[0];
   cudaMemcpy(x_ptr, x.data(), size_x * sizeof(T), cudaMemcpyHostToDevice);
   cudaMemcpy(y_ptr, y.data(), size_y * sizeof(T), cudaMemcpyHostToDevice);
@@ -138,8 +138,8 @@ void GetLinearOpGrad(const std::vector<T> &x_vec, const std::vector<T> &y_vec,
   auto dinput_ptr = tensor_dx->mutable_data<T>(ctx.GetPlace());
   auto dweight_ptr = tensor_dy->mutable_data<T>(ctx.GetPlace());
 
-  auto size_x = static_cast<size_t>(framework::product(x_dim));
-  auto size_y = static_cast<size_t>(framework::product(y_dim));
+  auto size_x = static_cast<size_t>(phi::product(x_dim));
+  auto size_y = static_cast<size_t>(phi::product(y_dim));
   auto size_z = x_dim[0] * x_dim[1] * y_dim[0];
   cudaMemcpy(x_ptr, x_vec.data(), size_x * sizeof(T), cudaMemcpyHostToDevice);
   cudaMemcpy(y_ptr, y_vec.data(), size_y * sizeof(T), cudaMemcpyHostToDevice);
@@ -275,6 +275,18 @@ class TestFeedForward {
     output_size_ = 3 * num_head_ * dim_head_;
     input_size_ = dim_embed_;
     ctx_ = new platform::CUDADeviceContext(place_);
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(place_, ctx_->stream())
+                           .get());
+    ctx_->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
+    ctx_->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(place_)
+            .get());
+    ctx_->PartialInitWithAllocator();
 
     size_src_ = bsz_seq_ * dim_embed_;         // src: [bs, seq_len, em_dim]
     size_weight_ = dim_embed_ * output_size_;  // weight: [output_size, em_dim]
@@ -409,9 +421,9 @@ class TestFeedForward {
   void CheckOut(const T diff, bool is_relative_atol = false) {
     std::vector<T> out(size_output_);
     std::vector<T> bias_out(size_output_);
-    TensorToVector(out_, *ctx_, &out);
+    paddle::framework::TensorToVector(out_, *ctx_, &out);
     if (has_bias_) {
-      TensorToVector(bias_out_, *ctx_, &bias_out);
+      paddle::framework::TensorToVector(bias_out_, *ctx_, &bias_out);
     }
     ctx_->Wait();
 
@@ -437,7 +449,7 @@ class TestFeedForward {
   // check backward correctness between baseline and results of feedforward.
   void CheckGrad(const T diff, bool is_relative_atol = false) {
     std::vector<T> h_dinput(size_src_);
-    TensorToVector(dinput_, *ctx_, &h_dinput);
+    paddle::framework::TensorToVector(dinput_, *ctx_, &h_dinput);
     for (int i = 0; i < size_src_; i++) {
       if (is_relative_atol) {
         EXPECT_LT(
@@ -448,7 +460,7 @@ class TestFeedForward {
       }
     }
     std::vector<T> h_dweight(size_weight_);
-    TensorToVector(dweight_, *ctx_, &h_dweight);
+    paddle::framework::TensorToVector(dweight_, *ctx_, &h_dweight);
     for (int i = 0; i < size_weight_; i++) {
       if (is_relative_atol) {
         EXPECT_LT(std::abs((h_dweight[i] - base_dweight_vec_[i]) /
@@ -460,7 +472,7 @@ class TestFeedForward {
     }
     if (has_bias_) {
       std::vector<T> h_dbias(size_bias_);
-      TensorToVector(dbias_, *ctx_, &h_dbias);
+      paddle::framework::TensorToVector(dbias_, *ctx_, &h_dbias);
       for (int i = 0; i < size_bias_; i++) {
         if (is_relative_atol) {
           EXPECT_LT(

@@ -21,6 +21,7 @@ from ..param_attr import ParamAttr
 from .. import core
 from six.moves import zip
 from ..layer_helper_base import LayerHelperBase
+from ..dygraph_utils import _append_activation_in_dygraph
 
 
 class LayerObjectHelper(LayerHelperBase):
@@ -162,14 +163,18 @@ class LayerObjectHelper(LayerHelperBase):
         if (use_mkldnn is not None) and use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
-
-        tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-        self.append_op(
-            type=act_type,
-            inputs={"X": [input_var]},
-            outputs={"Out": [tmp]},
-            attrs=act)
-        return tmp
+        if in_dygraph_mode():
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn,
+                                                use_mkldnn)
+            return res
+        else:
+            tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
+            self.append_op(
+                type=act_type,
+                inputs={"X": [input_var]},
+                outputs={"Out": [tmp]},
+                attrs=act)
+            return tmp
 
     def is_instance(self, param, cls):
         """Check if the input parameter is instance of input class

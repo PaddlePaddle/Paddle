@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/bbox_util.cu.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -67,7 +67,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
       proposals.data<T>(), im_info.data<T>(), min_size, pre_nms_num,
       keep_num_t.data<int>(), keep_index.data<int>());
   int keep_num;
-  const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+  const auto gpu_place = ctx.GetPlace();
   memory::Copy(platform::CPUPlace(), &keep_num, gpu_place,
                keep_num_t.data<int>(), sizeof(int), ctx.stream());
   ctx.Wait();
@@ -76,7 +76,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   Tensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     proposals_filter.mutable_data<T>({1, 4}, ctx.GetPlace());
     scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
     set_zero(ctx, &proposals_filter, static_cast<T>(0));
@@ -154,7 +154,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
                                 dev_ctx.GetPlace());
 
-    math::Transpose<DeviceContext, T, 4> trans;
+    phi::funcs::Transpose<DeviceContext, T, 4> trans;
     std::vector<int> axis = {0, 2, 3, 1};
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);
@@ -169,7 +169,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     T *rpn_rois_data = rpn_rois->data<T>();
     T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
 
-    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
+    auto place = dev_ctx.GetPlace();
     auto cpu_place = platform::CPUPlace();
 
     int64_t num_proposals = 0;

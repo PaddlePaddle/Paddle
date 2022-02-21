@@ -70,8 +70,8 @@ def fill_(x, value):
         raise TypeError(
             "The type of 'value'  must be int or float, but received %s." %
             (type(value)))
-    return core.ops.fill_any_(x, "value_float",
-                              float(value), "value_int", int(value))
+    return _C_ops.fill_any_(x, "value_float",
+                            float(value), "value_int", int(value))
 
 
 setattr(core.VarBase, 'fill_', fill_)
@@ -102,7 +102,7 @@ def zero_(x):
             print(tensor.tolist())   #[0, 0, 0, 0, 0]
 
     """
-    return core.ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+    return _C_ops.fill_any_(x, "value_float", 0., "value_int", int(0))
 
 
 setattr(core.VarBase, 'zero_', zero_)
@@ -148,10 +148,10 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
             'Tensor dims should be equal while input dims > 2 in fill_diagonal_ API'
         )
     if len(inshape) == 2:
-        return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset,
-                                       'wrap', wrap)
-    return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
-                                   True)
+        return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset,
+                                     'wrap', wrap)
+    return _C_ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
+                                 True)
 
 
 setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
@@ -182,10 +182,10 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
         y = y.reshape([1, -1])
 
     if inplace:
-        return core.ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
-                                              'offset', offset)
-    return core.ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
-                                         'offset', offset)
+        return _C_ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
+                                            'offset', offset)
+    return _C_ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
+                                       'offset', offset)
 
 
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
@@ -475,7 +475,7 @@ def flip(x, axis, name=None):
     if isinstance(axis, int):
         axis = [axis]
     if in_dygraph_mode():
-        return core.ops.flip(x, "axis", axis)
+        return _C_ops.flip(x, "axis", axis)
 
     helper = LayerHelper("flip", **locals())
     check_type(x, 'X', (Variable), 'flip')
@@ -672,7 +672,8 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     if not in_dygraph_mode():
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+            x, 'x',
+            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
             'flatten')
 
     x_dim = len(x.shape)
@@ -1107,7 +1108,7 @@ def unique_consecutive(x,
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dygraph_mode():
-        out, inverse, counts = core.ops.unique_consecutive(
+        out, inverse, counts = _C_ops.unique_consecutive(
             x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
             'return_counts', return_counts, 'axis', axis)
         outs = [out]
@@ -1838,7 +1839,7 @@ def expand_as(x, y, name=None):
             "you must set its stop_gradient to be False by "
             "some_var.stop_gradient = True, supporting "
             "some_var as the input 'x'.")
-    inputs = {"X": [x]}
+    inputs = {"X": [x], "Y": [y]}
 
     helper = LayerHelper('expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -2749,3 +2750,180 @@ def moveaxis(x, source, destination, name=None):
                  'XShape': [x_shape]},
         attrs={'axis': perm})
     return out
+
+
+def non_negative_axis(arr, axis):
+    ndim = len(arr.shape)
+    if axis >= 0:
+        assert axis < ndim, "'axis'  must be in the range of [-{0}, {0})".format(
+            ndim)
+    else:
+        assert axis >= -ndim, "'axis'  must be in the range of [-{0}, {0})".format(
+            ndim)
+        axis += ndim
+
+    return axis
+
+
+def infer_broadcast_shape(arr, indices, axis):
+    # This function is used in take/put_along_axis 
+    broadcast_shape_list = list(arr.shape)
+    broadcast_shape_list[axis] = list(indices.shape)[axis]
+    broadcast_shape = tuple(broadcast_shape_list)
+    for i in range(len(arr.shape)):
+        if arr.shape[i] < indices.shape[i]:
+            # if indices matrix has larger size than arr matrix, do not broadcast.
+            return None
+    return broadcast_shape
+
+
+def take_along_axis(arr, indices, axis):
+    """
+    Take values from the input array by given indices matrix along the designated axis.
+
+    Args:
+        arr (Tensor) : The input Tensor. Supported data types are float32 and float64.
+        indices (Tensor) : Indices to take along each 1d slice of arr. This must match the dimension of arr,
+            and need to broadcast against arr. Supported data type are int and int64.
+        axis (int) : The axis to take 1d slices along. 
+
+    Returns: 
+        Tensor: The indexed element, same dtype with arr
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x_np = np.array([[1, 2, 3], [4, 5, 6], [7,8,9]])
+            index_np = np.array([[0]])
+            x = paddle.to_tensor(x_np)
+            index = paddle.to_tensor(index_np)
+            axis = 0
+            result = paddle.take_along_axis(x, index, axis)
+            print(result)
+            # [[1, 2, 3]]
+    """
+    if (len(arr.shape) != len(indices.shape)):
+        raise ValueError(
+            "`indices` and `arr` must have the same number of dimensions!")
+    axis = non_negative_axis(arr, axis)
+    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+    if not broadcast_shape:
+        # if indices matrix have larger size than arr, arr should broadcast into indices shape.
+        broadcast_shape = indices.shape
+    if in_dygraph_mode():
+        indices = paddle.broadcast_to(indices, broadcast_shape)
+        broadcast_shape_list = list(broadcast_shape)
+        broadcast_shape_list[axis] = list(arr.shape)[axis]
+        broadcast_shape = tuple(broadcast_shape_list)
+        arr = paddle.broadcast_to(arr, broadcast_shape)
+        return _C_ops.take_along_axis(arr, indices, 'Axis', axis)
+    check_variable_and_dtype(
+        arr, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        'take_along_axis')
+    check_variable_and_dtype(indices, 'index', ['int32', 'int64'],
+                             'take_along_axis')
+    indices = paddle.broadcast_to(indices, broadcast_shape)
+    broadcast_shape_list = list(broadcast_shape)
+    broadcast_shape_list[axis] = list(arr.shape)[axis]
+    broadcast_shape = tuple(broadcast_shape_list)
+    arr = paddle.broadcast_to(arr, broadcast_shape)
+    helper = LayerHelper('take_along_axis', **locals())
+    dtype = helper.input_dtype()
+    result = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="take_along_axis",
+        inputs={"Input": arr,
+                "Index": indices},
+        attrs={"Axis": axis},
+        outputs={"Result": result})
+    return result
+
+
+def put_along_axis(arr, indices, values, axis, reduce='assign'):
+    """
+    Put values into the destination array by given indices matrix along the designated axis.
+
+    Args:
+        arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
+        indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
+            and need to broadcast against arr. Supported data type are int and int64.
+        axis (int) : The axis to put 1d slices along. 
+        reduce (string | optinal) : The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
+    Returns : 
+        Tensor: The indexed element, same dtype with arr
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x_np = np.array([[10, 30, 20], [60, 40, 50]])
+            index_np = np.array([[0]])
+            x = paddle.to_tensor(x_np)
+            index = paddle.to_tensor(index_np)
+            value = 99
+            axis = 0
+            result = paddle.put_along_axis(x, index, value, axis)
+            print(result)
+            # [[99, 99, 99],
+            # [60, 40, 50]]
+
+    """
+    if (len(arr.shape) != len(indices.shape)):
+        raise ValueError(
+            "`indices` and `arr` must have the same number of dimensions!")
+    axis = non_negative_axis(arr, axis)
+    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+    if in_dygraph_mode():
+        values = paddle.to_tensor(values) if not isinstance(
+            values, paddle.Tensor) else values
+        if broadcast_shape:
+            indices = paddle.broadcast_to(indices, broadcast_shape)
+        values = paddle.broadcast_to(values, indices.shape)
+        return _C_ops.put_along_axis(arr, indices, values, "Axis", axis,
+                                     "Reduce", reduce)
+
+    check_variable_and_dtype(
+        arr, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        'put_along_axis')
+    check_variable_and_dtype(indices, 'index', ['int32', 'int64'],
+                             'put_along_axis')
+    if broadcast_shape:
+        indices = paddle.broadcast_to(indices, broadcast_shape)
+    values = paddle.broadcast_to(values, indices.shape)
+    helper = LayerHelper('put_along_axis', **locals())
+    dtype = helper.input_dtype()
+    result = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="put_along_axis",
+        inputs={"Input": arr,
+                "Index": indices,
+                "Value": values},
+        attrs={"Axis": axis,
+               "Reduce": reduce},
+        outputs={"Result": result})
+    return result
+
+
+@inplace_apis_in_dygraph_only
+def put_along_axis_(arr, indices, values, axis, reduce='assign'):
+    r"""
+    Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
+    Please refer to :ref:`api_tensor_put_along_axis`.
+    """
+    if (len(arr.shape) != len(indices.shape)):
+        raise ValueError(
+            "`indices` and `arr` must have the same number of dimensions!")
+    axis = non_negative_axis(arr, axis)
+    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+    values = paddle.to_tensor(values) if not isinstance(
+        values, paddle.Tensor) else values
+    if broadcast_shape:
+        indices = paddle.broadcast_to(indices, broadcast_shape)
+    values = paddle.broadcast_to(values, indices.shape)
+    return _C_ops.put_along_axis_(arr, indices, values, "Axis", axis, "Reduce",
+                                  reduce)

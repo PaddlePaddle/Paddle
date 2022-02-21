@@ -16,11 +16,15 @@
 
 #include <cmath>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
-class LoDTensor;
 class Scope;
 }  // namespace framework
 }  // namespace paddle
@@ -80,7 +84,7 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   // Re-compute weight of conv2d from AffineChannel
   auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
   auto weights_shape = weights->dims();
-  auto weights_shape_2d = flatten_to_2d(weights_shape, 1);
+  auto weights_shape_2d = phi::flatten_to_2d(weights_shape, 1);
   auto* weights_data = weights->mutable_data<float>(platform::CPUPlace());
 
   EigenMatrixArrayMap weights_array_2d(weights_data, weights_shape_2d[0],
@@ -130,7 +134,7 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("affine_channel"))
@@ -148,7 +152,7 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("data_layout")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -197,6 +201,13 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 
     GET_CONV_BN_NODES(conv_ac_pattern);
 
+    auto data_format = conv->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_affine_channel_fuse_pass is enabled, "
+                                 "it's wrong if data_format of conv is not "
+                                 "NCHW.";
+    }
+
     // Get affine_channel bias for resizing eltwise_y!
     auto* ac_bias_tensor =
         scope->FindVar(ac_bias->Name())->GetMutable<LoDTensor>();
@@ -205,8 +216,9 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     VarDesc eltwise_y_in_desc(
         patterns::PDNodeName(name_scope_, "eltwise_y_in"));
     // Set shape && datatype manually
-    eltwise_y_in_desc.SetShape(framework::vectorize(ac_bias_tensor->dims()));
-    eltwise_y_in_desc.SetDataType(ac_bias_tensor->type());
+    eltwise_y_in_desc.SetShape(phi::vectorize(ac_bias_tensor->dims()));
+    eltwise_y_in_desc.SetDataType(
+        framework::TransToProtoVarType(ac_bias_tensor->dtype()));
     eltwise_y_in_desc.SetLoDLevel(ac_bias->Var()->GetLoDLevel());
     eltwise_y_in_desc.SetPersistable(true);
 
@@ -282,7 +294,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
   AddOpCompat(OpCompat("affine_channel"))
       .AddInput("X")
@@ -299,7 +311,7 @@ ConvEltwiseAddAffineChannelFusePass::ConvEltwiseAddAffineChannelFusePass() {
       .IsTensor()
       .End()
       .AddAttr("data_layout")
-      .IsStringIn({"NCHW" /*, "NHWC", "AnyLayout"*/})
+      .IsStringIn({"NCHW", "AnyLayout"})
       .End();
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
@@ -347,6 +359,12 @@ void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(4) << "handle ConvBN fuse";
 
     GET_CONV_BN_NODES(conv_ac_pattern);
+    auto data_format = conv->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format == "AnyLayout") {
+      LOG_FIRST_N(WARNING, 1) << "conv_eltwiseadd_affine_channel_fuse_pass is "
+                                 "enabled, it's wrong if data_format of conv "
+                                 "is not NCHW.";
+    }
     // OPERATORS
     GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_ac_pattern);
     // BIAS inputs

@@ -136,7 +136,7 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
       xnorm.Resize({x->dims()[0], x->dims()[3], x->dims()[1], x->dims()[2]});
       F.Transpose(x, &xnorm, std::vector<int>{0, 3, 1, 2});
     } else {
-      TensorCopy(*x, platform::NPUPlace(), &xnorm);
+      paddle::framework::TensorCopy(*x, platform::NPUPlace(), &xnorm);
     }
     auto N = xnorm.dims()[0];
     auto C = xnorm.dims()[1];
@@ -224,12 +224,12 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
       C = y->dims()[1];
       H = y->dims()[2];
       W = y->dims()[3];
-      scale_bias_dim = framework::make_ddim({C, 1, 1});
+      scale_bias_dim = phi::make_ddim({C, 1, 1});
     } else {
       C = y->dims()[3];
       H = y->dims()[1];
       W = y->dims()[2];
-      scale_bias_dim = framework::make_ddim({1, 1, C});
+      scale_bias_dim = phi::make_ddim({1, 1, C});
     }
     scale_share.Resize(scale_bias_dim);
     bias_share.Resize(scale_bias_dim);
