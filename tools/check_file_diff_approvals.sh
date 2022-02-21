@@ -284,6 +284,7 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_KERNEL_FILES}; do
 done
 if [ "${PHI_USE_HOSTALLOC_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (phlrain, chenwhql) approval for the usage of phi::DeviceContext::HostAlloc() method in paddle/phi/kernels files(${PHI_USE_HOSTALLOC_FILES})\n"
+    check_approval 1 phlrain chenwhql
 fi
   
 ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"`
