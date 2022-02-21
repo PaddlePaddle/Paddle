@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/array_operator.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/pten/core/lod_utils.h"
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -75,11 +75,11 @@ class ShrinkRNNMemoryOp : public ArrayOp {
                                                               dst_num_rows, 0);
       height = lod_offset.second.second;
       auto out_lod = out_tensor.mutable_lod();
-      pten::AppendLoD(out_lod, lod_offset.first);
+      phi::AppendLoD(out_lod, lod_offset.first);
     }
 
     if (dst_num_rows != 0) {
-      out_tensor.mutable_data(place, x_tensor.type());
+      out_tensor.mutable_data(place, x_tensor.dtype());
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       framework::TensorCopy(x_tensor.Slice(0, height), place, *dev_ctx,
                             &out_tensor);
@@ -149,14 +149,14 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     auto &x_tensor = x_var->Get<framework::LoDTensor>();
     auto &dx_tensor = *dx_var->GetMutable<framework::LoDTensor>();
     dx_tensor.Resize(x_tensor.dims());
-    dx_tensor.mutable_data(x_tensor.place(), x_tensor.type());
+    dx_tensor.mutable_data(x_tensor.place(), x_tensor.dtype());
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
     if (dout_var == nullptr) {  // dx_tensor fill zero
-      math::set_constant(dev_ctx, &dx_tensor, 0.0f);
+      phi::funcs::set_constant(dev_ctx, &dx_tensor, 0.0f);
     } else {
       auto &dout_tensor = dout_var->Get<framework::LoDTensor>();
       auto height = dout_tensor.dims()[0];
@@ -165,7 +165,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
       if (dx_tensor.dims()[0] > height) {
         auto rest_tensor = dx_tensor.Slice(
             static_cast<int>(height), static_cast<int>(dx_tensor.dims()[0]));
-        math::set_constant(dev_ctx, &rest_tensor, 0.0f);
+        phi::funcs::set_constant(dev_ctx, &rest_tensor, 0.0f);
       }
     }
     dx_tensor.set_lod(x_tensor.lod());

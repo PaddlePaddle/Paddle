@@ -46,7 +46,7 @@ using ProgramDesc = framework::ProgramDesc;
 
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
-using SelectedRows = pten::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 
 namespace details {
 
@@ -86,16 +86,16 @@ static void CheckOutputVarStatus(const Variable &src_var,
                           "RunProgram(Grad)Op's internal "
                           "scope is not initialized.",
                           var_name));
-  } else if (dst_var.IsType<pten::SelectedRows>()) {
+  } else if (dst_var.IsType<phi::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(
-        src_var.IsType<pten::SelectedRows>(), true,
+        src_var.IsType<phi::SelectedRows>(), true,
         platform::errors::InvalidArgument(
             "The output variable %s get from "
             "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is SelectedRows, but receive type is %s.",
             var_name,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
-    PADDLE_ENFORCE_EQ(src_var.Get<pten::SelectedRows>().value().IsInitialized(),
+    PADDLE_ENFORCE_EQ(src_var.Get<phi::SelectedRows>().value().IsInitialized(),
                       true, platform::errors::InvalidArgument(
                                 "The tensor in output variable %s get from "
                                 "RunProgram(Grad)Op's "
@@ -118,12 +118,12 @@ static void VariableShare(const Variable &src_var, Variable *dst_var) {
     auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
     lod_tensor->ShareDataWith(src_var.Get<LoDTensor>());
     lod_tensor->set_lod(src_var.Get<LoDTensor>().lod());
-  } else if (src_var.IsType<pten::SelectedRows>()) {
-    auto *selected_rows = dst_var->GetMutable<pten::SelectedRows>();
+  } else if (src_var.IsType<phi::SelectedRows>()) {
+    auto *selected_rows = dst_var->GetMutable<phi::SelectedRows>();
     selected_rows->mutable_value()->ShareDataWith(
-        src_var.Get<pten::SelectedRows>().value());
-    selected_rows->set_rows(src_var.Get<pten::SelectedRows>().rows());
-    selected_rows->set_height(src_var.Get<pten::SelectedRows>().height());
+        src_var.Get<phi::SelectedRows>().value());
+    selected_rows->set_rows(src_var.Get<phi::SelectedRows>().rows());
+    selected_rows->set_height(src_var.Get<phi::SelectedRows>().height());
   }
 }
 

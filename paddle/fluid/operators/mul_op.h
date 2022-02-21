@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -51,7 +51,7 @@ class MulKernel : public framework::OpKernel<T> {
       z->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
     }
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 
     blas.MatMul(x_matrix, y_matrix, z);
     if (z_dim.size() != 2) {
@@ -78,8 +78,8 @@ class MulGradKernel : public framework::OpKernel<T> {
 
     Tensor dout_mat;
     dout_mat.ShareDataWith(*dout);
-    dout_mat.Resize({framework::flatten_to_2d(x->dims(), x_num_col_dims)[0],
-                     framework::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
+    dout_mat.Resize({phi::flatten_to_2d(x->dims(), x_num_col_dims)[0],
+                     phi::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
 
     auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<framework::LoDTensor>(framework::GradVarName("Y"));
@@ -92,7 +92,7 @@ class MulGradKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     if (dx) {
       dx->mutable_data<T>(ctx.GetPlace());
       Tensor dx_matrix = dx->dims().size() > 2
@@ -128,8 +128,8 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
                      ? framework::ReshapeToMatrix(*y, y_num_col_dims)
                      : static_cast<const Tensor&>(*y);
 
-    const int m = framework::flatten_to_2d(x->dims(), x_num_col_dims)[0];
-    const int n = framework::flatten_to_2d(y->dims(), y_num_col_dims)[1];
+    const int m = phi::flatten_to_2d(x->dims(), x_num_col_dims)[0];
+    const int n = phi::flatten_to_2d(y->dims(), y_num_col_dims)[1];
 
     auto* dout = ctx.Input<framework::LoDTensor>("DOut");
     Tensor dout_mat;
@@ -153,7 +153,7 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     // a flag to specify whether ddout value has been set, if flag
     // is false, MatMul beta should be 0 to set ddout, if flag is
     // true, MatMul beta should be 1 to add result to ddout.

@@ -446,8 +446,9 @@ PADDLE_DEFINE_EXPORTED_double(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 
 /**
  * Memory related FLAG

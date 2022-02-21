@@ -27,7 +27,7 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
     float step = context.Attr<float>("step");
     out_tensor->mutable_data<T>(context.GetPlace());
 
-    Tensor step_tensor(x_tensor->type());
+    Tensor step_tensor(x_tensor->dtype());
 
     step_tensor.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
