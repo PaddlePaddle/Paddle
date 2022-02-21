@@ -63,19 +63,6 @@ static size_t GetAlignSize(size_t n, size_t alignment) {
   return remainder == 0 ? n : n + alignment - remainder;
 }
 
-// gcd(x, y) = gcd(y, x % y)
-// gcd(x, 0) = x
-static size_t GCD(size_t x, size_t y) {
-  while (y > 0) {
-    auto tmp = x;
-    x = y;
-    y = tmp % y;
-  }
-  return x;
-}
-
-static size_t LCM(size_t x, size_t y) { return x / GCD(x, y) * y; }
-
 // Shard the ParamGradInfo list by the numel size [start_size, end_size)
 // The final results should be:
 //
@@ -155,11 +142,18 @@ static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
 
   size_t total_numel_sum_with_padding = 0;
   size_t n = infos->size();
-  auto lcm = LCM(alignment, nranks);
   for (size_t i = 0; i < n; ++i) {
     auto &info = (*infos)[i];
-    size_t numel_with_padding =
-        GetAlignSize(info.numel, i + 1 == n ? lcm : alignment);
+    size_t numel_with_padding;
+    if (i + 1 == n) {
+      // the total fused numel must be a factor of alignment * nranks
+      numel_with_padding =
+          GetAlignSize(info.numel + total_numel_sum_with_padding,
+                       alignment * nranks) -
+          total_numel_sum_with_padding;
+    } else {
+      numel_with_padding = GetAlignSize(info.numel, alignment);
+    }
     info.numel_with_padding = numel_with_padding;
     info.numel_offset = total_numel_sum_with_padding;
     total_numel_sum_with_padding += numel_with_padding;
