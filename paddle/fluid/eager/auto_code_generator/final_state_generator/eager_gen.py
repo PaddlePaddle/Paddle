@@ -127,6 +127,22 @@ def ReadBwdFile(filepath):
 ######################
 ###  Yaml Parsers  ###
 ######################
+def IntermediateValidationCheck(intermediate_outputs, forward_returns_list):
+    # intermediate_outputs : [name0, name1, ...]
+    # forward_returns_list : [[ret_name, type, orig_pos], ...]
+    """
+    Check whether intermediate_outputs are positioned
+    at the very end of forward_returns_list
+    """
+
+    intermediate_positions = range(
+        len(forward_returns_list) - len(intermediate_outputs),
+        len(forward_returns_list))
+    for ret_name, _, pos in forward_returns_list:
+        if ret_name in intermediate_outputs:
+            assert pos in intermediate_positions
+
+
 def ParseIntermediate(string):
     return [v.strip() for v in string.split(",")]
 
@@ -1012,10 +1028,6 @@ if __name__ == "__main__":
         fwd_args_str = fwd_api['args']
         fwd_returns_str = fwd_api['output']
 
-        intermediate_outputs = []
-        if 'intermediate' in fwd_api.keys():
-            intermediate_outputs = ParseIntermediate(fwd_api['intermediate'])
-
         bwd_api_name = fwd_api['backward']
         assert bwd_api_name in grad_api_dict.keys()
         bwd_api = grad_api_dict[bwd_api_name]
@@ -1033,6 +1045,12 @@ if __name__ == "__main__":
         print("Parsed Forward Inputs List: ", forward_inputs_list)
         print("Prased Forward Attrs List: ", forward_attrs_list)
         print("Parsed Forward Returns List: ", forward_returns_list)
+
+        intermediate_outputs = []
+        if 'intermediate' in fwd_api.keys():
+            intermediate_outputs = ParseIntermediate(fwd_api['intermediate'])
+
+        IntermediateValidationCheck(intermediate_outputs, forward_returns_list)
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         orig_forward_inputs_list, orig_forward_attrs_list, orig_forward_returns_list = ParseYamlForward(
