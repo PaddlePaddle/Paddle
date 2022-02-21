@@ -31,23 +31,25 @@ std::string KernelFrame::DumpArgTypes() const {
   std::stringstream ss;
   for (auto* value : GetValues(0, GetNumElements())) {
     if (value->is_type<bool>()) {
-      ss << "bool,";
+      ss << "bool (" << &value->get<bool>() << "), ";
     } else if (value->is_type<tensor::DenseHostTensor>()) {
-      ss << "DenseHostTensor,";
+      ss << "DenseHostTensor(" << &value->get<tensor::DenseHostTensor>()
+         << "), ";
     } else if (value->is_type<float>()) {
-      ss << "float,";
-    } else if (value->is_type<float>()) {
-      ss << "int,";
+      ss << "float(" << &value->get<float>() << "), ";
+    } else if (value->is_type<int>()) {
+      ss << "int(" << &value->get<int>() << "), ";
     } else if (value->is_type<pten::DenseTensor>()) {
-      ss << "pten::DenseTensor,";
+      ss << "pten::DenseTensor(" << &value->get<pten::DenseTensor>() << "), ";
     } else if (value->is_type<pten::MetaTensor>()) {
-      ss << "pten::MetaTensor,";
+      ss << "pten::MetaTensor(" << &value->get<pten::MetaTensor>() << "), ";
     } else if (value->is_type<::pten::CPUContext>()) {
-      ss << "pten::CPUContext,";
+      ss << "pten::CPUContext(" << &value->get<::pten::CPUContext>() << "), ";
     } else if (value->is_type<host_context::None>()) {
-      ss << "none,";
+      ss << "none(" << &value->get<host_context::None>() << "), ";
     } else if (value->is_type<backends::CpuPtenContext>()) {
-      ss << "CpuPtenContext,";
+      ss << "CpuPtenContext(" << &value->get<backends::CpuPtenContext>()
+         << "), ";
     } else {
       ss << "unk,";
     }

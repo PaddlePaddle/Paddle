@@ -54,7 +54,7 @@ def PDT_CreateAllocatorOp_cpu : CreateCPUAllocatorOp;
 def PDT_CreateContextOp_cpu : CreateCPUContextOp;
 
 def FakeKernelOp : PDT_Op<"fake_pten_kernel"> {
-  let arguments = (ins CPU_Context:$dev_ctx, TensorType:$x, TensorType:$y, BoolAttr:$transpose_x);
+  let arguments = (ins CPU_Context:$dev_ctx, TensorType:$x, TensorType:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
   let results = (outs TensorType:$output);
 }
 

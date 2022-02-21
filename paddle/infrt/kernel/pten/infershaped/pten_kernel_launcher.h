@@ -28,14 +28,21 @@ namespace kernel {
 static void FakePtenInferShape(const ::pten::MetaTensor& a,
                                const ::pten::MetaTensor& b,
                                bool arg_0,
-                               ::pten::MetaTensor* c) {}
+                               bool arg_1,
+                               ::pten::MetaTensor* c) {
+  LOG(INFO) << "the ptr of c: " << c;
+  LOG(INFO) << "c->numel(): " << c->numel();
+}
 
 static void FakePtenKernel(const backends::CpuPtenContext& /*Context*/,
                            const ::pten::DenseTensor& a,
                            const ::pten::DenseTensor& b,
                            bool arg_0,
+                           bool arg_1,
                            ::pten::DenseTensor* c) {
   std::cout << "@FakePtenKernel@" << std::endl;
+  LOG(INFO) << "the ptr of c: " << c;
+  LOG(INFO) << "c->numel(): " << c->numel();
 }
 
 template <typename KernelFunc,

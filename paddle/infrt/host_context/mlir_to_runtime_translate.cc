@@ -31,6 +31,7 @@
 
 #include "boost/optional.hpp"
 #include "paddle/infrt/common/string.h"
+#include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
 #include "paddle/infrt/dialect/tensor_shape.h"
 #include "paddle/infrt/host_context/core_runtime.h"
@@ -310,7 +311,15 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
   llvm::SmallVector<Value*, 4> res_values;
   for (int i = 0, e = op->getNumResults(); i < e; i++) {
     auto res = op->getResult(i);
-    res_values.push_back(AddValue(res));
+    if (res.getType().isa<::infrt::dt::TensorType>()) {
+      auto r = impl_->value_map.try_emplace(
+          res, ValueRef(new Value{::pten::DenseTensor()}));
+      CHECK(r.second) << "Duplicate add mlir value [" << DumpToString(res)
+                      << "]";
+      res_values.push_back(r.first->second.get());
+    } else {
+      res_values.push_back(AddValue(res));
+    }
 
     VLOG(3) << "* op mlir res: " << DumpToString(res) << " " << GetValue(res);
   }
