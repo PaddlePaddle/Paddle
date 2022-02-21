@@ -311,15 +311,7 @@ using ExpMKLDNNGradUseOutFunctor = MKLDNNActivationGradUseOutFunc<
 
 namespace ops = paddle::operators;
 
-#define REGISTER_ACTIVATION_MKLDNN_KERNEL(act_type, functor, grad_functor) \
-  REGISTER_OP_KERNEL(act_type, MKLDNN, ::paddle::platform::CPUPlace,       \
-                     ops::MKLDNNActivationKernel<ops::functor<float>>);    \
-  REGISTER_OP_KERNEL(                                                      \
-      act_type##_grad, MKLDNN, ::paddle::platform::CPUPlace,               \
-      ops::MKLDNNActivationGradKernel<ops::grad_functor<float>>);
-
-#define REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(act_type, functor,             \
-                                               grad_functor)                  \
+#define REGISTER_ACTIVATION_MKLDNN_KERNEL(act_type, functor, grad_functor)    \
   REGISTER_OP_KERNEL(                                                         \
       act_type, MKLDNN, ::paddle::platform::CPUPlace,                         \
       ops::MKLDNNActivationKernel<ops::functor<float>>,                       \
@@ -331,26 +323,21 @@ namespace ops = paddle::operators;
           ops::grad_functor<paddle::platform::bfloat16>>);
 
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                            \
-  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);              \
-  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);           \
-  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);              \
-  __macro(hard_swish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
-  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradUseOutFunctor);           \
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);                    \
   __macro(elu, EluMKLDNNFunctor, EluMKLDNNGradUseOutFunctor);              \
-  __macro(exp, ExpMKLDNNFunctor, ExpMKLDNNGradUseOutFunctor);
+  __macro(exp, ExpMKLDNNFunctor, ExpMKLDNNGradUseOutFunctor);              \
+  __macro(gelu, GeluMKLDNNFunctor, GeluMKLDNNGradFunctor);                 \
+  __macro(hard_swish, HardSwishMKLDNNFunctor, HardSwishMKLDNNGradFunctor); \
+  __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);           \
+  __macro(mish, MishMKLDNNFunctor, MishMKLDNNGradFunctor);                 \
+  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);                 \
+  __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);              \
+  __macro(sigmoid, SigmoidMKLDNNFunctor, SigmoidMKLDNNGradUseOutFunctor);  \
+  __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradUseOutFunctor);           \
+  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);              \
+  __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradUseOutFunctor);
 
 FOR_EACH_MKLDNN_KERNEL_FUNCTOR(REGISTER_ACTIVATION_MKLDNN_KERNEL);
-REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(relu, ReluMKLDNNFunctor,
-                                       ReluMKLDNNGradFunctor);
-REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(gelu, GeluMKLDNNFunctor,
-                                       GeluMKLDNNGradFunctor);
-REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sigmoid, SigmoidMKLDNNFunctor,
-                                       SigmoidMKLDNNGradUseOutFunctor);
-REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(sqrt, SqrtMKLDNNFunctor,
-                                       SqrtMKLDNNGradUseOutFunctor);
-REGISTER_ACTIVATION_MKLDNN_BF16_KERNEL(mish, MishMKLDNNFunctor,
-                                       MishMKLDNNGradFunctor);
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(

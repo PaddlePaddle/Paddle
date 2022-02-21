@@ -1124,16 +1124,10 @@ class OpTest(unittest.TestCase):
             atol = 0
 
         if self.is_bfloat16_op():
+            atol = 1e-2
             if self.is_mkldnn_op():
                 check_dygraph = False
                 check_eager = False
-                if hasattr(self, 'force_fp32_output') and getattr(
-                        self, 'force_fp32_output'):
-                    atol = 1e-2
-                else:
-                    atol = 2
-            else:
-                atol = 1e-2
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
