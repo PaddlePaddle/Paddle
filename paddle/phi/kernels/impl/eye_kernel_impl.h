@@ -15,9 +15,9 @@
 #pragma once
 
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 struct EyeFunctor {
@@ -43,7 +43,7 @@ void EyeKernel(const Context& ctx,
     num = num_rows;
   }
   T* out_data = ctx.template Alloc<T>(out);
-  pten::funcs::SetConstant<Context, T> set_zero;
+  phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, out, static_cast<T>(0));
   int64_t num_eyes = (std::min)(num_rows, num);
   paddle::platform::ForRange<Context> for_range(ctx, num_eyes);
@@ -51,4 +51,4 @@ void EyeKernel(const Context& ctx,
   for_range(functor);
 }
 
-}  // namespace pten
+}  // namespace phi

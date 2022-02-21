@@ -18,15 +18,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
-KernelSignature EyeOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "eye", {}, {"num_rows", "num_columns", "dtype"}, {"Out"});
+KernelSignature SizeOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("size", {"Input"}, {}, {"Out"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(eye, pten::EyeOpArgumentMapping);
+PT_REGISTER_ARG_MAPPING_FN(size, phi::SizeOpArgumentMapping);

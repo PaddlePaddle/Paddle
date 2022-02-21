@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/eye_kernel.h"
-#include "paddle/pten/kernels/impl/eye_kernel_impl.h"
+#pragma once
 
-PT_REGISTER_KERNEL(eye,
-                   GPU,
-                   ALL_LAYOUT,
-                   pten::EyeKernel,
-                   float,
-                   double,
-                   int64_t,
-                   int,
-                   paddle::platform::float16) {}
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void SizeKernel(const Context& ctx, const DenseTensor& input, DenseTensor* out);
+
+}  // namespace phi

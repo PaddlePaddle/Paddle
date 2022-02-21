@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/impl/size_kernel_impl.h"
-#include "paddle/pten/kernels/size_kernel.h"
+#include "paddle/phi/kernels/eye_kernel.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/eye_kernel_impl.h"
 
-PT_REGISTER_KERNEL(size,
-                   GPU,
+PT_REGISTER_KERNEL(eye,
+                   CPU,
                    ALL_LAYOUT,
-                   pten::SizeKernel,
-                   int,
-                   int64_t,
-                   paddle::platform::float16,
+                   phi::EyeKernel,
                    float,
                    double,
-                   bool) {}
+                   int64_t,
+                   int,
+                   paddle::platform::float16) {}

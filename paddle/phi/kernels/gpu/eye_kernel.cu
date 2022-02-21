@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/size_kernel.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/impl/size_kernel_impl.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/eye_kernel.h"
+#include "paddle/phi/kernels/impl/eye_kernel_impl.h"
 
-PT_REGISTER_KERNEL(size,
-                   CPU,
+PT_REGISTER_KERNEL(eye,
+                   GPU,
                    ALL_LAYOUT,
-                   pten::SizeKernel,
-                   int,
-                   int64_t,
-                   paddle::platform::float16,
+                   phi::EyeKernel,
                    float,
                    double,
-                   bool) {}
+                   int64_t,
+                   int,
+                   paddle::platform::float16) {}

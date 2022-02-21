@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/size_kernel_impl.h"
+#include "paddle/phi/kernels/size_kernel.h"
 
-#include "paddle/pten/core/dense_tensor.h"
-
-namespace pten {
-
-template <typename T, typename Context>
-void EyeKernel(const Context& ctx,
-               int64_t num_rows,
-               int64_t num_columns,
-               int dtype,
-               DenseTensor* out);
-
-}  // namespace pten
+PT_REGISTER_KERNEL(size,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SizeKernel,
+                   int,
+                   int64_t,
+                   paddle::platform::float16,
+                   float,
+                   double,
+                   bool) {}
