@@ -47,7 +47,6 @@ void ReshapeWithXShape(const Context& dev_ctx,
                        const ScalarArray& shape,
                        DenseTensor* xshape,
                        DenseTensor* out) {
-  funcs::SetXShape(x, xshape);
   ReshapeKernel(dev_ctx, x, shape, out);
 }
 
