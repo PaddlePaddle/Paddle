@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 
 #include <set>
-
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
 namespace phi {
@@ -77,6 +77,13 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
+}
+
+void CopyToInferMeta(const MetaTensor& x,
+                     Backend backend,
+                     bool blocking,
+                     MetaTensor* out) {
+  UnchangedInferMeta(x, out);
 }
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
@@ -210,7 +217,7 @@ void InferMetaFromVecValue(const MetaTensor& x,
                            MetaTensor* out) {
   PADDLE_ENFORCE_EQ(!shape.empty(),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The parameter 'shape' in ReshapeOp must be set. "
                         "But received 'shape' is empty."));
   auto x_dims = x.dims();
@@ -227,8 +234,42 @@ void InferMetaFromVecValue(const MetaTensor& x,
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
-                      MetaTensor* out) {
-  InferMetaFromVecValue(x, shape.GetData(), out);
+                      MetaTensor* out,
+                      MetaConfig config) {
+  auto& shape_data = shape.GetData();
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          phi::errors::InvalidArgument(
+                              "Output(Out) of ReshapeOp should not be null."));
+  if (!config.is_runtime && shape.FromTensor()) {
+    out->set_dims(phi::make_ddim(shape_data));
+    out->share_lod(x);
+    return;
+  }
+  PADDLE_ENFORCE_GT(shape_data.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The shape's size in ReshapeOp can't be zero."));
+  InferMetaFromVecValue(x, shape_data, out);
+}
+
+void ReshapeWithXShapeInferMeta(const MetaTensor& x,
+                                const ScalarArray& shape,
+                                MetaTensor* xshape,
+                                MetaTensor* out,
+                                MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      xshape,
+      phi::errors::InvalidArgument(
+          "Output(XShape) of ReshapeOp should not be null."));
+  const auto& x_dims = x.dims();
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(phi::make_ddim(xshape_dims));
+  xshape->share_lod(x);
+  ReshapeInferMeta(x, shape, out, config);
 }
 
 /*  Why not use ReduceInferMeta directly?
@@ -497,3 +538,6 @@ void TraceInferMeta(
 }
 
 }  // namespace phi
+
+PT_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
+PT_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);
