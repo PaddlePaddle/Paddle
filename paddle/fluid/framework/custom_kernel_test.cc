@@ -22,13 +22,16 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/extension.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_kernel_info_helper.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/kernel_context.h"
-#include "paddle/pten/core/kernel_factory.h"
-#include "paddle/pten/infermeta/binary.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/utils/small_vector.h"
 
 #ifdef _LINUX
@@ -45,9 +48,9 @@ void FakeDot(const Context& dev_ctx, const paddle::Tensor& x,
              const std::vector<paddle::Tensor>& fake_input_vec,
              bool fake_attr_bool, int fake_attr_int, float fake_attr_float,
              double fake_attr_double, int64_t fake_attr_int64,
-             pten::dtype::float16 fake_attr_f16, pten::DataType fake_attr_dtype,
-             const pten::Scalar& fake_attr_scalar,
-             const pten::ScalarArray& fake_attr_scalar_array,
+             phi::dtype::float16 fake_attr_f16, phi::DataType fake_attr_dtype,
+             const phi::Scalar& fake_attr_scalar,
+             const phi::ScalarArray& fake_attr_scalar_array,
              const std::vector<int64_t>& fake_attr_int64_vec,
              const std::vector<int>& fake_attr_int_vec, paddle::Tensor* out,
              std::vector<paddle::Tensor*> fake_out_vec) {
@@ -72,8 +75,8 @@ void FakeDot(const Context& dev_ctx, const paddle::Tensor& x,
   assert(fake_attr_float == 2);
   assert(fake_attr_double == 3);
   assert(fake_attr_int64 == 4);
-  assert(fake_attr_f16 == pten::dtype::float16(5));
-  assert(fake_attr_dtype == pten::DataType::UINT32);
+  assert(fake_attr_f16 == phi::dtype::float16(5));
+  assert(fake_attr_dtype == phi::DataType::UINT32);
   assert(fake_attr_int64_vec.size() == 0);
   assert(fake_attr_int_vec.size() == 0);
   assert(fake_out_vec.size() == 2);
@@ -98,8 +101,8 @@ PD_REGISTER_KERNEL(fake_dot, CPU, ALL_LAYOUT, custom_kernel::FakeDot, float,
 // Upper code will store dot kernels info into OpKernelInfoMap
 TEST(CustomKernel, custom_kernel_dot) {
   std::string op_name = "fake_dot";
-  pten::Backend backend = pten::Backend::CPU;
-  pten::DataLayout layout = pten::DataLayout::ALL_LAYOUT;
+  phi::Backend backend = phi::Backend::CPU;
+  phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT;
 
   // 1.custom kernel info parsed and store
   EXPECT_TRUE(paddle::OpKernelInfoMap::Instance().GetMap().find(op_name) !=
@@ -114,18 +117,18 @@ TEST(CustomKernel, custom_kernel_dot) {
   EXPECT_TRUE(paddle::OpKernelInfoMap::Instance()[op_name][0].GetDataLayout() ==
               layout);
   EXPECT_TRUE(paddle::OpKernelInfoMap::Instance()[op_name][0].GetDataType() ==
-              pten::DataType::FLOAT32);
+              phi::DataType::FLOAT32);
   // index 5
   EXPECT_TRUE(paddle::OpKernelInfoMap::Instance()[op_name][5].GetBackend() ==
               backend);
   EXPECT_TRUE(paddle::OpKernelInfoMap::Instance()[op_name][5].GetDataLayout() ==
               layout);
   EXPECT_TRUE(paddle::OpKernelInfoMap::Instance()[op_name][5].GetDataType() ==
-              pten::DataType::UINT8);
+              phi::DataType::UINT8);
 
   // 3.before register
-  auto& kernel_factory_instance = pten::KernelFactory::Instance();
-  auto& kernels = pten::KernelFactory::Instance().kernels();
+  auto& kernel_factory_instance = phi::KernelFactory::Instance();
+  auto& kernels = phi::KernelFactory::Instance().kernels();
   EXPECT_TRUE(!kernel_factory_instance.HasCompatiblePtenKernel(op_name));
 
   // mock fake_dot is supported by pten for HasCompatiblePtenKernel check while
@@ -133,22 +136,22 @@ TEST(CustomKernel, custom_kernel_dot) {
   auto& fake_dot_kernels = kernels[op_name];
 
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::FLOAT32)) ==
+                  phi::KernelKey(backend, layout, phi::DataType::FLOAT32)) ==
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::FLOAT64)) ==
+                  phi::KernelKey(backend, layout, phi::DataType::FLOAT64)) ==
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::INT32)) ==
+                  phi::KernelKey(backend, layout, phi::DataType::INT32)) ==
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::INT64)) ==
+                  phi::KernelKey(backend, layout, phi::DataType::INT64)) ==
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::INT8)) ==
+                  phi::KernelKey(backend, layout, phi::DataType::INT8)) ==
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::UINT8)) ==
+                  phi::KernelKey(backend, layout, phi::DataType::UINT8)) ==
               fake_dot_kernels.end());
 
   // register
@@ -156,42 +159,42 @@ TEST(CustomKernel, custom_kernel_dot) {
       paddle::OpKernelInfoMap::Instance());
 
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::FLOAT32)) !=
+                  phi::KernelKey(backend, layout, phi::DataType::FLOAT32)) !=
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::FLOAT64)) !=
+                  phi::KernelKey(backend, layout, phi::DataType::FLOAT64)) !=
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::INT32)) !=
+                  phi::KernelKey(backend, layout, phi::DataType::INT32)) !=
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::INT64)) !=
+                  phi::KernelKey(backend, layout, phi::DataType::INT64)) !=
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::INT8)) !=
+                  phi::KernelKey(backend, layout, phi::DataType::INT8)) !=
               fake_dot_kernels.end());
   EXPECT_TRUE(fake_dot_kernels.find(
-                  pten::KernelKey(backend, layout, pten::DataType::UINT8)) !=
+                  phi::KernelKey(backend, layout, phi::DataType::UINT8)) !=
               fake_dot_kernels.end());
 
   // 4.kernel select
   auto kernel = kernel_factory_instance.SelectKernelOrThrowError(
-      op_name, pten::KernelKey(backend, layout, pten::DataType::UINT8));
+      op_name, phi::KernelKey(backend, layout, phi::DataType::UINT8));
 
   // 5.prepare parameters for kernel
   const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
-  auto dense_x = std::make_shared<pten::DenseTensor>(
-      alloc.get(), pten::DenseTensorMeta(pten::DataType::UINT8,
-                                         paddle::framework::make_ddim({2, 3}),
-                                         pten::DataLayout::NCHW));
+  auto dense_x = std::make_shared<phi::DenseTensor>(
+      alloc.get(),
+      phi::DenseTensorMeta(phi::DataType::UINT8, phi::make_ddim({2, 3}),
+                           phi::DataLayout::NCHW));
   auto* dense_x_data =
       dense_x->mutable_data<uint8_t>(paddle::platform::CPUPlace());
 
-  auto dense_y = std::make_shared<pten::DenseTensor>(
-      alloc.get(), pten::DenseTensorMeta(pten::DataType::UINT8,
-                                         paddle::framework::make_ddim({2, 3}),
-                                         pten::DataLayout::NCHW));
+  auto dense_y = std::make_shared<phi::DenseTensor>(
+      alloc.get(),
+      phi::DenseTensorMeta(phi::DataType::UINT8, phi::make_ddim({2, 3}),
+                           phi::DataLayout::NCHW));
   auto* dense_y_data =
       dense_y->mutable_data<uint8_t>(paddle::platform::CPUPlace());
 
@@ -208,7 +211,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   // 6.prepare kernel_context
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
-  auto kernel_context = pten::KernelContext(dev_ctx);
+  auto kernel_context = phi::KernelContext(dev_ctx);
   kernel_context.EmplaceBackInput(dense_x.get());  // idx:0, index:[0,1)
   kernel_context.EmplaceBackInput(dense_y.get());  // idx:1, index:[1,2)
 
@@ -227,13 +230,12 @@ TEST(CustomKernel, custom_kernel_dot) {
   float fake_attr_float = 2.0;
   double fake_attr_double = 3.0;
   int64_t fake_attr_int64 = 4;
-  pten::dtype::float16 fake_attr_f16 = pten::dtype::float16(5);
-  pten::DataType fake_attr_dtype = pten::DataType::UINT32;
+  phi::dtype::float16 fake_attr_f16 = phi::dtype::float16(5);
+  phi::DataType fake_attr_dtype = phi::DataType::UINT32;
   paddle::framework::LoDTensor tmp_tensor;
-  tmp_tensor.mutable_data<uint8_t>({1}, pten::TransToFluidPlace(backend));
-  pten::Scalar fake_attr_scalar =
-      paddle::experimental::MakePtenScalar(tmp_tensor);
-  pten::ScalarArray fake_attr_scalar_array;
+  tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPtenPlace(backend));
+  phi::Scalar fake_attr_scalar{tmp_tensor};
+  phi::ScalarArray fake_attr_scalar_array;
   std::vector<int64_t> fake_attr_int64_vec;
   std::vector<int> fake_attr_int_vec;
 
@@ -249,13 +251,13 @@ TEST(CustomKernel, custom_kernel_dot) {
   kernel_context.EmplaceBackAttr(fake_attr_int64_vec);
   kernel_context.EmplaceBackAttr(fake_attr_int_vec);
 
-  auto dense_out = std::make_shared<pten::DenseTensor>(
-      pten::make_intrusive<paddle::experimental::SharedStorage>(
-          pten::TransToFluidPlace(backend)),
-      pten::DenseTensorMeta());
+  auto dense_out = std::make_shared<phi::DenseTensor>(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(
+          phi::TransToPtenPlace(backend)),
+      phi::DenseTensorMeta());
 
-  pten::MetaTensor meta_out(dense_out.get());
-  pten::DotInferMeta(*dense_x, *dense_y, &meta_out);
+  phi::MetaTensor meta_out(dense_out.get());
+  phi::DotInferMeta(*dense_x, *dense_y, &meta_out);
   kernel_context.EmplaceBackOutput(dense_out.get());  // idx:0 index:[0,1)
 
   // fake_input_vec: idx:1, index:[1,3)
@@ -275,8 +277,8 @@ TEST(CustomKernel, custom_kernel_dot) {
   ASSERT_EQ(dense_out->dims().size(), 2);
   ASSERT_EQ(dense_out->dims()[0], 2);
   ASSERT_EQ(dense_out->numel(), 2);
-  ASSERT_EQ(dense_out->dtype(), pten::DataType::UINT8);
-  ASSERT_EQ(dense_out->layout(), pten::DataLayout::NCHW);
+  ASSERT_EQ(dense_out->dtype(), phi::DataType::UINT8);
+  ASSERT_EQ(dense_out->layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(dense_out->initialized(), true);
 
   auto expect_result = sum;
@@ -290,9 +292,9 @@ TEST(CustomKernel, custom_kernel_dot) {
 TEST(OpKernelInfoHelper, op_kernel_info_help_getters) {
   using OpKernelInfoHelper = paddle::framework::OpKernelInfoHelper;
   std::string op_name = "fake_dot";
-  pten::Backend backend = pten::Backend::CPU;
-  pten::DataLayout layout = pten::DataLayout::ANY;
-  pten::DataType dtype = pten::DataType::FLOAT32;
+  phi::Backend backend = phi::Backend::CPU;
+  phi::DataLayout layout = phi::DataLayout::ANY;
+  phi::DataType dtype = phi::DataType::FLOAT32;
 
   auto op_kernel_info = paddle::OpKernelInfoMap::Instance()[op_name][0];
 
@@ -301,7 +303,7 @@ TEST(OpKernelInfoHelper, op_kernel_info_help_getters) {
   EXPECT_EQ(layout, OpKernelInfoHelper::GetDataLayout(op_kernel_info));
   EXPECT_EQ(dtype, OpKernelInfoHelper::GetDataType(op_kernel_info));
 
-  EXPECT_EQ(pten::KernelKey(backend, layout, dtype),
+  EXPECT_EQ(phi::KernelKey(backend, layout, dtype),
             OpKernelInfoHelper::GetKernelKey(op_kernel_info));
 
   paddle::CustomKernelFunc kernel_fn =

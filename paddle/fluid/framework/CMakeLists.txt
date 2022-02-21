@@ -413,7 +413,7 @@ cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tens
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
 cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place pten var_type_traits pten pten_api_utils op_info shape_inference)
-
+cc_test(infershape_utils_test SRCS infershape_utils_test.cc DEPS infershape_utils infermeta_utils meta_tensor)
 
 # Get the current working branch
 execute_process(
@@ -452,4 +452,11 @@ endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
 cc_test(pten_utils_test SRCS pten_utils_test.cc DEPS pten_utils)
+
+if(WITH_GPU OR WITH_ROCM)
+  cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
+else()
+  cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place)
+endif()
+cc_test(convert_utils_test SRCS convert_utils_test.cc DEPS fluid_convert_utils)
 cc_test(custom_kernel_test SRCS custom_kernel_test.cc DEPS custom_kernel pten_tensor)

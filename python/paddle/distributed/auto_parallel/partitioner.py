@@ -407,7 +407,7 @@ def _get_dist_op_backward_implement(backward_op, dist_context,
         op_dist_attr = dist_context.get_op_dist_attr_for_program(backward_op)
         assert op_dist_attr.impl_idx >= 0
         dist_op_impl = get_distributed_operator_impl_container(
-            backward_op.type).get_impl(op_dist_attr.impl_idx)
+            op_dist_attr.impl_type).get_impl(op_dist_attr.impl_idx)
         return dist_op_impl
 
     dist_op = get_distributed_operator_impl_container("default")

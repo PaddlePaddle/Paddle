@@ -138,7 +138,7 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
 
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
-    auto in_stride = framework::stride(in_dims);
+    auto in_stride = phi::stride(in_dims);
     int channels = in_dims[1];
     int height = in_dims[2];
     int width = in_dims[3];
@@ -274,7 +274,7 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
                    dev_ctx.stream());
 
       x_grad->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<Place, T> set_zero;
+      phi::funcs::SetConstant<Place, T> set_zero;
       set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
       int output_grad_size = out_grad->numel();

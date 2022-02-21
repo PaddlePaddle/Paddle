@@ -21,10 +21,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {
@@ -279,7 +279,7 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
 
   inline HOSTDEVICE void operator()(size_t i) const {
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        phi::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     if (lazy_mode_ && row_idx < 0) {
       return;
     } else {
@@ -560,8 +560,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
              mom1_out_ptr + offset, mom2_out_ptr + offset,
              param_out_ptr + offset);
       }
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
-      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
+      auto* grad = ctx.Input<phi::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -576,8 +576,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      pten::SelectedRows tmp_grad_merge;
-      const pten::SelectedRows* grad_merge_ptr;
+      phi::SelectedRows tmp_grad_merge;
+      const phi::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {
