@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pten/kernels/funcs/algorithm.h"
+#include "paddle/phi/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {
