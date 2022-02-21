@@ -34,13 +34,6 @@ class GradNodeAccumulation : public GradNodeBase {
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
       override;
 
- private:
-  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
-  void RetainGrad(const std::function<paddle::experimental::Tensor(
-                      const paddle::experimental::Tensor&)>& hook);
-
-  paddle::experimental::Tensor* Grad() { return &accumulated_grad; }
-
   /**
    * Register ReduceHook
    * **/
@@ -53,14 +46,13 @@ class GradNodeAccumulation : public GradNodeBase {
   void ApplyReduceHooks();
 
  private:
-  paddle::experimental::Tensor accumulated_grad;
+  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
 
   std::function<paddle::experimental::Tensor(
       const paddle::experimental::Tensor&)>
       retain_grad_hook_;
 
   std::vector<std::function<void(void)>> reduce_hooks_;
->>>>>>> 77625d7d8d317d1134d576156ed79db858ea5d89
 };
 
 }  // namespace egr

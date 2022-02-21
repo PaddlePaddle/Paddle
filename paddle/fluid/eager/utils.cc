@@ -18,9 +18,9 @@
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/tensor_meta.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"

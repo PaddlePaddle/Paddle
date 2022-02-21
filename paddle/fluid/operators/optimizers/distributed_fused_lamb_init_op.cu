@@ -17,9 +17,9 @@
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_init_op.h"
 #include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/kernels/funcs/algorithm.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/kernels/funcs/algorithm.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -144,7 +144,7 @@ static void GetParamGradShardInfo(const std::vector<ParamGradInfo> &infos,
 
 static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
                                        size_t alignment, size_t nranks,
-                                       pten::DataType dtype) {
+                                       phi::DataType dtype) {
   auto sizeof_dtype = paddle::experimental::SizeOf(dtype);
   PADDLE_ENFORCE_EQ(
       alignment % sizeof_dtype, 0,
@@ -173,7 +173,7 @@ static T *TensorFillConstant(const platform::CUDADeviceContext &dev_ctx,
                              const framework::DDim &dims, T value) {
   tensor->Resize(dims);
   auto *ptr = tensor->mutable_data<T>(dev_ctx.GetPlace());
-  pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
+  phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
   set_constant(dev_ctx, tensor, value);
   return ptr;
 }
@@ -185,10 +185,10 @@ static framework::Tensor CastDataForInitedTensor(
                     platform::errors::InvalidArgument(
                         "The tensor to be cast should be initialized."));
 
-  PADDLE_ENFORCE_EQ(fused_out->dtype(), pten::DataType::FLOAT32,
+  PADDLE_ENFORCE_EQ(fused_out->dtype(), phi::DataType::FLOAT32,
                     platform::errors::InvalidArgument(
                         "The dst tensor to be cast should be FP32 tensor."));
-  PADDLE_ENFORCE_EQ(origin->dtype(), pten::DataType::FLOAT16,
+  PADDLE_ENFORCE_EQ(origin->dtype(), phi::DataType::FLOAT16,
                     platform::errors::InvalidArgument(
                         "The src tensor to be cast should be FP16 tensor."));
   auto *dst = fused_out->data<float>() + numel_offset;
@@ -254,7 +254,7 @@ static void ShareBufferForNonInitedTensor(framework::Tensor *origin,
 
   framework::DDim fused_out_dim = fused_out->dims();
   auto fused_out_numel = fused_out->numel();
-  auto numel = framework::product(dims);
+  auto numel = phi::product(dims);
   *origin = fused_out->Resize({fused_out_numel})
                 .Slice(numel_offset, numel + numel_offset);
   origin->Resize(dims);
@@ -270,7 +270,7 @@ static __global__ void LambFillFusedIndicesCUDAKernel(const OffsetT *offsets,
                                                       int offset_num,
                                                       int out_num) {
   CUDA_KERNEL_LOOP_TYPE(i, out_num, int) {
-    auto idx = pten::funcs::LowerBound(offsets, offset_num, i);
+    auto idx = phi::funcs::LowerBound(offsets, offset_num, i);
     if (idx == offset_num || offsets[idx] != i) {
       --idx;
     }
@@ -376,10 +376,10 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         }
 
         ParamGradInfo *info;
-        if (dtype == pten::DataType::FLOAT32) {
+        if (dtype == phi::DataType::FLOAT32) {
           fp32_infos.emplace_back();
           info = &fp32_infos.back();
-        } else if (dtype == pten::DataType::FLOAT16) {
+        } else if (dtype == phi::DataType::FLOAT16) {
           fp16_infos.emplace_back();
           info = &fp16_infos.back();
         } else {
@@ -427,10 +427,10 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     // NOTE: We guarantee that both fp32_numel and fp16_numel can be exactly
     // divided by alignment and nranks.
     auto fp32_numel = FillAlignmentPaddingInfo(&fp32_infos, alignment, nranks,
-                                               pten::DataType::FLOAT32);
+                                               phi::DataType::FLOAT32);
     VLOG(10) << "FP32 ParamGradInfo: " << string::join_strings(fp32_infos, " ");
     auto fp16_numel = FillAlignmentPaddingInfo(&fp16_infos, alignment, nranks,
-                                               pten::DataType::FLOAT16);
+                                               phi::DataType::FLOAT16);
     VLOG(10) << "FP16 ParamGradInfo: " << string::join_strings(fp16_infos, " ");
     auto total_numel = fp32_numel + fp16_numel;
     PADDLE_ENFORCE_LT(

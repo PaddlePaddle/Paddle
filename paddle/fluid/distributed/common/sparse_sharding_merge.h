@@ -24,11 +24,11 @@
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/framework/blocking_queue.h"
-#include "paddle/fluid/framework/dim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/phi/core/utils/dim.h"
 
 constexpr int FG = 256 * 1024 * 1024;
 constexpr int Q_SIZE = 10000;

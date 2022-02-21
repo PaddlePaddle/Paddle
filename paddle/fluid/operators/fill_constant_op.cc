@@ -33,7 +33,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be no less "
                 "than 0. But recieved: shape[%u] = %d; shape = [%s].",
-                i, shape[i], framework::make_ddim(shape)));
+                i, shape[i], phi::make_ddim(shape)));
       }
     }
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
@@ -43,11 +43,11 @@ class FillConstantOp : public framework::OperatorWithKernel {
         num_ele *= shape_dims[i];
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(vec_dims));
+      ctx->SetOutputDim("Out", phi::make_ddim(vec_dims));
 
       return;
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(shape));
   }
 
  protected:
@@ -177,16 +177,6 @@ REGISTER_OPERATOR(
     ops::FillConstantOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    fill_constant, ops::FillConstantKernel<float>,
-    ops::FillConstantKernel<double>, ops::FillConstantKernel<uint8_t>,
-    ops::FillConstantKernel<int16_t>, ops::FillConstantKernel<int>,
-    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<bool>,
-    ops::FillConstantKernel<paddle::platform::float16>,
-    ops::FillConstantKernel<paddle::platform::bfloat16>,
-    ops::FillConstantKernel<paddle::platform::complex<float>>,
-    ops::FillConstantKernel<paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(fill_constant)
     .AddCheckpoint(

@@ -16,8 +16,8 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"

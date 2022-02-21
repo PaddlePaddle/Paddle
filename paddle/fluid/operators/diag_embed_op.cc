@@ -77,7 +77,7 @@ class DiagEmbedOp : public framework::OperatorWithKernel {
     sizes.pop_back();
     sizes.insert(sizes.begin() + std::min(dim1_, dim2_), new_dim_len);
     sizes.insert(sizes.begin() + std::max(dim1_, dim2_), new_dim_len);
-    ctx->SetOutputDim("Out", framework::make_ddim(sizes));
+    ctx->SetOutputDim("Out", phi::make_ddim(sizes));
   }
 };
 

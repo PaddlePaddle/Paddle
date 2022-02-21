@@ -103,6 +103,7 @@ REGISTER_OP_CUDA_KERNEL(gather_nd, ops::GatherNdOpCUDAKernel<CUDA, float>,
                         ops::GatherNdOpCUDAKernel<CUDA, double>,
                         ops::GatherNdOpCUDAKernel<CUDA, int64_t>,
                         ops::GatherNdOpCUDAKernel<CUDA, int>,
+                        ops::GatherNdOpCUDAKernel<CUDA, int16_t>,
                         ops::GatherNdOpCUDAKernel<CUDA, bool>,
                         ops::GatherNdOpCUDAKernel<CUDA, plat::float16>);
 

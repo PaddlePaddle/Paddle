@@ -410,7 +410,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
             if param in input_names:
                 param_code = param_code + "MakeMetaTensor(*" + PREFIX_TENSOR_NAME + param + "), "
             elif param in kernel_output_names:
-                meta_tensor_code = meta_tensor_code + code_indent + "  pten::MetaTensor " + param.replace(
+                meta_tensor_code = meta_tensor_code + code_indent + "  phi::MetaTensor " + param.replace(
                     'kernel_', PREFIX_META_TENSOR_NAME) + "(" + param + ");\n"
                 param_code = param_code + "&" + param.replace(
                     'kernel_', PREFIX_META_TENSOR_NAME) + ", "
@@ -425,21 +425,21 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
 
         param_code = param_code[:-2]
         return f"""{meta_tensor_code}
-{code_indent}  pten::{infer_meta['func']}({param_code});
+{code_indent}  phi::{infer_meta['func']}({param_code});
 """
 
     def get_kernel_args(self, code_indent):
         input_trans_map = {
-            'const Tensor&': 'const pten::DenseTensor&',
-            'const Tensor &': 'const pten::DenseTensor&',
+            'const Tensor&': 'const phi::DenseTensor&',
+            'const Tensor &': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&':
-            'const std::vector<pten::DenseTensor>&',
+            'const std::vector<phi::DenseTensor>&',
             'const std::vector<Tensor> &':
-            'const std::vector<pten::DenseTensor>&'
+            'const std::vector<phi::DenseTensor>&'
         }
         out_trans_map = {
-            'Tensor': 'pten::DenseTensor*',
-            'std::vector<Tensor>': 'std::vector<pten::DenseTensor*>&'
+            'Tensor': 'phi::DenseTensor*',
+            'std::vector<Tensor>': 'std::vector<phi::DenseTensor*>&'
         }
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
@@ -475,11 +475,11 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
             elif param in attr_names:
                 # set attr for kernel_context
                 if 'ScalarArray' in self.attrs['attr_info'][param][0]:
-                    kernel_args_type_list.append('const pten::ScalarArray&')
-                    param = 'pten::ScalarArray(' + param + ')'
+                    kernel_args_type_list.append('const phi::ScalarArray&')
+                    param = 'phi::ScalarArray(' + param + ')'
                 elif 'Scalar' in self.attrs['attr_info'][param][0]:
-                    kernel_args_type_list.append('const pten::Scalar&')
-                    param = 'pten::Scalar(' + param + ')'
+                    kernel_args_type_list.append('const phi::Scalar&')
+                    param = 'phi::Scalar(' + param + ')'
                 else:
                     kernel_args_type_list.append(self.attrs['attr_info'][param][
                         0])
@@ -498,10 +498,10 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
 
     def get_selected_rows_kernel_args(self, code_indent):
         input_trans_map = {
-            'const Tensor&': 'const pten::SelectedRows&',
-            'const Tensor &': 'const pten::SelectedRows&'
+            'const Tensor&': 'const phi::SelectedRows&',
+            'const Tensor &': 'const phi::SelectedRows&'
         }
-        out_trans_map = {'Tensor': 'pten::SelectedRows*'}
+        out_trans_map = {'Tensor': 'phi::SelectedRows*'}
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
         kernel_args_type_list = ['const platform::DeviceContext&']
@@ -533,11 +533,11 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
             elif param in attr_names:
                 # set attr for kernel_context
                 if 'ScalarArray' in self.attrs['attr_info'][param][0]:
-                    kernel_args_type_list.append('const pten::ScalarArray&')
-                    param = 'pten::ScalarArray(' + param + ')'
+                    kernel_args_type_list.append('const phi::ScalarArray&')
+                    param = 'phi::ScalarArray(' + param + ')'
                 elif 'Scalar' in self.attrs['attr_info'][param][0]:
-                    kernel_args_type_list.append('const pten::Scalar&')
-                    param = 'pten::Scalar(' + param + ')'
+                    kernel_args_type_list.append('const phi::Scalar&')
+                    param = 'phi::Scalar(' + param + ')'
                 else:
                     kernel_args_type_list.append(self.attrs['attr_info'][param][
                         0])
@@ -568,7 +568,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
         outputs_args, kernel_output_names, output_create = self.gene_output(
             self.outputs['types'], 'SetKernelOutput', code_indent, inplace_flag)
         return f"""
-{code_indent}  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+{code_indent}  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  VLOG(6) << "{self.api} API kernel: " << kernel;
@@ -591,7 +591,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
             self.outputs['types'], 'SetSelectedRowsKernelOutput', code_indent,
             inplace_flag)
         return f"""
-{code_indent}  auto kernel = pten::KernelFactory::Instance().SelectKernelOrThrowError(
+{code_indent}  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
 {code_indent}      "{self.kernel['func'][1]}", {{kernel_backend, kernel_layout, kernel_data_type}});
 {code_indent}  VLOG(6) << "{self.api} API SelectedRows kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  VLOG(6) << "{self.api} API SelectedRows kernel: " << kernel;
