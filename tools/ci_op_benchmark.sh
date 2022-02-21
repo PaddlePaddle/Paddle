@@ -45,7 +45,7 @@ function match_cu_file_directory {
   done
   for sub_dir in "" "/gpu" "/hybird"
   do
-    [ "${cu_file_dir}" == "paddle/pten/kernels${sub_dir}" ] && return 0
+    [ "${cu_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 0
   done
   return 1
 }
@@ -54,7 +54,7 @@ function match_cu_file_directory {
 function load_CHANGE_OP_FILES_by_header_file {
   LOG "[INFO] run function load_CHANGE_OP_FILES_by_header_file"
   local change_file
-  for change_file in $(grep -rl "${1}" paddle/fluid/operators paddle/pten/kernels/)
+  for change_file in $(grep -rl "${1}" paddle/fluid/operators paddle/phi/kernels/)
   do
     if [[ "$change_file" =~ "_op.cu" ]]
     then
@@ -80,7 +80,7 @@ function load_CHANGE_OP_FILES {
   for change_file in $(git diff --name-only develop)
   do
     # match directory limit
-    [[ "$change_file" =~ "paddle/fluid/operators/" ]] || [[ "$change_file" =~ "paddle/pten/kernels/" ]]  || continue
+    [[ "$change_file" =~ "paddle/fluid/operators/" ]] || [[ "$change_file" =~ "paddle/phi/kernels/" ]]  || continue
     # match file name limit
     if [[ "$change_file" =~ "_op.cu" ]]
     then

@@ -60,7 +60,7 @@ class CBroadcastOpASCENDKernel : public framework::OpKernel<T> {
         ptr, numel, dtype, (uint32_t)root, comm->comm(), stream));
 
     VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-            << framework::product(out->dims());
+            << phi::product(out->dims());
 
     dev_ctx->Wait();
 

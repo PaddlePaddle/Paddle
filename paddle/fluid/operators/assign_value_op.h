@@ -84,7 +84,7 @@ class AssignValueKernel : public framework::OpKernel<T> {
         break;
     }
     CopyVecotorToTensor<T>(value_name, out, ctx);
-    out->Resize(framework::make_ddim(shape));
+    out->Resize(phi::make_ddim(shape));
   }
 };
 
