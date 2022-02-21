@@ -62,8 +62,9 @@ void UnfoldGradKernel(const Context& ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, x_grad, static_cast<T>(0));
   for (int i = 0; i < batch_size; i++) {
-    auto out_grad_batch = out_grad.Slice(i, i + 1).Resize(out_matrix_shape);
-    auto x_grad_batch = x_grad->Slice(i, i + 1).Resize(x_shape);
+    DenseTensor out_grad_batch =
+        out_grad.Slice(i, i + 1).Resize(out_matrix_shape);
+    DenseTensor x_grad_batch = x_grad->Slice(i, i + 1).Resize(x_shape);
     col2im(ctx, out_grad_batch, dilations, strides, paddings, &x_grad_batch);
   }
 }

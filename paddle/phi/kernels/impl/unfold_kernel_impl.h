@@ -56,8 +56,8 @@ void UnfoldKernel(const Context& ctx,
       {x_dims[1], kernel_sizes[0], kernel_sizes[1], out_height, out_width});
 
   for (int i = 0; i < batch_size; i++) {
-    auto in_batch = x.Slice(i, i + 1).Resize(x_shape);
-    auto out_batch = out->Slice(i, i + 1).Resize(out_matrix_shape);
+    DenseTensor in_batch = x.Slice(i, i + 1).Resize(x_shape);
+    DenseTensor out_batch = out->Slice(i, i + 1).Resize(out_matrix_shape);
     im2col(ctx, in_batch, dilations, strides, paddings, &out_batch);
   }
 }
