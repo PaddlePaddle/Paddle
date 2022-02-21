@@ -27,7 +27,6 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/timer.h"
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
@@ -37,7 +36,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using SelectedRows = framework::SelectedRows;
+using SelectedRows = phi::SelectedRows;
 using LoDTensor = framework::LoDTensor;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
@@ -914,11 +913,10 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     //  out->Resize(framework::make_ddim(
     //    {(int64_t)x1_lods.back(), (int64_t)x1_embed_size}));
     //} else {
-    out->Resize(
-        framework::make_ddim({(int64_t)out_first, (int64_t)x1_embed_size}));
+    out->Resize(phi::make_ddim({(int64_t)out_first, (int64_t)x1_embed_size}));
     //}
-    map->Resize(framework::make_ddim({(int64_t)x2_lods_size, 3}));
-    loss_weight->Resize(framework::make_ddim({(int64_t)x2_lods_size, 1}));
+    map->Resize(phi::make_ddim({(int64_t)x2_lods_size, 3}));
+    loss_weight->Resize(phi::make_ddim({(int64_t)x2_lods_size, 1}));
 
     // timeline_.Pause();
     // std::cout << "prephase 2 cost time: " << timeline_.ElapsedSec() <<
@@ -1104,17 +1102,16 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       //  std::cout << std::endl;
       //}
 
-      out->Resize(framework::make_ddim(
-          {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
+      out->Resize(
+          phi::make_ddim({(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
 
-      map->Resize(framework::make_ddim({(int64_t)out_lods.size() - 1, 3}));
-      loss_weight->Resize(
-          framework::make_ddim({(int64_t)out_lods.size() - 1, 1}));
+      map->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 3}));
+      loss_weight->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 1}));
 
     } else {
-      out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
-      map->Resize(framework::make_ddim({1, 3}));
-      loss_weight->Resize(framework::make_ddim({1, 1}));
+      out->Resize(phi::make_ddim({1, (int64_t)x1_embed_size}));
+      map->Resize(phi::make_ddim({1, 3}));
+      loss_weight->Resize(phi::make_ddim({1, 1}));
     }
 
     // auto* out_data = out->mutable_data<T>(context.GetPlace());
