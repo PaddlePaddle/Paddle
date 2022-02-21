@@ -750,6 +750,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     else:
                         data = self._reader.read_next()
             self._on_output_batch()
+            paddle.utils.benchmark().step_begin()
             return data
         except StopIteration:
             if not self._persistent_workers:
