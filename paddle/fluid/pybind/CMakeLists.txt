@@ -221,6 +221,19 @@ if(WITH_PYTHON)
         list(APPEND OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
         list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
     endif()
+    if(WITH_ONNXRUNTIME)
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        DEPENDS paddle2onnx)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/paddle2onnx.dll)
+
+      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_LIB} ${CMAKE_CURRENT_BINARY_DIR} 
+        DEPENDS onnxruntime)
+      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/onnxruntime.dll)
+    endif()
 
     add_custom_command(OUTPUT ${impl_file}
       COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/op_function_generator_retry.bat

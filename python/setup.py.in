@@ -509,7 +509,7 @@ if '${WITH_ONNXRUNTIME}' == 'ON':
     if os.name != 'nt':
         package_data['paddle.libs']+=['libpaddle2onnx.so', 'libonnxruntime.so.1.10.0']
     else:
-        package_data['paddle.libs']+=['libpaddle2onnx.dll', 'libonnxruntime.dll.1.10.0']
+        package_data['paddle.libs']+=['paddle2onnx.dll', 'onnxruntime.dll']
 
 if '${WITH_XPU}' == 'ON':
     # only change rpath in Release mode,
