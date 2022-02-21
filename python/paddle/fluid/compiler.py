@@ -517,24 +517,24 @@ class IpuStrategy(object):
             import paddle.static as static
 
             paddle.enable_static()
+
             ipu_strategy = static.IpuStrategy()
     """
 
     def __init__(self):
         if core.is_compiled_with_ipu():
             self._ipu_strategy = core.IpuStrategy()
-            default_conf = {
+            default_options = {
                 'location_optimizer': {
-                    'onChip': 0,
-                    'useReplicatedTensorSharding': 1,
+                    'on_chip': 0,
+                    'use_replicated_tensor_sharding': 1,
                 },  # set optimizer location
-                'accumulationAndReplicationReductionType':
+                'accumulation_and_replication_reduction_type':
                 1,  # popart::ReductionType::Mean
-                'meanAccumulationAndReplicationReductionStrategy':
+                'mean_accumulation_and_replication_reduction_strategy':
                 1,  # popart::MeanReductionStrategy::Post
-                'logDir': 'popart_log'
             }
-            self._ipu_strategy.set_option(default_conf)
+            self._ipu_strategy.set_options(default_options)
             self.has_custom_ops = False
             self.custom_op_names = []
         else:
@@ -546,8 +546,7 @@ class IpuStrategy(object):
                          num_ipus=1,
                          is_training=True,
                          batch_size=1,
-                         enable_manual_shard=False,
-                         need_avg_shard=False):
+                         enable_manual_shard=False):
         """
         Set graph configuration to the IpuStrategy instance.
 
@@ -558,8 +557,6 @@ class IpuStrategy(object):
                 if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamice.
             enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True. 
                 Default False, which means disabled.    
-            need_avg_shard (bool, optional): Enable auto graph sharding or not. Only if num_ipus > 1 and enable_manual_shard=True, need_avg_shard is able to be set Trues. 
-                Default False, which means disabled.
             
         Returns:
             None.
@@ -570,36 +567,32 @@ class IpuStrategy(object):
                 # required: ipu
 
                 import paddle
+                import paddle.static as static
 
                 paddle.enable_static()
-                ipu_strategy = paddle.static.IpuStrategy()
+
+                ipu_strategy = static.IpuStrategy()
                 ipu_strategy.set_graph_config(num_ipus=1,
                                             is_training=True,
                                             batch_size=1,
-                                            enable_manual_shard=False,
-                                            need_avg_shard=False)
+                                            enable_manual_shard=False)
         """
         if num_ipus == 1 and enable_manual_shard:
             raise RuntimeError(
                 "Only if num_ipus > 1, enable_manual_shard is able to be set True."
             )
-        if enable_manual_shard != True and need_avg_shard:
-            raise RuntimeError(
-                "Only if enable_manual_shard=True, need_avg_shard is able to be set True."
-            )
-        conf = {
+        options = {
             'num_ipus': num_ipus,
             'is_training': is_training,
             'micro_batch_size': batch_size,
             'enable_manual_shard': enable_manual_shard,
-            'need_avg_shard': need_avg_shard,
         }
-        self.set_options(conf)
+        self.set_options(options)
 
     def set_pipelining_config(self,
                               enable_pipelining=False,
                               batches_per_step=1,
-                              accumulationFactor=1):
+                              accumulation_factor=1):
         """
         Set pipelining configuration to the IpuStrategy instance. Used to optimize the throughput performance.
 
@@ -608,7 +601,7 @@ class IpuStrategy(object):
                 Default False, which means disabled.
             batches_per_step (int, optional): Set the batches per run in data pipelining mode. Only if enable_pipelining=True, batches_per_step is able to be set > 1.
                 Default 1, which means no data pipelining.
-            accumulationFactor (int, optional): Specify the number of micro-batches to accumulate 
+            accumulation_factor (int, optional): Specify the number of micro-batches to accumulate 
                 before applying the varUpdate. Default 1, which means disable the accumulation.
         
         Returns:
@@ -623,24 +616,25 @@ class IpuStrategy(object):
                 import paddle.static as static
 
                 paddle.enable_static()
+
                 ipu_strategy = static.IpuStrategy()
                 ipu_strategy.set_pipelining_config(enable_pipelining=False,
-                                                 batches_per_step=1,
-                                                 accumulationFactor=1)
+                                                    batches_per_step=1,
+                                                    accumulation_factor=1)
         """
         enable_manual_shard = self.get_option('enable_manual_shard')
-        if enable_manual_shard != True and enable_pipelining:
+        if not enable_manual_shard and enable_pipelining:
             raise RuntimeError(
                 "Only if enable_manual_shard=True, enable_pipelining is able to be set True."
             )
-        conf = {
+        options = {
             'enable_pipelining': enable_pipelining,
             'batches_per_step': batches_per_step,
-            'accumulationFactor': accumulationFactor,
+            'accumulation_factor': accumulation_factor,
         }
-        self.set_options(conf)
+        self.set_options(options)
 
-    def set_half_config(self, enable_fp16=False):
+    def set_precision_config(self, enable_fp16=False):
         """
         Set half computation configuration to the IpuStrategy instance. Used to optimize the performance.
 
@@ -656,13 +650,15 @@ class IpuStrategy(object):
                 # required: ipu
 
                 import paddle
+                import paddle.static as static
 
                 paddle.enable_static()
-                ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.set_half_config(enable_fp16=False)
+
+                ipu_strategy = static.IpuStrategy()
+                ipu_strategy.set_precision_config(enable_fp16=False)
         """
-        conf = {'enable_fp16': enable_fp16, }
-        self.set_options(conf)
+        options = {'enable_fp16': enable_fp16, }
+        self.set_options(options)
 
     def add_custom_op(self,
                       paddle_op,
@@ -690,9 +686,11 @@ class IpuStrategy(object):
                 # required: ipu
 
                 import paddle
+                import paddle.static as static
 
                 paddle.enable_static()
-                ipu_strategy = paddle.static.IpuStrategy()
+
+                ipu_strategy = static.IpuStrategy()
                 ipu_strategy.add_custom_op('paddle_relu', 'popart_relu')
         """
         if popart_op is None:
@@ -724,13 +722,15 @@ class IpuStrategy(object):
                 # required: ipu
 
                 import paddle
+                import paddle.static as static
 
                 paddle.enable_static()
-                ipu_strategy = paddle.static.IpuStrategy()
-                conf = {'num_ipus':1, 'enable_fp16': True}
-                ipu_strategy.set_options(conf)
+
+                ipu_strategy = static.IpuStrategy()
+                options = {'num_ipus':1, 'enable_fp16': True}
+                ipu_strategy.set_options(options)
         """
-        self._ipu_strategy.set_option(options)
+        self._ipu_strategy.set_options(options)
 
     def get_option(self, option):
         """
@@ -748,9 +748,11 @@ class IpuStrategy(object):
                 # required: ipu
 
                 import paddle
+                import paddle.static as static
 
                 paddle.enable_static()
-                ipu_strategy = paddle.static.IpuStrategy()
+
+                ipu_strategy = static.IpuStrategy()
                 num_ipus = ipu_strategy.get_option('num_ipus')
         """
         return self._ipu_strategy.get_option(option)['value']
@@ -819,8 +821,8 @@ class IpuCompiledProgram(object):
             
             ipu_strategy = static.IpuStrategy()
             ipu_strategy.set_graph_config(num_ipus=1, is_training=True, batch_size=1)
-            ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
-            ipu_strategy.set_half_config(enable_fp16=False)
+            ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, accumulation_factor=1)
+            ipu_strategy.set_precision_config(enable_fp16=False)
             
             ipu_compiled_program = static.IpuCompiledProgram(
                 main_prog,
@@ -893,8 +895,8 @@ class IpuCompiledProgram(object):
 
                 ipu_strategy = static.IpuStrategy()
                 ipu_strategy.set_graph_config(num_ipus=1, is_training=True, batch_size=1)
-                ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, accumulationFactor=1)
-                ipu_strategy.set_half_config(enable_fp16=False)
+                ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, accumulation_factor=1)
+                ipu_strategy.set_precision_config(enable_fp16=False)
                 
                 program = static.IpuCompiledProgram(
                     main_prog,

@@ -3801,7 +3801,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<platform::ipu::IpuStrategy>(m, "IpuStrategy")
       .def(py::init())
-      .def("set_option",
+      .def("set_options",
            [](platform::ipu::IpuStrategy &self, const py::dict &opt) {
              for (auto element : opt) {
                auto option_name = element.first.cast<std::string>();
