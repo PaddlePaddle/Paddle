@@ -897,21 +897,13 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-CustomDeviceContext::CustomDeviceContext(CustomPlace place) : place_(place) {
-  DeviceGuard guard(place_);
-  stream_.reset(new stream::Stream());
-  stream_->Init(place_);
+CustomDeviceContext::CustomDeviceContext(CustomPlace place)
+    : phi::CustomContext(place) {
+  Init();
+  stream_.reset(new platform::stream::Stream(place, stream()));
 }
 
 CustomDeviceContext::~CustomDeviceContext() {}
-
-const Place& CustomDeviceContext::GetPlace() const { return place_; }
-
-void CustomDeviceContext::Wait() const {
-  // platform::RecordEvent record_event("NPUDeviceContext/wait");
-  VLOG(4) << "CustomDevice context(" << this << ")  Wait";
-  stream_->Wait();
-}
 #endif
 }  // namespace platform
 }  // namespace paddle
