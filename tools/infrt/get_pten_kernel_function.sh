@@ -26,7 +26,7 @@ PADDLE_ROOT="$( cd "$( dirname "$0" )/../../" && pwd )"
 unset GREP_OPTIONS && find ${PADDLE_ROOT}/paddle/phi/kernels -name "*.c*" \
   | xargs sed -e '/PD_REGISTER_\(GENERAL_\)\?KERNEL(/,/)/!d' \
   | awk 'BEGIN { RS="{" }{ gsub(/\n /,""); print $0 }' \
-  | grep PT_REGISTER \
+  | grep PD_REGISTER \
   | awk -F ",|\(|\)" '{gsub(/ /,"");$1="";print}' \
   | sort -u  | awk '{gsub(/phi::/,"");gsub(/paddle::platform::/,"");gsub(/dtype::/,"");gsub(/paddle::/,"");print $0}' \
   | grep -v "_grad" > $kernel_register_info_file
