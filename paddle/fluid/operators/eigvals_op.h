@@ -17,12 +17,12 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/complex_functors.h"
-#include "paddle/pten/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
 namespace paddle {
 namespace operators {
@@ -48,7 +48,7 @@ struct PaddleComplex<
 template <typename T>
 using PaddleCType = typename PaddleComplex<T>::type;
 template <typename T>
-using Real = typename pten::funcs::Real<T>;
+using Real = typename phi::funcs::Real<T>;
 
 static void SpiltBatchSquareMatrix(const Tensor& input,
                                    std::vector<Tensor>* output) {
@@ -58,9 +58,10 @@ static void SpiltBatchSquareMatrix(const Tensor& input,
 
   DDim flattened_input_dims, flattened_output_dims;
   if (input_dims.size() > 2) {
-    flattened_input_dims = flatten_to_3d(input_dims, last_dim - 1, last_dim);
+    flattened_input_dims =
+        phi::flatten_to_3d(input_dims, last_dim - 1, last_dim);
   } else {
-    flattened_input_dims = framework::make_ddim({1, n_dim, n_dim});
+    flattened_input_dims = phi::make_ddim({1, n_dim, n_dim});
   }
 
   Tensor flattened_input;
@@ -90,7 +91,7 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
   Tensor w;
   int64_t n_dim = input.dims()[1];
   auto* w_data =
-      w.mutable_data<T>(framework::make_ddim({n_dim << 1}), ctx.GetPlace());
+      w.mutable_data<T>(phi::make_ddim({n_dim << 1}), ctx.GetPlace());
 
   int64_t work_mem = work->memory_size();
   int64_t required_work_mem = 3 * n_dim * sizeof(T);
@@ -103,11 +104,11 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
           required_work_mem, work_mem));
 
   int info = 0;
-  pten::funcs::lapackEig<T>('N', 'N', static_cast<int>(n_dim),
-                            a.template data<T>(), static_cast<int>(n_dim),
-                            w_data, NULL, 1, NULL, 1, work->template data<T>(),
-                            static_cast<int>(work_mem / sizeof(T)),
-                            static_cast<T*>(NULL), &info);
+  phi::funcs::lapackEig<T>('N', 'N', static_cast<int>(n_dim),
+                           a.template data<T>(), static_cast<int>(n_dim),
+                           w_data, NULL, 1, NULL, 1, work->template data<T>(),
+                           static_cast<int>(work_mem / sizeof(T)),
+                           static_cast<T*>(NULL), &info);
 
   std::string name = "framework::platform::dynload::dgeev_";
   if (framework::TransToProtoVarType(input.dtype()) ==
@@ -118,7 +119,7 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
 
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), n_dim);
-  pten::funcs::RealImagToComplexFunctor<PaddleCType<T>> functor(
+  phi::funcs::RealImagToComplexFunctor<PaddleCType<T>> functor(
       w_data, w_data + n_dim, output->template data<PaddleCType<T>>(), n_dim);
   for_range(functor);
 }
@@ -143,7 +144,7 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
           required_work_mem, work_mem));
 
   int64_t rwork_mem = rwork->memory_size();
-  int64_t required_rwork_mem = (n_dim << 1) * sizeof(pten::funcs::Real<T>);
+  int64_t required_rwork_mem = (n_dim << 1) * sizeof(phi::funcs::Real<T>);
   PADDLE_ENFORCE_GE(
       rwork_mem, required_rwork_mem,
       platform::errors::InvalidArgument(
@@ -153,11 +154,11 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
           required_rwork_mem, rwork_mem));
 
   int info = 0;
-  pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
+  phi::funcs::lapackEig<T, phi::funcs::Real<T>>(
       'N', 'N', static_cast<int>(n_dim), a.template data<T>(),
       static_cast<int>(n_dim), output->template data<T>(), NULL, 1, NULL, 1,
       work->template data<T>(), static_cast<int>(work_mem / sizeof(T)),
-      rwork->template data<pten::funcs::Real<T>>(), &info);
+      rwork->template data<phi::funcs::Real<T>>(), &info);
 
   std::string name = "framework::platform::dynload::cgeev_";
   if (framework::TransToProtoVarType(input.dtype()) ==
@@ -181,13 +182,13 @@ class EigvalsKernel : public framework::OpKernel<T> {
     int64_t n_dim = input_matrices[0].dims()[1];
     int64_t n_batch = input_matrices.size();
     DDim output_dims = output->dims();
-    output->Resize(framework::make_ddim({n_batch, n_dim}));
+    output->Resize(phi::make_ddim({n_batch, n_dim}));
     std::vector<Tensor> output_vectors = output->Split(1, 0);
 
     // query workspace size
     T qwork;
     int info;
-    pten::funcs::lapackEig<T, pten::funcs::Real<T>>(
+    phi::funcs::lapackEig<T, phi::funcs::Real<T>>(
         'N', 'N', static_cast<int>(n_dim), input_matrices[0].template data<T>(),
         static_cast<int>(n_dim), NULL, NULL, 1, NULL, 1, &qwork, -1,
         static_cast<Real<T>*>(NULL), &info);
@@ -195,7 +196,7 @@ class EigvalsKernel : public framework::OpKernel<T> {
 
     Tensor work, rwork;
     try {
-      work.mutable_data<T>(framework::make_ddim({lwork}), ctx.GetPlace());
+      work.mutable_data<T>(phi::make_ddim({lwork}), ctx.GetPlace());
     } catch (memory::allocation::BadAlloc&) {
       LOG(WARNING) << "Failed to allocate Lapack workspace with the optimal "
                    << "memory size = " << lwork * sizeof(T) << " bytes, "
@@ -203,12 +204,12 @@ class EigvalsKernel : public framework::OpKernel<T> {
                    << "required size = " << 3 * n_dim * sizeof(T) << " bytes, "
                    << "this may lead to bad performance.";
       lwork = 3 * n_dim;
-      work.mutable_data<T>(framework::make_ddim({lwork}), ctx.GetPlace());
+      work.mutable_data<T>(phi::make_ddim({lwork}), ctx.GetPlace());
     }
     if (framework::IsComplexType(
             framework::TransToProtoVarType(input->dtype()))) {
-      rwork.mutable_data<pten::funcs::Real<T>>(
-          framework::make_ddim({n_dim << 1}), ctx.GetPlace());
+      rwork.mutable_data<phi::funcs::Real<T>>(phi::make_ddim({n_dim << 1}),
+                                              ctx.GetPlace());
     }
 
     for (int64_t i = 0; i < n_batch; ++i) {

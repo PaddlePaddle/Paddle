@@ -15,14 +15,15 @@
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 
 #include "paddle/fluid/framework/details/container_cast.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 void FusedBroadcastOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
 
   if (places_.size() == 1UL) return;
 

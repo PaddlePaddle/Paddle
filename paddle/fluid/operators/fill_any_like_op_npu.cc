@@ -65,7 +65,7 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
     auto shape = out->dims();
     NpuOpRunner runner;
     runner.SetType("Fill")
-        .AddInput(framework::vectorize(shape))
+        .AddInput(phi::vectorize(shape))
         .AddInput(tensor_tmp)
         .AddOutput(*out)
         .Run(stream);

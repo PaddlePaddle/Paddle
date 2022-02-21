@@ -19,7 +19,7 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/utils.h"
 
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"
@@ -38,12 +38,12 @@ bool IsLeafTensor(const paddle::experimental::Tensor& target) {
 }
 
 paddle::experimental::Tensor CreateTensorWithValue(
-    const pten::DDim& ddim, const paddle::platform::Place& place,
-    const pten::DataType& dtype, const pten::DataLayout& layout, float value,
+    const phi::DDim& ddim, const paddle::platform::Place& place,
+    const phi::DataType& dtype, const phi::DataLayout& layout, float value,
     bool is_leaf) {
   paddle::experimental::Tensor out = paddle::experimental::full(
-      paddle::framework::vectorize(ddim), paddle::experimental::Scalar(value),
-      dtype, pten::TransToPtenBackend(place));
+      phi::vectorize(ddim), paddle::experimental::Scalar(value), dtype,
+      phi::TransToPtenBackend(place));
 
   auto meta = EagerUtils::autograd_meta(&out);
   if (is_leaf) {

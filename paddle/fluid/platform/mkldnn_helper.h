@@ -103,18 +103,18 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
   switch (from) {
     case framework::DataLayout::kMKLDNN:
       if (to == framework::DataLayout::kNHWC) {
-        auto dims = framework::vectorize<int>(tensor_in->dims());
+        auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
-        tensor_in->Resize(framework::make_ddim(dims));
+        tensor_in->Resize(phi::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC output_shape"
                 << print_dims(dims);
       }
       break;
     case framework::DataLayout::kNHWC:
       if (to == framework::DataLayout::kMKLDNN) {
-        auto dims = framework::vectorize<int>(tensor_in->dims());
+        auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
-        tensor_in->Resize(framework::make_ddim(dims));
+        tensor_in->Resize(phi::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: kNHWC to: kMKLDNN output_shape"
                 << print_dims(dims);
       }

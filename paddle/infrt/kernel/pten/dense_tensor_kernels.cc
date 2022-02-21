@@ -18,19 +18,18 @@ namespace infrt {
 namespace kernel {
 namespace pten {
 
-::pten::DenseTensor CreateDenseTensorCpuF32Nchw(
+::phi::DenseTensor CreateDenseTensorCpuF32Nchw(
     backends::CpuPtenAllocator* allocator,
     host_context::Attribute<std::vector<int64_t>> dims,
     host_context::Attribute<std::vector<int64_t>> lod) {
-  return ::pten::DenseTensor(
-      allocator,
-      ::pten::DenseTensorMeta(::pten::DataType::FLOAT32,
-                              ::pten::framework::make_ddim(dims.get()),
-                              ::pten::DataLayout::NCHW,
-                              {}));
+  return ::phi::DenseTensor(allocator,
+                            ::phi::DenseTensorMeta(::phi::DataType::FLOAT32,
+                                                   ::phi::make_ddim(dims.get()),
+                                                   ::phi::DataLayout::NCHW,
+                                                   {}));
 }
 
-void FillDenseTensorF32(::pten::DenseTensor* dense_tensor,
+void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
                         host_context::Attribute<std::vector<int64_t>> values) {}
 
 }  // namespace pten

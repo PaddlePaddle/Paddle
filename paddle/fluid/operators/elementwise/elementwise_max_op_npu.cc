@@ -39,11 +39,9 @@ class ElementwiseMaxNPUKernel : public framework::OpKernel<T> {
     auto y_dims = y->dims();
     axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
     if (x_dims.size() >= y_dims.size()) {
-      direct_compute =
-          y_dims == framework::slice_ddim(x_dims, axis, x_dims.size());
+      direct_compute = y_dims == phi::slice_ddim(x_dims, axis, x_dims.size());
     } else {
-      direct_compute =
-          x_dims == framework::slice_ddim(y_dims, axis, y_dims.size());
+      direct_compute = x_dims == phi::slice_ddim(y_dims, axis, y_dims.size());
     }
 
     auto stream =

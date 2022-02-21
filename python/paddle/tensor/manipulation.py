@@ -672,7 +672,8 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     if not in_dygraph_mode():
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+            x, 'x',
+            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
             'flatten')
 
     x_dim = len(x.shape)
