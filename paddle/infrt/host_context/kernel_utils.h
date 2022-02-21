@@ -209,9 +209,11 @@ struct KernelImpl<Return (*)(Args...), impl_fn> {
     static void Invoke(KernelFrame* frame, const PreviousArgs&... pargs) {
       static_assert(out_idx != -1,
                     "Do not place Results after RemainingResults");
-      static_assert(const_idx == 0,
-                    "Arguments and results should appear before attributes");
-      Result<Head> arg(&frame->GetResults()[out_idx]);
+      // static_assert(const_idx == 0,
+      //              "Arguments and results should appear before attributes");
+
+      // Result<Head> arg(&frame->GetResults()[out_idx]);
+      Result<Head> arg(new ValueRef());
       KernelCallHelper<
           Tail...>::template Invoke<in_idx, out_idx + 1, const_idx>(frame,
                                                                     pargs...,
@@ -224,8 +226,8 @@ struct KernelImpl<Return (*)(Args...), impl_fn> {
   struct KernelCallHelper<Attribute<Head>, Tail...> {
     template <int in_idx, int out_idx, int const_idx, typename... PreviousArgs>
     static void Invoke(KernelFrame* frame, const PreviousArgs&... pargs) {
-      static_assert(const_idx != -1,
-                    "Do not place Attributes after RemainingAttributes");
+      // static_assert(const_idx != -1,
+      //              "Do not place Attributes after RemainingAttributes");
       Attribute<Head> arg(frame->GetAttributeAt(const_idx));
       KernelCallHelper<
           Tail...>::template Invoke<in_idx, out_idx, const_idx + 1>(frame,
