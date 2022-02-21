@@ -324,8 +324,6 @@ void BuildDygraphPtenKernelContext(
             framework::ToTypeName(var->Type())));
       }
 
-      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
-                                                      output_defs.at(i));
       framework::SetAllocationForOutputTenosr(
           tensor_out, phi::TransToPtenPlace(output_defs.at(i).backend));
 

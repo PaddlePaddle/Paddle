@@ -2099,8 +2099,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
             framework::ToTypeName(var->Type())));
       }
 
-      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
-                                                      output_defs.at(i));
       SetAllocationForOutputTenosr(
           tensor_out, phi::TransToPtenPlace(output_defs.at(i).backend));
 
