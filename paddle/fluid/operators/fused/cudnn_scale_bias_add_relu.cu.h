@@ -45,19 +45,19 @@ struct ScaleBiasAddReluArgs {
         platform::errors::InvalidArgument(
             "The size of data_shape is expected to 4. But recieved "
             "data_shape's size is %d, data_shape is [%s].",
-            data_shape.size(), framework::make_ddim(data_shape)));
+            data_shape.size(), phi::make_ddim(data_shape)));
     PADDLE_ENFORCE_EQ(
         param_shape.size(), 4U,
         platform::errors::InvalidArgument(
             "The size of param_shape is expected to 4. But recieved "
             "param_shape's size is %d, param_shape is [%s].",
-            param_shape.size(), framework::make_ddim(param_shape)));
+            param_shape.size(), phi::make_ddim(param_shape)));
     PADDLE_ENFORCE_EQ(
         bitmask_shape.size(), 3U,
         platform::errors::InvalidArgument(
             "The size of bitmask_shape is expected to 3. But recieved "
             "bitmask_shape's size is %d, bitmask_shape is [%s].",
-            bitmask_shape.size(), framework::make_ddim(bitmask_shape)));
+            bitmask_shape.size(), phi::make_ddim(bitmask_shape)));
 
     in_desc.set(data_shape, format, dtype);
     out_desc.set(data_shape, format, dtype);

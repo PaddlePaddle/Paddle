@@ -27,15 +27,6 @@ import hypothesis.strategies as st
 
 class TestConvHardSwishMkldnnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
-        ]
-        # If the problem has been fixed, the judgment 
-        # needs to be deleted!!!
-        if attrs[0]['data_format'] == "NHWC":
-            return False
-
         return True
 
     def sample_program_config(self, draw):

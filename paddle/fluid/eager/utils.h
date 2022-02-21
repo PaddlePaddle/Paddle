@@ -18,7 +18,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 
 namespace egr {
 

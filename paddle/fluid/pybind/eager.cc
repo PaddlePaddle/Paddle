@@ -24,9 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/detail/internals.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -34,8 +34,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/eager_op_function_impl.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 namespace paddle {
 namespace pybind {
 
@@ -99,8 +99,8 @@ void InitTensorWithNumpyValue(TensorObject* self, const py::object& array,
           "EmptyTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it with NumPy."));
-  pten::DenseTensor* impl_ptr =
-      static_cast<pten::DenseTensor*>(self->tensor.impl().get());
+  phi::DenseTensor* impl_ptr =
+      static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   paddle::platform::Place place = impl_ptr->place();
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
@@ -127,12 +127,12 @@ void InitTensorWithTensor(TensorObject* self,
                           const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.inner_place()) {
-    auto impl = std::static_pointer_cast<pten::DenseTensor>(src.impl());
+    auto impl = std::static_pointer_cast<phi::DenseTensor>(src.impl());
     self->tensor.set_impl(impl);
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
     self->tensor.set_impl(
-        src.copy_to(pten::TransToPtenBackend(place), true).impl());
+        src.copy_to(phi::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   if (src.get_autograd_meta()) {
@@ -150,13 +150,13 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
                                    const std::string& name) {
   self->tensor.set_name(name);
   if (place == src.place()) {
-    self->tensor.set_impl(std::make_shared<pten::DenseTensor>(src));
+    self->tensor.set_impl(std::make_shared<phi::DenseTensor>(src));
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
     auto temp =
-        paddle::experimental::Tensor(std::make_shared<pten::DenseTensor>(src));
+        paddle::experimental::Tensor(std::make_shared<phi::DenseTensor>(src));
     self->tensor.set_impl(
-        temp.copy_to(pten::TransToPtenBackend(place), true).impl());
+        temp.copy_to(phi::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
