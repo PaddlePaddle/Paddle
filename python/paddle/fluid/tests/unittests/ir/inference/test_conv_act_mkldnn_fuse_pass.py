@@ -53,8 +53,6 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         data_format = prog_config.ops[0].attrs["data_format"]
         filter_shape = prog_config.weights["filter"].shape
         input_shape = prog_config.inputs["input_x"].shape
-        if data_format != "NCHW":
-            return False
         if padding_algorithm == "VALID":
             if ((input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
             ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
@@ -80,8 +78,8 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=100), min_size=4, max_size=4))
-        x_shape[1] = draw(st.integers(min_value=1, max_value=10))
+                    min_value=5, max_value=100), min_size=4, max_size=4))
+        x_shape[1] = draw(st.integers(min_value=5, max_value=10))
 
         # 2. Generate legal attr:data_format of conv2d
         data_format = draw(st.sampled_from(["NCHW", "NHWC"]))
@@ -90,7 +88,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         f_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=7), min_size=4, max_size=4))
+                    min_value=1, max_value=5), min_size=4, max_size=4))
         if data_format == "NCHW":
             f_shape[1] = x_shape[1]
         else:

@@ -224,12 +224,12 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
       C = y->dims()[1];
       H = y->dims()[2];
       W = y->dims()[3];
-      scale_bias_dim = framework::make_ddim({C, 1, 1});
+      scale_bias_dim = phi::make_ddim({C, 1, 1});
     } else {
       C = y->dims()[3];
       H = y->dims()[1];
       W = y->dims()[2];
-      scale_bias_dim = framework::make_ddim({1, 1, C});
+      scale_bias_dim = phi::make_ddim({1, 1, C});
     }
     scale_share.Resize(scale_bias_dim);
     bias_share.Resize(scale_bias_dim);

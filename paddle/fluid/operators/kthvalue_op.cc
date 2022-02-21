@@ -66,7 +66,7 @@ class KthvalueOp : public framework::OperatorWithKernel {
     for (int64_t i = axis + 1; i < dim_size; i++) {
       dimvec.emplace_back(input_dims[i]);
     }
-    framework::DDim dims = framework::make_ddim(dimvec);
+    framework::DDim dims = phi::make_ddim(dimvec);
     ctx->SetOutputDim("Out", dims);
     ctx->SetOutputDim("Indices", dims);
     ctx->ShareLoD("X", "Out");

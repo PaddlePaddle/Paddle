@@ -20,7 +20,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/pten/kernels/split_kernel.h"
+#include "paddle/phi/kernels/split_kernel.h"
 namespace paddle {
 namespace operators {
 static inline std::vector<framework::DDim> UpdateOutsDims(
@@ -70,7 +70,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
                 "Only one dimension value of Attr(num_or_sections) "
                 "in SplitOp can be -1. "
                 "But received Attr(num_or_sections) = [%s].",
-                framework::make_ddim(sections)));
+                phi::make_ddim(sections)));
       }
 
       if (unk_dim_idx != -1) {
@@ -85,7 +85,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
                 "size "
                 "along the split dimension. But received Attr(num_or_sections) "
                 "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-                framework::make_ddim(sections), in_dims, axis));
+                phi::make_ddim(sections), in_dims, axis));
         if (each_section_is_known) {
           sections[unk_dim_idx] = input_axis_dim - sum_of_section;
         }
@@ -97,7 +97,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
                 "size "
                 "along the split dimension. But received Attr(num_or_sections)"
                 " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-                framework::make_ddim(sections), in_dims, axis));
+                phi::make_ddim(sections), in_dims, axis));
       }
     }
     for (int i = 0; i < outs_number; ++i) {

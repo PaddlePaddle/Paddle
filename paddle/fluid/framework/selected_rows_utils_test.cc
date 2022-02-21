@@ -24,11 +24,11 @@ class SelectedRowsTester : public ::testing::Test {
     std::vector<int64_t> rows{0, 4, 7};
     int64_t height = 10;
     int64_t row_numel = 100;
-    selected_rows_.reset(new pten::SelectedRows(rows, height));
+    selected_rows_.reset(new phi::SelectedRows(rows, height));
 
     Tensor* value = selected_rows_->mutable_value();
     auto* data = value->mutable_data<float>(
-        make_ddim({static_cast<int64_t>(rows.size()), row_numel}), place_);
+        phi::make_ddim({static_cast<int64_t>(rows.size()), row_numel}), place_);
     for (int64_t i = 0; i < value->numel(); ++i) {
       data[i] = static_cast<float>(i);
     }
@@ -36,21 +36,21 @@ class SelectedRowsTester : public ::testing::Test {
 
  protected:
   platform::CPUPlace place_;
-  std::unique_ptr<pten::SelectedRows> selected_rows_{nullptr};
+  std::unique_ptr<phi::SelectedRows> selected_rows_{nullptr};
 };
 
 TEST_F(SelectedRowsTester, height) { ASSERT_EQ(selected_rows_->height(), 10); }
 
 TEST_F(SelectedRowsTester, dims) {
-  ASSERT_EQ(selected_rows_->value().dims(), make_ddim({3, 100}));
+  ASSERT_EQ(selected_rows_->value().dims(), phi::make_ddim({3, 100}));
 }
 
 TEST_F(SelectedRowsTester, complete_dims) {
-  ASSERT_EQ(selected_rows_->GetCompleteDims(), make_ddim({10, 100}));
+  ASSERT_EQ(selected_rows_->GetCompleteDims(), phi::make_ddim({10, 100}));
 }
 
 TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
-  pten::SelectedRows dst_tensor;
+  phi::SelectedRows dst_tensor;
   platform::CPUDeviceContext cpu_ctx(place_);
   std::ostringstream oss;
 
@@ -71,13 +71,12 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
 
 TEST(SelectedRows, SparseTable) {
   platform::CPUPlace cpu;
-  pten::SelectedRows table;
+  phi::SelectedRows table;
 
   int64_t table_size = 100;
   int64_t embedding_width = 8;
   // initialize a sparse table
-  table.mutable_value()->Resize(
-      framework::make_ddim({table_size, embedding_width}));
+  table.mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
   auto* data = table.mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -98,7 +97,7 @@ TEST(SelectedRows, SparseTable) {
   ASSERT_EQ(table.rows().size(), 3UL);
 
   framework::Tensor ids;
-  ids.Resize(framework::make_ddim({4}));
+  ids.Resize(phi::make_ddim({4}));
   auto* ids_data = ids.mutable_data<int64_t>(cpu);
   ids_data[0] = static_cast<int64_t>(6);
   ids_data[1] = static_cast<int64_t>(6);
@@ -106,8 +105,8 @@ TEST(SelectedRows, SparseTable) {
   ids_data[3] = static_cast<int64_t>(10);
 
   framework::Tensor get_value;
-  auto* value_data = get_value.mutable_data<float>(
-      framework::make_ddim({4, embedding_width}), cpu);
+  auto* value_data =
+      get_value.mutable_data<float>(phi::make_ddim({4, embedding_width}), cpu);
   table.Get(ids, &get_value);
 
   for (int j = 0; j < embedding_width; ++j) {
@@ -124,7 +123,7 @@ TEST(SelectedRows, SparseTable) {
   }
 }
 
-void f1(pten::SelectedRows* table, int table_size) {
+void f1(phi::SelectedRows* table, int table_size) {
   for (int i = 1000000; i > 0; --i) {
     auto id = i % table_size;
     int64_t index1 = table->AutoGrownIndex(id, true);
@@ -135,7 +134,7 @@ void f1(pten::SelectedRows* table, int table_size) {
   }
 }
 
-void f2(pten::SelectedRows* table, int table_size) {
+void f2(phi::SelectedRows* table, int table_size) {
   for (int i = 0; i < 1000000; ++i) {
     auto id = i % table_size;
     int64_t index1 = table->AutoGrownIndex(id, true);
@@ -146,7 +145,7 @@ void f2(pten::SelectedRows* table, int table_size) {
   }
 }
 
-void f3(pten::SelectedRows* table, int table_size) {
+void f3(phi::SelectedRows* table, int table_size) {
   clock_t t1 = clock();
   for (int i = 100000; i > 0; --i) {
     auto id1 = table->AutoGrownIndex(i % table_size, true);
@@ -157,7 +156,7 @@ void f3(pten::SelectedRows* table, int table_size) {
   std::cout << "f3 run time:" << t2 - t1 << std::endl;
 }
 
-void f4(pten::SelectedRows* table, int table_size) {
+void f4(phi::SelectedRows* table, int table_size) {
   clock_t t1 = clock();
   for (int i = 0; i < 100000; ++i) {
     auto id1 = table->AutoGrownIndex(i % table_size, true);
@@ -170,13 +169,12 @@ void f4(pten::SelectedRows* table, int table_size) {
 
 TEST(SelectedRows, MultiThreadAutoIndex) {
   platform::CPUPlace cpu;
-  pten::SelectedRows table;
+  phi::SelectedRows table;
 
   int64_t table_size = 100000;
   int64_t embedding_width = 8;
   // initialize a sparse table
-  table.mutable_value()->Resize(
-      framework::make_ddim({table_size, embedding_width}));
+  table.mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
   auto* data = table.mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {

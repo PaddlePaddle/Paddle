@@ -243,6 +243,7 @@ option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup ji
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
 option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
+option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
 
 if(WITH_RECORD_BUILDTIME)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
@@ -263,6 +264,10 @@ set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
   message("Choose the correct type of sanitizer")
   return()
+endif()
+
+if (LINUX AND NOT WITH_CUSTOM_DEVICE AND NOT ON_INFER)
+set(WITH_CUSTOM_DEVICE ON)
 endif()
 
 if(WIN32)
