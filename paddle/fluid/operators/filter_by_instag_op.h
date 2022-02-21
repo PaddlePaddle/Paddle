@@ -25,11 +25,12 @@
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-using SelectedRows = phi::SelectedRows;
+using SelectedRows = framework::SelectedRows;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
@@ -61,7 +62,20 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // expected auto = const int64_t
     auto* x2_data = x2->data<int64_t>();
     // e.g get [0, 1, 2, 3, ...]
-    size_t x2_lods_size = x2->dims()[0];
+    // size_t x2_lods_size = x2->dims()[0];
+    // size_t instag_num_per_ins = x2->dims()[1];
+
+    Vector<size_t> x2_lods(1, 0);
+    if (x2->lod().size() != 0) {  // lod_level = 1
+      x2_lods = x2->lod()[0];
+    } else {  // lod_level = 0
+      const size_t x2_lods_size = x2->dims()[0];
+      const size_t instag_num_per_ins = x2->dims()[1];
+      for (size_t i = 0; i < x2_lods_size; i++) {
+        x2_lods.push_back(x2_lods.back() + instag_num_per_ins);
+      }
+    }
+
     Vector<size_t> x1_lods(1, 0);
     if (!is_x1_lod) {
       for (int i = 0; i < x1->dims()[0]; i++) {
@@ -79,8 +93,8 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     }
     std::unordered_map<int64_t, int64_t> mmap_aux;
     Vector<size_t> out_lods(1, 0);
-    for (size_t i = 0; i < x2_lods_size; i++) {
-      for (size_t j = i; j < i + 1; j++) {
+    for (size_t i = 0; i < x2_lods.size() - 1; i++) {
+      for (size_t j = x2_lods[i]; j < x2_lods[i + 1]; j++) {
         if (filter_tag.find(x2_data[j]) != filter_tag.end()) {
           size_t batch_len = x1_lods[i + 1] - x1_lods[i];
           mmap_aux[out_lods.back()] = x1_lods[i];
@@ -101,14 +115,15 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // expected auto = T
     size_t x1_embed_size = x1->dims()[1];
     if (out_lods.size() - 1 > 0) {
-      out->Resize(
-          phi::make_ddim({(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
-      map->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 3}));
-      loss_weight->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 1}));
+      out->Resize(framework::make_ddim(
+          {(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
+      map->Resize(framework::make_ddim({(int64_t)out_lods.size() - 1, 3}));
+      loss_weight->Resize(
+          framework::make_ddim({(int64_t)out_lods.size() - 1, 1}));
     } else {
-      out->Resize(phi::make_ddim({1, (int64_t)x1_embed_size}));
-      map->Resize(phi::make_ddim({1, 3}));
-      loss_weight->Resize(phi::make_ddim({1, 1}));
+      out->Resize(framework::make_ddim({1, (int64_t)x1_embed_size}));
+      map->Resize(framework::make_ddim({1, 3}));
+      loss_weight->Resize(framework::make_ddim({1, 1}));
     }
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     auto* map_data = map->mutable_data<int64_t>(context.GetPlace());
@@ -165,8 +180,10 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
           out_data[oi] = (int32_t)out_val_if_empty;
         } else if (std::is_same<T, int64_t>::value) {
           out_data[oi] = (int64_t)out_val_if_empty;
-        } else {
+        } else if (std::is_same<T, double>::value) {
           out_data[oi] = static_cast<double>(out_val_if_empty);
+        } else {
+          out_data[oi] = static_cast<float>(out_val_if_empty);
         }
       }
       loss_weight_data[0] = 0;
@@ -178,6 +195,9 @@ template <typename T>
 class FilterByInstagGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    platform::Timer timeline_;
+    timeline_.Start();
+
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
     auto* loss_weight = context.Input<LoDTensor>("LossWeight");
@@ -206,6 +226,10 @@ class FilterByInstagGradKernel : public framework::OpKernel<T> {
         }
       }
     }
+
+    timeline_.Pause();
+    std::cout << "grad kernel phase cost time: " << timeline_.ElapsedSec()
+              << std::endl;
   }
 };
 }  // namespace operators
