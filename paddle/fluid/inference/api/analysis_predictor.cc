@@ -592,6 +592,12 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetModelParamsPath(config_.params_file());
   }
 
+  argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
+  argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
+  argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
+  argument_.SetMinInputShape(config_.min_input_shape_);
+  argument_.SetMaxInputShape(config_.max_input_shape_);
+  argument_.SetOptimInputShape(config_.optim_input_shape_);
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
     LOG(INFO) << "TensorRT subgraph engine is enabled";
     argument_.SetUseTensorRT(true);
@@ -601,14 +607,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
     argument_.SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_.SetTensorRtDLACore(config_.trt_dla_core_);
-    argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
-    argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
-    argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
-    argument_.SetMinInputShape(config_.min_input_shape_);
-    argument_.SetMaxInputShape(config_.max_input_shape_);
-    argument_.SetOptimInputShape(config_.optim_input_shape_);
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
     argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
     argument_.SetTensorRtTunedDynamicShape(
