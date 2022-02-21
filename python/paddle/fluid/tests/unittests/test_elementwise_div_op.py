@@ -76,7 +76,7 @@ class TestElementwiseDivOpBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-1)
+        self.check_output_with_place(place)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
