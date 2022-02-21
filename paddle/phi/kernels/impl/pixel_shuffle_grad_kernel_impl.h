@@ -27,18 +27,11 @@ void PixelShuffleGradKernel(const Context& ctx,
                             int upscale_factor,
                             const std::string& data_format,
                             DenseTensor* x_grad) {
-  // auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-  // auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-  // dx->mutable_data<T>(ctx.GetPlace());
   auto* dout = &out_grad;
   auto* dx = x_grad;
   ctx.template Alloc<T>(dx);
-
   int factor = upscale_factor;
-
-  // std::string data_format = ctx.Attr<std::string>("data_format");
   bool channel_last = (data_format == "NHWC");
-
   auto do_dims = dout->dims();
   auto dx_dims = dx->dims();
 
@@ -59,7 +52,6 @@ void PixelShuffleGradKernel(const Context& ctx,
     o.Resize({do_dims[0], dx_dims[1], dx_dims[2], do_dims[3], factor, factor});
   }
   phi::funcs::Transpose<Context, T, 6> trans;
-  // auto& dev_ctx = ctx.template device_context<DeviceContext>();
   trans(ctx, t, &o, axis);
   dx->Resize(dx_dims);
 }

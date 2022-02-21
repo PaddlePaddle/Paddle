@@ -27,15 +27,10 @@ void PixelShuffleKernel(const Context& ctx,
                         int upscale_factor,
                         const std::string& data_format,
                         DenseTensor* out) {
-  // auto* in = ctx.Input<framework::Tensor>("X");
   auto* in = &x;
-  // auto* out = ctx.Output<framework::Tensor>("Out");
-  // out->mutable_data<T>(ctx.GetPlace());
   ctx.template Alloc<T>(out);
   int factor = upscale_factor;
-  // std::string data_format = ctx.Attr<std::string>("data_format");
   bool channel_last = (data_format == "NHWC");
-
   auto in_dims = in->dims();
   auto o_dims = out->dims();
 
@@ -56,7 +51,6 @@ void PixelShuffleKernel(const Context& ctx,
     o.Resize({in_dims[0], in_dims[1], factor, in_dims[2], factor, o_dims[3]});
   }
   phi::funcs::Transpose<Context, T, 6> trans;
-  // auto& dev_ctx = ctx.template device_context<DeviceContext>();
   trans(ctx, t, &o, axis);
   out->Resize(o_dims);
 }
