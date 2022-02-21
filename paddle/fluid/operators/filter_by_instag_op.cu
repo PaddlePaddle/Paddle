@@ -803,8 +803,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     // platform::Timer timeline_;
     // timeline_.Start();
 
-    const auto gpu_place =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    auto gpu_place = context.GetPlace();
 
     gpuStream_t current_stream = context.cuda_device_context().stream();
 
@@ -1227,8 +1226,7 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
     // platform::Timer timeline_;
     // timeline_.Start();
 
-    const auto gpu_place =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    auto gpu_place = context.GetPlace();
     gpuStream_t current_stream = context.cuda_device_context().stream();
     auto max_thread_num_per_block = 1024;
     //    context.cuda_device_context().GetMaxThreadsPerBlock();
