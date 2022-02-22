@@ -578,7 +578,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_ir_embedding_eltwise_layernorm_fuse_pass',
     'test_ir_fc_fuse_pass',
     'test_ir_skip_layernorm_pass',
-    'test_conv_affine_channel_fuse_pass',
     'test_conv_bias_mkldnn_fuse_pass',
     'test_conv_bn_fuse_pass',
     'test_conv_elementwise_add2_act_fuse_pass',
