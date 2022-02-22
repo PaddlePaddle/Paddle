@@ -206,6 +206,7 @@ __device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
   }
 }
 
+#ifdef PADDLE_WITH_CUDA
 /*
  * One thead block deals with atomicAdd elementwisely for array of len.
  * @in: [x1, x2, x3, ...]
@@ -249,6 +250,7 @@ __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
     }
   }
 }
+#endif
 #endif
 
 CUDA_ATOMIC_WRAPPER(Add, complex<float>) {

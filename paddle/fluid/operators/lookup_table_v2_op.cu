@@ -57,7 +57,13 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const IdT *ids,
     auto id = static_cast<int64_t>(ids[idy]);
     const T *out = output + idy * D;
     T *tab = table + id * D;
+#ifdef PADDLE_WITH_CUDA
     paddle::platform::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+#else
+    for (int i = idx; i < D; i += BlockDimX) {
+      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+    }
+#endif
     idy += blockDim.y * gridDim.x;
   }
 }
