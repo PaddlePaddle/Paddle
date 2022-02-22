@@ -98,7 +98,7 @@ class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
             ele_y = paddle.static.data(
                 name="_ele_y", shape=[self.hidden, ], dtype='float32')
 
-            multi_layer = MultiFCLayer(self.hidden, self._get_act_type())
+            multi_layer = MultiFCLayer(self.hidden, self._get_act_type()[0])
             with paddle.static.amp.fp16_guard():
                 out = multi_layer(data, matmul_y, ele_y)
                 self.loss = paddle.mean(out)
@@ -143,15 +143,20 @@ class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
             "[{}] outputs are miss-matched.".format(type(self).__name__))
         self.assertTrue(
             verify_node_count(program._graph, "fused_gemm_epilogue", 3),
-            "[{}] The number of fused_gemm_epilogue is miss-matched.".format(
-                type(self).__name__))
+            "[{}] The number of fused_gemm_epilogue is miss-matched in the computing graph.".
+            format(type(self).__name__))
+        act_fwd_name = self._get_act_type()[1]
+        self.assertTrue(
+            verify_node_count(program._graph, act_fwd_name, 1),
+            "[{}] The number of {} is miss-matched in the computing graph.".
+            format(type(self).__name__, act_fwd_name))
 
     def _pre_test_hooks(self):
         self.atol = 1e-4
         self.rtol = 1e-3
 
     def _get_act_type(self):
-        return paddle.nn.ReLU
+        return paddle.nn.ReLU, "relu"
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -162,7 +167,7 @@ class TestFuseGemmEpilogueReluFWDFP32(TestFuseGemmEpilogueFWDBase):
         self.rtol = 1e-2
 
     def _get_act_type(self):
-        return paddle.nn.ReLU
+        return paddle.nn.ReLU, "relu"
 
     def test_output(self):
         self._test_output()
@@ -192,7 +197,7 @@ class TestFuseGemmEpilogueGeluFWDFP32(TestFuseGemmEpilogueFWDBase):
         self.rtol = 1e-3
 
     def _get_act_type(self):
-        return paddle.nn.GELU
+        return paddle.nn.GELU, "gelu"
 
     def test_output(self):
         self._test_output()
@@ -239,7 +244,7 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
             ele_y = paddle.static.data(
                 name="_ele_y", shape=[self.hidden, ], dtype='float32')
 
-            multi_layer = MultiFCLayer(self.hidden, self._get_act_type())
+            multi_layer = MultiFCLayer(self.hidden, self._get_act_type()[0])
             with paddle.static.amp.fp16_guard():
                 out = multi_layer(data, matmul_y, ele_y)
                 self.loss = paddle.mean(out)
@@ -295,16 +300,29 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
                 "[{}] output is miss-matched.".format(type(self).__name__))
 
         self.assertTrue(
-            verify_node_count(program._graph, "fused_gemm_epilogue", 3))
+            verify_node_count(program._graph, "fused_gemm_epilogue", 3),
+            "[{}] The number of fused_gemm_epilogue is miss-matched in the computing graph.".
+            format(type(self).__name__))
         self.assertTrue(
-            verify_node_count(program._graph, "fused_gemm_epilogue_grad", 3))
+            verify_node_count(program._graph, "fused_gemm_epilogue_grad", 3),
+            "[{}] The number of fused_gemm_epilogue_grad is miss-matched in the computing graph.".
+            format(type(self).__name__))
+        _, act_fwd_name, act_bwd_name = self._get_act_type()
+        self.assertTrue(
+            verify_node_count(program._graph, act_fwd_name, 1),
+            "[{}] The number of {} is miss-matched in the computing graph.".
+            format(type(self).__name__, act_fwd_name))
+        self.assertTrue(
+            verify_node_count(program._graph, act_bwd_name, 2),
+            "[{}] The number of {} is miss-matched in the computing graph.".
+            format(type(self).__name__, act_bwd_name))
 
     def _pre_test_hooks(self):
         self.atol = 1e-4
         self.rtol = 1e-3
 
     def _get_act_type(self):
-        return paddle.nn.ReLU
+        return paddle.nn.ReLU, "relu", "relu_grad"
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -315,7 +333,7 @@ class TestFuseGemmEpilogueReLUBWDFP32(TestFuseGemmEpilogueBWDBase):
         self.rtol = 1e-3
 
     def _get_act_type(self):
-        return paddle.nn.ReLU
+        return paddle.nn.ReLU, "relu", "relu_grad"
 
     def test_output(self):
         self._test_output()
@@ -345,7 +363,7 @@ class TestFuseGemmEpilogueGeLUBWDFP32(TestFuseGemmEpilogueBWDBase):
         self.rtol = 1e-3
 
     def _get_act_type(self):
-        return paddle.nn.GELU
+        return paddle.nn.GELU, "gelu", "gelu_grad"
 
     def test_output(self):
         self._test_output()

@@ -362,7 +362,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 
     auto key =
         GetReserveSpaceCacheKey(matmul_grad_x->Var()->Name(), g->GetBlockId());
-    if (EpiloguePassActivationCache::Instance().HasFusedActivation(key)) {
+    if (!EpiloguePassActivationCache::Instance().HasFusedActivation(key)) {
       return;
     }
     auto reserve_space_name =
