@@ -58,6 +58,19 @@ class TestDistModelTensor(unittest.TestCase):
         self.assertEqual(dist_tensor_float.as_ndarray().ravel().tolist(),
                          tensor_float.ravel().tolist())
 
+        tensor_float_16 = np.random.randn(20, 2).astype('float16')
+        dist_tensor_float_16 = DistModelTensor(tensor_float_16,
+                                               'float_tensor_16')
+        self.assertEqual(dist_tensor_float_16.dtype, DistModelDataType.FLOAT16)
+        self.assertEqual(
+            dist_tensor_float_16.data.tolist('float16'),
+            tensor_float_16.ravel().tolist())
+        self.assertEqual(dist_tensor_float_16.data.length(), 40 * 2)
+        self.assertEqual(dist_tensor_float_16.name, 'float_tensor_16')
+        dist_tensor_float_16.data.reset(tensor_float_16)
+        self.assertEqual(dist_tensor_float_16.as_ndarray().ravel().tolist(),
+                         tensor_float_16.ravel().tolist())
+
 
 if __name__ == '__main__':
     unittest.main()
