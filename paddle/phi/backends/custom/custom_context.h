@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-#include "paddle/fluid/platform/device/device_ext.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -30,7 +29,7 @@ class CustomContext : public DeviceContext {
   const Place& GetPlace() const override;
 
   /*! \brief  Return stream in the device context. */
-  C_Stream stream() const;
+  void* stream() const;
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
