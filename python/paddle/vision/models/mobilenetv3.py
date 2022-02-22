@@ -276,28 +276,17 @@ class MobileNetV3Small(MobileNetV3):
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
         config = [
-            InvertedResidualConfig(
-                16, 3, 16, 16, True, "relu", 2, scale=scale),
-            InvertedResidualConfig(
-                16, 3, 72, 24, False, "relu", 2, scale=scale),
-            InvertedResidualConfig(
-                24, 3, 88, 24, False, "relu", 1, scale=scale),
-            InvertedResidualConfig(
-                24, 5, 96, 40, True, "hardswish", 2, scale=scale),
-            InvertedResidualConfig(
-                40, 5, 240, 40, True, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                40, 5, 240, 40, True, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                40, 5, 120, 48, True, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                48, 5, 144, 48, True, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                48, 5, 288, 96, True, "hardswish", 2, scale=scale),
-            InvertedResidualConfig(
-                96, 5, 576, 96, True, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                96, 5, 576, 96, True, "hardswish", 1, scale=scale),
+            InvertedResidualConfig(16, 3, 16, 16, True, "relu", 2, scale),
+            InvertedResidualConfig(16, 3, 72, 24, False, "relu", 2, scale),
+            InvertedResidualConfig(24, 3, 88, 24, False, "relu", 1, scale),
+            InvertedResidualConfig(24, 5, 96, 40, True, "hardswish", 2, scale),
+            InvertedResidualConfig(40, 5, 240, 40, True, "hardswish", 1, scale),
+            InvertedResidualConfig(40, 5, 240, 40, True, "hardswish", 1, scale),
+            InvertedResidualConfig(40, 5, 120, 48, True, "hardswish", 1, scale),
+            InvertedResidualConfig(48, 5, 144, 48, True, "hardswish", 1, scale),
+            InvertedResidualConfig(48, 5, 288, 96, True, "hardswish", 2, scale),
+            InvertedResidualConfig(96, 5, 576, 96, True, "hardswish", 1, scale),
+            InvertedResidualConfig(96, 5, 576, 96, True, "hardswish", 1, scale),
         ]
         last_channel = _make_divisible(1024 * scale, 8)
         super().__init__(
@@ -335,36 +324,30 @@ class MobileNetV3Large(MobileNetV3):
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
         config = [
-            InvertedResidualConfig(
-                16, 3, 16, 16, False, "relu", 1, scale=scale),
-            InvertedResidualConfig(
-                16, 3, 64, 24, False, "relu", 2, scale=scale),
-            InvertedResidualConfig(
-                24, 3, 72, 24, False, "relu", 1, scale=scale),
-            InvertedResidualConfig(
-                24, 5, 72, 40, True, "relu", 2, scale=scale),
-            InvertedResidualConfig(
-                40, 5, 120, 40, True, "relu", 1, scale=scale),
-            InvertedResidualConfig(
-                40, 5, 120, 40, True, "relu", 1, scale=scale),
-            InvertedResidualConfig(
-                40, 3, 240, 80, False, "hardswish", 2, scale=scale),
-            InvertedResidualConfig(
-                80, 3, 200, 80, False, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                80, 3, 184, 80, False, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                80, 3, 184, 80, False, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                80, 3, 480, 112, True, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                112, 3, 672, 112, True, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                112, 5, 672, 160, True, "hardswish", 2, scale=scale),
-            InvertedResidualConfig(
-                160, 5, 960, 160, True, "hardswish", 1, scale=scale),
-            InvertedResidualConfig(
-                160, 5, 960, 160, True, "hardswish", 1, scale=scale),
+            InvertedResidualConfig(16, 3, 16, 16, False, "relu", 1, scale),
+            InvertedResidualConfig(16, 3, 64, 24, False, "relu", 2, scale),
+            InvertedResidualConfig(24, 3, 72, 24, False, "relu", 1, scale),
+            InvertedResidualConfig(24, 5, 72, 40, True, "relu", 2, scale),
+            InvertedResidualConfig(40, 5, 120, 40, True, "relu", 1, scale),
+            InvertedResidualConfig(40, 5, 120, 40, True, "relu", 1, scale),
+            InvertedResidualConfig(40, 3, 240, 80, False, "hardswish", 2,
+                                   scale),
+            InvertedResidualConfig(80, 3, 200, 80, False, "hardswish", 1,
+                                   scale),
+            InvertedResidualConfig(80, 3, 184, 80, False, "hardswish", 1,
+                                   scale),
+            InvertedResidualConfig(80, 3, 184, 80, False, "hardswish", 1,
+                                   scale),
+            InvertedResidualConfig(80, 3, 480, 112, True, "hardswish", 1,
+                                   scale),
+            InvertedResidualConfig(112, 3, 672, 112, True, "hardswish", 1,
+                                   scale),
+            InvertedResidualConfig(112, 5, 672, 160, True, "hardswish", 2,
+                                   scale),
+            InvertedResidualConfig(160, 5, 960, 160, True, "hardswish", 1,
+                                   scale),
+            InvertedResidualConfig(160, 5, 960, 160, True, "hardswish", 1,
+                                   scale),
         ]
         last_channel = _make_divisible(1280 * scale, 8)
         super().__init__(
