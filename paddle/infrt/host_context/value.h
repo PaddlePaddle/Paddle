@@ -158,6 +158,8 @@ class Value : public common::Object {
 
   const char* type_info() const override;
 
+  ValueVariantType::IndexT index() const { return data.index(); }
+
   friend void CopyTo(const Value& from, Value* to);
 
  private:

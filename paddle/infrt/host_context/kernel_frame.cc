@@ -51,7 +51,7 @@ std::string KernelFrame::DumpArgTypes() const {
       ss << "CpuPtenContext(" << &value->get<backends::CpuPtenContext>()
          << "), ";
     } else {
-      ss << "unk,";
+      ss << "typeid: " << value->index() << ", ";
     }
   }
   return ss.str();
