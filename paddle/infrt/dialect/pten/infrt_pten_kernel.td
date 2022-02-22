@@ -18,7 +18,7 @@ def PTEN_KernelDialect : Dialect {
 }
 
 // PTEN Kernel related ops.
-class PDT_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PTEN_KernelDialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
+class PDT_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PTEN_KernelDialect, mnemonic, !listconcat(traits, [PtenOpTrait, IsolatedFromAbove])> {
 }
 
 #endif

@@ -18,7 +18,7 @@ def PTEN_DenseTensorDialect : Dialect {
 }
 
 // PTEN DenseTensor related Op.
-class PDT_Op<string mnemonic, list<OpTrait> traits = []> : Op<PTEN_DenseTensorDialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
+class PDT_Op<string mnemonic, list<OpTrait> traits = []> : Op<PTEN_DenseTensorDialect, mnemonic, !listconcat(traits, [PtenOpTrait, IsolatedFromAbove])> {
 }
 
 class CreateDenseTensorOp<string place, string dtype, string layout> 

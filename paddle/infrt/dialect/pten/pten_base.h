@@ -25,6 +25,20 @@
 #define GET_TYPEDEF_CLASSES
 #include "paddle/infrt/dialect/pten/infrt_pten_baseTypes.h.inc"
 
+namespace mlir {
+namespace OpTrait {
+
+template <typename ConcreteType>
+class PtenOpTrait : public OpTrait::TraitBase<ConcreteType, PtenOpTrait> {
+ public:
+  static LogicalResult verifyTrait(Operation *op) {
+    return LogicalResult::success();
+  }
+};
+
+}  // namespace OpTrait
+}  // namespace mlir
+
 namespace infrt {
 namespace pten {}  // namespace pten
 }  // namespace infrt

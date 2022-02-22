@@ -23,6 +23,8 @@ class ContextTypeOf<string place, list<Trait> traits=[]>:
     let summary = !strconcat("!pten.context_", place, " type");
 }
 
+def PtenOpTrait : NativeOpTrait<"PtenOpTrait">;
+
 def CPU_Allocator : AllocatorTypeOf<"CPU">;
 def GPU_Allocator : AllocatorTypeOf<"GPU">;
 
