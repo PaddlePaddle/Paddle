@@ -56,7 +56,7 @@ const bool is_regularization_op(const std::string& op_namescope) {
 }
 
 void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
-  // 这里构建的 op 符合 popart 的定义, 涉及到的一些值需要在 LowerOptimier 时获得
+  // optimizer values will be extracted when lowering optimizer in ipu_backend
   OpDesc new_op("popart_optimizer", {}, {}, {});
   new_op.SetAttr("op_role", 0);
   new_op.SetAttr("with_lr_sched", false);
@@ -86,7 +86,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       bool is_regularization = is_regularization_op(op_namescope);
 
       VLOG(10) << "found optimizer releated op: " << op_type;
-      // initial larning_rate will be set in LowerOptimier
+      // initial larning_rate will be set in ipu_backend
       set_ops.insert(op_type);
       if (op_type == "sgd") {
         auto type = std::string{"sgd"};

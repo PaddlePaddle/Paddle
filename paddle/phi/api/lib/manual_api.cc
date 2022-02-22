@@ -27,15 +27,15 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
-PT_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(split, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(split, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(copy, XPU, ALL_LAYOUT);
 #endif
 
 namespace paddle {
@@ -147,4 +147,4 @@ PADDLE_API std::vector<Tensor> split(const Tensor& x,
 }  // namespace experimental
 }  // namespace paddle
 
-PT_REGISTER_API(Utils);
+PD_REGISTER_API(Utils);

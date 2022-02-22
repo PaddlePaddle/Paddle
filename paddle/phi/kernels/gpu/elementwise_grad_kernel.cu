@@ -119,7 +119,7 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(add_grad,
+PD_REGISTER_KERNEL(add_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::AddGradKernel,
@@ -131,7 +131,7 @@ PT_REGISTER_KERNEL(add_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(add_double_grad,
+PD_REGISTER_KERNEL(add_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::AddDoubleGradKernel,
@@ -143,7 +143,7 @@ PT_REGISTER_KERNEL(add_double_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(add_triple_grad,
+PD_REGISTER_KERNEL(add_triple_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::AddTripleGradKernel,
@@ -155,7 +155,7 @@ PT_REGISTER_KERNEL(add_triple_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(subtract_grad,
+PD_REGISTER_KERNEL(subtract_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::SubtractGradKernel,
@@ -167,7 +167,7 @@ PT_REGISTER_KERNEL(subtract_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(subtract_double_grad,
+PD_REGISTER_KERNEL(subtract_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::SubtractDoubleGradKernel,

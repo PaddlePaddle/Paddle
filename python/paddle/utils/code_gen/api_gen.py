@@ -119,7 +119,7 @@ def source_include(header_file_path):
 
 def api_register():
     return """
-PT_REGISTER_API(Math);
+PD_REGISTER_API(Math);
 """
 
 

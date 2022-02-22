@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(use_mkldnn);
@@ -30,6 +31,8 @@ DECLARE_string(tracer_mkldnn_ops_off);
 
 namespace paddle {
 namespace imperative {
+
+thread_local bool Tracer::enable_program_desc_tracing_ = false;
 
 thread_local bool Tracer::has_grad_ = true;
 
@@ -171,7 +174,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
                      const std::map<std::string, std::string>& inplace_map,
                      paddle::framework::AttributeMap* passed_default_attrs_,
                      bool use_default_attr_map) {
-  platform::RecordEvent op_type_record_event(type);
+  platform::RecordEvent op_type_record_event(
+      type, platform::TracerEventType::Operator, 2);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
