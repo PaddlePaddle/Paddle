@@ -294,7 +294,7 @@ class GridSampleOpCUDAKernel : public framework::OpKernel<T> {
             << "; " << output->dims()[2] << "; " << output->dims()[3];
     int count = static_cast<int>(n * out_h * out_w);
     auto cu_stream = dev_ctx.stream();
-    int block_size = 256;
+    int block_size = 512;
     int grid_size = (count + block_size - 1) / block_size;
     VLOG(3) << "cuda launch - grid dims: " << grid_size << "; block dims"
             << block_size;
@@ -469,7 +469,7 @@ class GridSampleGradOpCUDAKernel : public framework::OpKernel<T> {
 
     int count = static_cast<int>(n * out_h * out_w);
     auto cu_stream = dev_ctx.stream();
-    int block_size = 256;
+    int block_size = 512;
     int grid_size = (count + block_size - 1) / block_size;
     VLOG(3) << "cuda launch grad kernel - grid dims: " << grid_size
             << "; block dims" << block_size << "; count: " << count;
