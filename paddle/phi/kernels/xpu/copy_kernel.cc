@@ -69,5 +69,5 @@ void Copy(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_GENERAL_KERNEL(
     copy, XPU, ALL_LAYOUT, phi::Copy<phi::XPUContext>, ALL_DTYPE) {}
