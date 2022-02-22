@@ -99,13 +99,6 @@ REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
                   ops::ReduceMeanDoubleGradDescMaker,
                   ops::ReduceMeanDoubleGradOpBaseMaker,
                   ops::ReduceMeanGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(reduce_mean,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         bool, ops::MeanFunctor>,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         float, ops::MeanFunctor>,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         double, ops::MeanFunctor>);
 
 template <typename T>
 using CPUReduceMeanGradKernel =

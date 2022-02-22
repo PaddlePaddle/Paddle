@@ -51,30 +51,28 @@
     func : dot
 
 - api : empty
-  args : (ScalarArray shape, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU, DataLayout layout=DataLayout::NCHW)
+  args : (ScalarArray shape, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU)
   output: Tensor
   infer_meta :
     func : CreateInferMeta
-    param : [shape, dtype, layout]
+    param : [shape, dtype]
   kernel :
     func : empty
-    param : [shape]
+    param : [shape, dtype]
     data_type : dtype
     backend : place
-    layout : layout
 
 - api : empty_like
-  args : (Tensor x, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED, DataLayout layout = DataLayout::UNDEFINED)
+  args : (Tensor x, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED)
   output: Tensor
   infer_meta :
     func : CreateLikeInferMeta
-    param : [x, dtype, layout]
+    param : [x, dtype]
   kernel :
     func : empty_like
-    param : []
+    param : [x, dtype]
     data_type : dtype > x
     backend : place > x
-    layout : layout > x
 
 - api : flatten
   args : (Tensor x, int start_axis, int stop_axis)
@@ -85,30 +83,28 @@
     func : flatten
 
 - api : full
-  args : (ScalarArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU, DataLayout layout=DataLayout::NCHW)
+  args : (ScalarArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Backend place=Backend::CPU)
   output: Tensor
   infer_meta :
     func : CreateInferMeta
-    param : [shape, dtype, layout]
+    param : [shape, dtype]
   kernel :
     func : full
-    param : [shape, value]
+    param : [shape, value, dtype]
     data_type : dtype
     backend : place
-    layout : layout
 
 - api : full_like
-  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED, DataLayout layout = DataLayout::UNDEFINED)
+  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Backend place = Backend::UNDEFINED)
   output: Tensor
   infer_meta :
     func : CreateLikeInferMeta
-    param : [x, dtype, layout]
+    param : [x, dtype]
   kernel :
     func : full_like
-    param : [value]
+    param : [x, value, dtype]
     data_type : dtype > x
     backend : place > x
-    layout : layout > x
 
 - api : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
@@ -136,17 +132,18 @@
     func : multiply
 
 - api : ones_like
-  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
   output : Tensor
-  invoke : full_like(x, 1, dtype, place, layout)
+  invoke : full_like(x, 1, dtype, place)
 
 - api : reshape
   args : (Tensor x, ScalarArray shape)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ReshapeInferMeta
   kernel :
     func : reshape
+  inplace : (x -> out)
 
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
@@ -184,6 +181,6 @@
     data_type : x
 
 - api : zeros_like
-  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED, DataLayout layout=DataLayout::UNDEFINED)
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
   output : Tensor
-  invoke : full_like(x, 0, dtype, place, layout)
+  invoke : full_like(x, 0, dtype, place)

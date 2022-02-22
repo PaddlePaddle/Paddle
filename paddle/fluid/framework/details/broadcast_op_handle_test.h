@@ -213,7 +213,7 @@ struct TestBroadcastOpHandle {
         var, platform::errors::NotFound("Variable %s is not found in scope.",
                                         varname));
     auto lod_tensor = var->GetMutable<f::LoDTensor>();
-    std::vector<float> send_vector(static_cast<size_t>(f::product(kDims)));
+    std::vector<float> send_vector(static_cast<size_t>(phi::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k + val_scalar;
     }
@@ -228,7 +228,7 @@ struct TestBroadcastOpHandle {
                                       size_t input_scope_idx,
                                       const std::vector<int64_t>& rows,
                                       int height, float value_scalar = 0.0) {
-    std::vector<float> send_vector(static_cast<size_t>(f::product(kDims)));
+    std::vector<float> send_vector(static_cast<size_t>(phi::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k + value_scalar;
     }
@@ -237,7 +237,7 @@ struct TestBroadcastOpHandle {
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("Variable %s is not found in scope.",
                                         varname));
-    auto selected_rows = var->GetMutable<pten::SelectedRows>();
+    auto selected_rows = var->GetMutable<phi::SelectedRows>();
     auto value = selected_rows->mutable_value();
     value->mutable_data<float>(kDims, place_list_[input_scope_idx]);
     selected_rows->set_height(height);
@@ -256,7 +256,7 @@ struct TestBroadcastOpHandle {
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("Variable %s is not found in scope.",
                                         varname));
-    auto& selected_rows = var->Get<pten::SelectedRows>();
+    auto& selected_rows = var->Get<phi::SelectedRows>();
     auto rt = selected_rows.value();
     PADDLE_ENFORCE_EQ(selected_rows.height(), height,
                       platform::errors::InvalidArgument(
@@ -278,7 +278,7 @@ struct TestBroadcastOpHandle {
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float* ct = result_tensor.data<float>();
 
-    for (int64_t i = 0; i < f::product(kDims); ++i) {
+    for (int64_t i = 0; i < phi::product(kDims); ++i) {
       ASSERT_NEAR(ct[i], send_vector[i], 1e-5);
     }
   }
@@ -300,7 +300,7 @@ struct TestBroadcastOpHandle {
     f::Tensor result_tensor;
     f::TensorCopySync(tensor, cpu_place, &result_tensor);
     float* ct = result_tensor.mutable_data<float>(cpu_place);
-    for (int64_t k = 0; k < f::product(kDims); ++k) {
+    for (int64_t k = 0; k < phi::product(kDims); ++k) {
       ASSERT_NEAR(ct[k], send_vec[k], 1e-5);
     }
   }

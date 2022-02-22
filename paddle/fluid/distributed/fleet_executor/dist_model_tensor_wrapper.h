@@ -15,6 +15,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
@@ -38,6 +39,11 @@ constexpr DistModelDataType DistModelGetDtype<int64_t>() {
 template <>
 constexpr DistModelDataType DistModelGetDtype<float>() {
   return DistModelDataType::FLOAT32;
+}
+
+template <>
+constexpr DistModelDataType DistModelGetDtype<platform::float16>() {
+  return DistModelDataType::FLOAT16;
 }
 
 class DistModelDataBuf {

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/kernels/funcs/eigen/extensions.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
   __global__ void op_type(const half *in1, const half *in2, half *out) { \
@@ -318,8 +318,8 @@ TEST(float16, lod_tensor_on_gpu) {
   framework::LoDTensor gpu_tensor;
   framework::LoDTensor dst_tensor;
 
-  float16 *src_ptr = src_tensor.mutable_data<float16>(
-      framework::make_ddim({2, 2}), CPUPlace());
+  float16 *src_ptr =
+      src_tensor.mutable_data<float16>(phi::make_ddim({2, 2}), CPUPlace());
 
   float16 arr[4] = {float16(1.0f), float16(0.5f), float16(0.33333f),
                     float16(0.0f)};
