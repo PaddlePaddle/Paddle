@@ -153,7 +153,7 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     y->mutable_data<T>(ctx.GetPlace());
     mean->mutable_data<T>(ctx.GetPlace());
     var->mutable_data<T>(ctx.GetPlace());
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     Tensor temp_var;
     temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
@@ -321,7 +321,7 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
                                           : x_dims[x_dims.size() - 2]);
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
     Tensor temp_var;

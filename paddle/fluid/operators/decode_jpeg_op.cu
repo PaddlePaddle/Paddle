@@ -114,7 +114,7 @@ class GPUDecodeJpegKernel : public framework::OpKernel<T> {
 
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     std::vector<int64_t> out_shape = {output_components, height, width};
-    out->Resize(framework::make_ddim(out_shape));
+    out->Resize(phi::make_ddim(out_shape));
 
     T* data = out->mutable_data<T>(ctx.GetPlace());
 

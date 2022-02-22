@@ -26,8 +26,8 @@
 #include <iostream>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -165,7 +165,7 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
     auto* top_count = ctx.Output<Tensor>("TopCount");
     top_count->mutable_data<T>(ctx.GetPlace());
 
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     set_zero(dev_ctx, out, static_cast<T>(0));
     set_zero(dev_ctx, top_count, static_cast<T>(0));
@@ -421,7 +421,7 @@ class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T> {
     auto* top_count = ctx.Input<Tensor>("TopCount");
     auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
