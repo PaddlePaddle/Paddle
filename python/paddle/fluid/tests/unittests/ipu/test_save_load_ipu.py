@@ -93,7 +93,7 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(
                     is_training=self.attrs['is_training'])
-                ipu_strategy.set_half_config(
+                ipu_strategy.set_precision_config(
                     enable_fp16=self.attrs['enable_fp16'])
                 ipu_strategy.set_option({
                     'save_per_n_step': self.attrs['save_at_step']
