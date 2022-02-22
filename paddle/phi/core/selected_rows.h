@@ -55,25 +55,17 @@ class SelectedRows : public TensorBase,
 
   void set_height(int64_t height) { impl_->set_height(height); }
 
-  const paddle::framework::Vector<int64_t>& rows() const {
-    return impl_->rows();
-  }
+  const std::vector<int64_t>& rows() const { return impl_->rows(); }
 
-  paddle::framework::Vector<int64_t>* mutable_rows() {
-    return impl_->mutable_rows();
-  }
+  std::vector<int64_t>* mutable_rows() { return impl_->mutable_rows(); }
 
-  void set_rows(const paddle::framework::Vector<int64_t>& rows) {
-    impl_->set_rows(rows);
-  }
-
+  void set_rows(const std::vector<int64_t>& rows) { impl_->set_rows(rows); }
   /*
    * @brief Get the index of key in rows
    *
    * @return -1 if the key does not exists.
    */
   int64_t Index(int64_t key) const { return impl_->Index(key); }
-
   /*
    * @brief whether has the specified key in the table.
    *
