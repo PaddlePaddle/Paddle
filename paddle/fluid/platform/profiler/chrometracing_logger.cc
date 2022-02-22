@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
-#include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
@@ -258,7 +257,7 @@ void ChromeTracingLogger::HandleTypeKernel(
     }
   },
   )JSON"),
-      paddle::platform::demangle(device_node.Name()).c_str(),
+      device_node.Name().c_str(),
       device_node.DeviceId(), device_node.StreamId(),
       nsToUs(device_node.StartNs()), nsToUs(device_node.Duration()),
       categary_name_[static_cast<int>(device_node.Type())],
@@ -403,7 +402,13 @@ void ChromeTracingLogger::StartLog() {
 }
 
 void ChromeTracingLogger::LogMetaInfo(
-    const std::unordered_map<std::string, std::string>& extra_info) {
+    const std::unordered_map<std::string, std::string> extra_info) {
+  RefineDisplayName();
+  output_file_stream_ << std::string(
+      R"JSON(
+  {}
+  ],
+  )JSON");
   output_file_stream_ << std::string(R"JSON(
   "ExtraInfo": {)JSON");
   size_t count = extra_info.size();
@@ -497,14 +502,7 @@ void ChromeTracingLogger::RefineDisplayName() {
 }
 
 void ChromeTracingLogger::EndLog() {
-  RefineDisplayName();
-  output_file_stream_ << std::string(
-      R"JSON(
-  {}
-  ],
-  )JSON");
-  ExtraInfo& extra_info = ExtraInfo::GetInstance();
-  LogMetaInfo(extra_info.GetMetaInfo());
+  
   output_file_stream_ << std::string(
       R"JSON(
   }

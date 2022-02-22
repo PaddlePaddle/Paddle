@@ -12,12 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/profiler/utils.h"
+
 #include <vector>
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/cupti.h"
-#include "paddle/fluid/platform/profiler/utils.h"
+
 
 namespace paddle {
 namespace platform {

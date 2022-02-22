@@ -18,10 +18,10 @@
 using paddle::platform::ExtraInfo;
 
 TEST(ExtraInfoTest, case0) {
-  ExtraInfo& instance = ExtraInfo::GetInstance();
-  instance.AddMetaInfo(std::string("info1"), std::string("%d"), 20);
-  instance.AddMetaInfo(std::string("info2"), std::string("%s"), "helloworld");
-  std::unordered_map<std::string, std::string> map = instance.GetMetaInfo();
+  ExtraInfo instance;
+  instance.AddExtraInfo(std::string("info1"), std::string("%d"), 20);
+  instance.AddExtraInfo(std::string("info2"), std::string("%s"), "helloworld");
+  std::unordered_map<std::string, std::string> map = instance.GetExtraInfo();
   EXPECT_EQ(map["info1"], "20");
   EXPECT_EQ(map["info2"], "helloworld");
   EXPECT_EQ(map.size(), 2u);
