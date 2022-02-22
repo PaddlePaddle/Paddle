@@ -32,8 +32,8 @@ struct CustomContext::Impl {
 
   const Place& GetPlace() const { return place_; }
 
-  C_Stream stream() const {
-    return reinterpret_cast<C_Stream>(stream_->raw_stream());
+  void* stream() const {
+    return reinterpret_cast<void*>(stream_->raw_stream());
   }
 
   void Wait() const { stream_->Wait(); }
@@ -47,7 +47,7 @@ void CustomContext::Init() { impl_->Init(); }
 
 const Place& CustomContext::GetPlace() const { return impl_->GetPlace(); }
 
-C_Stream CustomContext::stream() const { return impl_->stream(); }
+void* CustomContext::stream() const { return impl_->stream(); }
 
 void CustomContext::Wait() const { return impl_->Wait(); }
 
