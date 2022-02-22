@@ -192,7 +192,8 @@ framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
       paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout();
   if ((var_name == "X") &&
       (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      ((tensor.layout() != framework::DataLayout::kMKLDNN) || (cur_dl != framework::DataLayout::kNHWC)) {
+      ((tensor.layout() != framework::DataLayout::kMKLDNN) ||
+       (cur_dl != framework::DataLayout::kNHWC))) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
