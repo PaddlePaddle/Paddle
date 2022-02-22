@@ -377,42 +377,6 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         }
       }
 
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(phi::Scalar))) {
-      if (ctx->HasInput(attr_name)) {
-        const auto& scalar_var = ctx->GetInputVarPtrs(attr_name);
-        if (ctx->IsRuntime()) {
-          // If is in runtime, we will get tensor's value for Scala
-          // and push it into attrs
-          Variable* var = BOOST_GET_CONST(Variable*, scalar_var[0]);
-          infer_meta_context.EmplaceBackAttr(
-              experimental::MakePtenScalarFromVar(*var));
-        } else {
-          // If is not in runtime, we will set default value(-1) for Scalar
-          phi::Scalar scalar_attr(-1);
-          scalar_attr.SetFromTensor(true);
-          infer_meta_context.EmplaceBackAttr(scalar_attr);
-        }
-      } else if (ctx->HasAttr(attr_name)) {
-        auto& attr = attr_reader.GetAttr(attr_name);
-        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
-          infer_meta_context.EmplaceBackAttr(
-              phi::Scalar(BOOST_GET_CONST(float, attr)));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::string))) {
-          infer_meta_context.EmplaceBackAttr(
-              phi::Scalar(BOOST_GET_CONST(std::string, attr)));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(int))) {
-          infer_meta_context.EmplaceBackAttr(
-              phi::Scalar(BOOST_GET_CONST(int, attr)));
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported cast op attribute `%s` to Scalar when construct "
-              "InferMetaContext.",
-              attr_name));
-        }
-      }
     } else if (ctx->HasAttr(attr_name)) {
       // Emplace Back Attr according to the type of attr.
       auto& attr = attr_reader.GetAttr(attr_name);
