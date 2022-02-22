@@ -2197,7 +2197,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
                  std::type_index(typeid(std::vector<int64_t>))) {
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int>))) {
-          // Emplace Back Attr according to the type of Pten_Kernel args.
+          // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
                                                        vector_int_attr.end());

@@ -376,44 +376,56 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               attr_name));
         }
       }
-
     } else if (ctx->HasAttr(attr_name)) {
       // Emplace Back Attr according to the type of attr.
       auto& attr = attr_reader.GetAttr(attr_name);
-      if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
+
+      if (attr_defs[i].type_index == std::type_index(typeid(phi::DataType))) {
+        auto data_type = paddle::framework::TransToPtenDataType(
+            static_cast<framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        infer_meta_context.EmplaceBackAttr(data_type);
+      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
-      } else if (std::type_index(attr.type()) == std::type_index(typeid(int))) {
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int, attr));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(int64_t))) {
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(float))) {
+      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<bool>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<bool>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<int>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
-        infer_meta_context.EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<int64_t>, attr));
-      } else if (std::type_index(attr.type()) ==
+        // Emplace Back Attr according to the type of Phi_Kernel args.
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int>))) {
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                       vector_int_attr.end());
+          infer_meta_context.EmplaceBackAttr(vector_int64_attr);
+        } else {
+          infer_meta_context.EmplaceBackAttr(
+              BOOST_GET_CONST(std::vector<int64_t>, attr));
+        }
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<float>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<float>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<double>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<double>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<std::string>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr));
