@@ -23,14 +23,6 @@ class PoissonOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "PoissonOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "PoissonOp");
-
-    auto dim = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", dim);
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -116,17 +108,13 @@ class PoissonGradOpMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+DELCARE_INFER_SHAPE_FUNCTOR(poisson, PoissonInferShapeFunctor,
+                            PT_INFER_META(phi::PoissonInferMeta));
+
 REGISTER_OPERATOR(poisson, ops::PoissonOp, ops::PoissonOpMaker,
                   ops::PoissonOpInferVarType,
                   ops::PoissonGradOpMaker<paddle::framework::OpDesc>,
-                  ops::PoissonGradOpMaker<paddle::imperative::OpBase>);
+                  ops::PoissonGradOpMaker<paddle::imperative::OpBase>,
+                  PoissonInferShapeFunctor);
 
 REGISTER_OPERATOR(poisson_grad, ops::PoissonGradOp);
-
-REGISTER_OP_CPU_KERNEL(poisson,
-                       ops::PoissonKernel<plat::CPUDeviceContext, float>,
-                       ops::PoissonKernel<plat::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(poisson_grad,
-                       ops::PoissonGradKernel<plat::CPUDeviceContext, float>,
-                       ops::PoissonGradKernel<plat::CPUDeviceContext, double>);

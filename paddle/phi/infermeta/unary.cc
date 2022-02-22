@@ -537,6 +537,10 @@ void TraceInferMeta(
   out->set_dims(phi::make_ddim(sizes));
 }
 
+void PoissonInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+}
+
 }  // namespace phi
 
 PT_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
