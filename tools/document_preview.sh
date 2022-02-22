@@ -42,15 +42,19 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     if [ -d ${FLUIDDOCDIR} ] ; then
         echo "$0: rm -rf ${FLUIDDOCDIR}"
         rm -rf ${FLUIDDOCDIR}
-        git clone https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
-        # TODO: checkout the required docs PR?
     fi
+    git clone --depth=1 https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
+    # TODO: checkout the required docs PR?
     if [ -d ${OUTPUTDIR} ] ; then
         echo "$0: rm -rf ${OUTPUTDIR}"
         rm -rf ${OUTPUTDIR}
         mkdir -p ${OUTPUTDIR}
     fi
     # install requirements
+    mkdir -p /config
+    curl -L -o /config/shpinx-docs-config.tgz https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/shpinx-docs-config.tgz
+    tar xzf /config/shpinx-docs-config.tgz -C /config
+    curl -L -o /root/post_filter_htmls.py https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/post_filter_htmls.py
 
     # build doc
     /bin/bash -x ${FLUIDDOCDIR}/ci_scripts/gendoc.sh
