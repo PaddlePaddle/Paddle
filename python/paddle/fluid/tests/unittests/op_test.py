@@ -380,7 +380,7 @@ class OpTest(unittest.TestCase):
             hasattr(self, 'output_dtype') and
             self.output_dtype == np.uint16) or (
                 hasattr(self, 'mkldnn_data_type') and
-                getattr(self, 'mkldnn_data_type') != "bfloat16") or (
+                getattr(self, 'mkldnn_data_type') == "bfloat16") or (
                     hasattr(self, 'attrs') and
                     'mkldnn_data_type' in self.attrs and
                     self.attrs['mkldnn_data_type'] == 'bfloat16')
