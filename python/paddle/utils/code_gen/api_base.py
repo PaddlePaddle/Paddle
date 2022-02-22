@@ -507,9 +507,10 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
                     trans_flag = "{false, true}"
                 if input_name in self.optional_vars:
                     input_tensor_code = input_tensor_code + f"""
-{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}{{paddle::none}};     
-{code_indent}  if ({input_name}) {{
-{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::DenseTensor&>(*PrepareData(*{input_name}, kernel.InputAt({i}), {trans_flag}));
+{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}{{paddle::none}};
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
+{code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_ptr) {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::DenseTensor&>(*{PREFIX_TENSOR_NAME}{input_name}_ptr);
 {code_indent}  }}"""
 
                 else:
@@ -582,9 +583,11 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
             # set input code
             if input_name in self.optional_vars:
                 input_tensor_code = input_tensor_code + f"""
-{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name};     
-{code_indent}  if ({input_name}) {{ 
-{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::SelectedRows&>(*TensorToSelectedRows(*{input_name}));
+
+{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}{{paddle::none}};
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
+{code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_ptr) {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::SelectedRows&>(*{PREFIX_TENSOR_NAME}{input_name}_ptr);
 {code_indent}  }}"""
 
             else:

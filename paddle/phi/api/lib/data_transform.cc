@@ -199,6 +199,16 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   return std::make_shared<phi::DenseTensor>(out);
 }
 
+std::shared_ptr<phi::DenseTensor> PrepareData(
+    const paddle::optional<Tensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  if (input) {
+    return PrepareData(*input, target_args_def, transform_flag);
+  }
+  return {nullptr};
+}
+
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
@@ -226,6 +236,16 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
   }
 
   return std::move(pt_tensors);
+}
+
+std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
+    const paddle::optional<std::vector<Tensor>>& inputs,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  if (inputs) {
+    return PrepareData(*inputs, target_args_def, transform_flag);
+  }
+  return {nullptr};
 }
 
 }  // namespace experimental
