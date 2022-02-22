@@ -50,12 +50,12 @@ class TensorWrapper {
     // shallow copy tensor_impl here
     intermidiate_tensor_.set_impl(tensor.impl());
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
-    
-    // If an output is marked "intermedaite", we won't create 
+
+    // If an output is marked "intermedaite", we won't create
     // autograd_meta for it.
     // In that case, simply skip OutRankInfo Copy
-    if(EagerUtils::nullable_autograd_meta(tensor)) {
-        out_rank_info_ = EagerUtils::OutRankInfo(tensor);
+    if (EagerUtils::nullable_autograd_meta(tensor)) {
+      out_rank_info_ = EagerUtils::OutRankInfo(tensor);
     }
   }
 
