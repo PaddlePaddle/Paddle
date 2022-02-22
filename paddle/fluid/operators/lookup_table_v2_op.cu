@@ -156,14 +156,16 @@ struct LookupTableV2GradCUDAFunctor {
       new_rows.resize(ids_num);
       auto gpu_place = context_.GetPlace();
 
+      paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
       if (!std::is_same<IdT, int64_t>::value) {
         InputTypeConvert<<<grids, threads, 0, stream>>>(
-            ids_data, ids_num, new_rows.MutableData(gpu_place));
+            ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));
       } else {
-        memory::Copy(gpu_place, new_rows.CUDAMutableData(gpu_place), gpu_place,
-                     ids_data, ids_num * sizeof(int64_t), stream);
+        memory::Copy(gpu_place, mixv_new_rows.CUDAMutableData(gpu_place),
+                     gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
       }
 
+      mixv_new_rows.CopyToCPU();
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
