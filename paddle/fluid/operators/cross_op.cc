@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/cross_op.h"
-// #include "paddle/fluid/framework/op_registry.h"
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
 using framework::DDim;
+const int kDefaultDim = framework::DDim::kMaxRank;
 
 inline bool CheckDims(const DDim& dims_x, const DDim& dims_y) {
   if (dims_x.size() != dims_y.size()) {
@@ -170,8 +170,3 @@ REGISTER_OPERATOR(cross, ops::CrossOp, ops::CrossOpMaker,
                   ops::CrossGradMaker<paddle::framework::OpDesc>,
                   ops::CrossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cross_grad, ops::CrossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    cross_grad, ops::CrossGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CrossGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CrossGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::CrossGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

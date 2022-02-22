@@ -19,49 +19,34 @@
 
 namespace phi {
 
-inline bool CheckDims(const DDim& dims_x, const DDim& dims_y) {
-  if (dims_x.size() != dims_y.size()) {
-    return false;
-  }
-  for (int i = 0; i < dims_x.size(); i++) {
-    if (dims_x[i] != dims_y[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 template <typename T, typename Context>
-void CrossKernel(const Context& ctx,
-                 const DenseTensor& x,
-                 const DenseTensor& y,
-                 int axis,
-                 DenseTensor* out) {
+void CrossGradKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     const DenseTensor& out_grad,
+                     int axis,
+                     DenseTensor* x_grad,
+                     DenseTensor* y_grad) {
   // auto* input_x_var = context.InputVar("X");
   // auto* input_y_var = context.InputVar("Y");
-  // auto* output_var = context.OutputVar("Out");
+  // auto* input_out_grad_var = context.InputVar(framework::GradVarName("Out"));
+  // auto* output_x_grad_var = context.OutputVar(framework::GradVarName("X"));
+  // auto* output_y_grad_var = context.OutputVar(framework::GradVarName("Y"));
 
   // auto& input_x = input_x_var->Get<LoDTensor>();
   // auto& input_y = input_y_var->Get<LoDTensor>();
-  // auto* output = output_var->GetMutable<LoDTensor>();
+  // auto& input_out_grad = input_out_grad_var->Get<LoDTensor>();
+  // auto* output_x_grad = output_x_grad_var->GetMutable<LoDTensor>();
+  // auto* output_y_grad = output_y_grad_var->GetMutable<LoDTensor>();
   auto& input_x = x;
   auto& input_y = y;
-  auto* output = out;
+  auto& input_out_grad = out_grad;
+  auto* output_x_grad = x_grad;
+  auto* output_y_grad = y_grad;
+
+  // int dim = context.Attr<int>("dim");
   int dim = axis;
-
   auto input_x_dims = input_x.dims();
-  auto input_y_dims = input_y.dims();
-  bool dims_match = CheckDims(input_x_dims, input_y_dims);
-  PADDLE_ENFORCE_EQ(
-      dims_match,
-      true,
-      errors::InvalidArgument("The 'shape' of Input(X) should be equal to "
-                              "the 'shape' of Input(Y). But received "
-                              "Input(X).dimensions = [%s], "
-                              "Input(Y).dimensions = [%s]",
-                              input_x_dims,
-                              input_x_dims));
-
   if (dim != DDim::kMaxRank) {
     PADDLE_ENFORCE_EQ(
         dim < input_x_dims.size() && dim >= (0 - input_x_dims.size()),
@@ -90,13 +75,13 @@ void CrossKernel(const Context& ctx,
         break;
       }
     }
-    PADDLE_ENFORCE_EQ(dim == DDim::kMaxRank,
-                      false,
-                      errors::InvalidArgument(
-                          "There must be at least one dimension 'd' so that "
-                          "Input(X/Y).dims()[d] is equal to 3. "
-                          "But received: Input(X/Y).dims() == [%s].",
-                          input_x_dims));
+    PADDLE_ENFORCE_EQ(
+        dim == DDim::kMaxRank,
+        false,
+        errors::InvalidArgument("There must be at least one dimension 'd' "
+                                "so that Input(X/Y).dims()[d] is equal to 3. "
+                                "But received: Input(X/Y).dims() == [%s].",
+                                input_x_dims));
   }
   auto outer_loops = 1;
   for (auto i = 0; i < dim; i++) {
@@ -107,29 +92,37 @@ void CrossKernel(const Context& ctx,
     slice_size *= input_x_dims[i];
   }
 
-  std::vector<T> input_x_vec, input_y_vec;
+  std::vector<T> input_x_vec, input_y_vec, input_dout_vec;
   paddle::framework::TensorToVector(input_x, ctx, &input_x_vec);
   paddle::framework::TensorToVector(input_y, ctx, &input_y_vec);
-  std::vector<T> out_vec(output->numel());
+  paddle::framework::TensorToVector(input_out_grad, ctx, &input_dout_vec);
+  std::vector<T> out_dx_vec(output_x_grad->numel());
+  std::vector<T> out_dy_vec(output_y_grad->numel());
 
-  // output->mutable_data<T>(context.GetPlace());
-  ctx.template Alloc<T>(output);
+  // output_x_grad->mutable_data<T>(context.GetPlace());
+  // output_y_grad->mutable_data<T>(context.GetPlace());
+  ctx.template Alloc<T>(output_x_grad);
+  ctx.template Alloc<T>(output_y_grad);
 
   for (auto i = 0; i < outer_loops; i++) {
     for (auto j = 0; j < 3; j++) {
       auto dst_pos = (3 * i + j) * slice_size;
       auto in_pos1 = (3 * i + ((j + 1) % 3)) * slice_size;
       auto in_pos2 = (3 * i + ((j + 2) % 3)) * slice_size;
-
       for (auto k = 0; k < slice_size; k++) {
-        out_vec[dst_pos + k] =
-            input_x_vec[in_pos1 + k] * input_y_vec[in_pos2 + k] -
-            input_x_vec[in_pos2 + k] * input_y_vec[in_pos1 + k];
+        out_dx_vec[dst_pos + k] =
+            input_dout_vec[in_pos2 + k] * input_y_vec[in_pos1 + k] -
+            input_dout_vec[in_pos1 + k] * input_y_vec[in_pos2 + k];
+        out_dy_vec[dst_pos + k] =
+            input_dout_vec[in_pos1 + k] * input_x_vec[in_pos2 + k] -
+            input_dout_vec[in_pos2 + k] * input_x_vec[in_pos1 + k];
       }
     }
   }
-  paddle::framework::TensorFromVector(out_vec, ctx, output);
-  output->Resize(input_x_dims);
+  paddle::framework::TensorFromVector(out_dx_vec, ctx, output_x_grad);
+  paddle::framework::TensorFromVector(out_dy_vec, ctx, output_y_grad);
+  output_x_grad->Resize(input_x_dims);
+  output_y_grad->Resize(input_x_dims);
 }
 
 }  // namespace phi
