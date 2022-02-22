@@ -146,6 +146,10 @@ if(WITH_ASCEND_CL)
     target_link_libraries(device_context npu_resource_pool)
 endif()
 
+if(WITH_MLU)
+    target_link_libraries(device_context mlu_resource_pool)
+endif()
+
 cc_test(init_test SRCS init_test.cc DEPS device_context)
 
 # Manage all device event library

@@ -37,6 +37,10 @@ if (WITH_ASCEND_CL)
   set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
 endif()
 
+if (WITH_CNCL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} cncl_context)
+endif()
+
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
@@ -132,6 +136,10 @@ if(WITH_PYTHON)
   if(WITH_ASCEND_CL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
+
+  if(WITH_CNCL)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
+  endif(WITH_CNCL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
