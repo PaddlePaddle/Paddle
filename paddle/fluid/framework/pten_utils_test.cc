@@ -60,9 +60,9 @@ TEST(PtenUtils, TransOpKernelTypeToPtenKernelKey) {
       paddle::framework::DataLayout::kNCHW);
   auto kernel_key =
       paddle::framework::TransOpKernelTypeToPtenKernelKey(op_kernel_type);
-  ASSERT_EQ(kernel_key.dtype(), pten::DataType::FLOAT32);
-  ASSERT_EQ(kernel_key.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(kernel_key.backend(), pten::Backend::CPU);
+  ASSERT_EQ(kernel_key.dtype(), phi::DataType::FLOAT32);
+  ASSERT_EQ(kernel_key.layout(), phi::DataLayout::NCHW);
+  ASSERT_EQ(kernel_key.backend(), phi::Backend::CPU);
 
 #ifdef PADDLE_WITH_MKLDNN
   paddle::framework::OpKernelType op_kernel_type_mkldnn(
@@ -71,9 +71,9 @@ TEST(PtenUtils, TransOpKernelTypeToPtenKernelKey) {
       paddle::framework::LibraryType::kMKLDNN);
   auto kernel_key_mkldnn = paddle::framework::TransOpKernelTypeToPtenKernelKey(
       op_kernel_type_mkldnn);
-  ASSERT_EQ(kernel_key_mkldnn.dtype(), pten::DataType::FLOAT32);
-  ASSERT_EQ(kernel_key_mkldnn.layout(), pten::DataLayout::MKLDNN);
-  ASSERT_EQ(kernel_key_mkldnn.backend(), pten::Backend::MKLDNN);
+  ASSERT_EQ(kernel_key_mkldnn.dtype(), phi::DataType::FLOAT32);
+  ASSERT_EQ(kernel_key_mkldnn.layout(), phi::DataLayout::MKLDNN);
+  ASSERT_EQ(kernel_key_mkldnn.backend(), phi::Backend::MKLDNN);
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -83,8 +83,8 @@ TEST(PtenUtils, TransOpKernelTypeToPtenKernelKey) {
       paddle::framework::LibraryType::kCUDNN);
   auto kernel_key_cudnn =
       paddle::framework::TransOpKernelTypeToPtenKernelKey(op_kernel_type_cudnn);
-  ASSERT_EQ(kernel_key_cudnn.dtype(), pten::DataType::FLOAT32);
-  ASSERT_EQ(kernel_key_cudnn.layout(), pten::DataLayout::NCHW);
-  ASSERT_EQ(kernel_key_cudnn.backend(), pten::Backend::GPUDNN);
+  ASSERT_EQ(kernel_key_cudnn.dtype(), phi::DataType::FLOAT32);
+  ASSERT_EQ(kernel_key_cudnn.layout(), phi::DataLayout::NCHW);
+  ASSERT_EQ(kernel_key_cudnn.backend(), phi::Backend::GPUDNN);
 #endif
 }

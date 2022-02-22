@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#include "paddle/pten/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -52,7 +52,7 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
 
     auto dims = dX->dims();
     const int rank = dims.size();
-    const int axis = pten::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
     int64_t first_dim = 1;
     int64_t sec_dim = 1;
     for (int i = 0; i < axis; i++) {

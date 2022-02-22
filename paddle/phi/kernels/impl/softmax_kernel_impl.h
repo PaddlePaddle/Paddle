@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/kernels/softmax_kernel.h"
+#include "paddle/phi/kernels/softmax_kernel.h"
 
 #include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/pten/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void SoftmaxRawKernel(const Context& dev_ctx,
@@ -27,7 +27,7 @@ void SoftmaxRawKernel(const Context& dev_ctx,
                       int axis,
                       DenseTensor* out) {
   const int rank = x.dims().size();
-  const int calc_axis = pten::funcs::CanonicalAxis(axis, rank);
+  const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
   int axis_dim = x.dims()[calc_axis];
 
   // allocate memory on device.
@@ -36,8 +36,8 @@ void SoftmaxRawKernel(const Context& dev_ctx,
     return;
   }
 
-  const int n = pten::funcs::SizeToAxis(calc_axis, x.dims());
-  const int d = pten::funcs::SizeFromAxis(calc_axis, x.dims());
+  const int n = phi::funcs::SizeToAxis(calc_axis, x.dims());
+  const int d = phi::funcs::SizeFromAxis(calc_axis, x.dims());
   DenseTensor X_2d, Out_2d;
   X_2d.ShareDataWith(x).Resize({n, d});
   Out_2d.ShareDataWith(*out).Resize({n, d});
@@ -45,4 +45,4 @@ void SoftmaxRawKernel(const Context& dev_ctx,
       dev_ctx, axis_dim, &X_2d, &Out_2d);
 }
 
-}  // namespace pten
+}  // namespace phi

@@ -14,17 +14,17 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/backends/gpu/gpu_info.h"
-#include "paddle/pten/common/float16.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/funcs/axis_utils.h"
-#include "paddle/pten/kernels/primitive/kernel_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
-namespace pten {
+namespace phi {
 
 using ScopedTensorDescriptor = paddle::platform::ScopedTensorDescriptor;
 using GPUDNNDataLayout = paddle::platform::DataLayout;
@@ -62,7 +62,7 @@ class VecT2<float> {
   using Type = int2;
 };
 template <>
-class VecT2<pten::dtype::float16> {
+class VecT2<phi::dtype::float16> {
  public:
   using Type = int;
 };
@@ -475,7 +475,7 @@ void SwitchWarpSoftmaxForward(const int blocks,
                               const int stride,
                               const int element_count,
                               int Log2Elements) {
-  using AccT = typename pten::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   switch (Log2Elements) {
     SOFTMAX_WARP_FORWARD_CASE(0, AccT);
     SOFTMAX_WARP_FORWARD_CASE(1, AccT);
@@ -516,7 +516,7 @@ void SwitchWarpSoftmaxBackward(const int blocks,
                                const int stride,
                                const int element_count,
                                int Log2Elements) {
-  using AccT = typename pten::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   switch (Log2Elements) {
     SOFTMAX_WARP_BACKWARD_CASE(0, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(1, AccT);
@@ -543,10 +543,10 @@ void SwitchWarpSoftmaxBackward(const int blocks,
 
 static void GetGridDim(
     int high_dim, int mid_dim, int low_dim, const dim3& block, dim3* grid) {
-  int device_id = pten::backends::gpu::GetCurrentDeviceId();
-  int max_mp = pten::backends::gpu::GetGPUMultiProcessors(device_id);
+  int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
   int max_threads_per_mp =
-      pten::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
+      phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
   int max_threads = max_threads_per_mp * max_mp;
   int num_threads = block.x * block.y;
   int max_num_blocks = max_threads / num_threads;
@@ -673,7 +673,7 @@ void LaunchNormalSoftmaxForward(const GPUContext& dev_ctx,
                                 int high_dim,
                                 int mid_dim,
                                 int low_dim) {
-  using AccT = typename pten::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
@@ -699,7 +699,7 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
                                  int high_dim,
                                  int mid_dim,
                                  int low_dim) {
-  using AccT = typename pten::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
@@ -736,10 +736,10 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
 
   auto dims = x.dims();
   const int rank = dims.size();
-  const int axis = pten::funcs::CanonicalAxis(input_axis, rank);
+  const int axis = phi::funcs::CanonicalAxis(input_axis, rank);
   const int dim = dims[axis];
-  const int N = pten::funcs::SizeToAxis(axis, dims);
-  const int D = pten::funcs::SizeOutAxis(axis, dims);
+  const int N = phi::funcs::SizeToAxis(axis, dims);
+  const int D = phi::funcs::SizeOutAxis(axis, dims);
 
   constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
@@ -876,10 +876,10 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
 
   auto dims = out.dims();
   const int rank = dims.size();
-  const int axis = pten::funcs::CanonicalAxis(input_axis, rank);
+  const int axis = phi::funcs::CanonicalAxis(input_axis, rank);
   const int dim = dims[axis];
-  const int N = pten::funcs::SizeToAxis(axis, dims);
-  const int D = pten::funcs::SizeOutAxis(axis, dims);
+  const int N = phi::funcs::SizeToAxis(axis, dims);
+  const int D = phi::funcs::SizeOutAxis(axis, dims);
 
   constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
@@ -1016,4 +1016,4 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi

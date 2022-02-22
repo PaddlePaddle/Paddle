@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
 static inline int CanonicalAxis(const int axis, const int rank) {
@@ -51,4 +51,4 @@ static inline int SizeOutAxis(const int axis, DDim dims) {
 }
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi

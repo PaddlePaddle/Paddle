@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/kernels/softmax_grad_kernel.h"
+#include "paddle/phi/kernels/softmax_grad_kernel.h"
 
 #include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/pten/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void SoftmaxGradKernel(const Context& dev_ctx,
@@ -28,7 +28,7 @@ void SoftmaxGradKernel(const Context& dev_ctx,
                        int axis,
                        DenseTensor* x_grad) {
   const int rank = x_grad->dims().size();
-  const int calc_axis = pten::funcs::CanonicalAxis(axis, rank);
+  const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
   int axis_dim = x_grad->dims()[calc_axis];
 
   // allocate memory on device.
@@ -37,8 +37,8 @@ void SoftmaxGradKernel(const Context& dev_ctx,
     return;
   }
 
-  const int n = pten::funcs::SizeToAxis(calc_axis, x_grad->dims());
-  const int d = pten::funcs::SizeFromAxis(calc_axis, x_grad->dims());
+  const int n = phi::funcs::SizeToAxis(calc_axis, x_grad->dims());
+  const int d = phi::funcs::SizeFromAxis(calc_axis, x_grad->dims());
   DenseTensor dX_2d, Out_2d, dOut_2d;
   dX_2d.ShareDataWith(*x_grad).Resize({n, d});
   Out_2d.ShareDataWith(out).Resize({n, d});
@@ -48,4 +48,4 @@ void SoftmaxGradKernel(const Context& dev_ctx,
       dev_ctx, axis_dim, &Out_2d, &dOut_2d, &dX_2d);
 }
 
-}  // namespace pten
+}  // namespace phi

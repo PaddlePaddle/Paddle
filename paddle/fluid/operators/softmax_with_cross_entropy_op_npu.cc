@@ -41,16 +41,16 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
                           "the npu kernel of softmax_with_cross_entropy."));
 
     const int rank = logits->dims().size();
-    const int axis = pten::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
-    const int n = pten::funcs::SizeToAxis(axis, logits->dims());
-    const int d = pten::funcs::SizeFromAxis(axis, logits->dims());
+    const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int n = phi::funcs::SizeToAxis(axis, logits->dims());
+    const int d = phi::funcs::SizeFromAxis(axis, logits->dims());
 
     PADDLE_ENFORCE_EQ(
         labels->numel(), n,
         platform::errors::Unimplemented(
-            "The size of labels should be equal to pten::funcs::SizeToAxis of "
+            "The size of labels should be equal to phi::funcs::SizeToAxis of "
             "logits,"
-            "but got size of labels is %d and pten::funcs::SizeToAxis is %d.",
+            "but got size of labels is %d and phi::funcs::SizeToAxis is %d.",
             labels->numel(), n));
 
     loss->mutable_data<T>(ctx.GetPlace());
@@ -99,9 +99,9 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     logits_grad->mutable_data<T>(ctx.GetPlace());
 
     const int rank = logits_grad->dims().size();
-    const int axis = pten::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
-    const int n = pten::funcs::SizeToAxis(axis, logits_grad->dims());
-    const int d = pten::funcs::SizeFromAxis(axis, logits_grad->dims());
+    const int axis = phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), rank);
+    const int n = phi::funcs::SizeToAxis(axis, logits_grad->dims());
+    const int d = phi::funcs::SizeFromAxis(axis, logits_grad->dims());
 
     Tensor logits_grad_2d, loss_grad_1d, backprop_2d;
 

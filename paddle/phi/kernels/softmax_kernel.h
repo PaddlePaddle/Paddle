@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/cast_kernel.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void SoftmaxRawKernel(const Context& dev_ctx,
@@ -31,8 +31,8 @@ void SoftmaxKernel(const Context& dev_ctx,
                    int axis,
                    DataType dtype,
                    DenseTensor* out) {
-  auto cast_x = pten::Cast<T, Context>(dev_ctx, x, dtype);
-  pten::SoftmaxRawKernel<T, Context>(dev_ctx, axis, out);
+  auto cast_x = phi::Cast<T, Context>(dev_ctx, x, dtype);
+  phi::SoftmaxRawKernel<T, Context>(dev_ctx, axis, out);
 }
 
-}  // namespace pten
+}  // namespace phi

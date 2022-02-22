@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/kernels/cast_kernel.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void SoftmaxGradKernel(const Context& dev_ctx,
@@ -26,4 +26,4 @@ void SoftmaxGradKernel(const Context& dev_ctx,
                        int axis,
                        DenseTensor* x_grad);
 
-}  // namespace pten
+}  // namespace phi

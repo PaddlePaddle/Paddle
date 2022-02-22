@@ -140,15 +140,15 @@ template class SoftmaxGradFunctor<platform::CUDADeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CUDADeviceContext,
                                   platform::float16>;
 
-template class SoftmaxFunctor<pten::GPUContext, platform::float16, false>;
-template class SoftmaxFunctor<pten::GPUContext, platform::float16, true>;
-template class SoftmaxFunctor<pten::GPUContext, float, false>;
-template class SoftmaxFunctor<pten::GPUContext, double, false>;
-template class SoftmaxFunctor<pten::GPUContext, float, true>;
-template class SoftmaxFunctor<pten::GPUContext, double, true>;
-template class SoftmaxGradFunctor<pten::GPUContext, float>;
-template class SoftmaxGradFunctor<pten::GPUContext, double>;
-template class SoftmaxGradFunctor<pten::GPUContext, platform::float16>;
+template class SoftmaxFunctor<phi::GPUContext, platform::float16, false>;
+template class SoftmaxFunctor<phi::GPUContext, platform::float16, true>;
+template class SoftmaxFunctor<phi::GPUContext, float, false>;
+template class SoftmaxFunctor<phi::GPUContext, double, false>;
+template class SoftmaxFunctor<phi::GPUContext, float, true>;
+template class SoftmaxFunctor<phi::GPUContext, double, true>;
+template class SoftmaxGradFunctor<phi::GPUContext, float>;
+template class SoftmaxGradFunctor<phi::GPUContext, double>;
+template class SoftmaxGradFunctor<phi::GPUContext, platform::float16>;
 
 }  // namespace math
 }  // namespace operators

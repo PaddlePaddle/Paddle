@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/pten/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -99,7 +99,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     bool is_inplaced = input->IsSharedBufferWith(*output);
 
     const int axis =
-        pten::funcs::CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
+        phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
 
     SoftmaxMKLDNNHandler<T> handler(mkldnn_engine, ctx.GetPlace(), input,
                                     output, axis);

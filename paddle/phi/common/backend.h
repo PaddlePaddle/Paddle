@@ -148,8 +148,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::NPU;
   } else if (s == std::string("MKLDNN")) {
     return Backend::MKLDNN;
-  } else if (s == std::string("CUDNN")) {
-    return Backend::CUDNN;
+  } else if (s == std::string("GPUDNN")) {
+    return Backend::GPUDNN;
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
                                 phi::GetOrRegisterGlobalDeviceTypeId(s));

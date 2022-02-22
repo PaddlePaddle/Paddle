@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature SoftmaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("softmax", {"X"}, {"axis"}, {"Out"});
@@ -28,7 +28,7 @@ KernelSignature SoftmaxGradOpArgumentMapping(
                          {GradVarName("X")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(softmax, pten::SoftmaxOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(softmax_grad, pten::SoftmaxGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(softmax, phi::SoftmaxOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(softmax_grad, phi::SoftmaxGradOpArgumentMapping);

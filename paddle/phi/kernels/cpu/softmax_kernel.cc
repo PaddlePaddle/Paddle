@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/softmax_kernel.h"
+#include "paddle/phi/kernels/softmax_kernel.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/impl/softmax_kernel_impl.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/softmax_kernel_impl.h"
 
-PT_REGISTER_KERNEL(
-    softmax, CPU, ALL_LAYOUT, pten::SoftmaxRawKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    softmax, CPU, ALL_LAYOUT, phi::SoftmaxRawKernel, float, double) {}

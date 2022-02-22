@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/softmax_kernel.h"
+#include "paddle/phi/kernels/softmax_kernel.h"
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/gpudnn/softmax_gpudnn.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void SoftmaxRawGPUDNNKernel(const Context& dev_ctx,
@@ -29,21 +29,21 @@ void SoftmaxRawGPUDNNKernel(const Context& dev_ctx,
   SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, x, axis, out);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
-PT_REGISTER_KERNEL(softmax,
+PD_REGISTER_KERNEL(softmax,
                    GPUDNN,
                    ALL_LAYOUT,
-                   pten::SoftmaxRawGPUDNNKernel,
+                   phi::SoftmaxRawGPUDNNKernel,
                    float,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}
 #else
-PT_REGISTER_KERNEL(softmax,
+PD_REGISTER_KERNEL(softmax,
                    GPUDNN,
                    ALL_LAYOUT,
-                   pten::SoftmaxRawGPUDNNKernel,
+                   phi::SoftmaxRawGPUDNNKernel,
                    float,
                    double,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}
 #endif

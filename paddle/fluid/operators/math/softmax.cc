@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -27,12 +27,12 @@ template class SoftmaxFunctor<platform::CPUDeviceContext, double, false>;
 template class SoftmaxGradFunctor<platform::CPUDeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CPUDeviceContext, double>;
 
-template class SoftmaxFunctor<pten::CPUContext, float, true>;
-template class SoftmaxFunctor<pten::CPUContext, float, false>;
-template class SoftmaxFunctor<pten::CPUContext, double, true>;
-template class SoftmaxFunctor<pten::CPUContext, double, false>;
-template class SoftmaxGradFunctor<pten::CPUContext, float>;
-template class SoftmaxGradFunctor<pten::CPUContext, double>;
+template class SoftmaxFunctor<phi::CPUContext, float, true>;
+template class SoftmaxFunctor<phi::CPUContext, float, false>;
+template class SoftmaxFunctor<phi::CPUContext, double, true>;
+template class SoftmaxFunctor<phi::CPUContext, double, false>;
+template class SoftmaxGradFunctor<phi::CPUContext, float>;
+template class SoftmaxGradFunctor<phi::CPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

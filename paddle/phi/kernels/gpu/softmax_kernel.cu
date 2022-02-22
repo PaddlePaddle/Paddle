@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/softmax_kernel.h"
+#include "paddle/phi/kernels/softmax_kernel.h"
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/common/float16.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/impl/softmax_kernel_impl.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/softmax_kernel_impl.h"
 
-PT_REGISTER_KERNEL(softmax,
+PD_REGISTER_KERNEL(softmax,
                    GPU,
                    ALL_LAYOUT,
-                   pten::SoftmaxRawKernel,
+                   phi::SoftmaxRawKernel,
                    float,
                    double,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}
