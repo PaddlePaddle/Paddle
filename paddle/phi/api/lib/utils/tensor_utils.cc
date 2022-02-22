@@ -131,7 +131,7 @@ phi::ScalarArray MakePtenScalarArrayFromVarList(
   }
 
   phi::ScalarArray result{vector_data};
-  result.setInitByTensor(true);
+  result.SetFromTensor(true);
 
   return result;
 }

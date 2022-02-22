@@ -241,6 +241,15 @@ IpuStrategy::IpuStrategy() {
 #undef ADD_POPART_BOOL_OPTION_ALIAS
 #undef ADD_POPART_ENUM_OPTION_ALIAS
 
+  RegisterGetter(vector_options_getter, options_type, "custom_ops", "vector",
+                 [&]() {
+                   std::vector<std::string> res;
+                   for (auto x : custom_ops) {
+                     res.push_back(x.repr());
+                   }
+                   return res;
+                 });
+
   RegisterSetter(bool_options, "enable_manual_shard", [&](bool value) {
     if (value) {
       popart_options.virtualGraphMode = popart::VirtualGraphMode::Manual;
@@ -427,6 +436,14 @@ void IpuStrategy::SetTensorLocation(const std::string& tensor,
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unknown option ' %s' for tensor location: %s", opt, tensor));
   }
+}
+
+void IpuStrategy::AddCustomOp(const std::string& paddle_op,
+                              const std::string& popart_op,
+                              const std::string& domain, int version) {
+  LOG(INFO) << "IpuStrategy add custom op: " << paddle_op;
+  custom_ops.push_back(
+      IpuCustomOpIdentifier(paddle_op, popart_op, domain, version));
 }
 
 std::string IpuStrategy::GetOption(const std::string& option) {

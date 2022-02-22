@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
+#include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -52,6 +53,7 @@ class InferMetaContext {
   const MetaTensor& InputAt(size_t idx) const;
   std::vector<MetaTensor> InputsBetween(size_t start, size_t end) const;
   MetaTensor* MutableOutputAt(size_t idx);
+  std::vector<MetaTensor> MutableOutputBetween(size_t start, size_t end);
 
   template <typename AttrType>
   AttrType AttrAt(size_t idx) {
@@ -186,7 +188,20 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
     }
   };
 
-  // TODO(chenweihang): support vector<MetaTensor> output later
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<std::vector<MetaTensor>*, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
+      const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
+      std::vector<MetaTensor> tmp =
+          ctx->MutableOutputBetween(range.first, range.second);
+      std::vector<MetaTensor>* arg = &tmp;
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx, attr_idx, out_idx + 1>(ctx,
+                                                                 pargs...,
+                                                                 arg);
+    }
+  };
 
   template <typename... Tail>
   struct InferMetaFnCallHelper<MetaConfig, Tail...> {
@@ -268,10 +283,10 @@ struct InferMetaFnRegistrar {
   }
 };
 
-#define PT_REGISTER_INFER_META_FN(kernel_name_prefix, variadic_infer_meta_fn) \
+#define PD_REGISTER_INFER_META_FN(kernel_name_prefix, variadic_infer_meta_fn) \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      pt_register_infer_meta_fn_ns_check_##kernel_name_prefix,                \
-      "PT_REGISTER_INFER_META_FN must be called in global namespace.");       \
+      PD_REGISTER_infer_meta_fn_ns_check_##kernel_name_prefix,                \
+      "PD_REGISTER_INFER_META_FN must be called in global namespace.");       \
   static const ::phi::InferMetaFnRegistrar                                    \
       __registrar_arg_map_fn_for_##kernel_name_prefix(                        \
           #kernel_name_prefix, PT_INFER_META(variadic_infer_meta_fn))

@@ -83,5 +83,5 @@ void NormGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     norm_grad, CPU, ALL_LAYOUT, phi::NormGradKernel, float, double) {}

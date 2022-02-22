@@ -81,10 +81,10 @@ void MultiplyKernel(const Context& dev_ctx,
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     mean, CPU, ALL_LAYOUT, phi::MeanKernel, float, double, bool) {}
 
-PT_REGISTER_KERNEL(sum,
+PD_REGISTER_KERNEL(sum,
                    CPU,
                    ALL_LAYOUT,
                    phi::SumKernel,
@@ -100,7 +100,7 @@ PT_REGISTER_KERNEL(sum,
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 
-PT_REGISTER_KERNEL(add,
+PD_REGISTER_KERNEL(add,
                    CPU,
                    ALL_LAYOUT,
                    phi::AddKernel,
@@ -111,7 +111,7 @@ PT_REGISTER_KERNEL(add,
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(subtract,
+PD_REGISTER_KERNEL(subtract,
                    CPU,
                    ALL_LAYOUT,
                    phi::SubtractKernel,
@@ -122,7 +122,7 @@ PT_REGISTER_KERNEL(subtract,
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(divide,
+PD_REGISTER_KERNEL(divide,
                    CPU,
                    ALL_LAYOUT,
                    phi::DivideKernel,
@@ -132,7 +132,7 @@ PT_REGISTER_KERNEL(divide,
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(multiply,
+PD_REGISTER_KERNEL(multiply,
                    CPU,
                    ALL_LAYOUT,
                    phi::MultiplyKernel,
@@ -145,15 +145,17 @@ PT_REGISTER_KERNEL(multiply,
                    complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(mean,
+PD_REGISTER_KERNEL(mean,
                    GPU,
                    ALL_LAYOUT,
                    phi::MeanKernel,
                    float,
                    double,
                    bool,
+                   int,
+                   int64_t,
                    phi::dtype::float16) {}
-PT_REGISTER_KERNEL(sum,
+PD_REGISTER_KERNEL(sum,
                    GPU,
                    ALL_LAYOUT,
                    phi::SumKernel,
@@ -168,7 +170,7 @@ PT_REGISTER_KERNEL(sum,
                    complex128) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
-PT_REGISTER_KERNEL(add,
+PD_REGISTER_KERNEL(add,
                    GPU,
                    ALL_LAYOUT,
                    phi::AddKernel,
@@ -180,7 +182,7 @@ PT_REGISTER_KERNEL(add,
                    phi::dtype::float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(subtract,
+PD_REGISTER_KERNEL(subtract,
                    GPU,
                    ALL_LAYOUT,
                    phi::SubtractKernel,
@@ -192,7 +194,7 @@ PT_REGISTER_KERNEL(subtract,
                    phi::dtype::float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(divide,
+PD_REGISTER_KERNEL(divide,
                    GPU,
                    ALL_LAYOUT,
                    phi::DivideKernel,
@@ -203,7 +205,7 @@ PT_REGISTER_KERNEL(divide,
                    phi::dtype::float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(multiply,
+PD_REGISTER_KERNEL(multiply,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultiplyKernel,
