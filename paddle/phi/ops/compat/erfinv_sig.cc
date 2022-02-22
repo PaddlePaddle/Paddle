@@ -29,4 +29,4 @@ KernelSignature ErfinvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(erfinv_grad, phi::ErfinvGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(erfinv_grad, phi::ErfinvGradOpArgumentMapping);

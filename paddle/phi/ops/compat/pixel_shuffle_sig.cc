@@ -38,6 +38,6 @@ KernelSignature PixelShuffleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(pixel_shuffle, phi::PixelShuffleOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(pixel_shuffle_grad,
+PD_REGISTER_ARG_MAPPING_FN(pixel_shuffle, phi::PixelShuffleOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(pixel_shuffle_grad,
                            phi::PixelShuffleGradOpArgumentMapping);

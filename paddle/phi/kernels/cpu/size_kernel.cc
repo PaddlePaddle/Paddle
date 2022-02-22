@@ -17,7 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/size_kernel_impl.h"
 
-PT_REGISTER_KERNEL(size,
+PD_REGISTER_KERNEL(size,
                    CPU,
                    ALL_LAYOUT,
                    phi::SizeKernel,

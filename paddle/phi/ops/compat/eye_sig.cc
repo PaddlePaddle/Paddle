@@ -29,4 +29,4 @@ KernelSignature EyeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(eye, phi::EyeOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(eye, phi::EyeOpArgumentMapping);

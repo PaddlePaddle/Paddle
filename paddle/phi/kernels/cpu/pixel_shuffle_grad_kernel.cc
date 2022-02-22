@@ -17,7 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/pixel_shuffle_grad_kernel_impl.h"
 
-PT_REGISTER_KERNEL(pixel_shuffle_grad,
+PD_REGISTER_KERNEL(pixel_shuffle_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::PixelShuffleGradKernel,

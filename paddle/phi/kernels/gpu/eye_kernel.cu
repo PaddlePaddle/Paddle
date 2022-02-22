@@ -17,7 +17,7 @@
 #include "paddle/phi/kernels/eye_kernel.h"
 #include "paddle/phi/kernels/impl/eye_kernel_impl.h"
 
-PT_REGISTER_KERNEL(eye,
+PD_REGISTER_KERNEL(eye,
                    GPU,
                    ALL_LAYOUT,
                    phi::EyeKernel,

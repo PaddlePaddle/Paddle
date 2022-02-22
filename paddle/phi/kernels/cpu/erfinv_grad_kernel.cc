@@ -17,5 +17,5 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/erfinv_grad_kernel_impl.h"
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     erfinv_grad, CPU, ALL_LAYOUT, phi::ErfinvGradKernel, float, double) {}

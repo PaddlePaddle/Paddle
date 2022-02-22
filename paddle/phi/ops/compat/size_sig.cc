@@ -28,4 +28,4 @@ KernelSignature SizeOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(size, phi::SizeOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(size, phi::SizeOpArgumentMapping);

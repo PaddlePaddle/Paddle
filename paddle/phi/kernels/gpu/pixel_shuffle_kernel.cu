@@ -17,5 +17,5 @@
 #include "paddle/phi/kernels/impl/pixel_shuffle_kernel_impl.h"
 #include "paddle/phi/kernels/pixel_shuffle_kernel.h"
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     pixel_shuffle, GPU, ALL_LAYOUT, phi::PixelShuffleKernel, float, double) {}

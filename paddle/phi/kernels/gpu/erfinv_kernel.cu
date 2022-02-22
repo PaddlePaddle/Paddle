@@ -17,4 +17,4 @@
 #include "paddle/phi/kernels/erfinv_kernel.h"
 #include "paddle/phi/kernels/impl/erfinv_kernel_impl.h"
 
-PT_REGISTER_KERNEL(erfinv, GPU, ALL_LAYOUT, phi::ErfinvKernel, float, double) {}
+PD_REGISTER_KERNEL(erfinv, GPU, ALL_LAYOUT, phi::ErfinvKernel, float, double) {}
