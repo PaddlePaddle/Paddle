@@ -37,24 +37,24 @@ void ReshapeDoubleGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(reshape_grad,
+PD_REGISTER_GENERAL_KERNEL(reshape_grad,
                            CPU,
                            ALL_LAYOUT,
                            phi::ReshapeGradKernel<phi::CPUContext>,
                            ALL_DTYPE) {}
-PT_REGISTER_GENERAL_KERNEL(reshape_double_grad,
+PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
                            CPU,
                            ALL_LAYOUT,
                            phi::ReshapeDoubleGradKernel<phi::CPUContext>,
                            ALL_DTYPE) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_GENERAL_KERNEL(reshape_grad,
+PD_REGISTER_GENERAL_KERNEL(reshape_grad,
                            GPU,
                            ALL_LAYOUT,
                            phi::ReshapeGradKernel<phi::GPUContext>,
                            ALL_DTYPE) {}
-PT_REGISTER_GENERAL_KERNEL(reshape_double_grad,
+PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
                            GPU,
                            ALL_LAYOUT,
                            phi::ReshapeDoubleGradKernel<phi::GPUContext>,
@@ -62,12 +62,12 @@ PT_REGISTER_GENERAL_KERNEL(reshape_double_grad,
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_REGISTER_GENERAL_KERNEL(reshape_grad,
+PD_REGISTER_GENERAL_KERNEL(reshape_grad,
                            XPU,
                            ALL_LAYOUT,
                            phi::ReshapeGradKernel<phi::XPUContext>,
                            ALL_DTYPE) {}
-PT_REGISTER_GENERAL_KERNEL(reshape_double_grad,
+PD_REGISTER_GENERAL_KERNEL(reshape_double_grad,
                            XPU,
                            ALL_LAYOUT,
                            phi::ReshapeDoubleGradKernel<phi::XPUContext>,

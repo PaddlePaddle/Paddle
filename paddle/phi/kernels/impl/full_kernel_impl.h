@@ -59,7 +59,7 @@ void FullLikeKernel(const Context& dev_ctx,
           (common_type_value <=
            static_cast<CommonType>(std::numeric_limits<T>::max())),
       true,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
           "and %f, but now value is %f.",

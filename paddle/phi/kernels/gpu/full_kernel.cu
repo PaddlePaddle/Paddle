@@ -98,7 +98,7 @@ void FullLikeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(full,
+PD_REGISTER_KERNEL(full,
                    GPU,
                    ALL_LAYOUT,
                    phi::FullKernel,
@@ -113,7 +113,7 @@ PT_REGISTER_KERNEL(full,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(full_like,
+PD_REGISTER_KERNEL(full_like,
                    GPU,
                    ALL_LAYOUT,
                    phi::FullLikeKernel,

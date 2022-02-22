@@ -30,7 +30,7 @@ class ExternalStorage : public phi::Storage {
   static const char* name() { return "ExternalStorage"; }
 
   void Realloc(size_t n) override {
-    PADDLE_THROW(paddle::platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "The external shared storage cannot be reallocated."));
   }
 
@@ -55,7 +55,7 @@ class ExternalStorage : public phi::Storage {
   const phi::Place& place() const override {
     PADDLE_ENFORCE_NOT_NULL(
         data_,
-        paddle::platform::errors::Unavailable(
+        phi::errors::Unavailable(
             "Unable to visit place as data_ has not been initialized yet."));
     return data_->place();
   }

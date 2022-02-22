@@ -66,6 +66,9 @@ message TrainerDesc {
   repeated int32 trainers = 35;
   optional int32 trainer_id = 36;
 
+  // add for gpu
+  optional string fleet_desc = 37;
+
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;

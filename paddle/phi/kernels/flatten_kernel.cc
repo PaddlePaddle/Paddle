@@ -48,7 +48,7 @@ void FlattenWithXShape(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(flatten,
+PD_REGISTER_KERNEL(flatten,
                    CPU,
                    ALL_LAYOUT,
                    phi::FlattenKernel,
@@ -60,7 +60,7 @@ PT_REGISTER_KERNEL(flatten,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(flatten_with_xshape,
+PD_REGISTER_KERNEL(flatten_with_xshape,
                    CPU,
                    ALL_LAYOUT,
                    phi::FlattenWithXShape,
@@ -73,7 +73,7 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(flatten,
+PD_REGISTER_KERNEL(flatten,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlattenKernel,
@@ -86,7 +86,7 @@ PT_REGISTER_KERNEL(flatten,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(flatten_with_xshape,
+PD_REGISTER_KERNEL(flatten_with_xshape,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlattenWithXShape,
@@ -101,7 +101,7 @@ PT_REGISTER_KERNEL(flatten_with_xshape,
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_REGISTER_KERNEL(flatten,
+PD_REGISTER_KERNEL(flatten,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlattenKernel,
@@ -112,7 +112,7 @@ PT_REGISTER_KERNEL(flatten,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(flatten_with_xshape,
+PD_REGISTER_KERNEL(flatten_with_xshape,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlattenWithXShape,

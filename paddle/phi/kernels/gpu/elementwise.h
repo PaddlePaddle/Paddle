@@ -714,7 +714,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                              DX_OP dx_op,
                              DY_OP dy_op) {
   const auto gplace = ctx.GetPlace();
-  auto cplace = paddle::platform::CPUPlace();
+  auto cplace = phi::CPUPlace();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
   const Tout *out_data = out.data<Tout>();
@@ -1339,12 +1339,12 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
   PADDLE_ENFORCE_LT(axis,
                     max_dim,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim,
                         axis));
