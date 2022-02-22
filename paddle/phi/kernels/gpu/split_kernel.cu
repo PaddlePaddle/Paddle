@@ -28,7 +28,7 @@ void SplitKernel(const Context& dev_ctx,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
   // need to infershape output
-  if (num_or_sections.IsInitByTensor() || axis_scalar.IsInitByTensor()) {
+  if (num_or_sections.FromTensor() || axis_scalar.FromTensor()) {
     std::vector<MetaTensor> out_metas;
     for (size_t i = 0; i < outs.size(); ++i) {
       out_metas.push_back(outs[i]);
@@ -59,7 +59,7 @@ void SplitKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(split,
+PD_REGISTER_KERNEL(split,
                    GPU,
                    ALL_LAYOUT,
                    phi::SplitKernel,

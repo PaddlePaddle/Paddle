@@ -107,27 +107,6 @@ REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
                   ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::ReduceSumGradNoNeedBufferVarInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, bool,
-                                  ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, double,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16, ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int16_t,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<float>, ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<double>,
-
-                      ops::SumFunctor>);
-
 template <typename T>
 using CPUReduceSumGradKernel =
     ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, T,
