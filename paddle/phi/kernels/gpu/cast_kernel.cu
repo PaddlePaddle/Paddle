@@ -61,7 +61,7 @@ void CastKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...) \
-  PT_REGISTER_KERNEL(cast,                              \
+  PD_REGISTER_KERNEL(cast,                              \
                      GPU,                               \
                      ALL_LAYOUT,                        \
                      phi::CastKernel,                   \

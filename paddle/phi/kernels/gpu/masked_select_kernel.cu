@@ -108,7 +108,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(masked_select,
+PD_REGISTER_KERNEL(masked_select,
                    GPU,
                    ALL_LAYOUT,
                    phi::MaskedSelectKernel,
