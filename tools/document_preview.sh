@@ -42,7 +42,11 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     if [ -d ${FLUIDDOCDIR} ] ; then
         # echo "$0: rm -rf ${FLUIDDOCDIR}"
         # rm -rf ${FLUIDDOCDIR}
-        echo "${FLUIDDOCDIR} exists, git clone skipped."
+        echo "${FLUIDDOCDIR} exists, git clone will be skipped, but git clean will be done."
+        cd ${FLUIDDOCDIR}
+        git reset --hard
+        git clean -dfx
+        cd ${CURPWD}
     else
         git clone -b ${BRANCH} --depth=1 https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
         if [ ! "$?" = "0" ] ; then
