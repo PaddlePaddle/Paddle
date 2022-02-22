@@ -45,7 +45,7 @@ def BenchmarkOp : Test_Op<"benchmark"> {
          // The following code benchmarks the infrt.add.i32 kernel.
          %x = infrt.add.i32 %c, %c
          // The benchmarked function needs to return exactly one value.
-         infrt.return %x : i32
+         Infrt.return %x : i32
        }
   }];
 
