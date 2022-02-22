@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-def miminize_bfgs(  func,
-                    jac,
-                    x0,
-                    dtype='float32',
-                    H0=None,
-                    epsilon=1e-8,
-                    max_iters=50,
-                    max_line_search_iters=50,
-                    summary_only=True,
-                    name=None):
-    k=0
+
+def miminize_bfgs(func,
+                  jac,
+                  x0,
+                  dtype='float32',
+                  H0=None,
+                  epsilon=1e-8,
+                  max_iters=50,
+                  max_line_search_iters=50,
+                  summary_only=True,
+                  name=None):
+    k = 0
 
     while norm(gradient_fk) > epsilon:
         pk = -H_prev * gradient_fk
