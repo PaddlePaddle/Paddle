@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
+#include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
@@ -282,10 +283,10 @@ struct InferMetaFnRegistrar {
   }
 };
 
-#define PT_REGISTER_INFER_META_FN(kernel_name_prefix, variadic_infer_meta_fn) \
+#define PD_REGISTER_INFER_META_FN(kernel_name_prefix, variadic_infer_meta_fn) \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      pt_register_infer_meta_fn_ns_check_##kernel_name_prefix,                \
-      "PT_REGISTER_INFER_META_FN must be called in global namespace.");       \
+      PD_REGISTER_infer_meta_fn_ns_check_##kernel_name_prefix,                \
+      "PD_REGISTER_INFER_META_FN must be called in global namespace.");       \
   static const ::phi::InferMetaFnRegistrar                                    \
       __registrar_arg_map_fn_for_##kernel_name_prefix(                        \
           #kernel_name_prefix, PT_INFER_META(variadic_infer_meta_fn))

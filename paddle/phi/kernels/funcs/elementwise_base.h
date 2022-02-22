@@ -343,7 +343,7 @@ inline void get_mid_dims(const DDim &x_dims,
     if (x_dims[i + axis] != y_dims[i]) {
       PADDLE_ENFORCE_EQ(y_dims[i] == 1 || x_dims[i + axis] == 1,
                         true,
-                        paddle::platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Broadcast dimension mismatch. Operands "
                             "could not be broadcast together with the shape of "
                             "X = [%s] and the shape of Y = [%s]. Received [%d] "
@@ -754,7 +754,7 @@ void ElementwiseKernel(const KPDevice &ctx,
   const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The number of inputs is expected to be equal to the "
                         "arity of functor. But recieved: the number of inputs "
                         "is %d, the arity of functor is %d.",
@@ -762,7 +762,7 @@ void ElementwiseKernel(const KPDevice &ctx,
                         kArity));
   PADDLE_ENFORCE_EQ(outs->size(),
                     NumOuts,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Number of outputs shall equal to number of functions, "
                         "but number of outputs is %d, of functions is %d.",
                         outs->size(),
@@ -773,7 +773,7 @@ void ElementwiseKernel(const KPDevice &ctx,
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of each output tensor shall be identical yet, "
               "but %dth output tensor`s shape is not.",
               i));
@@ -796,7 +796,7 @@ void ElementwiseKernel(const KPDevice &ctx,
           ctx, ins, outs, func);
       break;
     default: {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported vectorized size: %d !", vec_size));
       break;
     }

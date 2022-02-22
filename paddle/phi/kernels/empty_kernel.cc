@@ -38,7 +38,7 @@ void EmptyLikeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(empty,
+PD_REGISTER_KERNEL(empty,
                    CPU,
                    ALL_LAYOUT,
                    phi::EmptyKernel,
@@ -54,7 +54,7 @@ PT_REGISTER_KERNEL(empty,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(empty_like,
+PD_REGISTER_KERNEL(empty_like,
                    CPU,
                    ALL_LAYOUT,
                    phi::EmptyLikeKernel,
@@ -71,7 +71,7 @@ PT_REGISTER_KERNEL(empty_like,
                    phi::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(empty,
+PD_REGISTER_KERNEL(empty,
                    GPU,
                    ALL_LAYOUT,
                    phi::EmptyKernel,
@@ -86,7 +86,7 @@ PT_REGISTER_KERNEL(empty,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(empty_like,
+PD_REGISTER_KERNEL(empty_like,
                    GPU,
                    ALL_LAYOUT,
                    phi::EmptyLikeKernel,
