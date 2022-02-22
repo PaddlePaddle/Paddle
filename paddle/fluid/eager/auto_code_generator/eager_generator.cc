@@ -1016,8 +1016,6 @@ static std::string GenerateGradNodeCreationContent(
     const std::string& output_name = output.name();
     const std::string& output_autograd_name = "p_autograd_" + output_name;
 
-    // Skip Intermediate Tensor
-
     if (output.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
           "  std::vector<egr::AutogradMeta*> %s = "
@@ -1147,8 +1145,6 @@ static std::string GenerateGradNodeCreationContent(
     const std::string& output_autograd_name = "p_autograd_" + output_name;
     size_t output_position = fwd_outputs_name_pos_map.at(output_name);
 
-    // Intermediate Tensor does not require SetHistory, nor RetainGrad
-
     if (output.duplicable()) {
       pass_stop_gradient_args += ", &" + output_autograd_name;
       const char* SET_OUT_RANK_TEMPLATE =
@@ -1156,11 +1152,13 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
-      const char* SET_HISTORY_TEMPLATE =
-          "    egr::EagerUtils::SetHistory(&%s, grad_node);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
-
+      // Intermediate Tensor does not require SetHistory
+      if (!output.intermediate()) {
+        const char* SET_HISTORY_TEMPLATE =
+            "    egr::EagerUtils::SetHistory(&%s, grad_node);\n";
+        grad_node_creation_str +=
+            paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
+      }
       const char* SET_GRAD_IN_META_TEMPLATE =
           "    grad_node->SetGradInMeta(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
@@ -1173,22 +1171,27 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
-      const char* SET_HISTORY_TEMPLATE =
-          "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
-
+      // Intermediate Tensor does not require SetHistory
+      if (!output.intermediate()) {
+        const char* SET_HISTORY_TEMPLATE =
+            "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
+        grad_node_creation_str +=
+            paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
+      }
       const char* SET_GRAD_IN_META_TEMPLATE =
           "    grad_node->SetGradInMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
     }
 
-    VLOG(6) << "Generated Call RetainGradForTensor";
-    const char* RETAIN_GRAD_TEMPLATE =
-        "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
-    grad_node_creation_str +=
-        paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
+    // Intermediate Tensor does not require CheckAndRetainGrad
+    if (!output.intermediate()) {
+      VLOG(6) << "Generated Call RetainGradForTensor";
+      const char* RETAIN_GRAD_TEMPLATE =
+          "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+      grad_node_creation_str +=
+          paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
+    }
   }
   VLOG(6) << "Generated SetGradIn/OutMeta";
 
