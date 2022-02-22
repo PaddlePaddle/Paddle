@@ -30,6 +30,7 @@ from ..fluid.layers import unstack  # noqa: F401
 
 from ..fluid.layers import scatter_nd  # noqa: F401
 from ..fluid.layers import shard_index  # noqa: F401
+from ..fluid.layers import crop_tensor as crop  # noqa: F401
 from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only

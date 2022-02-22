@@ -171,6 +171,9 @@ class DenseTensor : public TensorBase,
   DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
 
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"
+#endif
 };
+
 }  // namespace phi
