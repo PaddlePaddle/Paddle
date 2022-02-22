@@ -238,7 +238,8 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
       paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout();
   if ((var_name == "Input") &&
       (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (cur_dl != framework::DataLayout::kNHWC)) {
+      ((tensor.layout() != framework::DataLayout::kMKLDNN) ||
+       (cur_dl != framework::DataLayout::kNHWC))) {
     // if registered dl is different for the one read from attribute this means
     // that this is first oneDNN NHWC op and we need to perform rotation of
     // shape
@@ -248,7 +249,7 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
     auto dl = framework::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for conv
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout && cur_dl != dl) {
+    if (dl != framework::DataLayout::kAnyLayout) {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), dl);
     }
