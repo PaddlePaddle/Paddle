@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/selu_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -127,9 +125,3 @@ REGISTER_OPERATOR(selu, ops::SeluOp, ops::SeluOpMaker, ops::SeluOpInferVarType,
                   ops::SeluGradMaker<paddle::framework::OpDesc>,
                   ops::SeluGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(selu_grad, ops::SeluGradOp);
-REGISTER_OP_CPU_KERNEL(
-    selu, ops::SeluKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SeluKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    selu_grad, ops::SeluGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SeluGradKernel<paddle::platform::CPUDeviceContext, double>);
