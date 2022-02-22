@@ -60,7 +60,7 @@ void SplitKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(split,
+PD_REGISTER_KERNEL(split,
                    CPU,
                    ALL_LAYOUT,
                    phi::SplitKernel,
