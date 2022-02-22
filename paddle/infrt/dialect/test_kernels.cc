@@ -147,7 +147,7 @@ static mlir::LogicalResult verify(BenchmarkOp op) {
   // Verify that the target benchmark region has exactly one return value.
   auto &region = op.region();
   auto &last_op = region.front().back();
-  if (last_op.getName().getStringRef() != "infrt.return") {
+  if (last_op.getName().getStringRef() != "Infrt.return") {
     return op.emitOpError("missing return statement");
   }
   if (last_op.getNumOperands() != 1) {
