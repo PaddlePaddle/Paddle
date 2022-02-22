@@ -137,7 +137,7 @@ KernelArgsNameMakerByOpProto::GetInputArgsNames() {
       continue;
     }
     // If contains dispensable input, we should override the
-    // GetExpectedPtenKernelArgs method self
+    // OpArgumentMapping method self in phi/ops/compat dir
     if (in.has_dispensable() && in.dispensable()) {
       VLOG(6) << "Parse PtenKernel input: skip dispensable input - " << in_name;
       continue;
@@ -153,7 +153,18 @@ KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
   for (int i = 0; i < op_proto_->outputs_size(); ++i) {
     auto& out = op_proto_->outputs()[i];
     auto& out_name = out.name();
-    // TODO(chenweihang): outputs also need skip some cases
+    if ((out.has_extra() && out.extra()) || (out.has_quant() && out.quant())) {
+      VLOG(6) << "Parse PtenKernel output: skip extra & quant output - "
+              << out_name;
+      continue;
+    }
+    // If contains dispensable input, we should override the
+    // OpArgumentMapping method self in phi/ops/compat dir
+    if (out.has_dispensable() && out.dispensable()) {
+      VLOG(6) << "Parse PtenKernel output: skip dispensable output - "
+              << out_name;
+      continue;
+    }
     VLOG(6) << "Parse PtenKernel output: " << out_name;
     output_names_.emplace_back(out_name);
   }
@@ -165,9 +176,10 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
   for (int i = 0; i < op_proto_->attrs_size(); ++i) {
     auto& attr = op_proto_->attrs()[i];
     auto& attr_name = attr.name();
-    if (attr_name == "use_mkldnn" || attr_name == "op_role" ||
-        attr_name == "op_role_var" || attr_name == "op_namescope" ||
-        attr_name == "op_callstack" || attr_name == "op_device") {
+    if (attr_name == "use_mkldnn" || attr_name == "use_cudnn" ||
+        attr_name == "op_role" || attr_name == "op_role_var" ||
+        attr_name == "op_namescope" || attr_name == "op_callstack" ||
+        attr_name == "op_device") {
       VLOG(6) << "Parse PtenKernel attribute: skip needless attr - "
               << attr_name;
       continue;
