@@ -15,11 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/pten/core/stream.h"
+#include "paddle/phi/core/stream.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -47,7 +47,7 @@ class MemcpyH2DFunctor {
 #endif
     out_tensor.mutable_data(
         dev_ctx_.GetPlace(), lod_tensor.dtype(),
-        pten::Stream(reinterpret_cast<pten::StreamId>(stream)));
+        phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
     if (dst_place_type_ == 0 || dst_place_type_ == 1) {
       framework::TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_,
@@ -59,7 +59,7 @@ class MemcpyH2DFunctor {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
-  void operator()(const pten::SelectedRows &rows) const {
+  void operator()(const phi::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
     PADDLE_THROW(platform::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));

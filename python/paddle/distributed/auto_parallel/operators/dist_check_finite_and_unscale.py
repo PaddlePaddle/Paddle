@@ -26,7 +26,7 @@ from ..process_group import new_process_group
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.process_group import get_world_process_group
 
-global_process_mesh = get_world_process_group().ranks
+world_process_group = get_world_process_group()
 
 
 class DistributedCheckFiniteAndUnscale(DistributedOperatorImplContainer):
@@ -119,7 +119,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         main_block._sync_with_cpp()
 
         # sync result
-        group = new_process_group(global_process_mesh)
+        group = new_process_group(world_process_group.ranks)
 
         inf_var = main_block.var(kwargs['FoundInfinite'][0])
         inf_var_int32 = main_block.create_var(

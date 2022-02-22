@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/fused/attn_bias_add.cu.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -47,7 +47,7 @@ class FeedForward {
 
     // column-major: (m,n,k) = output_size,bsz_seq,input_size (weight*input=out)
     // here: (m,n,k) = bsz_seq,output_size,input_size (input*weight=out)
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     blas.GEMM(transA, transB, bsz_seq_, output_size_, input_size_, alpha,
               input_data, weight_data, beta, output_data);
     if (compute_bias_) {
@@ -60,7 +60,7 @@ class FeedForward {
                        T* d_weight, T* d_bias) {
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
 
     // column-major: gemm-nt, get d_weight.
     CBLAS_TRANSPOSE transA = CblasTrans;
