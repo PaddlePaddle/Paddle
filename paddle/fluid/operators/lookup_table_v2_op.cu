@@ -21,24 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T, typename std::enable_if<!std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
-__device__ __forceinline__ void fastVectorizedAtomicAdd(T *address, T value_1,
-                                                        T value_2) {
-  paddle::platform::CudaAtomicAdd(address, value_1);
-  paddle::platform::CudaAtomicAdd(address + 1, value_2);
-}
-
-template <typename T, typename std::enable_if<std::is_same<
-                          platform::float16, T>::value>::type * = nullptr>
-__device__ __forceinline__ void fastVectorizedAtomicAdd(T *address, T value_1,
-                                                        T value_2) {
-  __half2 value2;
-  value2.x = *reinterpret_cast<__half *>(&value_1);
-  value2.y = *reinterpret_cast<__half *>(&value_2);
-  atomicAdd(reinterpret_cast<__half2 *>(address), value2);
-}
-
 template <typename T, typename IdT, bool PaddingFlag>
 __global__ void LookupTableV2(T *output, const T *table, const IdT *ids,
                               const int64_t N, const int64_t K, const int64_t D,
@@ -75,14 +57,7 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const IdT *ids,
     auto id = static_cast<int64_t>(ids[idy]);
     const T *out = output + idy * D;
     T *tab = table + id * D;
-
-    int i = 0;
-    for (i = idx * 2; i < D; i += blockDim.x * 2) {
-      fastVectorizedAtomicAdd(&tab[i], out[i], out[i + 1]);
-    }
-    for (; i < D; i += blockDim.x) {
-      paddle::platform::fastAtomicAdd(tab, i, D, out[i], true);
-    }
+    paddle::platform::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
     idy += blockDim.y * gridDim.x;
   }
 }
