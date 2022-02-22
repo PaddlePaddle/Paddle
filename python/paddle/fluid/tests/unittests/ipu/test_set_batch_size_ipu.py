@@ -91,7 +91,7 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=self.is_training)
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
-                    ipu_strategy.set_half_config(enable_fp16=True)
+                    ipu_strategy.set_precision_config(enable_fp16=True)
                 # set batch size
                 ipu_strategy.micro_batch_size = 2
                 program = paddle.static.IpuCompiledProgram(
