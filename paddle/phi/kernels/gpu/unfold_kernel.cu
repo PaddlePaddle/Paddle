@@ -17,4 +17,4 @@
 #include "paddle/phi/kernels/impl/unfold_kernel_impl.h"
 #include "paddle/phi/kernels/unfold_kernel.h"
 
-PT_REGISTER_KERNEL(unfold, GPU, ALL_LAYOUT, phi::UnfoldKernel, float, double) {}
+PD_REGISTER_KERNEL(unfold, GPU, ALL_LAYOUT, phi::UnfoldKernel, float, double) {}
