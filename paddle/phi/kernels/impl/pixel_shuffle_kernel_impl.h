@@ -34,8 +34,7 @@ void PixelShuffleKernel(const Context& ctx,
   auto in_dims = in->dims();
   auto o_dims = out->dims();
 
-  DenseTensor t;
-  t.ShareDataWith(*in);
+  DenseTensor t(*in);
   if (!channel_last) {
     t.Resize({in_dims[0], o_dims[1], factor, factor, in_dims[2], in_dims[3]});
   } else {
@@ -43,8 +42,7 @@ void PixelShuffleKernel(const Context& ctx,
   }
   std::vector<int> axis = {0, 1, 4, 2, 5, 3};
 
-  DenseTensor o;
-  o.ShareDataWith(*out);
+  DenseTensor o(*out);
   if (!channel_last) {
     o.Resize({in_dims[0], o_dims[1], in_dims[2], factor, in_dims[3], factor});
   } else {

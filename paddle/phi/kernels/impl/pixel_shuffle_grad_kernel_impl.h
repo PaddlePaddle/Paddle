@@ -35,8 +35,7 @@ void PixelShuffleGradKernel(const Context& ctx,
   auto do_dims = dout->dims();
   auto dx_dims = dx->dims();
 
-  DenseTensor t;
-  t.ShareDataWith(*dout);
+  DenseTensor t(*dout);
   if (!channel_last) {
     t.Resize({do_dims[0], do_dims[1], dx_dims[2], factor, dx_dims[3], factor});
   } else {
@@ -44,8 +43,7 @@ void PixelShuffleGradKernel(const Context& ctx,
   }
   std::vector<int> axis = {0, 1, 3, 5, 2, 4};
 
-  DenseTensor o;
-  o.ShareDataWith(*dx);
+  DenseTensor o(*dx);
   if (!channel_last) {
     o.Resize({do_dims[0], do_dims[1], factor, factor, dx_dims[2], dx_dims[3]});
   } else {

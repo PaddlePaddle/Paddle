@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/eye_kernel.h"
+#include "paddle/phi/kernels/impl/eye_kernel_impl.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/eye_kernel_impl.h"
 
 PD_REGISTER_KERNEL(eye,
                    CPU,
@@ -25,4 +26,4 @@ PD_REGISTER_KERNEL(eye,
                    double,
                    int64_t,
                    int,
-                   paddle::platform::float16) {}
+                   phi::dtype::float16) {}

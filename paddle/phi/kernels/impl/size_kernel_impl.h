@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 
 namespace phi {
 
@@ -24,7 +24,7 @@ void SizeKernel(const Context& ctx,
                 DenseTensor* out) {
   auto place = ctx.GetPlace();
   auto out_data = ctx.template Alloc<int64_t>(out);
-  auto cpu_place = paddle::platform::CPUPlace();
+  auto cpu_place = phi::CPUPlace();
   if (place == cpu_place) {
     out_data[0] = input.numel();
   } else {
@@ -32,7 +32,7 @@ void SizeKernel(const Context& ctx,
     cpu_tensor.Resize(out->dims());
     auto cpu_data = ctx.template HostAlloc<int64_t>(&cpu_tensor);
     cpu_data[0] = input.numel();
-    paddle::framework::TensorCopy(cpu_tensor, place, out);
+    phi::Copy(ctx, cpu_tensor, false, out);
   }
 }
 
