@@ -129,7 +129,7 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
   }
 };
 
-// NOTE: used for making a difference between kernels registered in phi or not.
+// NOTE: used for making a difference between inner or outer registration.
 enum class RegType : uint8_t {
   INNER = 0,
   OUTER,
