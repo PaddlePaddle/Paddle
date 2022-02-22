@@ -19,15 +19,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/shape_inference.h"
 
-namespace pten {
+namespace phi {
 class InferMetaContext;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
 
-pten::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
-                                             const std::string& op_type);
+phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
+                                            const std::string& op_type);
 
 #define DELCARE_INFER_SHAPE_FUNCTOR(op_type, functor_name, fn)      \
   struct functor_name : public paddle::framework::InferShapeBase {  \

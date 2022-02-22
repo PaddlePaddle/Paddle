@@ -97,13 +97,13 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
 
       // BNTrainingReduce ONLY support rank = 4
       if (x->dims().size() == 3) {
-        auto x_shape_vec = framework::vectorize(x->dims());
+        auto x_shape_vec = phi::vectorize(x->dims());
         if (data_layout == DataLayout::kNCHW) {
           x_shape_vec.push_back(1);  // expand NCL -> NCL1
         } else {
           x_shape_vec.insert(x_shape_vec.begin() + 2, 1);  // expand NLC -> NL1C
         }
-        auto x_new_shape = framework::make_ddim(x_shape_vec);
+        auto x_new_shape = phi::make_ddim(x_shape_vec);
         x_tensor.Resize(x_new_shape);
         x_tensor.Resize(x_new_shape);
       }
@@ -199,14 +199,14 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
       if (use_global_stats) {
         if (x->dims().size() == 3) {
           // BNInferGrad only support x rank = 4,
-          auto x_shape_vec = framework::vectorize(d_x->dims());
+          auto x_shape_vec = phi::vectorize(d_x->dims());
           if (data_layout == DataLayout::kNCHW) {
             x_shape_vec.push_back(1);  // expand NCL -> NCL1
           } else {
             x_shape_vec.insert(x_shape_vec.begin() + 2,
                                1);  // expand NLC -> NL1C
           }
-          auto x_new_shape = framework::make_ddim(x_shape_vec);
+          auto x_new_shape = phi::make_ddim(x_shape_vec);
           dx_tensor.Resize(x_new_shape);
           dy_tensor.Resize(x_new_shape);
         }

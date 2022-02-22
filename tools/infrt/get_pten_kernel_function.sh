@@ -22,14 +22,14 @@ set -e
 
 #step 1:get kernel registered info
 kernel_register_info_file=`mktemp`
-PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
-unset GREP_OPTIONS && find ${PADDLE_ROOT}/paddle/pten/kernels -name "*.c*" \
-   | xargs sed -e '/PT_REGISTER_\(GENERAL_\)\?KERNEL(/,/)/!d' \
-   | awk 'BEGIN { RS="{" }{ gsub(/\n /,""); print $0 }' \
-   | grep PT_REGISTER \
-   | awk -F ",|\(" '{gsub(/ /,"");print $2, $3, $4, $5}' \
-   |  sort -u | awk '{gsub(/pten::/,"");print $0}' \
-   | grep -v "_grad" > $kernel_register_info_file
+PADDLE_ROOT="$( cd "$( dirname "$0" )/../../" && pwd )"
+unset GREP_OPTIONS && find ${PADDLE_ROOT}/paddle/phi/kernels -name "*.c*" \
+  | xargs sed -e '/PD_REGISTER_\(GENERAL_\)\?KERNEL(/,/)/!d' \
+  | awk 'BEGIN { RS="{" }{ gsub(/\n /,""); print $0 }' \
+  | grep PD_REGISTER \
+  | awk -F ",|\(|\)" '{gsub(/ /,"");$1="";print}' \
+  | sort -u  | awk '{gsub(/phi::/,"");gsub(/paddle::platform::/,"");gsub(/dtype::/,"");gsub(/paddle::/,"");print $0}' \
+  | grep -v "_grad" > $kernel_register_info_file
 
 #step 2:get simple general inferMeta function wrap info
 temp_path=`mktemp -d`
@@ -38,7 +38,7 @@ python3 ${PADDLE_ROOT}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py \
   --wrapped_infermeta_header_path ${temp_path}/generate.h \
   --wrapped_infermeta_source_path ${temp_path}/generate.cc
 
-grep PT_REGISTER_INFER_META_FN ${temp_path}/generate.cc  \
+grep PD_REGISTER_INFER_META_FN ${temp_path}/generate.cc  \
   | awk -F "\(|,|::|\)" '{print $2, $4}' > ${temp_path}/wrap_info.txt
 
 #step 3: merge all infos
@@ -49,4 +49,5 @@ grep PT_REGISTER_INFER_META_FN ${temp_path}/generate.cc  \
 python3 ${PADDLE_ROOT}/tools/infrt/get_pten_kernel_info.py \
   --paddle_root_path ${PADDLE_ROOT} \
   --kernel_info_file $kernel_register_info_file \
-  --infermeta_wrap_file ${temp_path}/wrap_info.txt
+  --infermeta_wrap_file ${temp_path}/wrap_info.txt \
+  --generate_file ${PADDLE_ROOT}/paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.cc

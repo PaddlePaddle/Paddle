@@ -53,7 +53,7 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupported tensor date type. Now only supports INT64, FP32, INT32."));
   }
-  pt.shape = framework::vectorize<int>(t->dims());
+  pt.shape = phi::vectorize<int>(t->dims());
   return pt;
 }
 
@@ -136,7 +136,7 @@ void MainImageClassification(const paddle::PaddlePlace& place) {
   // Use normilized image pixels as input data,
   // which should be in the range [0.0, 1.0].
   feed_target_shapes[0][0] = batch_size;
-  framework::DDim input_dims = framework::make_ddim(feed_target_shapes[0]);
+  framework::DDim input_dims = phi::make_ddim(feed_target_shapes[0]);
   SetupTensor<float>(&input, input_dims, static_cast<float>(0),
                      static_cast<float>(1));
   std::vector<framework::LoDTensor*> cpu_feeds;
@@ -247,7 +247,7 @@ void MainThreadsImageClassification(const paddle::PaddlePlace& place) {
     std::vector<std::vector<int64_t>> feed_target_shapes =
         GetFeedTargetShapes(config.model_dir, /*is_combined*/ false);
     feed_target_shapes[0][0] = batch_size;
-    framework::DDim input_dims = framework::make_ddim(feed_target_shapes[0]);
+    framework::DDim input_dims = phi::make_ddim(feed_target_shapes[0]);
     SetupTensor<float>(&jobs[i], input_dims, 0.f, 1.f);
     paddle_tensor_feeds[i].push_back(LodTensorToPaddleTensor(&jobs[i]));
 

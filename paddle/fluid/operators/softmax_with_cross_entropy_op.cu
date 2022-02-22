@@ -22,7 +22,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -960,7 +960,7 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
           softmax_out->template mutable_data<T>(context.GetPlace());
       auto* loss_data = loss->template mutable_data<T>(context.GetPlace());
 
-      pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
+      phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
       set_constant(context.cuda_device_context(), loss, static_cast<T>(0));
       if (axis_dim == 1) {
         set_constant(context.cuda_device_context(), softmax_out,
@@ -1045,7 +1045,7 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     auto* loss_data = loss->template mutable_data<T>(context.GetPlace());
 
     if (axis_dim == 1) {
-      pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
+      phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
       set_constant(context.cuda_device_context(), softmax, static_cast<T>(1));
       set_constant(context.cuda_device_context(), loss, static_cast<T>(0));
       return;

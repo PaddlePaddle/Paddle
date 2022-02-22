@@ -45,9 +45,13 @@ class DistributedContext:
     One auto-parallel run should use its own DistributedContext to avoid interfering other run.
     """
 
-    def __init__(self, program=None):
+    def __init__(self,
+                 serial_main_prog=None,
+                 serial_startup_prog=None,
+                 dist_main_progs=None,
+                 dist_startup_progs=None):
         # Program related data members
-        self._serial_program = program
+        self._serial_program = serial_main_prog
         self._is_initialized_for_program = False
         self._dist_tensors_for_program = {}
         self._dist_ops_for_program = {}
@@ -65,8 +69,12 @@ class DistributedContext:
         self._tensor_id_to_tensor_node_ids = {}
 
         # Distributed programs
-        self._dist_main_programs = {}
-        self._dist_startup_programs = {}
+        self._dist_main_programs = dist_main_progs
+        if not self._dist_main_programs:
+            self._dist_main_programs = {}
+        self._dist_startup_programs = dist_startup_progs
+        if not self._dist_startup_programs:
+            self._dist_startup_programs = {}
 
     @property
     def serial_program(self):
@@ -78,8 +86,8 @@ class DistributedContext:
 
     @serial_program.setter
     def serial_program(self, program):
-        assert self._serial_program is None, \
-            "This distributed context has already been realted to a serial program"
+        # assert self._serial_program is None, \
+        #     "This distributed context has already been realted to a serial program"
         self._serial_program = program
 
     @property

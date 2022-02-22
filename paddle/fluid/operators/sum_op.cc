@@ -64,10 +64,10 @@ class SumOp : public framework::OperatorWithKernel {
           x_dim.size() == 1) {
         continue;
       }
-      if (framework::product(x_dim) == 0) {
+      if (phi::product(x_dim) == 0) {
         continue;
       }
-      if (framework::product(in_dim) == 0) {
+      if (phi::product(in_dim) == 0) {
         in_dim = x_dim;
       } else {
         if (ctx->IsRuntime()) {
@@ -167,9 +167,9 @@ class SumOp : public framework::OperatorWithKernel {
 
       return framework::OpKernelType(data_type, ctx.GetPlace(), layout,
                                      library);
-    } else if (x_vars[0]->IsType<pten::SelectedRows>()) {
+    } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
       for (auto& var : x_vars) {
-        auto& value = var->Get<pten::SelectedRows>().value();
+        auto& value = var->Get<phi::SelectedRows>().value();
         if (value.IsInitialized()) {
           return framework::OpKernelType(
               framework::TransToProtoVarType(value.dtype()),
