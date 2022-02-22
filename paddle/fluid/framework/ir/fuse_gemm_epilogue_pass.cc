@@ -37,11 +37,12 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
                                                bool is_training) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("gemm_epilogue", graph);
+  const std::string scope_name("gemm_epilogue");
+  FusePassBase::Init(scope_name, graph);
 
   GraphPatternDetector gpd;
   auto *x = gpd.mutable_pattern()
-                ->NewNode("gemm_epilogue/x")
+                ->NewNode(patterns::PDNodeName(scope_name, "x"))
                 ->AsInput()
                 ->assert_is_op_input("matmul_v2", "X");
   patterns::LinearAct linear_act_pattern(gpd.mutable_pattern(), "linear_act");
@@ -109,11 +110,13 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     bool is_training) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("gemm_epilogue", graph);
+
+  const std::string scope_name("gemm_epilogue");
+  FusePassBase::Init(scope_name, graph);
 
   GraphPatternDetector gpd;
   auto *x = gpd.mutable_pattern()
-                ->NewNode("gemm_epilogue/x")
+                ->NewNode(patterns::PDNodeName(scope_name, "x"))
                 ->AsInput()
                 ->assert_is_op_input("matmul_v2", "X");
   patterns::LinearAct linear_act_pattern(gpd.mutable_pattern(), "linear_act");
@@ -163,11 +166,16 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     if (is_training) {
       int divisor_of_n = activation == "relu" ? 128 : 8;
       if (matmul_w_shape[1] % divisor_of_n) return;
-      EpiloguePassActivationCache::Instance().InsertFusedActivation(
-          act_out->Var()->Name());
 
-      fused_gemm_epilogue_op_desc.SetAttr("auxiliary_key",
-                                          act_out->Var()->Name());
+      VarDesc reserve_space(patterns::PDNodeName(scope_name, "reserve_space"));
+      auto *reserve_space_node = g->CreateVarNode(&reserve_space);
+
+      EpiloguePassActivationCache::Instance().InsertFusedActivation(
+          GetReserveSpaceCacheKey(act_out->Var()->Name(), g->GetBlockId()),
+          reserve_space_node->Name());
+
+      fused_gemm_epilogue_op_desc.SetOutput("reserve_space",
+                                            {reserve_space_node->Name()});
     }
     auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
 
@@ -198,12 +206,13 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
                                                bool without_x_gradient) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("gemm_epilogue", graph);
+  const std::string scope_name("gemm_epilogue");
+  FusePassBase::Init(scope_name, graph);
 
   GraphPatternDetector gpd;
   auto *dout =
       gpd.mutable_pattern()
-          ->NewNode("gemm_epilogue_grad/dout")
+          ->NewNode(patterns::PDNodeName(scope_name, "dout"))
           ->AsInput()
           ->assert_is_op_input("elementwise_add_grad", GradVarName("Out"));
 
@@ -308,12 +317,13 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     const std::unordered_set<std::string> &act_grad_types) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("gemm_epilogue", graph);
+  const std::string scope_name("gemm_epilogue");
+  FusePassBase::Init(scope_name, graph);
 
   GraphPatternDetector gpd;
   auto *dout =
       gpd.mutable_pattern()
-          ->NewNode("gemm_epilogue_grad/dout")
+          ->NewNode(patterns::PDNodeName(scope_name, "dout"))
           ->AsInput()
           ->assert_is_op_input("elementwise_add_grad", GradVarName("Out"));
 
@@ -350,9 +360,13 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     GET_IR_NODE_FROM_SUBGRAPH(act_grad_dx, act_grad_dx,
                               ele_add_matmul_act_pattern);
 
-    if (!EpiloguePassActivationCache::Instance().HasFusedActivation(
-            matmul_grad_x->Var()->Name()))
+    auto key =
+        GetReserveSpaceCacheKey(matmul_grad_x->Var()->Name(), g->GetBlockId());
+    if (EpiloguePassActivationCache::Instance().HasFusedActivation(key)) {
       return;
+    }
+    auto reserve_space_name =
+        EpiloguePassActivationCache::Instance().GetFusedActivationSpace(key);
 
     std::vector<int64_t> matmul_grad_x_shape = matmul_grad_x->Var()->GetShape();
     std::vector<int64_t> matmul_grad_w_shape = matmul_grad_w->Var()->GetShape();
@@ -373,14 +387,14 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
                                               {subgraph.at(dout)->Name()});
     fused_gemm_epilogue_grad_op_desc.SetInput("X", {matmul_grad_x->Name()});
     fused_gemm_epilogue_grad_op_desc.SetInput("Y", {matmul_grad_w->Name()});
+    fused_gemm_epilogue_grad_op_desc.SetInput("reserve_space",
+                                              {reserve_space_name});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DX", {act_grad_dx->Name()});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DY", {matmul_grad_dw->Name()});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DBias",
                                                {ele_grad_dbias->Name()});
     fused_gemm_epilogue_grad_op_desc.SetAttr("activation_grad",
                                              activation_grad);
-    fused_gemm_epilogue_grad_op_desc.SetAttr("auxiliary_key",
-                                             matmul_grad_x->Var()->Name());
     fused_gemm_epilogue_grad_op_desc.SetAttr(
         "op_role", matmul_grad_op_desc->GetAttr("op_role"));
 

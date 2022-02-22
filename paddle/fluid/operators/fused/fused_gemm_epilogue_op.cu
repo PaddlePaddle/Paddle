@@ -33,13 +33,13 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     const Tensor* bias = ctx.Input<Tensor>("bias");
 
     Tensor* out = ctx.Output<Tensor>("out");
+    Tensor* reserve_space = ctx.Output<Tensor>("reserve_space");
 
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
 
     std::string activation = ctx.Attr<std::string>("activation");
-    std::string auxiliary_key = ctx.Attr<std::string>("auxiliary_key");
-    bool enable_auxiliary = auxiliary_key.size() <= 0 ? false : true;
+    bool enable_auxiliary = reserve_space == nullptr ? false : true;
 
     out->mutable_data<T>(ctx.GetPlace());
     auto* out_data = out->data<T>();
@@ -88,18 +88,18 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
         platform::dynload::cublasLtMatmulDescSetAttribute(
             operation_desc, CUBLASLT_MATMUL_DESC_BIAS_POINTER, &bias_data,
             sizeof(bias_data)));
-    if (enable_auxiliary && activation != "none") {
-      if (EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary ==
-          nullptr) {
-        size_t unit_size = activation == "relu" ? 2 : sizeof(T);
-        size_t auxiliary_size =
-            static_cast<size_t>(framework::product(out->dims())) * unit_size;
-        EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary =
-            memory::Alloc(dev_ctx, auxiliary_size);
-      }
 
-      auto* aux_data =
-          EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary->ptr();
+    if (enable_auxiliary && activation != "none") {
+      size_t reserve_space_size = 0;
+      if (activation == "relu") {
+        reserve_space_size = framework::product(out->dims()) / sizeof(char);
+      } else {
+        reserve_space_size = framework::product(out->dims()) * sizeof(T);
+      }
+      reserve_space->mutable_data(ctx.GetPlace(), out->type(),
+                                  reserve_space_size);
+      void* aux_data = reinterpret_cast<void*>(reserve_space->data<T>());
+
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cublasLtMatmulDescSetAttribute(
               operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
@@ -182,13 +182,13 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     const Tensor* dout = ctx.Input<Tensor>("DOut");
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
+    const Tensor* reserve_space = ctx.Input<Tensor>("reserve_space");
 
     Tensor* dx = ctx.Output<Tensor>("DX");
     Tensor* dy = ctx.Output<Tensor>("DY");
     Tensor* dbias = ctx.Output<Tensor>("DBias");
 
     std::string activation_grad = ctx.Attr<std::string>("activation_grad");
-    std::string auxiliary_key = ctx.Attr<std::string>("auxiliary_key");
 
     auto dout_mat_dims =
         framework::flatten_to_2d(dout->dims(), dout->dims().size() - 1);
@@ -253,8 +253,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
               &epiloque_func_for_dx, sizeof(epiloque_func_for_dx)));
 
       if (activation_grad != "none") {
-        auto* aux_data =
-            EpilogueSingleton::Instance().Data(auxiliary_key).auxiliary->ptr();
+        auto* aux_data = reserve_space->data<T>();
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cublasLtMatmulDescSetAttribute(
                 dx_operation_desc, CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,

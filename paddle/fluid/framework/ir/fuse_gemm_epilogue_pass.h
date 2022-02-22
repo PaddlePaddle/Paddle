@@ -44,20 +44,31 @@ class EpiloguePassActivationCache {
   void operator=(const EpiloguePassActivationCache &) = delete;
 
   bool HasFusedActivation(const std::string &key) {
-    return fused_activation_keys.count(key);
+    return fused_activation_space_map_.count(key);
   }
 
-  void InsertFusedActivation(const std::string &key) {
+  const std::string &GetFusedActivationSpace(const std::string &key) {
+    if (HasFusedActivation(key)) {
+      return fused_activation_space_map_.find(key)->second;
+    }
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The key (%d) of EpiloguePassActivationCache does not exist.", key));
+  }
+
+  void InsertFusedActivation(const std::string &key, const std::string &value) {
     if (!HasFusedActivation(key)) {
       mtx.lock();
-      fused_activation_keys.insert(key);
+      fused_activation_space_map_.insert({key, value});
       mtx.unlock();
+    } else {
+      PADDLE_THROW(platform::errors::AlreadyExists(
+          "The key (%d) of EpiloguePassActivationCache already exist.", key));
     }
   }
 
  private:
   EpiloguePassActivationCache() {}
-  std::unordered_set<std::string> fused_activation_keys;
+  std::unordered_map<std::string, std::string> fused_activation_space_map_;
   std::mutex mtx;
 };
 
@@ -81,6 +92,10 @@ class FuseGemmEpiloguePass : public FusePassBase {
   bool IsGemmFromLinear_(const std::vector<int64_t> &x_shape,
                          const std::vector<int64_t> &w_shape,
                          OpDesc *matmul_v2_op) const;
+  const std::string GetReserveSpaceCacheKey(const std::string var_name,
+                                            int block_id) const {
+    return std::to_string(block_id) + var_name;
+  }
 };
 
 }  // namespace ir

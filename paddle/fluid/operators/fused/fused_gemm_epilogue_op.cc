@@ -81,7 +81,6 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
             K_from_x, K_from_y));
 
     auto activation = ctx->Attrs().Get<std::string>("activation");
-    auto auxiliary_key = ctx->Attrs().Get<std::string>("auxiliary_key");
 
     if ((activation != "relu") && (activation != "gelu") &&
         (activation != "none")) {
@@ -94,13 +93,13 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
               activation));
     }
 
-    if (activation == "none" && auxiliary_key.size() > 0) {
+    if (activation == "none" && ctx->HasOutput("reserve_space")) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "auxiliary_key:The auxiliary_key would not be used when activation = "
-          "\"none\""));
+          "The reserve_space would not be used when activation = \"none\""));
     }
+
     // cublasLt's restriction for auxiliary.
-    if (auxiliary_key.size() > 0 && activation != "none") {
+    if (ctx->HasOutput("reserve_space") && activation != "none") {
       int min_size_of_n = activation == "relu" ? 128 : 8;
       int N_size = trans_y ? y_dims[0] : y_dims[1];
       PADDLE_ENFORCE_EQ(N_size % min_size_of_n, 0,
@@ -127,6 +126,14 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("out", framework::make_ddim(out_dims));
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  }
 };
 
 class FusedGemmEpilogueOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -137,6 +144,13 @@ class FusedGemmEpilogueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("bias", "The input tensor bias of Out = Act((X * Y) + bias).");
 
     AddOutput("out", "The output tensor Out of Out = Act((X * Y) + bias).");
+    AddOutput("reserve_space",
+              R"DOC(Reserve GPU space to place 
+        auxiliary data pointer. It is used to pass auxiliary data pointer 
+        for fused_gemm_epilogue op. If not given (empty string), the 
+        auxiliary mode would not be enable.)DOC")
+        .AsDispensable()
+        .AsExtra();
 
     AddAttr<bool>(
         "trans_x",
@@ -159,13 +173,6 @@ class FusedGemmEpilogueOpMaker : public framework::OpProtoAndCheckerMaker {
     one of {none, relu, gelu}. When none is given, Act would be null 
     operations)DOC")
         .SetDefault("none");
-    AddAttr<std::string>(
-        "auxiliary_key",
-        R"DOC((string, default ""), The key of EpilogueSingleton to place 
-    auxiliary data pointer. It is used to pass auxiliary data pointer 
-    for fused_gemm_epilogue_grad op. If not given (empty string), the 
-    auxiliary mode would not be enable.)DOC")
-        .SetDefault("");
 
     AddComment(R"DOC(
 FusedGemmEpilogue Operator
@@ -244,7 +251,6 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
             dout_mat_dims[0], x_mat_dims[0]));
 
     auto activation_grad = ctx->Attrs().Get<std::string>("activation_grad");
-    auto auxiliary_key = ctx->Attrs().Get<std::string>("auxiliary_key");
     if ((activation_grad != "relu_grad") && (activation_grad != "gelu_grad") &&
         (activation_grad != "none")) {
       PADDLE_ENFORCE_EQ(
@@ -256,10 +262,10 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
               activation_grad));
     }
 
-    if (activation_grad != "none" && auxiliary_key.size() == 0) {
+    if (activation_grad != "none" && !ctx->HasInput("reserve_space")) {
       PADDLE_ENFORCE_EQ(true, false,
                         platform::errors::InvalidArgument(
-                            "The auxiliary_key should not be empty string. "
+                            "The reserve_space should not be empty. "
                             "when activation_grad == {relu_grad, gelu_grad}."));
     }
 
@@ -281,6 +287,14 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("DBias", framework::make_ddim(dbias_dims));
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  }
 };
 
 class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -290,6 +304,12 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input grad tensor to Out of Out = (Act(X) * Y) + bias");
     AddInput("X", "The input tensor X of Out = (Act(X) * Y) + bias");
     AddInput("Y", "The input tensor Y of Out = (Act(X) * Y) + bias");
+    AddInput("reserve_space",
+             R"DOC(A GPU space to fetch 
+        auxiliary data pointer. It is used to pass auxiliary data pointer 
+        for fused_gemm_epilogue_grad op. If not given (empty string), the 
+        auxiliary mode would not be enable.)DOC")
+        .AsDispensable();
 
     AddOutput("DX", "The output grad tensor to X of Out = (Act(X) * Y) + bias.")
         .AsDispensable();
@@ -305,13 +325,6 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
     one of {none, relu_grad, gelu_grad}. When none is given, The backward Act would 
     be null operations)DOC")
         .SetDefault("none");
-    AddAttr<std::string>(
-        "auxiliary_key",
-        R"DOC((string, default ""), The key of EpilogueSingleton to fetch 
-    auxiliary data pointer. It is used to obtain auxiliary data pointer 
-    generated from fused_gemm_epilogue op. If not given (empty string), 
-    the activation_grad should be none.)DOC")
-        .SetDefault("");
 
     AddComment(R"DOC(
 FusedGemmEpilogueGrad Operator
