@@ -17,4 +17,4 @@
 #include "paddle/phi/kernels/impl/lerp_kernel_impl.h"
 #include "paddle/phi/kernels/lerp_kernel.h"
 
-PT_REGISTER_KERNEL(lerp, GPU, ALL_LAYOUT, phi::LerpKernel, float, double) {}
+PD_REGISTER_KERNEL(lerp, GPU, ALL_LAYOUT, phi::LerpKernel, float, double) {}
