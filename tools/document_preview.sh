@@ -40,11 +40,13 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     export VERSIONSTR=$(echo ${BRANCH} | sed 's@release/@@g')
 
     if [ -d ${FLUIDDOCDIR} ] ; then
-        echo "$0: rm -rf ${FLUIDDOCDIR}"
-        rm -rf ${FLUIDDOCDIR}
+        # echo "$0: rm -rf ${FLUIDDOCDIR}"
+        # rm -rf ${FLUIDDOCDIR}
+        echo "${FLUIDDOCDIR} exists, git clone skipped."
+    else
+        git clone --depth=1 https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
+        # TODO: checkout the required docs PR?
     fi
-    git clone --depth=1 https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
-    # TODO: checkout the required docs PR?
     if [ -d ${OUTPUTDIR} ] ; then
         echo "$0: rm -rf ${OUTPUTDIR}"
         rm -rf ${OUTPUTDIR}
@@ -55,6 +57,18 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     curl -L -o /config/shpinx-docs-config.tgz https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/shpinx-docs-config.tgz
     tar xzf /config/shpinx-docs-config.tgz -C /config
     curl -L -o /root/post_filter_htmls.py https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/post_filter_htmls.py
+
+    apt-get update && apt-get install -y --no-install-recommends doxygen
+    # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple 
+    pip install beautifulsoup4
+    pip install Markdown
+    pip install sphinx-sitemap
+    pip install sphinx-markdown-tables
+    pip install breathe
+    pip install exhale
+    pip install sphinx_design
+    pip install nbsphinx
+    # exhale 和 breache 这两个真实需要么？
 
     # build doc
     /bin/bash -x ${FLUIDDOCDIR}/ci_scripts/gendoc.sh
