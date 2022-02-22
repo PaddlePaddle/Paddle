@@ -75,7 +75,7 @@ PURE_FP16_BLACK_LIST = {
     'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
 }
 
-BF16_WHITE_LIST = {'conv2d'}
+BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
 BF16_BLACK_LIST = {' '}
 
 
