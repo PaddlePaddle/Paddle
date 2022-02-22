@@ -25,4 +25,4 @@ KernelSignature UnfoldGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(unfold_grad, phi::UnfoldGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(unfold_grad, phi::UnfoldGradOpArgumentMapping);
