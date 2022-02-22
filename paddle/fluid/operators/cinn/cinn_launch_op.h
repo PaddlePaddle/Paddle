@@ -130,7 +130,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     VLOG(4) << "Execute the runtime graph by PE";
     framework::Scope& exec_scope = scope.NewScope();
     auto* pe = launch_context->InitializePE(place, &exec_scope);
-    pe->RunWithoutFetch({});
+    pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
     VLOG(4) << "CinnLaunchOp launch execution done.";
   }
 };

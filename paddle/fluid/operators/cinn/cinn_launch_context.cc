@@ -91,9 +91,28 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   // Convert the CINN runtime program to a Paddle graph
   runtime_graph_ = std::make_unique<framework::ir::Graph>(
       BuildCompiledProgram(graph, compiled_obj));
-  runtime_graph_->SetNotOwned<Name2VarInfoMap>(
-      kMemOptVarInfoFromMainGraph,
-      &graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph));
+  auto& outer_varinfo = graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
+  runtime_graph_->SetNotOwned<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph,
+                                               &outer_varinfo);
+  // collect skip_eager_vars
+  skip_eager_vars_.reserve(input_var_names.size() + output_var_names.size());
+  auto add_skip_var_fn = [&outer_varinfo, this](const std::string& var_name) {
+    // if a var exists at outer_varinfo map,
+    // that means it can be erased after graph execution
+    if (!outer_varinfo.count(var_name)) {
+      skip_eager_vars_.emplace_back(var_name);
+    }
+  };
+  std::for_each(input_var_names.begin(), input_var_names.end(),
+                add_skip_var_fn);
+  std::for_each(output_var_names.begin(), output_var_names.end(),
+                add_skip_var_fn);
+  VLOG(4) << string::Sprintf(
+      "Distribution of variables in the graph compiled:"
+      "input[%lu],internal[%lu],output[%lu],"
+      "outer_eager_deletion[%lu],skip_eager_deletion[%lu]",
+      input_var_names.size(), internal_var_names_.size(),
+      output_var_names.size(), outer_varinfo.size(), skip_eager_vars_.size());
 }
 
 void CinnLaunchContext::BuildVarNameMap(
