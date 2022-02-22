@@ -38,7 +38,7 @@ void ScaleSR(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(scale_sr,
+PD_REGISTER_KERNEL(scale_sr,
                    CPU,
                    ALL_LAYOUT,
                    phi::ScaleSR,
@@ -52,7 +52,7 @@ PT_REGISTER_KERNEL(scale_sr,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(scale_sr,
+PD_REGISTER_KERNEL(scale_sr,
                    GPU,
                    ALL_LAYOUT,
                    phi::ScaleSR,

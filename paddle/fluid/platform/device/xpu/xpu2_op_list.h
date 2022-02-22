@@ -196,6 +196,7 @@ XPUOpMap& get_kl2_ops() {
       {"hard_swish_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"hard_swish", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"huber_loss_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"huber_loss", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
