@@ -83,8 +83,8 @@ class TimeRangeSummary:
                             (hostnode.start_ns, hostnode.end_ns))
 
                 if hostnode.type == TracerEventType.Operator and any(
-                    [name in hostnode.name for name in _CommunicationOpName
-                     ]):  # special case, communication op
+                    [name in hostnode.name for name in
+                     _CommunicationOpName]):  # special case, communication op
                     CPUTimeRange[TracerEventType.Communication].append(
                         (hostnode.start_ns, hostnode.end_ns))
                 is_communication_node = (
