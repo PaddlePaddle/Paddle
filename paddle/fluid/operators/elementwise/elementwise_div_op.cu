@@ -48,48 +48,6 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
 }  // namespace operators
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_HIP
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_div,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
-                              paddle::platform::float16>,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
-                              paddle::platform::complex<double>>);
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_div_grad,
-    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::float16>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
-                                  paddle::platform::complex<double>>);
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_div_grad_grad,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        float>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::float16>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        double>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        int>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        int64_t>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
-                                        paddle::platform::complex<double>>);
-#else
 REGISTER_OP_CUDA_KERNEL(
     elementwise_div,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, float>,
@@ -136,4 +94,3 @@ REGISTER_OP_CUDA_KERNEL(
                                         paddle::platform::complex<float>>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         paddle::platform::complex<double>>);
-#endif
