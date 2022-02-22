@@ -45,8 +45,8 @@ class ControllerBase(object):
         self.join_server = None
 
     def run(self):
-        self.init_job()
-        self.init_pod()
+        self.build_job()
+        self.build_pod()
         self.ctx.logger.debug("Run pod {}\n {}".format(self.pod,
                                                        self.pod.containers[0]))
         assert len(self.pod.containers) > 0, "No container in the pod"
@@ -76,11 +76,11 @@ Controller API for customization
 
 
 class Controller(ControllerBase):
-    def init_job(self):
-        self.job.replicas = self.ctx.args.np or 1
+    def build_job(self):
+        self.job.set_replicas(self.ctx.args.np)
         self.job.id = self.ctx.args.id
 
-    def init_pod(self):
+    def build_pod(self):
         raise NotImplementedError
 
     def _get_entrypoint(self):

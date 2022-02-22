@@ -18,6 +18,8 @@ import os, copy
 from paddle.distributed.run import plugins
 from .node import Node
 
+from .status import Status
+
 import logging
 
 
@@ -28,6 +30,8 @@ class Context(object):
         self.node = self.fetch_node_info()
         self.logger = self.get_logger()
         self.events = []
+
+        self.status = Status()
 
         # global status flag
         self.running = True
@@ -202,7 +206,10 @@ class Context(object):
             "--elastic_pre_hook", type=str, help="elastic pre_hook shell cmd")
 
         elastic_group.add_argument(
-            "--np", type=int, help="number of peer, job pod/node number")
+            "--np",
+            type=str,
+            default=1,
+            help="number of peer, job pod/node number")
         elastic_group.add_argument(
             "--scale", type=int, default=0, help="scale np")
         elastic_group.add_argument(

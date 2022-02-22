@@ -21,3 +21,21 @@ class Status(object):
     RESTARTING = "restarting"
     UNKNOWN = "unknown"
     COMPLETED = "completed"
+
+    def __init__(self):
+        self._current_status = None
+
+    def is_running(self):
+        return self._current_status == self.RUNNING
+
+    def need_restart(self):
+        return self._current_status == self.RESTARTING
+
+    def run(self):
+        self._current_status = self.RUNNING
+
+    def complete(self):
+        self._current_status = self.COMPLETED
+
+    def restart(self):
+        self._current_status = self.RESTARTING

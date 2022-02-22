@@ -18,9 +18,12 @@ from paddle.distributed.run.utils.kv_server import KVServer
 import time
 import sys
 import six
+import threading
 '''
 Master is a distributed store desgin to exchange info among nodes
 '''
+
+ETCD_PROTOCAL = 'etcd://'
 
 
 class Master(object):
@@ -44,7 +47,7 @@ class Master(object):
 
     @classmethod
     def factory(cls, ctx):
-        if ctx.args.master and ctx.args.master.startswith('etcd://'):
+        if ctx.args.master and ctx.args.master.startswith(ETCD_PROTOCAL):
             return ETCDMaster(ctx)
         else:
             return HTTPMaster(ctx)
@@ -113,12 +116,12 @@ class HTTPMaster(Master):
 
         ky = 'aaaaaa' if rank < 0 and self.role == Master.MAIN else key
         k = "{}/{}/{}".format(prefix, ky, rank)
-        assert self.client.put(k, value)
+        assert self.client.put(k, value, lease=self.client.lease(600))
         self.gc.append(k)
 
         while True:
             rjson = self.client.get_prefix(prefix)
-            self.ctx.logger.debug("gather result {}".format(rjson))
+            self.ctx.logger.debug("sync peers {}".format(rjson))
             if len(rjson) == size:
                 if rank < 0:
                     keys = list(rjson.keys())
@@ -138,17 +141,6 @@ class HTTPMaster(Master):
         for i in self.gc:
             self.client.delete(i)
 
-    def broadcast(self, key, value=None):
-        if value:
-            self.client.put(key, value)
-
-        while True:
-            r = self.client.get(key)
-            if r != "":
-                return r
-            else:
-                time.sleep(0.5)
-
 
 class ETCDMaster(Master):
     def __init__(self, ctx):
@@ -163,23 +155,24 @@ class ETCDMaster(Master):
         host, port = self.endpoint.split(':')
         self.client = etcd3.client(host=host, port=port)
 
-        self.remove_list = set()
-
-    '''
-    sync_peers gather all value for key under scop prefix
-    result always be sorted either by rank or alphabet of pod.name
-    '''
-
     def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
-        self.remove_list.add(prefix)
-
+        '''
+        sync_peers gather all value for key under scop prefix
+        result always be sorted either by rank or alphabet of pod.name
+        '''
         path = "{}/{}/{}".format(prefix, key, rank)
-        self.client.put(path, six.b(value))
-        self.ctx.logger.debug("put path {} value {}".format(path, value))
+
+        # need clean if restart
+        #self.remove_list.add(path)
+        self.client.delete_prefix(prefix)
+
+        self.ctx.logger.debug("sync  path {} value {}".format(path, value))
 
         while True:
+            self.client.put(path, six.b(value))
+
             result = [i for i in self.client.get_prefix(prefix)]
-            self.ctx.logger.debug("gather result {}".format(result))
+            self.ctx.logger.debug("sync peers {}".format(result))
 
             if len(result) == size:
                 if rank < 0:
@@ -199,10 +192,83 @@ class ETCDMaster(Master):
             else:
                 time.sleep(0.5)
 
-    def broadcast(self, key, value=None):
-        pass
+    def register_heartbeat(self, job_id, pod_id, ttl):
+        if hasattr(self, 'heartbeat_prefix'):
+            self.ctx.logger.warning("Heartbeat already done")
+            return
 
-    def stop(self):
-        ## TODO(MAYBE LATE)
+        self.heartbeat_prefix = '/paddle/heartbeat/{}'.format(job_id)
+
+        lease = self.client.lease(ttl)
+
+        self.client.delete_prefix(self.heartbeat_prefix)
+
+        beat_path = "{}/{}".format(self.heartbeat_prefix, pod_id)
+        self.client.put(beat_path, six.b(pod_id), lease=lease)
+
+        def _beat_watch(event):
+            self.client.put(beat_path, six.b(pod_id), lease=lease)
+            self.ctx.status.restart()
+
+        self.beat_watch = self.client.add_watch_prefix_callback(
+            self.heartbeat_prefix, _beat_watch)
+
+        def _heartbeat():
+            while self.ctx.running:
+                try:
+                    lease.refresh()
+                    if pod_id not in self.fetch_peer_alive():
+                        self.client.put(beat_path, six.b(pod_id), lease=lease)
+                        self.ctx.logger.debug("Heartbeat register again")
+                except Exception as e:
+                    self.ctx.logger.error("Heartbeat error {}".format(e))
+                time.sleep(ttl / 2)
+
+        self.beat_thread = threading.Thread(
+            name='heartbeat', target=_heartbeat, daemon=True)
+        self.beat_thread.start()
+
+    def fetch_peer_alive(self):
+        peer_alive = [
+            six.ensure_str(i[0])
+            for i in self.client.get_prefix(self.heartbeat_prefix)
+        ]
+        self.ctx.logger.debug("peer alive {}".format(peer_alive))
+        return peer_alive
+
+    def wait_peer_ready(self, replicas_min, replicas_max, timeout):
+        st = time.time()
+        while st + timeout > time.time():
+            if len(self.fetch_peer_alive()) == replicas_max:
+                return (True, replicas_max)
+            else:
+                time.sleep(0.1)
+
+        np = len(self.fetch_peer_alive())
+        if np > replicas_min and np < replicas_max:
+            return (True, np)
+        else:
+            return (False, np)
+
+    def set_status(self, status):
+        assert self.client.put(self.heartbeat_prefix,
+                               six.b(status),
+                               lease=self.client.lease(600))
+
+    def get_status(self):
+        return six.ensure_str(self.client.get(self.heartbeat_prefix)[0] or '')
+
+    def clean(self):
+        return
         for i in self.remove_list:
             self.client.delete_prefix(i)
+
+    def stop(self):
+        if hasattr(self, 'beat_thread'):
+            self.beat_thread.join()
+
+        if hasattr(self, 'beat_watch'):
+            self.client.cancel_watch(self.beat_watch)
+
+        ## TODO(MAYBE LATE)
+        self.clean()

@@ -43,11 +43,14 @@ class ProcessContext(object):
             preexec_fn=self._preexec_fn or pre_fn)
 
     def _close_std(self):
-        if not self._stdout.isatty():
-            self._stdout.close()
+        try:
+            if not self._stdout.isatty():
+                self._stdout.close()
 
-        if not self._stderr.isatty():
-            self._stderr.close()
+            if not self._stderr.isatty():
+                self._stderr.close()
+        except:
+            pass
 
     def alive(self):
         return self._proc and self._proc.poll() is None

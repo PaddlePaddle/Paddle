@@ -15,10 +15,12 @@
 __all__ = ["init"]
 
 from .collective import CollectiveController
+from .collective import CollectiveElasticController
 from .ps import PSController
 
 # the order is extremely important
 _controllers = [
+    CollectiveElasticController,
     PSController,
     CollectiveController,
 ]

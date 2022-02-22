@@ -22,7 +22,7 @@ class PSController(Controller):
     def enable(cls, ctx):
         if ctx.args.mode == ControleMode.PS or ctx.args.server_num or len(
                 ctx.args.servers) > 0:
-            ctx.logger.debug("PSController enabled")
+            ctx.logger.debug("{} enabled".format(cls.__name__))
             return True
         else:
             return False

@@ -15,9 +15,11 @@
 from .pod import Pod
 from .job import Job
 from .container import Container
+from .status import Status
 
 __all__ = [
     'Pod',
     'Job',
     'Container',
+    'Status',
 ]

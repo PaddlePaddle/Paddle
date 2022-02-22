@@ -34,9 +34,10 @@ class PodSepc(object):
         self.resource: Resource = None
         self.status: Status = None
         self.rank = -1
-        self.replicas = 0  # number of containers
         self.init_timeout = 120  # 2 min timeout for each init container
         self.restart = 0
+
+        self.replicas = 0  # number of containers
 
 
 class Pod(PodSepc):
@@ -89,19 +90,24 @@ class Pod(PodSepc):
     def logs(self, idx=0):
         self.containers[idx].logs()
 
+    '''
+    watch return if any container status in any_list
+    or all container status in all_list
+    '''
+
     def watch(self,
               all_list=[Status.COMPLETED],
               any_list=[Status.FAILED],
               interval=1,
               timeout=-1):
         st = time.time()
-        while timeout > 0 and st + timeout > time.time():
+        while timeout < 0 or st + timeout > time.time():
             for c in self.containers:
                 if c.status() in any_list:
                     return c.status()
 
-            s = set([c.status() for c in self.containers])
-            if len(s) == 1 and s[0] in all_list:
+            s = [c.status() for c in self.containers]
+            if len(set(s)) == 1 and s[0] in all_list:
                 return s[0]
 
             time.sleep(interval)
