@@ -32,6 +32,6 @@ KernelSignature LabelSmoothGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(label_smooth, phi::LabelSmoothOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(label_smooth_grad,
+PD_REGISTER_ARG_MAPPING_FN(label_smooth, phi::LabelSmoothOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(label_smooth_grad,
                            phi::LabelSmoothGradOpArgumentMapping);

@@ -46,5 +46,5 @@ void LabelSmoothKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     label_smooth, CPU, ALL_LAYOUT, phi::LabelSmoothKernel, float, double) {}
