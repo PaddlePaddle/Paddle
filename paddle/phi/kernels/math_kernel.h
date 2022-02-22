@@ -24,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void MeanRawKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const std::vector<int64_t>& dims,
+                   const std::vector<int>& dims,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out);
@@ -32,14 +32,14 @@ void MeanRawKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const std::vector<int64_t>& dims,
+                const std::vector<int>& dims,
                 bool keep_dim,
                 DenseTensor* out);
 
 template <typename T, typename Context>
 void SumRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
+                  const std::vector<int>& dims,
                   bool keep_dim,
                   bool reduce_all,
                   DataType out_dtype,
@@ -48,7 +48,7 @@ void SumRawKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const std::vector<int64_t>& dims,
+               const std::vector<int>& dims,
                DataType out_dtype,
                bool keep_dim,
                DenseTensor* out);
@@ -152,7 +152,7 @@ DenseTensor Multiply(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor Mean(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const std::vector<int64_t>& axis,
+                 const std::vector<int>& axis,
                  bool keep_dim) {
   auto dense_out = phi::Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
@@ -164,7 +164,7 @@ DenseTensor Mean(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor Sum(const Context& dev_ctx,
                 const DenseTensor& x,
-                const std::vector<int64_t>& axis,
+                const std::vector<int>& axis,
                 DataType dtype,
                 bool keep_dim) {
   auto dense_out = phi::Empty<T, Context>(dev_ctx);

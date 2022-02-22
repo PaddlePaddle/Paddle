@@ -47,7 +47,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using DDim = framework::DDim;
-
+/*
 inline void GetShuffledDim(const DDim& src_dims, DDim* dst_dims,
                            const std::vector<int>& reduced_dims,
                            std::vector<int>* perm_axis) {
@@ -70,6 +70,7 @@ inline void GetShuffledDim(const DDim& src_dims, DDim* dst_dims,
     }
   }
 }
+*/
 
 static inline std::vector<int> GetReduceDim(const std::vector<int>& dims,
                                             int dim_size, bool reduce_all) {
@@ -254,14 +255,12 @@ class ReduceKernel : public framework::OpKernel<T> {
         dev_ctx.GetPlace(),
         static_cast<framework::proto::VarType::Type>(cast_out_dtype));
 
-    std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
-
     // call new kernel
     phi::Reduce<typename framework::ConvertToPtenContext<DeviceContext>::TYPE,
                 T, Functor>(
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        *input, reduce_all, tmp_dims, keep_dim,
+        *input, reduce_all, dims, keep_dim,
         framework::TransToPtenDataType(cast_out_dtype), output);
   }
 };
@@ -695,10 +694,8 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
       output->mutable_data(dev_ctx.GetPlace(), input->dtype());
     }
 
-    std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
-
-    phi::Reduce<T, ReduceOp, TransformOp>(
-        dev_ctx, *input, reduce_all, dims_int64, false, pt_out_dtype, output);
+    phi::Reduce<T, ReduceOp, TransformOp>(dev_ctx, *input, reduce_all, dims,
+                                          false, pt_out_dtype, output);
   }
 };
 

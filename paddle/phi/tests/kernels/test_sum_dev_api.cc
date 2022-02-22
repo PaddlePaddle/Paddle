@@ -44,7 +44,7 @@ TEST(DEV_API, sum) {
     sum += i * 1.0;
   }
 
-  std::vector<int64_t> axis = {0, 1};
+  std::vector<int> axis = {0, 1};
   phi::CPUContext dev_ctx;
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())

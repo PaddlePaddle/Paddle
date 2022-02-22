@@ -44,7 +44,7 @@ TEST(DEV_API, mean) {
     dense_x_data[i] = i * 1.0;
     sum += i * 1.0;
   }
-  std::vector<int64_t> dims = {0, 1};
+  std::vector<int> dims = {0, 1};
 
   // 2. test API
   phi::CPUContext dev_ctx;

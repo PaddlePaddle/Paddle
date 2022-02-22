@@ -64,18 +64,18 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaConfig config = MetaConfig());
 
 void ReduceInferMetaBase(const MetaTensor& x,
-                         const std::vector<int64_t>& axis,
+                         const std::vector<int>& axis,
                          bool keep_dim,
                          DataType dtype,
                          MetaTensor* out);
 
 void ReduceInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
+                     const std::vector<int>& axis,
                      bool keep_dim,
                      MetaTensor* out);
 
 void SumInferMeta(const MetaTensor& x,
-                  const std::vector<int64_t>& axis,
+                  const std::vector<int>& axis,
                   DataType dtype,
                   bool keep_dim,
                   MetaTensor* out);

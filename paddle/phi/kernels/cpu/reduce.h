@@ -36,12 +36,12 @@ template <typename DeviceContext,
 void ReduceFunctor(const DeviceContext& context,
                    const phi::DenseTensor& input,
                    phi::DenseTensor* output,
-                   const std::vector<int64_t>& dims,
+                   const std::vector<int>& dims,
                    bool keep_dim) {
   auto x = EigenTensor<T, D>::From(input);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto reduce_dim = Eigen::array<int, R_D>();
-  std::vector<int64_t> dims_ref = dims;
+  std::vector<int> dims_ref = dims;
   for (size_t i = 0; i < dims_ref.size(); ++i) {
     if (dims_ref[i] < 0) dims_ref[i] = x_rank + dims_ref[i];
     reduce_dim[i] = dims_ref[i];
@@ -79,13 +79,13 @@ void ReduceFunctor(const DeviceContext& context,
 
 inline void GetShuffledDim(const DDim& src_dims,
                            DDim* dst_dims,
-                           const std::vector<int64_t>& reduced_dims,
+                           const std::vector<int>& reduced_dims,
                            std::vector<int>* perm_axis) {
   // check if it's a reduced dim
   std::vector<bool> src_dims_check(src_dims.size(), false);
   size_t src_size = src_dims.size();
   size_t reduce_size = reduced_dims.size();
-  std::vector<int64_t> regular_reduced_dims = reduced_dims;
+  std::vector<int> regular_reduced_dims = reduced_dims;
   for (size_t i = 0; i < regular_reduced_dims.size(); i++) {
     if (regular_reduced_dims[i] < 0) {
       regular_reduced_dims[i] = src_size + regular_reduced_dims[i];
@@ -113,7 +113,7 @@ template <typename DeviceContext, typename OutT>
 void GetShuffledInput(const DeviceContext& dev_ctx,
                       const phi::DenseTensor& input,
                       phi::DenseTensor* shuffled_input,
-                      const std::vector<int64_t>& dims) {
+                      const std::vector<int>& dims) {
   DDim shuffled_dims(input.dims());
   std::vector<int> perm_axis(input.dims().size());
   GetShuffledDim(input.dims(), &shuffled_dims, dims, &perm_axis);
@@ -129,7 +129,7 @@ template <typename DeviceContext, typename OutT, typename Functor>
 void HandleLargeDim(const DeviceContext& dev_ctx,
                     const phi::DenseTensor& input,
                     phi::DenseTensor* output,
-                    const std::vector<int64_t>& dims,
+                    const std::vector<int>& dims,
                     bool keep_dim) {
   //  shuffle the reduced dim to the end
   phi::DenseTensor shuffled_input = phi::DenseTensor(
@@ -155,7 +155,7 @@ template <typename DeviceContext, typename T, typename OutT, typename Functor>
 void ReduceKernelImpl(const DeviceContext& dev_ctx,
                       const phi::DenseTensor& input,
                       phi::DenseTensor* output,
-                      const std::vector<int64_t>& dims,
+                      const std::vector<int>& dims,
                       bool keep_dim,
                       bool reduce_all) {
   dev_ctx.template Alloc<OutT>(output);
@@ -201,7 +201,7 @@ template <typename DeviceContext, typename T, typename Functor>
 void Reduce(const DeviceContext& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
-            const std::vector<int64_t>& dims,
+            const std::vector<int>& dims,
             bool keep_dim,
             DataType out_dtype,
             DenseTensor* out) {

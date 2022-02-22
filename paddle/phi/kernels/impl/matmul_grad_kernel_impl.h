@@ -45,8 +45,7 @@ struct ReduceSumForMatmulGrad<CPUContext, T> {
                   const DenseTensor& input,
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims) {
-    std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(),
-                                         reduce_dims.end());
+    std::vector<int> reduce_dims_tmp(reduce_dims.begin(), reduce_dims.end());
     ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
         dev_ctx, input, output, reduce_dims_tmp, true, false);
   }

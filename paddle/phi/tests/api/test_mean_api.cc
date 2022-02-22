@@ -47,7 +47,7 @@ TEST(API, mean) {
   }
 
   paddle::experimental::Tensor x(dense_x);
-  std::vector<int64_t> axis = {0, 1};
+  std::vector<int> axis = {0, 1};
 
   // 2. test API
   auto out = paddle::experimental::mean(x, axis, false);

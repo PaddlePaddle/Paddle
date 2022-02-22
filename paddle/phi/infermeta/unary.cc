@@ -276,7 +276,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
     Because we need make InferMetaFunction's args follow the design of api.yaml
 */
 void SumInferMeta(const MetaTensor& x,
-                  const std::vector<int64_t>& axis,
+                  const std::vector<int>& axis,
                   DataType dtype,
                   bool keep_dim,
                   MetaTensor* out) {
@@ -284,7 +284,7 @@ void SumInferMeta(const MetaTensor& x,
 }
 
 void ReduceInferMetaBase(const MetaTensor& x,
-                         const std::vector<int64_t>& axis,
+                         const std::vector<int>& axis,
                          bool keep_dim,
                          DataType dtype,
                          MetaTensor* out) {
@@ -339,7 +339,7 @@ void ReduceInferMetaBase(const MetaTensor& x,
 }
 
 void ReduceInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
+                     const std::vector<int>& axis,
                      bool keep_dim,
                      MetaTensor* out) {
   ReduceInferMetaBase(x, axis, keep_dim, DataType::UNDEFINED, out);

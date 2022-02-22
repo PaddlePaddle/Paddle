@@ -116,7 +116,7 @@
   backward : matmul_grad
 
 - api : mean
-  args : (Tensor x, int64_t[] axis={}, bool keep_dim=false)
+  args : (Tensor x, int[] axis={}, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : ReduceInferMeta
@@ -171,7 +171,7 @@
     func : subtract
 
 - api : sum
-  args : (Tensor x, int64_t[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
+  args : (Tensor x, int[] axis={}, DataType dtype=DataType::UNDEFINED, bool keep_dim=false)
   output : Tensor
   infer_meta :
     func : SumInferMeta

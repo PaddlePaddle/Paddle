@@ -57,7 +57,7 @@ namespace phi {
 template <typename T, typename Context>
 void MeanRawKernel(const Context& dev_ctx,
                    const DenseTensor& x,
-                   const std::vector<int64_t>& dims,
+                   const std::vector<int>& dims,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out) {
@@ -69,7 +69,7 @@ void MeanRawKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SumRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
+                  const std::vector<int>& dims,
                   bool keep_dim,
                   bool reduce_all,
                   DataType out_dtype,

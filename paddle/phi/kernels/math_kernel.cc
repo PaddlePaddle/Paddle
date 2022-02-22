@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const std::vector<int64_t>& dims,
+                const std::vector<int>& dims,
                 bool keep_dim,
                 DenseTensor* out) {
   bool reduce_all = false;
@@ -32,7 +32,7 @@ void MeanKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SumKernel(const Context& dev_ctx,
                const DenseTensor& x,
-               const std::vector<int64_t>& dims,
+               const std::vector<int>& dims,
                DataType out_dtype,
                bool keep_dim,
                DenseTensor* out) {

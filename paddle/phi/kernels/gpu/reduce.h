@@ -135,7 +135,7 @@ static inline phi::Array<T, ElementCount> VectorToArray(
   return ret;
 }
 
-static inline std::vector<int> GetReduceDim(const std::vector<int64_t>& dims,
+static inline std::vector<int> GetReduceDim(const std::vector<int>& dims,
                                             int dim_size,
                                             bool reduce_all) {
   std::vector<int> reduce_dims;
@@ -1215,7 +1215,7 @@ template <typename T,
 void Reduce(const GPUContext& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
-            const std::vector<int64_t>& dims,
+            const std::vector<int>& dims,
             bool keep_dim,
             DataType out_dtype,
             DenseTensor* out) {
