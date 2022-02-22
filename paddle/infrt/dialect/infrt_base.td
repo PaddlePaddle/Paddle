@@ -2,9 +2,10 @@
 #define INFRT_BASE
 
 include "mlir/IR/OpBase.td"
+include "paddle/infrt/dialect/infrt/infrt_ops_base.td"
 
 def INFRT_Dialect : Dialect {
-  let name = "infrt";
+  let name = "Infrt";
 
   let description = [{
     The INFRT host dialect.
@@ -17,9 +18,6 @@ def INFRT_Dialect : Dialect {
 def StringType :
     Type<CPred<"$_self.isa<::infrt::dt::StringType>()">, "!infrt.string type">,
     BuildableType<"$_builder.getType<::infrt::dt::StringType>()">;
-
-def TensorType :
-    Type<CPred<"$_self.isa<::infrt::dt::TensorType>()">, "!infrt.tensor type">;
 
 def TensorMapType :
     Type<CPred<"$_self.isa<::infrt::dt::TensorMapType>()">, "!infrt.tensor_map type">,

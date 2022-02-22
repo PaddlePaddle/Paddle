@@ -96,4 +96,11 @@ void UnbindInferMeta(const MetaTensor& x,
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
+void UnfoldInferMeta(const MetaTensor& x,
+                     const std::vector<int>& kernel_sizes,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& dilations,
+                     MetaTensor* out,
+                     MetaConfig config = MetaConfig());
 }  // namespace phi
