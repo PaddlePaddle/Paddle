@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pten/backends/dynload/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -58,7 +58,7 @@ void SetupTensor(paddle::framework::LoDTensor* input,
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor* input,
                  paddle::framework::DDim dims, const std::vector<T>& data) {
-  CHECK_EQ(paddle::framework::product(dims), static_cast<int64_t>(data.size()));
+  CHECK_EQ(phi::product(dims), static_cast<int64_t>(data.size()));
   T* input_ptr = input->mutable_data<T>(dims, paddle::platform::CPUPlace());
   memcpy(input_ptr, data.data(), input->numel() * sizeof(T));
 }
