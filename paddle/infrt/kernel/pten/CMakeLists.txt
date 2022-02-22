@@ -13,8 +13,8 @@ gather_srcs(infrt_src SRCS
 
 set(infrt_register_pten_kernels_gen_source_file ${CMAKE_SOURCE_DIR}/paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.cc)
 set(infrt_register_pten_kernels_gen_file ${CMAKE_SOURCE_DIR}/tools/infrt/get_pten_kernel_function.sh)
-set(wrapped_infermeta_header_file ${CMAKE_SOURCE_DIR}/paddle/pten/infermeta/generated.h)
-set(wrapped_infermeta_source_file ${CMAKE_SOURCE_DIR}/paddle/pten/infermeta/generated.cc)
+set(wrapped_infermeta_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.h)
+set(wrapped_infermeta_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
 add_custom_command(
         OUTPUT ${infrt_register_pten_kernels_gen_source_file}
