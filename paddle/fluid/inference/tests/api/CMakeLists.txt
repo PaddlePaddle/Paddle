@@ -690,7 +690,13 @@ if (NOT APPLE AND NOT WIN32)
 endif()
 inference_analysis_test(test_analyzer_zerocopytensor_tensor SRCS analyzer_zerocopy_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
-            ARGS --infer_model=${OCR_INSTALL_DIR}/model)        
+            ARGS --infer_model=${OCR_INSTALL_DIR}/model)
+
+if(WITH_DISTRIBUTE AND WITH_PSCORE AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+inference_analysis_test(test_analyzer_dist_model SRCS analyzer_dist_model_tester.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${OCR_INSTALL_DIR}/model)
+endif()
 
 inference_analysis_test(test_analyzer_paddletensor_tensor SRCS analyzer_paddle_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 

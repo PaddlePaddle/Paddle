@@ -46,7 +46,7 @@ class TaskNode final {
   ~TaskNode() = default;
 
   void SetProgram(paddle::framework::ProgramDesc* program);
-  void Init();
+  void Init(bool use_feed_fetch_ops = true);
   int64_t rank() const { return rank_; }
   int64_t task_id() const { return task_id_; }
   int32_t role() const { return role_; }

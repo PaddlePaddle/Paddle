@@ -52,11 +52,20 @@ void TaskNode::SetProgram(paddle::framework::ProgramDesc* program) {
   program_ = program;
 }
 
-void TaskNode::Init() {
+void TaskNode::Init(bool use_feed_fetch_ops) {
+  if (!use_feed_fetch_ops) {
+    VLOG(3) << "TaskNode will be inited without feed and fetch ops";
+  }
   if (ops_.empty()) {
     // Q (for fleet executor dev): should we need another reset funct?
     VLOG(3) << "Task node will be inited by calling Init().";
     for (const auto& op_desc : program_->Block(0).AllOps()) {
+      if (!use_feed_fetch_ops &&
+          (op_desc->Type() == "feed" || op_desc->Type() == "fetch")) {
+        VLOG(3) << "TaskNode will skip [" << op_desc->Input("X")[0] << "], "
+                << op_desc->Type() << " -> " << op_desc->Output("Out")[0];
+        continue;
+      }
       ops_vec_.emplace_back(framework::OpRegistry::CreateOp(*op_desc));
     }
     for (const auto& op : ops_vec_) {

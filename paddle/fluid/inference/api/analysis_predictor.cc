@@ -163,6 +163,26 @@ bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
   VLOG(3) << "Predictor::init()";
+
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+    VLOG(3) << "use_dist_model is enabled, will init DistModel.";
+    PADDLE_ENFORCE_NE(
+        dist_model_.get(), nullptr,
+        platform::errors::NotFound("Using DistModel but dist_model has not "
+                                   "been constructed properly."));
+    if (!dist_model_->Init()) {
+      VLOG(3) << "Error occur when init DistModel";
+      return false;
+    }
+    // NOTE: is use dist model, the place must be set properly
+    // or else it may have probs during GetInput(Output)Tensor
+    place_ = dist_model_->GetPlace();
+    return true;
+  }
+#endif
+
   if (config_.with_profile_) {
     LOG(WARNING) << "Profiler is activated, which might affect the performance";
     auto tracking_device = config_.use_gpu() ? platform::ProfilerState::kAll
@@ -917,6 +937,14 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
 
 std::vector<std::string> AnalysisPredictor::GetInputNames() {
   std::vector<std::string> input_names;
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+    VLOG(3) << "GetInputNames will use the implementation in DistModel.";
+    input_names = dist_model_->GetInputNames();
+    return input_names;
+  }
+#endif
   for (auto &item : idx2feeds_) {
     input_names.push_back(item.second);
   }
@@ -938,6 +966,14 @@ AnalysisPredictor::GetInputTensorShape() {
 
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   std::vector<std::string> output_names;
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+    VLOG(3) << "GetOutputNames will use the implementation in DistModel.";
+    output_names = dist_model_->GetOutputNames();
+    return output_names;
+  }
+#endif
   for (auto &item : idx2fetches_) {
     output_names.push_back(item.second);
   }
@@ -946,13 +982,25 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
+  framework::Scope *scope;
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+    VLOG(3) << "GetInputTensor will use the scope from DistModel.";
+    scope = dist_model_->GetScope();
+  } else {
+    scope = executor_->scope();
+  }
+#else
+  scope = executor_->scope();
+#endif
   PADDLE_ENFORCE_NOT_NULL(
-      executor_->scope()->FindVar(name),
+      scope->FindVar(name),
       platform::errors::PreconditionNotMet(
-          "The variable named %s is not found in the scope of the exector.",
+          "The variable named %s is not found in the scope of the executor.",
           name));
   std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+      new ZeroCopyTensor(static_cast<void *>(scope)));
   res->input_or_output_ = true;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -985,13 +1033,25 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
+  framework::Scope *scope;
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+    VLOG(3) << "GetOutputTensor will use the scope from DistModel.";
+    scope = dist_model_->GetScope();
+  } else {
+    scope = executor_->scope();
+  }
+#else
+  scope = executor_->scope();
+#endif
   PADDLE_ENFORCE_NOT_NULL(
-      executor_->scope()->FindVar(name),
+      scope->FindVar(name),
       platform::errors::PreconditionNotMet(
-          "he variable named %s is not found in the scope of the exector.",
+          "The variable named %s is not found in the scope of the executor.",
           name));
   std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+      new ZeroCopyTensor(static_cast<void *>(scope)));
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -1023,6 +1083,13 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+    VLOG(3) << "ZeroCopyRun will use the implementation in DistModel.";
+    return dist_model_->ZeroCopyRun();
+  }
+#endif
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) {

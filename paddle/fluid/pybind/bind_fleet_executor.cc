@@ -168,7 +168,7 @@ void BindFleetExecutor(py::module* m) {
       .def("set_run_at_offset", &TaskNode::SetRunAtOffset)
       .def("set_type", &TaskNode::SetType)
       .def("role", &TaskNode::role)
-      .def("init", &TaskNode::Init)
+      .def("init", [](TaskNode& self) { self.Init(); })
       .def("set_program", &TaskNode::SetProgram);
 
   py::class_<DistModelConfig>(*m, "DistModelConfig")

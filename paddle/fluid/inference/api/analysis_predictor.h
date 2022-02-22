@@ -18,6 +18,10 @@
 #include <memory>
 #include <string>
 #include <vector>
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/distributed/fleet_executor/dist_model.h"
+#endif
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -92,6 +96,29 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] AnalysisConfig config
   ///
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+    if (UNLIKELY(config_.dist_config().use_dist_model())) {
+      distributed::DistModelConfig dist_model_config;
+      dist_model_config.trainer_endpoints =
+          config_.dist_config().trainer_endpoints();
+      dist_model_config.current_endpoint =
+          config_.dist_config().current_endpoint();
+      dist_model_config.nranks = config_.dist_config().nranks();
+      dist_model_config.local_rank = config_.dist_config().rank();
+      dist_model_config.comm_init_config =
+          config_.dist_config().comm_init_config();
+      dist_model_config.enable_timer = config_.dist_config().enable_timer();
+      dist_model_config.model_dir = config_.model_dir();
+      dist_model_config.program_path = config_.prog_file();
+      dist_model_config.param_path = config_.params_file();
+      dist_model_config.place = config_.use_gpu() ? "GPU" : "CPU";
+      dist_model_config.device_id = config_.gpu_device_id();
+      dist_model_config.use_feed_fetch_ops =
+          config_.use_feed_fetch_ops_enabled();
+      dist_model_.reset(new distributed::DistModel(dist_model_config));
+    }
+#endif
     if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
       config_.EnableMemoryOptim(false);
@@ -436,6 +463,9 @@ class AnalysisPredictor : public PaddlePredictor {
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
   int clone_num_{1};
+
+ private:
+  std::unique_ptr<distributed::DistModel> dist_model_{nullptr};
 };
 
 }  // namespace paddle

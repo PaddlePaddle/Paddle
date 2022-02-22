@@ -40,6 +40,8 @@ class FleetExecutor;
 
 struct DistModelConfig {
   std::string model_dir{};
+  std::string program_path{};
+  std::string param_path{};
   framework::ProgramDesc* program_desc{nullptr};
   framework::Scope* scope{nullptr};
   std::string place{};
@@ -51,14 +53,62 @@ struct DistModelConfig {
   bool enable_timer{false};
   std::map<int64_t, std::vector<int64_t>> ring_id_to_ranks_{};
   std::map<int64_t, std::vector<int64_t>> rank_to_ring_ids_{};
+  std::string comm_init_config{};
+  bool use_feed_fetch_ops{true};
+  std::string to_string() const {
+    std::stringstream ss;
+    ss << "model_dir:\t" << model_dir << "\n";
+    ss << "program_path:\t" << program_path << "\n";
+    ss << "param_path:\t" << param_path << "\n";
+    ss << "place:\t" << place << "\n";
+    ss << "device_id:\t" << device_id << "\n";
+    ss << "nranks:\t" << nranks << "\n";
+    ss << "local_rank:\t" << local_rank << "\n";
+    ss << "enable_timer:\t" << enable_timer << "\n";
+    ss << "converter_config:\t" << comm_init_config << "\n";
+    ss << "use_feed_fetch_ops:\t" << use_feed_fetch_ops << "\n";
+    ss << "trainer_endpoints:\t";
+    for (const std::string& ep : trainer_endpoints) {
+      ss << ep << "\t";
+    }
+    ss << "\n";
+    ss << "current_endpoint:\t" << current_endpoint << "\n";
+    ss << "ring_id_to_ranks:\n";
+    for (auto pair : ring_id_to_ranks_) {
+      int64_t key = pair.first;
+      ss << "\t" << key << "\t->\t";
+      for (auto value : pair.second) {
+        ss << value << "\t";
+      }
+      ss << "\n";
+    }
+    ss << "rank_to_ring_ids:\n";
+    for (auto pair : rank_to_ring_ids_) {
+      int64_t key = pair.first;
+      ss << "\t" << key << "\t->\t";
+      for (auto value : pair.second) {
+        ss << value << "\t";
+      }
+      ss << "\n";
+    }
+    return ss.str();
+  }
 };
 
 class DistModel {
  public:
-  explicit DistModel(const DistModelConfig& config) : config_(config) {}
+  explicit DistModel(const DistModelConfig& config) : config_(config) {
+    VLOG(3) << "Dist model will be inited with these configs: \n"
+            << config.to_string();
+  }
   bool Init();
   bool Run(const std::vector<DistModelTensor>& input_data,
            std::vector<DistModelTensor>* output_data);
+  bool ZeroCopyRun();
+  paddle::platform::Place GetPlace();
+  std::vector<std::string> GetOutputNames();
+  std::vector<std::string> GetInputNames();
+  framework::Scope* GetScope();
   ~DistModel() = default;
 
  private:
@@ -72,6 +122,7 @@ class DistModel {
   bool CommInit();
   bool PrepareFeedAndFetch();
   bool PrepareFleetExe();
+  bool LoadConverterConfig();
   void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
                     const std::vector<std::string>& peer_endpoints,
                     framework::BlockDesc* block, int ring_id);
@@ -98,6 +149,7 @@ class DistModel {
   std::shared_ptr<framework::Scope> scope_;
   paddle::platform::Place place_;
   std::shared_ptr<framework::ProgramDesc> program_;
+  std::vector<std::string> force_root_scope_var_names_{};
 };
 
 }  // namespace distributed
