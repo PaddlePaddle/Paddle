@@ -79,7 +79,7 @@ class TestMul(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=self.is_training)
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
-                    ipu_strategy.set_half_config(enable_fp16=True)
+                    ipu_strategy.set_precision_config(enable_fp16=True)
                 program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
