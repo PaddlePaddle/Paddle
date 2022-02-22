@@ -410,7 +410,8 @@ void BasicEngine::Execute() {
     auto& inplace_grad_name_map = shared_cur_node->InplaceGradNameMap();
 
     for (auto& cur_op : *shared_cur_node) {
-      platform::RecordEvent op_type_record_event(cur_op.Type());
+      platform::RecordEvent op_type_record_event(
+          cur_op.Type(), platform::TracerEventType::Operator, 1);
 
       ++op_num;
 

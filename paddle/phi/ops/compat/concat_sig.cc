@@ -25,4 +25,4 @@ KernelSignature ConcatOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(concat, phi::ConcatOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(concat, phi::ConcatOpArgumentMapping);

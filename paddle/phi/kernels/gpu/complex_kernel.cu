@@ -21,7 +21,7 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/complex.h"
 
-PT_REGISTER_KERNEL(conj,
+PD_REGISTER_KERNEL(conj,
                    GPU,
                    ALL_LAYOUT,
                    phi::ConjKernel,
