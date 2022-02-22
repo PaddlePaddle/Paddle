@@ -1016,7 +1016,7 @@ static std::string GenerateGradNodeCreationContent(
     const std::string& output_name = output.name();
     const std::string& output_autograd_name = "p_autograd_" + output_name;
 
-    if (output.intermediate()) continue;
+    // Skip Intermediate Tensor
 
     if (output.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
@@ -1148,9 +1148,7 @@ static std::string GenerateGradNodeCreationContent(
     size_t output_position = fwd_outputs_name_pos_map.at(output_name);
 
     // Intermediate Tensor does not require SetHistory, nor RetainGrad
-    if (output.intermediate()) {
-      continue;
-    }
+
     if (output.duplicable()) {
       pass_stop_gradient_args += ", &" + output_autograd_name;
       const char* SET_OUT_RANK_TEMPLATE =
