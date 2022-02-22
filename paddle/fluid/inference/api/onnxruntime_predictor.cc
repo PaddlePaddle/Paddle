@@ -42,7 +42,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pten/api/ext/op_meta_info.h"
 
 namespace paddle {
 
@@ -263,7 +262,7 @@ Ort::Value ONNXRuntimePredictor::GetOrtValue(const ONNXDesc &desc,
   size_t size =
       tensor->numel() *
       framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype()));
-  std::vector<int64_t> shape = framework::vectorize<int64_t>(tensor->dims());
+  std::vector<int64_t> shape = phi::vectorize<int64_t>(tensor->dims());
   return Ort::Value::CreateTensor(memory_info,
                                   static_cast<void *>(tensor->data()), size,
                                   shape.data(), shape.size(), desc.dtype);
@@ -275,7 +274,7 @@ void ONNXRuntimePredictor::AsTensor(const Ort::Value &value,
 
   auto *var = scope_->FindVar(desc.name);
   auto *tensor = var->GetMutable<framework::LoDTensor>();
-  tensor->Resize(framework::make_ddim(info.GetShape()));
+  tensor->Resize(phi::make_ddim(info.GetShape()));
   auto dtype = ConvertONNXType(info.GetElementType());
   auto *ptr = tensor->mutable_data(place_, dtype);
 
