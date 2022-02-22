@@ -171,6 +171,7 @@ inline void EmplaceDeviceContext(
                                     .get());
           dev_ctx->SetGenerator(framework::DefaultCPUGenerator().get());
         }
+        dev_ctx->SetHostGenerator(framework::DefaultCPUGenerator().get());
         dev_ctx->SetHostAllocator(
             memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(platform::CPUPlace())
