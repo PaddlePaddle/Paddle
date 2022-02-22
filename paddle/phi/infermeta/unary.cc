@@ -38,11 +38,11 @@ void FlattenInferMeta(const MetaTensor& x,
   if (stop_axis < 0) {
     stop_axis = stop_axis + in_dims_size;
   }
-  PADDLE_ENFORCE_GE(stop_axis,
-                    start_axis,
-                    paddle::platform::errors::InvalidArgument(
-                        "The stop_axis should be greater"
-                        "than or equal to start_axis."));
+  PADDLE_ENFORCE_GE(
+      stop_axis,
+      start_axis,
+      phi::errors::InvalidArgument("The stop_axis should be greater"
+                                   "than or equal to start_axis."));
 
   int64_t outer = 1;
   std::vector<int32_t> out_shape;
@@ -113,7 +113,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_EQ(
           unk_dim_idx,
           -1,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Only one dimension value of 'shape' in ReshapeOp can "
               "be -1. But received shape = [%s], shape[%d] is also -1.",
               phi::make_ddim(shape),
@@ -123,7 +123,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_LT(
           static_cast<int>(i),
           in_dims.size(),
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The index of 0 in `shape` must be less than "
               "the input tensor X's dimensions. "
               "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
@@ -136,7 +136,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_GT(
           shape[i],
           0,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Each dimension value of 'shape' in ReshapeOp must not "
               "be negative except one unknown dimension. "
               "But received  shape = [%s], shape[%d] = %d.",
@@ -161,7 +161,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_EQ(
           output_shape[unk_dim_idx] * capacity,
           -in_size,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The 'shape' attribute in ReshapeOp is invalid. "
               "The input tensor X'size must be divisible by known "
               "capacity of 'shape'. "
@@ -179,7 +179,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_EQ(
           capacity,
           in_size,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The 'shape' in ReshapeOp is invalid. "
               "The input tensor X'size must be equal to the capacity of "
               "'shape'. "
@@ -199,7 +199,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
     PADDLE_ENFORCE_LE(
         capacity,
         in_size,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The 'shape' in ReshapeOp is invalid. "
             "The input tensor X's shape = [%s], X's capacity = %d."
             "But the target shape of Out is [%s],  the "
@@ -364,7 +364,7 @@ void SplitInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       axis_value >= -rank && axis_value < rank,
       true,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The axis is expected to be in range of [%d, %d), but got %d",
           -rank,
           rank,
@@ -383,7 +383,7 @@ void SplitInferMeta(const MetaTensor& x,
 
     PADDLE_ENFORCE_EQ(input_axis_dim % num,
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input's size along the split dimension "
                           "must be evenly divisible by Attr(num_or_sections). "
                           "But received Attr(num_or_sections) "
@@ -416,7 +416,7 @@ void SplitInferMeta(const MetaTensor& x,
     if (config.is_runtime) {
       PADDLE_ENFORCE_LE(num_of_unknow,
                         1,
-                        paddle::platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Only one dimension value of Attr(num_or_sections) "
                             "in SplitOp can be -1. "
                             "But received Attr(num_or_sections) = [%s].",
@@ -430,7 +430,7 @@ void SplitInferMeta(const MetaTensor& x,
       PADDLE_ENFORCE_LT(
           sum_of_section,
           input_axis_dim,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Sum of Attr(num_or_sections) other than unknown section "
               "must be less than the input's "
               "size "
@@ -447,7 +447,7 @@ void SplitInferMeta(const MetaTensor& x,
       PADDLE_ENFORCE_EQ(
           sum_of_section,
           input_axis_dim,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Sum of Attr(num_or_sections) must be equal to the input's "
               "size "
               "along the split dimension. But received Attr(num_or_sections)"
