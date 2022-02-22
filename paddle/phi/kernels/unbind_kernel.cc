@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/unbind_kernel.h"
+#include "paddle/fluid/operators/detail/strided_memcpy.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/cpu/concat_and_split.h"
 #include "paddle/phi/kernels/flatten_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
@@ -40,26 +41,26 @@ void UnbindKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(unbind,
+PD_REGISTER_KERNEL(unbind,
                    CPU,
                    ALL_LAYOUT,
                    phi::UnbindKernel,
                    float,
                    double,
-                   dtype::float16,
-                   dtype::bfloat16,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(unbind,
+PD_REGISTER_KERNEL(unbind,
                    GPU,
                    ALL_LAYOUT,
                    phi::UnbindKernel,
                    float,
                    double,
-                   dtype::float16,
-                   dtype::bfloat16,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}
 #endif

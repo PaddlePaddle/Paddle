@@ -25,6 +25,25 @@ using framework::Tensor;
 class UnbindOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of UnbindOp is not found."));
+    PADDLE_ENFORCE_GE(
+        ctx->Outputs("Out").size(), 1UL,
+        platform::errors::NotFound("Outputs(Out) of UnbindOp is not found."));
+    auto in_dims = ctx->GetInputDim("X");
+    auto outs_names = ctx->Outputs("Out");
+    int axis = ctx->Attrs().Get<int>("axis");
+    const size_t outs_number = outs_names.size();
+    auto out_dims = UnbindOutsDims(in_dims, axis);
+    std::vector<framework::DDim> outs_dims(outs_number, out_dims);
+    ctx->SetOutputsDim("Out", outs_dims);
+    for (size_t i = 0; i < outs_number; ++i) {
+      ctx->ShareLoD("X", "Out", 0, i);
+    }
+  }
 };
 
 class UnbindOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -60,10 +79,6 @@ Example:
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(unbind, UnbindInferShapeFunctor,
-                            PT_INFER_META(phi::UnbindInferMeta));
-
 REGISTER_OPERATOR(unbind, ops::UnbindOp, ops::UnbindOpMaker,
                   ops::UnbindGradMaker<paddle::framework::OpDesc>,
-                  ops::UnbindGradMaker<paddle::imperative::OpBase>,
-                  UnbindInferShapeFunctor);
+                  ops::UnbindGradMaker<paddle::imperative::OpBase>);
