@@ -209,7 +209,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto &input = feed_tensors_[i];
-    framework::DDim ddim = framework::make_ddim(inputs[i].shape);
+    framework::DDim ddim = phi::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
       input_ptr = input.mutable_data<int64_t>(ddim, place_);
@@ -297,7 +297,7 @@ template <typename T>
 void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
                                         PaddleTensor *output) {
   // set shape.
-  auto shape = framework::vectorize(fetch.dims());
+  auto shape = phi::vectorize(fetch.dims());
   output->shape.assign(shape.begin(), shape.end());
   // set data.
   const T *data = fetch.data<T>();

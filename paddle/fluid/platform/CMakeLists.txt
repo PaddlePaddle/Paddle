@@ -150,6 +150,10 @@ if(WITH_MLU)
     target_link_libraries(device_context mlu_resource_pool)
 endif()
 
+if(WITH_CUSTOM_DEVICE)
+    target_link_libraries(device_context custom_context)
+endif()
+
 cc_test(init_test SRCS init_test.cc DEPS device_context)
 
 # Manage all device event library

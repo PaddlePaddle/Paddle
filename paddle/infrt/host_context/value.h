@@ -28,13 +28,18 @@
 #include "paddle/infrt/tensor/dense_tensor_view.h"
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
-#include "paddle/pten/core/meta_tensor.h"
 
 #ifdef INFRT_WITH_PTEN
 #include "paddle/infrt/backends/host/pten_allocator.h"
 #include "paddle/infrt/backends/host/pten_context.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/meta_tensor.h"
 #endif
 
 namespace infrt {
@@ -42,31 +47,40 @@ namespace host_context {
 
 struct MlirFunctionExecutable;
 
-using ValueVariantType = Variant<int16_t,
-                                 int32_t,
-                                 int64_t,
-                                 float,
-                                 double,
-                                 bool,
-                                 uint32_t,
-                                 uint64_t,
-                                 std::string,
-                                 tensor::TensorShape,
-                                 tensor::DenseHostTensor,
-                                 MlirFunctionExecutable*,
-                                 tensor::TensorMap,
+using ValueVariantType =
+    Variant<int16_t,
+            int32_t,
+            int64_t,
+            float,
+            double,
+            bool,
+            uint32_t,
+            uint64_t,
+            std::string,
+            tensor::TensorShape,
+            tensor::DenseHostTensor,
+            MlirFunctionExecutable*,
+            tensor::TensorMap,
 #ifdef INFRT_WITH_PTEN
-                                 ::pten::MetaTensor,
-                                 ::pten::DenseTensor,
-                                 backends::CpuPtenAllocator,
-                                 backends::CpuPtenContext,
-                                 ::pten::CPUContext,
+            ::phi::MetaTensor,
+            ::phi::DenseTensor,
+            backends::CpuPtenAllocator,
+            backends::CpuPtenContext,
+            ::phi::CPUContext,
+            std::vector<phi::DenseTensor>,
+            paddle::experimental::ScalarBase<phi::DenseTensor>,
+            paddle::experimental::ScalarArrayBase<phi::DenseTensor>,
+            std::vector<phi::MetaTensor>,
+            phi::MetaConfig,
+            paddle::experimental::Backend,
+            paddle::experimental::DataLayout,
+            paddle::experimental::DataType,
 #endif
-                                 std::vector<int16_t>,
-                                 std::vector<int32_t>,
-                                 std::vector<int64_t>,
-                                 std::vector<float>,
-                                 std::vector<double>>;
+            std::vector<int16_t>,
+            std::vector<int32_t>,
+            std::vector<int64_t>,
+            std::vector<float>,
+            std::vector<double>>;
 
 //! Copy content from \param from to \param to.
 void CopyTo(const Value& from, Value* to);
@@ -96,9 +110,9 @@ class Value : public common::Object {
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
 #ifdef INFRT_WITH_PTEN
   explicit Value(backends::CpuPtenContext&& x) : data(std::move(x)) {}
-  explicit Value(::pten::CPUContext&& x) : data(std::move(x)) {}
-  explicit Value(::pten::DenseTensor&& x) : data(std::move(x)) {}
-  explicit Value(::pten::MetaTensor&& x) : data(std::move(x)) {}
+  explicit Value(::phi::CPUContext&& x) : data(std::move(x)) {}
+  explicit Value(::phi::DenseTensor&& x) : data(std::move(x)) {}
+  explicit Value(::phi::MetaTensor&& x) : data(std::move(x)) {}
   explicit Value(backends::CpuPtenAllocator&& x) : data(std::move(x)) {}
 #endif
 
@@ -158,10 +172,10 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(float val);
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
-  explicit ValueRef(::pten::MetaTensor&& val);
+  explicit ValueRef(::phi::MetaTensor&& val);
   explicit ValueRef(backends::CpuPtenContext&& x);
-  explicit ValueRef(::pten::CPUContext&& x);
-  explicit ValueRef(::pten::DenseTensor&& x);
+  explicit ValueRef(::phi::CPUContext&& x);
+  explicit ValueRef(::phi::DenseTensor&& x);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;
