@@ -31,6 +31,6 @@ KernelSignature HuberLossGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(huber_loss, phi::HuberLossOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(huber_loss_grad,
+PD_REGISTER_ARG_MAPPING_FN(huber_loss, phi::HuberLossOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(huber_loss_grad,
                            phi::HuberLossGradOpArgumentMapping);

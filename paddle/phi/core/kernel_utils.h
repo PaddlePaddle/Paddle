@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/scalar.h"
@@ -22,7 +23,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_context.h"
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/selected_rows.h"
+#endif
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/type_defs.h"
@@ -210,13 +213,18 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 #ifdef PADDLE_WITH_XPU
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CustomContext);
+#endif
 
   /* Input Helpers */
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
+#endif
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
@@ -250,7 +258,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRows);
+#endif
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCooTensor);
