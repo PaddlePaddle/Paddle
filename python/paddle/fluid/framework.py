@@ -80,25 +80,13 @@ global_prog_seed = 0
 _current_pipeline_stage = None
 _already_patch_eager_tensor = False
 _global_flags_ = core.globals()
-core._enable_eager_mode()
-_C_ops.switch_to_eager_ops()
+core._set_eager_tracer(_dygraph_tracer_)
 
 
 @signature_safe_contextmanager
 def _test_eager_guard(tracer=None):
-    core._enable_eager_mode()
-    _C_ops.switch_to_eager_ops()
-    global _already_patch_eager_tensor
-    if not _already_patch_eager_tensor:
-        from .dygraph.varbase_patch_methods import monkey_patch_varbase
-        monkey_patch_varbase()
-        from .dygraph import monkey_patch_math_varbase
-        monkey_patch_math_varbase()
-        _already_patch_eager_tensor = True
-    if tracer is None:
+    if tracer is not None:
         core._set_eager_tracer(_dygraph_tracer_)
-    else:
-        core._set_eager_tracer(tracer)
     try:
         yield
     finally:
