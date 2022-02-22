@@ -170,6 +170,7 @@ class KernelFrameBuilder : public KernelFrame {
     for (size_t i = 0; i < n; i++) {
       value_or_attrs_.emplace_back(new Value);
     }
+    num_results_ = n;
   }
 
   void SetResultAt(int result_id, Value* value) {
