@@ -15,8 +15,8 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -214,10 +214,6 @@ void GradNodeBase::RegisterGradientHook(
   gradient_hooks_.emplace_back(std::make_tuple(slot_id, rank, hook));
 }
 
-void GradNodeBase::RegisterReduceHook(const std::function<void(void)>& hook) {
-  reduce_hooks_.emplace_back(hook);
-}
-
 std::vector<std::vector<paddle::experimental::Tensor>>
 GradNodeBase::ApplyGradientHooks(
     const std::vector<std::vector<paddle::experimental::Tensor>>& tensors) {
@@ -267,9 +263,4 @@ GradNodeBase::ApplyGradientHooks(
   return outs;
 }
 
-void GradNodeBase::ApplyReduceHooks() {
-  for (auto& hook : reduce_hooks_) {
-    hook();
-  }
-}
 }  // namespace egr
