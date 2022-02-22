@@ -470,10 +470,14 @@ struct Loader {
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
     if (is_boundary) {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
-          args, reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     } else {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
-          args, reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     }
   }
 };
