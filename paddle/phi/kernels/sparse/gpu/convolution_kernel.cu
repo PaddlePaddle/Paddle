@@ -19,64 +19,17 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
-#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
 namespace sparse {
 
-struct Dims4D {
-  int batch_, x_, y_, z_;
-  Dims4D(const int batch, const int x, const int y, const int z) {
-    batch_ = batch;
-    x_ = x;
-    y_ = y;
-    z_ = z;
-  }
-
-  Dims4D(const int x, const int y, const int z) {
-    batch_ = 1;
-    x_ = x;
-    y_ = y;
-    z_ = z;
-  }
-};
-
-inline __device__ bool Check(const int& x,
-                             const int& y,
-                             const int& z,
-                             const Dims4D& dims) {
-  if (x >= 0 && x < dims.x_ && y >= 0 && y < dims.y_ && z >= 0 && z < dims.z_) {
-    return true;
-  }
-  return false;
-}
-
-inline __device__ int PointToIndex(const int& batch,
-                                   const int& x,
-                                   const int& y,
-                                   const int& z,
-                                   const Dims4D& dims) {
-  return batch * dims.z_ * dims.y_ * dims.x_ + z * dims.y_ * dims.x_ +
-         y * dims.x_ + x;
-}
-
-inline __device__ void IndexToPoint(
-    const int index, const Dims4D& dims, int* batch, int* x, int* y, int* z) {
-  int n = index;
-  *x = n % dims.x_;
-  n /= dims.x_;
-  *y = n % dims.y_;
-  n /= dims.y_;
-  *z = n % dims.z_;
-  n /= dims.z_;
-  *batch = n;
-}
-
+// TODO(zhangkaihuo) replace this kernel with KP::InitWithDataIndex
 __global__ void InitByIndexKernel(const int n, int* out1, int* out2) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < n; i += gridDim.x * blockDim.x) {
@@ -97,7 +50,7 @@ __global__ void UpdateIndexKernel(const int* unique_keys,
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     const int index = unique_keys[i];
     int batch, x, y, z;
-    IndexToPoint(index, out_dims, &batch, &x, &y, &z);
+    IndexToPoint<Dims4D>(index, out_dims, &batch, &x, &y, &z);
     // get out indices
     out_indices[i] = batch;
     out_indices[i + non_zero_num] = z;
@@ -114,19 +67,18 @@ __global__ void UpdateIndexKernel(const int* unique_keys,
   }
 }
 
-__global__ void ProductRuleBookKernel(
-    const int* x_indices,
-    const Dims4D kernel_dims,
-    const Dims4D out_dims,
-    const int64_t non_zero_num,
-    const Dims4D paddings,   // save to __constant__
-    const Dims4D dilations,  // save to __constant__
-    const Dims4D strides,    // save to __constant__
-    int* rulebook,
-    int* counter) {
+__global__ void ProductRuleBookKernel(const int* x_indices,
+                                      const Dims4D kernel_dims,
+                                      const Dims4D out_dims,
+                                      const int64_t non_zero_num,
+                                      const Dims4D paddings,
+                                      const Dims4D dilations,
+                                      const Dims4D strides,
+                                      int* rulebook,
+                                      int* counter) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   extern __shared__ int counter_buf[];  // kernel_size
-  const int kernel_size = kernel_dims.x_ * kernel_dims.y_ * kernel_dims.z_;
+  const int kernel_size = kernel_dims[3] * kernel_dims[2] * kernel_dims[1];
   const int offset = kernel_size * non_zero_num;
   for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
     counter_buf[i] = 0;
@@ -135,23 +87,21 @@ __global__ void ProductRuleBookKernel(
 
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     int kernel_index = 0;
-    for (int kernel_z = 0; kernel_z < kernel_dims.z_; kernel_z++) {
-      for (int kernel_y = 0; kernel_y < kernel_dims.y_; kernel_y++) {
-        for (int kernel_x = 0; kernel_x < kernel_dims.x_; kernel_x++) {
+    for (int kz = 0; kz < kernel_dims[1]; kz++) {
+      for (int ky = 0; ky < kernel_dims[2]; ky++) {
+        for (int kx = 0; kx < kernel_dims[3]; kx++) {
           int batch = x_indices[i];
           int in_z = x_indices[i + non_zero_num];
           int in_y = x_indices[i + 2 * non_zero_num];
           int in_x = x_indices[i + 3 * non_zero_num];
-          int out_z =
-              (in_z + paddings.z_ - kernel_z * dilations.z_) / strides.z_;
-          int out_y =
-              (in_y + paddings.y_ - kernel_y * dilations.y_) / strides.y_;
-          int out_x =
-              (in_x + paddings.x_ - kernel_x * dilations.x_) / strides.x_;
+          int out_z = (in_z + paddings[1] - kz * dilations[1]) / strides[1];
+          int out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
+          int out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
           int in_i = -1, out_index = -1;
-          if (Check(out_x, out_y, out_z, out_dims)) {
+          if (Check<Dims4D>(out_x, out_y, out_z, out_dims)) {
             in_i = i;
-            out_index = PointToIndex(batch, out_x, out_y, out_z, out_dims);
+            out_index =
+                PointToIndex<Dims4D>(batch, out_x, out_y, out_z, out_dims);
             atomicAdd(&counter_buf[kernel_index], 1);
           }
           rulebook[kernel_index * non_zero_num + i] = in_i;
@@ -168,8 +118,7 @@ __global__ void ProductRuleBookKernel(
 }
 
 // TODO(zhangkaihuo): After the GatherCUDAKernel is migrated to phi, replace
-// this kernel with
-// phi::GatherCUDAKernel;
+// this kernel with phi::GatherCUDAKernel;
 template <typename T, typename IndexT = int>
 __global__ void GatherKernel(const T* params,
                              const IndexT* indices,
@@ -185,7 +134,6 @@ __global__ void GatherKernel(const T* params,
   }
 }
 
-// unique_value:
 template <typename T>
 __global__ void ScatterKernel(const T* input,
                               const int* unique_value,
@@ -203,11 +151,12 @@ __global__ void ScatterKernel(const T* input,
     int end = indices_i == non_zero_num - 1 ? rulebook_len
                                             : unique_value[indices_i + 1];
     // max(end-start) = kernel_size
+    T sum = static_cast<T>(0);
     for (int j = start; j < end; j++) {
       const int out_feature_i = out_index[j];
-      out[indices_i * channels + channels_i] +=
-          input[out_feature_i * channels + channels_i];
+      sum += input[out_feature_i * channels + channels_i];
     }
+    out[indices_i * channels + channels_i] = sum;
   }
 }
 
@@ -254,20 +203,20 @@ int ProductRuleBook(const Context& dev_ctx,
   rulebook->ResizeAndAllocate({2 * kernel_size * non_zero_num});
   int* rulebook_ptr = rulebook->mutable_data<int>(place);
 
-  Dims4D d_kernel_dims(kernel_dims[2], kernel_dims[1], kernel_dims[0]);
+  Dims4D d_kernel_dims(1, kernel_dims[2], kernel_dims[1], kernel_dims[0]);
   Dims4D d_out_dims(out_dims[0], out_dims[3], out_dims[2], out_dims[1]);
-  Dims4D d_paddings(paddings[2], paddings[1], paddings[0]);
-  Dims4D d_strides(strides[2], strides[1], strides[0]);
-  Dims4D d_dilations(dilations[2], dilations[1], dilations[0]);
+  Dims4D d_paddings(1, paddings[2], paddings[1], paddings[0]);
+  Dims4D d_strides(1, strides[2], strides[1], strides[0]);
+  Dims4D d_dilations(1, dilations[2], dilations[1], dilations[0]);
 
   // 1. product rule book
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
       counter_ptr, 0, sizeof(int) * kernel_size, dev_ctx.stream()));
-  int grid_size = 1, block_size = 1;
-  GetGpuLaunchConfig1D(dev_ctx, non_zero_num, &grid_size, &block_size);
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
-  ProductRuleBookKernel<<<grid_size,
-                          block_size,
+  ProductRuleBookKernel<<<config.block_per_grid.x,
+                          config.thread_per_block.x,
                           kernel_size * sizeof(int),
                           dev_ctx.stream()>>>(indices_ptr,
                                               d_kernel_dims,
@@ -311,8 +260,11 @@ int ProductRuleBook(const Context& dev_ctx,
   int* unique_value_ptr = unique_value->mutable_data<int>(place);
   int* unique_key_ptr = unique_key->mutable_data<int>(place);
 
-  GetGpuLaunchConfig1D(dev_ctx, rulebook_len, &grid_size, &block_size);
-  InitByIndexKernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+  InitByIndexKernel<<<config.block_per_grid.x,
+                      config.thread_per_block.x,
+                      0,
+                      dev_ctx.stream()>>>(
       rulebook_len, out_index_ptr, unique_value_ptr);
 
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(unique_key_ptr,
@@ -346,16 +298,19 @@ int ProductRuleBook(const Context& dev_ctx,
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
   int* out_indices_ptr = out_indices.mutable_data<int>(dev_ctx.GetPlace());
-  GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, &grid_size, &block_size);
-  UpdateIndexKernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      unique_key_ptr,
-      unique_value_ptr,
-      out_index_ptr,
-      out_non_zero_num,
-      rulebook_len,
-      d_out_dims,
-      out_indices_ptr,
-      rulebook_ptr + rulebook_len);
+  config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, 1);
+  UpdateIndexKernel<<<config.block_per_grid.x,
+                      config.thread_per_block.x,
+                      0,
+                      dev_ctx.stream()>>>(unique_key_ptr,
+                                          unique_value_ptr,
+                                          out_index_ptr,
+                                          out_non_zero_num,
+                                          rulebook_len,
+                                          d_out_dims,
+                                          out_indices_ptr,
+                                          rulebook_ptr + rulebook_len);
   out->SetMember(out_indices, out_values, out_dims, true);
   return rulebook_len;
 }
@@ -434,14 +389,16 @@ void Conv3dKernel(const Context& dev_ctx,
   T* in_features_ptr = in_features.mutable_data<T>(place);
   T* out_features_ptr = out_features.mutable_data<T>(place);
 
-  int grid_size = 1, block_size = 1;
-  GetGpuLaunchConfig1D(dev_ctx, n * in_channels, &grid_size, &block_size);
-  GatherKernel<T, int><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      x.non_zero_elements().data<T>(),
-      rulebook.data<int>(),
-      in_features_ptr,
-      n,
-      in_channels);
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n * in_channels, 1);
+  GatherKernel<T, int><<<config.block_per_grid.x,
+                         config.thread_per_block.x,
+                         0,
+                         dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
+                                             rulebook.data<int>(),
+                                             in_features_ptr,
+                                             n,
+                                             in_channels);
 
   // 3. call gemm for every werght
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
@@ -458,11 +415,10 @@ void Conv3dKernel(const Context& dev_ctx,
       continue;
     }
 
-    // call gemm: (n, out_channels) = (n, in_channels) * (in_channels,
-    // out_channels)
+    // call gemm: (n, in_channels) * (in_channels, out_channels)
     const int M = h_counter[i];
-    const int K = in_channels;   // in_channels
-    const int N = out_channels;  // out_channels
+    const int K = in_channels;
+    const int N = out_channels;
     T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
     const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
     T* tmp_out_ptr = out_features_ptr + offsets[i] * out_channels;
@@ -480,16 +436,18 @@ void Conv3dKernel(const Context& dev_ctx,
   }
 
   // 4. scatter
-  GetGpuLaunchConfig1D(
-      dev_ctx, out->nnz() * out_channels, &grid_size, &block_size);
-  ScatterKernel<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      out_features_ptr,
-      unique_value.data<int>(),
-      out_index.data<int>(),
-      out->nnz(),
-      n,
-      out_channels,
-      out_values_ptr);
+  config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      dev_ctx, out->nnz() * out_channels, 1);
+  ScatterKernel<T><<<config.block_per_grid.x,
+                     config.thread_per_block.x,
+                     0,
+                     dev_ctx.stream()>>>(out_features_ptr,
+                                         unique_value.data<int>(),
+                                         out_index.data<int>(),
+                                         out->nnz(),
+                                         n,
+                                         out_channels,
+                                         out_values_ptr);
 }
 
 }  // namespace sparse

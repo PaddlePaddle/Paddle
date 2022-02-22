@@ -21,6 +21,51 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
+struct Dims4D {
+  int dims[4];
+  Dims4D(const int batch, const int x, const int y, const int z) {
+    dims[0] = batch;
+    dims[1] = z;
+    dims[2] = y;
+    dims[3] = x;
+  }
+  HOSTDEVICE const int& operator[](int i) const { return dims[i]; }
+};
+
+template <typename Dim>
+inline HOSTDEVICE bool Check(const int& x,
+                             const int& y,
+                             const int& z,
+                             const Dim& dims) {
+  if (x >= 0 && x < dims[3] && y >= 0 && y < dims[2] && z >= 0 && z < dims[1]) {
+    return true;
+  }
+  return false;
+}
+
+template <typename Dim>
+inline HOSTDEVICE int PointToIndex(const int& batch,
+                                   const int& x,
+                                   const int& y,
+                                   const int& z,
+                                   const Dim& dims) {
+  return batch * dims[1] * dims[2] * dims[3] + z * dims[2] * dims[3] +
+         y * dims[3] + x;
+}
+
+template <typename Dim>
+inline HOSTDEVICE void IndexToPoint(
+    const int index, const Dim& dims, int* batch, int* x, int* y, int* z) {
+  int n = index;
+  *x = n % dims[3];
+  n /= dims[3];
+  *y = n % dims[2];
+  n /= dims[2];
+  *z = n % dims[1];
+  n /= dims[1];
+  *batch = n;
+}
+
 inline void GetOutShape(const DDim& x_dims,
                         const DDim& kernel_dims,
                         const std::vector<int>& paddings,

@@ -24,34 +24,6 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-inline bool Check(const int& x, const int& y, const int& z, const DDim& dims) {
-  if (x >= 0 && x < dims[3] && y >= 0 && y < dims[2] && z >= 0 && z < dims[1]) {
-    return true;
-  }
-  return false;
-}
-
-inline int PointToIndex(const int& batch,
-                        const int& x,
-                        const int& y,
-                        const int& z,
-                        const DDim& dims) {
-  return batch * dims[1] * dims[2] * dims[3] + z * dims[2] * dims[3] +
-         y * dims[3] + x;
-}
-
-inline void IndexToPoint(
-    const int index, const DDim& dims, int* batch, int* x, int* y, int* z) {
-  int n = index;
-  *x = n % dims[3];
-  n /= dims[3];
-  *y = n % dims[2];
-  n /= dims[2];
-  *z = n % dims[1];
-  n /= dims[1];
-  *batch = n;
-}
-
 // such as: kernel(3, 3, 3), kernel_size = 27
 // counter_per_weight: (kernel_size)
 // TODO(zhangkaihuo): optimize performance with multithreading
@@ -74,65 +46,46 @@ void ProductRuleBook(const Context& dev_ctx,
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   memset(counter_ptr, 0, kernel_size * sizeof(int));
 
-  int kernel_index = 0, rulebook_len = 0;
+  int rulebook_len = 0;
   // calc the rulebook_len
-  for (int kernel_z = 0; kernel_z < kernel_dims[0]; kernel_z++) {
-    for (int kernel_y = 0; kernel_y < kernel_dims[1]; kernel_y++) {
-      for (int kernel_x = 0; kernel_x < kernel_dims[2]; kernel_x++) {
-        for (int64_t i = 0; i < non_zero_num; i++) {
-          // indices_ptr[i] is batch
-          int in_z = indices_ptr[i + non_zero_num];
-          int in_y = indices_ptr[i + 2 * non_zero_num];
-          int in_x = indices_ptr[i + 3 * non_zero_num];
-          int out_z =
-              (in_z + paddings[0] - kernel_z * dilations[0]) / strides[0];
-          int out_y =
-              (in_y + paddings[1] - kernel_y * dilations[1]) / strides[1];
-          int out_x =
-              (in_x + paddings[2] - kernel_x * dilations[2]) / strides[2];
-          if (Check(out_x, out_y, out_z, out_dims)) {
-            counter_ptr[kernel_index] += 1;
-            ++rulebook_len;
+  auto f_calc_rulebook = [&](int* rulebook_ptr) {
+    int kernel_index = 0, rulebook_index = 0;
+    for (int kz = 0; kz < kernel_dims[0]; kz++) {
+      for (int ky = 0; ky < kernel_dims[1]; ky++) {
+        for (int kx = 0; kx < kernel_dims[2]; kx++) {
+          for (int64_t i = 0; i < non_zero_num; i++) {
+            int batch = indices_ptr[i];
+            int in_z = indices_ptr[i + non_zero_num];
+            int in_y = indices_ptr[i + 2 * non_zero_num];
+            int in_x = indices_ptr[i + 3 * non_zero_num];
+            int out_z = (in_z + paddings[0] - kz * dilations[0]) / strides[0];
+            int out_y = (in_y + paddings[1] - ky * dilations[1]) / strides[1];
+            int out_x = (in_x + paddings[2] - kx * dilations[2]) / strides[2];
+            if (Check<DDim>(out_x, out_y, out_z, out_dims)) {
+              if (rulebook_ptr == nullptr) {
+                counter_ptr[kernel_index] += 1;
+                ++rulebook_len;
+              } else {
+                rulebook_ptr[rulebook_index] = kernel_index;
+                rulebook_ptr[rulebook_index + rulebook_len] = i;  // in_i
+                rulebook_ptr[rulebook_index + rulebook_len * 2] =
+                    PointToIndex<DDim>(
+                        batch, out_x, out_y, out_z, out_dims);  // out_index
+                ++rulebook_index;
+              }
+            }
           }
+          ++kernel_index;
         }
-        ++kernel_index;
       }
     }
-  }
+  };
 
+  f_calc_rulebook(nullptr);
   // alloc the rulebook
   rulebook->ResizeAndAllocate({3, rulebook_len});
   int* rulebook_ptr = rulebook->mutable_data<int>(place);
-  int rulebook_index = 0;
-  kernel_index = 0;
-
-  // calc the rulebook:(kernel_index, in_index, out_index)
-  for (int kernel_z = 0; kernel_z < kernel_dims[0]; kernel_z++) {
-    for (int kernel_y = 0; kernel_y < kernel_dims[1]; kernel_y++) {
-      for (int kernel_x = 0; kernel_x < kernel_dims[2]; kernel_x++) {
-        for (int64_t i = 0; i < non_zero_num; i++) {
-          int batch = indices_ptr[i];
-          int in_z = indices_ptr[i + non_zero_num];
-          int in_y = indices_ptr[i + 2 * non_zero_num];
-          int in_x = indices_ptr[i + 3 * non_zero_num];
-          int out_z =
-              (in_z + paddings[0] - kernel_z * dilations[0]) / strides[0];
-          int out_y =
-              (in_y + paddings[1] - kernel_y * dilations[1]) / strides[1];
-          int out_x =
-              (in_x + paddings[2] - kernel_x * dilations[2]) / strides[2];
-          if (Check(out_x, out_y, out_z, out_dims)) {
-            rulebook_ptr[rulebook_index] = kernel_index;
-            rulebook_ptr[rulebook_index + rulebook_len] = i;  // in_i
-            rulebook_ptr[rulebook_index + rulebook_len * 2] = PointToIndex(
-                batch, out_x, out_y, out_z, out_dims);  // out_index
-            ++rulebook_index;
-          }
-        }
-        ++kernel_index;
-      }
-    }
-  }
+  f_calc_rulebook(rulebook_ptr);
 }
 
 template <typename T, typename Context>
@@ -163,7 +116,7 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   for (auto it = out_indexs.begin(); it != out_indexs.end(); it++, i++) {
     const int index = *it;
     int batch, x, y, z;
-    IndexToPoint(index, out_dims, &batch, &x, &y, &z);
+    IndexToPoint<DDim>(index, out_dims, &batch, &x, &y, &z);
     out_indices_ptr[i] = batch;
     out_indices_ptr[i + out_non_zero_num] = z;
     out_indices_ptr[i + out_non_zero_num * 2] = y;
