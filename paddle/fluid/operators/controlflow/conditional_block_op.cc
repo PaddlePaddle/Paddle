@@ -272,8 +272,18 @@ class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
     // Input is {Tensor, LoDTensorArray}, we need synchronous the Input's
     // VarType into Input@GRAD to avoid generating {Tensor, Tensor} as
     // Input@GRAD.
-    ctx->SyncTypeAndDataType(ConditionalOp::kInputs,
-                             framework::GradVarName(ConditionalOp::kInputs));
+    auto input_size = ctx->InputSize(ConditionalOp::kInputs);
+    auto output_size =
+        ctx->OutputSize(framework::GradVarName(ConditionalOp::kInputs));
+    PADDLE_ENFORCE_EQ(input_size, output_size,
+                      platform::errors::InvalidArgument(
+                          "input_size and output_size should be equal for "
+                          "conditional_block_grad_op."));
+    for (size_t i = 0; i < output_size; ++i) {
+      ctx->SyncTypeAndDataType(ConditionalOp::kInputs,
+                               framework::GradVarName(ConditionalOp::kInputs),
+                               i);
+    }
   }
 };
 

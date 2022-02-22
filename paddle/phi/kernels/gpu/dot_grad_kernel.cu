@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/complex.h"
 
-PT_REGISTER_KERNEL(dot_grad,
+PD_REGISTER_KERNEL(dot_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DotGradKernel,
