@@ -80,7 +80,8 @@ global_prog_seed = 0
 _current_pipeline_stage = None
 _already_patch_eager_tensor = False
 _global_flags_ = core.globals()
-core._disable_eager_mode()
+core._enable_eager_mode()
+_C_ops.switch_to_eager_ops()
 
 
 @signature_safe_contextmanager
@@ -101,8 +102,7 @@ def _test_eager_guard(tracer=None):
     try:
         yield
     finally:
-        core._disable_eager_mode()
-        _C_ops.switch_to_core_ops()
+        pass
 
 
 global_ipu_index = None
