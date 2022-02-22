@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/cross_op.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cross_kernel.h"
+#include "paddle/phi/kernels/impl/cross_kernel_impl.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    cross_grad,
-    ops::CrossGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CrossGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::CrossGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CrossGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+PD_REGISTER_KERNEL(
+    cross, GPU, ALL_LAYOUT, phi::CrossKernel, float, double, int, int64_t) {}

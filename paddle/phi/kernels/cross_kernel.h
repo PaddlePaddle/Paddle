@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/cross_op.h"
+#pragma once
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    cross_grad,
-    ops::CrossGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CrossGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::CrossGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::CrossGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void CrossKernel(const Context& ctx,
+                 const DenseTensor& x,
+                 const DenseTensor& y,
+                 int axis,
+                 DenseTensor* out);
+
+}  // namespace phi
