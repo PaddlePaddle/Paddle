@@ -17,8 +17,10 @@ from .profiler import make_scheduler, export_chrome_tracing, export_protobuf
 from .profiler import Profiler
 from .profiler import TracerEventType
 from .utils import Record_Event
+from .profiler_statistic import SortedKeys
 
 __all__ = [
     'ProfilerState', 'ProfilerTarget', 'TracerEventType', 'make_scheduler',
-    'export_chrome_tracing', 'export_protobuf', 'Profiler', 'Record_Event'
+    'export_chrome_tracing', 'export_protobuf', 'Profiler', 'Record_Event',
+    'SortedKeys'
 ]

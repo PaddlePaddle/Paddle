@@ -23,7 +23,7 @@ import paddle
 from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
                                TracerEventType)
 from .utils import Record_Event
-from .profiler_statistic import StatisticData, _build_table
+from .profiler_statistic import StatisticData, _build_table, SortedKeys
 
 
 class ProfilerState(Enum):
@@ -381,11 +381,23 @@ class Profiler:
         if self.profiler_result:
             self.profiler_result.save(path, format)
 
-    def summary(self, level="default"):
+    def summary(self,
+                sorted_by=SortedKeys.OpTotal,
+                op_detail=True,
+                thread_sep=False,
+                time_unit='ms'):
         '''
-        default: default statistics
-        detail: expand each operator detail information
+        sorted_by: how to rank the op table items.
+        detail: expand each operator detail information.
+        thread_sep: print op table each thread.
+        time_unit: can be chosen form ['s', 'ms', 'us', 'ns']
         '''
         statistic_data = StatisticData(self.profiler_result.get_data(),
                                        self.profiler_result.get_extra_info())
-        print(_build_table(statistic_data))
+        print(
+            _build_table(
+                statistic_data,
+                sorted_by=sorted_by,
+                op_detail=op_detail,
+                thread_sep=thread_sep,
+                time_unit=time_unit))
