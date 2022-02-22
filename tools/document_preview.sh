@@ -64,14 +64,14 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
 
     # install requirements
     apt-get install -y --no-install-recommends doxygen
-    pip install beautifulsoup4
-    pip install Markdown
-    pip install sphinx-sitemap
-    pip install sphinx-markdown-tables
-    pip install breathe
-    pip install exhale
-    pip install sphinx_design
-    pip install nbsphinx
+    pip install beautifulsoup4 -i https://mirror.baidu.com/pypi/simple
+    pip install Markdown -i https://mirror.baidu.com/pypi/simple
+    pip install sphinx-sitemap -i https://mirror.baidu.com/pypi/simple
+    pip install sphinx-markdown-tables -i https://mirror.baidu.com/pypi/simple
+    pip install breathe -i https://mirror.baidu.com/pypi/simple
+    pip install exhale -i https://mirror.baidu.com/pypi/simple
+    pip install sphinx_design -i https://mirror.baidu.com/pypi/simple
+    pip install nbsphinx -i https://mirror.baidu.com/pypi/simple
 
     # build doc
     /bin/bash -x ${FLUIDDOCDIR}/ci_scripts/gendoc.sh
