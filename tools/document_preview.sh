@@ -21,9 +21,14 @@ is_shell_attribute_set() { # attribute, like "x"
   esac
 }
 
-# Attention: this script will rm folder /FluidDoc and /docs first, then reuse the two folders.
+# Attention:
+# 1. /FluidDoc will be used as the workspace of PaddlePaddle/docs. 
+# 2. And /docs is used as the output of doc-build process.
+# 3. If conflicted with yours, please modify the defination of FLUIDDOCDIR and
+#    OUTPUTDIR in the subsequent codes.
+# 4. The doc-build process is controlled under EnvVar BUILD_DOC and UPLOAD_DOC.
+#    All the Chinese and English docs will be generated, and then uploaded.
 
-# build all the Chinese and English docs, and upload them. Controlled with Env BUILD_DOC and UPLOAD_DOC
 PREVIEW_URL_PROMPT="ipipe_log_param_preview_url: None"
 BUILD_DOC=${BUILD_DOC:=true}
 UPLOAD_DOC=${UPLOAD_DOC:=false}
@@ -40,8 +45,6 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     export VERSIONSTR=$(echo ${BRANCH} | sed 's@release/@@g')
 
     if [ -d ${FLUIDDOCDIR} ] ; then
-        # echo "$0: rm -rf ${FLUIDDOCDIR}"
-        # rm -rf ${FLUIDDOCDIR}
         echo "${FLUIDDOCDIR} exists, git clone will be skipped, but git clean will be done."
         cd ${FLUIDDOCDIR}
         git reset --hard
@@ -52,7 +55,6 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
         if [ ! "$?" = "0" ] ; then
             git clone --depth=1 https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
         fi
-        # TODO: checkout the required docs PR?
     fi
     if [ -d ${OUTPUTDIR} ] ; then
         echo "$0: rm -rf ${OUTPUTDIR}"
@@ -61,8 +63,7 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     fi
 
     # install requirements
-    apt-get update && apt-get install -y --no-install-recommends doxygen
-    # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple 
+    apt-get install -y --no-install-recommends doxygen
     pip install beautifulsoup4
     pip install Markdown
     pip install sphinx-sitemap
@@ -104,6 +105,7 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
         if [ $xdebug_setted ] ; then
             set -x
         fi
+
         PREVIEW_JOB_NAME="preview-paddle-pr-${GIT_PR_ID}"
         BOSBUCKET=${BOSBUCKET:=paddle-site-web-dev}
         ${BCECMD} --conf-path ${BCECMD_CONFIG} bos sync "${OUTPUTDIR}/en/${VERSIONSTR}" "bos:/${BOSBUCKET}/documentation/en/${PREVIEW_JOB_NAME}" \
@@ -114,9 +116,10 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
             --delete --yes --exclude "${OUTPUTDIR}/zh/${VERSIONSTR}/_sources/"
         ${BCECMD} --conf-path ${BCECMD_CONFIG} bos sync "${OUTPUTDIR}/zh/${VERSIONSTR}" "bos:/${BOSBUCKET}/documentation/zh/${PREVIEW_JOB_NAME}" \
             --delete --yes --exclude "${OUTPUTDIR}/zh/${VERSIONSTR}/_sources/"
-        # print preview url
         PREVIEW_URL_PROMPT="ipipe_log_param_preview_url: http://${PREVIEW_JOB_NAME}.${PREVIEW_SITE:-preview.paddlepaddle.org}/documentation/docs/zh/api/index_cn.html"
     fi
 fi
+
 cd ${CURPWD}
+# print the preview url
 echo "${PREVIEW_URL_PROMPT}"
