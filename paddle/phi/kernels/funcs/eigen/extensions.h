@@ -438,4 +438,4 @@ HOSTDEVICE inline float16 maxi(const float16& a, const float16& b) {
 }  // namespace numext
 }  // namespace Eigen
 
-#endif //__xpu__
+#endif  // __xpu__
