@@ -23,9 +23,9 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace operators {

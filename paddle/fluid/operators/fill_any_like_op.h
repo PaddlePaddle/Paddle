@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/pten_utils.h"
 
-#include "paddle/pten/kernels/full_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -33,6 +33,7 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
                                 float, T>::type>::type;
 
   void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
@@ -62,10 +63,10 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
 
     const auto& dev_ctx = context.template device_context<DeviceContext>();
     // call new kernel
-    pten::FullLikeKernel<T>(
+    phi::FullLikeKernel<T>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
-        value, out);
+        *x, value, phi::DataType::UNDEFINED, out);
   }
 };
 

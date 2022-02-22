@@ -308,7 +308,7 @@ __global__ void GroupNormBackwardGetMeanAndVar(
   int cid = blockIdx.x;
   int bid = blockIdx.z;
   int H = imsize / W;
-  int number = min(group_size, static_cast<int>(C - gid * group_size));
+  // int number = min(group_size, static_cast<int>(C - gid * group_size));
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
   T x_scale = (flags & kHasScale) ? scale[ccid] : 1;
@@ -343,16 +343,18 @@ __global__ void GroupNormBackwardGetMeanAndVar(
   }
 
   if (blockDim.x <= 32) {
-    CudaAtomicAddWithWarp(&(d_mean[bid * groups + gid]), d_mean_data);
-    CudaAtomicAddWithWarp(&(d_var[bid * groups + gid]), d_var_data);
+    int index = bid * groups + gid;
+    CudaAtomicAddWithWarp(&(d_mean[index]), d_mean_data);
+    CudaAtomicAddWithWarp(&(d_var[index]), d_var_data);
   } else {
+    int index = bid * groups + gid;
     auto mean_out = kps::details::BlockXReduce<T, kps::AddFunctor<T>>(
         d_mean_data, kps::AddFunctor<T>());
     auto var_out = kps::details::BlockXReduce<T, kps::AddFunctor<T>>(
         d_var_data, kps::AddFunctor<T>());
     if (threadIdx.x == 0) {
-      platform::CudaAtomicAdd(&(d_mean[bid * groups + gid]), mean_out);
-      platform::CudaAtomicAdd(&(d_var[bid * groups + gid]), var_out);
+      platform::CudaAtomicAdd(&(d_mean[index]), mean_out);
+      platform::CudaAtomicAdd(&(d_var[index]), var_out);
     }
   }
   if (flags & kHasScale) {
@@ -462,7 +464,7 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
                                           : x_dims[x_dims.size() - 2]);
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
     Tensor temp_var;

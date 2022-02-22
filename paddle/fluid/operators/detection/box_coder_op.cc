@@ -78,9 +78,8 @@ class BoxCoderOp : public framework::OperatorWithKernel {
                             "The second dimension of TargetBox in BoxCoder "
                             "operator is 4. But received dimension is %d",
                             target_box_dims[1]));
-      ctx->SetOutputDim(
-          "OutputBox",
-          framework::make_ddim({target_box_dims[0], prior_box_dims[0], 4}));
+      ctx->SetOutputDim("OutputBox", phi::make_ddim({target_box_dims[0],
+                                                     prior_box_dims[0], 4}));
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
       PADDLE_ENFORCE_EQ(target_box_dims.size(), 3,
                         platform::errors::InvalidArgument(

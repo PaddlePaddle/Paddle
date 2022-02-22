@@ -59,14 +59,14 @@ struct sgd_dense_param_kernel<
 
 // SelectedRows
 template <typename T>
-struct sgd_dense_param_kernel<
-    T, framework::VarTypeTrait<pten::SelectedRows>::kId> {
+struct sgd_dense_param_kernel<T,
+                              framework::VarTypeTrait<phi::SelectedRows>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, SelectedRows>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     const auto *param = ctx.Input<framework::Tensor>("Param");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<pten::SelectedRows>("Grad");
+    const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
     const auto &grad_value = grad->value();
     const auto &grad_rows = grad->rows();
@@ -113,13 +113,13 @@ struct sgd_dense_param_kernel<
 
 // SelectedRows
 template <>
-struct sgd_dense_param_kernel<
-    platform::bfloat16, framework::VarTypeTrait<pten::SelectedRows>::kId> {
+struct sgd_dense_param_kernel<platform::bfloat16,
+                              framework::VarTypeTrait<phi::SelectedRows>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, SelectedRows>";
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
     auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<pten::SelectedRows>("Grad");
+    const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
     const auto &grad_value = grad->value();
     const auto &grad_rows = grad->rows();
@@ -163,7 +163,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
 
     if (param_var->IsType<framework::LoDTensor>()) {
       invoke_dense_param_kernel(ctx);
-    } else if (param_var->IsType<pten::SelectedRows>()) {
+    } else if (param_var->IsType<phi::SelectedRows>()) {
       sparse_param_and_grad_kernel(ctx);
     } else {
       PADDLE_ENFORCE_EQ(
@@ -200,7 +200,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
                             grad->numel(), sz));
 
       dense_param_and_grad_kernel(ctx);
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
       // This manual optimization brings difficulty to track data dependency.
       // It's better to find a more elegant solution.
@@ -209,7 +209,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
                             "The input tensor Param of SgdOp "
                             "should be equal with ParamOut if variable's "
                             "type is SelectedRows. "));
-      const auto *grad = ctx.Input<pten::SelectedRows>("Grad");
+      const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
       // for distributed training, a sparse var may be empty,
       // just skip updating.
@@ -259,13 +259,13 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
     const auto *param_var = ctx.InputVar("Param");
     const auto *grad_var = ctx.InputVar("Grad");
 
-    PADDLE_ENFORCE_EQ(grad_var->IsType<pten::SelectedRows>(), true,
+    PADDLE_ENFORCE_EQ(grad_var->IsType<phi::SelectedRows>(), true,
                       platform::errors::InvalidArgument(
                           "When param is SelectedRows, gradient should also "
                           "be SelectedRows"));
-    const auto &param = param_var->Get<pten::SelectedRows>();
-    auto *param_out = ctx.Output<pten::SelectedRows>("ParamOut");
-    const auto &grad = grad_var->Get<pten::SelectedRows>();
+    const auto &param = param_var->Get<phi::SelectedRows>();
+    auto *param_out = ctx.Output<phi::SelectedRows>("ParamOut");
+    const auto &grad = grad_var->Get<phi::SelectedRows>();
 
     // for distributed training, a sparse var may be empty,
     // just skip updating.
@@ -309,7 +309,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
   virtual void dense_param_sparse_grad_kernel(
       const framework::ExecutionContext &ctx) const {
     detail::sgd_dense_param_kernel<
-        T, framework::VarTypeTrait<pten::SelectedRows>::kId>()(ctx);
+        T, framework::VarTypeTrait<phi::SelectedRows>::kId>()(ctx);
   }
 };
 

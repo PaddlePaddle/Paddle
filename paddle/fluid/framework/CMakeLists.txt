@@ -413,7 +413,7 @@ cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tens
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
 cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place pten var_type_traits pten pten_api_utils op_info shape_inference)
-
+cc_test(infershape_utils_test SRCS infershape_utils_test.cc DEPS infershape_utils infermeta_utils meta_tensor)
 
 # Get the current working branch
 execute_process(
@@ -437,8 +437,7 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 configure_file(commit.h.in commit.h)
 
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info pten_api)
-cc_library(custom_kernel SRCS custom_kernel.cc DEPS
-           tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_kernel_info pten_api)
+cc_library(custom_kernel SRCS custom_kernel.cc DEPS op_registry pten_custom_kernel pten_tensor_raw)
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
@@ -458,4 +457,4 @@ if(WITH_GPU OR WITH_ROCM)
 else()
   cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place)
 endif()
-cc_test(custom_kernel_test SRCS custom_kernel_test.cc DEPS custom_kernel pten_tensor)
+cc_test(convert_utils_test SRCS convert_utils_test.cc DEPS fluid_convert_utils)

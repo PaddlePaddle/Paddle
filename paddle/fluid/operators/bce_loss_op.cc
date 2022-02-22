@@ -43,8 +43,8 @@ class BCELossOp : public framework::OperatorWithKernel {
                           rank, labels_dims.size()));
 
     bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(labels_dims) <= 0)) {
+    if ((!ctx->IsRuntime()) &&
+        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
       check = false;
     }
 
@@ -87,8 +87,8 @@ class BCELossGradOp : public framework::OperatorWithKernel {
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(labels_dims) <= 0)) {
+    if ((!ctx->IsRuntime()) &&
+        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
       check = false;
     }
 

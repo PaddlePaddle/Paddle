@@ -18,4 +18,4 @@ limitations under the License. */
 #include <ostream>
 #include <string>
 
-#include "paddle/pten/common/layout.h"
+#include "paddle/phi/common/layout.h"
