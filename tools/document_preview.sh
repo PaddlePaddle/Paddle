@@ -44,7 +44,10 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
         # rm -rf ${FLUIDDOCDIR}
         echo "${FLUIDDOCDIR} exists, git clone skipped."
     else
-        git clone --depth=1 https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
+        git clone -b ${BRANCH} --depth=1 https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
+        if [ ! "$?" = "0" ] ; then
+            git clone --depth=1 https://github.com/PaddlePaddle/docs.git ${FLUIDDOCDIR}
+        fi
         # TODO: checkout the required docs PR?
     fi
     if [ -d ${OUTPUTDIR} ] ; then
