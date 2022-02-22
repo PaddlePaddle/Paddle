@@ -630,16 +630,16 @@ class PADDLE_API OpKernelInfoBuilder {
 };
 /////////////////////// Custom kernel register API /////////////////////////
 // For inference: compile directly with framework
-// Call after PD_REGISTER_KERNEL(...)
+// Call after PD_REGISTER_BUILTIN_KERNEL(...)
 void RegisterAllCustomKernel();
 
 //////////////// Custom kernel register macro /////////////////////
 // Refer to paddle/phi/core/kernel_registry.h, we can not use
-// PT_REGISTER_KERNEL directly, common macros and functions are
+// PD_REGISTER_KERNEL directly, common macros and functions are
 // not ready for custom kernel now.
 // Difference: custom_kernel stores all kernels' info into global
 // g_custom_kernel_info_map before loading and registering into
-// pten kernel management. Only providing PD_REGISTER_KERNEL which
+// pten kernel management. Only providing PD_REGISTER_BUILTIN_KERNEL which
 // supports 2 template arguments.
 
 #define PD_BACKEND(arg__) phi::Backend::arg__
@@ -666,11 +666,12 @@ void RegisterAllCustomKernel();
 #define PD_ID __LINE__
 #endif
 
-#define PD_REGISTER_KERNEL(kernel_name, backend, layout, func, cpp_dtype, ...) \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
-      _reg_custom_kernel_ns_check_##kernel_name##_##backend##_##layout,        \
-      "PD_REGISTER_KERNEL must be called in global namespace.");               \
-  _PD_REGISTER_2TA_KERNEL(                                                     \
+#define PD_REGISTER_BUILTIN_KERNEL(                                      \
+    kernel_name, backend, layout, func, cpp_dtype, ...)                  \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                        \
+      _reg_custom_kernel_ns_check_##kernel_name##_##backend##_##layout,  \
+      "PD_REGISTER_BUILTIN_KERNEL must be called in global namespace."); \
+  _PD_REGISTER_2TA_KERNEL(                                               \
       kernel_name, backend, layout, func, cpp_dtype, ##__VA_ARGS__)
 
 // WIN32 is not supported
