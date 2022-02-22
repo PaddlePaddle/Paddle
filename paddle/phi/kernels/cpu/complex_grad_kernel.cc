@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,36 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/impl/complex_kernel_impl.h"
+#include "paddle/phi/kernels/complex_grad_kernel.h"
+#include "paddle/phi/kernels/impl/complex_grad_kernel_impl.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/complex.h"
-
-PD_REGISTER_KERNEL(conj,
+PD_REGISTER_KERNEL(real_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ConjKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(real,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::RealKernel,
+                   phi::RealGradKernel,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PD_REGISTER_KERNEL(imag,
+PD_REGISTER_KERNEL(imag_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ImagKernel,
+                   phi::ImagGradKernel,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
