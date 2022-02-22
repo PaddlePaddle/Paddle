@@ -502,9 +502,6 @@ class IpuStrategy(object):
     """
     Help users precisely control the graph building in :code:`paddle.static.IpuCompiledProgram` .
 
-    Args:
-        None.
-        
     Returns:
         The IpuStrategy instance.
 
