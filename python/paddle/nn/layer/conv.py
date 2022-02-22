@@ -161,7 +161,7 @@ class _ConvNd(Layer):
             main_str += ', stride={_stride}'
         if self._padding != 0:
             main_str += ', padding={_padding}'
-        if self._padding_mode is not 'zeros':
+        if self._padding_mode != 'zeros':
             main_str += ', padding_mode={_padding_mode}'
         if self.output_padding != 0:
             main_str += ', output_padding={output_padding}'

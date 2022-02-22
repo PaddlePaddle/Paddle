@@ -3437,7 +3437,7 @@ def erfinv_(x, name=None):
     return _C_ops.erfinv_(x)
 
 def rad2deg(x, name=None):
-    """
+    r"""
     Convert each of the elements of input x from angles in radians to degrees.
     
     Equation:
@@ -3496,7 +3496,7 @@ def rad2deg(x, name=None):
         return out
 
 def deg2rad(x, name=None):
-    """
+    r"""
     Convert each of the elements of input x from degrees to angles in radians.
     
     Equation:
