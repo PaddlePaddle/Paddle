@@ -32,14 +32,14 @@ PD_REGISTER_KERNEL(conj,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(real,
+PD_REGISTER_KERNEL(real,
                    CPU,
                    ALL_LAYOUT,
                    phi::RealKernel,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(imag,
+PD_REGISTER_KERNEL(imag,
                    CPU,
                    ALL_LAYOUT,
                    phi::ImagKernel,

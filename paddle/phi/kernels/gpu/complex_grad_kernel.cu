@@ -18,14 +18,14 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PT_REGISTER_KERNEL(imag_grad,
+PD_REGISTER_KERNEL(imag_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ImagGradKernel,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(real_grad,
+PD_REGISTER_KERNEL(real_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::RealGradKernel,
