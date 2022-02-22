@@ -22,20 +22,20 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/unary.h"
 
-PT_DECLARE_KERNEL(dense_to_sparse_coo, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sparse_csr_to_coo, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(dense_to_sparse_csr, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sparse_coo_to_csr, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sparse_coo_to_dense, CPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sparse_csr_to_dense, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(dense_to_sparse_coo, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sparse_csr_to_coo, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(dense_to_sparse_csr, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sparse_coo_to_csr, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sparse_coo_to_dense, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sparse_csr_to_dense, CPU, ALL_LAYOUT);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_KERNEL(dense_to_sparse_coo, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sparse_csr_to_coo, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(dense_to_sparse_csr, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sparse_coo_to_csr, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sparse_coo_to_dense, GPU, ALL_LAYOUT);
-PT_DECLARE_KERNEL(sparse_csr_to_dense, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(dense_to_sparse_coo, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sparse_csr_to_coo, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(dense_to_sparse_csr, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sparse_coo_to_csr, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sparse_coo_to_dense, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sparse_csr_to_dense, GPU, ALL_LAYOUT);
 #endif
 
 namespace paddle {
@@ -228,4 +228,4 @@ PADDLE_API Tensor to_dense(const Tensor& x, Backend backend) {
 }  // namespace experimental
 }  // namespace paddle
 
-PT_REGISTER_API(SparseApi);
+PD_REGISTER_API(SparseApi);

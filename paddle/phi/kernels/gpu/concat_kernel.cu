@@ -110,7 +110,7 @@ void ConcatKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(concat,
+PD_REGISTER_KERNEL(concat,
                    GPU,
                    ALL_LAYOUT,
                    phi::ConcatKernel,
