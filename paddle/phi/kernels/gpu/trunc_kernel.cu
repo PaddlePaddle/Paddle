@@ -77,5 +77,5 @@ void TruncKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     trunc, GPU, ALL_LAYOUT, phi::TruncKernel, float, double, int, int64_t) {}

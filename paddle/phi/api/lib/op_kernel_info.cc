@@ -86,7 +86,7 @@ OpKernelInfoBuilder& OpKernelInfoBuilder::ArgsDef(CustomKernelArgsDefFn func) {
 /////////////////////// Op register API /////////////////////////
 
 // For inference: compile directly with framework
-// Call after PD_REGISTER_KERNEL(...)
+// Call after PD_REGISTER_BUILTIN_KERNEL(...)
 void RegisterAllCustomKernel() {
   auto& op_kernel_info_map = OpKernelInfoMap::Instance();
   framework::RegisterKernelWithMetaInfoMap(op_kernel_info_map);

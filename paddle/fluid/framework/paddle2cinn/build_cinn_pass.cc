@@ -375,7 +375,7 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
       const std::unordered_set<std::string>& ignore_names) {
     auto result = std::make_unique<std::vector<std::string>>();
     for (auto* node : nodes) {
-      if (ignore_names.count(node->Name())) {
+      if (!node->Var() || ignore_names.count(node->Name())) {
         continue;
       }
       result->emplace_back(node->Name());
