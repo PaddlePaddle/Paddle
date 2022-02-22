@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/core/ddim.h"
@@ -348,12 +349,16 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
                                                   framework::Scope* scope) {
   if (!parallel_executor_) {
     framework::details::ExecutionStrategy exec_strategy;
+    exec_strategy.num_threads_ = 1;
+    exec_strategy.use_device_ = platform::Place2DeviceType(place);
     framework::details::BuildStrategy build_strategy;
     parallel_executor_ = std::make_unique<ParallelExecutor>(
         place, scope, exec_strategy, build_strategy, runtime_graph_.get());
   }
 
   // update the scope bound to an OpHandle and rebuild temporary variables
+  VLOG(4) << "Reset scope and initialize temporary variables "
+          << "for execution of the runtime graph";
   std::unordered_map<Scope*, Scope*> scope_map = {
       {parallel_executor_->GetLocalScopes().front(), scope}};
   parallel_executor_->ResetOpHandleScopeMapOfGraphs(scope_map);

@@ -104,7 +104,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
 
     auto* launch_context = cinn_compiled_object.launch_context.get();
     // Step 3. Prepare arguments needed for the compiled executable program.
-    launch_context->UpdateCapturedEnv(scope, place);
     // 3.1 Input variables: tensors of input variables have
     //     been initialized before graph compiled, just check the
     //     equiality between tensors of paddle and cinn.
@@ -120,20 +119,18 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
                                             *inputs_name2tensor.at(var_name));
     }
 
-    // 3.2 Output variables: the output variables will be initialized
-    //     and allocated buffer in callbacks which are defined in the
-    //     external_malloc/free interface of cinn_buffer_t
-    //     in their corresponding arguments.
-    // 3.3 Internal variables: A temporary scope is created in
-    //     UpdateCapturedEnv to keep the internal variables and
-    //     they are also initialized through callbacks
-
     // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
     // Step 5. Launch CINN to execute the compiled executable program
-    VLOG(4) << "Run Cinn compiled executable program with stream: " << stream;
-    details::LaunchCinnExecution(cinn_compiled_object, *launch_context, stream);
+    // VLOG(4) << "Run Cinn compiled executable program with stream: " <<
+    // stream;
+    // details::LaunchCinnExecution(cinn_compiled_object, *launch_context,
+    // stream);
+    VLOG(4) << "Execute the runtime graph by PE";
+    framework::Scope& exec_scope = scope.NewScope();
+    auto* pe = launch_context->InitializePE(place, &exec_scope);
+    pe->RunWithoutFetch({});
     VLOG(4) << "CinnLaunchOp launch execution done.";
   }
 };
