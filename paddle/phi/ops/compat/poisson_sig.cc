@@ -23,4 +23,4 @@ KernelSignature PoissonGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(poisson_grad, phi::PoissonGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(poisson_grad, phi::PoissonGradOpArgumentMapping);

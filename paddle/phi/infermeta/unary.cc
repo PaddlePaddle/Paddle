@@ -538,10 +538,6 @@ void TraceInferMeta(
   out->set_dims(phi::make_ddim(sizes));
 }
 
-void PoissonInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(x.dims());
-}
-
 void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& kernel_sizes,
                      const std::vector<int>& strides,

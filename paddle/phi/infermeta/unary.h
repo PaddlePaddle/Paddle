@@ -93,8 +93,6 @@ void SplitInferMeta(const MetaTensor& x_meta,
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
-void PoissonInferMeta(const MetaTensor& x, MetaTensor* out);
-
 void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& kernel_sizes,
                      const std::vector<int>& strides,

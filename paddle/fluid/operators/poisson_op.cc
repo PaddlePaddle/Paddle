@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-
-#include "paddle/fluid/operators/poisson_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -53,29 +55,6 @@ class PoissonOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
   }
 };
 
-template <typename T>
-class PoissonKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *x = ctx.Input<framework::Tensor>("X");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-
-    const T *x_data = x->data<T>();
-    T *out_data = out->mutable_data<T>(ctx.GetPlace());
-
-    int64_t size = x->numel();
-
-    auto gen = framework::DefaultCPUGenerator();
-    auto engine = gen->GetCPUEngine();
-
-    for (int64_t i = 0; i < size; ++i) {
-      std::poisson_distribution<> dist(x_data[i]);
-      out_data[i] = static_cast<T>(dist(*engine));
-    }
-  }
-};
-
 class PoissonGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -109,7 +88,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 DELCARE_INFER_SHAPE_FUNCTOR(poisson, PoissonInferShapeFunctor,
-                            PT_INFER_META(phi::PoissonInferMeta));
+                            PT_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(poisson, ops::PoissonOp, ops::PoissonOpMaker,
                   ops::PoissonOpInferVarType,
