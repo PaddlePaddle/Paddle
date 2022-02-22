@@ -80,8 +80,17 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     fi
 
     if [ "${UPLOAD_DOC}" = "true" ] ; then
-        BCECMD=
-        BCECMD_CONFIG=
+        curl -o /tmp/linux-bcecmd-0.3.0.zip https://sdk.bce.baidu.com/console-sdk/linux-bcecmd-0.3.0.zip && \
+        python -m zipfile -e /tmp/linux-bcecmd-0.3.0.zip /opt && \
+        chmod +x /opt/linux-bcecmd-0.3.0/bcecmd && \
+        rm /tmp/linux-bcecmd-0.3.0.zip && \
+        curl -o /tmp/boscmdconfig.tgz https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/boscmdconfig.tgz && \
+        tar xzf /tmp/boscmdconfig.tgz -C /opt/linux-bcecmd-0.3.0/ && \
+        rm /tmp/boscmdconfig.tgz
+
+        # credentials file is empty, please build it if need.
+        BCECMD=/opt/linux-bcecmd-0.3.0/bcecmd
+        BCECMD_CONFIG=/opt/linux-bcecmd-0.3.0/boscmdconfig
 
         is_shell_attribute_set x
         xdebug_setted=$?
