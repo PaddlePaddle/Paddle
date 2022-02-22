@@ -70,7 +70,7 @@ constexpr char kTempVarName[] = "@TEMP@";
 /// If a variable's name has a certain suffix, it means that the
 /// variable is the gradient of another variable.
 /// e.g. Variable "x@GRAD" is the gradient of variable "x".
-constexpr char kGradVarSuffix[] = "@GRAD";
+constexpr char kGradVarSuffix[] = "_GRAD";
 
 constexpr size_t kGradVarSuffixSize = 5U;
 
