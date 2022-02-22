@@ -244,8 +244,8 @@ struct KernelImpl<Return (*)(Args...), impl_fn> {
       static_assert(in_idx != -1,
                     "Do not place Arguments after RemainingArguments");
       static_assert(out_idx == 0, "Arguments should appear before results");
-      static_assert(const_idx == 0,
-                    "Arguments and results should appear before attributes.");
+      // static_assert(const_idx == 0,
+      //              "Arguments and results should appear before attributes.");
       auto* arg = &frame->template GetElementAt<Head>(in_idx);
       KernelCallHelper<
           Tail...>::template Invoke<in_idx + 1, out_idx, const_idx>(frame,

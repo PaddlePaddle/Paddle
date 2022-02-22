@@ -136,7 +136,7 @@ class Variant {
     return nullptr;
   }
 
-  IndexT index() { return index_; }
+  IndexT index() const { return index_; }
 
   template <typename T>
   static constexpr size_t IndexOf = TupleIndexOf<T, Types>::value;

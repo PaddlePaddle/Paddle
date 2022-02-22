@@ -81,7 +81,7 @@ class KernelFrame {
   }
 
   void AddAttribute(Value* v) {
-    CHECK_EQ(num_results_, -1)
+    CHECK_LE(num_results_, 0)
         << "Must call SetNumResults after calling AddAttribute";
     value_or_attrs_.emplace_back(v);
     if (num_attrs_ == -1) num_attrs_ = 0;
@@ -110,9 +110,11 @@ class KernelFrame {
   }
 
   llvm::ArrayRef<Value*> GetResults() const {
+    CHECK_GE(num_results_, 0) << "Invalid results num";
     return GetValues(num_arguments_ + GetNumAttributes(), num_results_);
   }
   llvm::MutableArrayRef<Value*> GetResults() {
+    CHECK_GE(num_results_, 0) << "Invalid results num";
     return GetMutableValues(num_arguments_ + GetNumAttributes(), num_results_);
   }
 

@@ -463,14 +463,6 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
     impl_->cur_op->AppendArgument(arg_value);
   }
 
-  // process results
-  llvm::SmallVector<Value*, 4> res_values;
-  for (int i = 0, e = op->getNumResults(); i < e; i++) {
-    auto res = op->getResult(i);
-    res_values.push_back(AddValue(res));
-  }
-  impl_->cur_op->SetResults(res_values);
-
   // process attribute
   auto& table = function_table ? *function_table : impl_->func_defs;
   {
@@ -482,6 +474,14 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
         impl_->cur_op->CreateFunctionExecutable(it->second, &impl_->func_defs);
     impl_->cur_op->AppendAttribute(new Value(function));
   }
+
+  // process results
+  llvm::SmallVector<Value*, 4> res_values;
+  for (int i = 0, e = op->getNumResults(); i < e; i++) {
+    auto res = op->getResult(i);
+    res_values.push_back(AddValue(res));
+  }
+  impl_->cur_op->SetResults(res_values);
 
   VLOG(3) << "Emit call " << callee_name.getValue().str() << " "
           << impl_->cur_op->frame();
