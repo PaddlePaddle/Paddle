@@ -20,7 +20,6 @@ import paddle.fluid.core as core
 from paddle.utils import unique_name
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import Program, OpProtoHolder
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
 import paddle.fluid.layers.utils as utils
 from ..collective import _get_global_env
 from .dist_context import DistributedContext
@@ -29,6 +28,7 @@ from .process_group import new_process_group, ProcessGroup, _g_process_group_map
 
 # NOTE: If op in _g_special_ops, it will not be resharded. 
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
+while_block_info = {}
 
 
 class AllGatherOpDesc:
@@ -280,8 +280,20 @@ def _is_overlapped(shape_x, shape_y):
     return overlapped
 
 
-def _need_reshard(dist_tensor, dist_op, op_input=True):
+def _need_reshard(dist_tensor,
+                  dist_op,
+                  actual_process_mesh,
+                  program,
+                  dist_context,
+                  op_input=True):
     """Judge the tensor whether needs to be resharded."""
+
+    def _is_unshard(dims_mapping):
+        for dim in dims_mapping:
+            if dim != -1:
+                return False
+        return True
+
     is_reshard = False
     tensor_dist_attr = dist_tensor.dist_attr
     tensor_name = dist_tensor.serial_tensor.name
@@ -289,32 +301,60 @@ def _need_reshard(dist_tensor, dist_op, op_input=True):
     tensor_process_mesh = tensor_dist_attr.process_mesh
     op_dist_attr = dist_op.dist_attr
     op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
-    op_process_mesh = op_dist_attr.process_mesh
+    op_process_mesh = actual_process_mesh
     if op_input:
         op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
-        op_process_mesh = op_dist_attr.process_mesh
         if all(
                 map(lambda x: x is not None, [
                     tensor_dims_mapping, tensor_process_mesh,
                     op_input_dims_mapping, op_process_mesh
                 ])):
-            if tensor_dims_mapping != op_input_dims_mapping or tensor_process_mesh != op_process_mesh:
+            if tensor_dims_mapping != op_input_dims_mapping:
+                if dist_tensor.serial_tensor.dtype == paddle.bool:
+                    raise ValueError("Bool var is not supported reshard.")
                 is_reshard = True
+            if tensor_process_mesh != op_process_mesh:
+                # when processes length is not the same, the dims mapping must be replicative now
+                if len(tensor_process_mesh.processes) != len(
+                        op_process_mesh.processes):
+                    assert _is_unshard(tensor_dims_mapping)
+                    assert _is_unshard(op_input_dims_mapping)
+                    is_reshard = False
+                else:
+                    if dist_tensor.serial_tensor.dtype == paddle.bool:
+                        raise ValueError("Bool var is not supported reshard.")
+
+                    # for while op, it should find the process mesh of op actually used the tensor as input
+                    if dist_op.serial_op.type == "while":
+                        sub_block = program.blocks[dist_op.serial_op.attr(
+                            "sub_block").id]
+                        for op in sub_block.ops:
+                            for var_name in op.input_arg_names:
+                                if var_name == tensor_name:
+                                    process_mesh = dist_context.get_dist_op_for_program(
+                                        op).dist_attr.process_mesh
+                                    if process_mesh == op_process_mesh:
+                                        is_reshard = True
+                                        break
+                    else:
+                        is_reshard = True
     else:
         op_output_dims_mapping = op_dist_attr.get_output_dims_mapping(
             tensor_name)
-        op_process_mesh = op_dist_attr.process_mesh
         if all(
                 map(lambda x: x is not None, [
                     tensor_dims_mapping, tensor_process_mesh,
                     op_output_dims_mapping, op_process_mesh
                 ])):
             if tensor_process_mesh != op_process_mesh:
+                if dist_tensor.serial_tensor.dtype == paddle.bool:
+                    raise ValueError("Bool var is not supported reshard.")
                 is_reshard = True
             if tensor_dims_mapping != op_output_dims_mapping:
                 raise ValueError(
                     "It is not supported that tensor dims mapping is different from op output dims mapping."
                 )
+
     return is_reshard
 
 
@@ -329,13 +369,14 @@ def _compute_complete_shape(slice_shape, process_shape, dims_mapping):
     return complete_shape
 
 
-def find_op_desc_seq(dist_tensor, dist_op):
+def find_op_desc_seq(dist_tensor, dist_op, actual_process_mesh):
     """
     Find the op description sequence to reshard the source tensor for matching the op requirement.
 
     Args:
         dist_tensor (DistributedTensor): A distributed tensor.
         dist_op (DistributedOperator): A distributed operator.
+        actual_process_mesh (ProcessMesh): The actual op process mesh.
 
     Returns:
         Dict, the dict represents the required op description sequence corresponding to process, The key of dict is
@@ -350,7 +391,7 @@ def find_op_desc_seq(dist_tensor, dist_op):
     source_process_shape = source_process_mesh.topology
 
     op_dist_attr = dist_op.dist_attr
-    target_process_mesh = op_dist_attr.process_mesh
+    target_process_mesh = actual_process_mesh
     target_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
     target_process_group = target_process_mesh.processes
     target_process_shape = target_process_mesh.topology
@@ -560,9 +601,7 @@ def _insert_slice_op(block, idx, tensor, starts, ends, axes, new_var_name):
     }
     helper = LayerHelper('slice', **locals())
     out = block.create_var(
-        name=new_var_name,
-        dtype=tensor.dtype,
-        type=core.VarDesc.VarType.LOD_TENSOR)
+        name=new_var_name, dtype=tensor.dtype, type=tensor.type)
     block._insert_op(
         idx, type="slice", inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
@@ -692,8 +731,34 @@ HAS_RECV = {}
 HAS_ALLGATHER = {}
 
 
-def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
-                  dist_context):
+def _get_while_op_actual_process_mesh(op, program, rank_id, dist_context):
+    """Get the while op actual Process mesh corresponding to rank"""
+    assert op.type == "while"
+    while_op_process_mesh = dist_context.get_dist_op_for_program(
+        op).dist_attr.process_mesh
+    sub_block = program.blocks[op.attr("sub_block").id]
+    ops = sub_block.ops
+    actual_process_mesh = None
+    for op in ops:
+        dist_op = dist_context.get_dist_op_for_program(op)
+        if not dist_op:
+            continue
+        process_mesh = dist_op.dist_attr.process_mesh
+        if process_mesh == while_op_process_mesh:
+            continue
+        if rank_id in process_mesh.processes:
+            raw_process_mesh = process_mesh
+            break
+
+    if actual_process_mesh is None and rank_id in while_op_process_mesh.processes:
+        actual_process_mesh = while_op_process_mesh
+
+    assert actual_process_mesh is not None
+    return actual_process_mesh
+
+
+def parse_op_desc(block, rank_id, op_desc_seq, var_name, reshard_op,
+                  dist_context, program, actual_process_mesh):
     """Parse op desc sequence and insert op in the block"""
     global HAS_SENT
     global HAS_RECV
@@ -703,9 +768,6 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
     if rank_id not in op_desc_seq.keys():
         return
     op_desc_list = op_desc_seq[rank_id]
-    block = program.global_block()
-    assert var_name in block.vars.keys(
-    ), "The {} cannot be found in the {} program.".format(var_name, rank_id)
 
     idx = None
     for index, op in list(enumerate(block.ops)):
@@ -716,7 +778,7 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
         rank_id)
 
     matched_op = block.ops[idx]
-    source_tensor = block.vars[var_name]
+    source_tensor = _get_var(var_name, block, program)
     for op_desc in op_desc_list:
         if isinstance(op_desc, AllGatherOpDesc):  # noqa: F401
             if var_name not in HAS_ALLGATHER.keys():
@@ -758,7 +820,8 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
                 recv_tensor = block.create_var(
                     name=unique_name.generate(var_name + "@recv"),
                     shape=shape,
-                    dtype=source_tensor.dtype)
+                    dtype=source_tensor.dtype,
+                    type=source_tensor.type)
                 _insert_recv_op(block, idx, recv_tensor, op_desc.src)
                 tensor_list.append(recv_tensor)
                 idx += 1
@@ -790,20 +853,36 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op,
                 new_var_name=new_name)
 
             tensor_attr = TensorDistributedAttribute()
-            process_mesh = dist_context.get_op_dist_attr_for_program(
-                matched_op).process_mesh
+            process_mesh = actual_process_mesh
             dims_mapping = dist_context.get_op_dist_attr_for_program(
                 matched_op).get_input_dims_mapping(var_name)
             tensor_attr.dims_mapping = dims_mapping
             tensor_attr.process_mesh = process_mesh
             dist_context.set_tensor_dist_attr_for_program(target_tensor,
                                                           tensor_attr)
+            if op.type == "while":
+                global while_block_info
+                # var_reshard_mapping means the while op input need be changed to 
+                if "var_reshard_mapping" not in while_block_info[op.attr(
+                        "sub_block").id].keys():
+                    while_block_info[op.attr("sub_block").id][
+                        "var_reshard_mapping"] = {}
+                while_block_info[op.attr("sub_block").id][
+                    "var_reshard_mapping"][var_name] = target_tensor.name
 
             # rename op input name according to new name
             for op in block.ops:
                 for name in op.input_arg_names:
                     op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
                     if name == var_name and op_dist_attr is not None:
+                        if op.desc.id() == matched_op.desc.id():
+                            op.desc._rename_input(name, target_tensor.name)
+                            op_dist_attr.set_input_dims_mapping(
+                                target_tensor.name, dims_mapping)
+                            op_dist_attr.set_input_dist_attr(name, None)
+                            continue
+
+                        # NOTE: For op whose process mesh is a union, its input will not be renamed by other op reshard result now which means that it will have more reshard operation.
                         op_process_mesh = op_dist_attr.process_mesh
                         op_input_dims_mapping = op_dist_attr.get_input_dims_mapping(
                             var_name)
@@ -819,103 +898,138 @@ def _remove_no_need_ops(auto_parallel_main_prog, dist_context, rank_id):
     not_remove_op_ref = [
         "create_py_reader", "create_double_buffer_reader", "read"
     ]
-    remove_op_idx = []
-    block = auto_parallel_main_prog.global_block()
-    ops = block.ops
-    vars = block.vars
-    for idx, op in enumerate(ops):
-        # handle read op in the pipeline scene specially, it will be removed in the future.
-        if op.type == "read":
-            dim_list = []
-            for var_name in op.output_arg_names:
-                dim_list.extend(vars[var_name].shape)
-            for i in range(idx, -1, -1):
-                if ops[i].type == "create_py_reader":
-                    ops[i]._set_attr("shape_concat", dim_list)
-                    break
-            continue
+    global while_block_info
 
-        # replace the input and output of c_sync_comm_stream op when in pipeline scene.
-        if op.type == "c_sync_comm_stream":
-            need_save = []
-            for var_name in op.input_arg_names:
-                process_mesh = dist_context.get_tensor_dist_attr_for_program(
-                    vars[var_name]).process_mesh
-                if rank_id in process_mesh.processes:
-                    need_save.append(var_name)
-            if not need_save:
-                remove_op_idx.append(idx)
+    # NOTE: The nested sub block is not be supported now.
+    remove_block_order = []
+    for block_idx in while_block_info:
+        remove_block_order.append(block_idx)
+
+    for block_idx, block in enumerate(auto_parallel_main_prog.blocks):
+        if block_idx not in remove_block_order:
+            remove_block_order.append(block_idx)
+
+    # the sub block should be removed first
+    for block_idx in remove_block_order:
+        remove_op_idx = []
+        block = auto_parallel_main_prog.blocks[block_idx]
+        ops = block.ops
+        vars = block.vars
+        for idx, op in enumerate(ops):
+            if op.type == "read":
+                dim_list = []
+                for var_name in op.output_arg_names:
+                    dim_list.extend(
+                        _get_var(var_name, block, auto_parallel_main_prog)
+                        .shape)
+                for i in range(idx, -1, -1):
+                    if ops[i].type == "create_py_reader":
+                        ops[i]._set_attr("shape_concat", dim_list)
+                        break
                 continue
 
-            proto = OpProtoHolder.instance().get_op_proto(op.type)
-            op.desc.set_input(proto.inputs[0].name, need_save)
-            op.desc.set_output(proto.outputs[0].name, need_save)
-            continue
+            # replace the input and output of c_sync_comm_stream op when in pipeline scene.
+            if op.type == "c_sync_comm_stream":
+                need_save = []
+                for var_name in op.input_arg_names:
+                    process_mesh = dist_context.get_tensor_dist_attr_for_program(
+                        _get_var(var_name, block,
+                                 auto_parallel_main_prog)).process_mesh
+                    if rank_id in process_mesh.processes:
+                        need_save.append(var_name)
+                if not need_save:
+                    remove_op_idx.append(idx)
+                    continue
 
-        # judge the other op whether should be removed.
-        op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
-        if op_dist_attr is not None:
-            op_process_mesh = op_dist_attr.process_mesh
-            if rank_id not in op_process_mesh.processes and op.type not in not_remove_op_ref:
-                remove_op_idx.append(idx)
+                proto = OpProtoHolder.instance().get_op_proto(op.type)
+                op.desc.set_input(proto.inputs[0].name, need_save)
+                op.desc.set_output(proto.outputs[0].name, need_save)
+                continue
 
-    for idx in remove_op_idx[::-1]:
-        block._remove_op(idx)
+            # judge the other op whether should be removed.
+            op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+            if op_dist_attr is not None:
+                op_process_mesh = op_dist_attr.process_mesh
+                if rank_id not in op_process_mesh.processes and op.type not in not_remove_op_ref:
+                    remove_op_idx.append(idx)
+
+        for idx in remove_op_idx[::-1]:
+            block._remove_op(idx)
 
 
-def _remove_no_need_vars(auto_parallel_main_prog, dist_params_grads):
+def _remove_no_need_vars(auto_parallel_main_prog):
     """Remove no need vars in the main program"""
-    remove_vars = set()
-    block = auto_parallel_main_prog.global_block()
-    ops = block.ops
-    vars = block.vars
-    need_vars = set()
-    for op in ops:
-        for var_name in op.input_arg_names:
-            if var_name in vars:
-                need_vars.add(var_name)
-        for var_name in op.output_arg_names:
-            if var_name in vars:
-                need_vars.add(var_name)
-    for var in vars:
-        if var not in need_vars:
-            remove_vars.add(var)
-
-    # change dist_params_grads
-    param_grad_map = {}
-    for op in ops:
-        if int(op.attr('op_role')) == int(OpRole.Optimize):
-            if "Param" in op.input_names and "Grad" in op.input_names:
-                param_name = op.input("Param")[0]
-                grad_name = op.input("Grad")[0]
-                param_grad_map[param_name] = grad_name
-
-    need_remove_idx = []
-    for idx, item in enumerate(dist_params_grads):
-        if item[0].name not in param_grad_map.keys():
-            need_remove_idx.append(idx)
-
-    for idx in need_remove_idx[::-1]:
-        dist_params_grads.pop(idx)
-
-    idx = 0
-    while idx < len(dist_params_grads):
-        param_name = dist_params_grads[idx][0].name
-        grad_name = dist_params_grads[idx][1].name
-        if grad_name != param_grad_map[param_name]:
-            dist_params_grads[idx] = (vars[param_name],
-                                      vars[param_grad_map[param_name]])
-        idx += 1
-
-    for var in remove_vars:
-        block._remove_var(var)
+    for block_idx, block in enumerate(auto_parallel_main_prog.blocks):
+        remove_vars = set()
+        ops = block.ops
+        vars = block.vars
+        need_vars = set()
+        for op in ops:
+            for var_name in op.input_arg_names:
+                if var_name in vars:
+                    need_vars.add(var_name)
+            for var_name in op.output_arg_names:
+                if var_name in vars:
+                    need_vars.add(var_name)
+        for var in vars:
+            if var not in need_vars:
+                remove_vars.add(var)
+        for var in remove_vars:
+            block._remove_var(var)
 
 
-def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
-                           dist_params_grads):
+def _change_while_op_input_and_output(auto_parallel_main_prog, dist_context):
+    """Change while op input and output after the corresponding sub block ops removed"""
+    global while_block_info
+    for sub_block_idx in while_block_info:
+        sub_block = auto_parallel_main_prog.blocks[sub_block_idx]
+        parent_while_op_id = while_block_info[sub_block_idx]["op_id"]
+        parent_block = auto_parallel_main_prog.blocks[sub_block.parent_idx]
+
+        sub_block_op_inputs = set()
+        sub_block_op_outputs = []
+        for op in sub_block.ops:
+            # skip the input and output of operators inserted in the reshard phase
+            dist_op = dist_context.get_dist_op_for_program(op)
+            if dist_op:
+                for var_name in op.output_arg_names:
+                    if var_name not in sub_block_op_outputs:
+                        sub_block_op_outputs.append(var_name)
+                for var_name in op.input_arg_names:
+                    sub_block_op_inputs.add(var_name)
+
+        # find the while op
+        while_op = None
+        for op in parent_block.ops:
+            if op.desc.id() == parent_while_op_id and op.type == "while":
+                while_op = op
+                break
+
+        assert while_op is not None
+
+        # find the actual input and output of while op
+        proto = OpProtoHolder.instance().get_op_proto(while_op.type)
+        new_X = []
+        for var_name in while_op.input("X"):
+            if var_name in sub_block_op_inputs:
+                new_X.append(var_name)
+        assert new_X
+        while_op.desc.set_input(proto.inputs[0].name, new_X)
+
+        new_Out = []
+        for var_name in while_op.output("Out"):
+            for output_name in sub_block_op_outputs[::-1]:
+                if output_name.find(var_name) != -1:
+                    new_Out.append(output_name)
+        assert new_Out
+        while_op.desc.set_output(proto.outputs[0].name, new_Out)
+
+
+def remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id):
     """Remove no need vars and ops in the main program."""
     _remove_no_need_ops(auto_parallel_main_prog, dist_context, rank_id)
-    _remove_no_need_vars(auto_parallel_main_prog, dist_params_grads)
+    _change_while_op_input_and_output(auto_parallel_main_prog, dist_context)
+    _remove_no_need_vars(auto_parallel_main_prog)
 
 
 def remove_no_need_in_startup(auto_parallel_main_prog,
@@ -992,8 +1106,87 @@ def remove_no_need_in_startup(auto_parallel_main_prog,
         startup_block._remove_op(idx)
 
 
+def _get_var(var_name, block, program):
+    """Get var in the parent block if not found in the current block"""
+    var = None
+    if var_name in block.vars:
+        var = block.vars[var_name]
+    else:
+        parent_block = program.blocks[block.parent_idx]
+        if var_name in parent_block.vars:
+            var = parent_block.vars[var_name]
+    assert var is not None
+    return var
+
+
+def _is_special_op(op):
+    global _g_special_ops
+    if op.type in _g_special_ops:
+        return True
+    return False
+
+
+def _get_process_meshes(op, program, dist_context):
+    """Get all process meshes when op has sub block."""
+    assert op.has_attr("sub_block")
+    sub_block = program.blocks[op.attr("sub_block").id]
+    ops = sub_block.ops
+    op_process_mesh = dist_context.get_dist_op_for_program(
+        op).dist_attr.process_mesh
+    process_meshes = []
+    for op in ops:
+        dist_op = dist_context.get_dist_op_for_program(op)
+        if not dist_op:
+            continue
+        process_mesh = dist_op.dist_attr.process_mesh
+        if process_mesh not in process_meshes and process_mesh != op_process_mesh:
+            process_meshes.append(process_mesh)
+
+    if not process_meshes:
+        process_meshes.append(op_process_mesh)
+
+    return process_meshes
+
+
+def _is_condition_replicative(op, program, dist_context):
+    assert op.type == "while"
+    sub_block = program.blocks[op.attr("sub_block").id]
+    dist_op = dist_context.get_dist_op_for_program(op)
+    op_dist_attr = dist_op.dist_attr
+
+    # the dims mapping of condition tensor should be replicative
+    for var_name in op.input("Condition"):
+        var = _get_var(var_name, sub_block, program)
+        dist_tensor = dist_context.get_dist_tensor_for_program(var)
+        tensor_dist_attr = dist_tensor.dist_attr
+        var_dims_mapping = tensor_dist_attr.dims_mapping
+        for dim in var_dims_mapping:
+            if dim != -1:
+                return False
+
+    return True
+
+
+def _get_array_op_process_meshes(op, dist_context):
+    assert op.type in ["write_to_array", "read_from_array"]
+    process_meshes = []
+    dist_op = dist_context.get_dist_op_for_program(op)
+    op_process_mesh = dist_op.dist_attr.process_mesh
+    for process_mesh in dist_context.process_meshes:
+        if set(process_mesh.processes) & (
+                set(op_process_mesh.processes)
+        ) and len(process_mesh.processes) != len(op_process_mesh.processes):
+            process_meshes.append(process_mesh)
+
+    # it means the process mesh is not a union when process meshes is null
+    if not process_meshes:
+        process_meshes.append(op_process_mesh)
+
+    return process_meshes
+
+
 def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
-            dist_context, dist_params_grads):
+            dist_context):
     """
     Reshard tensor in the program according to its distributed attribute and corresponding op distributed attribute.
 
@@ -1002,7 +1195,6 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
         auto_parallel_startup_prog (Program): An auto parallel startup program.
         rank_id (int): The process id.
         dist_context (DistributedContext): The distributed context of this rank.
-        dist_params_grads (list): The list contains the tuple of param and grad.
     """
     assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_main_prog should be Program, " \
                                          "but got {}.".format(type(auto_parallel_main_prog))
@@ -1013,75 +1205,138 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
     assert isinstance(dist_context, DistributedContext), "The type of dist_context should be DistributedContext, " \
                                          "but got {}.".format(type(dist_context))
 
-    def _is_special_op(op):
-        global _g_special_ops
-        if op.type in _g_special_ops:
-            return True
-        return False
+    global while_block_info
+    for block_idx, block in enumerate(auto_parallel_main_prog.blocks):
+        if block_idx in while_block_info:
+            if "var_reshard_mapping" in while_block_info[block_idx]:
+                var_reshard_mapping = while_block_info[block_idx][
+                    "var_reshard_mapping"]
+                for op in block.ops:
+                    for var_name in op.input_arg_names:
+                        if var_name in var_reshard_mapping:
+                            op.desc._rename_input(var_name,
+                                                  var_reshard_mapping[var_name])
+                            dist_op = dist_context.get_dist_op_for_program(op)
+                            op_dist_attr = dist_op.dist_attr
+                            if op_dist_attr.process_mesh == while_block_info[
+                                    block_idx]["actual_process_mesh"]:
+                                dims_mapping = op_dist_attr.get_input_dims_mapping(
+                                    var_name)
+                                op_dist_attr.set_input_dims_mapping(
+                                    var_reshard_mapping[var_name], dims_mapping)
+                                op_dist_attr.set_input_dist_attr(var_name, None)
 
-    block = auto_parallel_main_prog.global_block()
-    idx = 0
-    while idx < len(block.ops):
-        pre_op_count = len(block.ops)
-        op = block.ops[idx]
+                    # the outputs also need to be renamed when the output name is the same with input name
+                    for var_name in op.output_arg_names:
+                        if var_name in var_reshard_mapping:
+                            op.desc._rename_output(
+                                var_name, var_reshard_mapping[var_name])
+                            dist_op = dist_context.get_dist_op_for_program(op)
+                            op_dist_attr = dist_op.dist_attr
+                            if op_dist_attr.process_mesh == while_block_info[
+                                    block_idx]["actual_process_mesh"]:
+                                dims_mapping = op_dist_attr.get_output_dims_mapping(
+                                    var_name)
+                                op_dist_attr.set_output_dims_mapping(
+                                    var_reshard_mapping[var_name], dims_mapping)
+                                op_dist_attr.set_output_dist_attr(var_name,
+                                                                  None)
 
-        if _is_special_op(op):
-            idx += 1
-            continue
+        idx = 0
+        while idx < len(block.ops):
+            pre_op_count = len(block.ops)
+            op = block.ops[idx]
+            if _is_special_op(op):
+                idx += 1
+                continue
+            dist_op = dist_context.get_dist_op_for_program(op)
+            if dist_op is not None:
+                process_meshes = []
+                if op.type == "while":
+                    if not _is_condition_replicative(
+                            op, auto_parallel_main_prog, dist_context):
+                        raise ValueError(
+                            "Please check the condition due to the dims mapping is not replicative."
+                        )
+                    process_meshes = _get_process_meshes(
+                        op, auto_parallel_main_prog, dist_context)
+                    assert process_meshes
+                    if op.attr("sub_block").id not in while_block_info:
+                        while_block_info[op.attr("sub_block").id] = {}
+                    while_block_info[op.attr("sub_block").id][
+                        "op_id"] = op.desc.id()
+                    while_block_info[op.attr("sub_block").id][
+                        "actual_process_mesh"] = _get_while_op_actual_process_mesh(
+                            op, auto_parallel_main_prog, rank_id, dist_context)
+                if op.type in ["write_to_array", "read_from_array"]:
+                    process_meshes = _get_array_op_process_meshes(op,
+                                                                  dist_context)
+                else:
+                    process_meshes.append(dist_op.dist_attr.process_mesh)
+                idx_offset = 0
+                input_vars = None
+                if op.type == "while":
+                    input_var_names = op.input("X")
+                else:
+                    input_var_names = op.input_arg_names
+                for var_name in input_var_names:
+                    # skip lod_tensor_blocking_queue_0
+                    if var_name == "lod_tensor_blocking_queue_0":
+                        continue
+                    var = _get_var(var_name, block, auto_parallel_main_prog)
+                    dist_tensor = dist_context.get_dist_tensor_for_program(var)
+                    for process_mesh in process_meshes:
+                        if dist_tensor is not None and _need_reshard(
+                                dist_tensor, dist_op, process_mesh,
+                                auto_parallel_main_prog, dist_context):
+                            reshard_op_desc = find_op_desc_seq(
+                                dist_tensor, dist_op, process_mesh)
+                            parse_op_desc(block, rank_id, reshard_op_desc,
+                                          var_name, op, dist_context,
+                                          auto_parallel_main_prog, process_mesh)
+                            cur_op_count = len(block.ops)
+                            idx_offset = idx_offset + cur_op_count - pre_op_count
+                            pre_op_count = cur_op_count
+                idx = idx + idx_offset + 1
+            else:
+                idx += 1
 
-        dist_op = dist_context.get_dist_op_for_program(op)
-        if dist_op is not None:
-            idx_offset = 0
-            for var_name in op.input_arg_names:
-                # skip lod_tensor_blocking_queue_0
-                if var_name == "lod_tensor_blocking_queue_0":
-                    continue
-                var = block.vars[var_name]
-                dist_tensor = dist_context.get_dist_tensor_for_program(var)
-                if dist_tensor is not None and _need_reshard(dist_tensor,
-                                                             dist_op):
-                    reshard_op_desc = find_op_desc_seq(dist_tensor, dist_op)
-                    parse_op_desc(auto_parallel_main_prog, rank_id,
-                                  reshard_op_desc, var_name, op, dist_context)
-                    cur_op_count = len(block.ops)
-                    idx_offset = idx_offset + cur_op_count - pre_op_count
-                    pre_op_count = cur_op_count
-            idx = idx + idx_offset + 1
-        else:
-            idx += 1
-
-    # insert send and recv op if output process mesh is different from tensor process mesh
-    idx = 0
-    skip_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
-    skip_ops += _g_special_ops
-    while idx < len(block.ops):
-        pre_op_count = len(block.ops)
-        op = block.ops[idx]
-        dist_op = dist_context.get_dist_op_for_program(op)
-        if dist_op is not None and op.type not in skip_ops:
-            for var_name in op.output_arg_names:
-                var = block.vars[var_name]
-                dist_tensor = dist_context.get_dist_tensor_for_program(var)
-                if dist_tensor is not None and _need_reshard(dist_tensor,
-                                                             dist_op, False):
-                    for index, item in enumerate(
-                            dist_op.dist_attr.process_mesh.processes):
-                        recv_rank = dist_tensor.dist_attr.process_mesh.processes[
-                            index]
-                        if rank_id == item:
-                            _insert_send_op(block, idx + 1, var, recv_rank)
-                        if rank_id == recv_rank:
-                            _insert_recv_op(block, idx + 1, var, item)
-                    cur_op_count = len(block.ops)
-                    idx_offset = idx_offset + cur_op_count - pre_op_count
-                    pre_op_count = cur_op_count
-            idx = idx + idx_offset + 1
-        else:
-            idx += 1
+        # insert send and recv op if output process mesh is different from tensor process mesh
+        idx = 0
+        skip_ops = [
+            "create_py_reader", "create_double_buffer_reader", "read", "while",
+            "write_to_array", "read_from_array", "check_finite_and_unscale",
+            "update_loss_scaling"
+        ]
+        while idx < len(block.ops):
+            pre_op_count = len(block.ops)
+            op = block.ops[idx]
+            dist_op = dist_context.get_dist_op_for_program(op)
+            if dist_op is not None and op.type not in skip_ops:
+                for var_name in op.output_arg_names:
+                    var = _get_var(var_name, block, auto_parallel_main_prog)
+                    dist_tensor = dist_context.get_dist_tensor_for_program(var)
+                    process_mesh = dist_op.dist_attr.process_mesh
+                    if dist_tensor is not None and _need_reshard(
+                            dist_tensor, dist_op, process_mesh,
+                            auto_parallel_main_prog, dist_context, False):
+                        for index, item in enumerate(
+                                dist_op.dist_attr.process_mesh.processes):
+                            recv_rank = dist_tensor.dist_attr.process_mesh.processes[
+                                index]
+                            if rank_id == item:
+                                _insert_send_op(block, idx + 1, var, recv_rank)
+                            if rank_id == recv_rank:
+                                _insert_recv_op(block, idx + 1, var, item)
+                        cur_op_count = len(block.ops)
+                        idx_offset = idx_offset + cur_op_count - pre_op_count
+                        pre_op_count = cur_op_count
+                idx = idx + idx_offset + 1
+            else:
+                idx += 1
 
     # remove no need vars and ops in the main program
-    remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id,
-                           dist_params_grads)
+    remove_no_need_in_main(auto_parallel_main_prog, dist_context, rank_id)
 
     # remove no need vars and ops in the startip program
     remove_no_need_in_startup(auto_parallel_main_prog,
