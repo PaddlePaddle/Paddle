@@ -18,6 +18,7 @@ import unittest
 import paddle
 from op_test import OpTest
 import numpy as np
+import os
 
 
 def output_hist(out):
@@ -74,38 +75,34 @@ class TestRandomValue(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        # Different GPU generatte different random value. Only test V100 here.
-        if not "V100" in paddle.device.cuda.get_device_name():
+        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
             return
 
-        if os.environ["FLAGS_use_curand"] in ('0', 'False'):
-            return
-
-        def _check_random_value(dtype, expect_index, expect_value):
-            x = paddle.rand([32, 3, 1024, 1024], dtype=dtype)
-            y = paddle.bernoulli(x).numpy()
-            index0, index1, index2 = np.nonzero(out)
-            self.assertEqual(np.sum(index0), expect_index[0])
-            self.assertEqual(np.sum(index1), expect_index[1])
-            self.assertEqual(np.sum(index2), expect_index[2])
-            self.assertTrue(np.allclose(out[1, 100, 500:510], expect_value))
-
-        print("Test Fixed Random number on V100 GPU------>")
+        print("Test Fixed Random number on GPU------>")
         paddle.disable_static()
         paddle.set_device('gpu')
         paddle.seed(100)
+        np.random.seed(100)
 
-        expect_index = [1]
-        expect_value = 1
-        _check_random_value('float64', expect_index, expect_value)
+        x_np = np.random.rand(32, 1024, 1024)
 
-        expect_index = [1]
-        expect_value = 1
-        _check_random_value('float32', expect_index, expect_value)
+        x = paddle.to_tensor(x_np, dtype='float64')
+        y = paddle.bernoulli(x).numpy()
+        index0, index1, index2 = np.nonzero(y)
+        self.assertEqual(np.sum(index0), 260028995)
+        self.assertEqual(np.sum(index1), 8582429431)
+        self.assertEqual(np.sum(index2), 8581445798)
+        expect = [0., 0., 0., 0., 0., 0., 0., 1., 1., 1.]
+        self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
 
-        expect_index = [1]
-        expect_value = 1
-        _check_random_value('float16', expect_index, expect_value)
+        x = paddle.to_tensor(x_np, dtype='float32')
+        y = paddle.bernoulli(x).numpy()
+        index0, index1, index2 = np.nonzero(y)
+        self.assertEqual(np.sum(index0), 260092343)
+        self.assertEqual(np.sum(index1), 8583509076)
+        self.assertEqual(np.sum(index2), 8582778540)
+        expect = [0., 0., 1., 1., 1., 1., 0., 1., 1., 1.]
+        self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
 
         paddle.enable_static()
 

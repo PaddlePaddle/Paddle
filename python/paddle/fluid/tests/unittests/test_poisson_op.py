@@ -107,13 +107,10 @@ class TestPoissonAPI(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        # Different GPU generatte different random value. Only test V100 here.
-        if not "V100" in paddle.device.cuda.get_device_name():
+        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
             return
 
-        if os.environ["FLAGS_use_curand"] in ('0', 'False'):
-            return
-
+        print("Test Fixed Random number on GPU------>")
         paddle.disable_static()
         paddle.set_device('gpu')
         paddle.seed(2021)

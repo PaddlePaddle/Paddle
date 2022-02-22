@@ -96,14 +96,11 @@ class TestExponentialAPI(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        # Note(zhouwei): The Number of threads is determined by 
-        # 'multiProcessorCount * maxThreadsPerMultiProcessor'. So, different 
-        # GPU have different number of threads, which result in different 
-        # random value. Only test on V100 GPU here.
+        # Different GPU generatte different random value. Only test V100 here.
         if not "V100" in paddle.device.cuda.get_device_name():
             return
 
-        if os.environ["FLAGS_use_curand"] in ('0', 'False'):
+        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
             return
 
         print("Test Fixed Random number on V100 GPU------>")
