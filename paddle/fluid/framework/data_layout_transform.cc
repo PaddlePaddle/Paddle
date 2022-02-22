@@ -120,7 +120,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   auto place = expected_kernel_type.place_;
 
   PADDLE_ENFORCE(
-      in_layout == DataLayout::kMKLDNN && out_layout != DataLayout::kMKLDNN,
+      isMKLDNNLayout(in_layout) && !isMKLDNNLayout(out_layout),
       platform::errors::InvalidArgument(
           "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
           "non-MKLDNN"));

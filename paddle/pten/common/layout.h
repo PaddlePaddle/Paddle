@@ -27,6 +27,7 @@ enum class DataLayout {
   NHWC,
   NCHW,
   MKLDNN,
+  MKLDNN_NHWC,
   SPARSE_COO,
   SPARSE_CSR,
   NUM_DATA_LAYOUTS,
@@ -43,6 +44,8 @@ enum class DataLayout {
   kNHWC = NHWC,
   kNCHW = NCHW,
   kMKLDNN = MKLDNN,  // all layouts supported by MKLDNN internally
+  kMKLDNN_NHWC = MKLDNN_NHWC,  // (jczaja) Hacky way to denote that this Tensor is oneDNN created from PaddlePaddle NHWC
+
 };
 
 }  // namespace experimental
@@ -51,6 +54,11 @@ enum class DataLayout {
 namespace framework {
 
 using DataLayout = paddle::experimental::DataLayout;
+
+inline bool isMKLDNNLayout(DataLayout l) {
+   return (l == DataLayout::kMKLDNN_NHWC || l == DataLayout::kMKLDNN);
+}
+
 
 inline DataLayout StringToDataLayout(const std::string& str) {
   std::string s(str);
