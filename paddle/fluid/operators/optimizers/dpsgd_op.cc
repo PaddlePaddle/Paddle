@@ -51,11 +51,11 @@ class DpsgdOp : public framework::OperatorWithKernel {
                           "Output(ParamOut) of DpsgdOp should not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dims), 1,
                       platform::errors::InvalidArgument(
                           "Learning rate should have 1 dimension. But Received "
                           "LearningRate's dims [%s].",
-                          framework::product(lr_dims)));
+                          phi::product(lr_dims)));
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Grad"),

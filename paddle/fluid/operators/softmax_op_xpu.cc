@@ -46,7 +46,7 @@ class SoftmaxXPUKernel : public framework::OpKernel<T> {
 
     int r = XPU_SUCCESS;
     auto version = platform::get_xpu_version(context.GetPlace().GetDeviceId());
-    if (version == pten::backends::xpu::XPUVersion::XPU1) {
+    if (version == phi::backends::xpu::XPUVersion::XPU1) {
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       XPUType* clip_x_data_l3 = RAII_GUARD.alloc_l3_or_gm<XPUType>(x->numel());
       r = xpu::clip_v2(dev_ctx.x_context(),

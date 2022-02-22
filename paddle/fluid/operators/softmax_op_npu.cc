@@ -68,7 +68,7 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_dOut;
     tmp_dOut.ShareDataWith(*dOut).Resize({first_dim, sec_dim});
 
-    dX->Resize(framework::make_ddim({first_dim, sec_dim}));
+    dX->Resize(phi::make_ddim({first_dim, sec_dim}));
     dX->mutable_data<T>(ctx.GetPlace());
 
     framework::NPUAttributeMap attr_input = {};

@@ -33,9 +33,9 @@ static void MatMulXPUFunction(const Tensor* x, const Tensor* y, Tensor* out,
   auto& dev_ctx =
       ctx.template device_context<paddle::platform::XPUDeviceContext>();
 
-  auto mat_dim_a = pten::funcs::CreateMatrixDescriptor(
+  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
       RowMatrixFromVector(x_dims), 0, trans_x);
-  auto mat_dim_b = pten::funcs::CreateMatrixDescriptor(
+  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(
       ColumnMatrixFromVector(y_dims), 0, trans_y);
 
   if (x_dims.size() == 3 && y_dims.size() <= 2) {
