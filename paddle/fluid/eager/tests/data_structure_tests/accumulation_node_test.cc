@@ -39,7 +39,7 @@ TEST(AccumulationNode, Tensor) {
           .get(),
       meta);
   dt0->mutable_data<paddle::platform::float16>(
-      paddle::platform::CPUPlace())[0] = 10.0;
+      paddle::platform::CPUPlace())[0] = paddle::platform::float16(10.0f);
   paddle::experimental::Tensor et0 = paddle::experimental::Tensor(dt0);
 
   std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
@@ -49,17 +49,29 @@ TEST(AccumulationNode, Tensor) {
       meta);
 
   dt1->mutable_data<paddle::platform::float16>(
-      paddle::platform::CPUPlace())[0] = 20.0;
+      paddle::platform::CPUPlace())[0] = paddle::platform::float16(20.0f);
   paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
 
+  std::shared_ptr<phi::DenseTensor> input_dt =
+      std::make_shared<phi::DenseTensor>(
+          std::make_unique<paddle::experimental::DefaultAllocator>(
+              paddle::platform::CPUPlace())
+              .get(),
+          meta);
+  paddle::experimental::Tensor input_et =
+      paddle::experimental::Tensor(input_dt);
+  auto grad_meta = EagerUtils::autograd_meta(&input_et);
+
+  // Initialize Grad Tensor
   std::shared_ptr<phi::DenseTensor> grad_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
               paddle::platform::CPUPlace())
               .get(),
           meta);
-  paddle::experimental::Tensor grad_et = paddle::experimental::Tensor(grad_dt);
-  auto grad_meta = EagerUtils::autograd_meta(&grad_et);
+  grad_dt->mutable_data<paddle::platform::float16>(
+      paddle::platform::CPUPlace())[0] = paddle::platform::float16(0.0f);
+  grad_meta->MutableGrad()->set_impl(grad_dt);
 
   // AccumulationNode
   auto node = std::make_shared<GradNodeAccumulation>(grad_meta);
@@ -74,24 +86,33 @@ TEST(AccumulationNode, Tensor) {
   CHECK_EQ(ret_et0_ptr[0], paddle::platform::float16(10.0f));
 
   paddle::experimental::Tensor ret_et1 = node->operator()({{et1}})[0][0];
+
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et1.impl())
           ->data<paddle::platform::float16>();
   CHECK_EQ(ret_et1_ptr[0], paddle::platform::float16(20.0f));
 
   // Check Retain Grad
-  paddle::experimental::Tensor* grad = EagerUtils::mutable_grad(grad_et);
+  CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+               ->data<paddle::platform::float16>()[0],
+           paddle::platform::float16(10.0f));
+  paddle::experimental::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())
                        ->data<paddle::platform::float16>();
   CHECK_EQ(grad_ptr[0], paddle::platform::float16(30.0f));
 
   // Reduce Hook case 1: Call RegisterReduceHook and run operator()
   VLOG(6) << "Test Reduce Hook";
+  CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
+               ->data<paddle::platform::float16>()[0],
+           paddle::platform::float16(10.0f));
+
   auto reduce_hook_1 = [&](void) -> void {
-    auto* grad_et_ptr =
-        std::dynamic_pointer_cast<phi::DenseTensor>(grad_et.impl())
-            ->data<paddle::platform::float16>();
-    grad_et_ptr[0] = 36.0;
+    auto* input_et_ptr =
+        std::dynamic_pointer_cast<phi::DenseTensor>(input_et.impl())
+            ->mutable_data<paddle::platform::float16>(
+                paddle::platform::CPUPlace());
+    input_et_ptr[0] = 36.0;
     VLOG(6) << "Running Reduce Hook";
   };
 
@@ -103,19 +124,20 @@ TEST(AccumulationNode, Tensor) {
   // Check operator() result, should be 36.0
   auto* _ret_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(_ret.impl())
                        ->data<paddle::platform::float16>();
-  CHECK_EQ(_ret_ptr[0], paddle::platform::float16(36.0f));
+  CHECK_EQ(_ret_ptr[0], paddle::platform::float16(10.0f));
 
   // Check Retain Grad, should be 36.0
-  auto* _ret_grad_et_ptr =
-      std::dynamic_pointer_cast<phi::DenseTensor>(grad_et.impl())
+  auto* _ret_input_et_ptr =
+      std::dynamic_pointer_cast<phi::DenseTensor>(input_et.impl())
           ->data<paddle::platform::float16>();
-  CHECK_EQ(_ret_grad_et_ptr[0], paddle::platform::float16(36.0f));
+  CHECK_EQ(_ret_input_et_ptr[0], paddle::platform::float16(36.0f));
 
   // Reduce Hook case 2: Call RegisterReduceHook and ApplyReduceHooks directly
   VLOG(6) << "Test Reduce Hook";
   auto reduce_hook_2 = [&](void) -> void {
     auto* ret_et0_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
-                            ->data<paddle::platform::float16>();
+                            ->mutable_data<paddle::platform::float16>(
+                                paddle::platform::CPUPlace());
     ret_et0_ptr[0] = 100.0;  // set to 100.0
     VLOG(6) << "Running Reduce Hook";
   };
