@@ -961,6 +961,30 @@ void UnfoldInferMeta(const MetaTensor& x,
   int output_col_length = output_height * output_width;
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
+void ShardIndexInferMeta(const MetaTensor& in,
+                         int index_num,
+                         int nshards,
+                         int shard_id,
+                         int ignore_value,
+                         MetaTensor* out) {
+  auto x_dims = in.dims();
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument("Rank of Input(X) should be at least 2, "
+                                   "but the value given is %d.",
+                                   x_dims.size()));
+  if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
+    PADDLE_ENFORCE_EQ(x_dims[x_dims.size() - 1],
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "The last dimension of Input(X) should be 1, "
+                          "but the value given is %d.",
+                          x_dims[x_dims.size() - 1]));
+  }
+
+  out->set_dims(x_dims);
+  out->share_lod(in);
 }
 
 void DiagInferMeta(const MetaTensor& x,

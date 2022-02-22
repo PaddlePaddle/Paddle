@@ -168,4 +168,11 @@ void RollInferMeta(const MetaTensor& x,
                    const ScalarArray& axis,
                    MetaTensor* out);
 
+void ShardIndexInferMeta(const MetaTensor& in,
+                         int index_num,
+                         int nshards,
+                         int shard_id,
+                         int ignore_value,
+                         MetaTensor* out);
+
 }  // namespace phi

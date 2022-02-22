@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void ShardIndexKernel(const Context& dev_ctx,
-                      const DenseTensor& in,
-                      int index_num,
-                      int nshards,
-                      int shard_id,
-                      int ignore_value,
-                      DenseTensor* out);
+KernelSignature ShardIndexOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("shard_index",
+                         {"X"},
+                         {"index_num", "nshards", "shard_id", "ignore_value"},
+                         {"Out"});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(shard_index, phi::ShardIndexOpArgumentMapping);
