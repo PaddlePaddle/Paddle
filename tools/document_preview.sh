@@ -59,12 +59,8 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
         rm -rf ${OUTPUTDIR}
         mkdir -p ${OUTPUTDIR}
     fi
-    # install requirements
-    mkdir -p /config
-    curl -L -o /config/shpinx-docs-config.tgz https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/shpinx-docs-config.tgz
-    tar xzf /config/shpinx-docs-config.tgz -C /config
-    curl -L -o /root/post_filter_htmls.py https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/post_filter_htmls.py
 
+    # install requirements
     apt-get update && apt-get install -y --no-install-recommends doxygen
     # pip install -i https://pypi.tuna.tsinghua.edu.cn/simple 
     pip install beautifulsoup4
@@ -75,7 +71,6 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     pip install exhale
     pip install sphinx_design
     pip install nbsphinx
-    # exhale 和 breache 这两个真实需要么？
 
     # build doc
     /bin/bash -x ${FLUIDDOCDIR}/ci_scripts/gendoc.sh
