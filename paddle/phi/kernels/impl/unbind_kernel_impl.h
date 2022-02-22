@@ -14,18 +14,27 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/unbind_kernel.h"
 
 namespace phi {
 
-/*
- * All tensors' dimension should be the same and the values of
- * each dimension must be the same, except the axis dimension.
- */
 template <typename T, typename Context>
 void UnbindKernel(const Context& ctx,
                   const DenseTensor& x,
                   int axis,
-                  std::vector<DenseTensor*> outs);
+                  std::vector<DenseTensor*> outs) {
+  auto x_dims = x.dims();
+  axis = axis < 0 ? x_dims.size() + axis : axis;
+
+  std::vector<const DenseTensor*> shape_refer;
+  for (size_t j = 0; j < outs.size(); ++j) {
+    ctx.template Alloc<T>(outs[j]);
+    shape_refer.emplace_back(outs[j]);
+  }
+
+  phi::funcs::SplitFunctor<Context, T> functor;
+  functor(ctx, x, shape_refer, axis, &outs);
+}
 
 }  // namespace phi

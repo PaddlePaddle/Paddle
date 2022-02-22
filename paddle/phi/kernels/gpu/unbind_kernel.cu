@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/unbind_kernel_impl.h"
+#include "paddle/phi/kernels/unbind_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-
-namespace phi {
-
-/*
- * All tensors' dimension should be the same and the values of
- * each dimension must be the same, except the axis dimension.
- */
-template <typename T, typename Context>
-void UnbindKernel(const Context& ctx,
-                  const DenseTensor& x,
-                  int axis,
-                  std::vector<DenseTensor*> outs);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(unbind,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UnbindKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int,
+                   int64_t) {}
