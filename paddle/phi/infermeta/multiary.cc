@@ -122,4 +122,29 @@ void ConcatInferMeta(const std::vector<MetaTensor>& x,
   out->set_layout(x.at(0).layout());
 }
 
+void WhereInferMeta(const MetaTensor& condition,
+                    const MetaTensor& x,
+                    const MetaTensor& y,
+                    MetaTensor* out) {
+  auto cond_dims = condition.dims();
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(
+      cond_dims,
+      x_dims,
+      phi::errors::InvalidArgument(
+          "The dims of Inputs(Condition) and Inputs(X) should be same. "
+          "But received Condition's shape is [%s], X's shape is [%s]",
+          cond_dims,
+          x_dims));
+  PADDLE_ENFORCE_EQ(x_dims,
+                    y_dims,
+                    phi::errors::InvalidArgument(
+                        "The dims of Inputs(X) and Inputs(Y) should be same. "
+                        "But received X's shape is [%s], Y's shape is [%s]",
+                        x_dims,
+                        y_dims));
+  out->share_meta(x);
+}
+
 }  // namespace phi

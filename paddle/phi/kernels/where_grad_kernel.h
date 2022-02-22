@@ -12,15 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/atan2_grad_kernel_impl.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_REGISTER_KERNEL(atan2_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::Atan2GradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+namespace phi {
+
+template <typename T, typename Context>
+void WhereGradKernel(const Context& ctx,
+                     const DenseTensor& condition,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     const DenseTensor& out_grad,
+                     DenseTensor* x_grad,
+                     DenseTensor* y_grad);
+
+}  // namespace phi

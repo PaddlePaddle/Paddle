@@ -271,8 +271,7 @@ void CrossInferMeta(const MetaTensor& x,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
-  auto in_dims = x.dims();
-  out->set_dims(in_dims);
+  out->share_meta(x);
 }
 
 void BCELossInferMeta(const MetaTensor& input,
