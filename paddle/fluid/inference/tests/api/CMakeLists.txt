@@ -763,6 +763,7 @@ if(WITH_MKLDNN)
     set_tests_properties(test_analyzer_quant_performance_benchmark PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_int8_mobilenetv2 PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_int8_mobilenetv1 PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_int8_mobilenetv3_large PROPERTIES TIMEOUT 120)
 endif()
 
 set_tests_properties(lite_resnet50_test PROPERTIES TIMEOUT 120)
