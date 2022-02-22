@@ -842,7 +842,7 @@ set +x
                             done
                         
                         failed_test_lists=''
-                        ctest -R "$retry_unittests_regular" --output-on-failure -j 2 | tee $tmpfile
+                        ctest -R "$retry_unittests_regular" --output-on-failure -j 1 | tee $tmpfile
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         exec_times=$[$exec_times+1]
@@ -852,8 +852,6 @@ set +x
                 done
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
-        echo "retry_unittests_record: $retry_unittests_record"
-        echo "EXIT_CODE: $EXIT_CODE" 
         rerun_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ut_actual_total_endTime_s=`date +%s`
