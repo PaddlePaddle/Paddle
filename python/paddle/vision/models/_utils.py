@@ -16,7 +16,7 @@
 def _make_divisible(v, divisor=8, min_value=None):
     """
     This function ensures that all layers have a channel number that is divisible by divisor
-    see also: https://github.com/keras-team/keras/blob/8ecef127f70db723c158dbe9ed3268b3d610ab55/keras/applications/mobilenet_v2.py#L505
+    You can also see at https://github.com/keras-team/keras/blob/8ecef127f70db723c158dbe9ed3268b3d610ab55/keras/applications/mobilenet_v2.py#L505
 
     Args:
         divisor (int): The divisor for number of channels. Default: 8.
