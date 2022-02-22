@@ -27,4 +27,42 @@ def TRT_GraphOp : TRT_Op<"graph", [SingleBlockImplicitTerminator<"FetchOp">]> {
   let results = (outs Variadic<TRT_Tensor>:$outputs);
 
 }
+
+def TRT_ActivationOp : TRT_Op<"Activation", [NoSideEffect]> {
+  let summary = "TensorRT IActivationLayer";
+  let description = [{
+    
+    TensorRT IActivationLayer.
+    
+  }];
+  let arguments = (ins  TRT_Tensor:$input, SI32Attr:$activation_type);
+
+  let results = (outs TRT_Tensor:$output);
+}
+
+def TRT_ElementWiseOp : TRT_Op<"ElementWise", [NoSideEffect]> {
+  let summary = "TensorRT IElementWiseLayer";
+  let description = [{
+    
+    TensorRT IElementWiseLayer.
+    
+  }];
+  let arguments = (ins  TRT_Tensor:$input1, TRT_Tensor:$input2, SI32Attr:$elementwise_operation);
+
+  let results = (outs TRT_Tensor:$output);
+}
+
+def TRT_MatrixMultiplyOp : TRT_Op<"MatrixMultiply", [NoSideEffect]> {
+  let summary = "TensorRT IMatrixMultiplyLayer";
+  let description = [{
+    
+    TensorRT IMatrixMultiplyLayer.
+    
+  }];
+  let arguments = (ins  TRT_Tensor:$input1, SI32Attr:$matrix_operation1,
+                        TRT_Tensor:$input2, SI32Attr:$matrix_operation2);
+
+  let results = (outs TRT_Tensor:$output);
+}
+
 #endif  // TRT_OPS
