@@ -16,9 +16,9 @@
 #include "paddle/fluid/operators/mkldnn/softplus_mkldnn_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {}  // namespace framework

@@ -33,12 +33,11 @@ from ...fluid.dygraph import BatchNorm  # noqa: F401
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
 from ...framework import get_default_dtype, set_default_dtype
-from ...fluid.framework import in_dygraph_mode
 
 from ..initializer import Constant
 from ...framework import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...fluid import core, dygraph_utils
+from ...fluid import dygraph_utils
 
 from ..functional import batch_norm, layer_norm, instance_norm
 
@@ -49,6 +48,7 @@ from ...framework import no_grad
 from .. import functional as F
 from paddle import _C_ops
 from .. import Layer
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -1087,7 +1087,7 @@ class SyncBatchNorm(_BatchNormBase):
 
         ### train mode: use mini-batch stats, eval mode: use global stats
         ### use_global_stats only support False in sync_batch_norm
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", not self.training, "data_layout",
                      self._data_format, "use_mkldnn", False, "fuse_with_relu",

@@ -162,7 +162,7 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const int tensor_dim,
 MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
                                      const cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype) {
-  auto dims = framework::vectorize<int>(tensor.dims());
+  auto dims = phi::vectorize<int>(tensor.dims());
   int tensor_dim = dims.size();
   raw_tensor_desc = g_cnnl_tensor_desc_pool.Pop();
   if (tensor_dim == 0) {

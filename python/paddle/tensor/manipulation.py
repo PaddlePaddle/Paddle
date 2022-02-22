@@ -30,6 +30,7 @@ from ..fluid.layers import unstack  # noqa: F401
 
 from ..fluid.layers import scatter_nd  # noqa: F401
 from ..fluid.layers import shard_index  # noqa: F401
+from ..fluid.layers import crop_tensor as crop  # noqa: F401
 from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
@@ -672,7 +673,8 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
     if not in_dygraph_mode():
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
+            x, 'x',
+            ['float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8'],
             'flatten')
 
     x_dim = len(x.shape)

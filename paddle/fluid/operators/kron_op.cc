@@ -46,7 +46,7 @@ class KronOp : public framework::OperatorWithKernel {
       int64_t dim_yi = (i < rank - rank_y) ? 1 : dim_y.at(i - (rank - rank_y));
       dim_out.push_back(dim_xi == -1 || dim_yi == -1 ? -1 : dim_xi * dim_yi);
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+    ctx->SetOutputDim("Out", phi::make_ddim(dim_out));
   }
 
  protected:

@@ -30,9 +30,9 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(sort_sum_gradient);
 
@@ -319,7 +319,7 @@ static void FillConstantLike(const VariableWrapper &ref_var,
     dst_tensor->mutable_data(
         place, framework::TransToPtenDataType(ref_var.DataType()));
   }
-  pten::funcs::set_constant(*dev_ctx, dst_tensor, value);
+  phi::funcs::set_constant(*dev_ctx, dst_tensor, value);
 }
 
 /**

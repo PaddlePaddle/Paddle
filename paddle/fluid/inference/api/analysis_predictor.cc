@@ -46,7 +46,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pten/api/ext/op_meta_info.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
@@ -85,7 +85,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 
 bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
                              const platform::Place &place) {
-  framework::DDim ddim = framework::make_ddim(pt.shape);
+  framework::DDim ddim = phi::make_ddim(pt.shape);
   void *input_ptr;
   if (pt.dtype == PaddleDType::INT64) {
     input_ptr = t->mutable_data<int64_t>(ddim, place);
@@ -521,7 +521,7 @@ template <typename T>
 void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
                                     PaddleTensor *output) {
   // set shape.
-  auto shape = framework::vectorize(fetch.dims());
+  auto shape = phi::vectorize(fetch.dims());
   output->shape.assign(shape.begin(), shape.end());
   // set data.
   const T *data = fetch.data<T>();
@@ -592,6 +592,14 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetModelParamsPath(config_.params_file());
   }
 
+  argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
+  argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
+  argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
+  argument_.SetMinInputShape(config_.min_input_shape_);
+  argument_.SetMaxInputShape(config_.max_input_shape_);
+  argument_.SetOptimInputShape(config_.optim_input_shape_);
+  argument_.SetTensorRtTunedDynamicShape(
+      config_.tuned_tensorrt_dynamic_shape());
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
     LOG(INFO) << "TensorRT subgraph engine is enabled";
     argument_.SetUseTensorRT(true);
@@ -601,18 +609,10 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
     argument_.SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_.SetTensorRtDLACore(config_.trt_dla_core_);
-    argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
-    argument_.SetTensorRtUseOSS(config_.trt_use_oss_);
-    argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
-    argument_.SetMinInputShape(config_.min_input_shape_);
-    argument_.SetMaxInputShape(config_.max_input_shape_);
-    argument_.SetOptimInputShape(config_.optim_input_shape_);
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
     argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
-    argument_.SetTensorRtTunedDynamicShape(
-        config_.tuned_tensorrt_dynamic_shape());
     argument_.SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);

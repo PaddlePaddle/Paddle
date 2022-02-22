@@ -28,7 +28,7 @@ extern "C" {
 
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/core/utils/rw_lock.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace framework {
@@ -194,8 +194,8 @@ class Scope : public ScopeBase {
 #ifndef PADDLE_ON_INFERENCE
 
  private:
-  mutable pten::RWLock kids_lock_;
-  mutable pten::RWLock vars_lock_;
+  mutable phi::RWLock kids_lock_;
+  mutable phi::RWLock vars_lock_;
 #endif
 };
 
