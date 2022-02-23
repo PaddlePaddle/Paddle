@@ -253,16 +253,13 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     layer_norm,
     ops::LayerNormKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LayerNormKernel<paddle::platform::CUDADeviceContext, plat::float16>,
-    ops::LayerNormKernel<paddle::platform::CUDADeviceContext, plat::bfloat16>);
+    ops::LayerNormKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     layer_norm_grad,
     ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext,
-                             plat::float16>,
-    ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext,
-                             plat::bfloat16>);
-#else
+                             plat::float16>);
+#elif CUDNN_VERSION_MIN(8, 1, 0)
 REGISTER_OP_CUDA_KERNEL(
     layer_norm,
     ops::LayerNormKernel<paddle::platform::CUDADeviceContext, float>,
@@ -277,4 +274,16 @@ REGISTER_OP_CUDA_KERNEL(
                              plat::float16>,
     ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext,
                              plat::bfloat16>);
+#else
+REGISTER_OP_CUDA_KERNEL(
+    layer_norm,
+    ops::LayerNormKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LayerNormKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::LayerNormKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    layer_norm_grad,
+    ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::LayerNormGradKernel<paddle::platform::CUDADeviceContext,
+                             plat::float16>);
 #endif
