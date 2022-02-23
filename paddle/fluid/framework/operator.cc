@@ -2101,10 +2101,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
-
-      SetAllocationForOutputTenosr(
-          tensor_out, phi::TransToPtenPlace(output_defs.at(i).backend));
-
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
 
