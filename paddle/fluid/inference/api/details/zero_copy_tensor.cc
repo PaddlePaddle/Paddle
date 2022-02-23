@@ -253,23 +253,22 @@ void Tensor::ShareExternalData(const T *data, const std::vector<int> &shape,
   size_t size =
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()) *
       sizeof(T);
-  pten::DenseTensorMeta meta(DataTypeInfo<T>().TYPE,
-                             paddle::framework::make_ddim(shape),
-                             LayoutConvert(layout));
+  phi::DenseTensorMeta meta(DataTypeInfo<T>().TYPE, phi::make_ddim(shape),
+                            LayoutConvert(layout));
   if (place == PlaceType::kCPU) {
-    pten::DenseTensor dtensor(
-        std::make_shared<pten::Allocation>(const_cast<T *>(data), size,
-                                           paddle::platform::CPUPlace()),
+    phi::DenseTensor dtensor(
+        std::make_shared<phi::Allocation>(const_cast<T *>(data), size,
+                                          paddle::platform::CPUPlace()),
         meta);
     *tensor = std::move(dtensor);
   } else if (place == PlaceType::kGPU) {
-    pten::DenseTensor dtensor(
-        std::make_shared<pten::Allocation>(
-            const_cast<T *>(data), size, paddle::platform::CUDAPlace(device_)),
+    phi::DenseTensor dtensor(
+        std::make_shared<phi::Allocation>(const_cast<T *>(data), size,
+                                          paddle::platform::CUDAPlace(device_)),
         meta);
     *tensor = std::move(dtensor);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "PlaceType must be PlaceType::kCPU or PlaceType::kGPU."));
   }
 }
