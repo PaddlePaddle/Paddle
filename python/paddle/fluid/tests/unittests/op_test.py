@@ -168,8 +168,10 @@ def get_numeric_gradient(place,
         elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             numpy_tensor = numpy_tensor.flatten()
-            return struct.unpack('<f', struct.pack('<I', numpy_tensor[i]
-                                                   << 16))[0]
+            return struct.unpack('<f',
+                                 struct.pack('<I',
+                                             np.uint32(numpy_tensor[i])
+                                             << np.uint32(16)))[0]
         elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
@@ -272,7 +274,7 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
 def convert_uint16_to_float(in_list):
     in_list = np.asarray(in_list)
     out = np.vectorize(
-        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        lambda x: struct.unpack('<f', struct.pack('<I', np.uint32(x) << np.uint32(16)))[0],
         otypes=[np.float32])(in_list.flat)
     return np.reshape(out, in_list.shape)
 
@@ -378,7 +380,7 @@ class OpTest(unittest.TestCase):
             hasattr(self, 'output_dtype') and
             self.output_dtype == np.uint16) or (
                 hasattr(self, 'mkldnn_data_type') and
-                getattr(self, 'mkldnn_data_type') is "bfloat16") or (
+                getattr(self, 'mkldnn_data_type') == "bfloat16") or (
                     hasattr(self, 'attrs') and
                     'mkldnn_data_type' in self.attrs and
                     self.attrs['mkldnn_data_type'] == 'bfloat16')

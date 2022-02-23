@@ -24,7 +24,7 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaConfig config) {
   PADDLE_ENFORCE_GE(x.size(),
                     0UL,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of input meta vector should be greater"
                         "than 0."));
   if (axis_scalar.FromTensor()) {
@@ -43,7 +43,7 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
   PADDLE_ENFORCE_EQ(
       axis >= -rank && axis < rank,
       true,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The axis is expected to be in range of [%d, %d), but got %d",
           -rank,
           rank,

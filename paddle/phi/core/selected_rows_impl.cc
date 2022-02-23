@@ -28,7 +28,7 @@ struct ReAllocateVisitor {
   template <typename T>
   void operator()() const {
     phi::DenseTensor cpu_tensor;
-    paddle::platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     T* ptr = cpu_tensor.mutable_data<T>(dims_, cpu);
     const T* old_ptr =
         tensor_->memory_size() == 0 ? nullptr : tensor_->data<T>();
@@ -57,7 +57,7 @@ struct TensorCopyVisitor {
   template <typename T>
   void apply() const {
     // TODO(Yancey1989): support other place
-    paddle::platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     paddle::memory::Copy(cpu,
                          dst_->mutable_data<T>(cpu) + dst_offset_,
                          cpu,
@@ -82,7 +82,7 @@ struct TensorFillVisitor {
   template <typename T>
   void apply() const {
     // TODO(qiao): support other place
-    paddle::platform::CPUPlace cpu;
+    phi::CPUPlace cpu;
     auto* tensor_data = dst_->mutable_data<T>(cpu);
     auto* start = tensor_data + dst_offset_;
     auto* end = start + size_;
@@ -121,16 +121,16 @@ int64_t SelectedRowsImpl::AutoGrownIndex(int64_t key,
   auto iter = id_to_index_.find(key);
   if (iter == id_to_index_.end()) {
     rwlock_->UNLock();
-    PADDLE_ENFORCE_EQ(auto_grown,
-                      true,
-                      paddle::platform::errors::NotFound(
-                          "Input key(%lld) is not found.", key));
+    PADDLE_ENFORCE_EQ(
+        auto_grown,
+        true,
+        phi::errors::NotFound("Input key(%lld) is not found.", key));
     rwlock_->WRLock();
     auto map_size = id_to_index_.size();
     auto vector_size = rows_.size();
     if (map_size != vector_size) {
       rwlock_->UNLock();
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Row map size(%zu) should be equal to rows size(%zu).",
           map_size,
           vector_size));
@@ -140,7 +140,7 @@ int64_t SelectedRowsImpl::AutoGrownIndex(int64_t key,
       int row_num = rows_.size();
       if (row_num == value_->dims()[0]) {
         rwlock_->UNLock();
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Selected rows is full, then length exceed the length of first "
             "dimension (%d).",
             row_num));
@@ -187,7 +187,7 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
     PADDLE_ENFORCE_EQ(
         value_width,
         value->numel() / value->dims()[0],
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output tensor should have the same shape with table "
             "except the first dimmension, excepted value width not counting "
             "the first dimension is %d, actual value width is %d.",
