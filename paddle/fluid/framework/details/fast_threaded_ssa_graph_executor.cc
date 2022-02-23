@@ -231,6 +231,8 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     OpHandleBase *op,
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
+  platform::RecordEvent("WorkQueue::AddTask",
+                        platform::TracerEventType::UserDefined, 10 /*level*/);
   this->pool_->enqueue([=] {
     std::deque<OpHandleBase *> op_queue;
     op_queue.push_front(op);
