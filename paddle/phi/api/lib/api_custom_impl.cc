@@ -32,36 +32,39 @@ namespace paddle {
 namespace experimental {
 
 Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking) {
+  // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
   auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
   auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "copy", kernel_key);
 
-  VLOG(6) << "to API kernel key: " << kernel_key;
-  VLOG(6) << "to API kernel: " << kernel;
+  VLOG(0) << "to API kernel key: " << kernel_key;
+  VLOG(0) << "to API kernel: " << kernel;
 
+  // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  auto kernel_context = phi::KernelContext(dev_ctx);
 
-  auto dense_x = TensorToDenseTensor(x);
+  // 3. Auto data transform
+  auto dense_x = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
+  kernel_context.EmplaceBackInput(dense_x.get());
+  kernel_context.EmplaceBackAttr(blocking);
 
-  Tensor out;
-  auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
-  phi::MetaTensor meta_out(kernel_out);
+  // 4. Prepare outputs & InferMeta
+  auto dense_out = std::make_shared<phi::DenseTensor>(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(
+          phi::TransToPtenPlace(backend)),
+      phi::DenseTensorMeta());
+  phi::MetaTensor meta_out(dense_out.get());
   phi::UnchangedInferMeta(*dense_x, &meta_out);
+  dense_out->mutable_data(phi::TransToPtenPlace(backend));
+  kernel_context.EmplaceBackOutput(dense_out.get());
+  Tensor out;
+  out.set_impl(dense_out);
 
-  using kernel_signature = void (*)(const platform::DeviceContext&,
-                                    const phi::DenseTensor&,
-                                    phi::Place,
-                                    bool,
-                                    phi::DenseTensor*);
-
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)(*dev_ctx,
-               *dense_x,
-               phi::TransToPtenPlace(backend),
-               blocking,
-               kernel_out);
+  // 5. Call kernel
+  kernel(&kernel_context);
 
   return out;
 }
