@@ -115,6 +115,8 @@ int32_t CommonDenseTable::initialize_optimizer() {
     // optimizer_->set_global_lr(_global_lr);  //no use
   } else if (name == "sum") {
     optimizer_ = std::make_shared<DSUM>(common, &values_);
+  } else if (name == "summary") {
+    optimizer_ = std::make_shared<DSummary>(common, &values_);
   } else {
     VLOG(0) << "init optimizer failed";
   }
