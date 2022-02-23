@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#pragma once
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -110,7 +108,8 @@ bool ParseLine(const std::string &line,
   return true;
 }
 
-bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
+bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs,
+                   int batch_size = 1) {
   if (FLAGS_infer_data.empty()) {
     LOG(ERROR) << "please set input data path";
     return false;
@@ -126,31 +125,71 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
     ParseLine(line, &feed_data);
     inputs->push_back(std::move(feed_data));
     sample++;
-    if (!FLAGS_test_all_data && sample == FLAGS_batch_size) break;
+    if (!FLAGS_test_all_data && sample == batch_size) break;
   }
   LOG(INFO) << "number of samples: " << sample;
   return true;
 }
 
-void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false,
-               bool use_gpu = false) {
+void SetConfig(AnalysisConfig *cfg, int batch_size = 1) {
   cfg->SetModel(FLAGS_infer_model);
-  if (use_mkldnn) {
-    cfg->EnableMKLDNN();
-  }
-  if (use_gpu) {
-    cfg->EnableUseGpu(100, 0);
-  } else {
-    cfg->DisableGpu();
-  }
-  cfg->SwitchSpecifyInputNames();
-  cfg->SwitchIrOptim();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
+  // ipu_device_num, ipu_micro_batch_size, ipu_enable_pipelining
+  cfg->EnableIpu(1, batch_size, false);
 }
 
-void SetIpuConfig(AnalysisConfig *cfg, int batch_size = 1) {
-  cfg->SetModel(FLAGS_infer_model);
-  cfg->EnableIpu(4, batch_size, false, 1);
+void profile() {
+  AnalysisConfig config;
+  SetConfig(&config);
+
+  std::vector<std::vector<PaddleTensor>> outputs;
+  std::vector<std::vector<PaddleTensor>> inputs;
+  LoadInputData(&inputs);
+  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
+                 inputs, &outputs, FLAGS_num_threads);
+}
+
+// Compare Deterministic result
+TEST(Analyzer_Ernie_ipu, compare_determine) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  LoadInputData(&input_slots_all);
+  CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+                       input_slots_all);
+}
+
+// Compare results
+TEST(Analyzer_Ernie_ipu, compare_results) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  LoadInputData(&input_slots_all);
+
+  std::ifstream fin(FLAGS_refer_result);
+  std::string line;
+  std::vector<float> ref;
+
+  while (std::getline(fin, line)) {
+    Split(line, ' ', &ref);
+  }
+
+  auto predictor = CreateTestPredictor(
+      reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
+      FLAGS_use_analysis);
+
+  std::vector<PaddleTensor> outputs;
+  for (size_t i = 0; i < input_slots_all.size(); i++) {
+    outputs.clear();
+    predictor->Run(input_slots_all[i], &outputs);
+    auto outputs_size = outputs.front().data.length() / (sizeof(float));
+    for (size_t j = 0; j < outputs_size; ++j) {
+      EXPECT_NEAR(ref[i * outputs_size + j],
+                  static_cast<float *>(outputs[0].data.data())[j],
+                  FLAGS_accuracy);
+    }
+  }
 }
 
 }  // namespace inference
