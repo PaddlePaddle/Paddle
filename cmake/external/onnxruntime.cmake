@@ -46,7 +46,23 @@ else ()
 endif ()
 
 
-ExternalProject_Add(
+if (WIN32)
+  ExternalProject_Add(
+      ${ONNXRUNTIME_PROJECT}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
+      URL                 ${ONNXRUNTIME_URL}
+      PREFIX              ${ONNXRUNTIME_PREFIX_DIR}
+      DOWNLOAD_NO_PROGRESS  1
+      CONFIGURE_COMMAND     ""
+      BUILD_COMMAND         ""
+      UPDATE_COMMAND        ""
+      INSTALL_COMMAND       ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SOURCE_LIB} ${ONNXRUNTIME_SHARE_LIB} &&
+                            ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SOURCE_DIR}/lib/onnxruntime.lib ${ONNXRUNTIME_LIB} &&
+                            ${CMAKE_COMMAND} -E copy_directory ${ONNXRUNTIME_SOURCE_DIR}/include ${ONNXRUNTIME_INC_DIR}
+      BUILD_BYPRODUCTS      ${ONNXRUNTIME_LIB}
+  )
+else ()
+  ExternalProject_Add(
     ${ONNXRUNTIME_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     URL                 ${ONNXRUNTIME_URL}
@@ -55,10 +71,11 @@ ExternalProject_Add(
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""
     UPDATE_COMMAND        ""
-    INSTALL_COMMAND       ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SOURCE_LIB} ${ONNXRUNTIME_SHARE_LIB} &&
+    INSTALL_COMMAND       ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SOURCE_LIB} ${ONNXRUNTIME_LIB} &&
                           ${CMAKE_COMMAND} -E copy_directory ${ONNXRUNTIME_SOURCE_DIR}/include ${ONNXRUNTIME_INC_DIR}
     BUILD_BYPRODUCTS      ${ONNXRUNTIME_LIB}
-)
+  )
+endif()
 
 ADD_LIBRARY(onnxruntime STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET onnxruntime PROPERTY IMPORTED_LOCATION ${ONNXRUNTIME_LIB})
