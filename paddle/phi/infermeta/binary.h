@@ -57,4 +57,6 @@ void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
                     MetaTensor* out);
+
+void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 }  // namespace phi

@@ -229,10 +229,6 @@ void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
                     MetaTensor* out) {
-  // auto x_dim = ctx->GetInputDim("X");
-  // auto y_dim = ctx->GetInputDim("Y");
-  // auto dim = ctx->Attrs().Get<int>("dim");
-
   auto x_dim = x.dims();
   auto y_dim = y.dims();
   auto dim = axis;
@@ -268,13 +264,13 @@ void CrossInferMeta(const MetaTensor& x,
                           "But received Input(X/Y).dims()[dim] = %d.",
                           x_dim[dim]));
   }
-
-  // ctx->SetOutputDim("Out", x_dim);
-  // auto type = ctx->GetInputsVarType("X")[0];
-  // if (type == framework::proto::VarType::LOD_TENSOR) {
-  //   ctx->ShareLoD("X", /*->*/ "Out");
-  // }
   out->set_dims(x_dim);
   out->share_lod(x);
 }
+
+void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto in_dims = x.dims();
+  out->set_dims(in_dims);
+}
+
 }  // namespace phi
