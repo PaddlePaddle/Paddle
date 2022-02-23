@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace memory {
@@ -322,7 +323,8 @@ NPUDeviceContext::~NPUDeviceContext() {
 }
 
 void NPUDeviceContext::Wait() const {
-  platform::RecordEvent record_event("NPUDeviceContext/wait");
+  platform::RecordEvent record_event("NPUDeviceContext/wait",
+                                     platform::TracerEventType::UserDefined, 2);
   VLOG(4) << "NPU context(" << this << ")  Wait";
   stream_->Wait();
 }
