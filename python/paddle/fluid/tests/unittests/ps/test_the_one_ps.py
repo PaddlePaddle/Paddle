@@ -22,16 +22,39 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 
+import paddle
+from ..distributed_passes.ps_pass_test_base import *
+from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
+from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
-class TestTheOnePs(unittest.TestCase):
+
+class TestTheOnePs(PsPassTestBase):
     def setUp(self):
-        print('setUp...')
+        pass
 
     def tearDown(self):
-        print('tearDown...')
-
-    def test_main(self):
         pass
+
+    def check(self):
+        pass
+
+    def test_ps_cpu_async(self):
+        self.init()
+        self.config['ps_mode_config'] = "../ps/cpu_async_ps_config.yaml"
+        self.config['run_the_one_ps'] = '1'
+
+        self.config['debug_the_one_ps'] = '0'
+        self.config[
+            'log_dir'] = ps_log_root_dir + "async_cpu_log_old_the_one_ps"
+        remove_path_if_exists(self.config['log_dir'])
+        self.ps_launch()
+        '''
+        self.config['debug_the_one_ps'] = '1'
+        self.config['log_dir'] = ps_log_root_dir + "async_cpu_log_new_the_one_ps"
+        remove_path_if_exists(self.config['log_dir'])
+        self.ps_launch()
+        '''
+        self.check()
 
 
 if __name__ == '__main__':

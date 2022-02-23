@@ -74,6 +74,7 @@ class DNNLayer(nn.Layer):
             else:
                 emb = self.embedding(s_input)
             emb = paddle.reshape(emb, shape=[-1, self.sparse_feature_dim])
+            # emb.stop_gradient = True
             sparse_embs.append(emb)
 
         y_dnn = paddle.concat(x=sparse_embs + [dense_inputs], axis=1)
