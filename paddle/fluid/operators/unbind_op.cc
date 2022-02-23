@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/unbind_op.h"
 #include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -79,11 +82,3 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(unbind, ops::UnbindOp, ops::UnbindOpMaker,
                   ops::UnbindGradMaker<paddle::framework::OpDesc>,
                   ops::UnbindGradMaker<paddle::imperative::OpBase>);
-namespace plat = paddle::platform;
-REGISTER_OP_CPU_KERNEL(
-    unbind, ops::UnbindOpKernel<plat::CPUDeviceContext, double>,
-    ops::UnbindOpKernel<plat::CPUDeviceContext, float>,
-    ops::UnbindOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::UnbindOpKernel<plat::CPUDeviceContext, int>,
-    ops::UnbindOpKernel<plat::CPUDeviceContext, plat::float16>,
-    ops::UnbindOpKernel<plat::CPUDeviceContext, plat::bfloat16>);
