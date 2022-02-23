@@ -17,18 +17,18 @@
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/kernel/pten/infershaped/infershaped_utils.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/place.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/meta_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/meta_tensor.h"
 
 namespace infrt {
 namespace kernel {
 
 namespace {
-static void ElementwiseAddTest(const ::pten::DenseTensor& a,
-                               const ::pten::DenseTensor& b,
-                               ::pten::DenseTensor* c);
+static void ElementwiseAddTest(const ::phi::DenseTensor& a,
+                               const ::phi::DenseTensor& b,
+                               ::phi::DenseTensor* c);
 }
 
 TEST(utils, registry) {
@@ -37,15 +37,15 @@ TEST(utils, registry) {
   CHECK_EQ(count, 2U);
 }
 
-class FancyAllocator : public pten::Allocator {
+class FancyAllocator : public phi::Allocator {
  public:
-  static void Delete(pten::Allocation* allocation) {
+  static void Delete(phi::Allocation* allocation) {
     ::operator delete(allocation->ptr());
   }
 
   AllocationPtr Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
-    auto* allocation = new pten::Allocation(data, bytes_size, pten::CPUPlace());
+    auto* allocation = new phi::Allocation(data, bytes_size, phi::CPUPlace());
     return AllocationPtr(allocation, Delete);
   }
 };
@@ -56,20 +56,20 @@ TEST(ElementwiseAdd, launcher_registry) {
   ASSERT_GE(registry.size(), 1UL);
   auto creator = registry.GetKernel("add.cpu.any.fp32");
 
-  const pten::DDim dims({1, 2});
-  const pten::DataType dtype{pten::DataType::FLOAT32};
-  const pten::DataLayout layout{pten::DataLayout::NHWC};
-  const pten::LoD lod{};
-  pten::DenseTensorMeta meta(dtype, dims, layout, lod);
+  const phi::DDim dims({1, 2});
+  const phi::DataType dtype{phi::DataType::FLOAT32};
+  const phi::DataLayout layout{phi::DataLayout::NHWC};
+  const phi::LoD lod{};
+  phi::DenseTensorMeta meta(dtype, dims, layout, lod);
 
-  auto fancy_allocator = std::unique_ptr<pten::Allocator>(new FancyAllocator);
+  auto fancy_allocator = std::unique_ptr<phi::Allocator>(new FancyAllocator);
   auto* alloc = fancy_allocator.get();
 
-  pten::DenseTensor a(alloc, meta);
-  pten::DenseTensor b(alloc, meta);
-  pten::DenseTensor c(alloc, meta);
+  phi::DenseTensor a(alloc, meta);
+  phi::DenseTensor b(alloc, meta);
+  phi::DenseTensor c(alloc, meta);
 
-  auto place = pten::CPUPlace();
+  auto place = phi::CPUPlace();
   float* a_data = a.mutable_data<float>(place);
   float* b_data = b.mutable_data<float>(place);
   float* c_data = c.mutable_data<float>(place);
@@ -78,7 +78,7 @@ TEST(ElementwiseAdd, launcher_registry) {
     b_data[i] = 2.f;
   }
 
-  pten::CPUContext context;
+  phi::CPUContext context;
   context.SetAllocator(alloc);
   context.Init();
 

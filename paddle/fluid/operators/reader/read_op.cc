@@ -107,7 +107,7 @@ class ReadOp : public framework::OperatorBase {
 
     // For profiling
     platform::RecordEvent record_event(
-        Type(), platform::TracerEventType::UserDefined, 1);
+        Type().c_str(), platform::TracerEventType::UserDefined, 1);
 
     reader->ReadNext(&ins);
     if (ins.empty()) {

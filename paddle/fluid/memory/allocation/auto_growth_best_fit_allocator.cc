@@ -45,7 +45,7 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
       allow_free_idle_chunk_(allow_free_idle_chunk) {}
 
-pten::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
+phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
   size_t size = AlignedSize(unaligned_size, alignment_);
   VLOG(10) << "Allocate " << unaligned_size << " bytes, aligned to " << size;
@@ -107,7 +107,7 @@ pten::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
   return new BlockAllocation(block_it);
 }
 
-void AutoGrowthBestFitAllocator::FreeImpl(pten::Allocation *allocation) {
+void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   VLOG(10) << "Free " << allocation->size()
            << " bytes, ptr = " << allocation->ptr();
   std::lock_guard<SpinLock> guard(spinlock_);

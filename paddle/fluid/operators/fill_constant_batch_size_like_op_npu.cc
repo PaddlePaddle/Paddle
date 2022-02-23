@@ -70,7 +70,7 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
     if (cpu_place) {
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
-      pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       out->mutable_data(platform::CPUPlace(),
                         framework::TransToPtenDataType(data_type));
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
@@ -85,9 +85,8 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
       auto stream =
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
-      const auto &runner =
-          NpuOpRunner("FillD", {tensor_tmp}, {*out},
-                      {{"dims", framework::vectorize(out->dims())}});
+      const auto &runner = NpuOpRunner("FillD", {tensor_tmp}, {*out},
+                                       {{"dims", phi::vectorize(out->dims())}});
       runner.Run(stream);
     }
   }

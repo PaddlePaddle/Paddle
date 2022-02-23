@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "dnnl_debug.h"  // NOLINT
@@ -163,7 +163,7 @@ void TensorCopyImpl(const TENSOR& src, const platform::Place& dst_place,
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    pten::Allocation* allocation = npu_pinned_tensor.Holder().get();
+    phi::Allocation* allocation = npu_pinned_tensor.Holder().get();
     npu_pinned_allocator->RecordEvent(
         allocation,
         reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
@@ -989,7 +989,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
      // void*    protobuf message
     proto::VarType::TensorDesc desc;
     desc.set_data_type(framework::TransToProtoVarType(tensor.dtype()));
-    auto dims = framework::vectorize(tensor.dims());
+    auto dims = phi::vectorize(tensor.dims());
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
     std::copy(dims.begin(), dims.end(), pb_dims->begin());
@@ -1161,7 +1161,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
         platform::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
-    tensor->Resize(framework::make_ddim(shape));
+    tensor->Resize(phi::make_ddim(shape));
     size_t seekg = seek * framework::SizeOfType(desc.data_type());
     is.seekg(seekg, is.cur);
 
@@ -1177,7 +1177,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_MLU) ||  \
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       Tensor cpu_tensor;
-      cpu_tensor.Resize(framework::make_ddim(shape));
+      cpu_tensor.Resize(phi::make_ddim(shape));
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
@@ -1236,7 +1236,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     std::vector<int64_t> dims;
     dims.reserve(static_cast<size_t>(desc.dims().size()));
     std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims));
-    tensor->Resize(framework::make_ddim(dims));
+    tensor->Resize(phi::make_ddim(dims));
     void* buf;
     platform::CPUDeviceContext ctx;
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
@@ -1249,7 +1249,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_MLU) ||  \
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
       Tensor cpu_tensor;
-      cpu_tensor.Resize(framework::make_ddim(dims));
+      cpu_tensor.Resize(phi::make_ddim(dims));
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
@@ -1356,14 +1356,14 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
   std::copy(dl_tensor.shape, dl_tensor.shape + dl_tensor.ndim,
             std::back_inserter(vec));
 
-  framework::DDim vddim = framework::make_ddim(vec);
+  framework::DDim vddim = phi::make_ddim(vec);
 
   dst->Resize(vddim);
   ::DLDataType type = dl_tensor.dtype;
   void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
 
   auto src_ptr = static_cast<const void*>(dl_tensor.data);
-  auto size = paddle::framework::product(vddim) * type.bits / 8;
+  auto size = phi::product(vddim) * type.bits / 8;
 
   if (dl_tensor.device.device_type == kDLCPU) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
@@ -1477,9 +1477,9 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
 }  // namespace framework
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 
-std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
+std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   if (t.lod().size() > 0) {
     os << "  - lod: " << t.lod() << "\n";
   }
@@ -1521,4 +1521,4 @@ std::ostream& operator<<(std::ostream& os, const pten::DenseTensor& t) {
   VLOG(1) << "PrintVar: unrecognized data type:" << t.type();
   return os;
 }
-}  // namespace pten
+}  // namespace phi

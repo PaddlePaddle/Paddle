@@ -18,9 +18,9 @@
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -95,7 +95,7 @@ void ScaleLossGradOpHandle::RunImpl() {
 
 void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
   auto *tensor = var->GetMutable<LoDTensor>();
-  tensor->Resize(make_ddim({1}));
+  tensor->Resize(phi::make_ddim({1}));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_,

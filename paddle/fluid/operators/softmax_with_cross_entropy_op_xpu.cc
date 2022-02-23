@@ -45,7 +45,7 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
     loss->mutable_data<T>(context.GetPlace());
     const int n = SizeToAxis(axis, logits->dims());
     const int d = SizeFromAxis(axis, logits->dims());
-    std::vector<int> logits_dims = framework::vectorize<int>(logits->dims());
+    std::vector<int> logits_dims = phi::vectorize<int>(logits->dims());
     const bool soft_label = context.Attr<bool>("soft_label");
 
     // softmax
@@ -53,7 +53,7 @@ class SoftmaxWithCrossEntropyXPUKernel : public framework::OpKernel<T> {
         context.template device_context<platform::XPUDeviceContext>();
     int r = XPU_SUCCESS;
     if (platform::get_xpu_version(context.GetPlace().GetDeviceId()) ==
-            pten::backends::xpu::XPUVersion::XPU2 &&
+            phi::backends::xpu::XPUVersion::XPU2 &&
         soft_label) {
       r = xpu::soft_softmax_with_cross_entropy(
           dev_ctx.x_context(), logits->data<float>(), labels->data<T>(),

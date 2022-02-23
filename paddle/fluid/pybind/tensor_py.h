@@ -318,7 +318,7 @@ void SetTensorFromPyArrayT(
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
-  self->Resize(framework::make_ddim(dims));
+  self->Resize(phi::make_ddim(dims));
 
   if (paddle::platform::is_cpu_place(place)) {
     if (zero_copy) {
@@ -495,7 +495,7 @@ void SetUVATensorFromPyArray(
     dims.emplace_back(static_cast<int>(array.shape()[i]));
     numel *= static_cast<int>(array.shape()[i]);
   }
-  self_tensor->Resize(framework::make_ddim(dims));
+  self_tensor->Resize(phi::make_ddim(dims));
 
   auto data_type = framework::ToDataType(std::type_index(typeid(T)));
   const auto &need_allocate_size = numel * framework::SizeOfType(data_type);
@@ -557,8 +557,8 @@ void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
   if (axis == 0 && ins.size() < 10) {
     size_t output_offset = 0;
     for (auto &in : ins) {
-      auto in_stride = framework::stride_numel(in.dims());
-      auto out_stride = framework::stride_numel(out->dims());
+      auto in_stride = phi::stride_numel(in.dims());
+      auto out_stride = phi::stride_numel(out->dims());
       paddle::operators::StridedNumelCopyWithAxis<T>(
           ctx, axis, out->data<T>() + output_offset, out_stride, in.data<T>(),
           in_stride, in_stride[axis]);

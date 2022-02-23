@@ -28,10 +28,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
-#include "paddle/pten/api/include/api.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/api/include/api.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 namespace paddle {
 namespace pybind {
 
@@ -71,7 +71,7 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
 
   if (self->tensor.is_cpu()) {
     auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(self->tensor.impl());
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
     platform::CPUPlace place;
     // deep copy
     paddle::memory::Copy(place, reinterpret_cast<void*>(
@@ -80,7 +80,7 @@ static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
 #if defined(PADDLE_WITH_CUDA)
   } else if (self->tensor.is_cuda()) {
     auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(self->tensor.impl());
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
 
     paddle::platform::GpuMemcpySync(
         pybind11::detail::array_proxy(array)->data, dense_tensor->data(),
@@ -113,7 +113,7 @@ static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor =
-      self->tensor.copy_to(pten::TransToPtenBackend(place), blocking);
+      self->tensor.copy_to(phi::TransToPtenBackend(place), blocking);
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
@@ -213,7 +213,7 @@ static PyObject* tensor__clear_gradient(TensorObject* self, PyObject* args,
     VLOG(4) << "Gradient of " << self->tensor.name()
             << " is initialized, will be released.";
     auto dense_tensor =
-        std::dynamic_pointer_cast<pten::DenseTensor>(grad->impl());
+        std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
     dense_tensor->MoveMemoryHolder();
   }
   Py_INCREF(Py_None);

@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/pten/backends/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -29,32 +29,32 @@ namespace platform {
 /**************************** Version Management **************************/
 
 //! Get the version of XPU Driver
-int GetDriverVersion() { return pten::backends::xpu::GetDriverVersion(); }
+int GetDriverVersion() { return phi::backends::xpu::GetDriverVersion(); }
 
 //! Get the version of XPU Runtime
-int GetRuntimeVersion() { return pten::backends::xpu::GetRuntimeVersion(); }
+int GetRuntimeVersion() { return phi::backends::xpu::GetRuntimeVersion(); }
 
 /**************************** Device Management **************************/
 
-int GetXPUDeviceCount() { return pten::backends::xpu::GetXPUDeviceCount(); }
+int GetXPUDeviceCount() { return phi::backends::xpu::GetXPUDeviceCount(); }
 
 int GetXPUCurrentDeviceId() {
-  return pten::backends::xpu::GetXPUCurrentDeviceId();
+  return phi::backends::xpu::GetXPUCurrentDeviceId();
 }
 
-void SetXPUDeviceId(int id) { pten::backends::xpu::SetXPUDeviceId(id); }
+void SetXPUDeviceId(int id) { phi::backends::xpu::SetXPUDeviceId(id); }
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetXPUSelectedDevices() {
   // use user specified XPUs in single-node multi-process mode.
-  return pten::backends::xpu::GetXPUSelectedDevices();
+  return phi::backends::xpu::GetXPUSelectedDevices();
 }
 
 /**************************** Memory Management **************************/
 
 void MemcpySyncH2D(void* dst, const void* src, size_t count,
                    const platform::XPUPlace& dst_place) {
-  pten::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place);
+  phi::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place);
 }
 
 void MemcpySyncD2H(void* dst, const void* src, size_t count,
@@ -62,7 +62,7 @@ void MemcpySyncD2H(void* dst, const void* src, size_t count,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
   dev_ctx->Wait();
-  pten::backends::xpu::MemcpySyncD2H(dst, src, count, src_place, *dev_ctx);
+  phi::backends::xpu::MemcpySyncD2H(dst, src, count, src_place, *dev_ctx);
 }
 
 // if src.device == dst.device and you need sync , after call this function,
@@ -72,14 +72,14 @@ void MemcpySyncD2D(void* dst, const platform::XPUPlace& dst_place,
                    size_t count) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
-  pten::backends::xpu::MemcpySyncD2D(dst, dst_place, src, src_place, count,
-                                     *dev_ctx);
+  phi::backends::xpu::MemcpySyncD2D(dst, dst_place, src, src_place, count,
+                                    *dev_ctx);
 }
 
 /**************************** Others **************************/
 
-pten::backends::xpu::XPUVersion get_xpu_version(int dev_id) {
-  return pten::backends::xpu::get_xpu_version(dev_id);
+phi::backends::xpu::XPUVersion get_xpu_version(int dev_id) {
+  return phi::backends::xpu::get_xpu_version(dev_id);
 }
 
 }  // namespace platform

@@ -1008,8 +1008,8 @@ static bool CompareShape(const std::vector<int64_t> &a,
 
 static bool CompareTensorData(const framework::LoDTensor &a,
                               const framework::LoDTensor &b) {
-  auto a_shape = framework::vectorize(a.dims());
-  auto b_shape = framework::vectorize(b.dims());
+  auto a_shape = phi::vectorize(a.dims());
+  auto b_shape = phi::vectorize(b.dims());
   size_t a_size = std::accumulate(a_shape.begin(), a_shape.end(), size_t{1},
                                   [](int a, int b) { return a * b; });
   size_t b_size = std::accumulate(b_shape.begin(), b_shape.end(), size_t{1},
@@ -1049,8 +1049,7 @@ static bool CompareTensor(const framework::LoDTensor &a,
   if (!CompareLoD(a.lod(), b.lod())) {
     return false;
   }
-  if (!CompareShape(framework::vectorize(a.dims()),
-                    framework::vectorize(b.dims()))) {
+  if (!CompareShape(phi::vectorize(a.dims()), phi::vectorize(b.dims()))) {
     return false;
   }
 

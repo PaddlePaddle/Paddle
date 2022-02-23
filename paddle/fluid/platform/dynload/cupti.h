@@ -20,7 +20,7 @@ limitations under the License. */
 #include <cupti.h>
 #include <mutex>  // NOLINT
 
-#include "paddle/pten/backends/dynload/cupti.h"
+#include "paddle/phi/backends/dynload/cupti.h"
 
 namespace paddle {
 namespace platform {
@@ -33,8 +33,8 @@ namespace dynload {
  *
  * note: default dynamic linked libs
  */
-#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)               \
-  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+#define DECLARE_DYNAMIC_LOAD_CUPTI_WRAP(__name)              \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 #define CUPTI_ROUTINE_EACH(__macro)           \
