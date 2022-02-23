@@ -83,13 +83,10 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
             phi::make_intrusive<paddle::experimental::SharedStorage>(place),
             phi::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
                                  ddims));
-    dense_tensor->mutable_data(place);
+    if (phi::product(ddims) > 0) {
+      dense_tensor->mutable_data(place);
+    }
     self->tensor.set_impl(dense_tensor);
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "We only support LoDTensor to be constructed by this initializer, "
-        "please check your var type first and make sure you are going to "
-        "construct LoDTensor."));
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
