@@ -1215,16 +1215,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     bool is_xpu_unsupport =
         paddle::platform::is_xpu_place(kernel_type_->place_) &&
             !paddle::platform::is_xpu_support_op(type_, *kernel_type_.get()) ||
-        paddle::platform::is_in_xpu_black_list(type_)
+        paddle::platform::is_in_xpu_black_list(type_);
 #endif
-            if (pt_kernel_->IsValid()
+    if (pt_kernel_->IsValid()
 #ifdef PADDLE_WITH_XPU
-                && !is_xpu_unsupport
+        && !is_xpu_unsupport
 #endif
-                ) {
+        ) {
       run_pten_kernel_ = true;
-    }
-    else {  // NOLINT
+    } else {
       auto& all_op_kernels = AllOpKernels();
       auto kernels_iter = all_op_kernels.find(type_);
       if (kernels_iter == all_op_kernels.end() ||
