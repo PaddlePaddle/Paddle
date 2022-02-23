@@ -78,7 +78,7 @@ class PartialSumOp : public framework::OperatorWithKernel {
     std::vector<int64_t> out_dims(2);
     out_dims[0] = batch_size;
     out_dims[1] = (length == -1) ? input_len - start_index : length;
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 

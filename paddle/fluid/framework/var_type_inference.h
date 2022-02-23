@@ -69,6 +69,12 @@ class InferVarTypeContext {
     return op_->Inputs().at(name).size();
   }
 
+  virtual size_t OutputSize(const std::string& name) const {
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
+    return op_->Outputs().at(name).size();
+  }
+
   virtual const std::string& InputVarName(const std::string& name,
                                           const int index = 0) const {
     PADDLE_ENFORCE_NOT_NULL(

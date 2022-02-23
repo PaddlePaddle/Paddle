@@ -109,7 +109,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
     }
 
     auto *tensor = outputs[i];
-    tensor->Resize(framework::make_ddim(output_shape));
+    tensor->Resize(phi::make_ddim(output_shape));
     auto fetch_dtype = fetch_info.dataType();
     auto paddle_type = PopartType2VarType(fetch_dtype);
     tensor->mutable_data(ctx.GetPlace(),
