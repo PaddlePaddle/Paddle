@@ -158,13 +158,6 @@ KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
               << out_name;
       continue;
     }
-    // If contains dispensable input, we should override the
-    // OpArgumentMapping method self in phi/ops/compat dir
-    if (out.has_dispensable() && out.dispensable()) {
-      VLOG(6) << "Parse PtenKernel output: skip dispensable output - "
-              << out_name;
-      continue;
-    }
     VLOG(6) << "Parse PtenKernel output: " << out_name;
     output_names_.emplace_back(out_name);
   }
