@@ -20,10 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/cupti.h"
 
-
 namespace paddle {
 namespace platform {
-
+#ifdef PADDLE_WITH_CUPTI
 float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
                             int32_t StaticSharedMemory,
                             int32_t DynamicSharedMemory, int32_t BlockX,
@@ -61,6 +60,7 @@ float CalculateEstOccupancy(uint32_t DeviceId, uint16_t RegistersPerThread,
   }
   return occupancy;
 }
+#endif
 
 }  // namespace platform
 }  // namespace paddle
