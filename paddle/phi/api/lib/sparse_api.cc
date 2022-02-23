@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/infermeta/unary.h"
 
 PD_DECLARE_KERNEL(dense_to_sparse_coo, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sparse_csr_to_coo, CPU, ALL_LAYOUT);

@@ -184,3 +184,13 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+- api : create_sparse_coo_tensor 
+  args : (Tensor indices, Tensor values, int64_t[] dims={})
+  output : Tensor
+  infer_meta :
+    func : SparseInferMeta
+  kernel :
+    func : create_sparse_coo_tensor
+    param : [indices, values, dims]
+    data_type : values

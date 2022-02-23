@@ -98,6 +98,7 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/sparse.h"
 """
 
 

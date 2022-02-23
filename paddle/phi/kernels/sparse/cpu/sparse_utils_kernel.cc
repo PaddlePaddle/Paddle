@@ -361,3 +361,16 @@ PD_REGISTER_KERNEL(sparse_csr_to_dense,
                    int16_t,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(create_sparse_coo_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::CreateSparseCooTensorKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}

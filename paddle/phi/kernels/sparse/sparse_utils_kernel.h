@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -148,6 +149,31 @@ DenseTensor SparseCsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
   DenseTensor dense = phi::Empty(dev_ctx, std::move(meta));
   SparseCsrToDenseKernel<T, Context>(dev_ctx, x, &dense);
   return dense;
+}
+
+template <typename T, typename Context>
+void CreateSparseCooTensorKernel(const Context& dev_ctx,
+                                 const DenseTensor& non_zero_indices,
+                                 const DenseTensor& non_zero_elements,
+                                 const ScalarArray& dims,
+                                 SparseCooTensor* out) {
+  // 1. set member
+  out->SetMember(non_zero_indices,
+                 non_zero_elements,
+                 phi::make_ddim(dims.GetData()),
+                 true);
+  // 2. call coalesced to sorted and distinct
+}
+
+template <typename T, typename Context>
+SparseCooTensor CreateSparseCooTensor(const Context& dev_ctx,
+                                      const DenseTensor& non_zero_indices,
+                                      const DenseTensor& non_zero_elements,
+                                      const ScalarArray& dims) {
+  SparseCooTensor out(
+      non_zero_indices, non_zero_elements, DDim(dims.GetData()));
+  // call coalesced
+  return out;
 }
 
 }  // namespace sparse
