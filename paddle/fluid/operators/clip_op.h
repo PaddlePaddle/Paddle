@@ -176,7 +176,7 @@ class ClipGradKernel : public framework::OpKernel<T> {
       std::vector<framework::Tensor*> outs = {d_x};
       auto functor = ClipGradFunctor<T>(min, max);
       d_x->mutable_data<T>(context.GetPlace());
-      LaunchSameDimsElementwiseCudaKernel<T>(
+      phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
           context.template device_context<platform::CUDADeviceContext>(), ins,
           &outs, functor);
 #else
