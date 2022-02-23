@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -39,6 +40,14 @@ extern void InitTensorWithNumpyValue(TensorObject* self,
                                      bool zero_copy);
 
 extern PyTypeObject* p_tensor_type;
+
+extern void ParseIndexingSlice(
+    framework::LoDTensor* tensor, PyObject* _index,
+    std::vector<int>* slice_axes, std::vector<int>* slice_starts,
+    std::vector<int>* slice_ends, std::vector<int>* slice_strides,
+    std::vector<int>* decrease_axis, std::vector<int>* none_axes,
+    std::vector<int>* infer_flags, std::vector<int>* list_select_idxs,
+    bool* list_select_flag);
 
 static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
                                      PyObject* kwargs) {
@@ -377,6 +386,114 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
+                                                  PyObject* args,
+                                                  PyObject* kwargs) {
+  EAGER_TRY
+  PyObject* _index = PyTuple_GET_ITEM(args, 0);
+  VLOG(4) << "Call _getitem_index_not_tensor";
+  std::vector<int> slice_axes, slice_starts, slice_ends, slice_strides,
+      decrease_axis, none_axes, infer_flags, list_select_idxs;
+  // if index is a list, list_select_flag will be true
+  bool list_select_flag = false;
+  PADDLE_ENFORCE_EQ(
+      self->tensor.is_initialized(), true,
+      platform::errors::InvalidArgument(
+          "tensor %s has not been initialized, we can only slice initialized "
+          "tensor please init it first with numpy or other tensor.",
+          self->tensor.name()));
+  auto tensor = static_cast<pten::DenseTensor*>(self->tensor.impl().get());
+  ParseIndexingSlice(tensor, _index, &slice_axes, &slice_starts, &slice_ends,
+                     &slice_strides, &decrease_axis, &none_axes, &infer_flags,
+                     &list_select_idxs, &list_select_flag);
+
+  auto out = slice_axes.empty() && !list_select_flag
+                 ? self->tensor
+                 : paddle::experimental::Tensor(
+                       egr::Controller::Instance().GenerateUniqueName());
+
+  if (!slice_axes.empty()) {
+    framework::AttributeMap attrs = {{"axes", slice_axes},
+                                     {"starts", slice_starts},
+                                     {"ends", slice_ends},
+                                     {"infer_flags", infer_flags},
+                                     {"decrease_axis", decrease_axis}};
+    std::string op_type = "slice";
+    for (auto stride : slice_strides) {
+      if (stride != 1) {
+        op_type = "strided_slice";
+        attrs.insert({"strides", slice_strides});
+        attrs.erase("decrease_axis");
+        break;
+      }
+    }
+    if (op_type == "slice") {
+      out = slice_dygraph_function(self->tensor, paddle::experimental::Tensor(),
+                                   paddle::experimental::Tensor(),
+                                   std::move(attrs));
+    } else if (op_type == "strided_slice") {
+      out = strided_slice_dygraph_function(self->tensor, attrs);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Slice is only support slice and strided_slice, but we got %s which "
+          "is impossible, please check your code first or contact us by "
+          "issue. ",
+          op_type));
+    }
+  }
+
+  if (!none_axes.empty()) {
+    // Deal with cases when all axes are decreased.
+    // After slice, the shape of out is [1], which should have been
+    // [], but Paddle doesn't support scalar.
+    // In order to ensure the correctness of the final shape of out,
+    // one dimension of out needs to be decreased.
+    // For example:
+    // # x.shape: (2,3,4)
+    // out = x[0, 1, 1, None] # out.shape : (1)
+    if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
+      none_axes.pop_back();
+    }
+    if (!none_axes.empty()) {
+      // Deal with cases that decrease_axes is not empty
+      // For example:
+      // # x.shape: (2,3,4)
+      // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+      for (auto& axis : none_axes) {
+        int len = 0;
+        for (int da : decrease_axis) {
+          if (da < axis) {
+            len++;
+          }
+        }
+        axis -= len;
+      }
+
+      paddle::experimental::Tensor new_out;
+      framework::AttributeMap attrs = {{"axes", none_axes}};
+      new_out = std::get<0>(unsqueeze2_dygraph_function(out, std::move(attrs)));
+      return ToPyObject(new_out);
+    }
+  }
+
+  // the index is a list
+  if (list_select_flag) {
+    auto select_index = paddle::experimental::Tensor(
+        egr::Controller::Instance().GenerateUniqueName());
+    auto idx_tensor = std::make_shared<pten::DenseTensor>();
+    auto* dev_ctx = platform::DeviceContextPool::Instance().Get(
+        egr::Controller::Instance().GetExpectedPlace());
+    paddle::framework::TensorFromVector(list_select_idxs, *dev_ctx,
+                                        idx_tensor.get());
+    framework::AttributeMap attrs = {{"dim", 0}};
+    out = index_select_dygraph_function(self->tensor, select_index,
+                                        std::move(attrs));
+  }
+
+  return ToPyObject(out);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -411,6 +528,9 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"get_tensor",
      (PyCFunction)(void (*)(void))tensor_method_get_underline_tensor,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_getitem_index_not_tensor",
+     (PyCFunction)(void (*)(void))tensor__getitem_index_not_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

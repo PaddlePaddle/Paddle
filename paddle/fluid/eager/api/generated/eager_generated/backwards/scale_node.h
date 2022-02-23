@@ -46,7 +46,7 @@ class GradNodeScale : public GradNodeBase {
       const std::vector<paddle::experimental::Tensor>& tensors);
 
   void SetAttributes_scale(float scale);
-
+  std::string name() override { return ""; }
   // Members: define fwd input tensors
   // For Scale there is no fwd input tensor needed
  private:

@@ -21,9 +21,14 @@ namespace egr {
 class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  GradNodeAccumulation() : GradNodeBase(1, 1) { SetDefaultGradInOutMeta(); }
+  GradNodeAccumulation() : GradNodeBase(1, 1) {
+    VLOG(6) << "Construct GradNodeAccumulation";
+    SetDefaultGradInOutMeta();
+  }
 
-  ~GradNodeAccumulation() override = default;
+  ~GradNodeAccumulation() override {
+    VLOG(6) << "Destruct GradNodeAccumulation";
+  }
 
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
@@ -34,6 +39,8 @@ class GradNodeAccumulation : public GradNodeBase {
                       const paddle::experimental::Tensor&)>& hook);
 
   paddle::experimental::Tensor* Grad() { return &accumulated_grad; }
+
+  std::string name() override { return "GradNodeAccumulation"; }
 
  private:
   paddle::experimental::Tensor accumulated_grad;

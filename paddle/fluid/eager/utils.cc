@@ -21,6 +21,7 @@
 #include "paddle/pten/common/layout.h"
 #include "paddle/pten/core/tensor_meta.h"
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/variable.h"
@@ -111,13 +112,35 @@ std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
 void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
   for (const auto& autograd_meta : *autograd_metas) {
-    autograd_meta->SetGradNode(grad_node);
+    if (!autograd_meta->GradNode()) {
+      autograd_meta->SetGradNode(grad_node);
+    } else {
+      if (!dynamic_cast<GradNodeAccumulation*>(autograd_meta->GradNode())) {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Should not set grad node twice, it will cause origin grad node "
+            "error, please check your code and make sure it won't happend"));
+      } else {
+        autograd_meta->SetGradNode(grad_node);
+      }
+    }
   }
 }
 
 void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
-  autograd_meta->SetGradNode(grad_node);
+  if (!autograd_meta->GradNode()) {
+    autograd_meta->SetGradNode(grad_node);
+  } else {
+    if (!dynamic_cast<GradNodeAccumulation*>(autograd_meta->GradNode())) {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Should not set grad node twice, original node is: %s, current is: "
+          "%s, it will cause origin grad node error, please check your code "
+          "and make sure it won't happend",
+          autograd_meta->GradNode()->name(), grad_node->name()));
+    } else {
+      autograd_meta->SetGradNode(grad_node);
+    }
+  }
 }
 
 void EagerUtils::SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,

@@ -65,7 +65,6 @@ set(PYBIND_SRCS
   box_helper_py.cc
   metrics_py.cc
   data_set_py.cc
-  imperative.cc
   ir.cc
   bind_cost_model.cc
   bind_fleet_executor.cc
@@ -74,6 +73,10 @@ set(PYBIND_SRCS
   io.cc
   generator_py.cc
   cuda_streams_py.cc)
+
+if(NOT ON_INFER)
+  list(APPEND PYBIND_SRCS imperative.cc)
+endif()
 
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)

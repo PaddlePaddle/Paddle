@@ -75,10 +75,10 @@ class GradSlotMeta {
 
 class GradNodeBase {
  public:
-  GradNodeBase() = default;
+  GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
   GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
-  virtual ~GradNodeBase() = default;
+  virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
 
   /**
    * operator() designed to contian the real backward execution logic, it should
@@ -149,6 +149,7 @@ class GradNodeBase {
   std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
       const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
   void ApplyReduceHooks();
+  virtual std::string name() = 0;
 
  private:
   // TODO(jiabin): Use SmallVector instead after merge PR from develop

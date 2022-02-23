@@ -44,6 +44,7 @@ _logger = get_logger(
 
 class TestImperativeOutSclae(unittest.TestCase):
     def func_out_scale_acc(self):
+        paddle.disable_static()
         seed = 1000
         lr = 0.1
 

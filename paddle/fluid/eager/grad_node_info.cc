@@ -30,6 +30,7 @@
 namespace egr {
 
 GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
+  VLOG(6) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
   // adj_edges has the same num as backward outputs
@@ -49,11 +50,15 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
     // its pre-ops
     if (meta && !meta->StopGradient()) {
       auto node = meta->GetMutableGradNode();
-      if (node) {
+      if (node && node.get()) {
+        VLOG(6) << "Add Edges for slot: " << slot_id
+                << " which is: " << meta->GetMutableGradNode()->name();
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                          meta->OutRankInfo());
       } else {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+        VLOG(6) << "Add Edges for slot: " << slot_id
+                << " which is: " << meta->GetMutableGradNode()->name();
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                          meta->OutRankInfo());
       }
@@ -69,13 +74,16 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
           "adj_edges is designed to has the same size of grad "
           "inputs's slot num."));
   if (meta && !meta->StopGradient()) {
-    VLOG(6) << "Add Edges for slot: " << slot_id;
     auto node = meta->GetMutableGradNode();
-    if (node) {
+    if (node && node.get()) {
+      VLOG(6) << "Add Edges for slot: " << slot_id
+              << " which is: " << meta->GetMutableGradNode()->name();
       adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                        meta->OutRankInfo());
     } else {
       meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      VLOG(6) << "Add Edges for slot: " << slot_id
+              << " which is: " << meta->GetMutableGradNode()->name();
       adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                        meta->OutRankInfo());
     }

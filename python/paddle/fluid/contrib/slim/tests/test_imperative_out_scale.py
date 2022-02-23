@@ -26,7 +26,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.framework import IrGraph
+from paddle.fluid.framework import IrGraph, _test_eager_guard
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -122,7 +122,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
 
 
 class TestImperativeOutSclae(unittest.TestCase):
-    def test_out_scale_acc(self):
+    def func_out_scale_acc(self):
         seed = 1000
         lr = 0.001
 
@@ -166,9 +166,14 @@ class TestImperativeOutSclae(unittest.TestCase):
                 loss_list[i] > loss_list[i + 1],
                 msg='Failed to do the imperative qat.')
 
+    def test_out_scale_acc(self):
+        with _test_eager_guard():
+            self.func_out_scale_acc()
+        self.func_out_scale_acc()
+
 
 class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
-    def test_save_quantized_model(self):
+    def func_save_quantized_model(self):
         lr = 0.001
 
         load_param_path = "test_save_quantized_model/lenet.pdparams"
@@ -205,6 +210,11 @@ class TestSaveQuanztizedModelFromCheckPoint(unittest.TestCase):
             self.assertTrue(
                 loss_list[i] > loss_list[i + 1],
                 msg='Failed to do the imperative qat.')
+
+    def test_save_quantized_model(self):
+        with _test_eager_guard():
+            self.func_save_quantized_model()
+        self.func_save_quantized_model()
 
 
 if __name__ == '__main__':

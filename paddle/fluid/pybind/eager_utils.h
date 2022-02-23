@@ -33,6 +33,8 @@ int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
+std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
+                                                       ssize_t arg_pos);
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj, ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
@@ -105,6 +107,23 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
+
+// Slice related methods
+bool PyCheckInteger(PyObject* obj);
+bool IsNumpyType(PyObject* obj);
+bool PyCheckTensor(PyObject* obj);
+Py_ssize_t GetSliceIndexFromTensor(const pten::DenseTensor& tensor);
+Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
+int _PySlice_GetIndices(PySliceObject* r, Py_ssize_t length, Py_ssize_t* start,
+                        Py_ssize_t* stop, Py_ssize_t* step);
+void ParseIndexingSlice(
+    framework::LoDTensor* tensor, PyObject* _index,
+    std::vector<int>* slice_axes, std::vector<int>* slice_starts,
+    std::vector<int>* slice_ends, std::vector<int>* slice_strides,
+    std::vector<int>* decrease_axis, std::vector<int>* none_axes,
+    std::vector<int>* infer_flags, std::vector<int>* list_select_idxs,
+    bool* list_select_flag);
+// end of Slice related methods
 
 }  // namespace pybind
 }  // namespace paddle

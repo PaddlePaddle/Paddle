@@ -30,6 +30,7 @@ class GradTestNode : public egr::GradNodeBase {
   GradTestNode(float val, int in_num, int out_num)
       : GradNodeBase(in_num, out_num), val_(val) {}
   GradTestNode() : GradNodeBase() { val_ = 1.0; }
+  std::string name() override { return "GradTestNode"; }
   std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
       override {
