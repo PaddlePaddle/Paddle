@@ -610,7 +610,7 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
         op_desc for op_desc in op_descs
         if not _op_can_be_removed_(op_desc, no_grad_set)
     ]
-    # Insert fill_zeros_like_op
+    # Insert fill_any_like_op
     to_insert = []
     for idx, op_desc in enumerate(op_descs):
         for arg in op_desc.input_arg_names():
@@ -620,7 +620,7 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
                 # the reason should be: arg can be input of another grad op
                 # and the op is a not-to-remove op
                 to_insert.append((_create_op_desc_(
-                    "fill_zeros_like", {"X": [x_in]}, {"Out": [arg]}, {}), idx))
+                    "fill_any_like", {"X": [x_in]}, {"Out": [arg]}, {'value': 0}), idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 

@@ -1593,7 +1593,11 @@ def zeros_like(x, out=None):
             'zeros_like')
 
     helper.append_op(
-        type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
+        type='fill_any_like',
+        inputs={'X': [x]},
+        attrs={'value': 0,
+               "dtype": x.dtype},
+        outputs={'Out': [out]})
     out.stop_gradient = True
     return out
 
