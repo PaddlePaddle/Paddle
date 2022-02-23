@@ -28,11 +28,45 @@ void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
-  TransposeKernelImpl<T>(ctx, x, axis, out);
+  ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+  int rank = axis.size();
+  switch (rank) {
+    case 1:
+      funcs::Transpose<Context, T, 1> trans1;
+      trans1(ctx, x, out, axis);
+      break;
+    case 2:
+      funcs::Transpose<Context, T, 2> trans2;
+      trans2(ctx, x, out, axis);
+      break;
+    case 3:
+      funcs::Transpose<Context, T, 3> trans3;
+      trans3(ctx, x, out, axis);
+      break;
+    case 4:
+      funcs::Transpose<Context, T, 4> trans4;
+      trans4(ctx, x, out, axis);
+      break;
+    case 5:
+      funcs::Transpose<Context, T, 5> trans5;
+      trans5(ctx, x, out, axis);
+      break;
+    case 6:
+      funcs::Transpose<Context, T, 6> trans6;
+      trans6(ctx, x, out, axis);
+      break;
+    default:
+      // for rank >= 7 situation
+      funcs::TransposeNormal<Context, T> trans_normal;
+      trans_normal(ctx, x, out, axis);
+  }
 }
 }  // namespace phi
 
-PT_REGISTER_KERNEL(transpose,
+PD_REGISTER_KERNEL(transpose,
                    CPU,
                    ALL_LAYOUT,
                    phi::TransposeKernel,

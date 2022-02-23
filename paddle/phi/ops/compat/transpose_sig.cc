@@ -28,11 +28,11 @@ KernelSignature TransposeGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(transpose, phi::TransposeOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(transpose_grad, phi::TransposeGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(transpose2, phi::TransposeOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(transpose2_grad,
-                           phi::TransposeGradOpArgumentMapping);
+PD_REGISTER_BASE_KERNEL_NAME(transpose2, transpose);
+PD_REGISTER_BASE_KERNEL_NAME(transpose2_grad, transpose_grad);
 
-PT_REGISTER_BASE_KERNEL_NAME(transpose2, transpose);
-PT_REGISTER_BASE_KERNEL_NAME(transpose2_grad, transpose_grad);
+PD_REGISTER_ARG_MAPPING_FN(transpose2, phi::TransposeOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(transpose2_grad,
+                           phi::TransposeGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(transpose, phi::TransposeOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(transpose_grad, phi::TransposeGradOpArgumentMapping);

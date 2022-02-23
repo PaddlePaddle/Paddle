@@ -41,7 +41,7 @@ void TransposeKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(transpose,
+PD_REGISTER_KERNEL(transpose,
                    GPU,
                    ALL_LAYOUT,
                    phi::TransposeKernel,

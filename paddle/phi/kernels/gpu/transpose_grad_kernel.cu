@@ -19,7 +19,7 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PT_REGISTER_KERNEL(transpose_grad,
+PD_REGISTER_KERNEL(transpose_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::TransposeGradKernel,
