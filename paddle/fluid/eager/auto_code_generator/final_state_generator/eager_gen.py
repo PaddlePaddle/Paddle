@@ -143,6 +143,11 @@ def IntermediateValidationCheck(intermediate_outputs, forward_returns_list):
             assert pos in intermediate_positions
 
 
+def ParseDispensable(string):
+    # string: "X, Y"
+    return [v.strip() for v in string.split(",")]
+
+
 def ParseIntermediate(string):
     return [v.strip() for v in string.split(",")]
 
@@ -597,11 +602,11 @@ std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std:
     return node_definition_str
 
 
-def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
-                              forward_inputs_position_map,
-                              forward_outputs_position_map, forward_attrs_list,
-                              backward_fwd_input_map, backward_grad_input_map,
-                              backward_grad_output_map, backward_attrs_list):
+def GenerateNodeCreationCodes(
+        fwd_api_name, bwd_api_name, forward_inputs_position_map,
+        forward_outputs_position_map, forward_attrs_list,
+        backward_fwd_input_map, backward_grad_input_map,
+        backward_grad_output_map, backward_attrs_list, optional_inputs):
     # fwd_api_name = ""
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
@@ -675,10 +680,17 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     # SetTensorWrappers
     set_tensor_wrappers_list = []
     for name, (_, is_fwd_input, _) in backward_fwd_input_map.items():
+        is_optional = (name in optional_inputs)
         if is_fwd_input:
-            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
+            if is_optional:
+                set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
+            else:
+                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
-            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
+            if is_optional:
+                set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, false);"
+            else:
+                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
         set_tensor_wrappers_list.append(set_tensor_wrappers)
     set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
 
@@ -763,11 +775,12 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     return node_creation_str
 
 
-def GenerateForwardDefinition(
-        fwd_api_name, bwd_api_name, forward_inputs_position_map,
-        forward_outputs_position_map, forward_attrs_list,
-        backward_fwd_input_map, backward_grad_input_map,
-        backward_grad_output_map, backward_attrs_list, intermediate_outputs):
+def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
+                              forward_inputs_position_map,
+                              forward_outputs_position_map, forward_attrs_list,
+                              backward_fwd_input_map, backward_grad_input_map,
+                              backward_grad_output_map, backward_attrs_list,
+                              optional_inputs, intermediate_outputs):
     # fwd_api_name = ""
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
@@ -776,6 +789,7 @@ def GenerateForwardDefinition(
     # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
     # backward_grad_output_map = { "name" : [type, fwd_position, orig_position] ...}
     # backward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
+    # optional_inputs = ["name0", ...]
 
     # Get Function Args
     num_inputs = len(forward_attrs_list) + len(forward_inputs_position_map.keys(
@@ -785,17 +799,18 @@ def GenerateForwardDefinition(
     inputs_call_list = ["" for i in range(num_inputs)]
     for name, (ttype, pos) in forward_inputs_position_map.items():
         inputs_call_list[pos] = f"{name}"
+        is_optional = (name in optional_inputs)
         if IsPlainTensorType(ttype):
-            inputs_args_definition_list[
-                pos] = f"const paddle::experimental::Tensor& {name}"
-            inputs_args_declaration_list[
-                pos] = f"const paddle::experimental::Tensor& {name}"
+            if is_optional:
+                arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
+            else:
+                arg_str = f"const paddle::experimental::Tensor& {name}"
         else:
             assert IsVectorTensorType(ttype)
-            inputs_args_definition_list[
-                pos] = f"const std::vector<paddle::experimental::Tensor>& {name}"
-            inputs_args_declaration_list[
-                pos] = f"const std::vector<paddle::experimental::Tensor>& {name}"
+            arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+
+        inputs_args_definition_list[pos] = arg_str
+        inputs_args_declaration_list[pos] = arg_str
 
     for name, atype, default_val, pos in forward_attrs_list:
         inputs_call_list[pos] = name
@@ -850,7 +865,7 @@ def GenerateForwardDefinition(
         fwd_api_name, bwd_api_name, forward_inputs_position_map,
         forward_outputs_position_map, forward_attrs_list,
         backward_fwd_input_map, backward_grad_input_map,
-        backward_grad_output_map, backward_attrs_list)
+        backward_grad_output_map, backward_attrs_list, optional_inputs)
 
     FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{
@@ -1054,6 +1069,12 @@ if __name__ == "__main__":
         assert 'args' in bwd_api.keys()
         assert 'output' in bwd_api.keys()
         assert 'forward' in bwd_api.keys()
+
+        # Parse Dispensable Inputs
+        optional_inputs = []
+        if 'optional' in fwd_api.keys():
+            optional_inputs = ParseDispensable(fwd_api['optional'])
+
         bwd_forward_str = bwd_api['forward']
         bwd_args_str = bwd_api['args']
         bwd_returns_str = bwd_api['output']
@@ -1129,7 +1150,8 @@ if __name__ == "__main__":
             fwd_api_name, bwd_api_name, forward_inputs_position_map,
             forward_outputs_position_map, forward_attrs_list,
             backward_fwd_input_map, backward_grad_input_map,
-            backward_grad_output_map, backward_attrs_list, intermediate_outputs)
+            backward_grad_output_map, backward_attrs_list, optional_inputs,
+            intermediate_outputs)
         print("Generated Forward Definition: ", forward_definition_str)
         print("Generated Forward Declaration: ", forward_declaration_str)
         forward_definition_str += definition_declaration_pair[0]

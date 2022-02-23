@@ -81,6 +81,11 @@ set(PYBIND_SRCS
 
 if(NOT ON_INFER)
   list(APPEND PYBIND_SRCS imperative.cc)
+  set (PYBIND_DEPS ${PYBIND_DEPS} processgroup)
+  if (WITH_NCCL)
+    set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
+  endif()
+  set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
 
 if(WITH_ASCEND)
