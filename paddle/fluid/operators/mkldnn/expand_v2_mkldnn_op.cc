@@ -19,7 +19,7 @@ limitations under the License. */
 namespace {
 
 using paddle::framework::Tensor;
-using paddle::framework::vectorize;
+using phi::vectorize;
 using paddle::framework::GradVarName;
 using paddle::framework::ExecutionContext;
 using paddle::platform::MKLDNNDeviceContext;
@@ -51,7 +51,7 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
           GetExtendedFormatTag(x_vec_dims, out_new_dims.size(), x_format_tag);
     }
 
-    out->Resize(paddle::framework::make_ddim(out_new_dims));
+    out->Resize(phi::make_ddim(out_new_dims));
     out->set_format(x_format_tag);
     paddle::platform::BroadcastDataMKLDNNHandler<T> handler(
         dnnl::algorithm::binary_add, onednn_engine, ctx.GetPlace(), out, x,

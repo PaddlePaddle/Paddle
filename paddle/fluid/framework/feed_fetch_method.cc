@@ -19,9 +19,9 @@ limitations under the License. */
 #include <boost/variant.hpp>
 #include "glog/logging.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {

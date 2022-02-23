@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/gru_op.h"
 #include <memory>
 #include <string>
-#include "paddle/pten/kernels/funcs/blas/blas.h"
-#include "paddle/pten/kernels/funcs/detail/gru_cpu_kernel.h"
-#include "paddle/pten/kernels/funcs/detail/gru_kernel.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/detail/gru_cpu_kernel.h"
+#include "paddle/phi/kernels/funcs/detail/gru_kernel.h"
 
 DECLARE_int32(paddle_num_threads);
 
@@ -316,17 +316,17 @@ class GRUCPUKernel : public framework::OpKernel<T> {
     batch_hidden->mutable_data<T>(context.GetPlace());
 
     bool is_reverse = context.Attr<bool>("is_reverse");
-    pten::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+    phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     to_batch(dev_ctx, *input, batch_gate, true, is_reverse);
 
     if (bias) {
-      pten::funcs::RowwiseAdd<DeviceContext, T> add_bias;
+      phi::funcs::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(dev_ctx, *batch_gate, *bias, batch_gate);
     }
 
     int frame_size = hidden_dims[1];
-    pten::funcs::GRUMetaValue<T> gru_value;
+    phi::funcs::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
@@ -347,15 +347,15 @@ class GRUCPUKernel : public framework::OpKernel<T> {
     }
     auto batch_starts = batch_gate->lod()[0];
     size_t seq_len = batch_starts.size() - 1;
-    auto active_node = pten::funcs::detail::GetActivationType(
+    auto active_node = phi::funcs::detail::GetActivationType(
         context.Attr<std::string>("activation"));
-    auto active_gate = pten::funcs::detail::GetActivationType(
+    auto active_gate = phi::funcs::detail::GetActivationType(
         context.Attr<std::string>("gate_activation"));
 
 #ifdef PADDLE_WITH_MKLML
     // use MKL packed to speedup GEMM
     if (FLAGS_paddle_num_threads >= 4) {
-      auto blas = pten::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+      auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
       T* packed_gate = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
                                        frame_size * 2 /*width of weight*/,
                                        frame_size /*height of height*/);
@@ -396,8 +396,8 @@ class GRUCPUKernel : public framework::OpKernel<T> {
               frame_size * 2, T(1), gru_value.gate_value, frame_size * 3);
         }
 
-        pten::funcs::detail::forward_reset_output(
-            pten::funcs::detail::forward::gru_resetOutput<T>(), gru_value,
+        phi::funcs::detail::forward_reset_output(
+            phi::funcs::detail::forward::gru_resetOutput<T>(), gru_value,
             frame_size, cur_batch_size, active_gate);
 
         if (gru_value.prev_out_value) {
@@ -408,8 +408,8 @@ class GRUCPUKernel : public framework::OpKernel<T> {
               frame_size * 3);
         }
 
-        pten::funcs::detail::forward_final_output(
-            pten::funcs::detail::forward::gru_finalOutput<T>(), gru_value,
+        phi::funcs::detail::forward_final_output(
+            phi::funcs::detail::forward::gru_finalOutput<T>(), gru_value,
             frame_size, cur_batch_size, active_node, origin_mode);
 
         gru_value.prev_out_value = gru_value.output_value;
@@ -432,7 +432,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         gru_value.gate_value = gate_t.data<T>();
         gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
-        pten::funcs::GRUUnitFunctor<DeviceContext, T>::compute(
+        phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(
             dev_ctx, gru_value, frame_size, cur_batch_size, active_node,
             active_gate, origin_mode);
 
@@ -441,7 +441,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_MKLML
     }
 #endif
-    pten::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
+    phi::funcs::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden->set_lod(batch_gate->lod());
     to_seq(dev_ctx, *batch_hidden, hidden);
   }

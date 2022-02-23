@@ -102,7 +102,7 @@ class FCOp : public framework::OperatorWithKernel {
     FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims,
                  padding_weights);
 
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
     ctx->ShareLoD("Input", "Out");
   }
 

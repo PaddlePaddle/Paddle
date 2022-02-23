@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/matrix_inverse.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace platform {
@@ -72,7 +72,7 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
         memory::Alloc(context, num_ints * sizeof(int));
     int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
-    auto blas = pten::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
 
     std::vector<int> info;  // only for singular checking
     info.resize(batch_size);

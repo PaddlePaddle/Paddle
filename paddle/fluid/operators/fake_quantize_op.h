@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/transform.h"
-#include "paddle/pten/core/hostdevice.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

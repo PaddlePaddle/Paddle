@@ -13,7 +13,6 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/fold_op.h"
-#include "paddle/fluid/operators/unfold_op.h"
 
 namespace paddle {
 namespace operators {
@@ -159,7 +158,7 @@ class FoldOp : public framework::OperatorWithKernel {
 
     out_dims.push_back(output_height);
     out_dims.push_back(output_width);
-    ctx->SetOutputDim("Y", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Y", phi::make_ddim(out_dims));
   }
 
  protected:

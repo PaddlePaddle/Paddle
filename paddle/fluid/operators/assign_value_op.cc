@@ -44,7 +44,7 @@ class AssignValueOp : public framework::OperatorWithKernel {
         ctx->HasOutput("Out"), true,
         platform::errors::NotFound("Output(Out) of assign_op is not found."));
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    ctx->SetOutputDim("Out", framework::make_ddim(shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(shape));
   }
 
  protected:

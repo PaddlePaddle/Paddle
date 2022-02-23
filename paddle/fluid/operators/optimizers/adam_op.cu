@@ -104,7 +104,7 @@ __global__ void SparseAdamCUDAKernelREG(
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
     auto row_idx =
-        pten::funcs::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
+        phi::funcs::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
     if (lazy_mode && row_idx < 0) {
       return;
     } else {
@@ -314,8 +314,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
               beta2_pow_out->mutable_data<MPDType>(ctx.GetPlace()));
         }
       }
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
-      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
+      auto* grad = ctx.Input<phi::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -330,8 +330,8 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
         }
       }
 
-      pten::SelectedRows tmp_grad_merge;
-      const pten::SelectedRows* grad_merge_ptr;
+      phi::SelectedRows tmp_grad_merge;
+      const phi::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {
@@ -345,7 +345,10 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
       auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
+      auto* grad_merge_rows = &grad_merge.rows();
+      paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(
+          grad_merge_rows);
+      const int64_t* rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
       if (beta1_pow->place() == platform::CPUPlace() &&
