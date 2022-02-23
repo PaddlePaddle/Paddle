@@ -1028,9 +1028,9 @@ void Copy<platform::MLUPlace, platform::MLUPlace>(platform::MLUPlace dst_place,
               << " to " << dst_place << " by mlu stream(" << stream << ")";
       platform::RecordEvent record_event("MLUMemcpyD2DAsync(same_mlu):MLU->MLU",
                                          platform::TracerEventType::UserDefined,
-                                         1)
-          platform::MLUMemcpyD2DAsync(dst, src, num,
-                                      reinterpret_cast<mluStream>(stream));
+                                         1);
+      platform::MLUMemcpyD2DAsync(dst, src, num,
+                                  reinterpret_cast<mluStream>(stream));
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();

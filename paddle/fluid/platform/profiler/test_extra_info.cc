@@ -26,5 +26,6 @@ TEST(ExtraInfoTest, case0) {
   EXPECT_EQ(map["info2"], "helloworld");
   EXPECT_EQ(map.size(), 2u);
   instance.Clear();
+  map = instance.GetExtraInfo();
   EXPECT_EQ(map.size(), 0u);
 }

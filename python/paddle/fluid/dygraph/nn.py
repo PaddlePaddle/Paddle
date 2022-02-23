@@ -240,7 +240,8 @@ class Conv2D(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
-        if in_dygraph_mode() and self._l_type == 'conv2d':
+        if in_dygraph_mode() and (self._l_type == 'conv2d' or
+                                  self._l_type == 'depthwise_conv2d'):
             attrs = ('strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups
                      if self._groups else 1, 'use_cudnn', self._use_cudnn,
