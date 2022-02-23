@@ -17,13 +17,15 @@
 namespace phi {
 
 KernelSignature CholeskyOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "cholesky", {"X"}, {"upper"}, {"Out"});
+  return KernelSignature("cholesky", {"X"}, {"upper"}, {"Out"});
 }
 
-KernelSignature CholeskyGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "cholesky_grad", {"Out", GradVarName("Out")}, {"upper"}, {GradVarName("X")});
+KernelSignature CholeskyGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("cholesky_grad",
+                         {"Out", GradVarName("Out")},
+                         {"upper"},
+                         {GradVarName("X")});
 }
 
 }  // namespace phi

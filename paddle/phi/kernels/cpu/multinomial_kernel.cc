@@ -21,27 +21,26 @@ namespace phi {
 
 template <typename T, typename Context>
 void MultinomialKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int num_samples,
-                  bool replacement,
-                  DenseTensor* out) {
-    auto *in_data = x.data<T>();
-    int64_t *out_data = dev_ctx.template Alloc<int64_t>(out);
-    auto in_dims = x.dims();
-    int64_t in_rank = in_dims.size();
-    const int64_t num_categories = in_dims[in_rank - 1];
-    const int64_t num_distributions = in_rank > 1 ? in_dims[in_rank - 2] : 1;
+                       const DenseTensor& x,
+                       int num_samples,
+                       bool replacement,
+                       DenseTensor* out) {
+  auto* in_data = x.data<T>();
+  int64_t* out_data = dev_ctx.template Alloc<int64_t>(out);
+  auto in_dims = x.dims();
+  int64_t in_rank = in_dims.size();
+  const int64_t num_categories = in_dims[in_rank - 1];
+  const int64_t num_distributions = in_rank > 1 ? in_dims[in_rank - 2] : 1;
 
-    MultinomialFunctor<T>(out_data, in_data, num_samples, replacement,
-                          num_categories, num_distributions);                
+  MultinomialFunctor<T>(out_data,
+                        in_data,
+                        num_samples,
+                        replacement,
+                        num_categories,
+                        num_distributions);
 }
 
-}   // namespace phi
+}  // namespace phi
 
-PD_REGISTER_KERNEL(multinomial,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::MultinomialKernel,
-                   float,
-                   double) {}
-
+PD_REGISTER_KERNEL(
+    multinomial, CPU, ALL_LAYOUT, phi::MultinomialKernel, float, double) {}
