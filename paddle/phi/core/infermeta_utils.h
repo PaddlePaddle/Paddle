@@ -154,7 +154,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
       static_assert(out_idx == 0,
                     "InferMeta's Input should appear before Outputs.");
       const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
-      const MetaTensor& arg = ctx->OptionalInputAt<MetaTensor>(range.first);
+      auto arg = ctx->OptionalInputAt<MetaTensor>(range.first);
 
       InferMetaFnCallHelper<
           Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
