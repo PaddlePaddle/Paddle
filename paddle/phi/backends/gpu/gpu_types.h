@@ -69,6 +69,12 @@ DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
 DECLARE_CONSTANT_FOR_GPU(gpuMemcpyHostToDevice,
                          cudaMemcpyHostToDevice,
                          hipMemcpyHostToDevice);
+DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToHost,
+                         cudaMemcpyDeviceToHost,
+                         hipMemcpyDeviceToHost);
+DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToDevice,
+                         hipMemcpyDeviceToDevice,
+                         cudaMemcpyDeviceToDevice);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 }  // namespace phi

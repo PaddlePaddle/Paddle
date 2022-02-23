@@ -20,10 +20,6 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/enforce.h"
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_manager.h"
-#endif
-
 namespace phi {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -56,27 +52,22 @@ static void MemcpyToCPU(const Place& dst_place,
     std::memcpy(dst, src, num);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_CUDA)
   } else if (src_place.GetType() == phi::AllocationType::GPU) {
-    backends::gpu::SetDeviceId(dst_place.GetDeviceId());
+    backends::gpu::SetDeviceId(src_place.GetDeviceId());
     if (stream) {
-      backends::gpu:: ::GpuMemcpyAsync(dst,
-                                       src,
-                                       num,
-                                       gpuMemcpyHostToDevice,
-                                       reinterpret_cast<gpuStream_t>(stream));
+      backends::gpu::GpuMemcpyAsync(dst,
+                                    src,
+                                    num,
+                                    gpuMemcpyDeviceToHost,
+                                    reinterpret_cast<gpuStream_t>(stream));
     } else {
-      backends::gpu:: ::GpuMemcpySync(dst, src, num, gpuMemcpyHostToDevice);
-    }
-    // FIXME(zjl): do we really need it?
-    if (num <= kMaxGpuAsyncCopyBytes) {
-      SyncGPUStream();
+      backends::gpu::GpuMemcpySync(dst, src, num, gpuMemcpyDeviceToHost);
+      // FIXME(zjl): do we really need it?
+      if (num <= kMaxGpuAsyncCopyBytes) {
+        SyncGPUStream();
+      }
     }
   } else if (src_place.GetType() == phi::AllocationType::GPUPINNED) {
-#endif
-#ifdef PADDLE_WITh_XPU
-  } else if (src_place.GetType() == phi::AllocationType::XPU) {
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (src_place.GetType() == phi::AllocationType::CUSTOM) {
+    std::memcpy(dst, src, num);
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unavailable(
@@ -93,8 +84,57 @@ static void MemcpyToGPU(const Place& dst_place,
                         size_t num,
                         void* stream) {
   if (src_place.GetType() == phi::AllocationType::CPU) {
+    backends::gpu::SetDeviceId(dst_place.GetDeviceId());
+    if (stream) {
+      backends::gpu::GpuMemcpyAsync(dst,
+                                    src,
+                                    num,
+                                    gpuMemcpyHostToDevice,
+                                    reinterpret_cast<gpuStream_t>(stream));
+    } else {
+      backends::gpu::GpuMemcpySync(dst, src, num, gpuMemcpyHostToDevice);
+    }
+    // FIXME(zjl): do we really need it?
+    if (num <= kMaxGpuAsyncCopyBytes) {
+      SyncGPUStream();
+    }
   } else if (src_place.GetType() == phi::AllocationType::GPUPINNED) {
+    backends::gpu::SetDeviceId(dst_place.GetDeviceId());
+    if (stream) {
+      backends::gpu::GpuMemcpyAsync(dst,
+                                    src,
+                                    num,
+                                    gpuMemcpyHostToDevice,
+                                    reinterpret_cast<gpuStream_t>(stream));
+    } else {
+      backends::gpu::GpuMemcpySync(dst, src, num, gpuMemcpyHostToDevice);
+    }
   } else if (src_place.GetType() == phi::AllocationType::GPU) {
+    if (dst_place == src_place) {
+      backends::gpu::SetDeviceId(dst_place.GetDeviceId());
+      if (stream) {
+        backends::gpu::GpuMemcpyAsync(dst,
+                                      src,
+                                      num,
+                                      gpuMemcpyDeviceToDevice,
+                                      reinterpret_cast<gpuStream_t>(stream));
+      } else {
+        backends::gpu::GpuMemcpySync(dst, src, num, gpuMemcpyDeviceToDevice);
+      }
+    } else {
+      if (stream) {
+        backends::gpu::GpuMemcpyPeerAsync(
+            dst,
+            dst_place.device,
+            src,
+            src_place.device,
+            num,
+            reinterpret_cast<gpuStream_t>(stream));
+      } else {
+        backends::gpu::GpuMemcpyPeerSync(
+            dst, dst_place.device, src, src_place.device, num);
+      }
+    }
   } else {
     PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported copy memory to GPU from `%s` device.",
@@ -109,7 +149,20 @@ static void MemcpyToGPUPinned(const Place& dst_place,
                               size_t num,
                               void* stream) {
   if (src_place.GetType() == phi::AllocationType::CPU) {
+    std::memcpy(dst, src, num);
   } else if (src_place.GetType() == phi::AllocationType::GPUPINNED) {
+    std::memcpy(dst, src, num);
+  } else if (src_place.GetType() == phi::AllocationType::GPU) {
+    backends::gpu::SetDeviceId(src_place.device);
+    if (stream) {
+      backends::gpu::GpuMemcpyAsync(dst,
+                                    src,
+                                    num,
+                                    gpuMemcpyDeviceToHost,
+                                    reinterpret_cast<gpuStream_t>(stream));
+    } else {
+      backends::gpu::GpuMemcpySync(dst, src, num, gpuMemcpyDeviceToHost);
+    }
   } else {
     PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported copy memory to GPUPinned from `%s` device.",
@@ -118,40 +171,12 @@ static void MemcpyToGPUPinned(const Place& dst_place,
 }
 #endif
 
-#ifdef PADDLE_WITh_XPU
-static void MemcpyToXPU(const Place& dst_place,
-                        void* dst,
-                        const Place& src_place,
-                        const void* src,
-                        size_t num,
-                        void* stream) {
-  if (src_place.GetType() == phi::AllocationType::CPU) {
-  } else if (src_place.GetType() == phi::AllocationType::XPU) {
-  } else {
-    PADDLE_THROW(phi::errors::Unavailable(
-        "Unsupported copy memory to XPU from `%s` device.",
-        src_place.GetType()));
-  }
-}
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-static void MemcpyToCustomDevice(const Place& dst_place,
-                                 void* dst,
-                                 const Place& src_place,
-                                 const void* src,
-                                 size_t num,
-                                 void* stream) {
-  if (src_place.GetType() == phi::AllocationType::CPU) {
-  } else if (src_place.GetType() == phi::AllocationType::CUSTOM) {
-  } else {
-    PADDLE_THROW(phi::errors::Unavailable(
-        "Unsupported copy memory to CUSTOM device from `%s` device.",
-        src_place.GetType()));
-  }
-}
-#endif
-
+// TODO(chenweihang): support xpu and custom device copy later
+// NOTE(chenweihang): xpu copy needs to pass in DeviceContext, which causes
+// the previous internal implementation of memory::Copy to couple a singleton,
+// which is not allowed under phi!!! We need to modify the MemcpySyncD2H and
+// MemcpySyncD2D methods of xpu, and change their last parameter to pass
+// din XContext* or stream*
 void Memcpy(const Place& dst_place,
             void* dst,
             const Place& src_place,
@@ -172,14 +197,6 @@ void Memcpy(const Place& dst_place,
     MemcpyToGPU(dst_place, dst, src_place, src, num, stream);
   } else if (dst_place.GetType() == phi::AllocationType::GPUPINNED) {
     MemcpyToGPUPinned(dst_place, dst, src_place, src, num, stream);
-#endif
-#ifdef PADDLE_WITh_XPU
-  } else if (dst_place.GetType() == phi::AllocationType::XPU) {
-    MemcpyToXPU(dst_place, dst, src_place, src, num, stream);
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (dst_place.GetType() == phi::AllocationType::CUSTOM) {
-    MemcpyToCustomDevice(dst_place, dst, src_place, src, num, stream);
 #endif
   } else {
     PADDLE_THROW(phi::errors::Unavailable(
