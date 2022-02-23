@@ -17,6 +17,6 @@ limitations under the License. */
 // api symbols declare, remove in the future
 #include "paddle/phi/api/lib/api_registry.h"
 
-PT_DECLARE_API(Math);
-PT_DECLARE_API(Utils);
-PT_DECLARE_API(SparseApi);
+PD_DECLARE_API(Math);
+PD_DECLARE_API(Utils);
+PD_DECLARE_API(SparseApi);

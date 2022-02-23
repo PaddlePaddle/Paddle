@@ -82,7 +82,7 @@ class PixelShuffle(Layer):
 
     def extra_repr(self):
         main_str = 'upscale_factor={}'.format(self._upscale_factor)
-        if self._data_format is not 'NCHW':
+        if self._data_format != 'NCHW':
             main_str += ', data_format={}'.format(self._data_format)
         if self._name is not None:
             main_str += ', name={}'.format(self._name)

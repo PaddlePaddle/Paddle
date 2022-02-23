@@ -379,7 +379,7 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
   if (non_zero_num <= 0) return;
@@ -553,7 +553,7 @@ void SparseCooToDenseKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PT_REGISTER_KERNEL(dense_to_sparse_coo,
+PD_REGISTER_KERNEL(dense_to_sparse_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::DenseToSparseCooKernel,
@@ -566,7 +566,7 @@ PT_REGISTER_KERNEL(dense_to_sparse_coo,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(sparse_csr_to_coo,
+PD_REGISTER_KERNEL(sparse_csr_to_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::SparseCsrToCooKernel,
@@ -579,7 +579,7 @@ PT_REGISTER_KERNEL(sparse_csr_to_coo,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(sparse_coo_to_csr,
+PD_REGISTER_KERNEL(sparse_coo_to_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::SparseCooToCsrKernel,
@@ -592,7 +592,7 @@ PT_REGISTER_KERNEL(sparse_coo_to_csr,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(dense_to_sparse_csr,
+PD_REGISTER_KERNEL(dense_to_sparse_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::DenseToSparseCsrKernel,
@@ -605,7 +605,7 @@ PT_REGISTER_KERNEL(dense_to_sparse_csr,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(sparse_coo_to_dense,
+PD_REGISTER_KERNEL(sparse_coo_to_dense,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::SparseCooToDenseKernel,
@@ -618,7 +618,7 @@ PT_REGISTER_KERNEL(sparse_coo_to_dense,
                    int,
                    int64_t) {}
 
-PT_REGISTER_KERNEL(sparse_csr_to_dense,
+PD_REGISTER_KERNEL(sparse_csr_to_dense,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::SparseCsrToDenseKernel,
