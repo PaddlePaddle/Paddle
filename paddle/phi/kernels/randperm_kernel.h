@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/context_kernels.h"
+#pragma once
 
-namespace infrt {
-namespace kernel {
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+
 namespace phi {
 
-::phi::CPUContext CreateCpuContext() { return {}; }
+template <typename T, typename Context>
+void RandpermKernel(const Context& ctx,
+                    int n,
+                    DataType dtype,
+                    DenseTensor* out);
 
 }  // namespace phi
-}  // namespace kernel
-}  // namespace infrt

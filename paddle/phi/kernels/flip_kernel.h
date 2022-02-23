@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/context_kernels.h"
+#pragma once
 
-namespace infrt {
-namespace kernel {
+#include <vector>
+
+#include "paddle/phi/core/dense_tensor.h"
+
 namespace phi {
 
-::phi::CPUContext CreateCpuContext() { return {}; }
+template <typename T, typename Context>
+void FlipKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const std::vector<int>& axis,
+                DenseTensor* out);
 
 }  // namespace phi
-}  // namespace kernel
-}  // namespace infrt

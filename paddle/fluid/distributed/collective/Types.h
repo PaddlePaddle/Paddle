@@ -12,14 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/context_kernels.h"
+#pragma once
+#include <chrono>
+#include <cstdint>
+#include <vector>
 
-namespace infrt {
-namespace kernel {
-namespace phi {
+namespace paddle {
+namespace distributed {
 
-::phi::CPUContext CreateCpuContext() { return {}; }
+// TODO(shenliang03): To support AVG for reduce
+enum class ReduceOp : std::uint8_t { SUM = 0, AVG, MAX, MIN, PRODUCT };
 
-}  // namespace phi
-}  // namespace kernel
-}  // namespace infrt
+struct AllreduceOptions {
+  ReduceOp reduce_op = ReduceOp::SUM;
+};
+
+struct BroadcastOptions {
+  int source_rank = 0;
+  int source_root = 0;
+};
+
+}  //  namespace distributed
+}  //  namespace paddle

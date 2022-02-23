@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/context_kernels.h"
+#pragma once
 
-namespace infrt {
-namespace kernel {
-namespace phi {
+#include "pybind11/chrono.h"
+#include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
-::phi::CPUContext CreateCpuContext() { return {}; }
+namespace py = pybind11;
 
-}  // namespace phi
-}  // namespace kernel
-}  // namespace infrt
+namespace paddle {
+namespace pybind {
+
+void BindDistributed(py::module* m);
+
+}  // namespace pybind
+}  // namespace paddle

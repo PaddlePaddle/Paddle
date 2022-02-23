@@ -89,10 +89,15 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
+paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable = false);
+
 paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 const std::string& arg_name,
                                                 PyObject* args, ssize_t arg_idx,
                                                 bool dispensable = false);
+
 std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
@@ -102,6 +107,7 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                                    PyObject* args,
                                                    ssize_t arg_idx,
                                                    bool dispensable = false);
+
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);

@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/context_kernels.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace infrt {
-namespace kernel {
 namespace phi {
 
-::phi::CPUContext CreateCpuContext() { return {}; }
+KernelSignature RandpermOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("randperm", {}, {"n", "dtype"}, {"Out"});
+}
 
 }  // namespace phi
-}  // namespace kernel
-}  // namespace infrt
+
+PD_REGISTER_ARG_MAPPING_FN(randperm, phi::RandpermOpArgumentMapping);
