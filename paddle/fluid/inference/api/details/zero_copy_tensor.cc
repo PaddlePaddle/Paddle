@@ -248,20 +248,20 @@ paddle::experimental::DataLayout LayoutConvert(DataLayout layout) {
 
 template <typename T>
 void Tensor::ShareExternalData(const T *data, const std::vector<int> &shape,
-                               PlaceType place, DataLayout layout) {
+                               DataLayout layout) {
   EAGER_GET_TENSOR(paddle::framework::LoDTensor)
   size_t size =
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()) *
       sizeof(T);
   phi::DenseTensorMeta meta(DataTypeInfo<T>().TYPE, phi::make_ddim(shape),
                             LayoutConvert(layout));
-  if (place == PlaceType::kCPU) {
+  if (place_ == PlaceType::kCPU) {
     phi::DenseTensor dtensor(
         std::make_shared<phi::Allocation>(const_cast<T *>(data), size,
                                           paddle::platform::CPUPlace()),
         meta);
     *tensor = std::move(dtensor);
-  } else if (place == PlaceType::kGPU) {
+  } else if (place_ == PlaceType::kGPU) {
     phi::DenseTensor dtensor(
         std::make_shared<phi::Allocation>(const_cast<T *>(data), size,
                                           paddle::platform::CUDAPlace(device_)),
@@ -403,23 +403,17 @@ template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<float16>(const float16 *data);
 
 template PD_INFER_DECL void Tensor::ShareExternalData<float>(
-    const float *data, const std::vector<int> &shape, PlaceType placem,
-    DataLayout layout);
+    const float *data, const std::vector<int> &shape, DataLayout layout);
 template PD_INFER_DECL void Tensor::ShareExternalData<int64_t>(
-    const int64_t *data, const std::vector<int> &shape, PlaceType place,
-    DataLayout layout);
+    const int64_t *data, const std::vector<int> &shape, DataLayout layout);
 template PD_INFER_DECL void Tensor::ShareExternalData<int32_t>(
-    const int32_t *data, const std::vector<int> &shape, PlaceType place,
-    DataLayout layout);
+    const int32_t *data, const std::vector<int> &shape, DataLayout layout);
 template PD_INFER_DECL void Tensor::ShareExternalData<uint8_t>(
-    const uint8_t *data, const std::vector<int> &shape, PlaceType place,
-    DataLayout layout);
+    const uint8_t *data, const std::vector<int> &shape, DataLayout layout);
 template PD_INFER_DECL void Tensor::ShareExternalData<int8_t>(
-    const int8_t *data, const std::vector<int> &shape, PlaceType place,
-    DataLayout layout);
+    const int8_t *data, const std::vector<int> &shape, DataLayout layout);
 template PD_INFER_DECL void Tensor::ShareExternalData<float16>(
-    const float16 *data, const std::vector<int> &shape, PlaceType place,
-    DataLayout layout);
+    const float16 *data, const std::vector<int> &shape, DataLayout layout);
 
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data) const;

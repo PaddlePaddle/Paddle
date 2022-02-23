@@ -102,7 +102,6 @@ class PD_INFER_DECL Tensor {
   /// \param layout The layout of data. Only NCHW is supported now.
   template <typename T>
   void ShareExternalData(const T* data, const std::vector<int>& shape,
-                         PlaceType place,
                          DataLayout layout = DataLayout::kNCHW);
 
   /// \brief Experimental interface.

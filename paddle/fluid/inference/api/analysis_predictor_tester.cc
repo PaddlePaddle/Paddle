@@ -420,19 +420,19 @@ TEST(Tensor, CpuShareExternalData) {
   auto w3 = predictor->GetInputHandle("forthw");
 
   std::vector<std::vector<int64_t>> input_data(4, {0, 1, 2, 3});
-  w0->ShareExternalData<int64_t>(input_data[0].data(), {4, 1}, PlaceType::kCPU);
-  w1->ShareExternalData<int64_t>(input_data[1].data(), {4, 1}, PlaceType::kCPU);
-  w2->ShareExternalData<int64_t>(input_data[2].data(), {4, 1}, PlaceType::kCPU);
-  w3->ShareExternalData<int64_t>(input_data[3].data(), {4, 1}, PlaceType::kCPU);
-
-  predictor->Run();
+  w0->ShareExternalData<int64_t>(input_data[0].data(), {4, 1});
+  w1->ShareExternalData<int64_t>(input_data[1].data(), {4, 1});
+  w2->ShareExternalData<int64_t>(input_data[2].data(), {4, 1});
+  w3->ShareExternalData<int64_t>(input_data[3].data(), {4, 1});
 
   auto out = predictor->GetOutputHandle("fc_1.tmp_2");
   auto out_shape = out->shape();
   std::vector<float> out_data;
   out_data.resize(std::accumulate(out_shape.begin(), out_shape.end(), 1,
                                   std::multiplies<int>()));
-  out->ShareExternalData<float>(out_data.data(), out_shape, PlaceType::kCPU);
+  out->ShareExternalData<float>(out_data.data(), out_shape);
+
+  predictor->Run();
 
   PlaceType place;
   int size = 0;
@@ -463,12 +463,10 @@ TEST(Tensor, GpuShareExternalData) {
                cudaMemcpyHostToDevice);
   }
 
-  w0->ShareExternalData<int64_t>(input_gpu[0], {4, 1}, PlaceType::kGPU);
-  w1->ShareExternalData<int64_t>(input_gpu[1], {4, 1}, PlaceType::kGPU);
-  w2->ShareExternalData<int64_t>(input_gpu[2], {4, 1}, PlaceType::kGPU);
-  w3->ShareExternalData<int64_t>(input_gpu[3], {4, 1}, PlaceType::kGPU);
-
-  predictor->Run();
+  w0->ShareExternalData<int64_t>(input_gpu[0], {4, 1});
+  w1->ShareExternalData<int64_t>(input_gpu[1], {4, 1});
+  w2->ShareExternalData<int64_t>(input_gpu[2], {4, 1});
+  w3->ShareExternalData<int64_t>(input_gpu[3], {4, 1});
 
   auto out = predictor->GetOutputHandle("fc_1.tmp_2");
   auto out_shape = out->shape();
@@ -477,7 +475,9 @@ TEST(Tensor, GpuShareExternalData) {
                                   std::multiplies<int>()) *
                   sizeof(float);
   cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
-  out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
+  out->ShareExternalData<float>(out_data, out_shape);
+
+  predictor->Run();
 
   PlaceType place;
   int size = 0;
