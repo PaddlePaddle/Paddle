@@ -308,6 +308,7 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
   //   are set by values of the corresponding compiled tensors,
   //   including the in/out variables where the equiality between their tensors
   //   and the CINN compiled ones is verified in corresponding cinn_launch_op.
+  std::unordered_set<std::string> has_refer_vars;
   for (auto&& arg : cinn_argument_names_) {
     const std::string& var_name = cinn2paddle_varmap_.at(arg);
     framework::VarDesc* var_desc = block->Var(var_name);
@@ -318,6 +319,7 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
       auto* ori_desc = res->second;
       var_desc->SetPersistable(ori_desc->Persistable());
       var_desc->SetIsParameter(ori_desc->IsParameter());
+      has_refer_vars.insert(var_name);
     }
 
     auto cinn_tensor = GetCinnTensorOfVar(var_name);
@@ -351,6 +353,12 @@ framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
     auto* ins = instructions.at(ins_idx).get();
     auto in_args = trans_and_pack_args_fn(ins->GetInArgs());
     auto out_args = trans_and_pack_args_fn(ins->GetOutArgs());
+    for (auto&& var_name : in_args) {
+      if (!has_refer_vars.count(var_name)) {
+        initialized_beforehand_vars_.emplace_back(var_name);
+      }
+    }
+    has_refer_vars.insert(out_args.begin(), out_args.end());
 
     auto* op_desc = block->AppendOp();
     op_desc->SetType("cinn_instruction_run");
@@ -382,6 +390,16 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
       {parallel_executor_->GetLocalScopes().front(), scope}};
   parallel_executor_->ResetOpHandleScopeMapOfGraphs(scope_map);
   parallel_executor_->PrepareVariables(scope);
+  for (auto&& var_name : initialized_beforehand_vars_) {
+    auto* var = scope->GetVar(var_name);
+    auto* buffer = GetCinnBufferOfVar(var_name);
+    auto dim = framework::DDim(buffer->dims, buffer->dimensions);
+    var->GetMutable<LoDTensor>()->Resize(dim);
+    var->GetMutable<LoDTensor>()->mutable_data<float>(place);
+    LOG(WARNING) << string::Sprintf(
+        "Variable(%s) is initialized beforehand with dims[%s]", var_name,
+        dim.to_str());
+  }
   return parallel_executor_.get();
 }
 
