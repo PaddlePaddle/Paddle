@@ -69,7 +69,7 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
                           bias_dims, y_dims));
 
     auto x_mat_dims =
-        framework::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
+        phi::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
 
     int K_from_x = trans_x ? x_mat_dims[0] : x_mat_dims[1];
     int K_from_y = trans_y ? y_dims[1] : y_dims[0];
@@ -125,11 +125,11 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
       out_dims.push_back(y_dims[1]);
     }
 
-    ctx->SetOutputDim("out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("out", phi::make_ddim(out_dims));
     // Note (Ming Huang): Reserve space of relu is a bit-mask,
     // which cannot pass nan_and_inf checking if shape is set.
     if (activation == "gelu" && ctx->HasOutput("reserve_space")) {
-      ctx->SetOutputDim("reserve_space", framework::make_ddim(out_dims));
+      ctx->SetOutputDim("reserve_space", phi::make_ddim(out_dims));
     }
   }
 
@@ -237,10 +237,9 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
             " should be the same, but got DOut's dim = %d and X's = %d.",
             dout_dims.size(), x_dims.size()));
 
-    auto dout_mat_dims =
-        framework::flatten_to_2d(dout_dims, dout_dims.size() - 1);
+    auto dout_mat_dims = phi::flatten_to_2d(dout_dims, dout_dims.size() - 1);
 
-    auto x_mat_dims = framework::flatten_to_2d(x_dims, x_dims.size() - 1);
+    auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
 
     PADDLE_ENFORCE_EQ(
         dout_mat_dims[1], y_dims[1],
@@ -281,16 +280,16 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
       for (int i = 0; i < x_dims.size(); ++i) {
         dx_dims.push_back(x_dims[i]);
       }
-      ctx->SetOutputDim("DX", framework::make_ddim(dx_dims));
+      ctx->SetOutputDim("DX", phi::make_ddim(dx_dims));
     }
 
     std::vector<int64_t> dy_dims(y_dims.Get(), y_dims.Get() + y_dims.size());
-    ctx->SetOutputDim("DY", framework::make_ddim(dy_dims));
+    ctx->SetOutputDim("DY", phi::make_ddim(dy_dims));
 
     if (ctx->HasOutput("DBias")) {
       std::vector<int64_t> dbias_dims;
       dbias_dims.push_back(y_dims[1]);
-      ctx->SetOutputDim("DBias", framework::make_ddim(dbias_dims));
+      ctx->SetOutputDim("DBias", phi::make_ddim(dbias_dims));
     }
   }
 

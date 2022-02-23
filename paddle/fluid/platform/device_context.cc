@@ -569,7 +569,7 @@ cublasLtHandle_t CUDADeviceContext::cublaslt_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CublasLtHandle()->GetCublasLtHandle();
   }
-  return pten::GPUContext::cublaslt_handle();
+  return phi::GPUContext::cublaslt_handle();
 }
 #endif
 cusparseHandle_t CUDADeviceContext::cusparse_handle() const {

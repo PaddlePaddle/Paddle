@@ -424,13 +424,13 @@ struct GPUContext::Impl {
 
   void InitBlasLtHandle() {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-    pten::dynload::cublasLtCreate(&blaslt_handle_);
+    phi::dynload::cublasLtCreate(&blaslt_handle_);
 #endif
   }
 
   void DestroyInternalBlasLtHandle() {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-    pten::dynload::cublasLtDestroy(blaslt_handle_);
+    phi::dynload::cublasLtDestroy(blaslt_handle_);
 #endif
   }
 

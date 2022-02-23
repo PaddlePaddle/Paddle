@@ -46,7 +46,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     auto* out_data = out->data<T>();
 
     auto x_mat_dims =
-        framework::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+        phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
     int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
@@ -94,9 +94,9 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
       size_t reserve_space_size = 0;
       if (activation == "relu") {
         // Count in bits.
-        reserve_space_size = framework::product(out->dims()) / 8;
+        reserve_space_size = phi::product(out->dims()) / 8;
       } else {
-        reserve_space_size = framework::product(out->dims()) * sizeof(T);
+        reserve_space_size = phi::product(out->dims()) * sizeof(T);
       }
       reserve_space->mutable_data(ctx.GetPlace(), out->type(),
                                   reserve_space_size);
@@ -193,8 +193,8 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     std::string activation_grad = ctx.Attr<std::string>("activation_grad");
 
     auto dout_mat_dims =
-        framework::flatten_to_2d(dout->dims(), dout->dims().size() - 1);
-    auto x_mat_dims = framework::flatten_to_2d(x->dims(), x->dims().size() - 1);
+        phi::flatten_to_2d(dout->dims(), dout->dims().size() - 1);
+    auto x_mat_dims = phi::flatten_to_2d(x->dims(), x->dims().size() - 1);
 
     int64_t M = x_mat_dims[0];
     int64_t K = y->dims()[0];
