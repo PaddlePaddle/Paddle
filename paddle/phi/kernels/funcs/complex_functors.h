@@ -170,32 +170,32 @@ struct AbsGradCUDAFunctor {
 };
 
 template <>
-struct AbsGradCUDAFunctor<paddle::platform::complex<float>> {
+struct AbsGradCUDAFunctor<phi::dtype::complex<float>> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline paddle::platform::complex<float> operator()(
-      const paddle::platform::complex<float> x, const float dout) const {
-    paddle::platform::complex<float> output;
-    if (x == paddle::platform::complex<float>(0)) {
-      output = paddle::platform::complex<float>(0);
+  HOSTDEVICE inline phi::dtype::complex<float> operator()(
+      const phi::dtype::complex<float> x, const float dout) const {
+    phi::dtype::complex<float> output;
+    if (x == phi::dtype::complex<float>(0)) {
+      output = phi::dtype::complex<float>(0);
     } else {
-      output = paddle::platform::complex<float>(dout) *
-               (x / paddle::platform::complex<float>(abs(x)));
+      output = phi::dtype::complex<float>(dout) *
+               (x / phi::dtype::complex<float>(abs(x)));
     }
     return output;
   }
 };
 
 template <>
-struct AbsGradCUDAFunctor<paddle::platform::complex<double>> {
+struct AbsGradCUDAFunctor<phi::dtype::complex<double>> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline paddle::platform::complex<double> operator()(
-      const paddle::platform::complex<double> x, const double dout) const {
-    paddle::platform::complex<double> output;
-    if (x == paddle::platform::complex<double>(0)) {
-      output = paddle::platform::complex<double>(0);
+  HOSTDEVICE inline phi::dtype::complex<double> operator()(
+      const phi::dtype::complex<double> x, const double dout) const {
+    phi::dtype::complex<double> output;
+    if (x == phi::dtype::complex<double>(0)) {
+      output = phi::dtype::complex<double>(0);
     } else {
-      output = paddle::platform::complex<double>(dout) *
-               (x / paddle::platform::complex<double>(abs(x)));
+      output = phi::dtype::complex<double>(dout) *
+               (x / phi::dtype::complex<double>(abs(x)));
     }
     return output;
   }
