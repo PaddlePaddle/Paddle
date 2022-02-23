@@ -41,7 +41,8 @@ void RandpermKernel(const Context& ctx,
 
   T* out_data = ctx.template Alloc<T>(out);
   auto size = out->numel() * paddle::experimental::SizeOf(out->dtype());
-  paddle::memory::Copy(out->place(), out_data, tmp.place(), tmp_data, size);
+  paddle::memory::Copy<phi::GPUPlace, phi::Place>(
+      out->place(), out_data, tmp.place(), tmp_data, size, 0);
 }
 
 }  // namespace phi
