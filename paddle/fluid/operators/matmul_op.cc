@@ -1,11 +1,8 @@
 /* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +14,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -28,7 +25,8 @@ namespace operators {
 /**
  * Printing shape information into a string is easy to use.
  */
-inline static std::string DumpMatrixShape(const math::MatDescriptor &desc) {
+inline static std::string DumpMatrixShape(
+    const phi::funcs::MatDescriptor &desc) {
   std::stringstream buffer;
   buffer << "[" << desc.batch_size_ << ", " << desc.height_ << ", "
          << desc.width_ << "]";
@@ -43,7 +41,7 @@ static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return framework::make_ddim({1, x_dim[0]});
+  return phi::make_ddim({1, x_dim[0]});
 }
 
 /**
@@ -54,7 +52,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return framework::make_ddim({y_dim[0], 1});
+  return phi::make_ddim({y_dim[0], 1});
 }
 
 template <typename DeviceContext, typename T>
@@ -68,10 +66,10 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
         RowMatrixFromVector(x.dims()), 0, context.Attr<bool>("transpose_X"));
-    auto mat_dim_b = math::CreateMatrixDescriptor(
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
@@ -131,7 +129,7 @@ static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   output.mutable_data<T>(context.GetPlace());
   std::vector<int> axis = {1, 0, 2};
-  math::Transpose<DeviceContext, T, 3> trans;
+  phi::funcs::Transpose<DeviceContext, T, 3> trans;
   trans(context, input, &output, axis);
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
@@ -145,7 +143,7 @@ static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
-    framework::Tensor *x, const math::MatDescriptor &descriptor) {
+    framework::Tensor *x, const phi::funcs::MatDescriptor &descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -179,8 +177,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
-  auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
@@ -225,9 +223,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
@@ -407,9 +405,9 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b, bool flag,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
@@ -587,12 +585,12 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     auto dim_x = GetDimForInput(*context, "X");
     auto dim_y = GetDimForInput(*context, "Y");
-    auto mat_dim_x =
-        math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0,
-                                     context->Attrs().Get<bool>("transpose_X"));
-    auto mat_dim_y =
-        math::CreateMatrixDescriptor(ColumnMatrixFromVector(dim_y), 0,
-                                     context->Attrs().Get<bool>("transpose_Y"));
+    auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
+        RowMatrixFromVector(dim_x), 0,
+        context->Attrs().Get<bool>("transpose_X"));
+    auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(
+        ColumnMatrixFromVector(dim_y), 0,
+        context->Attrs().Get<bool>("transpose_Y"));
 
     if (mat_dim_x.width_ == -1) {
       mat_dim_x.width_ = mat_dim_y.height_;
@@ -641,11 +639,11 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> dim_out;
     if (mat_dim_x.batch_size_ != 0) {
-      dim_out = framework::vectorize(dim_x);
+      dim_out = phi::vectorize(dim_x);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
       dim_out[dim_out.size() - 1] = dim_out_y;
     } else if (mat_dim_y.batch_size_ != 0) {
-      dim_out = framework::vectorize(dim_y);
+      dim_out = phi::vectorize(dim_y);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
       dim_out[dim_out.size() - 1] = dim_out_y;
     } else {
@@ -665,7 +663,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       dim_out = {1};
     }
 
-    framework::DDim ddim_out = framework::make_ddim(dim_out);
+    framework::DDim ddim_out = phi::make_ddim(dim_out);
 
 #ifdef PADDLE_WITH_MKLDNN
     //  if mkldnn matmul+transpose+reshape fuse activated
@@ -695,13 +693,36 @@ class MatMulOp : public framework::OperatorWithKernel {
                                             "received %d",
                                             reshape_out_size));
 
-      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
+      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
+      // -1);
+      // PADDLE_ENFORCE_LE(num_negative, 1,
+      //                   platform::errors::InvalidArgument(
+      //                       "The max number of -1 in fused_reshape_Out is 1 "
+      //                       "but received %d.",
+      //                       num_negative));
+
+      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
+      // if (it_zero != reshape_out.end()) {
+      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
+      //     if (reshape_out[i] == 0) {
+      //       PADDLE_ENFORCE_LT(
+      //           i, ddim_out.size(),
+      //           platform::errors::InvalidArgument(
+      //               "The index of 0 in fused_reshape_Out ",
+      //               "should be less than output dim size, ",
+      //               "but the index is %d and output dim size is %d", i,
+      //               ddim_out.size()));
+      //       reshape_out[i] = ddim_out.at(i);
+      //     }
+      //   }
+      // }
 
       // if "-1" is present then one of reshape dims must be infered
+      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
       if (it != reshape_out.end()) {
         int index = std::distance(reshape_out.begin(), it);
 
-        auto ddim_out_vec = framework::vectorize(ddim_out);
+        auto ddim_out_vec = phi::vectorize(ddim_out);
 
         int ddim_out_product =
             std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
@@ -745,8 +766,9 @@ class MatMulOp : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());
@@ -840,17 +862,13 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
 #endif
     AddComment(R"DOC(
 MatMul Operator.
-
-
 This operator is used to perform (batched) matrix multiplication
 over the last two dimensions of the input tensors `X` and `Y`.
-
 If a transpose flag is specified, the last two dimensions of the
 tensor are transposed. If the tensor is rank-1 of shape [D], then
 for `X` it is treated as [1, D] in nontransposed form and as [D, 1]
 in transposed form, whereas for `Y` it is the opposite: It is treated
 as [D, 1] in nontransposed form and as [1, D] in transposed form.
-
 Examples without transpose:
 - X: [K], Y: [K] => Out: [1]
 - X: [K], Y: [K, N] => Out: [N]
@@ -858,10 +876,8 @@ Examples without transpose:
 - X: [M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, ..., M, K], Y: [B, ..., K, N] => Out: [B, ..., M, N]
-
 Example of matrix multiplication with head_number of H
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, H * N]
-
 The behavior is designed to be similar to the `numpy.matmul` function.
 The differences are:
 - When the rank of the input data is less than or equal to 3, it
@@ -872,10 +888,8 @@ The differences are:
 - We add `head_number` attribute, which is used to multiple two matrixes head
   by head, and eventually concatenates the output of several (head_number)
   small matrixes multiplication.
-
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
 or not. But the output only shares the LoD information with input `X`.
-
 )DOC");
   }
 };

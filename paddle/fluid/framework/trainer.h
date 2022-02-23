@@ -34,13 +34,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/phi/backends/dynload/port.h"
+
+#ifdef PADDLE_WITH_PSLIB
+#include <pslib.h>
+#endif
 
 namespace paddle {
 namespace framework {
 
 class Dataset;
-class LoDTensor;
 class ProgramDesc;
 class PullDenseWorker;
 class Scope;
@@ -156,7 +159,7 @@ class DistMultiTrainer : public MultiTrainer {
 
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
      defined PADDLE_WITH_XPU) &&                            \
-    (defined PADDLE_WITH_PSLIB)
+    (defined PADDLE_WITH_PSLIB) && (!defined(PADDLE_WITH_HETERPS))
 class HeterServiceContext {
  public:
   HeterServiceContext() {}
@@ -288,6 +291,9 @@ class PSGPUTrainer : public TrainerBase {
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;
+
+  // _ps_param for gpups optimizer config
+  ::paddle::PSParameter _ps_param;
 };
 #endif
 

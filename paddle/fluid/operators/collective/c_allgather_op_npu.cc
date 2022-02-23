@@ -31,7 +31,8 @@ class CAllGatherOpASCENDKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
-    HcclDataType dtype = platform::ToHCCLDataType(in->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
     std::string group =
@@ -79,5 +80,6 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(c_allgather, ops::CAllGatherOpASCENDKernel<int8_t>,
                        ops::CAllGatherOpASCENDKernel<int>,
+                       ops::CAllGatherOpASCENDKernel<int64_t>,
                        ops::CAllGatherOpASCENDKernel<float>,
                        ops::CAllGatherOpASCENDKernel<plat::float16>);

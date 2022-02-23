@@ -253,6 +253,9 @@ load_noavx = False
 
 if avx_supported():
     try:
+        from . import core_avx
+        core_avx.LoDTensor = core_avx.Tensor
+
         from .core_avx import *
         from .core_avx import __doc__, __file__, __name__, __package__
         from .core_avx import __unittest_throw_exception__
@@ -268,6 +271,7 @@ if avx_supported():
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
         from .core_avx import _switch_tracer
+        from .core_avx import _set_eager_tracer
         from .core_avx import _disable_eager_mode
         from .core_avx import _enable_eager_mode
         from .core_avx import _in_eager_mode
@@ -309,6 +313,9 @@ else:
 
 if load_noavx:
     try:
+        from . import core_noavx
+        core_noavx.LoDTensor = core_noavx.Tensor
+
         from .core_noavx import *
         from .core_noavx import __doc__, __file__, __name__, __package__
         from .core_noavx import __unittest_throw_exception__
@@ -324,6 +331,7 @@ if load_noavx:
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
         from .core_noavx import _switch_tracer
+        from .core_noavx import _set_eager_tracer
         from .core_noavx import _disable_eager_mode
         from .core_noavx import _enable_eager_mode
         from .core_noavx import _in_eager_mode
@@ -363,6 +371,17 @@ if load_noavx:
         raise e
 
 
+def set_paddle_custom_device_lib_path(lib_path):
+    if os.environ.get('CUSTOM_DEVICE_ROOT', None) is not None:
+        # use setted environment value
+        return
+    if os.path.exists(lib_path):
+        # set CUSTOM_DEVICE_ROOT default path
+        os.environ['CUSTOM_DEVICE_ROOT'] = os.path.normpath(lib_path)
+    else:
+        os.environ['CUSTOM_DEVICE_ROOT'] = ''
+
+
 # set paddle lib path
 def set_paddle_lib_path():
     site_dirs = site.getsitepackages() if hasattr(
@@ -372,11 +391,15 @@ def set_paddle_lib_path():
         lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
+            set_paddle_custom_device_lib_path(
+                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins']))
             return
     if hasattr(site, 'USER_SITE'):
         lib_dir = os.path.sep.join([site.USER_SITE, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
+            set_paddle_custom_device_lib_path(
+                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins']))
 
 
 set_paddle_lib_path()

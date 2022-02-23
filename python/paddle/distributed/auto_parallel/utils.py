@@ -25,6 +25,7 @@ import paddle.fluid.core as core
 from paddle.framework.io import _to_LodTensor
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
+from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
 
 def is_valid_list_index(list, index):
@@ -592,8 +593,10 @@ def load_parameter_into_program(param_dict, program):
         param_dict(dict): parameters' name and value.
         program(Program): the program to be updated
     """
-    _check_param_dict(param_dict)
+    assert isinstance(param_dict, dict)
     assert program and isinstance(program, paddle.fluid.framework.Program)
+    if not param_dict:
+        return
     program.set_state_dict(param_dict)
 
 
@@ -704,7 +707,6 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
         dist_param_dict(dict): parameters' value of current rank.
     """
     assert _check_dist_attr(pre_dist_attr), "'pre_dist_attr' cannot be None."
-    assert _check_dist_attr(cur_dist_attr), "'pre_dist_attr' cannot be None."
     assert isinstance(dist_param_dict, dict), \
         "The type of 'dist_param_dict' should be 'dict', but got {}.".format(
             str(type(dist_param_dict)))
@@ -718,6 +720,9 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
             raise TypeError(
                 "The value of 'dist_param_dict' is parameter's value of all ranks, "
                 "and its type should be 'list(numpy.ndarray)'.")
+
+    if cur_dist_attr is None:
+        return {}
 
     param_not_in_pre = []
     param_not_in_cur = []
@@ -993,18 +998,23 @@ def set_grad_var_shape(program, dist_context):
     block = program.global_block()
     vars = block.vars
     for op in block.ops:
-        if op.type in [
-                "sum", "check_finite_and_unscale", "update_loss_scaling"
-        ]:
+
+        if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
+            break
+
+        if op.type in ["sum", "concat"]:
             continue
         if int(op.attr('op_role')) == int(OpRole.Backward):
             op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
             assert op_dist_attr is not None
 
             for var_name in op.output_arg_names:
-                assert "@GRAD" in var_name
+                if "@GRAD" not in var_name:
+                    continue
                 forward_var_name = var_name[:var_name.find("@GRAD")]
-                if op.type == "c_allreduce_sum" or op.type == "c_identity" or op.type == "scale":
+                if op.type in [
+                        "c_allreduce_sum", "c_identity", "scale", "cast"
+                ]:
                     forward_var_name = op.input_arg_names[0]
                 elif op.type == "matmul_v2_grad":
                     forward_var_name = None
@@ -1038,6 +1048,7 @@ def set_grad_var_shape(program, dist_context):
 
                 forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
                     forward_var_name)
+
                 assert forward_input_dist_attr is not None, f"{forward_var_name}"
                 forward_var = vars[forward_var_name]
                 forward_var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
@@ -1067,6 +1078,48 @@ def is_forward_op(op):
 def is_backward_op(op):
     return OP_ROLE_KEY in op.attr_names and \
             int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Backward)
+
+
+def is_loss_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+        int(op.all_attrs()[OP_ROLE_KEY]) == (int(core.op_proto_and_checker_maker.OpRole.Forward) | int(core.op_proto_and_checker_maker.OpRole.Loss))
+
+
+def get_loss_op(block):
+    loss_ops = []
+    for op in block.ops:
+        if is_loss_op(op):
+            assert len(op.desc.output_arg_names(
+            )) == 1, "loss op should only output loss var"
+            loss_ops.append(op)
+
+    assert len(loss_ops) == 1, "num of loss op is not equal to one"
+    return loss_ops[0]
+
+
+def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
+    tensor_dist_attr = TensorDistributedAttribute()
+    tensor_dist_attr.dims_mapping = dims_mapping
+    # TODO get global mesh group
+    tensor_dist_attr.process_mesh = process_mesh
+    dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
+    return tensor_dist_attr
+
+
+def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(new_op, process_mesh,
+                                                           ref_mapping, ctx):
+    assert process_mesh is not None
+    assert ref_mapping is not None
+
+    new_op_dist_attr = OperatorDistributedAttribute()
+
+    for input_varname in new_op.desc.input_arg_names():
+        new_op_dist_attr.set_input_dims_mapping(input_varname, ref_mapping)
+    for output_varname in new_op.desc.output_arg_names():
+        new_op_dist_attr.set_output_dims_mapping(output_varname, ref_mapping)
+
+    new_op_dist_attr.process_mesh = process_mesh
+    ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
 def update_op_dims_mapping_by_default_dist_impl(dist_op):
@@ -1219,6 +1272,7 @@ def get_all_distributed_main_program(serial_program_info, dist_context,
         used_dist_context._dist_op_context = DistributedOperatorContext()
         _, _, dist_startup_program, dist_main_program, _ = copied_parallelizer._get_dist_program(
             rank_id, used_dist_context)
+        # print("dist_main_program: ", dist_main_program)
         all_dist_main_program.append(dist_main_program)
 
     return all_dist_main_program
@@ -1348,3 +1402,19 @@ def get_standalone_cost_data(distributed_programs):
         standalone_cost_data.append(cost_data)
 
     return standalone_cost_data
+
+
+def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
+    op_id = op_desc.id()
+    op_original_id = op_desc.original_id()
+    # First, try to set the original id to the id of the op_desc
+    if op_id in dist_context._dist_ops_for_program:
+        dist_op_desc.set_original_id(op_id)
+        return
+    # Second, try to set the original id to the original_id of the op_desc
+    elif op_original_id in dist_context._dist_ops_for_program:
+        dist_op_desc.set_original_id(op_original_id)
+        return
+    # Third, print error infomation if we cannot find the original id
+    else:
+        assert False, "Cannot find the original id in the distributed context"

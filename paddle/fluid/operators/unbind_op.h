@@ -32,7 +32,7 @@ static inline framework::DDim UnbindOutsDims(const framework::DDim in_dims,
   for (int i = 0; i < in_dims.size(); i++) {
     if (i != axis) out_dims.push_back(in_dims[i]);
   }
-  return framework::make_ddim(out_dims);
+  return phi::make_ddim(out_dims);
 }
 template <typename DeviceContext, typename T>
 class UnbindOpKernel : public framework::OpKernel<T> {
@@ -43,9 +43,6 @@ class UnbindOpKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto in_dims = in->dims();
-
-    auto place = ctx.GetPlace();
-
     axis = axis < 0 ? in_dims.size() + axis : axis;
     std::vector<const framework::Tensor*> shape_refer;
     for (size_t j = 0; j < outs.size(); ++j) {

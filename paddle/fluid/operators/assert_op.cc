@@ -16,10 +16,13 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
 class OpDesc;
 class Scope;
 class Variable;
@@ -56,7 +59,7 @@ class AssertOp : public framework::OperatorBase {
                                 "Input(Condition) of AssertOp is not found."));
     const LoDTensor &cond = cond_var_ptr->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        cond.dims(), paddle::framework::make_ddim({1}),
+        cond.dims(), phi::make_ddim({1}),
         platform::errors::InvalidArgument(
             "The numel of Input(Condition) of AssertOp must be 1. But now "
             "the Condition's shape is %s.",

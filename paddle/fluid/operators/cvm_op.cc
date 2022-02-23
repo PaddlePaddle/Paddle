@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cvm_op.h"
 #include <memory>
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

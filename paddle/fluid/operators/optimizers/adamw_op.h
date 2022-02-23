@@ -142,7 +142,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
 
   inline HOSTDEVICE void operator()(size_t i) const {
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        phi::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     if (lazy_mode_ && row_idx < 0) {
       return;
     } else {
@@ -177,8 +177,8 @@ class AdamWOpKernel : public AdamOpKernel<DeviceContext, T> {
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      TensorToVector(*skip_update_tensor, ctx.device_context(),
-                     &skip_update_vec);
+      paddle::framework::TensorToVector(*skip_update_tensor,
+                                        ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     VLOG(3) << "Skip update" << skip_update;

@@ -17,11 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
-namespace framework {
-class LoDTensor;
-class Tensor;
-}  // namespace framework
+namespace framework {}  // namespace framework
 namespace platform {
 class MKLDNNDeviceContext;
 }  // namespace platform
@@ -205,7 +206,7 @@ class FCPrimitiveFactory {
   }
 
   std::vector<int64_t> Get2DWeightDimsForDNNL(const Tensor* weights) {
-    auto dims = framework::vectorize(weights->dims());
+    auto dims = phi::vectorize(weights->dims());
     std::swap(dims[0], dims[1]);  // swap input dim with output dim
     return dims;
   }
@@ -215,7 +216,7 @@ class FCPrimitiveFactory {
   dnnl::inner_product_forward::primitive_desc Create3DFcPrimDescriptor(
       const LoDTensor* input, const Tensor* weights, const Tensor* bias,
       LoDTensor* output, const ExecutionContext& ctx) {
-    auto input_dims = framework::vectorize(input->dims());
+    auto input_dims = phi::vectorize(input->dims());
     std::vector<int64_t> new_input_dims = {input_dims[0] * input_dims[1],
                                            input_dims[2], 1};
     auto src_desc = CreateMemDescriptor<T_in>(new_input_dims, input->format());
@@ -234,7 +235,7 @@ class FCPrimitiveFactory {
   }
 
   std::vector<int64_t> Get3DWeightDimsForDNNL(const Tensor* weights) {
-    auto paddle_w_dims = framework::vectorize(weights->dims());
+    auto paddle_w_dims = phi::vectorize(weights->dims());
     return {paddle_w_dims[1], paddle_w_dims[0], 1};
   }
 
@@ -260,8 +261,8 @@ class FCPrimitiveFactory {
 
   std::vector<int64_t> Get4DWeightDimsForDNNL(const LoDTensor* input,
                                               const Tensor* weights) {
-    auto old_w_dims = framework::vectorize(weights->dims());
-    auto old_in_dims = framework::vectorize(input->dims());
+    auto old_w_dims = phi::vectorize(weights->dims());
+    auto old_in_dims = phi::vectorize(input->dims());
     auto dims = {old_w_dims[1], old_in_dims[1], old_in_dims[2], old_in_dims[3]};
     return dims;
   }
@@ -283,8 +284,9 @@ class FCPrimitiveFactory {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
       reorder.execute(astream, src_mem, *dst_mem);
       astream.wait();
     }
@@ -311,8 +313,9 @@ class FCPrimitiveFactory {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
       reorder.execute(astream,
                       {{DNNL_ARG_FROM, *src_mem}, {DNNL_ARG_TO, *dst_mem}});
       astream.wait();
@@ -331,7 +334,7 @@ class FCPrimitiveFactory {
   template <typename T>
   static dnnl::memory::desc CreateMemDescriptor(const Tensor* tensor,
                                                 MKLDNNMemoryFormat format) {
-    auto dims = framework::vectorize(tensor->dims());
+    auto dims = phi::vectorize(tensor->dims());
     return CreateMemDescriptor<T>(dims, format);
   }
 
@@ -359,7 +362,7 @@ class FCPrimitiveFactory {
 
   // Create weights memory and transform to default MKL-DNN format
   std::shared_ptr<dnnl::memory> CreateWeightsMemory(const Tensor* weights) {
-    auto dims = framework::vectorize(weights->dims());
+    auto dims = phi::vectorize(weights->dims());
     std::swap(dims[0], dims[1]);  // Correct output dimensions
     auto src_desc = CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::io);
     auto dst_desc = CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oi);
@@ -495,6 +498,11 @@ class FCPrimitiveFactory {
       constexpr float beta = 0.0f;
       post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_logistic,
                                      alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "mish") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_mish,
+                                     alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "hard_swish") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
@@ -543,7 +551,7 @@ class FCPrimitiveFactory {
     std::vector<int64_t> output_dims;
     FCOutputSize(input->dims(), w->dims(), output_dims, in_num_col_dims,
                  padding_weights);
-    output->Resize(framework::make_ddim(output_dims));
+    output->Resize(phi::make_ddim(output_dims));
     output->set_lod(input->lod());
   }
 
@@ -584,7 +592,7 @@ static void ExecuteFc(const ExecutionContext& ctx, const LoDTensor* input,
   auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   std::string prim_key = platform::CreateKey(
       dev_ctx, input->format(), input->dims()[0],
-      framework::vectorize<int>(w->dims()), ctx.OutputName("Out"));
+      phi::vectorize<int>(w->dims()), ctx.OutputName("Out"));
   prim_key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, prim_key);
 
   constexpr bool is_int8 =

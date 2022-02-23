@@ -21,17 +21,30 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#endif
+
+#if !defined(_WIN32)
+#define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
+#else
+// there is no equivalent intrinsics in msvc.
+#define UNLIKELY(condition) (condition)
+#endif
 
 namespace paddle {
 namespace distribution {
 
 using Tensor = framework::Tensor;
 
+/********************* Transformation Function **********************/
 template <typename T>
 struct exponential_transform {
   explicit exponential_transform(T lambda) : lambda_(lambda) {}
@@ -52,7 +65,39 @@ struct exponential_transform {
   T lambda_;
 };
 
+template <typename T>
+struct uniform_transform {
+  explicit uniform_transform(T min, T max) : range_(max - min), min_(min) {}
+
+  HOSTDEVICE inline T operator()(T val) const {
+    if (UNLIKELY(val == static_cast<T>(1.0))) {
+      return min_;
+    } else {
+      return val * range_ + min_;
+    }
+  }
+
+ private:
+  T range_;
+  T min_;
+};
+
+template <typename T>
+struct normal_transform {
+  explicit normal_transform(T mean, T std) : mean_(mean), std_(std) {}
+
+  HOSTDEVICE inline T operator()(T val) const { return val * std_ + mean_; }
+
+ private:
+  T mean_;
+  T std_;
+};
+
 #if defined(__NVCC__) || defined(__HIPCC__)
+
+namespace kps = phi::kps;
+
+/*********************** Distribution Function *************************/
 template <typename T>
 struct uniform_distribution;
 
@@ -132,29 +177,31 @@ struct normal_distribution<double> {
 };
 #endif
 
+/******** Launch GPU function of distribution and transformation *********/
 template <typename T, typename DistOp, typename TransformOp>
 __global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
                                    DistOp dist, TransformOp trans,
                                    T *out_data) {
-  size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
-  int32_t returns_count = DistOp::kReturnsCount;
+  size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
+  static constexpr int kCount = DistOp::kReturnsCount;
 #if defined(__NVCC__)
   curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, offset, &state);
+  curand_init(seed, idx + THREAD_ID_X, offset, &state);
+  using SType = curandStatePhilox4_32_10_t;
 #else
   hiprandStatePhilox4_32_10_t state;
-  hiprand_init(seed, idx, offset, &state);
+  hiprand_init(seed, idx + THREAD_ID_X, offset, &state);
+  using SType = hiprandStatePhilox4_32_10_t;
 #endif
-  size_t total_thread = gridDim.x * blockDim.x;
-  for (size_t i = idx; i < size; i += total_thread * returns_count) {
-    auto random_tuple = dist(&state);
-    for (size_t j = 0; j < returns_count; j++) {
-      size_t index = i + j * total_thread;
-      if (index < size) {
-        auto random = static_cast<T>((&random_tuple.x)[j]);
-        out_data[index] = trans(random);
-      }
-    }
+  size_t total_thread = GRID_NUM_X * BLOCK_NUM_X;
+  T args[kCount];
+  T result[kCount];
+  for (size_t i = idx; i < size; i += total_thread * kCount) {
+    kps::ElementwiseRandom<SType, T, kCount, 1, DistOp>(&args[0], dist, &state);
+    kps::ElementwiseUnary<T, T, kCount, 1, 1, TransformOp>(&result[0], &args[0],
+                                                           trans);
+    kps::WriteData<T, T, kCount, 1, 1, true>(out_data + i, &result[0], size - i,
+                                             1, total_thread, 1);
   }
 }
 
@@ -164,8 +211,7 @@ void distribution_and_transform(const platform::CUDADeviceContext &dev_ctx,
   T *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
   auto size = out->numel();
 
-  int64_t device_id =
-      BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()).GetDeviceId();
+  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
 
   size_t block_size = 256;

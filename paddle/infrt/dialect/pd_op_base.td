@@ -6,6 +6,7 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "paddle/infrt/dialect/infrt/infrt_ops_base.td"
 
 def PD_Dialect : Dialect {
   let name = "pd";
@@ -16,7 +17,7 @@ def PD_Dialect : Dialect {
     This dialect contains the PaddlePaddle operators.
   }];
 
-  let cppNamespace = "::mlir::pd";
+  let cppNamespace = "mlir::pd";
 }
 
 class PD_Op<string mnemonic, list<OpTrait> traits = []> :
@@ -71,7 +72,11 @@ def PD_ElementType : Type<Or<[PD_Float.predicate,
                               PD_Int.predicate]>,
                               "pd.dtype">;
 
-def PD_Tensor : TensorOf<[PD_ElementType]>;
+// def PD_Tensor : TensorOf<[PD_ElementType]>;
+def PD_Tensor1 : TensorOf<[PD_ElementType]>;
 
+def PD_Tensor :  AnyTypeOf<[PD_Tensor1, LoDTensor],"pd.ttype">;
+
+def PD_Tensor_Array : VectorOf<[PD_Tensor]>;
 
 #endif // PD_OP_BASE

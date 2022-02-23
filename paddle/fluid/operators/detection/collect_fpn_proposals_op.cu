@@ -85,7 +85,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
     int index = 0;
     int lod_size;
-    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
+    auto place = dev_ctx.GetPlace();
 
     auto multi_rois_num = ctx.MultiInput<Tensor>("MultiLevelRoIsNum");
     for (size_t i = 0; i < roi_ins.size(); ++i) {
@@ -93,7 +93,8 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       auto score_in = score_ins[i];
       if (multi_rois_num.size() > 0) {
         framework::Tensor temp;
-        TensorCopySync(*multi_rois_num[i], platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*multi_rois_num[i],
+                                          platform::CPUPlace(), &temp);
         const int* length_in = temp.data<int>();
         lod_size = multi_rois_num[i]->numel();
         for (size_t n = 0; n < lod_size; ++n) {
@@ -194,7 +195,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     Tensor length_lod;
     int* length_lod_data =
         length_lod.mutable_data<int>({lod_size}, dev_ctx.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, int> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, int> set_zero;
     set_zero(dev_ctx, &length_lod, static_cast<int>(0));
 
     int blocks = NumBlocks(real_post_num);

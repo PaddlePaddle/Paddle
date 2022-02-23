@@ -22,8 +22,8 @@
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace inference {
@@ -192,11 +192,8 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
   if (pos == 0) {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-      return (
-#if IS_TRT_VERSION_LT(8000)
-                 in.type == nvinfer1::DataType::kFLOAT ||
-#endif
-                 in.type == nvinfer1::DataType::kHALF) &&
+      return (in.type == nvinfer1::DataType::kFLOAT ||
+              in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
 #else
       return (in.type == nvinfer1::DataType::kFLOAT) &&

@@ -24,6 +24,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
+#if defined(PADDLE_WITH_CNCL)
+#include "paddle/fluid/platform/device/mlu/cncl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -61,8 +65,8 @@ template <typename T>
 class CSyncCommStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto place = ctx.GetPlace();
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    auto place = ctx.GetPlace();
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
@@ -70,13 +74,26 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     platform::GpuStreamSync(stream);
 
 #elif defined(PADDLE_WITH_ASCEND_CL)
-    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+    auto place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
                       platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on npu place only for now."));
+                          "Sync comm stream op can run on npu place only for "
+                          "now, but we got %s, please check the environment.",
+                          place.DebugString()));
     int ring_id = ctx.Attr<int>("ring_id");
     auto stream =
         platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
     platform::NPUStreamSync(stream);
+
+#elif defined(PADDLE_WITH_CNCL)
+    auto place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_mlu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on mlu place only for now."));
+    int ring_id = ctx.Attr<int>("ring_id");
+    auto stream =
+        platform::CNCLCommContext::Instance().Get(ring_id, place)->stream();
+    platform::MLUStreamSync(stream);
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -96,3 +113,5 @@ REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream, ops::CSyncCommStreamOp,
 REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
 
 REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+
+REGISTER_OP_MLU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);

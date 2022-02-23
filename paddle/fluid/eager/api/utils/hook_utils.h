@@ -16,17 +16,18 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 namespace egr {
 namespace egr_utils_api {
 
 void RegisterGradientHookForTensor(
-    const egr::EagerTensor& tensor,
-    std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook);
+    const paddle::experimental::Tensor& tensor,
+    std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook);
 
-void RegisterReduceHookForTensor(const egr::EagerTensor& tensor,
+void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                  const std::function<void(void)>& hook);
-void RetainGradForTensor(const egr::EagerTensor& tensor);
+void RetainGradForTensor(const paddle::experimental::Tensor& tensor);
 
 }  // namespace egr_utils_api
 }  // namespace egr

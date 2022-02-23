@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/trunc_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -80,10 +81,3 @@ REGISTER_OPERATOR(trunc, ops::TruncOp, ops::TruncOpMaker,
                   ops::TruncGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(trunc_grad, ops::TruncGradOp);
-
-REGISTER_OP_CPU_KERNEL(trunc, ops::TruncKernel<float>, ops::TruncKernel<double>,
-                       ops::TruncKernel<int>, ops::TruncKernel<int64_t>);
-
-REGISTER_OP_CPU_KERNEL(trunc_grad, ops::TruncGradKernel<float>,
-                       ops::TruncGradKernel<double>, ops::TruncGradKernel<int>,
-                       ops::TruncGradKernel<int64_t>);

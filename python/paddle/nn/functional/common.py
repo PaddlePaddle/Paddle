@@ -14,13 +14,11 @@
 
 import warnings
 import paddle
-from ...fluid.framework import in_dygraph_mode, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from ...tensor import concat
 from ...tensor.creation import zeros
 from paddle.static import Variable
-from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
 from ...fluid.layers import unfold  # noqa: F401
@@ -30,13 +28,17 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.framework import in_dygraph_mode, _varbase_creator
+from ...fluid.framework import _varbase_creator
 
-from ...fluid.framework import in_dygraph_mode
-from ...fluid import core, dygraph_utils
-from ...fluid import core, layers
+from ...fluid import dygraph_utils
+from ...fluid import layers
 from ...fluid.data_feeder import check_variable_and_dtype
+
 from paddle import _C_ops
+from paddle.framework import in_dynamic_mode
+from paddle.tensor.creation import full
+from paddle.framework import core
+from paddle.static import default_main_program
 
 __all__ = []
 
@@ -221,7 +223,8 @@ def interpolate(x,
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', 'area' or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
+        ValueError: 'bilinear' and 'bicubic' only support 4-D tensor.
+        ValueError: 'nearest' only support 4-D or 5-D tensor.
         ValueError: 'trilinear' only support 5-D tensor.
         ValueError: One of size and scale_factor must not be None.
         ValueError: size length should be 1 for input 3-D tensor.
@@ -276,9 +279,11 @@ def interpolate(x,
     if resample in ['LINEAR'] and len(x.shape) != 3:
         raise ValueError("'linear' only support 3-D tensor.")
 
-    if resample in ['BILINEAR', 'NEAREST', 'BICUBIC'] and len(x.shape) != 4:
-        raise ValueError(
-            "'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.")
+    if resample in ['NEAREST'] and len(x.shape) != 4 and len(x.shape) != 5:
+        raise ValueError("'NEAREST' only support 4-D  or 5-D tensor.")
+
+    if resample in ['BILINEAR', 'BICUBIC'] and len(x.shape) != 4:
+        raise ValueError("'bilinear' and 'bicubic' only support 4-D tensor.")
     if resample == 'TRILINEAR' and len(x.shape) != 5:
         raise ValueError("'trilinear'only support 5-D tensor.")
 
@@ -350,11 +355,11 @@ def interpolate(x,
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-        if isinstance(out_shape, Variable) and not in_dygraph_mode():
+        if isinstance(out_shape, Variable) and not in_dynamic_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
                     out_shape = list(out_shape.numpy())
                 for i, dim in enumerate(out_shape):
@@ -425,7 +430,7 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[2]
 
     else:
-        if in_dygraph_mode() and isinstance(scale, Variable):
+        if in_dynamic_mode() and isinstance(scale, Variable):
             scale = list(scale.numpy())
         if isinstance(scale, Variable):
             scale.stop_gradient = True
@@ -451,7 +456,7 @@ def interpolate(x,
                 "Attr(scale)'s type should be float, int, list, tuple, or Tensor."
             )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attr_list = []
         for k, v in attrs.items():
             attr_list.append(k)
@@ -716,7 +721,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
 
     check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
@@ -888,7 +893,7 @@ def dropout(x,
         seed = None
         mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
             out, mask = _C_ops.dropout(
@@ -927,7 +932,7 @@ def dropout(x,
             attrs=attrs)
         return out
     else:  #sometimes called dropout_nd #TODO: optimize with c++
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
         dtype = x.dtype
         keep_prob = 1 - p
@@ -940,7 +945,7 @@ def dropout(x,
 
             #get mask shape
             input_shape = x.shape
-            if not in_dygraph_mode():
+            if not in_dynamic_mode():
                 input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
@@ -951,7 +956,7 @@ def dropout(x,
                     "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
-            if not in_dygraph_mode():
+            if not in_dynamic_mode():
                 for i in drop_axes:
                     mask_shape[i] = input_shape_tensor[i]
             else:
@@ -961,7 +966,7 @@ def dropout(x,
             #get mask
             random_tensor = paddle.uniform(
                 mask_shape, dtype='float32', min=0., max=1.0)
-            p = layers.fill_constant(shape=[1], dtype='float32', value=p)
+            p = full(shape=[1], fill_value=p, dtype='float32')
             keep_mask = paddle.greater_equal(random_tensor, p)
 
             scale_input = paddle.cast(scale_input, dtype)
@@ -1119,7 +1124,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     if p < 0 or p > 1:
         raise ValueError("p argument should between 0 and 1")
 
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'alpha_dropout')
 
@@ -1139,16 +1144,15 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         #get mask
         random_tensor = paddle.uniform(
             input_shape, dtype='float32', min=0., max=1.0)
-        p = layers.fill_constant(shape=[1], dtype='float32', value=p)
+        p = full(shape=[1], fill_value=p, dtype='float32')
         keep_mask = paddle.greater_equal(random_tensor, p)
         keep_mask = paddle.cast(keep_mask, dtype)
         drop_mask = paddle.subtract(
-            layers.fill_constant(
-                shape=input_shape, dtype=dtype, value=1.),
-            keep_mask)
+            full(
+                shape=input_shape, fill_value=1., dtype=dtype), keep_mask)
 
         #apply mask
-        b = layers.fill_constant(shape=[1], dtype=dtype, value=b)
+        b = full(shape=[1], fill_value=b, dtype=dtype)
         y = paddle.add(paddle.multiply(x, keep_mask),
                        paddle.scale(
                            drop_mask, scale=alpha_p))
@@ -1344,7 +1348,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(pad, Variable):
             pad = pad.numpy()
         out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
@@ -1516,7 +1520,7 @@ def linear(x, weight, bias=None, name=None):
           #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
                                     False)
 
@@ -1611,7 +1615,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
@@ -1762,7 +1766,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed',
@@ -1794,3 +1798,130 @@ def class_center_sample(label, num_classes, num_samples, group=None):
             'seed': seed if seed is not None else 0
         })
     return remapped_label, sampled_class_center
+
+
+def fold(x,
+         output_sizes,
+         kernel_sizes,
+         strides=1,
+         paddings=0,
+         dilations=1,
+         name=None):
+    r"""
+    
+    This Op is used to combines an array of sliding local blocks into a large containing
+    tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
+    combined value in the resulting large tensor by summing all values from all containing blocks. 
+
+
+    For each input :math:`x` with shape [N, C_in , L], the output shape [N, C_out, H_out, W_out]
+    can be calculated as following.
+
+    .. math::
+
+        H_out &= output_size[0]
+        W_out &= output_size[1]
+        C_out &= C_in / kernel\_sizes[0] / kernel\_sizes[1]
+
+    Parameters:
+        x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
+                                  data type can be float32 or float64
+        output_sizes(list):       The size of output size, should be [output_size_h, output_size_w]
+                                  or an interger o treated as [o, o].
+        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+                                  or an integer k treated as [k, k].
+        strides(int|list):        The strides, should be [stride_h, stride_w]
+                                  or an integer stride treated as [sride, stride].
+                                  For default, strides will be [1, 1].
+        paddings(int|list):       The paddings of each dimension, should be
+                                  [padding_top, padding_left, padding_bottom, padding_right]
+                                  or [padding_h, padding_w] or an integer padding.
+                                  If [padding_h, padding_w] was given, it will expanded to
+                                  [padding_h, padding_w, padding_h, padding_w]. If an integer
+                                  padding was given, [padding, padding, padding, padding] will
+                                  be used. For default, paddings will be [0, 0, 0, 0]
+        dilations(int|list):      the dilations of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
+                                  [dilation, dilation]. For default, it will be [1, 1].
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
+
+
+    Returns:
+        The tensor formed by combining a group of sliding local blocks
+        The output shape is [N, Cout, H, W] as decriabled above.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.randn([2,12,9])
+            y = F.fold(x, output_sizes=(4, 4), kernel_sizes=2)
+            # y.shape = [2,3,4,4]
+
+    """
+
+    helper = LayerHelper("fold", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
+
+    assert len(x.shape) == 3, \
+            "input should be the format of [N, C, L]"
+
+    if isinstance(output_sizes, int):
+        output_sizes = [output_sizes, output_sizes]
+    else:
+        assert isinstance(output_sizes, list) and (len(output_sizes) == 2), \
+            "output_sizes should either be an integer or a list of two integers"
+
+    if isinstance(kernel_sizes, int):
+        kernel_sizes = [kernel_sizes, kernel_sizes]
+    else:
+        assert isinstance(kernel_sizes, list) and (len(kernel_sizes) == 2), \
+            "kernel_sizes should either be an integer or a list of two integers"
+
+    if isinstance(strides, int):
+        strides = [strides, strides]
+    else:
+        assert isinstance(strides, list) and (len(strides) == 2), \
+            "strides should either be an integer or a list of two integers"
+
+    if isinstance(dilations, int):
+        dilations = [dilations, dilations]
+    else:
+        assert isinstance(dilations, list) and (len(dilations) == 2), \
+            "dilations should either be an integer or a list of two integers"
+
+    if isinstance(paddings, int):
+        paddings = [paddings] * 4
+    elif isinstance(paddings, list):
+        if len(paddings) == 2:
+            paddings = paddings * 2
+        elif len(paddings) == 4:
+            pass
+        else:
+            raise ValueError(
+                "paddings should either be an integer or a list of 2 or 4 integers"
+            )
+    else:
+        raise ValueError(
+            "Unexpected type of paddings, it should be either an integer or a list"
+            "of 2 or 4 integers")
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="fold",
+        inputs={"X": x},
+        outputs={"Y": out},
+        attrs={
+            "output_sizes": output_sizes,
+            "kernel_sizes": kernel_sizes,
+            "strides": strides,
+            "paddings": paddings,
+            "dilations": dilations
+        })
+    return out

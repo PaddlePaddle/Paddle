@@ -1,8 +1,8 @@
-set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
+set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_wrapper metrics prune
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
-  cost_model cuda_graph_with_memory_pool fleet_executor global_utils)
+  cost_model cuda_graph_with_memory_pool fleet_executor global_utils pten_utils tcp_store)
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -63,6 +63,7 @@ set(PYBIND_SRCS
   ps_gpu_wrapper_py.cc
   gloo_wrapper_py.cc
   box_helper_py.cc
+  metrics_py.cc
   data_set_py.cc
   imperative.cc
   ir.cc
@@ -72,6 +73,7 @@ set(PYBIND_SRCS
   compatible.cc
   io.cc
   generator_py.cc
+  communication.cc
   cuda_streams_py.cc)
 
 if(WITH_ASCEND)
@@ -136,6 +138,11 @@ if(WITH_PYTHON)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   add_executable(eager_op_function_generator eager_op_function_generator.cc)
   target_link_libraries(eager_op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
+  add_executable(kernel_signature_generator kernel_signature_generator.cc)
+  target_link_libraries(kernel_signature_generator ${OP_FUNCTION_GENERETOR_DEPS})
+  if(WIN32)
+    target_link_libraries(kernel_signature_generator shlwapi.lib)
+  endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(op_function_generator ${os_dependency_modules})
@@ -143,6 +150,7 @@ if(WITH_PYTHON)
   if(WITH_ROCM)
     target_link_libraries(op_function_generator ${ROCM_HIPRTC_LIB})
     target_link_libraries(eager_op_function_generator ${ROCM_HIPRTC_LIB})
+    target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
   set(impl_file ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h)
@@ -151,7 +159,7 @@ if(WITH_PYTHON)
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
   set(OP_IMPL_DEPS op_function_generator)
-  set(EAGER_OP_IMPL_DEPS eager_op_function_generator)
+  set(EAGER_OP_IMPL_DEPS eager_op_function_generator eager_final_state_python_c_codegen)
 
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
@@ -275,7 +283,7 @@ if(WITH_PYTHON)
   if(NOT ON_INFER)
     cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common dygraph_function dygraph_node math_cpu linalg_cpu utils_cpu manipulation_cpu accumulation_node global_utils utils python)
+    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)
@@ -283,7 +291,7 @@ if(WITH_PYTHON)
 
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} ${GLOB_DEV_LIB})
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(paddle_pybind rt)
@@ -291,6 +299,10 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(paddle_pybind ${ROCM_HIPRTC_LIB})
+  endif()
+
+  if(WITH_IPU)
+    target_link_libraries(paddle_pybind paddle_ipu)
   endif()
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)

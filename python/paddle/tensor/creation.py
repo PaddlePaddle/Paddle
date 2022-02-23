@@ -18,21 +18,19 @@ from paddle.common_ops_import import fill_constant
 from ..fluid.layers import utils
 
 from ..fluid.layers import tensor
-from ..fluid.framework import Variable
-from ..fluid.framework import unique_name
-from ..fluid.framework import _current_expected_place, _get_paddle_place
-from ..fluid.framework import dygraph_only
-from ..fluid.initializer import Constant
-from ..fluid.layers import core
+from ..static import Variable, device_guard
+from ..framework import _current_expected_place, _get_paddle_place
+from ..framework import dygraph_only
+from ..framework import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
+from ..framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder
 from paddle.tensor.attribute import _complex_to_real_dtype, _real_to_complex_dtype
 # TODO: define functions to get create a tensor  
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
-from ..fluid.framework import _in_eager_mode
+from ..framework import _in_eager_mode
 
 __all__ = []
 
@@ -106,9 +104,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if place is None:
         place = _current_expected_place()
     elif not isinstance(place, (core.Place, core.CPUPlace, core.CUDAPinnedPlace,
-                                core.CUDAPlace, core.NPUPlace, core.XPUPlace)):
+                                core.CUDAPlace, core.NPUPlace, core.XPUPlace,
+                                core.CustomPlace)):
         raise ValueError(
-            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace"
+            "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.CustomPlace"
         )
 
     #Todo(zhouwei): Support allocate tensor on any other specified card
@@ -168,8 +167,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
 
     # TOOD(jiabin): Support kwargs in eager tensor constructor
     if _in_eager_mode() and isinstance(data, np.ndarray):
-        return core.eager.EagerTensor(data, place, False, False, None,
-                                      stop_gradient)
+        return core.eager.Tensor(data, place, False, False, None, stop_gradient)
     else:
         return paddle.Tensor(
             value=data,
@@ -214,16 +212,18 @@ def full_like(x, fill_value, dtype=None, name=None):
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.fill_any_like(x, 'value', fill_value, 'dtype', dtype)
 
     helper = LayerHelper("full_like", **locals())
     check_variable_and_dtype(
-        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x',
+        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
         'full_like')
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full_like/zeros_like/ones_like')
+    check_dtype(
+        dtype, 'dtype',
+        ['bool', 'float16', 'float32', 'float64', 'int16', 'int32', 'int64'],
+        'full_like/zeros_like/ones_like')
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
@@ -646,7 +646,7 @@ def tril(x, diagonal=0, name=None):
             #        [ 9, 10,  0,  0]])
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", True)
 
@@ -713,7 +713,7 @@ def triu(x, diagonal=0, name=None):
             #        [ 0, 10, 11, 12]])
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         op = getattr(_C_ops, 'tril_triu')
         return op(x, 'diagonal', diagonal, "lower", False)
 
@@ -755,7 +755,7 @@ def meshgrid(*args, **kwargs):
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         num = len(args)
         out = _C_ops.meshgrid(list(args), num)
         return out
@@ -860,7 +860,7 @@ def diagflat(x, offset=0, name=None):
           #  [0 0 0 4 0]]
     """
     padding_value = 0
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         if len(x.shape) == 1:
             return _C_ops.diag_v2(x, "offset", offset, "padding_value",
                                   padding_value)
@@ -974,7 +974,7 @@ def diag(x, offset=0, padding_value=0, name=None):
           print(y.numpy())
           # [4]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.diag_v2(x, "offset", offset, "padding_value",
                               padding_value)
 
@@ -1055,7 +1055,7 @@ def empty(shape, dtype=None, name=None):
 
     dtype = convert_dtype(dtype)
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         shape = utils.convert_shape_to_list(shape)
         out = _C_ops.empty('shape', shape, 'dtype',
                            convert_np_dtype_to_dtype_(dtype))
@@ -1123,7 +1123,7 @@ def empty_like(x, dtype=None, name=None):
         dtype = x.dtype
     dtype = convert_dtype(dtype)
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         out = _C_ops.empty('shape', x.shape, 'dtype',
                            convert_np_dtype_to_dtype_(dtype))
         out.stop_gradient = True
@@ -1307,7 +1307,7 @@ def complex(real, imag, name=None):
             # [[0.+0.j 0.+1.j 0.+2.j]
             #  [1.+0.j 1.+1.j 1.+2.j]]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return paddle._C_ops.complex(real, imag)
 
     check_variable_and_dtype(real, 'real', ['float32', 'float64'], 'complex')

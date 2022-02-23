@@ -36,18 +36,23 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
     if (input_data_type == framework::proto::VarType::FP64) {
       bn_param_type = framework::proto::VarType::FP64;
     }
-    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Scale")->type(),
+    PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
+                                         ctx.Input<Tensor>("Scale")->dtype()),
                       platform::errors::InvalidArgument(
                           "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Bias")->type(),
+    PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
+                                         ctx.Input<Tensor>("Bias")->dtype()),
                       platform::errors::InvalidArgument(
                           "Bias input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Mean")->type(),
+    PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
+                                         ctx.Input<Tensor>("Mean")->dtype()),
                       platform::errors::InvalidArgument(
                           "Mean input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Variance")->type(),
-                      platform::errors::InvalidArgument(
-                          "Variance input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
+        platform::errors::InvalidArgument(
+            "Variance input should be of float type"));
 
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
@@ -100,10 +105,10 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
     const DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));
 
-    const int C =
-        ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
-             ? y_dims[1]
-             : y_dims[y_dims.size() - 1]);
+    const int C = ((ctx->IsRunMKLDNNKernel() == true) ||
+                           (data_layout == DataLayout::kNCHW)
+                       ? y_dims[1]
+                       : y_dims[y_dims.size() - 1]);
 
     ctx->SetOutputDim(framework::GradVarName("X"), y_dims);
     // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
@@ -117,7 +122,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto* var = ctx.InputVar(framework::GradVarName("Y"));
-    auto input_data_type = ctx.Input<Tensor>("Y")->type();
+    auto input_data_type =
+        framework::TransToProtoVarType(ctx.Input<Tensor>("Y")->dtype());
     if (var == nullptr) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "can't find gradient variable of Y"));

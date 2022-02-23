@@ -697,8 +697,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                                              pred_config_deserialize, feed_data)
                 except Exception as e:
                     self.fail_log(
-                        str(prog_config) + ' vs ' + self.inference_config_str(
-                            pred_config) +
+                        self.inference_config_str(pred_config) +
                         '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
                     if not ignore_flag:
                         status = False

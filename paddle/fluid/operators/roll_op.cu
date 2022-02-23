@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/roll_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/core/utils/array.h"
 
 namespace paddle {
 namespace operators {
@@ -28,9 +28,9 @@ using LoDTensor = framework::LoDTensor;
 
 template <typename T, size_t Rank>
 __global__ void RollCudaKernel(const T* input, T* output, int64_t N,
-                               paddle::framework::Array<int64_t, Rank> shifts,
-                               paddle::framework::Array<int64_t, Rank> strides,
-                               paddle::framework::Array<int64_t, Rank> sizes) {
+                               phi::Array<int64_t, Rank> shifts,
+                               phi::Array<int64_t, Rank> strides,
+                               phi::Array<int64_t, Rank> sizes) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= N) {
     return;
@@ -79,7 +79,7 @@ class RollKernel<platform::CUDADeviceContext, T>
 
     size_t nums = shifts.size();
     auto input_dim = in->dims();
-    auto stride_dim = framework::stride(input_dim);
+    auto stride_dim = phi::stride(input_dim);
 
     std::vector<int64_t> strides(nums), sizes(nums);
     if (dims.size() == 0) {
@@ -101,9 +101,9 @@ class RollKernel<platform::CUDADeviceContext, T>
 
 #define CALL_ROLL_CUDA_KERNEL(N)                                               \
   case N: {                                                                    \
-    paddle::framework::Array<int64_t, N> _strides;                             \
-    paddle::framework::Array<int64_t, N> _shifts;                              \
-    paddle::framework::Array<int64_t, N> _sizes;                               \
+    phi::Array<int64_t, N> _strides;                                           \
+    phi::Array<int64_t, N> _shifts;                                            \
+    phi::Array<int64_t, N> _sizes;                                             \
     for (size_t idx = 0; idx < N; ++idx) {                                     \
       _strides[idx] = strides[idx];                                            \
       _shifts[idx] = shifts[idx];                                              \
@@ -163,7 +163,7 @@ class RollGradKernel<platform::CUDADeviceContext, T>
         context.template device_context<platform::CUDADeviceContext>().stream();
     size_t nums = shifts.size();
     auto input_dim = in->dims();
-    auto stride_dim = framework::stride(input_dim);
+    auto stride_dim = phi::stride(input_dim);
 
     std::vector<int64_t> strides(nums), sizes(nums);
     if (dims.size() == 0) {

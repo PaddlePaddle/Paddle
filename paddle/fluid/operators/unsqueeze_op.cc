@@ -60,7 +60,7 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
                         platform::errors::InvalidArgument(
                             "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
+      ctx->SetOutputDim("Out", phi::make_ddim(vec_out_dims));
     } else if (ctx->HasInput("AxesTensor")) {
       auto axes_dims = ctx->GetInputDim("AxesTensor");
       PADDLE_ENFORCE_EQ(axes_dims.size(), 1,
@@ -81,7 +81,7 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
                         platform::errors::InvalidArgument(
                             "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
+      ctx->SetOutputDim("Out", phi::make_ddim(vec_out_dims));
     }
   }
 
@@ -126,14 +126,16 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
       }
     }
 
-    return framework::make_ddim(output_shape);
+    return phi::make_ddim(output_shape);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(
+            ctx.Input<framework::LoDTensor>("X")->type()),
+        ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -259,7 +261,7 @@ class Unsqueeze2Op : public UnsqueezeOp {
     for (int i = 0; i < x_dims.size(); ++i) {
       xshape_dims[i + 1] = x_dims[i];
     }
-    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
     ctx->ShareLoD("X", /*->*/ "XShape");
   }
 };
@@ -301,7 +303,7 @@ class Unsqueeze2GradOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Input(Out@GRAD) shouldn't be null."));
     auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }
@@ -360,48 +362,60 @@ REGISTER_OP_CPU_KERNEL(
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, double>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex<float>>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>);
+                         paddle::platform::complex<double>>,
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     unsqueeze_grad,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
                              paddle::platform::complex<float>>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<double>>);
+                             paddle::platform::complex<double>>,
+    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     unsqueeze2, ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, double>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex<float>>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex<double>>);
+                         paddle::platform::complex<double>>,
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     unsqueeze2_grad,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext,
                               paddle::platform::complex<float>>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
+                              paddle::platform::complex<double>>,
+    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::bfloat16>);

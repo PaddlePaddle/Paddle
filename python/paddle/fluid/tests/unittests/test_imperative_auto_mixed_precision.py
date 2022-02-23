@@ -536,6 +536,14 @@ class TestAmpDecorator(unittest.TestCase):
 
         self.assertRaises(TypeError, test_error_model)
 
+        def test_error_distributed_model():
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            model = paddle.DataParallel(model)
+            with fluid.dygraph.guard():
+                model = paddle.amp.decorate(models=model, level='O2')
+
+        self.assertRaises(RuntimeError, test_error_distributed_model)
+
         def test_error_optimizer():
             class MyOptimizer(object):
                 def __init__(self):
@@ -597,6 +605,32 @@ class TestAmpDecorator(unittest.TestCase):
             master_weight=False)
         self.assertEqual(optimizers[0]._multi_precision, False)
         self.assertEqual(optimizers[1]._multi_precision, False)
+
+    def test_skip_BatchNorm_Layer_norm(self):
+        model = paddle.nn.LayerNorm(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm1D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm2D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm3D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
 
 
 class TestPureFp16SaveLoad(unittest.TestCase):
@@ -826,7 +860,6 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
-
         self.assertTrue(np.allclose(pred.numpy(), results, atol=1.e-5))
 
 
@@ -1090,6 +1123,27 @@ class TestLayerNormFp16(unittest.TestCase):
                     out = layer_norm(x)
 
                 self.assertTrue(out.dtype == fluid.core.VarDesc.VarType.FP16)
+
+
+class TestBf16(unittest.TestCase):
+    '''
+    test amp for BF16 
+    '''
+
+    def train(self, enable_amp=True):
+        paddle.seed(100)
+        input = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+        conv = paddle.nn.Conv2D(4, 6, (3, 3))
+        with paddle.amp.auto_cast(
+                enable=enable_amp, level='O2', dtype='bfloat16'):
+            output = conv(input)
+        output = output.cast('float32')
+        return output.numpy()
+
+    def test_bf16(self):
+        out_fp32 = self.train(enable_amp=False)
+        out_bf16 = self.train(enable_amp=True)
+        self.assertTrue(np.allclose(out_fp32, out_bf16, rtol=1.e-3, atol=1.e-2))
 
 
 if __name__ == '__main__':

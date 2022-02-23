@@ -435,6 +435,7 @@ class AnalysisPredictor : public PaddlePredictor {
   bool status_is_cloned_{false};
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
+  int clone_num_{1};
 };
 
 }  // namespace paddle

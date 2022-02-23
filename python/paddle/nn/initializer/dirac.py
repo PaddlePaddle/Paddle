@@ -15,7 +15,9 @@
 from ...fluid.initializer import Initializer
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.core import VarDesc
-from ...fluid import unique_name, framework
+from ...fluid import framework
+from paddle import in_dynamic_mode
+from paddle.utils import unique_name
 
 __all__ = []
 
@@ -31,12 +33,13 @@ class Dirac(Initializer):
 
     .. math::
 
-        Assuming:  N=min(in\_channels, out\_channels)
-
         X[d, d, shape[2]//2, shape[3]//2, ...]=1,  \   d=0,1...N
+    
+    where, ``N`` is the minimum value of ``in_channels`` and ``out_channels``
 
     Args:
-        groups(int): 0-dimension of the Tensor will be divided by groups, each group has the same value.
+        groups(int, optional): 0-dimension of the Tensor will be divided by groups, 
+            each group has the same value. Default: 1.
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -220,6 +223,6 @@ class Dirac(Initializer):
                        "out_dtype": var.dtype},
                 stop_gradient=True)
 
-        if not framework.in_dygraph_mode():
+        if not in_dynamic_mode():
             var.op = op
         return op

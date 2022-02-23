@@ -44,7 +44,7 @@ class LRNMKLDNNHandler
     const float k = ctx.Attr<float>("k");
     bool is_test = ctx.Attr<bool>("is_test");
 
-    auto dims = framework::vectorize(input->dims());
+    auto dims = phi::vectorize(input->dims());
 
     auto src_md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
                                      input->format());
@@ -72,7 +72,7 @@ class LRNMKLDNNHandler
     const float beta = ctx.Attr<float>("beta");
     const float k = ctx.Attr<float>("k");
 
-    auto dims = framework::vectorize<int64_t>(in_x->dims());
+    auto dims = phi::vectorize<int64_t>(in_x->dims());
 
     auto src_md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
                                      in_x->format());

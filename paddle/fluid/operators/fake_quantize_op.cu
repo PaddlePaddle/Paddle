@@ -64,8 +64,7 @@ struct FindAbsMaxFunctor<platform::CUDADeviceContext, T> {
     grid = (grid > block) ? block : grid;
 
     framework::Tensor max;
-    T* max_data =
-        max.mutable_data<T>(framework::make_ddim({grid}), ctx.GetPlace());
+    T* max_data = max.mutable_data<T>(phi::make_ddim({grid}), ctx.GetPlace());
     FindAbsMaxKernel<T><<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(
         in, num, max_data);
     FindAbsMaxKernel<T><<<1, block, 1024 * sizeof(T), ctx.stream()>>>(
@@ -377,7 +376,7 @@ struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& last_scale,
                   const framework::Tensor& iter, const int window_size,
                   framework::Tensor* scales_arr, framework::Tensor* out_scale) {
-    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gpu_place = ctx.GetPlace();
 
     T* scale_arr = scales_arr->mutable_data<T>(gpu_place);
     T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
@@ -414,7 +413,7 @@ struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& in_state, const T* cur_scale,
                   const float rate, framework::Tensor* out_state,
                   framework::Tensor* out_accum, framework::Tensor* out_scale) {
-    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    const auto gpu_place = ctx.GetPlace();
 
     T accum;
     T state;

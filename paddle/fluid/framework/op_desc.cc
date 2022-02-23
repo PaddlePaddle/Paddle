@@ -35,6 +35,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string &name) const override;
 
+  bool HasAttr(const std::string &name) const override;
+
   bool HasInputs(const std::string &name) const override;
 
   bool HasOutputs(const std::string &name) const override;
@@ -240,6 +242,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override;
 
+  bool IsRunMKLDNNKernel() const override;
+
   std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const override {
     return GetVarTypes(Inputs(name));
@@ -287,7 +291,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     DDim res;
     try {
       auto shape = var->GetShape();
-      res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
+      res = shape.empty() ? phi::make_ddim({0UL}) : phi::make_ddim(shape);
     } catch (...) {
       VLOG(5) << "GetDim of variable " << name << " error";
       std::rethrow_exception(std::current_exception());
@@ -352,15 +356,9 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
+  // The record of original_id_ is only for auto parallel.
+  original_id_ = op_desc.original_id_;
   need_update_ = true;
-  // When creating graph from program, the creation of op node will create a new
-  // OpDesc instead of
-  // referring to the original one. To find the original OpDesc of the op node,
-  // the id have to be
-  // copied to the new OpDesc. The var node has the same situation, but the
-  // default copy constructor
-  // can copy the id automatically.
-  id_ = op_desc.id_;
 }
 
 OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
@@ -859,6 +857,10 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
   return block_.HasVarRecursive(output_names[0]);
 }
 
+bool CompileTimeInferShapeContext::HasAttr(const std::string &name) const {
+  return op_.HasAttr(name);
+}
+
 bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
   if (op_.Inputs().find(name) == op_.Inputs().end()) {
     return false;
@@ -910,7 +912,7 @@ std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
   try {
     auto shapes = var->GetShapes();
     for (const auto &s : shapes) {
-      res.push_back(s.empty() ? make_ddim({0UL}) : make_ddim(s));
+      res.push_back(s.empty() ? phi::make_ddim({0UL}) : phi::make_ddim(s));
     }
   } catch (...) {
     VLOG(5) << "GetRepeatedDim of variable " << name << " error.";
@@ -930,11 +932,13 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Variable %s is not found.", name));
   std::vector<std::vector<int64_t>> dim_vec(dims.size());
-  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize<>);
+  std::transform(dims.begin(), dims.end(), dim_vec.begin(), phi::vectorize<>);
   var->SetShapes(dim_vec);
 }
 
 bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
+
+bool CompileTimeInferShapeContext::IsRunMKLDNNKernel() const { return false; }
 
 proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {

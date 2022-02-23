@@ -45,7 +45,6 @@ void TransformData(const OpKernelType &expected_kernel_type,
   Tensor out;
   const DataLayout lin = kernel_type_for_var.data_layout_;
   const DataLayout lout = expected_kernel_type.data_layout_;
-
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -64,9 +63,13 @@ void TransformData(const OpKernelType &expected_kernel_type,
         out.ShareDataWith(input_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
-        platform::MatchShapeToLayout(&out, lin, lout);
-        paddle::platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-            lin);
+        if (lin == DataLayout::kNHWC) {
+          platform::MatchShapeToLayout(&out, lin, lout);
+          // We register only NHWC assuming that model is consistent e.g. either
+          // NHWC or NCHW
+          paddle::platform::MKLDNNDeviceContext::tls()
+              .set_cur_paddle_data_layout(lin);
+        }
         out.set_layout(DataLayout::kMKLDNN);
         out.set_format(out_format);
       } else {
@@ -121,9 +124,9 @@ void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
     tran_lod_tensor->set_format(in_lod_tensor.format());
 #endif
     tran_lod_tensor->ShareDataWith(tensor);
-  } else if (in_var.IsType<SelectedRows>()) {
-    auto &in_selected_rows = in_var.Get<SelectedRows>();
-    auto *trans_selected_rows = out_var->GetMutable<SelectedRows>();
+  } else if (in_var.IsType<phi::SelectedRows>()) {
+    auto &in_selected_rows = in_var.Get<phi::SelectedRows>();
+    auto *trans_selected_rows = out_var->GetMutable<phi::SelectedRows>();
     trans_selected_rows->set_height(in_selected_rows.height());
     trans_selected_rows->set_rows(in_selected_rows.rows());
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);

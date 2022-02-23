@@ -84,7 +84,7 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
               embs_dims[i][1], hidden));
     }
 
-    auto dim_output = framework::make_ddim({batch, seq_len, hidden});
+    auto dim_output = phi::make_ddim({batch, seq_len, hidden});
     context->SetOutputDim("Out", dim_output);
     context->ShareLoD("Ids", /*->*/ "Out");
   }
@@ -97,7 +97,7 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
     bool flag = 0;
     for (auto* input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
-        input_data_type = input->type();
+        input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
       }

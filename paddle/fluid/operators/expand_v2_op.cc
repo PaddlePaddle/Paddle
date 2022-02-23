@@ -16,6 +16,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
+
+#define MAX_RANK_SUPPORTED 6
 
 namespace paddle {
 namespace operators {
@@ -58,14 +61,18 @@ class ExpandV2Op : public framework::OperatorWithKernel {
     auto out_rank =
         std::max(static_cast<size_t>(x_dims.size()), expand_shape.size());
     std::vector<int64_t> out_shape(out_rank);
-    auto x_dim_vec = framework::vectorize<int>(x_dims);
+    auto x_dim_vec = phi::vectorize<int>(x_dims);
     auto diff = expand_shape.size() - x_dim_vec.size();
     x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
     for (size_t i = 0; i < expand_shape.size(); ++i) {
       if (x_dims[i] == -1) {
         out_shape[i] = -1;
       } else if (expand_shape[i] == -1) {
-        out_shape[i] = x_dims[i];
+        if (static_cast<size_t>(x_dims.size()) > i) {
+          out_shape[i] = x_dims[i];
+        } else {
+          out_shape[i] = -1;
+        }
       } else if (expand_shape[i] == -2) {
         // We use -2 to represent the element in expand_shape is a var.
         out_shape[i] = -1;
@@ -80,7 +87,7 @@ class ExpandV2Op : public framework::OperatorWithKernel {
       }
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
     if (out_shape[0] == x_dims[0]) {
       ctx->ShareLoD("X", "Out");
     }
@@ -190,7 +197,7 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
     }
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x_dim_vec = framework::vectorize<int>(x_dims);
+    auto x_dim_vec = phi::vectorize<int>(x_dims);
     auto diff = expand_shape.size() - x_dim_vec.size();
     x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
 
@@ -292,33 +299,3 @@ REGISTER_OPERATOR(expand_v2_grad, ops::ExpandV2GradOp,
                   ops::ExpandV2DoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandV2DoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ExpandV2GradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    expand_v2, ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandV2Kernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
-    expand_v2_grad,
-    ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandV2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    expand_v2, ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext,
-                        paddle::platform::float16>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandV2Kernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
-    expand_v2_grad,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext,
-                            paddle::platform::float16>,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandV2GradKernel<paddle::platform::CUDADeviceContext, int64_t>);
-#endif

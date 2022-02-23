@@ -2,9 +2,10 @@
 #define INFRT_BASE
 
 include "mlir/IR/OpBase.td"
+include "paddle/infrt/dialect/infrt/infrt_ops_base.td"
 
 def INFRT_Dialect : Dialect {
-  let name = "infrt";
+  let name = "Infrt";
 
   let description = [{
     The INFRT host dialect.
@@ -18,9 +19,6 @@ def StringType :
     Type<CPred<"$_self.isa<::infrt::dt::StringType>()">, "!infrt.string type">,
     BuildableType<"$_builder.getType<::infrt::dt::StringType>()">;
 
-def TensorType :
-    Type<CPred<"$_self.isa<::infrt::dt::TensorType>()">, "!infrt.tensor type">;
-
 def TensorMapType :
     Type<CPred<"$_self.isa<::infrt::dt::TensorMapType>()">, "!infrt.tensor_map type">,
     BuildableType<"$_builder.getType<::infrt::dt::TensorMapType>()">;
@@ -28,15 +26,11 @@ def TensorMapType :
 def BufferType : OpaqueType<"b", "buffer", "buffer">;
 
 class INFRT_createI32Attr<string value> : NativeCodeCall<
-    "mlir::createI32Attr($_builder, $_loc, " # value # ")">;
+    "infrt::createI32Attr($_builder, $_loc, " # value # ")">;
 
 def INFRT_cvtValueToValueRange : NativeCodeCall<
-    "mlir::cvtValueToValueRange($0)">;
+    "infrt::cvtValueToValueRange($0)">;
 
 def INFRT_concatTwoValueRange : NativeCodeCall<
-    "mlir::concatTwoValueRange($0, $1)">;
-
-class IsBoolAttrEq<string value> : Constraint<
-    CPred<"($0.getValue() ==" # value # ")">,
-    "Bool attrbute value constraint">;
+    "infrt::concatTwoValueRange($0, $1)">;
 #endif  // INFRT_BASE

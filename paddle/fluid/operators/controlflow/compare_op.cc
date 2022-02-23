@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace operators {
@@ -78,7 +79,7 @@ class CompareOp : public framework::OperatorWithKernel {
       GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
                              y_dims_array.data(), out_dims_array.data(),
                              max_dim, axis);
-      context->SetOutputDim("Out", framework::make_ddim(out_dims_array));
+      context->SetOutputDim("Out", phi::make_ddim(out_dims_array));
       // to do
       context->ShareLoD("X", /*->*/ "Out");
     }
@@ -92,8 +93,8 @@ class CompareOp : public framework::OperatorWithKernel {
     if (force_cpu) {
       kt.place_ = platform::CPUPlace();
     } else {
-      if (ctx.Input<framework::LoDTensor>("X")->place().type() !=
-          typeid(platform::CUDAPinnedPlace)) {
+      if (ctx.Input<framework::LoDTensor>("X")->place().GetType() !=
+          phi::AllocationType::GPUPINNED) {
         kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
       } else {
         kt.place_ = ctx.GetPlace();

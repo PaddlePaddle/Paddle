@@ -25,6 +25,7 @@ import math
 import warnings
 
 import numpy as np
+import paddle
 from paddle import _C_ops
 
 from ..fluid import core
@@ -40,12 +41,44 @@ class Distribution(object):
     """
     The abstract base class for probability distributions. Functions are 
     implemented in specific distributions.
+
+    Args:
+        batch_shape(Sequence[int], optional):  independent, not identically 
+            distributed draws, aka a "collection" or "bunch" of distributions.
+        event_shape(Sequence[int], optional): the shape of a single 
+            draw from the distribution; it may be dependent across dimensions. 
+            For scalar distributions, the event shape is []. For n-dimension 
+            multivariate distribution, the event shape is [n].
     """
 
-    def __init__(self):
+    def __init__(self, batch_shape=(), event_shape=()):
+
+        self._batch_shape = batch_shape if isinstance(
+            batch_shape, tuple) else tuple(batch_shape)
+        self._event_shape = event_shape if isinstance(
+            event_shape, tuple) else tuple(event_shape)
+
         super(Distribution, self).__init__()
 
-    def sample(self):
+    @property
+    def batch_shape(self):
+        """Returns batch shape of distribution
+
+        Returns:
+            Sequence[int]: batch shape
+        """
+        return self._batch_shape
+
+    @property
+    def event_shape(self):
+        """Returns event shape of distribution
+
+        Returns:
+            Sequence[int]: event shape
+        """
+        return self._event_shape
+
+    def sample(self, shape=()):
         """Sampling from the distribution."""
         raise NotImplementedError
 
@@ -57,13 +90,38 @@ class Distribution(object):
         """The KL-divergence between self distributions and other."""
         raise NotImplementedError
 
+    def prob(self, value):
+        """Probability density/mass function evaluated at value.
+
+        Args:
+            value (Tensor): value which will be evaluated
+        """
+        raise NotImplementedError
+
     def log_prob(self, value):
         """Log probability density/mass function."""
         raise NotImplementedError
 
     def probs(self, value):
-        """Probability density/mass function."""
+        """Probability density/mass function.
+        
+        .. note:: 
+        
+            This method will be deprecated in the future, please use `prob` 
+            instead.
+        """
         raise NotImplementedError
+
+    def _extend_shape(self, sample_shape):
+        """compute shape of the sample 
+
+        Args:
+            sample_shape (Tensor): sample shape
+
+        Returns:
+            Tensor: generated sample data shape
+        """
+        return sample_shape + self._batch_shape + self._event_shape
 
     def _validate_args(self, *args):
         """
@@ -161,3 +219,22 @@ class Distribution(object):
             )
             return tensor.cast(value, dtype=param.dtype)
         return value
+
+    def _probs_to_logits(self, probs, is_binary=False):
+        r"""
+        Converts probabilities into logits. For the binary, probs denotes the 
+        probability of occurrence of the event indexed by `1`. For the 
+        multi-dimensional, values of last axis denote the probabilities of 
+        occurrence of each of the events.
+        """
+        return (paddle.log(probs) - paddle.log1p(-probs)) \
+            if is_binary else paddle.log(probs)
+
+    def _logits_to_probs(self, logits, is_binary=False):
+        r"""
+        Converts logits into probabilities. For the binary, each value denotes 
+        log odds, whereas for the multi-dimensional case, the values along the 
+        last dimension denote the log probabilities of the events.
+        """
+        return paddle.nn.functional.sigmoid(logits) \
+            if is_binary else paddle.nn.functional.softmax(logits, axis=-1)

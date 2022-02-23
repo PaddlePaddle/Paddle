@@ -315,6 +315,31 @@ class TestMKLDNNHardSwishDim4(TestHardSwish):
         self.dtype = np.float32
 
 
+class TestMKLDNNMish(TestActivation):
+    def setUp(self):
+        self.op_type = "mish"
+        self.dtype = np.float32
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
+        out = x * np.tanh(np.log(1 + np.exp(x)))
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
+class TestMKLDNNRound(TestActivation):
+    def setUp(self):
+        self.op_type = "round"
+
+        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(np.float32)
+        out = np.round(x)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {"use_mkldnn": True}
+
+
 class TestMKLDNNSigmoidDim4(TestSigmoid):
     def setUp(self):
         super(TestMKLDNNSigmoidDim4, self).setUp()
@@ -347,6 +372,16 @@ class TestMKLDNNEluDefaultAlpha(TestActivation):
 class TestMKLDNNEluCustomAlpha(TestMKLDNNEluDefaultAlpha):
     def set_alpha(self):
         self.alpha = 2.5
+
+
+class TestMKLDNNExpOp(TestActivation):
+    def setUp(self):
+        self.op_type = "exp"
+        x = np.random.random((5, 5, 4)).astype("float32")
+
+        self.inputs = {'X': x}
+        self.attrs = {'use_mkldnn': True}
+        self.outputs = {'Out': np.exp(x)}
 
 
 # Check if primitives already exist in backward

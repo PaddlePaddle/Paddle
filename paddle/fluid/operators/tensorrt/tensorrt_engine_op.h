@@ -140,6 +140,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool enable_int8_;
   bool enable_fp16_;
   bool use_calib_mode_;
+  bool use_inspector_;
   std::string calibration_data_;
   std::string engine_key_;
   std::string calibration_engine_key_;
@@ -175,6 +176,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
     allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
     use_static_engine_ = Attr<bool>("use_static_engine");
+    use_inspector_ = HasAttr("use_inspector") && Attr<bool>("use_inspector");
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
@@ -250,6 +252,23 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
   }
 
+  void PrepareTRTEngine(const framework::Scope &scope,
+                        TensorRTEngine *engine) const {
+    LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
+                 "kernel etc). This process may cost a lot of time.";
+    framework::proto::BlockDesc block_proto;
+    block_proto.ParseFromString(Attr<std::string>("subgraph"));
+    framework::BlockDesc block_desc(nullptr, &block_proto);
+
+    std::vector<std::string> inputs = Inputs("Xs");
+    std::vector<std::string> outputs =
+        Attr<std::vector<std::string>>("output_name_mapping");
+
+    inference::Singleton<inference::tensorrt::OpConverter>::Global()
+        .ConvertBlockToTRTEngine(&block_desc, scope, inputs, param_names_,
+                                 outputs, engine);
+  }
+
  protected:
   void RunNativeImpl(const framework::Scope &scope,
                      const platform::Place &dev_place) const {
@@ -268,6 +287,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
       return;
     }
     auto *trt_engine = GetEngine(scope, dev_place);
+    if (use_inspector_) {
+      trt_engine->GetEngineInfo();
+    }
     if (trt_engine->with_dynamic_shape()) {
       // get runtime input shapes.
       std::map<std::string, std::vector<int32_t>> runtime_input_shape;
@@ -276,7 +298,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                                           name);
         VLOG(4) << "trt engine runtime input name(" << name << "), dims("
                 << t.dims() << ")";
-        auto t_shape = framework::vectorize<int32_t>(t.dims());
+        auto t_shape = phi::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
       }
 
@@ -314,7 +336,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
             anc = &scope;
           }
           PrepareTRTEngine(*anc, trt_engine);
-
           // update shape_range_info_pbtxt
           if (!shape_range_info_path_.empty()) {
             inference::UpdateShapeRangeInfo(
@@ -363,7 +384,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto &t =
             inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
         calib_buffers[x] = t.memory_size();
-        auto t_shape = framework::vectorize(t.dims());
+        auto t_shape = phi::vectorize(t.dims());
         runtime_batch = t_shape[0];
       }
       calib_res->calib_.reset(new TRTInt8Calibrator(
@@ -371,8 +392,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
             max_batch_size_, workspace_size_, precision_mode_,
-            calib_res->calib_.get(),
-            BOOST_GET_CONST(platform::CUDAPlace, dev_place).device));
+            calib_res->calib_.get(), dev_place.device));
         VLOG(3) << "start the calib trt engine thread";
         PrepareTRTEngine(scope, calib_res->engine_.get());
       }));
@@ -388,7 +408,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (param_names_.count(x)) continue;
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
-      calib_data.emplace(x, t.data<void>());
+      calib_data.emplace(x, t.data());
     }
     temp_calibrator->setBatch(calib_data);
     RunNativeImpl(scope, dev_place);
@@ -414,8 +434,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int num_inputs = 0;
 
     num_inputs += runtime_input_names_.size();
-    const int num_bindings = num_inputs + Outputs("Ys").size();
-    std::vector<void *> buffers(num_bindings);
+    //  const int num_bindings = num_inputs + Outputs("Ys").size();
+    //  std::vector<void *> buffers(num_bindings);
+    // This method returns the total over all profiles.
+    const int num_bindings = engine->GetNbBindings();
+    std::vector<void *> buffers(num_bindings, nullptr);
+
+    int binding_offset = 0;
+    nvinfer1::IExecutionContext *trt_context = nullptr;
+    if (engine->with_dynamic_shape()) {
+      // Initilize context and get offset by profile index
+      trt_context = engine->context();
+      binding_offset = engine->GetBindingsOffset();
+    }
 
     // Bind input tensor to TRT.
     for (const auto &x : runtime_input_names_) {
@@ -429,8 +460,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
         framework::TransDataDevice(t, dst_place, &out);
         t.ShareDataWith(out);
       }
-      auto t_shape = framework::vectorize<int64_t>(t.dims());
-      const int bind_index = engine->engine()->getBindingIndex(x.c_str());
+      auto t_shape = phi::vectorize<int64_t>(t.dims());
+      // const int bind_index = engine->engine()->getBindingIndex(x.c_str());
+      // Get index of profile 0 first, then plus binding offset
+      const int bind_index =
+          engine->engine()->getBindingIndex(x.c_str()) + binding_offset;
       PADDLE_ENFORCE_LT(
           bind_index, num_bindings,
           platform::errors::InvalidArgument(
@@ -474,13 +508,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
-        auto *trt_context = engine->context();
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #endif
       }
       runtime_batch = t_shape[0];
-      auto type = t.type();
+      auto type = framework::TransToProtoVarType(t.dtype());
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
@@ -500,7 +533,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
       const int bind_index =
-          engine->engine()->getBindingIndex(output_maps[output_index].c_str());
+          engine->engine()->getBindingIndex(output_maps[output_index].c_str()) +
+          binding_offset;
       std::vector<int> ddim;
 
       if (!engine->with_dynamic_shape()) {
@@ -511,7 +545,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
-        auto *trt_context = engine->context();
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
@@ -529,7 +562,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           platform::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
-      fluid_t->Resize(framework::make_ddim(ddim));
+      fluid_t->Resize(phi::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index, num_bindings,
                         platform::errors::InvalidArgument(
@@ -537,8 +570,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             "than the number of bindings, but got binding "
                             "index = %d, number of bindings = %d.",
                             bind_index, num_bindings));
-      buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
-          BOOST_GET_CONST(platform::CUDAPlace, dev_place)));
+      buffers[bind_index] =
+          static_cast<void *>(fluid_t->mutable_data<float>(dev_place));
 
       output_index += 1;
     }
@@ -582,23 +615,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PrepareTRTEngine(scope, trt_engine_);
     }
     return trt_engine_;
-  }
-
-  void PrepareTRTEngine(const framework::Scope &scope,
-                        TensorRTEngine *engine) const {
-    LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
-                 "kernel etc). This process may cost a lot of time.";
-    framework::proto::BlockDesc block_proto;
-    block_proto.ParseFromString(Attr<std::string>("subgraph"));
-    framework::BlockDesc block_desc(nullptr, &block_proto);
-
-    std::vector<std::string> inputs = Inputs("Xs");
-    std::vector<std::string> outputs =
-        Attr<std::vector<std::string>>("output_name_mapping");
-
-    inference::Singleton<inference::tensorrt::OpConverter>::Global()
-        .ConvertBlockToTRTEngine(&block_desc, scope, inputs, param_names_,
-                                 outputs, engine);
   }
 };
 

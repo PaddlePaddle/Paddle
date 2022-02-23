@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_any_like_op.h"
 #include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -46,11 +47,6 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
                                    tensor.layout());
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("full_like", {}, {"value"}, {"Out"});
   }
 };
 
@@ -96,13 +92,3 @@ REGISTER_OPERATOR(
     ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FillAnyLikeVarTypeInference)
-
-REGISTER_OP_CPU_KERNEL(
-    fill_any_like,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::float16>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, bool>);

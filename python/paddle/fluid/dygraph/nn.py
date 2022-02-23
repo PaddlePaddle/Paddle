@@ -240,7 +240,8 @@ class Conv2D(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
-        if in_dygraph_mode() and self._l_type == 'conv2d':
+        if in_dygraph_mode() and (self._l_type == 'conv2d' or
+                                  self._l_type == 'depthwise_conv2d'):
             attrs = ('strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups
                      if self._groups else 1, 'use_cudnn', self._use_cudnn,
@@ -1652,7 +1653,9 @@ class Embedding(layers.Layer):
                 'is_distributed', self._is_distributed, 'remote_prefetch',
                 self._remote_prefetch, 'padding_idx', self._padding_idx)
 
-        check_variable_and_dtype(input, 'input', ['int64'], 'Embedding')
+        check_variable_and_dtype(input, 'input',
+                                 ['uint8', 'int8', 'int16', 'int32', 'int64'],
+                                 'Embedding')
         attrs = {
             'is_sparse': self._is_sparse,
             'is_distributed': self._is_distributed,
@@ -2231,6 +2234,19 @@ class NCE(layers.Layer):
         self._inputs['Weight'] = self.weight
 
     def forward(self, input, label, sample_weight=None):
+        if in_dygraph_mode():
+            attrs = ('num_total_classes', self._attrs['num_total_classes'],
+                     'num_neg_samples', self._attrs['num_neg_samples'], 'seed',
+                     self._attrs['seed'], 'sampler', self._attrs['sampler'],
+                     'is_sparse', self._attrs['is_sparse'], 'remote_prefetch',
+                     self._attrs['remote_prefetch'])
+            cost, _, _ = _C_ops.nce(
+                input, label, self.weight, self.bias,
+                self._inputs['SampleWeight'], self._inputs['CustomDistProbs'],
+                self._inputs['CustomDistAlias'],
+                self._inputs['CustomDistAliasProbs'], *attrs)
+            return cost / (self._num_neg_samples + 1)
+
         check_variable_and_dtype(input, "input", ['float32', 'float64'], "NCE")
         check_variable_and_dtype(label, "label", ['int64'], "NCE")
         check_type(sample_weight, 'sample_weight', (Variable, type(None)),
