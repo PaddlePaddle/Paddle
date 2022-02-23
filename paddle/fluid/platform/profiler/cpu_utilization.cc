@@ -52,32 +52,34 @@ void CpuUtilization::RecordBeginTimeInfo() {
 #define proc_path_size 1024
   static char proc_stat_path[proc_path_size] = "/proc/stat";
   FILE *stat_file = fopen(proc_stat_path, "r");
-  char temp_str[200];
-  uint64_t temp_lu;
-  uint64_t tms_utime;
-  uint64_t tms_stime;
-  uint64_t idle_start;
-  system_tms_start_.tms_utime = 0;
-  system_tms_start_.tms_stime = 0;
-  idle_start_ = 0;
-  while (true) {
-    int retval = fscanf(
-        stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
-                   "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-        temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_start, &temp_lu,
-        &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
-    if (std::string(temp_str).find("cpu") != 0) {
-      break;
+  if (stat_file != nullptr) {
+    char temp_str[200];
+    uint64_t temp_lu;
+    uint64_t tms_utime;
+    uint64_t tms_stime;
+    uint64_t idle_start;
+    system_tms_start_.tms_utime = 0;
+    system_tms_start_.tms_stime = 0;
+    idle_start_ = 0;
+    while (true) {
+      int retval = fscanf(
+          stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
+                     "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
+          temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_start, &temp_lu,
+          &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
+      if (std::string(temp_str).find("cpu") != 0) {
+        break;
+      }
+      if (retval != 11) {
+        return;
+      }
+      system_tms_start_.tms_utime += tms_utime;
+      system_tms_start_.tms_stime += tms_stime;
+      idle_start_ += idle_start;
     }
-    if (retval != 11) {
-      return;
-    }
-    system_tms_start_.tms_utime += tms_utime;
-    system_tms_start_.tms_stime += tms_stime;
-    idle_start_ += idle_start;
+    fclose(stat_file);
   }
 #else
-
 #endif
 }
 
@@ -94,29 +96,32 @@ void CpuUtilization::RecordEndTimeInfo() {
 #define proc_path_size 1024
   static char proc_stat_path[proc_path_size] = "/proc/stat";
   FILE *stat_file = fopen(proc_stat_path, "r");
-  char temp_str[200];
-  uint64_t temp_lu;
-  uint64_t tms_utime;
-  uint64_t tms_stime;
-  uint64_t idle_end;
-  system_tms_end_.tms_utime = 0;
-  system_tms_end_.tms_stime = 0;
-  idle_end_ = 0;
-  while (true) {
-    int retval = fscanf(
-        stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
-                   "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-        temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_end, &temp_lu,
-        &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
-    if (std::string(temp_str).find("cpu") != 0) {
-      break;
+  if (stat_file != nullptr) {
+    char temp_str[200];
+    uint64_t temp_lu;
+    uint64_t tms_utime;
+    uint64_t tms_stime;
+    uint64_t idle_end;
+    system_tms_end_.tms_utime = 0;
+    system_tms_end_.tms_stime = 0;
+    idle_end_ = 0;
+    while (true) {
+      int retval = fscanf(
+          stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
+                     "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
+          temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_end, &temp_lu,
+          &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
+      if (std::string(temp_str).find("cpu") != 0) {
+        break;
+      }
+      if (retval != 11) {
+        return;
+      }
+      system_tms_end_.tms_utime += tms_utime;
+      system_tms_end_.tms_stime += tms_stime;
+      idle_end_ += idle_end;
     }
-    if (retval != 11) {
-      return;
-    }
-    system_tms_end_.tms_utime += tms_utime;
-    system_tms_end_.tms_stime += tms_stime;
-    idle_end_ += idle_end;
+    fclose(stat_file);
   }
 #else
 #endif
