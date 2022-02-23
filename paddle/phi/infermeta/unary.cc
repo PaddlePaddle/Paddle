@@ -26,6 +26,30 @@ void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
 
+// meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
+void UnchangedInferMetaCheckAxis(const MetaTensor& x,
+                                 int axis,
+                                 MetaTensor* out) {
+  auto rank = x.dims().size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -rank,
+      paddle::platform::errors::InvalidArgument(
+          "Attr(axis) value should be in range [-R, R-1], "
+          "R is the rank of Input(X). But received axis: %d, R: %d.",
+          axis,
+          rank));
+  PADDLE_ENFORCE_LT(
+      axis,
+      rank,
+      paddle::platform::errors::InvalidArgument(
+          "Attr(axis) value should be in range [-R, R-1], "
+          "R is the rank of Input(X). But received axis: %d, R: %d.",
+          axis,
+          rank));
+  out->share_meta(x);
+}
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
@@ -72,6 +96,26 @@ void FlattenInferMeta(const MetaTensor& x,
     // are the same.
     out->share_lod(x);
   }
+}
+
+void GumbelSoftmaxInferMeta(const MetaTensor& x,
+                            float temperature,
+                            bool hard,
+                            int axis,
+                            MetaTensor* out) {
+  UnchangedInferMetaCheckAxis(x, axis, out);
+}
+
+void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
+                                const MetaTensor& dout,
+                                int axis,
+                                MetaTensor* dx) {
+  PADDLE_ENFORCE_EQ(
+      out.dims(),
+      dout.dims(),
+      paddle::platform::errors::InvalidArgument(
+          "Input(Out) and its gradients should have the same shape."));
+  UnchangedInferMeta(dout, dx);
 }
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
