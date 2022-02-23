@@ -14,7 +14,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/fill_any_like_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 #include "paddle/phi/kernels/full_kernel.h"
 

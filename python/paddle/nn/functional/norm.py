@@ -217,7 +217,7 @@ def batch_norm(x,
 
     helper = LayerHelper('batch_norm', **locals())
 
-    param_dtype = x.dtype if x.dtype is not 'float16' else 'float32'
+    param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
     saved_mean = helper.create_variable_for_type_inference(
         dtype=param_dtype, stop_gradient=True)
     saved_variance = helper.create_variable_for_type_inference(
