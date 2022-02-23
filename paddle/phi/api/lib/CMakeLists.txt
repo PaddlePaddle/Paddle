@@ -91,8 +91,9 @@ cc_library(phi_tensor SRCS tensor_method.cc DEPS phi_tensor_raw phi_function_api
 
 cc_library(op_meta_info SRCS op_meta_info.cc DEPS phi_tensor)
 
+cc_library(wrapped_infermeta SRCS ${wrapped_infermeta_source_file} DEPS phi)
+
 cc_library(sparse_api SRCS sparse_api.cc DEPS phi_tensor phi kernel_dispatch phi_data_transform)
-cc_library(phi_function_api SRCS ${api_source_file} DEPS phi_tensor phi kernel_dispatch phi_data_transform)
+cc_library(phi_function_api SRCS ${api_source_file} DEPS phi_tensor phi kernel_dispatch phi_data_transform wrapped_infermeta)
 cc_library(phi_dygraph_api SRCS ${dygraph_api_source_file} DEPS phi_tensor phi kernel_dispatch phi_data_transform)
 cc_library(phi_bw_function_api SRCS ${bw_api_source_file} DEPS phi_tensor phi kernel_dispatch backward_infermeta phi_data_transform phi_function_api)
-cc_library(wrapped_infermeta SRCS ${wrapped_infermeta_source_file} DEPS phi)

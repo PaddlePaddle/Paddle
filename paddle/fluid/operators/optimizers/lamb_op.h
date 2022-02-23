@@ -594,7 +594,10 @@ class LambOpKernel : public framework::OpKernel<T> {
       auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
+      auto* grad_merge_rows = &grad_merge.rows();
+      paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(
+          grad_merge_rows);
+      const int64_t* rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
       if (platform::is_gpu_place(ctx.GetPlace()) &&
           beta1_pow.place() == platform::CPUPlace() &&
