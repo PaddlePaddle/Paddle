@@ -22,4 +22,4 @@ KernelSignature CastOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(cast, phi::CastOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(cast, phi::CastOpArgumentMapping);

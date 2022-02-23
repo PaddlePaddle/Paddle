@@ -22,8 +22,8 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
-#include "paddle/phi/kernels/gpu/concat_and_split.h"
 
 namespace phi {
 
@@ -54,7 +54,7 @@ void ConcatKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_EQ(
             x[i].lod().size(),
             lod_size_0,
-            paddle::platform::errors::Unimplemented(
+            phi::errors::Unimplemented(
                 "The lod level of all input LoDTensors should be same. "
                 "Maybe different lod level of input LoDTensors can concat,"
                 "it is not supported currently. The lod level of %dth input "
@@ -104,13 +104,14 @@ void ConcatKernel(const Context& dev_ctx,
         continue;
       }
     }
-    ConcatImpl<T, Context>(dev_ctx, inputs, axis, out);
+    phi::funcs::ConcatFunctor<Context, T> functor;
+    functor(dev_ctx, inputs, axis, out);
   }
 }
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(concat,
+PD_REGISTER_KERNEL(concat,
                    GPU,
                    ALL_LAYOUT,
                    phi::ConcatKernel,
