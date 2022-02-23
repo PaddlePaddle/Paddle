@@ -466,6 +466,12 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                  std::type_index(typeid(std::vector<std::string>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(phi::DataType))) {
+        auto data_type = paddle::framework::TransToPtenDataType(
+            static_cast<framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        infer_meta_context.EmplaceBackAttr(data_type);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported attribute type is received when call "
