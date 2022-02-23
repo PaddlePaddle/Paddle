@@ -27,24 +27,11 @@ void CrossGradKernel(const Context& ctx,
                      int axis,
                      DenseTensor* x_grad,
                      DenseTensor* y_grad) {
-  // auto* input_x_var = context.InputVar("X");
-  // auto* input_y_var = context.InputVar("Y");
-  // auto* input_out_grad_var = context.InputVar(framework::GradVarName("Out"));
-  // auto* output_x_grad_var = context.OutputVar(framework::GradVarName("X"));
-  // auto* output_y_grad_var = context.OutputVar(framework::GradVarName("Y"));
-
-  // auto& input_x = input_x_var->Get<LoDTensor>();
-  // auto& input_y = input_y_var->Get<LoDTensor>();
-  // auto& input_out_grad = input_out_grad_var->Get<LoDTensor>();
-  // auto* output_x_grad = output_x_grad_var->GetMutable<LoDTensor>();
-  // auto* output_y_grad = output_y_grad_var->GetMutable<LoDTensor>();
   auto& input_x = x;
   auto& input_y = y;
   auto& input_out_grad = out_grad;
   auto* output_x_grad = x_grad;
   auto* output_y_grad = y_grad;
-
-  // int dim = context.Attr<int>("dim");
   int dim = axis;
   auto input_x_dims = input_x.dims();
   if (dim != DDim::kMaxRank) {
@@ -99,8 +86,6 @@ void CrossGradKernel(const Context& ctx,
   std::vector<T> out_dx_vec(output_x_grad->numel());
   std::vector<T> out_dy_vec(output_y_grad->numel());
 
-  // output_x_grad->mutable_data<T>(context.GetPlace());
-  // output_y_grad->mutable_data<T>(context.GetPlace());
   ctx.template Alloc<T>(output_x_grad);
   ctx.template Alloc<T>(output_y_grad);
 

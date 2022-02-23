@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -108,7 +111,10 @@ class CrossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DELCARE_INFER_SHAPE_FUNCTOR(cross, CrossInferShapeFunctor,
+                            PT_INFER_META(phi::CrossInferMeta));
 REGISTER_OPERATOR(cross, ops::CrossOp, ops::CrossOpMaker,
                   ops::CrossGradMaker<paddle::framework::OpDesc>,
-                  ops::CrossGradMaker<paddle::imperative::OpBase>);
+                  ops::CrossGradMaker<paddle::imperative::OpBase>,
+                  CrossInferShapeFunctor);
 REGISTER_OPERATOR(cross_grad, ops::CrossGradOp);

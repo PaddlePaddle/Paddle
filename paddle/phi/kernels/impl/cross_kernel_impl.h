@@ -26,13 +26,6 @@ void CrossKernel(const Context& ctx,
                  const DenseTensor& y,
                  int axis,
                  DenseTensor* out) {
-  // auto* input_x_var = context.InputVar("X");
-  // auto* input_y_var = context.InputVar("Y");
-  // auto* output_var = context.OutputVar("Out");
-
-  // auto& input_x = input_x_var->Get<LoDTensor>();
-  // auto& input_y = input_y_var->Get<LoDTensor>();
-  // auto* output = output_var->GetMutable<LoDTensor>();
   auto& input_x = x;
   auto& input_y = y;
   auto* output = out;
@@ -101,7 +94,6 @@ void CrossKernel(const Context& ctx,
   paddle::framework::TensorToVector(input_y, ctx, &input_y_vec);
   std::vector<T> out_vec(output->numel());
 
-  // output->mutable_data<T>(context.GetPlace());
   ctx.template Alloc<T>(output);
 
   for (auto i = 0; i < outer_loops; i++) {
