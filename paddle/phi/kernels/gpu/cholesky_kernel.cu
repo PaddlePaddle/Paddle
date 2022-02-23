@@ -207,7 +207,11 @@ void CholeskyKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    cholesky, GPU, ALL_LAYOUT, phi::CholeskyKernel, float, double) {}
+PD_REGISTER_KERNEL(cholesky,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CholeskyKernel,
+                   float,
+                   double) {}
 
 #endif  // not PADDLE_WITH_HIP

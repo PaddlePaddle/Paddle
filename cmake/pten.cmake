@@ -58,10 +58,15 @@ endfunction()
 function(kernel_declare TARGET_LIST)
     foreach(kernel_path ${TARGET_LIST})
         file(READ ${kernel_path} kernel_impl)
-        # TODO(chenweihang): rename PD_REGISTER_KERNEL to PD_REGISTER_KERNEL
-        # NOTE(chenweihang): now we don't recommend to use digit in kernel name
-        string(REGEX MATCH "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*," first_registry "${kernel_impl}")
+        string(REGEX MATCH "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[ \t\r\n\/]*[a-z0-9_]*" first_registry "${kernel_impl}")
         if (NOT first_registry STREQUAL "")
+            # some gpu kernel only can run on cuda, not support rocm, so we add this branch
+            if (WITH_ROCM)
+                string(FIND "${first_registry}" "cuda_only" pos)
+                if(pos GREATER 1)
+                    continue()
+                endif()
+            endif()
             # parse the first kernel name
             string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_name "${first_registry}")
             string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_name "${kernel_name}")

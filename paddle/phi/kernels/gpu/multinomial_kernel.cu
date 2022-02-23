@@ -278,7 +278,11 @@ void MultinomialKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    multinomial, GPU, ALL_LAYOUT, phi::MultinomialKernel, float, double) {}
+PD_REGISTER_KERNEL(multinomial,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MultinomialKernel,
+                   float,
+                   double) {}
 
 #endif
