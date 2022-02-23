@@ -95,5 +95,4 @@ cc_library(wrapped_infermeta SRCS ${wrapped_infermeta_source_file} DEPS pten)
 
 cc_library(pten_tensor SRCS tensor_method.cc DEPS pten_tensor_raw pten_function_api)
 
-cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor)
-cc_library(op_kernel_info SRCS op_kernel_info.cc DEPS pten_tensor_raw)
+cc_library(op_meta_info SRCS op_meta_info.cc DEPS pten_tensor_raw)

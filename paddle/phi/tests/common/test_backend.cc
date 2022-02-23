@@ -52,5 +52,19 @@ TEST(Backend, OStream) {
   }
 }
 
+TEST(Backend, StringToBackend) {
+  namespace pexp = paddle::experimental;
+  EXPECT_EQ(phi::Backend::UNDEFINED, pexp::StringToBackend("Undefined"));
+  EXPECT_EQ(phi::Backend::CPU, pexp::StringToBackend("CPU"));
+  EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("GPU"));
+  EXPECT_EQ(phi::Backend::XPU, pexp::StringToBackend("XPU"));
+  EXPECT_EQ(phi::Backend::NPU, pexp::StringToBackend("NPU"));
+  EXPECT_EQ(phi::Backend::MKLDNN, pexp::StringToBackend("MKLDNN"));
+  EXPECT_EQ(phi::Backend::CUDNN, pexp::StringToBackend("CUDNN"));
+  EXPECT_EQ(static_cast<phi::Backend>(
+                static_cast<size_t>(phi::Backend::NUM_BACKENDS) + 1),
+            pexp::StringToBackend("CustomBackend"));
+}
+
 }  // namespace tests
 }  // namespace phi

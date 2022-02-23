@@ -115,7 +115,7 @@ struct TensorSetConstantXPU {
     std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
     paddle::memory::Copy(place_,
                          begin,
-                         paddle::platform::CPUPlace(),
+                         phi::CPUPlace(),
                          static_cast<void*>(data_cpu.get()),
                          numel * sizeof(T));
   }

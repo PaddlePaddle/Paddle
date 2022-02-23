@@ -18,7 +18,7 @@
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/kernels/gpu/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,7 +28,7 @@ void SplitKernel(const Context& dev_ctx,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
   // need to infershape output
-  if (num_or_sections.IsInitByTensor() || axis_scalar.IsInitByTensor()) {
+  if (num_or_sections.FromTensor() || axis_scalar.FromTensor()) {
     std::vector<MetaTensor> out_metas;
     for (size_t i = 0; i < outs.size(); ++i) {
       out_metas.push_back(outs[i]);
@@ -53,13 +53,14 @@ void SplitKernel(const Context& dev_ctx,
     paddle::operators::StridedMemcpyWithAxis0<T>(
         dev_ctx, x, shape_refer, &outs);
   } else {
-    SplitImpl<T, Context>(dev_ctx, x, shape_refer, axis, &outs);
+    phi::funcs::SplitFunctor<Context, T> functor;
+    functor(dev_ctx, x, shape_refer, axis, &outs);
   }
 }
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(split,
+PD_REGISTER_KERNEL(split,
                    GPU,
                    ALL_LAYOUT,
                    phi::SplitKernel,

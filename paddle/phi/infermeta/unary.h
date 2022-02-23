@@ -54,7 +54,14 @@ void InferMetaFromVecValue(const MetaTensor& x,
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
-                      MetaTensor* out);
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
+void ReshapeWithXShapeInferMeta(const MetaTensor& x,
+                                const ScalarArray& shape,
+                                MetaTensor* xshape,
+                                MetaTensor* out,
+                                MetaConfig config = MetaConfig());
 
 void ReduceInferMetaBase(const MetaTensor& x,
                          const std::vector<int64_t>& axis,
@@ -83,7 +90,17 @@ void SplitInferMeta(const MetaTensor& x_meta,
                     std::vector<MetaTensor>* out,
                     MetaConfig config = MetaConfig());
 
+void UnbindInferMeta(const MetaTensor& x,
+                     int axis,
+                     std::vector<MetaTensor>* outs);
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
+void UnfoldInferMeta(const MetaTensor& x,
+                     const std::vector<int>& kernel_sizes,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     const std::vector<int>& dilations,
+                     MetaTensor* out,
+                     MetaConfig config = MetaConfig());
 }  // namespace phi

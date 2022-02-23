@@ -102,28 +102,28 @@ KernelSignature ElementwiseSubGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub, subtract);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_mul, multiply);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad_grad, add_double_grad);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_add_triple_grad, add_triple_grad);
-PT_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad, subtract_grad);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_sub, subtract);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_mul, multiply);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad_grad, add_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_triple_grad, add_triple_grad);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad, subtract_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(elementwise_add,
+PD_REGISTER_ARG_MAPPING_FN(elementwise_add,
                            phi::ElementwiseAddOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(elementwise_sub,
+PD_REGISTER_ARG_MAPPING_FN(elementwise_sub,
                            phi::ElementwiseSubOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(elementwise_mul,
+PD_REGISTER_ARG_MAPPING_FN(elementwise_mul,
                            phi::ElementwiseMulOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(elementwise_div,
+PD_REGISTER_ARG_MAPPING_FN(elementwise_div,
                            phi::ElementwiseDivOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(elementwise_add_grad,
+PD_REGISTER_ARG_MAPPING_FN(elementwise_add_grad,
                            phi::ElementwiseAddGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(elementwise_add_grad_grad,
+PD_REGISTER_ARG_MAPPING_FN(elementwise_add_grad_grad,
                            phi::ElementwiseAddDoubleGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(elementwise_add_triple_grad,
+PD_REGISTER_ARG_MAPPING_FN(elementwise_add_triple_grad,
                            phi::ElementwiseAddTripleGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(elementwise_sub_grad,
+PD_REGISTER_ARG_MAPPING_FN(elementwise_sub_grad,
                            phi::ElementwiseSubGradOpArgumentMapping);

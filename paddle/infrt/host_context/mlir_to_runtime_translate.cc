@@ -31,6 +31,7 @@
 
 #include "boost/optional.hpp"
 #include "paddle/infrt/common/string.h"
+#include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
 #include "paddle/infrt/dialect/tensor_shape.h"
 #include "paddle/infrt/host_context/core_runtime.h"
@@ -74,7 +75,7 @@ struct MlirToRuntimeTranslator::Impl {
 };
 
 bool MlirToRuntimeTranslator::EmitConstantOp(mlir::Operation* op) {
-  if (!infrt::Startswith(op->getName().getStringRef().str(), "infrt.constant"))
+  if (!infrt::Startswith(op->getName().getStringRef().str(), "Infrt.constant"))
     return false;
   VLOG(3) << "Emitting constant op [" << op->getName().getStringRef().str()
           << "]";
@@ -151,6 +152,17 @@ boost::optional<float> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 template <>
+boost::optional<bool> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<mlir::BoolAttr>()) return boost::none;
+  if (attr.isa<mlir::BoolAttr>()) {
+    auto val = attr.cast<mlir::BoolAttr>();
+    return val.getValue();
+  }
+  return boost::none;
+}
+
+template <>
 boost::optional<double> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
   if (!attr.isa<mlir::FloatAttr>()) return boost::none;
@@ -187,6 +199,7 @@ boost::optional<std::string> MlirToRuntimeTranslator::EmitAttribute(
     return res;                                                                \
   }
 
+PROCESS_ARRAY_INT(bool, 1);
 PROCESS_ARRAY_INT(int16_t, 16);
 PROCESS_ARRAY_INT(int32_t, 32);
 PROCESS_ARRAY_INT(int64_t, 64);
@@ -224,7 +237,7 @@ boost::optional<std::vector<double>> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 static bool IsReturn(mlir::Operation* op) {
-  return op->getName().getStringRef() == "infrt.return";
+  return op->getName().getStringRef() == "Infrt.return";
 }
 
 bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
@@ -262,25 +275,6 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
             << GetValue(operand) << " vs " << arg_value;
   }
 
-  // process results
-  llvm::SmallVector<Value*, 4> res_values;
-  for (int i = 0, e = op->getNumResults(); i < e; i++) {
-    auto res = op->getResult(i);
-    res_values.push_back(AddValue(res));
-
-    VLOG(3) << "* op mlir res: " << DumpToString(res) << " " << GetValue(res);
-  }
-  impl_->cur_op->SetResults(res_values);
-
-#ifdef INFRT_DEBUG
-  {
-    VLOG(3) << "check result";
-    for (int i = 0; i < impl_->cur_op->frame().GetNumResults(); i++) {
-      VLOG(3) << "+ res value: " << impl_->cur_op->frame().GetResults()[i];
-    }
-  }
-#endif
-
   // process attributes
   auto attrs = op->getAttrs();
 
@@ -296,6 +290,8 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
       impl_->cur_op->AppendAttribute(new Value(*v));
     } else if (auto v = EmitAttribute<std::string>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
+    } else if (auto v = EmitAttribute<bool>(attr.getValue())) {
+      impl_->cur_op->AppendAttribute(new Value(*v));
     } else if (auto v = EmitAttribute<std::vector<int16_t>>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
     } else if (auto v = EmitAttribute<std::vector<int32_t>>(attr.getValue())) {
@@ -310,6 +306,33 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
       LOG(FATAL) << "Not supported attribute type";
     }
   }
+
+  // process results
+  llvm::SmallVector<Value*, 4> res_values;
+  for (int i = 0, e = op->getNumResults(); i < e; i++) {
+    auto res = op->getResult(i);
+    if (res.getType().isa<::infrt::DenseTensorType>()) {
+      auto r = impl_->value_map.try_emplace(
+          res, ValueRef(new Value{::phi::DenseTensor()}));
+      CHECK(r.second) << "Duplicate add mlir value [" << DumpToString(res)
+                      << "]";
+      res_values.push_back(r.first->second.get());
+    } else {
+      res_values.push_back(AddValue(res));
+    }
+
+    VLOG(3) << "* op mlir res: " << DumpToString(res) << " " << GetValue(res);
+  }
+  impl_->cur_op->SetResults(res_values);
+
+#ifdef INFRT_DEBUG
+  {
+    VLOG(3) << "check result";
+    for (int i = 0; i < impl_->cur_op->frame().GetNumResults(); i++) {
+      VLOG(3) << "+ res value: " << impl_->cur_op->frame().GetResults()[i];
+    }
+  }
+#endif
 
   // process regions, we treat regions as attribute.
   auto num_regions = op->getNumRegions();
@@ -345,7 +368,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
 bool MlirToRuntimeTranslator::EmitReturnOp(
     mlir::Operation* op, llvm::SmallVectorImpl<mlir::Value>* results) {
   CHECK(results);
-  if (op->getName().getStringRef() == "infrt.return") {
+  if (op->getName().getStringRef() == "Infrt.return") {
     for (size_t i = 0; i < op->getNumOperands(); i++) {
       results->push_back(op->getOperand(i));
     }
@@ -418,7 +441,7 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
                                          function_defs_t* function_table) {
   CHECK(op);
   CHECK(function_table);
-  if (op->getName().getStringRef() != "infrt.call") return false;
+  if (op->getName().getStringRef() != "Infrt.call") return false;
 
   impl_->cur_op =
       impl_->runtime->NewOpExecutable(op->getName().getStringRef().str());
@@ -440,14 +463,6 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
     impl_->cur_op->AppendArgument(arg_value);
   }
 
-  // process results
-  llvm::SmallVector<Value*, 4> res_values;
-  for (int i = 0, e = op->getNumResults(); i < e; i++) {
-    auto res = op->getResult(i);
-    res_values.push_back(AddValue(res));
-  }
-  impl_->cur_op->SetResults(res_values);
-
   // process attribute
   auto& table = function_table ? *function_table : impl_->func_defs;
   {
@@ -459,6 +474,14 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
         impl_->cur_op->CreateFunctionExecutable(it->second, &impl_->func_defs);
     impl_->cur_op->AppendAttribute(new Value(function));
   }
+
+  // process results
+  llvm::SmallVector<Value*, 4> res_values;
+  for (int i = 0, e = op->getNumResults(); i < e; i++) {
+    auto res = op->getResult(i);
+    res_values.push_back(AddValue(res));
+  }
+  impl_->cur_op->SetResults(res_values);
 
   VLOG(3) << "Emit call " << callee_name.getValue().str() << " "
           << impl_->cur_op->frame();

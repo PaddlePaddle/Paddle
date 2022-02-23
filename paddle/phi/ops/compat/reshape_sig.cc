@@ -17,13 +17,19 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature ReshapeOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.InputSize("ShapeTensor") > 0) {
-    return KernelSignature("reshape", {"X"}, {"ShapeTensor"}, {"Out"});
-  } else if (ctx.HasInput("Shape")) {
-    return KernelSignature("reshape", {"X"}, {"Shape"}, {"Out"});
-  } else {
-    return KernelSignature("reshape", {"X"}, {"shape"}, {"Out"});
+  if (ctx.HasOutput("XShape")) {
+    if (ctx.InputSize("ShapeTensor") > 0) {
+      return KernelSignature(
+          "reshape_with_xshape", {"X"}, {"ShapeTensor"}, {"XShape", "Out"});
+    } else if (ctx.HasInput("Shape")) {
+      return KernelSignature(
+          "reshape_with_xshape", {"X"}, {"Shape"}, {"XShape", "Out"});
+    } else {
+      return KernelSignature(
+          "reshape_with_xshape", {"X"}, {"shape"}, {"XShape", "Out"});
+    }
   }
+  return KernelSignature("unregistered", {}, {}, {});
 }
 
 KernelSignature ReshapeGradOpArgumentMapping(
@@ -39,11 +45,11 @@ KernelSignature ReshapeDoubleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(reshape2, reshape);
-PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad, reshape_grad);
-PT_REGISTER_BASE_KERNEL_NAME(reshape2_grad_grad, reshape_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(reshape2, reshape);
+PD_REGISTER_BASE_KERNEL_NAME(reshape2_grad, reshape_grad);
+PD_REGISTER_BASE_KERNEL_NAME(reshape2_grad_grad, reshape_double_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(reshape2, phi::ReshapeOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(reshape2_grad, phi::ReshapeGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(reshape2_grad_grad,
+PD_REGISTER_ARG_MAPPING_FN(reshape2, phi::ReshapeOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reshape2_grad, phi::ReshapeGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reshape2_grad_grad,
                            phi::ReshapeDoubleGradOpArgumentMapping);

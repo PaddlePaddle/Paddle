@@ -21,7 +21,7 @@
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/complex.h"
 
-PT_REGISTER_KERNEL(conj,
+PD_REGISTER_KERNEL(conj,
                    CPU,
                    ALL_LAYOUT,
                    phi::ConjKernel,
@@ -31,3 +31,17 @@ PT_REGISTER_KERNEL(conj,
                    double,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(real,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::RealKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(imag,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ImagKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

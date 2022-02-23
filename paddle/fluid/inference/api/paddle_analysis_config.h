@@ -234,20 +234,30 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Turn on IPU.
   ///
-  /// \param device_num The number of IPUs.
-  /// \param ipu_enable_pipelining Enable data pipelining between subgraphs,
-  /// each subgraph is settled on an IPU. (This feature requires the number of
-  /// IPUs > 1.)
-  /// \param ipu_batches_per_step The number of micro_batch_size per run. (This
-  /// feature requires to enable pipelining.)
-  /// \param ipu_batch_size The micro_batch_size which is the batch_size in the
-  /// graph.
-  /// \param ipu_need_avg_shard Enable the auto graph sharding. (This feature
-  /// requires the number of IPUs > 1.)
+  /// \param ipu_device_num the number of IPUs.
+  /// \param ipu_micro_batch_size the batch size in the graph, only work with
+  /// mutable input shapes.
+  /// \param ipu_enable_pipelining enable pipelining.
+  /// \param ipu_batches_per_step the number of batches per run in pipelining.
   ///
-  void EnableIpu(int device_num = 1, bool ipu_enable_pipelining = false,
-                 int ipu_batches_per_step = 1, int ipu_batch_size = 1,
-                 bool ipu_need_avg_shard = false);
+  void EnableIpu(int ipu_device_num = 1, int ipu_micro_batch_size = 1,
+                 bool ipu_enable_pipelining = false,
+                 int ipu_batches_per_step = 1);
+
+  ///
+  /// \brief Set IPU config.
+  ///
+  /// \param ipu_enable_fp16 enable fp16.
+  /// \param ipu_replica_num the number of graph replication.
+  /// \param ipu_available_memory_proportion the available memory proportion for
+  /// matmul/conv.
+  /// \param ipu_enable_half_partial enable fp16 partial for matmul, only work
+  /// with fp16.
+  ///
+  void SetIpuConfig(bool ipu_enable_fp16 = false, int ipu_replica_num = 1,
+                    float ipu_available_memory_proportion = 1.0,
+                    bool ipu_enable_half_partial = false);
+
   ///
   /// \brief Set XPU device id.
   ///
@@ -876,11 +886,14 @@ struct PD_INFER_DECL AnalysisConfig {
   // ipu related.
   bool use_ipu_{false};
   int ipu_device_num_{1};
-
+  int ipu_micro_batch_size_{1};
   bool ipu_enable_pipelining_{false};
   int ipu_batches_per_step_{1};
-  int ipu_batch_size_{1};
-  bool ipu_need_avg_shard_{false};
+
+  bool ipu_enable_fp16_{false};
+  int ipu_replica_num_{1};
+  float ipu_available_memory_proportion_{1.0};
+  bool ipu_enable_half_partial_{false};
 
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.
