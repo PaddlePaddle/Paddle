@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/core/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace platform {
@@ -103,6 +103,18 @@ template <>
 __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
                                                       float16 val, int width) {
   return float16(__shfl_xor_sync(mask, val.to_half(), width));
+}
+
+template <>
+__forceinline__ __device__ bfloat16 CudaShuffleXorSync(unsigned mask,
+                                                       bfloat16 val,
+                                                       int width) {
+#if defined(PADDLE_CUDA_BF16)
+  return bfloat16(__shfl_xor_sync(mask, static_cast<nv_bfloat16>(val), width));
+#else
+  PADDLE_ENFORCE(
+      false, "__shfl_xor_sync with bfloat16 is not supported on cuda <= 11.");
+#endif
 }
 
 template <>

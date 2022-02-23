@@ -16,8 +16,8 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -47,6 +47,7 @@ void GradNodeAccumulation::RetainGrad(
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
 operator()(
     const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
+  VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
@@ -79,4 +80,14 @@ operator()(
   return {{accumulated_grad}};
 }
 
+void GradNodeAccumulation::RegisterReduceHook(
+    const std::function<void(void)>& hook) {
+  reduce_hooks_.emplace_back(hook);
+}
+
+void GradNodeAccumulation::ApplyReduceHooks() {
+  for (auto& hook : reduce_hooks_) {
+    hook();
+  }
+}
 }  // namespace egr

@@ -86,7 +86,7 @@ class DiagonalOp : public framework::OperatorWithKernel {
         out_dims.push_back(0);
       }
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
   }
 };
 

@@ -141,7 +141,7 @@ struct LookupTableV2GradCUDAFunctor {
       auto *d_output =
           context_.Input<framework::Tensor>(framework::GradVarName("Out"));
       auto *d_table =
-          context_.Output<pten::SelectedRows>(framework::GradVarName("W"));
+          context_.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
       const auto *ids_data = ids_t_->template data<IdT>();
       int64_t ids_num = ids_t_->numel();
@@ -152,14 +152,16 @@ struct LookupTableV2GradCUDAFunctor {
       new_rows.resize(ids_num);
       auto gpu_place = context_.GetPlace();
 
+      paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
       if (!std::is_same<IdT, int64_t>::value) {
         InputTypeConvert<<<grids, threads, 0, stream>>>(
-            ids_data, ids_num, new_rows.MutableData(gpu_place));
+            ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));
       } else {
-        memory::Copy(gpu_place, new_rows.CUDAMutableData(gpu_place), gpu_place,
-                     ids_data, ids_num * sizeof(int64_t), stream);
+        memory::Copy(gpu_place, mixv_new_rows.CUDAMutableData(gpu_place),
+                     gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
       }
 
+      mixv_new_rows.CopyToCPU();
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
@@ -170,7 +172,7 @@ struct LookupTableV2GradCUDAFunctor {
       auto *d_output_data = d_output->template data<T>();
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
-          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+          phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
