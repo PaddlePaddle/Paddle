@@ -113,9 +113,9 @@ nvinfer1::DataType SpecialSlicePluginDynamic::getOutputDataType(
 template <typename T>
 __global__ void SpecialSliceKernel(const T* slice_input,
                                    const int32_t* cu_seqlens, T* output) {
-  const int hidden = blockDim.x * gridDim.y;
-  const int batch = blockIdx.x;
-  const int local_idx = blockIdx.y * blockDim.y + threadIdx.x;
+  const int hidden = blockDim.x * gridDim.x;
+  const int batch = blockIdx.y;
+  const int local_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
   output[batch * hidden + local_idx] =
       slice_input[cu_seqlens[batch] * hidden + local_idx];
