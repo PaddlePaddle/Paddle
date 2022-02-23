@@ -21,12 +21,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
+#define HOSTDEVICE __host__ __device__
 namespace kps = phi::kps;
 
 #endif
@@ -343,7 +344,7 @@ inline void get_mid_dims(const DDim &x_dims,
     if (x_dims[i + axis] != y_dims[i]) {
       PADDLE_ENFORCE_EQ(y_dims[i] == 1 || x_dims[i + axis] == 1,
                         true,
-                        paddle::platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Broadcast dimension mismatch. Operands "
                             "could not be broadcast together with the shape of "
                             "X = [%s] and the shape of Y = [%s]. Received [%d] "
@@ -436,7 +437,7 @@ inline void ElementwiseGradPreProcess(const DenseTensor &dout,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 // static unroller
 template <template <int Index, int VecSize> typename Func,
@@ -469,10 +470,14 @@ struct Loader {
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
     if (is_boundary) {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
-          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     } else {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
-          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     }
   }
 };
@@ -482,8 +487,7 @@ struct InputSetter {
   template <typename Array>
   static HOSTDEVICE void Apply(
       const std::vector<const DenseTensor *> &ins_tensor, Array *ins_data) {
-    (*ins_data)[Index] =
-        reinterpret_cast<const _ptr_ char *>(ins_tensor[Index]->data());
+    (*ins_data)[Index] = (const _ptr_ char *)(ins_tensor[Index]->data());
   }
 };
 
@@ -718,9 +722,9 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
 
   Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
+    outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
   int block_size = 64;
   int grid_size = 8;
   auto stream = ctx.x_context()->xpu_stream;
@@ -754,7 +758,7 @@ void ElementwiseKernel(const KPDevice &ctx,
   const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The number of inputs is expected to be equal to the "
                         "arity of functor. But recieved: the number of inputs "
                         "is %d, the arity of functor is %d.",
@@ -762,7 +766,7 @@ void ElementwiseKernel(const KPDevice &ctx,
                         kArity));
   PADDLE_ENFORCE_EQ(outs->size(),
                     NumOuts,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Number of outputs shall equal to number of functions, "
                         "but number of outputs is %d, of functions is %d.",
                         outs->size(),
@@ -773,7 +777,7 @@ void ElementwiseKernel(const KPDevice &ctx,
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of each output tensor shall be identical yet, "
               "but %dth output tensor`s shape is not.",
               i));
@@ -796,7 +800,7 @@ void ElementwiseKernel(const KPDevice &ctx,
           ctx, ins, outs, func);
       break;
     default: {
-      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported vectorized size: %d !", vec_size));
       break;
     }

@@ -33,4 +33,32 @@ void ConjKernel(const Context& dev_ctx,
   for_range(functor);
 }
 
+template <typename T, typename Context>
+void RealKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DenseTensor* out) {
+  auto numel = x.numel();
+  auto* x_data = x.data<T>();
+  auto* out_data = dev_ctx.template Alloc<phi::funcs::Real<T>>(
+      out, static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
+
+  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::RealFunctor<T> functor(x_data, out_data, numel);
+  for_range(functor);
+}
+
+template <typename T, typename Context>
+void ImagKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                DenseTensor* out) {
+  auto numel = x.numel();
+  auto* x_data = x.data<T>();
+  auto* out_data = dev_ctx.template Alloc<phi::funcs::Real<T>>(
+      out, static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
+
+  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ImagFunctor<T> functor(x_data, out_data, numel);
+  for_range(functor);
+}
+
 }  // namespace phi

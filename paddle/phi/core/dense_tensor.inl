@@ -54,22 +54,22 @@ DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
 template <typename T>
-T* mutable_data(const paddle::platform::Place& place,
+T* mutable_data(const phi::Place& place,
                 size_t requested_size = 0);
 
 template <typename T>
 T* mutable_data(const DDim& dims,
-                const paddle::platform::Place& place,
+                const phi::Place& place,
                 size_t requested_size = 0);
 
-void* mutable_data(const paddle::platform::Place& place,
+void* mutable_data(const phi::Place& place,
                     paddle::experimental::DataType type,
                     size_t requested_size = 0);
 
-void* mutable_data(const paddle::platform::Place& place,
+void* mutable_data(const phi::Place& place,
                     size_t requested_size = 0);
 
-void* mutable_data(const paddle::platform::Place& place,
+void* mutable_data(const phi::Place& place,
                     paddle::experimental::DataType type,
                     const phi::Stream& stream);
 
