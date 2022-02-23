@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/increment_op.h"
-
-#include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -101,14 +99,3 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker,
                   ops::IncrementGradOpMaker<paddle::framework::OpDesc>,
                   ops::IncrementGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    increment, ops::IncrementKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::IncrementKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(
-    increment, ops::IncrementKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::IncrementKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::IncrementKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::IncrementKernel<paddle::platform::CUDADeviceContext, int64_t>);
