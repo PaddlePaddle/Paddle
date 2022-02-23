@@ -103,7 +103,7 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
     // std::shuffle(idx_vec.begin(), idx_vec.end(), engine);
 
     // ShuffleIdx record shuffle order
-    shuffleidx->Resize(framework::make_ddim({(int64_t)idx_vec.size()}));
+    shuffleidx->Resize(phi::make_ddim({(int64_t)idx_vec.size()}));
     auto *shuffleidx_data =
         shuffleidx->mutable_data<int64_t>(context.GetPlace());
     for (size_t i = 0; i < idx_vec.size(); i++) {
@@ -117,8 +117,8 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
              x_embed_size * sizeof(T));
     }
     // set new seed
-    *seed_out->mutable_data<int64_t>(framework::make_ddim({1}),
-                                     context.GetPlace()) = engine();
+    *seed_out->mutable_data<int64_t>(phi::make_ddim({1}), context.GetPlace()) =
+        engine();
   }
 };
 

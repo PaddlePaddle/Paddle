@@ -22,7 +22,7 @@ namespace ipu {
 void* PaddleIArray::data() { return tensor_.data(); }
 
 popart::DataType PaddleIArray::dataType() const {
-  return VarType2PopartType(tensor_.type());
+  return PdDataType2PopartType(tensor_.dtype());
 }
 
 std::size_t PaddleIArray::rank() const { return tensor_.dims().size(); }
@@ -66,8 +66,41 @@ popart::DataType VarType2PopartType(
     case framework::proto::VarType::COMPLEX128:
       return popart::DataType::COMPLEX128;
     default:
-      PADDLE_THROW(paddle::platform::errors::Unavailable(
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported Paddle var type."));
+  }
+}
+
+popart::DataType PdDataType2PopartType(
+    const paddle::experimental::DataType type) {
+  switch (type) {
+    case paddle::experimental::DataType::UINT8:
+      return popart::DataType::UINT8;
+    case paddle::experimental::DataType::INT8:
+      return popart::DataType::INT8;
+    case paddle::experimental::DataType::INT16:
+      return popart::DataType::INT16;
+    case paddle::experimental::DataType::INT32:
+      return popart::DataType::INT32;
+    case paddle::experimental::DataType::INT64:
+      return popart::DataType::INT64;
+    case paddle::experimental::DataType::BOOL:
+      return popart::DataType::BOOL;
+    case paddle::experimental::DataType::FLOAT64:
+      return popart::DataType::DOUBLE;
+    case paddle::experimental::DataType::FLOAT32:
+      return popart::DataType::FLOAT;
+    case paddle::experimental::DataType::FLOAT16:
+      return popart::DataType::FLOAT16;
+    case paddle::experimental::DataType::BFLOAT16:
+      return popart::DataType::BFLOAT16;
+    case paddle::experimental::DataType::COMPLEX64:
+      return popart::DataType::COMPLEX64;
+    case paddle::experimental::DataType::COMPLEX128:
+      return popart::DataType::COMPLEX128;
+    default:
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported Paddle data type."));
   }
 }
 

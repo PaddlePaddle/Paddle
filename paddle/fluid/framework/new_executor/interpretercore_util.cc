@@ -19,7 +19,7 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
@@ -408,7 +408,7 @@ void build_op_func_list(const platform::Place& place,
           ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
       auto run_pten_kernel = false;
-      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(
+      if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(
               op_with_kernel->Type())) {
         auto pt_kernel_key = op_with_kernel->ChoosePtenKernel(exec_ctx);
         auto pt_kernel_name = op_with_kernel->PtenKernelSignature()->name;
@@ -423,7 +423,7 @@ void build_op_func_list(const platform::Place& place,
             auto pt_cpu_kernel_key = FallBackToCpu(
                 expected_kernel_key, pt_kernel_key, *op_with_kernel);
             op_with_kernel->ResetPtenKernel(
-                new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+                new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                     pt_kernel_name, pt_cpu_kernel_key)));
             if (op_with_kernel->PtenKernel()->IsValid()) {
               VLOG(6) << "Static mode PrepareImpl - kernel name: "
@@ -438,7 +438,7 @@ void build_op_func_list(const platform::Place& place,
       VLOG(3) << op_with_kernel->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
       if (run_pten_kernel) {
-        pten::KernelContext pt_kernel_context;
+        phi::KernelContext pt_kernel_context;
         op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx,
                                                &pt_kernel_context);
         op_func_node.pt_kernel_ = op_with_kernel->PtenKernel();
@@ -494,8 +494,8 @@ void build_op_func_list(const platform::Place& place,
       if (var->IsType<LoDTensor>()) {
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-      } else if (var->IsType<pten::SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<pten::SelectedRows>()
+      } else if (var->IsType<phi::SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                    ->mutable_value()
                                    ->MoveMemoryHolder());
       } else if (var->IsType<LoDTensorArray>()) {

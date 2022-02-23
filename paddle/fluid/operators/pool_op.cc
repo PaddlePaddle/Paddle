@@ -83,7 +83,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
           "input's dimension is %d, the shape of input "
           "is [%s], the Attr(ksize)'s size is %d, the Attr(ksize) is [%s].",
           in_x_dims.size() - ksize.size(), in_x_dims.size(), in_x_dims,
-          ksize.size(), framework::make_ddim(ksize)));
+          ksize.size(), phi::make_ddim(ksize)));
 
   PADDLE_ENFORCE_EQ(
       ksize.size(), strides.size(),
@@ -92,8 +92,8 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
           "Op(pool) must be equal. "
           "But received: Attr(ksize)'s size is %d, Attr(strides)'s "
           "size is %d, Attr(ksize) is [%s], Attr(strides)is [%s].",
-          ksize.size(), strides.size(), framework::make_ddim(ksize),
-          framework::make_ddim(strides)));
+          ksize.size(), strides.size(), phi::make_ddim(ksize),
+          phi::make_ddim(strides)));
 
   // MKL-DNN Kernels are using NCHW order of dims description
   // so we ignore data_format consideration for MKL-DNN kernel
@@ -103,9 +103,9 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   // update paddings if "SAME" or global_pooling
   framework::DDim data_dims;
   if (channel_last) {
-    data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+    data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
   } else {
-    data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+    data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
   }
   UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                 data_dims, strides, ksize);
@@ -138,14 +138,14 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
     output_shape.insert(output_shape.begin() + 1, in_x_dims[1]);
   }
 
-  ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+  ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
   ctx->ShareLoD("X", "Out");
 }
 
 bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
   // (jczaja): oneDNN is supporting only unchangable in size pool window
-  auto src_tz = paddle::framework::vectorize(ctx.Input<Tensor>("X")->dims());
+  auto src_tz = phi::vectorize(ctx.Input<Tensor>("X")->dims());
   std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
   // Fast but not exhustive check
   if ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&

@@ -112,6 +112,7 @@ def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
   let verifier = ?;
 }
 
+
 def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
   let summary = "dt.tensor_map_get_tensor operation";
 
@@ -122,7 +123,7 @@ def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
   // input path of model params.
   let arguments = (ins
           TensorMapType:$map,
-          StringType:$name
+          StrAttr:$name
           );
   let results = (outs TensorType:$output);
   let assemblyFormat = "`(` operands `)` attr-dict `->` type($output)";
