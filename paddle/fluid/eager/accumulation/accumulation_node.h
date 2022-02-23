@@ -34,6 +34,8 @@ class GradNodeAccumulation : public GradNodeBase {
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
       override;
 
+  std::string name() { return "GradNodeAccumulation"; }
+  
   /**
    * Register ReduceHook
    * **/

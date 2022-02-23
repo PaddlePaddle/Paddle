@@ -391,7 +391,7 @@ class SimpleRNNCell(RNNCellBase):
 
     def extra_repr(self):
         s = '{input_size}, {hidden_size}'
-        if self.activation is not "tanh":
+        if self.activation != "tanh":
             s += ', activation={activation}'
         return s.format(**self.__dict__)
 
