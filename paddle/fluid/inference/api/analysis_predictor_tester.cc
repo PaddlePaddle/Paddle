@@ -428,6 +428,12 @@ TEST(Tensor, CpuShareExternalData) {
   predictor->Run();
 
   auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  auto out_shape = out->shape();
+  std::vector<float> out_data;
+  out_data.resize(std::accumulate(out_shape.begin(), out_shape.end(), 1,
+                                  std::multiplies<int>()));
+  out->ShareExternalData<float>(out_data.data(), out_shape, PlaceType::kCPU);
+
   PlaceType place;
   int size = 0;
   out->data<float>(&place, &size);
@@ -465,6 +471,14 @@ TEST(Tensor, GpuShareExternalData) {
   predictor->Run();
 
   auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  auto out_shape = out->shape();
+  float* out_data;
+  auto out_size = std::accumulate(out_shape.begin(), out_shape.end(), 1,
+                                  std::multiplies<int>()) *
+                  sizeof(float);
+  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
+
   PlaceType place;
   int size = 0;
   out->data<float>(&place, &size);
