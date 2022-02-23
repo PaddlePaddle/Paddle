@@ -67,13 +67,13 @@ const MetaTensor& InferMetaContext::InputAt(size_t idx) const {
   return *inputs_.at(idx);
 }
 
-std::vector<MetaTensor> InferMetaContext::InputsBetween(size_t start,
-                                                        size_t end) const {
-  std::vector<MetaTensor> result;
+std::vector<MetaTensor*> InferMetaContext::InputsBetween(size_t start,
+                                                         size_t end) const {
+  std::vector<MetaTensor*> result;
   result.reserve(end - start);
 
   for (size_t i = start; i < end; ++i) {
-    result.emplace_back(*inputs_.at(i));
+    result.push_back(inputs_.at(i).get());
   }
 
   return result;
@@ -81,6 +81,16 @@ std::vector<MetaTensor> InferMetaContext::InputsBetween(size_t start,
 
 MetaTensor* InferMetaContext::MutableOutputAt(size_t idx) {
   return outputs_.at(idx).get();
+}
+
+std::vector<MetaTensor*> InferMetaContext::MutableOutputBetween(size_t start,
+                                                                size_t end) {
+  std::vector<MetaTensor*> result;
+  result.reserve(end - start);
+  for (size_t i = start; i < end; ++i) {
+    result.emplace_back(outputs_.at(i).get());
+  }
+  return result;
 }
 
 MetaFnFactory& MetaFnFactory::Instance() {

@@ -408,7 +408,18 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
         param_code = ""
         for param in infer_meta_params:
             if param in input_names:
-                param_code = param_code + "MakeMetaTensor(*" + PREFIX_TENSOR_NAME + param + "), "
+                if self.inputs['input_info'][param] == "const Tensor&":
+                    param_code = param_code + "MakeMetaTensor(*" + PREFIX_TENSOR_NAME + param + "), "
+                else:
+                    meta_tensor_code = meta_tensor_code + f"""
+{code_indent}  auto {param}_meta_vec = MakeMetaTensor(*{PREFIX_TENSOR_NAME}{param});
+{code_indent}  std::vector<phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
+{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
+{code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
+{code_indent}  }}
+"""
+
+                    param_code = param_code + param + "_metas, "
             elif param in kernel_output_names:
                 meta_tensor_code = meta_tensor_code + code_indent + "  phi::MetaTensor " + param.replace(
                     'kernel_', PREFIX_META_TENSOR_NAME) + "(" + param + ");\n"

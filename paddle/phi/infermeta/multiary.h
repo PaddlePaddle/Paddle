@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 namespace phi {
 
-void ConcatInferMeta(const std::vector<MetaTensor>& x,
+void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());

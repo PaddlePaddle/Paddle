@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 
 #include <set>
-
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
 namespace phi {
@@ -77,6 +77,13 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
+}
+
+void CopyToInferMeta(const MetaTensor& x,
+                     Backend backend,
+                     bool blocking,
+                     MetaTensor* out) {
+  UnchangedInferMeta(x, out);
 }
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
@@ -210,7 +217,7 @@ void InferMetaFromVecValue(const MetaTensor& x,
                            MetaTensor* out) {
   PADDLE_ENFORCE_EQ(!shape.empty(),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The parameter 'shape' in ReshapeOp must be set. "
                         "But received 'shape' is empty."));
   auto x_dims = x.dims();
@@ -227,8 +234,42 @@ void InferMetaFromVecValue(const MetaTensor& x,
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
-                      MetaTensor* out) {
-  InferMetaFromVecValue(x, shape.GetData(), out);
+                      MetaTensor* out,
+                      MetaConfig config) {
+  auto& shape_data = shape.GetData();
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          phi::errors::InvalidArgument(
+                              "Output(Out) of ReshapeOp should not be null."));
+  if (!config.is_runtime && shape.FromTensor()) {
+    out->set_dims(phi::make_ddim(shape_data));
+    out->share_lod(x);
+    return;
+  }
+  PADDLE_ENFORCE_GT(shape_data.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The shape's size in ReshapeOp can't be zero."));
+  InferMetaFromVecValue(x, shape_data, out);
+}
+
+void ReshapeWithXShapeInferMeta(const MetaTensor& x,
+                                const ScalarArray& shape,
+                                MetaTensor* xshape,
+                                MetaTensor* out,
+                                MetaConfig config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      xshape,
+      phi::errors::InvalidArgument(
+          "Output(XShape) of ReshapeOp should not be null."));
+  const auto& x_dims = x.dims();
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(phi::make_ddim(xshape_dims));
+  xshape->share_lod(x);
+  ReshapeInferMeta(x, shape, out, config);
 }
 
 /*  Why not use ReduceInferMeta directly?
@@ -315,8 +356,19 @@ void TransferLayoutInferMeta(const MetaTensor& x,
 void SplitInferMeta(const MetaTensor& x,
                     const ScalarArray& num_or_sections,
                     const Scalar& axis,
-                    std::vector<MetaTensor>* out,
+                    std::vector<MetaTensor*> out,
                     MetaConfig config) {
+  if (!config.is_runtime) {
+    if (axis.FromTensor() || num_or_sections.FromTensor()) {
+      auto out_dims = phi::make_ddim(std::vector<int>(x.dims().size(), -1));
+      for (auto* item : out) {
+        item->set_dims(out_dims);
+        item->share_lod(x);
+      }
+      return;
+    }
+  }
+
   int axis_value = axis.to<int>();
   int rank = x.dims().size();
   PADDLE_ENFORCE_EQ(
@@ -337,21 +389,23 @@ void SplitInferMeta(const MetaTensor& x,
   std::vector<int64_t> sections;
   // num_or_sections is a number
   if (num_or_sections_data.size() == 1) {
-    int num = num_or_sections_data.at(0);
+    if (config.is_runtime) {
+      int num = num_or_sections_data.at(0);
+      PADDLE_ENFORCE_EQ(
+          input_axis_dim % num,
+          0,
+          paddle::platform::errors::InvalidArgument(
+              "The input's size along the split dimension "
+              "must be evenly divisible by Attr(num_or_sections). "
+              "But received Attr(num_or_sections) "
+              "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
+              num,
+              x.dims(),
+              axis_value));
 
-    PADDLE_ENFORCE_EQ(input_axis_dim % num,
-                      0,
-                      paddle::platform::errors::InvalidArgument(
-                          "The input's size along the split dimension "
-                          "must be evenly divisible by Attr(num_or_sections). "
-                          "But received Attr(num_or_sections) "
-                          "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
-                          num,
-                          x.dims(),
-                          axis_value));
-
-    for (int i = 0; i < num; ++i) {
-      sections.push_back(input_axis_dim / num);
+      for (int i = 0; i < num; ++i) {
+        sections.push_back(input_axis_dim / num);
+      }
     }
   } else {
     // num_or_sections is a sections
@@ -431,14 +485,14 @@ void SplitInferMeta(const MetaTensor& x,
   for (size_t i = 0; i < sections.size(); ++i) {
     if (axis_value != 0) {
       // Only pass LoD when not spliting along the first dim.
-      (*out)[i].set_dtype(x.dtype());
-      (*out)[i].set_dims(out_dims[i]);
-      (*out)[i].set_layout(x.layout());
+      out.at(i)->set_dtype(x.dtype());
+      out.at(i)->set_dims(out_dims[i]);
+      out.at(i)->set_layout(x.layout());
     } else {
-      (*out)[i].set_dtype(x.dtype());
-      (*out)[i].set_dims(out_dims[i]);
-      (*out)[i].set_layout(x.layout());
-      (*out)[i].share_lod(x);
+      out.at(i)->set_dtype(x.dtype());
+      out.at(i)->set_dims(out_dims[i]);
+      out.at(i)->set_layout(x.layout());
+      out.at(i)->share_lod(x);
     }
   }
 }
@@ -497,3 +551,6 @@ void TraceInferMeta(
 }
 
 }  // namespace phi
+
+PT_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
+PT_REGISTER_INFER_META_FN(split, phi::SplitInferMeta);
