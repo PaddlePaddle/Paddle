@@ -43,7 +43,7 @@ class INFRTDialect : public mlir::Dialect {
   friend class mlir::MLIRContext;
 
  public:
-  static ::llvm::StringRef getDialectNamespace() { return "infrt"; }
+  static ::llvm::StringRef getDialectNamespace() { return "Infrt"; }
 };
 }  // namespace dialect
 

@@ -37,7 +37,7 @@ static void INFRTCall(
 }
 
 void RegisterControlFlowKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel("infrt.call", INFRT_KERNEL(INFRTCall));
+  registry->AddKernel("Infrt.call", INFRT_KERNEL(INFRTCall));
 }
 
 }  // namespace kernel

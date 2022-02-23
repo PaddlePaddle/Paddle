@@ -129,10 +129,10 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
   }
 };
 
-// NOTE: used for making a difference between kernels compiled with phi or not.
+// NOTE: used for making a difference between inner or outer registration.
 enum class RegType : uint8_t {
-  BUILTIN = 0,  // compiled with phi
-  PLUGIN,       // separate compiled and registered
+  INNER = 0,
+  OUTER,
 };
 
 // TODO(chenweihang): Polish the kernel selection logic, support the selection
@@ -205,7 +205,7 @@ struct KernelRegistrar {
     Kernel kernel(kernel_fn, variadic_kernel_fn);
     args_parse_fn(kernel_key, kernel.mutable_args_def());
     args_def_fn(kernel_key, &kernel);
-    if (reg_type == RegType::BUILTIN) {
+    if (reg_type == RegType::INNER) {
       KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
     } else {
       CustomKernelMap::Instance().Kernels()[kernel_name][kernel_key] = kernel;
@@ -244,7 +244,7 @@ struct KernelRegistrar {
  * Note: `2TA` means `2 template argument`
  */
 #define PD_REGISTER_KERNEL(kernel_name, backend, layout, meta_kernel_fn, ...) \
-  _PD_REGISTER_KERNEL(::phi::RegType::BUILTIN,                                \
+  _PD_REGISTER_KERNEL(::phi::RegType::INNER,                                  \
                       kernel_name,                                            \
                       backend,                                                \
                       ::phi::backend##Context,                                \
@@ -918,7 +918,7 @@ struct KernelRegistrar {
 #define PD_REGISTER_GENERAL_KERNEL(                 \
     kernel_name, backend, layout, kernel_fn, dtype) \
   _PD_REGISTER_GENERAL_KERNEL(                      \
-      ::phi::RegType::BUILTIN, kernel_name, backend, layout, kernel_fn, dtype)
+      ::phi::RegType::INNER, kernel_name, backend, layout, kernel_fn, dtype)
 
 #define _PD_REGISTER_GENERAL_KERNEL(                                         \
     reg_type, kernel_name, backend, layout, kernel_fn, dtype)                \
@@ -992,7 +992,7 @@ struct KernelRegistrar {
  */
 #define PD_REGISTER_BUILTIN_KERNEL(                    \
     kernel_name, backend, layout, meta_kernel_fn, ...) \
-  _PD_REGISTER_KERNEL(::phi::RegType::PLUGIN,          \
+  _PD_REGISTER_KERNEL(::phi::RegType::OUTER,           \
                       kernel_name,                     \
                       backend,                         \
                       ::phi::backend##Context,         \
@@ -1007,7 +1007,7 @@ struct KernelRegistrar {
  */
 #define PD_REGISTER_PLUGIN_KERNEL(                     \
     kernel_name, backend, layout, meta_kernel_fn, ...) \
-  _PD_REGISTER_KERNEL(::phi::RegType::PLUGIN,          \
+  _PD_REGISTER_KERNEL(::phi::RegType::OUTER,           \
                       kernel_name,                     \
                       backend,                         \
                       ::phi::CustomContext,            \
