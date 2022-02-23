@@ -20,6 +20,7 @@ build/
 build_doc/
 *.user
 *.tmp
+*.pyc
 
 .vscode
 .idea
