@@ -238,15 +238,5 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
   return std::move(pt_tensors);
 }
 
-std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
-    const paddle::optional<std::vector<Tensor>>& inputs,
-    const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag) {
-  if (inputs) {
-    return PrepareData(*inputs, target_args_def, transform_flag);
-  }
-  return {nullptr};
-}
-
 }  // namespace experimental
 }  // namespace paddle
