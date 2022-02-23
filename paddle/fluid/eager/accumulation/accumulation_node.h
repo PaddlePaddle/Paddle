@@ -35,7 +35,7 @@ class GradNodeAccumulation : public GradNodeBase {
       override;
 
   std::string name() { return "GradNodeAccumulation"; }
-  
+
   /**
    * Register ReduceHook
    * **/

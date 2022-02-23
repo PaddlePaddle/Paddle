@@ -65,9 +65,6 @@ operator()(
   if (!weak_grad_.expired()) {
     auto grad = weak_grad_.lock();
     CopyOrAddTensor(grad.get(), grad_out);
-  } else {
-    VLOG(3) << "[Warning] Grad Tensor already released when running "
-               "AccumulationNode.";
   }
 
   // Apply Reduce Hooks
