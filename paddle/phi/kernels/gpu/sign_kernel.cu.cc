@@ -23,5 +23,5 @@ limitations under the License. */
 
 using float16 = phi::dtype::float16;
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     sign, GPU, ALL_LAYOUT, phi::SignKernel, float, double, float16) {}
