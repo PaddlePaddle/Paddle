@@ -98,7 +98,7 @@ set(infrt_mlir_incs
         trt_ops_inc
         )
 if (INFRT_WITH_PTEN)
-    set(pten_libs pten)
+    set(pten_libs phi)
     set(infrt_mlir_incs ${infrt_mlir_incs}
         MLIRinfrt_pten_tensorIncGen
         MLIRinfrt_pten_baseIncGen

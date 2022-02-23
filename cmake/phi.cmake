@@ -51,7 +51,7 @@ function(generate_unify_header DIR_NAME)
     endforeach()
     # append header into extension.h
     string(REPLACE "${PADDLE_SOURCE_DIR}\/" "" header_file "${header_file}")
-    file(APPEND ${pten_extension_header_file} "#include \"${header_file}\"\n")
+    file(APPEND ${phi_extension_header_file} "#include \"${header_file}\"\n")
 endfunction()
 
 # call kernel_declare need to make sure whether the target of input exists
@@ -234,10 +234,10 @@ function(kernel_library TARGET)
     if (${common_srcs_len} GREATER 0 OR ${cpu_srcs_len} GREATER 0 OR
         ${gpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0 OR
         ${selected_rows_srcs_len} GREATER 0)
-        # append target into PTEN_KERNELS property
-        get_property(pten_kernels GLOBAL PROPERTY PTEN_KERNELS)
-        set(pten_kernels ${pten_kernels} ${TARGET})
-        set_property(GLOBAL PROPERTY PTEN_KERNELS ${pten_kernels})
+        # append target into PHI_KERNELS property
+        get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
+        set(phi_kernels ${phi_kernels} ${TARGET})
+        set_property(GLOBAL PROPERTY PHI_KERNELS ${phi_kernels})
     endif()
 
     # parse kernel name and auto generate kernel declaration
