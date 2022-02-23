@@ -83,7 +83,7 @@ void ShardIndexKernel(const Context& dev_ctx,
   out->set_lod(in.lod());
   auto* in_data = in.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
-  int64_t numel = in->numel();
+  int64_t numel = in.numel();
   auto stream = dev_ctx.stream();
   ShardIndexInner<
       T><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,

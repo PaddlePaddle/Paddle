@@ -173,6 +173,7 @@ void ShardIndexInferMeta(const MetaTensor& in,
                          int nshards,
                          int shard_id,
                          int ignore_value,
-                         MetaTensor* out);
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
 
 }  // namespace phi

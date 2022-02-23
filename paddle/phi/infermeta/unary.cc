@@ -966,7 +966,8 @@ void ShardIndexInferMeta(const MetaTensor& in,
                          int nshards,
                          int shard_id,
                          int ignore_value,
-                         MetaTensor* out) {
+                         MetaTensor* out,
+                         MetaConfig config) {
   auto x_dims = in.dims();
   PADDLE_ENFORCE_GE(
       x_dims.size(),
@@ -974,7 +975,7 @@ void ShardIndexInferMeta(const MetaTensor& in,
       phi::errors::InvalidArgument("Rank of Input(X) should be at least 2, "
                                    "but the value given is %d.",
                                    x_dims.size()));
-  if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
+  if (config.is_runtime || x_dims[x_dims.size() - 1] > 0) {
     PADDLE_ENFORCE_EQ(x_dims[x_dims.size() - 1],
                       1U,
                       phi::errors::InvalidArgument(
