@@ -123,7 +123,7 @@ cc_library(init SRCS init.cc DEPS device_context custom_kernel)
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
     place pten_place eigen3 stringpiece cpu_helper cpu_info framework_proto ${IPU_CTX_DEPS} ${GPU_CTX_DEPS} ${NPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
-    ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS} ${MLU_CTX_DEPS} eigen3 cpu_context)
+    ${dgc_deps} dlpack cudnn_workspace_helper ${XPU_CTX_DEPS} ${MLU_CTX_DEPS} eigen3 cpu_context generator)
 if(WITH_XPU)
   target_link_libraries(device_context xpu_context)
 endif()
@@ -141,9 +141,19 @@ if(WITH_GPU OR WITH_ROCM)
     target_link_libraries(device_context gpu_info gpu_context pten_gpu_info)
     target_link_libraries(device_context gpu_resource_pool)
 endif()
-
+if (WITH_CUSTOM_DEVICE)
+    target_link_libraries(device_context custom_context)
+endif()
 if(WITH_ASCEND_CL)
     target_link_libraries(device_context npu_resource_pool)
+endif()
+
+if(WITH_MLU)
+    target_link_libraries(device_context mlu_resource_pool)
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+    target_link_libraries(device_context custom_context)
 endif()
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)

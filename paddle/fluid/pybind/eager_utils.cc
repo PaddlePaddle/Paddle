@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/py_func_op.h"
@@ -25,9 +26,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace pybind {
@@ -44,33 +45,33 @@ extern PyTypeObject* g_cudapinnedplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
 
-int TensorDtype2NumpyDtype(pten::DataType dtype) {
+int TensorDtype2NumpyDtype(phi::DataType dtype) {
   switch (dtype) {
-    case pten::DataType::BOOL:
+    case phi::DataType::BOOL:
       return pybind11::detail::npy_api::NPY_BOOL_;
-    case pten::DataType::INT8:
+    case phi::DataType::INT8:
       return pybind11::detail::npy_api::NPY_INT8_;
-    case pten::DataType::UINT8:
+    case phi::DataType::UINT8:
       return pybind11::detail::npy_api::NPY_UINT8_;
-    case pten::DataType::INT16:
+    case phi::DataType::INT16:
       return pybind11::detail::npy_api::NPY_INT16_;
-    case pten::DataType::INT32:
+    case phi::DataType::INT32:
       return pybind11::detail::npy_api::NPY_INT32_;
-    case pten::DataType::INT64:
+    case phi::DataType::INT64:
       return pybind11::detail::npy_api::NPY_INT64_;
-    case pten::DataType::FLOAT16:
+    case phi::DataType::FLOAT16:
       return pybind11::detail::NPY_FLOAT16_;
-    case pten::DataType::FLOAT32:
+    case phi::DataType::FLOAT32:
       return pybind11::detail::npy_api::NPY_FLOAT_;
-    case pten::DataType::FLOAT64:
+    case phi::DataType::FLOAT64:
       return pybind11::detail::npy_api::NPY_DOUBLE_;
-    case pten::DataType::COMPLEX64:
+    case phi::DataType::COMPLEX64:
       return pybind11::detail::NPY_COMPLEX64;
-    case pten::DataType::COMPLEX128:
+    case phi::DataType::COMPLEX128:
       return pybind11::detail::NPY_COMPLEX128;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Unknow pten::DataType, the int value = %d.",
+          "Unknow phi::DataType, the int value = %d.",
           static_cast<int>(dtype)));
       return 0;
   }
@@ -741,11 +742,13 @@ bool PyCheckTensor(PyObject* obj) {
          (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type)));
 }
 
-Py_ssize_t GetSliceIndexFromTensor(const pten::DenseTensor& tensor) {
+Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
   if (tensor.numel() == 1) {
-    if (tensor.type() == framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(tensor.type()) ==
+        framework::proto::VarType::INT32) {
       return static_cast<Py_ssize_t>(operators::GetValue<int32_t>(&tensor));
-    } else if (tensor.type() == framework::proto::VarType::INT64) {
+    } else if (framework::TransToProtoVarType(tensor.type()) ==
+               framework::proto::VarType::INT64) {
       return static_cast<Py_ssize_t>(operators::GetValue<int64_t>(&tensor));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -777,7 +780,7 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
             "We can only support initialized tensor in slice, however we got "
             "uninitialized tensor %s, please check your code.",
             tensor.name()));
-    return GetSliceIndexFromTensor((*static_cast<pten::DenseTensor*>(
+    return GetSliceIndexFromTensor((*static_cast<phi::DenseTensor*>(
         CastPyArg2Tensor(obj, 0).impl().get())));
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

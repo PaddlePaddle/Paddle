@@ -15,8 +15,9 @@
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace egr {
 
@@ -47,7 +48,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
     // TODO(jiabin): Code bellow is ugly to divide which inner var we used,
     // remove framework::Variable
     // related code later.
-    // This if statement is trying to test neither pten::Tensor nor
+    // This if statement is trying to test neither phi::Tensor nor
     // framework::Variable is initialized.
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
       // Simply copy tensor->impl
@@ -67,7 +68,7 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
         } else {
           // TODO(jiabin): Support Other TensorBase later
           paddle::experimental::Tensor new_buffer(
-              std::make_shared<pten::DenseTensor>(), "tmp_accumulator");
+              std::make_shared<phi::DenseTensor>(), "tmp_accumulator");
           paddle::imperative::SelectedRowsAddTensor(buffer_tensor, t,
                                                     &new_buffer);
           buffer_tensor.set_impl(new_buffer.impl());
@@ -77,9 +78,9 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
         if (buffer_tensor.is_dense_tensor()) {
           paddle::imperative::SelectedRowsAddToTensor(t, &buffer_tensor);
         } else {
-          PADDLE_THROW(paddle::platform::errors::Fatal(
-              "We don't support Selected Rows merge for now, support it later "
-              "and make all kinds of grads can be merged."));
+          buffer_tensor =
+              std::move(*paddle::imperative::SelectedRowsMerge<
+                        paddle::experimental::Tensor>(t, buffer_tensor));
         }
       }
     }

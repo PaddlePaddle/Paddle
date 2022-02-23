@@ -20,7 +20,9 @@
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(use_mkldnn);
@@ -30,9 +32,13 @@ DECLARE_string(tracer_mkldnn_ops_off);
 namespace paddle {
 namespace imperative {
 
+thread_local bool Tracer::enable_program_desc_tracing_ = false;
+
 thread_local bool Tracer::has_grad_ = true;
 
 thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;
+
+thread_local phi::DataType Tracer::amp_dtype_ = phi::DataType::FLOAT32;
 
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
@@ -139,6 +145,17 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
           "Paddle can't use MLU device since it's not compiled with MLU,"
           "Please recompile or reinstall Paddle with MLU support."));
 #endif
+    } else if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      gc.reset(new framework::CustomDefaultStreamGarbageCollector(place, 0));
+      VLOG(10) << "Created GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use CustomDevice since it's not compiled with "
+          "CustomDevice,"
+          "Please recompile or reinstall Paddle with CustomDevice "
+          "support."));
+#endif
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "Unsupported place for garbage collection"));
@@ -157,7 +174,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
                      const std::map<std::string, std::string>& inplace_map,
                      paddle::framework::AttributeMap* passed_default_attrs_,
                      bool use_default_attr_map) {
-  platform::RecordEvent op_type_record_event(type);
+  platform::RecordEvent op_type_record_event(
+      type, platform::TracerEventType::Operator, 2);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
@@ -188,10 +206,18 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
   NameVarMap<VarType> new_ins = ins;
   if (amp_level_ == AmpLevel::O1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
-    new_ins = AutoCastInputs<VarType>(type, ins);
+    if (amp_dtype_ == phi::DataType::FLOAT16) {
+      new_ins = AutoCastInputs<VarType>(type, ins);
+    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+      new_ins = AutoCastBF16Inputs<VarType>(type, ins);
+    }
   } else if (amp_level_ == AmpLevel::O2) {
     VLOG(5) << "Pure fp16 run operator: " << type;
-    new_ins = CastPureFp16Inputs<VarType>(type, ins);
+    if (amp_dtype_ == phi::DataType::FLOAT16) {
+      new_ins = CastPureFp16Inputs<VarType>(type, ins);
+    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+      new_ins = CastPureBf16Inputs<VarType>(type, ins);
+    }
   }
 
   try {
@@ -222,6 +248,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with MLU if use MLUPlace."));
+#endif
+    } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      platform::DeviceManager::SetDevice(place);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with CustomDevice if use "
+          "CustomPlace."));
 #endif
     }
     if (!use_default_attr_map) {

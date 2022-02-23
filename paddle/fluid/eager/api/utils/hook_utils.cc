@@ -17,7 +17,7 @@
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace egr {
 namespace egr_utils_api {
@@ -35,10 +35,21 @@ void RegisterGradientHookForTensor(
 
 void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                  const std::function<void(void)>& hook) {
-  // Find grad_node and out_rank from AutogradMeta
-  std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
-
-  grad_node->RegisterReduceHook(hook);
+  if (IsLeafTensor(tensor)) {
+    VLOG(6) << "Register ReduceHook for leaf tensor";
+    std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
+    PADDLE_ENFORCE(
+        grad_node.get() != nullptr,
+        paddle::platform::errors::Fatal("Detected NULL grad_node,"
+                                        "Leaf tensor should have had grad_node "
+                                        "with type: GradNodeAccumulation"));
+    auto accumulation_grad_node =
+        std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
+    accumulation_grad_node->RegisterReduceHook(hook);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Only can register reduce hook for leaf Tensor."));
+  }
 }
 
 void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
@@ -59,13 +70,8 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
             grad_tensor->set_impl(t.impl());
             return *grad_tensor.get();
           } else {
-            PADDLE_THROW(paddle::platform::errors::Fatal(
-                "Detected uninitialized tensor %s , causing segmentation "
-                "fault "
-                "inside the hook."
-                "Tensor has to be initialized while we need to set it."
-                "please check tensor initialization status.",
-                t.name()));
+            VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+            return paddle::experimental::Tensor();
           }
         } else {
           VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";

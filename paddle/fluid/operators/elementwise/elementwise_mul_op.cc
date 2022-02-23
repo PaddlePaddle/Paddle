@@ -28,7 +28,7 @@ struct SameDimsElemwiseMul<
   void operator()(const framework::ExecutionContext &ctx,
                   const framework::Tensor *x, const framework::Tensor *y,
                   framework::Tensor *z) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
     blas.VMUL(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
   }
 };

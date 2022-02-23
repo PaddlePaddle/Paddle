@@ -79,7 +79,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
         super(GeoPsProgramBuilder, self).__init__(pass_ctx)
         if self.ps_mode != DistributedMode.GEO:
             raise ValueError("ps mode: {} not matched {}",
-                             format(ps_mode, "GeoPsProgramBuilder"))
+                             format(self.ps_mode, "GeoPsProgramBuilder"))
 
     def _build_trainer_programs(self):
         append_send_ops_pass = new_pass("append_send_ops_pass", self.attrs)
@@ -97,9 +97,9 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
         logger.info("start building cpu-sync-ps program")
         super(CpuSyncPsProgramBuilder, self).__init__(pass_ctx)
-        if self.ps_mode == DistributedMode.GEO:
+        if self.ps_mode != DistributedMode.SYNC and self.ps_mode != DistributedMode.ASYNC:
             raise ValueError("ps mode: {} not matched {}",
-                             format(ps_mode, "CpuSyncPsProgramBuilder"))
+                             format(self.ps_mode, "CpuSyncPsProgramBuilder"))
 
     def _build_trainer_programs(self):
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
@@ -178,7 +178,7 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
         if self.use_ps_gpu or self.ps_mode == DistributedMode.GEO or self.attrs[
                 'is_heter_ps_mode'] == False:
             raise ValueError("ps mode: {} not matched {}",
-                             format(ps_mode, "HeterAsyncPsProgramBuilder"))
+                             format(self.ps_mode, "HeterAsyncPsProgramBuilder"))
 
     def _build_trainer_programs(self):
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
@@ -186,10 +186,10 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
         add_lr_decay_table_pass.apply([], [], self.pass_ctx)
 
         distributed_ops_pass = new_pass("distributed_ops_pass", self.attrs)
-        distributed_ops_pass.apply([self.cloned_main], [], self.pass_ctx)
+        distributed_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
         delete_optimizer_pass = new_pass("delete_optimizer_pass", self.attrs)
-        delete_optimizer_pass.apply([None], [_startup], self.pass_ctx)
+        delete_optimizer_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
         append_send_ops_pass = new_pass("append_send_ops_pass", self.attrs)
         append_send_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
@@ -210,12 +210,13 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
         else:
             split_trainer_ops_pass = new_pass("split_trainer_ops_pass",
                                               self.attrs)
-            split_trainer_ops_pass([self.cloned_main], [], self.pass_ctx)
+            split_trainer_ops_pass.apply([self.cloned_main], [None],
+                                         self.pass_ctx)
 
         set_heter_pipeline_opt_pass = new_pass('set_heter_pipeline_opt_pass',
                                                self.attrs)
         set_heter_pipeline_opt_pass.apply([self.cloned_main],
-                                          [self.cloned_startup], pass_ctx)
+                                          [self.cloned_startup], self.pass_ctx)
 
         if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(server_endpoints)
@@ -228,7 +229,7 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
             ps_set_heter_pipeline_opt_pass = new_pass(
                 "set_heter_pipeline_opt_pass", self.attrs)
             ps_set_heter_pipeline_opt_pass.apply(
-                [self.loss.block.program], [startup_program], self.pass_ctx)
+                [self.cloned_main], [self.cloned_startup], self.pass_ctx)
 
         elif self.attrs['is_server']:
             self._build_pserver_programs()

@@ -73,7 +73,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     if ((x_dims.size() >= 3) &&
         (paddle::platform::MKLDNNDeviceContext::tls()
              .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC)) {
-      auto dims = framework::vectorize<int>(x_dims);
+      auto dims = phi::vectorize<int>(x_dims);
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       x_dims = x_dims.reshape(dims);
       VLOG(3)
@@ -230,7 +230,7 @@ class Transpose2Op : public TransposeOp {
     for (int i = 0; i < in_dims.size(); ++i) {
       x_shape_dim[i + 1] = in_dims[i];
     }
-    ctx->SetOutputDim("XShape", framework::make_ddim(x_shape_dim));
+    ctx->SetOutputDim("XShape", phi::make_ddim(x_shape_dim));
     ctx->ShareLoD("X", /*->*/ "XShape");
   }
 
@@ -250,7 +250,8 @@ class Transpose2Op : public TransposeOp {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
-      auto input_data_type = ctx.Input<Tensor>("X")->type();
+      auto input_data_type =
+          framework::TransToProtoVarType(ctx.Input<Tensor>("X")->dtype());
       customized_type_value = (input_data_type == VarType::INT8 ||
                                input_data_type == VarType::UINT8)
                                   ? kTransposeMKLDNNINT8
@@ -311,8 +312,7 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
                    framework::GradVarName("Out"), "Transpose2OpGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       auto xshape_dim = ctx->GetInputDim("XShape");
-      auto x_shape_dim =
-          framework::slice_ddim(xshape_dim, 1, xshape_dim.size());
+      auto x_shape_dim = phi::slice_ddim(xshape_dim, 1, xshape_dim.size());
       ctx->SetOutputDim(framework::GradVarName("X"), x_shape_dim);
       ctx->ShareLoD("XShape", framework::GradVarName("X"));
     }

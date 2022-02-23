@@ -25,9 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 
 namespace paddle {
@@ -170,7 +170,8 @@ PyObject* tensor_properties_get_place_str(TensorObject* self, void* closure) {
 
 PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_TRY
-  return ToPyObject(pten::TransToProtoVarType(self->tensor.type()));
+  return ToPyObject(
+      paddle::framework::TransToProtoVarType(self->tensor.type()));
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

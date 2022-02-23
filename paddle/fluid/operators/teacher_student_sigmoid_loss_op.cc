@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

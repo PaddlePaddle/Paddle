@@ -11,7 +11,7 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -22,7 +22,7 @@ typedef struct {
   PyObject_HEAD paddle::experimental::Tensor tensor;
 } TensorObject;
 
-int TensorDtype2NumpyDtype(pten::DataType dtype);
+int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
@@ -112,7 +112,7 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
 bool PyCheckInteger(PyObject* obj);
 bool IsNumpyType(PyObject* obj);
 bool PyCheckTensor(PyObject* obj);
-Py_ssize_t GetSliceIndexFromTensor(const pten::DenseTensor& tensor);
+Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor);
 Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 int _PySlice_GetIndices(PySliceObject* r, Py_ssize_t length, Py_ssize_t* start,
                         Py_ssize_t* stop, Py_ssize_t* step);

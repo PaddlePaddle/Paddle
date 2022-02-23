@@ -15,12 +15,13 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <memory>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/platform/float16.h"
 #include "xpu/refactor/math.h"
 
-#include "paddle/pten/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -45,10 +46,10 @@ class CastXPUKernel : public framework::OpKernel<InT> {
     out->mutable_data(dev_ctx.GetPlace(),
                       static_cast<framework::proto::VarType::Type>(out_dtype));
 
-    auto pt_out_dtype = pten::TransToPtenDataType(
+    auto pt_out_dtype = framework::TransToPtenDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
     // call pten kernel
-    pten::CastKernel<InT>(
+    phi::CastKernel<InT>(
         static_cast<const typename paddle::framework::ConvertToPtenContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *in, pt_out_dtype, out);
