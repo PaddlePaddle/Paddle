@@ -12,7 +12,6 @@ ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 
 ENV HOME /root
-ENV DEBIAN_FRONTEND=noninteractive
 # Add bash enhancements
 COPY paddle/scripts/docker/root/ /root/
 
