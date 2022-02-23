@@ -875,12 +875,13 @@ struct LinearAct : public PatternBase {
 
   PDNode* operator()(PDNode* x,
                      const std::unordered_set<std::string>& act_types,
-                     bool with_grad_link);
+                     bool with_grad_link, bool is_act_grad_x_from_act);
 
   // declare operator node's name
   PATTERN_DECL_NODE(matmul);
   PATTERN_DECL_NODE(ele_add);
   PATTERN_DECL_NODE(act);
+  PATTERN_DECL_NODE(act_grad);
   // declare variable node's name
   PATTERN_DECL_NODE(matmul_w);
   PATTERN_DECL_NODE(matmul_out);
@@ -903,13 +904,14 @@ struct ElewiseAddMatmulAct : public PatternBase {
 
   PDNode* operator()(PDNode* x,
                      const std::unordered_set<std::string>& act_grad_types,
-                     bool without_x_gradient);
+                     bool without_x_gradient, bool is_act_grad_x_from_act);
 
   // declare operator node's name
   PATTERN_DECL_NODE(ele_add_grad);
   PATTERN_DECL_NODE(matmul_grad);
   PATTERN_DECL_NODE(act_grad);
   // declare variable node's name
+  PATTERN_DECL_NODE(ele_out);
   PATTERN_DECL_NODE(ele_grad_bias);
   PATTERN_DECL_NODE(ele_grad_dx);
   PATTERN_DECL_NODE(ele_grad_dbias);

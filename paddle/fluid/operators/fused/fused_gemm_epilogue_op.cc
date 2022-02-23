@@ -125,6 +125,11 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("out", framework::make_ddim(out_dims));
+    // Note (Ming Huang): Reserve space of relu is a bit-mask,
+    // which cannot pass nan_and_inf checking if shape is set.
+    if (activation == "gelu" && ctx->HasOutput("reserve_space")) {
+      ctx->SetOutputDim("reserve_space", framework::make_ddim(out_dims));
+    }
   }
 
   framework::OpKernelType GetExpectedKernelType(

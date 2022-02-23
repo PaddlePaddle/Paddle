@@ -104,10 +104,11 @@ class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
                 self.loss = paddle.mean(out)
 
         self.data_arr = np.random.random(
-            (self.batch, self.seqlen, self.hidden)).astype("float32")
+            (self.batch, self.seqlen, self.hidden)).astype("float32") - 0.5
         self.matmul_y_arr = np.random.random(
-            (1, self.hidden, self.hidden)).astype("float32")
-        self.ele_y_arr = np.random.random((self.hidden, )).astype("float32")
+            (1, self.hidden, self.hidden)).astype("float32") - 0.5
+        self.ele_y_arr = np.random.random(
+            (self.hidden, )).astype("float32") - 0.5
 
         self.place = paddle.CUDAPlace(0)
         self.exe = paddle.static.Executor(self.place)
@@ -251,10 +252,11 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
                 paddle.static.append_backward(loss=self.loss)
 
         self.data_arr = np.random.random(
-            (self.batch, self.seqlen, self.hidden)).astype("float32")
+            (self.batch, self.seqlen, self.hidden)).astype("float32") - 0.5
         self.matmul_y_arr = np.random.random(
-            (1, self.hidden, self.hidden)).astype("float32")
-        self.ele_y_arr = np.random.random((self.hidden, )).astype("float32")
+            (1, self.hidden, self.hidden)).astype("float32") - 0.5
+        self.ele_y_arr = np.random.random(
+            (self.hidden, )).astype("float32") - 0.5
 
         self.place = paddle.CUDAPlace(0)
         self.exe = paddle.static.Executor(self.place)
@@ -359,7 +361,7 @@ class TestFuseGemmEpilogueReLUBWDFP16(TestFuseGemmEpilogueReLUBWDFP32):
                  "core is not compiled with CUDA")
 class TestFuseGemmEpilogueGeLUBWDFP32(TestFuseGemmEpilogueBWDBase):
     def _pre_test_hooks(self):
-        self.atol = 1e-4
+        self.atol = 5e-4
         self.rtol = 1e-3
 
     def _get_act_type(self):

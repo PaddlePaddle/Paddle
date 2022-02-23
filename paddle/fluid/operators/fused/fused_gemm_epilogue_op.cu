@@ -92,7 +92,8 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     if (enable_auxiliary && activation != "none") {
       size_t reserve_space_size = 0;
       if (activation == "relu") {
-        reserve_space_size = framework::product(out->dims()) / sizeof(char);
+        // Count in bits.
+        reserve_space_size = framework::product(out->dims()) / 8;
       } else {
         reserve_space_size = framework::product(out->dims()) * sizeof(T);
       }

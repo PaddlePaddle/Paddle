@@ -1528,8 +1528,8 @@ PDNode *patterns::ElewiseAddAct::operator()(
 
 PDNode *patterns::LinearAct::operator()(
     paddle::framework::ir::PDNode *linear_x_var,
-    const std::unordered_set<std::string> &act_types,
-    bool with_grad_link = false) {
+    const std::unordered_set<std::string> &act_types, bool with_grad_link,
+    bool is_act_grad_x_from_act) {
   auto *matmul_w_var =
       pattern->NewNode(matmul_w_repr())->assert_is_op_input("matmul_v2", "Y");
 
@@ -1563,11 +1563,25 @@ PDNode *patterns::LinearAct::operator()(
     ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
 
     auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
-
     auto *act_out_var = pattern->NewNode(act_out_repr())
                             ->assert_is_ops_output(act_types, "Out");
 
     act->LinksFrom({ele_out_var}).LinksTo({act_out_var});
+
+    if (with_grad_link && !is_act_grad_x_from_act) {
+      std::unordered_set<std::string> act_grad_types;
+      for (const auto &act : act_types) {
+        std::string act_grad(act);
+        act_grad.append("_grad");
+        act_grad_types.insert(act_grad);
+      }
+
+      ele_out_var->assert_is_ops_input(act_grad_types, "X");
+      auto *act_grad_op =
+          pattern->NewNode(act_grad_repr())->assert_is_ops(act_grad_types);
+      act_grad_op->LinksFrom({ele_out_var});
+    }
+
     return act_out_var;
   }
 
@@ -1577,7 +1591,7 @@ PDNode *patterns::LinearAct::operator()(
 PDNode *patterns::ElewiseAddMatmulAct::operator()(
     paddle::framework::ir::PDNode *dout_var,
     const std::unordered_set<std::string> &act_grad_types,
-    bool without_x_gradient) {
+    bool without_x_gradient, bool is_act_grad_x_from_act) {
   auto *ele_grad_bias_var =
       pattern->NewNode(ele_grad_bias_repr())
           ->assert_is_op_input("elementwise_add_grad", "Y");
@@ -1618,12 +1632,19 @@ PDNode *patterns::ElewiseAddMatmulAct::operator()(
   if (!without_x_gradient && act_grad_types.size() > 0) {
     matmul_grad_dx_var->AsIntermediate()->assert_is_ops_input(
         act_grad_types, GradVarName("Out"));
-    auto *act_grad_x_var = matmul_grad_x_var;
+
     auto *act_grad =
         pattern->NewNode(act_grad_repr())->assert_is_ops(act_grad_types);
     auto *act_grad_dx_var =
         pattern->NewNode(act_grad_dx_repr())
             ->assert_is_ops_output(act_grad_types, GradVarName("X"));
+
+    auto *act_grad_x_var = matmul_grad_x_var;
+    if (!is_act_grad_x_from_act) {
+      auto *ele_out_var = pattern->NewNode(ele_out_repr())
+                              ->assert_is_ops_input(act_grad_types, "X");
+      act_grad_x_var = ele_out_var;
+    }
 
     act_grad->LinksFrom({matmul_grad_dx_var, act_grad_x_var})
         .LinksTo({act_grad_dx_var});

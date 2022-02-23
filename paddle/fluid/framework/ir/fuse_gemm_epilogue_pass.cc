@@ -23,12 +23,13 @@ namespace framework {
 namespace ir {
 
 void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
-  std::unordered_set<std::string> act_types = {"relu", "gelu"};
-  graph = FuseLinearActFwd(graph, act_types, false);
-  graph = FuseLinearActFwd(graph, act_types, true);
+  graph = FuseLinearActFwd(graph, {"relu", "gelu"}, false, false);
+  graph = FuseLinearActFwd(graph, {"relu"}, true, true);
+  graph = FuseLinearActFwd(graph, {"gelu"}, true, false);
   graph = FuseLinearFwd(graph, false);
   graph = FuseLinearFwd(graph, true);
-  graph = FuseLinearActBwd(graph, {"relu_grad", "gelu_grad"});
+  graph = FuseLinearActBwd(graph, {"relu_grad"}, true);
+  graph = FuseLinearActBwd(graph, {"gelu_grad"}, false);
   graph = FuseLinearBwd(graph, false);
   graph = FuseLinearBwd(graph, true);
 }
@@ -47,7 +48,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
                 ->assert_is_op_input("matmul_v2", "X");
   patterns::LinearAct linear_act_pattern(gpd.mutable_pattern(), "linear_act");
 
-  linear_act_pattern(x, {}, is_training);
+  linear_act_pattern(x, {}, is_training, false);
 
   int found_linear_count = 0;
 
@@ -107,7 +108,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types,
-    bool is_training) const {
+    bool is_training, bool is_act_grad_x_from_act) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 
@@ -121,7 +122,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
                 ->assert_is_op_input("matmul_v2", "X");
   patterns::LinearAct linear_act_pattern(gpd.mutable_pattern(), "linear_act");
 
-  linear_act_pattern(x, act_types, is_training);
+  linear_act_pattern(x, act_types, is_training, is_act_grad_x_from_act);
 
   int found_linear_act_count = 0;
 
@@ -160,6 +161,13 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     fused_gemm_epilogue_op_desc.SetAttr("op_role",
                                         matmul_op_desc->GetAttr("op_role"));
 
+    auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
+
+    IR_NODE_LINK_TO(subgraph.at(x), gemm_epilogue_node);
+    IR_NODE_LINK_TO(matmul_w, gemm_epilogue_node);
+    IR_NODE_LINK_TO(ele_bias, gemm_epilogue_node);
+    IR_NODE_LINK_TO(gemm_epilogue_node, act_out);
+
     // Only need to check weight.shape[1] for auxiliary pointer
     // and mark it the act op is fused for backward epilogue fusion.
     // That because cuBlasLt epilogue's restriction.
@@ -172,17 +180,19 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
 
       EpiloguePassActivationCache::Instance().InsertFusedActivation(
           GetReserveSpaceCacheKey(act_out->Var()->Name(), g->GetBlockId()),
-          reserve_space_node->Name());
+          reserve_space_node);
 
-      fused_gemm_epilogue_op_desc.SetOutput("reserve_space",
-                                            {reserve_space_node->Name()});
+      gemm_epilogue_node->Op()->SetOutput("reserve_space",
+                                          {reserve_space_node->Name()});
+
+      if (!is_act_grad_x_from_act) {
+        GET_IR_NODE_FROM_SUBGRAPH(act_grad_op, act_grad, linear_act_pattern);
+        act_grad_op->Op()->RenameInput(ele_out->Name(),
+                                       reserve_space_node->Name());
+        IR_NODE_LINK_TO(reserve_space_node, act_grad_op);
+      }
+      IR_NODE_LINK_TO(gemm_epilogue_node, reserve_space_node);
     }
-    auto gemm_epilogue_node = g->CreateOpNode(&fused_gemm_epilogue_op_desc);
-
-    IR_NODE_LINK_TO(subgraph.at(x), gemm_epilogue_node);
-    IR_NODE_LINK_TO(matmul_w, gemm_epilogue_node);
-    IR_NODE_LINK_TO(ele_bias, gemm_epilogue_node);
-    IR_NODE_LINK_TO(gemm_epilogue_node, act_out);
 
     GraphSafeRemoveNodes(g,
                          {matmul_op, matmul_out, ele_add_op, ele_out, act_op});
@@ -218,7 +228,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
 
   patterns::ElewiseAddMatmulAct ele_add_matmul_act_pattern(
       gpd.mutable_pattern(), "ele_add_matmul_act");
-  ele_add_matmul_act_pattern(dout, {}, without_x_gradient);
+  ele_add_matmul_act_pattern(dout, {}, without_x_gradient, false);
 
   int found_ele_add_matmul_act_count = 0;
 
@@ -313,8 +323,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
 }
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
-    ir::Graph *graph,
-    const std::unordered_set<std::string> &act_grad_types) const {
+    ir::Graph *graph, const std::unordered_set<std::string> &act_grad_types,
+    bool is_act_grad_x_from_act) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("gemm_epilogue");
@@ -329,7 +339,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 
   patterns::ElewiseAddMatmulAct ele_add_matmul_act_pattern(
       gpd.mutable_pattern(), "ele_add_matmul_act");
-  ele_add_matmul_act_pattern(dout, act_grad_types, false);
+  ele_add_matmul_act_pattern(dout, act_grad_types, false,
+                             is_act_grad_x_from_act);
 
   int found_ele_add_matmul_act_count = 0;
 
@@ -365,7 +376,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     if (!EpiloguePassActivationCache::Instance().HasFusedActivation(key)) {
       return;
     }
-    auto reserve_space_name =
+    auto *reserve_space_node =
         EpiloguePassActivationCache::Instance().GetFusedActivationSpace(key);
 
     std::vector<int64_t> matmul_grad_x_shape = matmul_grad_x->Var()->GetShape();
@@ -388,7 +399,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     fused_gemm_epilogue_grad_op_desc.SetInput("X", {matmul_grad_x->Name()});
     fused_gemm_epilogue_grad_op_desc.SetInput("Y", {matmul_grad_w->Name()});
     fused_gemm_epilogue_grad_op_desc.SetInput("reserve_space",
-                                              {reserve_space_name});
+                                              {reserve_space_node->Name()});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DX", {act_grad_dx->Name()});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DY", {matmul_grad_dw->Name()});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DBias",
@@ -407,6 +418,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     IR_NODE_LINK_TO(gemm_epilogue_grad_node, act_grad_dx);
     IR_NODE_LINK_TO(gemm_epilogue_grad_node, matmul_grad_dw);
     IR_NODE_LINK_TO(gemm_epilogue_grad_node, ele_grad_dbias);
+    IR_NODE_LINK_TO(reserve_space_node, gemm_epilogue_grad_node);
 
     GraphSafeRemoveNodes(g, {ele_add_grad_op, ele_grad_dx, matmul_grad_op,
                              matmul_grad_dx, act_grad_op});

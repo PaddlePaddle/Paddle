@@ -47,7 +47,7 @@ class EpiloguePassActivationCache {
     return fused_activation_space_map_.count(key);
   }
 
-  const std::string &GetFusedActivationSpace(const std::string &key) {
+  ir::Node *GetFusedActivationSpace(const std::string &key) {
     if (HasFusedActivation(key)) {
       return fused_activation_space_map_.find(key)->second;
     }
@@ -55,7 +55,7 @@ class EpiloguePassActivationCache {
         "The key (%d) of EpiloguePassActivationCache does not exist.", key));
   }
 
-  void InsertFusedActivation(const std::string &key, const std::string &value) {
+  void InsertFusedActivation(const std::string &key, ir::Node *const value) {
     if (!HasFusedActivation(key)) {
       mtx.lock();
       fused_activation_space_map_.insert({key, value});
@@ -68,7 +68,7 @@ class EpiloguePassActivationCache {
 
  private:
   EpiloguePassActivationCache() {}
-  std::unordered_map<std::string, std::string> fused_activation_space_map_;
+  std::unordered_map<std::string, ir::Node *> fused_activation_space_map_;
   std::mutex mtx;
 };
 
@@ -82,11 +82,12 @@ class FuseGemmEpiloguePass : public FusePassBase {
   ir::Graph *FuseLinearFwd(ir::Graph *graph, bool is_training) const;
   ir::Graph *FuseLinearActFwd(ir::Graph *graph,
                               const std::unordered_set<std::string> &act_types,
-                              bool is_training) const;
+                              bool is_training,
+                              bool is_act_grad_x_from_act) const;
   ir::Graph *FuseLinearBwd(ir::Graph *graph, bool without_x_gradient) const;
   ir::Graph *FuseLinearActBwd(
-      ir::Graph *graph,
-      const std::unordered_set<std::string> &act_grad_types) const;
+      ir::Graph *graph, const std::unordered_set<std::string> &act_grad_types,
+      bool is_act_grad_x_from_act) const;
 
  private:
   bool IsGemmFromLinear_(const std::vector<int64_t> &x_shape,
