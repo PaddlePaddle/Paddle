@@ -53,8 +53,7 @@ class InferMetaContext {
   const MetaTensor& InputAt(size_t idx) const;
 
   template <typename TensorType>
-  paddle::optional<const TensorType&> InferMetaContext::OptionalInputAt(
-      size_t idx) const {
+  paddle::optional<const TensorType&> OptionalInputAt(size_t idx) const {
     const auto& input = inputs_.at(idx);
     return input ? paddle::optional<const TensorType&>{static_cast<
                        const TensorType&>(*input)}
