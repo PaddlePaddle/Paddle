@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -40,8 +40,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
 
     if (var->IsType<framework::LoDTensor>()) {
       emb_dim = var->Get<framework::LoDTensor>().dims()[1];
-    } else if (var->IsType<pten::SelectedRows>()) {
-      emb_dim = var->Get<pten::SelectedRows>().value().dims()[1];
+    } else if (var->IsType<phi::SelectedRows>()) {
+      emb_dim = var->Get<phi::SelectedRows>().value().dims()[1];
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Expected type of `W` must be Tensor, SelectedRows.But got "
@@ -126,9 +126,9 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
         auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
 
         auto id_dims = id_tensor->dims();
-        out_tensor->Resize(framework::make_ddim(
-            {static_cast<int64_t>(id_dims[0]), static_cast<int64_t>(id_dims[1]),
-             static_cast<int64_t>(emb_dim)}));
+        out_tensor->Resize(phi::make_ddim({static_cast<int64_t>(id_dims[0]),
+                                           static_cast<int64_t>(id_dims[1]),
+                                           static_cast<int64_t>(emb_dim)}));
       }
     }
   }

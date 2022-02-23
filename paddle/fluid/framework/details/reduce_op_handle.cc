@@ -14,11 +14,12 @@
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     cpu_deterministic, false,
@@ -45,7 +46,8 @@ void ReduceOpHandle::Wait(
 }
 
 void ReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
 
   if (places_.size() == 1) return;
   // the input and output may have dummy var.
@@ -114,10 +116,10 @@ void ReduceOpHandle::RunImpl() {
     t_out_p = platform::CPUPlace();
   }
 
-  if (pre_in_var->IsType<pten::SelectedRows>()) {
+  if (pre_in_var->IsType<phi::SelectedRows>()) {
     this->RunAndRecordEvent([&] {
-      std::vector<const pten::SelectedRows *> in_selected_rows =
-          GetInputValues<pten::SelectedRows>(in_var_handles, var_scopes);
+      std::vector<const phi::SelectedRows *> in_selected_rows =
+          GetInputValues<phi::SelectedRows>(in_var_handles, var_scopes);
 
       const CollectiveContext &collective_context =
           *CollectiveContext::GetInstance();
@@ -130,7 +132,7 @@ void ReduceOpHandle::RunImpl() {
           platform::is_cpu_place(t_out_p)) {
         GatherLocalSelectedRowsFunctor functor(
             in_selected_rows, in_places, dev_ctxes_, t_out_p,
-            out_var->GetMutable<pten::SelectedRows>());
+            out_var->GetMutable<phi::SelectedRows>());
         WaitInputVarGenerated();
         functor();
         return;
@@ -150,7 +152,8 @@ void ReduceOpHandle::RunImpl() {
         if (!FLAGS_cpu_deterministic) {
           ReduceLoDTensor func(lod_tensors,
                                out_var->GetMutable<framework::LoDTensor>());
-          VisitDataType(lod_tensors[0]->type(), func);
+          VisitDataType(framework::TransToProtoVarType(lod_tensors[0]->dtype()),
+                        func);
         } else {
           // We sum lod_tensors to reduce_sum_trg which is in local_scopes_0
           // here, but it doesn't mean reduce_sum_trg must be in local_scopes_0.
@@ -158,7 +161,8 @@ void ReduceOpHandle::RunImpl() {
                                       ->FindVar(out_var_handle->name())
                                       ->GetMutable<framework::LoDTensor>();
           ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
-          VisitDataType(lod_tensors[0]->type(), func);
+          VisitDataType(framework::TransToProtoVarType(lod_tensors[0]->dtype()),
+                        func);
 
           auto trg = out_var->GetMutable<framework::LoDTensor>();
           if (reduce_sum_trg.data() != trg->data()) {
@@ -171,7 +175,7 @@ void ReduceOpHandle::RunImpl() {
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
-          out_var_handle->place(), pre_in.type());
+          out_var_handle->place(), pre_in.dtype());
 
       auto out_p = out_var_handle->place();
       int root_id = out_p.device;
@@ -191,7 +195,8 @@ void ReduceOpHandle::RunImpl() {
                   out_var_handle->place());
         }
 
-        int type = platform::ToNCCLDataType(lod_tensor.type());
+        int type = platform::ToNCCLDataType(
+            framework::TransToProtoVarType(lod_tensor.dtype()));
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back(
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
@@ -217,7 +222,7 @@ void ReduceOpHandle::RunImpl() {
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
-          out_var_handle->place(), pre_in.type());
+          out_var_handle->place(), pre_in.dtype());
 
       auto out_p = out_var_handle->place();
       int root_id = out_p.device;
@@ -237,7 +242,8 @@ void ReduceOpHandle::RunImpl() {
                   out_var_handle->place());
         }
 
-        int type = platform::ToBKCLDataType(lod_tensor.type());
+        int type = platform::ToBKCLDataType(
+            framework::TransToProtoVarType(lod_tensor.dtype()));
         size_t numel = static_cast<size_t>(lod_tensor.numel());
         all_reduce_calls.emplace_back([buffer, recvbuffer, type, numel, root_id,
                                        &bkcl_ctx] {

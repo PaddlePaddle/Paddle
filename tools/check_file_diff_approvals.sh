@@ -179,8 +179,8 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one RD (Xreki,luotao1,zhhsplendid) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
           check_approval 1 12538138 6836917 7913861
       else
-          echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
-          check_approval 1 46782768 12538138 6836917 22561442 6888866
+          echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
+          check_approval 1 46782768 12538138 6836917 22561442 6888866 16605440
       fi
   fi
 done
@@ -213,8 +213,8 @@ fi
 NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
 HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1 or qili93) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
-    check_approval 1 22165420 6836917 46661762 26922892 16605440
+    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1, QingshuChen or qili93) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
+    check_approval 1 22165420 6836917 46661762 26922892 16605440 2002279
   fi
 
 HAS_MODIFIED_DEMO_CMAKE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/inference/api/demo_ci/CMakeLists.txt" || true`
@@ -250,17 +250,41 @@ if [ "${EMPTY_GRAD_OP_REGISTERED}" != "" ] && [ "${GIT_PT_ID}" != "" ]; then
     check_approval 1 43953930 46782768 22165420 22361972
 fi
 
-HAS_MODIFIED_PTEN_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/pten/" || true`
-PTEN_INCLUDE_FLUID_FILES=""
-for CHANGE_FILE in ${HAS_MODIFIED_PTEN_FILES}; do
-    PTEN_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep "#include \"paddle/fluid/" || true`
-    if [ "${PTEN_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-        PTEN_INCLUDE_FLUID_FILES="${PTEN_INCLUDE_FLUID_FILES} ${CHANGE_FILE}"
+HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
+PHI_INCLUDE_FLUID_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do
+    PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep "#include \"paddle/fluid/" || true`
+    if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        PHI_INCLUDE_FLUID_FILES="${PHI_INCLUDE_FLUID_FILES} ${CHANGE_FILE}"
     fi 
 done
-if [ "${PTEN_INCLUDE_FLUID_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (chenwhql, MingMingShangTian, YuanRisheng or zyfncg) approval for the including paddle/fluid header in paddle/pten files(${PTEN_INCLUDE_FLUID_FILES}).\n"
+if [ "${PHI_INCLUDE_FLUID_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (chenwhql, MingMingShangTian, YuanRisheng or zyfncg) approval for the including paddle/fluid header in paddle/phi files(${PHI_INCLUDE_FLUID_FILES}).\n"
     check_approval 1 chenwhql MingMingShangTian YuanRisheng zyfncg
+fi
+
+HAS_MODIFIED_PHI_KERNEL_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/kernels" || true`
+PHI_USE_MUTABLE_DATA_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_KERNEL_FILES}; do
+    PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "mutable_data" || true`
+    if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        PHI_USE_MUTABLE_DATA_FILES="${PHI_USE_MUTABLE_DATA_FILES} ${CHANGE_FILE}"
+    fi 
+done
+if [ "${PHI_USE_MUTABLE_DATA_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You can not use the DenseTensor::mutable_data() method in paddle/phi/kernels files(${PHI_USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, MingMingShangTian, YuanRisheng or zyfncg) review and approve.\n"
+    check_approval 1 chenwhql Shixiaowei02 MingMingShangTian YuanRisheng zyfncg
+fi
+PHI_USE_HOSTALLOC_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_KERNEL_FILES}; do
+    PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "HostAlloc" || true`
+    if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        PHI_USE_HOSTALLOC_FILES="${PHI_USE_HOSTALLOC_FILES} ${CHANGE_FILE}"
+    fi
+done
+if [ "${PHI_USE_HOSTALLOC_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (phlrain, chenwhql) approval for the usage of phi::DeviceContext::HostAlloc() method in paddle/phi/kernels files(${PHI_USE_HOSTALLOC_FILES})\n"
+    check_approval 1 phlrain chenwhql
 fi
   
 ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"`
@@ -288,8 +312,8 @@ fi
 
 HAS_OPERATORBASE_FLAG=`git diff -U0 --diff-filter=A upstream/$BRANCH | grep -E "public[[:space:]]+.*OperatorBase" || true`
 if [ "${HAS_OPERATORBASE_FLAG}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="In order to support dynamic graph, all ops are not recommended to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (phlrain (Recommend), luotao1, lanxianghit or XiaoguangHu01) approval for the inherit of OperatorBase.\nYou inherit the OperatorBase class. The corresponding lines are as follows:\n${HAS_OPERATORBASE_FLAG}"
-    check_approval 1 43953930 6836917 47554610 46782768
+    echo_line="In order to support dynamic graph, all ops are not recommended to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (phlrain (Recommend), luotao1, lanxianghit, XiaoguangHu01, or qili93) approval for the inherit of OperatorBase.\nYou inherit the OperatorBase class. The corresponding lines are as follows:\n${HAS_OPERATORBASE_FLAG}"
+    check_approval 1 43953930 6836917 47554610 46782768 16605440
 fi
 
 HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "inplace_atol[[:space:]]*=.*" || true`

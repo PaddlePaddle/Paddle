@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -78,7 +79,8 @@ struct ReluFunctor {
 inline void ReluForward(const paddle::framework::Tensor &x,
                         paddle::framework::Tensor *y) {
   custom_raw_op::ReluFunctor functor(x, y);
-  paddle::framework::VisitDataType(x.type(), functor);
+  paddle::framework::VisitDataType(
+      paddle::framework::TransToProtoVarType(x.dtype()), functor);
 }
 
 }  // namespace custom_raw_op

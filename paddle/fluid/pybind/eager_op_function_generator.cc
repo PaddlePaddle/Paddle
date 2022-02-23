@@ -33,7 +33,7 @@
 #include "paddle/fluid/pybind/op_function_generator.h"
 
 // pten
-#include "paddle/pten/kernels/declarations.h"
+#include "paddle/phi/kernels/declarations.h"
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
@@ -79,10 +79,10 @@ const char* CAST_VAR_LIST_TEMPLATE = R"(
     auto %s = GetTensorListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_TEMPLATE = R"(
-    auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_LIST_TEMPLATE = R"(
-    auto %s = GetEagerTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_SIZE_T_TEMPLATE = R"(
     auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
@@ -367,7 +367,7 @@ GenerateOpFunctions() {
     // since only OperatorWithKernel can run in dygraph mode.
     // if the pten lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
-        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+        !phi::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
     std::string func_name = "eager_api_" + op_type;
@@ -396,6 +396,7 @@ int main(int argc, char* argv[]) {
 
   std::vector<std::string> headers{
       "\"pybind11/detail/common.h\"",
+      "\"paddle/fluid/pybind/eager_final_state_op_function_impl.h\"",
       "\"paddle/fluid/pybind/op_function_common.h\"",
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"",
@@ -441,6 +442,10 @@ int main(int argc, char* argv[]) {
       << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
+      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+         "core.eager.ops failed!\"));\n"
+      << "  }\n\n"
+      << "  if (PyModule_AddFunctions(m.ptr(), EagerFinalStateMethods) < 0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"

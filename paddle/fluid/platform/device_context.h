@@ -20,9 +20,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/backends/gpu/gpu_decls.h"
-#include "paddle/pten/core/device_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/custom/custom_context.h"
+#include "paddle/phi/backends/gpu/gpu_decls.h"
+#include "paddle/phi/core/device_context.h"
 
 #include "paddle/fluid/memory/malloc.h"
 #ifdef PADDLE_WITH_CUDA
@@ -31,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/dynload/cusparse.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -42,7 +43,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"  // NOLINT
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"  // NOLINT
+#include "paddle/phi/backends/gpu/gpu_context.h"  // NOLINT
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
@@ -70,6 +71,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
+
+#include "paddle/fluid/platform/device/device_ext.h"
+#include "paddle/fluid/platform/device/stream.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -80,7 +84,7 @@ struct GpuDevice;
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/pten/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -123,12 +127,12 @@ constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
 
-using DeviceContext = pten::DeviceContext;
+using DeviceContext = phi::DeviceContext;
 
-// using CPUDeviceContext = pten::CPUContext;
+// using CPUDeviceContext = phi::CPUContext;
 // TODO(wilber): The place constructor is used in many places, it is more
-// difficult to use CPUDeviceContext = pten::CPUContext directly.
-class CPUDeviceContext : public pten::CPUContext {
+// difficult to use CPUDeviceContext = phi::CPUContext directly.
+class CPUDeviceContext : public phi::CPUContext {
  public:
   CPUDeviceContext();
   explicit CPUDeviceContext(CPUPlace place);
@@ -172,7 +176,7 @@ struct DefaultDeviceContextType<platform::MLUPlace>;
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
-class XPUDeviceContext : public pten::XPUContext {
+class XPUDeviceContext : public phi::XPUContext {
  public:
   XPUDeviceContext();
   explicit XPUDeviceContext(XPUPlace place);
@@ -343,7 +347,7 @@ class CUDAContext {
 #ifndef PADDLE_WITH_HIP
   /*! \brief  Call cusparse function safely. */
   inline void CusparseCall(
-      const std::function<void(pten::sparseHandle_t)>& callback) const {
+      const std::function<void(phi::sparseHandle_t)>& callback) const {
     cusparse_handle_->Call(callback);
   }
 #endif
@@ -496,7 +500,7 @@ class CUDAContext {
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
 
-class CUDADeviceContext : public pten::GPUContext {
+class CUDADeviceContext : public phi::GPUContext {
  public:
   explicit CUDADeviceContext(CUDAPlace place);
   virtual ~CUDADeviceContext();
@@ -511,7 +515,7 @@ class CUDADeviceContext : public pten::GPUContext {
   inline void CublasCall(
       const std::function<void(blasHandle_t)>& callback) const {
     if (!thread_ctx_.count(this)) {
-      pten::GPUContext::CublasCall(callback);
+      phi::GPUContext::CublasCall(callback);
       return;
     }
     return context()->CublasCall(callback);
@@ -520,9 +524,9 @@ class CUDADeviceContext : public pten::GPUContext {
 #ifndef PADDLE_WITH_HIP
   /*! \brief  Call cusparse function safely. */
   inline void CusparseCall(
-      const std::function<void(pten::sparseHandle_t)>& callback) const {
+      const std::function<void(phi::sparseHandle_t)>& callback) const {
     if (!thread_ctx_.count(this)) {
-      pten::GPUContext::CusparseCall(callback);
+      phi::GPUContext::CusparseCall(callback);
       return;
     }
     context()->CusparseCall(callback);
@@ -534,7 +538,7 @@ class CUDADeviceContext : public pten::GPUContext {
   inline void TensorCoreCublasCallIfAvailable(
       const std::function<void(blasHandle_t)>& callback) const {
     if (!thread_ctx_.count(this)) {
-      pten::GPUContext::TensorCoreCublasCallIfAvailable(callback);
+      phi::GPUContext::TensorCoreCublasCallIfAvailable(callback);
       return;
     }
     context()->TensorCoreCublasCallIfAvailable(callback);
@@ -566,7 +570,7 @@ class CUDADeviceContext : public pten::GPUContext {
    *  workspace. Once the handle is destructed, the lock would be released.
    *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
    *  sequential cudnn function calls. */
-  pten::DnnWorkspaceHandle cudnn_workspace_handle() const;
+  phi::DnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
   gpuStream_t stream() const;
@@ -607,7 +611,7 @@ class CUDADeviceContext : public pten::GPUContext {
   // NOTE: Just for compatibility with the past, please delete if there is an
   // elegant way.
   std::unique_ptr<stream::CUDAStream> cuda_stream_;
-  std::unique_ptr<pten::DnnWorkspaceHandle> workspace_{nullptr};
+  std::unique_ptr<phi::DnnWorkspaceHandle> workspace_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
@@ -812,6 +816,35 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   std::shared_ptr<ExecShape> p_exec_items_;
   std::shared_ptr<std::mutex> p_mutex_;
   bool block_next_cache_clearing_ = false;
+};
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class CustomDeviceContext : public phi::CustomContext {
+ public:
+  explicit CustomDeviceContext(CustomPlace place);
+  virtual ~CustomDeviceContext();
+
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    return stream_->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const { return stream_->WaitCallback(); }
+
+ private:
+  std::shared_ptr<platform::stream::Stream> stream_;
+};
+template <>
+struct DefaultDeviceContextType<platform::CustomPlace> {
+  using TYPE = CustomDeviceContext;
+};
+#else
+template <>
+struct DefaultDeviceContextType<platform::CustomPlace> {
+  using TYPE = DeviceContext;
 };
 #endif
 

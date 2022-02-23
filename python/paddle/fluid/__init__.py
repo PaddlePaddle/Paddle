@@ -71,7 +71,7 @@ from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 
 from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace
+from .core import CPUPlace, XPUPlace, CUDAPlace, CUDAPinnedPlace, NPUPlace, IPUPlace, MLUPlace, CustomPlace
 from .incubate import fleet
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig

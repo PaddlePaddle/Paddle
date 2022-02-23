@@ -61,7 +61,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     T* temp_data = temp_outs[0]->mutable_data<T>(input->dims(), ctx.GetPlace());
 
     DataLayout layout = DataLayout::kNCHW;
-    std::vector<int> in_dim = framework::vectorize<int>(input->dims());
+    std::vector<int> in_dim = phi::vectorize<int>(input->dims());
 
     // ------------------- cudnn descriptors ---------------------
     PoolingMode pooling_mode;
@@ -82,10 +82,10 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     cudnnPoolingDescriptor_t cudnn_pool_desc =
         pool_desc.descriptor(pooling_mode, k3x3, k1x1, k1x1);
 
-    cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize<int>(input->dims()));
-    cudnnTensorDescriptor_t pool_out_desc = out_pool_desc.descriptor<T>(
-        layout, framework::vectorize<int>(input->dims()));
+    cudnnTensorDescriptor_t cudnn_input_desc =
+        input_desc.descriptor<T>(layout, phi::vectorize<int>(input->dims()));
+    cudnnTensorDescriptor_t pool_out_desc =
+        out_pool_desc.descriptor<T>(layout, phi::vectorize<int>(input->dims()));
 
     cudnnDataType_t cudnn_dtype = CudnnDataType<T>::type;
     cudnnTensorDescriptor_t* out_desc = new cudnnTensorDescriptor_t[4];
@@ -126,7 +126,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
                                        : CUDNN_DATA_FLOAT;
 
     for (int i = 0; i < 4; ++i) {
-      filter_dims.push_back(framework::vectorize<int>(filters[i]->dims()));
+      filter_dims.push_back(phi::vectorize<int>(filters[i]->dims()));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
           filter_desc[i], cudnn_dtype, format, 4, filter_dims[i].data()));
       bias_dims.push_back({1, filter_dims[i][0], 1, 1});
@@ -223,8 +223,8 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     in_datas.push_back(static_cast<const void*>(input_data));
     in_datas.push_back(
         static_cast<const void*>(output_data + (oc0 + oc1) * h * w));
-    T* temp2_data = temp_outs[1]->mutable_data<T>(
-        framework::make_ddim(out_dims[2]), ctx.GetPlace());
+    T* temp2_data = temp_outs[1]->mutable_data<T>(phi::make_ddim(out_dims[2]),
+                                                  ctx.GetPlace());
     in_datas.push_back(static_cast<const void*>(temp2_data + oc2 * h * w));
 
     std::vector<void*> out_datas;

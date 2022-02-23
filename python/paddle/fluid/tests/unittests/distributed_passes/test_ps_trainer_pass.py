@@ -21,13 +21,14 @@ import numpy as np
 
 import paddle
 from ps_pass_test_base import *
+from paddle.distributed.ps.utils.public import logger
 from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
 
 class TestPsTrainerPass(PsPassTestBase):
     def init(self):
         self.config = {}
-        self.config['ps_mode_config'] = "../ps/cpu_async_ps_config.yaml"
+        self.config['ps_mode_config'] = ""
         self.config['worker_num'] = "1"
         self.config['server_num'] = "1"
         self.config['run_minimize'] = "0"
@@ -38,27 +39,96 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['applied_pass_name'] = ""
 
     def setUp(self):
-        print('TestPsTrainerPass setUp...')
+        pass
 
     def tearDown(self):
-        print('TestPsTrainerPass tearDown...')
+        pass
 
     def check(self):
         pass
 
-    def test_ps_optimizer_minimize(self):
+    def test_ps_optimizer_minimize_cpu_async(self):
         self.init()
+        self.config['ps_mode_config'] = "../ps/cpu_async_ps_config.yaml"
         self.config['run_minimize'] = '1'
 
         self.config['debug_new_minimize'] = '0'
-        self.config['log_dir'] = "/log_old_minimize"
+        self.config['log_dir'] = "/async_cpu_log_old_minimize"
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch(self.config)
 
         self.config['debug_new_minimize'] = '1'
-        self.config['log_dir'] = "/log_new_minimize"
+        self.config['log_dir'] = "/async_cpu_log_new_minimize"
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch(self.config)
+
+        self.check()
+
+    def test_ps_optimizer_minimize_cpu_sync(self):
+        self.init()
+        self.config['ps_mode_config'] = "../ps/cpu_sync_ps_config.yaml"
+        self.config['run_minimize'] = '1'
+
+        self.config['debug_new_minimize'] = '0'
+        self.config['log_dir'] = "/sync_cpu_log_old_minimize"
+        remove_path_if_exists(self.config['log_dir'])
+        self.ps_launch(self.config)
+
+        self.config['debug_new_minimize'] = '1'
+        self.config['log_dir'] = "/sync_cpu_log_new_minimize"
+        remove_path_if_exists(self.config['log_dir'])
+        self.ps_launch(self.config)
+
+        self.check()
+
+    def test_ps_optimizer_minimize_cpu_geo(self):
+        self.init()
+        self.config['ps_mode_config'] = "../ps/cpu_geo_ps_config.yaml"
+        self.config['run_minimize'] = '1'
+
+        self.config['debug_new_minimize'] = '0'
+        self.config['log_dir'] = "/geo_cpu_log_old_minimize"
+        remove_path_if_exists(self.config['log_dir'])
+        self.ps_launch(self.config)
+
+        self.config['debug_new_minimize'] = '1'
+        self.config['log_dir'] = "/geo_cpu_log_new_minimize"
+        remove_path_if_exists(self.config['log_dir'])
+        self.ps_launch(self.config)
+
+        self.check()
+
+    # heter ps 二阶段
+    def test_ps_optimizer_minimize_heter(self):
+        self.init()
+        self.config['worker_num'] = "2"
+        self.config['server_num'] = "2"
+        self.config['heter_worker_num'] = '2'
+        self.config['heter_devices'] = 'gpu'
+
+        self.config['run_minimize'] = '1'
+        self.config['ps_mode_config'] = "../ps/heter_ps_config.yaml"
+
+        self.config['debug_new_minimize'] = '0'
+        self.config['log_dir'] = "/heter_log_old_minimize"
+        remove_path_if_exists(self.config['log_dir'])
+        self.ps_launch(self.config, 'heter-ps')
+
+        self.config['debug_new_minimize'] = '1'
+        self.config['log_dir'] = "/heter_log_new_minimize"
+        remove_path_if_exists(self.config['log_dir'])
+        self.ps_launch(self.config, 'heter-ps')
+
+    def test_ps_optimizer_minimize_gpu(self):
+        self.init()
+        self.config['run_minimize'] = '1'
+        self.config['ps_mode_config'] = "../ps/gpu_ps_config.yaml"
+
+        self.config['debug_new_minimize'] = '0'
+        self.ps_launch(self.config, "gpu-ps")
+
+        self.config['debug_new_minimize'] = '1'
+        self.ps_launch(self.config, "gpu-ps")
 
         self.check()
 
@@ -70,12 +140,12 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['debug_new_pass'] = '0'
         self.config['log_dir'] = "/log_old_" + self.config['applied_pass_name']
         remove_path_if_exists(self.config['log_dir'])
-        self.ps_launch(self.config)
+        self.ps_launch(self.config, "cpu-ps")
 
         self.config['debug_new_pass'] = '1'
         self.config['log_dir'] = "/log_new_" + self.config['applied_pass_name']
         remove_path_if_exists(self.config['log_dir'])
-        self.ps_launch(self.config)
+        self.ps_launch(self.config, "cpu-ps")
 
         self.check()
 
@@ -84,4 +154,5 @@ class TestPsTrainerPass(PsPassTestBase):
 
 
 if __name__ == '__main__':
+    remove_path_if_exists('/ps_log')
     unittest.main()

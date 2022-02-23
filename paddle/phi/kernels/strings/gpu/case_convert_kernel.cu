@@ -1,0 +1,168 @@
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+#include "paddle/phi/kernels/strings/case_convert_kernel.h"
+
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/pstring.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/strings/case_utils.h"
+#include "paddle/phi/kernels/strings/impl/case_convert_kernel_impl.h"
+#include "paddle/phi/kernels/strings/unicode.h"
+
+using pstring = ::phi::dtype::pstring;
+namespace phi {
+namespace strings {
+
+template <typename CharConverter>
+__global__ void StringCaseConvertCUDAKernel(pstring* out,
+                                            const pstring* in,
+                                            size_t num) {
+  CUDA_KERNEL_LOOP(i, num) {
+    out[i] = pstring(in[i]);
+    thrust::transform(thrust::device,
+                      in[i].begin(),
+                      in[i].end(),
+                      out[i].mdata(),
+                      CharConverter());
+  }
+}
+
+template <typename CharConverter>
+struct AsciiCaseConverter<phi::GPUContext, CharConverter> {
+  void operator()(const phi::GPUContext& dev_ctx,
+                  const pstring* in,
+                  pstring* out,
+                  size_t num) const {
+    dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+    dim3 grid_size =
+        dim3((num + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
+    StringCaseConvertCUDAKernel<
+        CharConverter><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+        out, in, num);
+  }
+};
+
+template <template <typename DeviceContextT> typename CharConverter>
+struct UTF8CaseConverter<phi::GPUContext, CharConverter> {
+  void operator()(const phi::GPUContext& dev_ctx,
+                  const pstring* in,
+                  pstring* out,
+                  size_t num) const {
+    auto unicode_flag_map =
+        strings::UnicodeFlagMap<phi::GPUContext, uint8_t>::Instance()->data();
+    auto cases_map =
+        strings::UnicodeFlagMap<phi::GPUContext, uint16_t>::Instance()->data();
+
+    thrust::device_vector<uint32_t> unicode_offsets(num + 1, 0);
+    uint32_t* unicode_offsets_ptr =
+        thrust::raw_pointer_cast(unicode_offsets.data());
+
+    thrust::for_each_n(thrust::device,
+                       thrust::make_counting_iterator<unsigned int>(0),
+                       num,
+                       [unicode_offsets_ptr, in] __device__(uint32_t idx) {
+                         unicode_offsets_ptr[idx + 1] =
+                             phi::strings::get_unicode_str_len(in[idx].data(),
+                                                               in[idx].size());
+                       });
+    uint32_t total_lengths = thrust::reduce(
+        thrust::device, unicode_offsets_ptr, unicode_offsets_ptr + num + 1, 0);
+    if (total_lengths == 0) {
+      return;
+    }
+
+    thrust::device_vector<uint32_t> unicode_output(total_lengths, 0);
+    uint32_t* unicode_output_ptr =
+        thrust::raw_pointer_cast(unicode_output.data());
+
+    CharConverter<GPUContext> converter(unicode_flag_map, cases_map);
+    thrust::for_each_n(
+        thrust::device,
+        thrust::make_counting_iterator<unsigned int>(0),
+        num,
+        [in,
+         out,
+         unicode_output_ptr,
+         unicode_offsets_ptr,
+         converter] __device__(uint32_t idx) {
+          uint32_t unicode_len =
+              unicode_offsets_ptr[idx + 1] - unicode_offsets_ptr[idx];
+          phi::strings::get_unicode_str(
+              in[idx].data(),
+              unicode_output_ptr + unicode_offsets_ptr[idx],
+              unicode_len);
+          uint32_t* curr_unicode_output_ptr =
+              unicode_output_ptr + unicode_offsets_ptr[idx];
+          for (uint32_t i = 0; i < unicode_len; ++i) {
+            curr_unicode_output_ptr[i] = converter(curr_unicode_output_ptr[i]);
+          }
+          thrust::transform(thrust::device,
+                            unicode_output_ptr + unicode_offsets_ptr[idx],
+                            unicode_output_ptr + unicode_offsets_ptr[idx + 1],
+                            unicode_output_ptr + unicode_offsets_ptr[idx],
+                            converter);
+        });
+
+    thrust::device_vector<uint32_t> utf8_offsets(num + 1, 0);
+    uint32_t* utf8_offsets_ptr = thrust::raw_pointer_cast(utf8_offsets.data());
+
+    thrust::for_each_n(
+        thrust::device,
+        thrust::make_counting_iterator<unsigned int>(0),
+        num,
+        [utf8_offsets_ptr, unicode_output_ptr, unicode_offsets_ptr] __device__(
+            uint32_t idx) {
+          uint32_t unicode_len =
+              unicode_offsets_ptr[idx + 1] - unicode_offsets_ptr[idx];
+          utf8_offsets_ptr[idx + 1] = phi::strings::get_utf8_str_len(
+              unicode_output_ptr + unicode_offsets_ptr[idx], unicode_len);
+        });
+    uint32_t total_utf8_lengths = thrust::reduce(
+        thrust::device, utf8_offsets_ptr, utf8_offsets_ptr + num + 1, 0);
+
+    thrust::device_vector<char> utf8_output(total_utf8_lengths, 0);
+    char* utf8_output_ptr = thrust::raw_pointer_cast(utf8_output.data());
+    thrust::for_each_n(
+        thrust::device,
+        thrust::make_counting_iterator<unsigned int>(0),
+        num,
+        [utf8_output_ptr,
+         utf8_offsets_ptr,
+         unicode_output_ptr,
+         unicode_offsets_ptr,
+         out] __device__(uint32_t idx) {
+          uint32_t unicode_len =
+              unicode_offsets_ptr[idx + 1] - unicode_offsets_ptr[idx];
+          const uint32_t* input_ptr =
+              unicode_output_ptr + unicode_offsets_ptr[idx];
+          char* result_ptr = utf8_output_ptr + utf8_offsets_ptr[idx];
+          phi::strings::get_utf8_str(input_ptr, result_ptr, unicode_len);
+          out[idx] = result_ptr;
+        });
+  }
+};
+
+}  // namespace strings
+}  // namespace phi
+
+PD_REGISTER_GENERAL_KERNEL(strings_lower,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::strings::StringLowerKernel<phi::GPUContext>,
+                           pstring) {}
+
+PD_REGISTER_GENERAL_KERNEL(strings_upper,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::strings::StringUpperKernel<phi::GPUContext>,
+                           pstring) {}

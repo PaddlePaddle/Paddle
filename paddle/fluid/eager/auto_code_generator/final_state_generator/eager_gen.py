@@ -17,6 +17,12 @@ import re
 import argparse
 import os
 
+# For API dispatch used at python-level
+# { op_name : [arg_name, ...] }
+core_ops_returns_info = {}
+core_ops_args_info = {}
+core_ops_args_type_info = {}
+
 
 def ParseArguments():
     parser = argparse.ArgumentParser(
@@ -121,6 +127,15 @@ def ReadBwdFile(filepath):
 ######################
 ###  Yaml Parsers  ###
 ######################
+def ParseNoNeedBuffer(string):
+    # string: "x, y"
+    no_need_buffer_set = set()
+    for name in string.split(","):
+        no_need_buffer_set.add(name.strip())
+
+    return no_need_buffer_set
+
+
 def ParseYamlArgs(string):
     # Example: const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y
 
@@ -130,17 +145,16 @@ def ParseYamlArgs(string):
     attrs_list = []
 
     args = [x.strip() for x in string.strip().split(",")]
-
     atype = r'((const )?\S+) '
-    aname = r'(\S+)'
+    aname = r'(.*)'
     pattern = f'{atype}{aname}'
     for i in range(len(args)):
         arg = args[i]
         m = re.search(pattern, arg)
-        arg_type = m.group(1)
-        arg_name = m.group(3).split("=")[0]
-        default_value = m.group(3).split("=")[1] if len(m.group(3).split(
-            "=")) > 1 else None
+        arg_type = m.group(1).strip()
+        arg_name = m.group(3).split("=")[0].strip()
+        default_value = m.group(3).split("=")[1].strip() if len(
+            m.group(3).split("=")) > 1 else None
         if "Tensor" in arg_type:
             assert default_value is None
             inputs_list.append([arg_name, arg_type, i])
@@ -262,7 +276,6 @@ def ForwardsValidationCheck(forward_inputs_list, forward_attrs_list,
         forward_attr_type = forward_attrs_list[i][1]
         forward_attr_default = forward_attrs_list[i][2]
         forward_attr_pos = forward_attrs_list[i][3]
-
         assert orig_attr_type == forward_attr_type
         assert orig_attr_default == forward_attr_default
         assert orig_attr_pos == forward_attr_pos
@@ -393,7 +406,7 @@ def SlotNameMatching(backward_inputs_list, backward_returns_list,
 
 
 def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
-                            backward_attrs_list):
+                            backward_attrs_list, no_need_buffer_set):
     # Inputs:
     # fwd_api_name = ""
     # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
@@ -406,15 +419,20 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
     set_tensor_wrapper_methods_str = ""
     tensor_wrapper_members_str = ""
     for tname, (ttype, is_fwd_input, _) in backward_fwd_input_map.items():
+        if tname in no_need_buffer_set:
+            no_need_buffer = "true"
+        else:
+            no_need_buffer = "false"
+
         tensor_wrapper_name = GetSavedName(tname)
         if IsPlainTensorType(ttype):
             SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """
    void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{     
-     {} = egr::TensorWrapper({}, full_reserved);
+     {} = egr::TensorWrapper({}, full_reserved, {});
    }}
 """
             set_tensor_wrapper_methods_str += SET_PLAIN_TENSOR_WRAPPER_TEMPLATE.format(
-                tname, tname, tensor_wrapper_name, tname)
+                tname, tname, tensor_wrapper_name, tname, no_need_buffer)
 
             PLAIN_TENSOR_MEMBER_TEMPLATE = """
    egr::TensorWrapper {};
@@ -426,12 +444,12 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
             SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = """
    void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved) {{
      for(const auto& eager_tensor : {}) {{
-        {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved) );
+        {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved, {}) );
      }};
    }}
 """
             set_tensor_wrapper_methods_str += SET_VECTOR_TENSOR_WRAPPER_TEMPLATE.format(
-                tname, tname, tname, tensor_wrapper_name)
+                tname, tname, tname, tensor_wrapper_name, no_need_buffer)
 
             VECTOR_TENSOR_MEMBER_TEMPLATE = """
    std::vector<egr::TensorWrapper> {};
@@ -741,26 +759,34 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     # Get Function Args
     num_inputs = len(forward_attrs_list) + len(forward_inputs_position_map.keys(
     ))
-    inputs_args_list = ["" for i in range(num_inputs)]
+    inputs_args_definition_list = ["" for i in range(num_inputs)]
+    inputs_args_declaration_list = ["" for i in range(num_inputs)]
     inputs_call_list = ["" for i in range(num_inputs)]
     for name, (ttype, pos) in forward_inputs_position_map.items():
         inputs_call_list[pos] = f"{name}"
         if IsPlainTensorType(ttype):
-            inputs_args_list[
+            inputs_args_definition_list[
+                pos] = f"const paddle::experimental::Tensor& {name}"
+            inputs_args_declaration_list[
                 pos] = f"const paddle::experimental::Tensor& {name}"
         else:
             assert IsVectorTensorType(ttype)
-            inputs_args_list[
+            inputs_args_definition_list[
+                pos] = f"const std::vector<paddle::experimental::Tensor>& {name}"
+            inputs_args_declaration_list[
                 pos] = f"const std::vector<paddle::experimental::Tensor>& {name}"
 
     for name, atype, default_val, pos in forward_attrs_list:
         inputs_call_list[pos] = name
         if default_val is not None:
-            inputs_args_list[pos] = f"{atype} {name} = {default_val}"
+            inputs_args_declaration_list[
+                pos] = f"{atype} {name} = {default_val}"
         else:
-            inputs_args_list[pos] = f"{atype} {name}"
+            inputs_args_declaration_list[pos] = f"{atype} {name}"
+        inputs_args_definition_list[pos] = f"{atype} {name}"
 
-    inputs_args_str = ", ".join(inputs_args_list)
+    inputs_args_declaration_str = ", ".join(inputs_args_declaration_list)
+    inputs_args_definition_str = ", ".join(inputs_args_definition_list)
     inputs_call_args_str = ", ".join(inputs_call_list)
 
     # Forward Full Logic
@@ -812,18 +838,100 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
 
     forward_function_name = GetForwardFunctionName(fwd_api_name)
     forward_function_str = FORWARD_FUNCTION_TEMPLATE.format(
-        returns_type_str, forward_function_name, inputs_args_str,
+        returns_type_str, forward_function_name, inputs_args_definition_str,
         forward_call_str, node_creation_str, returns_str)
-    forward_function_declaration_str = f"{returns_type_str} {forward_function_name}({inputs_args_str});"
+    forward_function_declaration_str = f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});"
 
     return forward_function_str, forward_function_declaration_str
+
+
+def CollectCoreOpsInformation(fwd_api_name, forward_inputs_position_map,
+                              forward_outputs_position_map, forward_attrs_list):
+    # fwd_api_name : ""
+    # forward_inputs_position_map = { "name" : [type, fwd_position] }
+    # forward_outputs_position_map = { "name" : [type, fwd_position] }
+    # forward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
+    num_args = len(forward_inputs_position_map.keys()) + len(forward_attrs_list)
+    num_returns = len(forward_outputs_position_map.keys())
+
+    final_state_fwd_api_name = "final_state_" + fwd_api_name
+    core_ops_returns_info[
+        final_state_fwd_api_name] = ["" for i in range(num_returns)]
+    core_ops_args_info[final_state_fwd_api_name] = ["" for i in range(num_args)]
+    core_ops_args_type_info[
+        final_state_fwd_api_name] = ["" for i in range(num_args)]
+    for name, (ttype, pos) in forward_inputs_position_map.items():
+        core_ops_args_info[final_state_fwd_api_name][pos] = name
+        if IsPlainTensorType(ttype):
+            core_ops_args_type_info[final_state_fwd_api_name][pos] = "tensor"
+        else:
+            assert IsVectorTensorType(ttype)
+            core_ops_args_type_info[final_state_fwd_api_name][pos] = "list"
+
+    for name, _, _, pos in forward_attrs_list:
+        core_ops_args_info[final_state_fwd_api_name][pos] = name
+
+    for name, (ttype, pos) in forward_outputs_position_map.items():
+        core_ops_returns_info[final_state_fwd_api_name][pos] = name
+
+
+def GenerateCoreOpInfoDeclaration():
+    core_ops_declaration_str = """
+    extern std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_args_info;
+    extern std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_args_type_info;
+    extern std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_returns_info;
+
+"""
+    return core_ops_declaration_str
+
+
+def GenerateCoreOpInfoDefinition():
+
+    CORE_OPS_INFO_TEMPLATE = """
+std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_args_info = {{
+    {}
+}};
+std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_args_type_info = {{
+    {}
+}};
+std::unordered_map<std::string, std::vector<std::string>> core_ops_final_state_returns_info = {{
+    {}
+}};
+
+"""
+    op_args_info_list = []
+    for op_name, arg_list in core_ops_args_info.items():
+        arg_str = ",".join(["\"" + v + "\"" for v in arg_list])
+        op_args_info = f"{{ \"{op_name}\", {{ {arg_str} }} }},"
+        op_args_info_list.append(op_args_info)
+
+    op_types_info_list = []
+    for op_name, type_list in core_ops_args_type_info.items():
+        type_str = ",".join(["\"" + v + "\"" for v in type_list])
+        op_types_info = f"{{ \"{op_name}\", {{ {type_str} }} }},"
+        op_types_info_list.append(op_types_info)
+
+    op_returns_info_list = []
+    for op_name, return_list in core_ops_returns_info.items():
+        return_str = ",".join(["\"" + v + "\"" for v in return_list])
+        return_types_info = f"{{ \"{op_name}\", {{ {return_str} }} }},"
+        op_returns_info_list.append(return_types_info)
+
+    op_args_info_str = "\n".join(op_args_info_list)
+    op_types_info_str = "\n".join(op_types_info_list)
+    op_returns_info_str = "\n".join(op_returns_info_list)
+
+    core_ops_info_definition_str = CORE_OPS_INFO_TEMPLATE.format(
+        op_args_info_str, op_types_info_str, op_returns_info_str)
+
+    return core_ops_info_definition_str
 
 
 def GenerateNodeCCFile(filepath, node_definition_str):
     file_contents = """
 #include "glog/logging.h"
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/api/backward/backward_api.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/utils.h"
@@ -856,6 +964,8 @@ def GenerateForwardCCFile(filepath, forward_definition_str):
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 
 """
+
+    file_contents += GenerateCoreOpInfoDefinition()
     file_contents += forward_definition_str
     with open(filepath, 'a') as f:
         f.write(file_contents)
@@ -866,11 +976,12 @@ def GenerateForwardHFile(filepath, forward_function_declaration_str):
 #pragma once
 #include "glog/logging.h"
 #include "paddle/fluid/eager/autograd_meta.h"
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 """
+    file_contents += GenerateCoreOpInfoDeclaration()
     file_contents += forward_function_declaration_str
     with open(filepath, 'a') as f:
         f.write(file_contents)
@@ -899,6 +1010,10 @@ if __name__ == "__main__":
         assert 'args' in fwd_api.keys()
         assert 'output' in fwd_api.keys()
         assert 'backward' in fwd_api.keys()
+
+        no_need_buffer_set = set()
+        if 'no_need_buffer' in fwd_api.keys():
+            no_need_buffer_set = ParseNoNeedBuffer(fwd_api['no_need_buffer'])
 
         fwd_api_name = fwd_api['api']
         fwd_args_str = fwd_api['args']
@@ -965,7 +1080,8 @@ if __name__ == "__main__":
 
         # Node Declaration Generation
         node_declaration_str += GenerateNodeDeclaration(
-            fwd_api_name, backward_fwd_input_map, backward_attrs_list)
+            fwd_api_name, backward_fwd_input_map, backward_attrs_list,
+            no_need_buffer_set)
         print("Generated Node Declaration: ", node_declaration_str)
 
         node_definition_str += GenerateNodeDefinition(
@@ -984,6 +1100,11 @@ if __name__ == "__main__":
         print("Generated Forward Declaration: ", forward_declaration_str)
         forward_definition_str += definition_declaration_pair[0]
         forward_declaration_str += definition_declaration_pair[1]
+
+        # For python-level API dispatch
+        CollectCoreOpsInformation(fwd_api_name, forward_inputs_position_map,
+                                  forward_outputs_position_map,
+                                  forward_attrs_list)
 
     # Generate Files
     nodes_h_path = args.nodes_h_path
