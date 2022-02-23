@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include <cuda_runtime.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thread>  // NOLINT
@@ -404,5 +405,70 @@ TEST(Predictor, Run) {
   LOG(INFO) << "output size: " << size / sizeof(float);
   predictor->TryShrinkMemory();
 }
+
+TEST(Tensor, CpuShareExternalData) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+
+  auto predictor = CreatePredictor(config);
+
+  auto w0 = predictor->GetInputHandle("firstw");
+  auto w1 = predictor->GetInputHandle("secondw");
+  auto w2 = predictor->GetInputHandle("thirdw");
+  auto w3 = predictor->GetInputHandle("forthw");
+
+  std::vector<std::vector<int64_t>> input_data(4, {0, 1, 2, 3});
+  w0->ShareExternalData<int64_t>(input_data[0].data(), {4, 1}, PlaceType::kCPU);
+  w1->ShareExternalData<int64_t>(input_data[1].data(), {4, 1}, PlaceType::kCPU);
+  w2->ShareExternalData<int64_t>(input_data[2].data(), {4, 1}, PlaceType::kCPU);
+  w3->ShareExternalData<int64_t>(input_data[3].data(), {4, 1}, PlaceType::kCPU);
+
+  predictor->Run();
+
+  auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  PlaceType place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  predictor->TryShrinkMemory();
+}
+
+#if defined(PADDLE_WITH_CUDA)
+TEST(Tensor, GpuShareExternalData) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.EnableUseGpu(100, 0);
+
+  auto predictor = CreatePredictor(config);
+
+  auto w0 = predictor->GetInputHandle("firstw");
+  auto w1 = predictor->GetInputHandle("secondw");
+  auto w2 = predictor->GetInputHandle("thirdw");
+  auto w3 = predictor->GetInputHandle("forthw");
+
+  std::vector<std::vector<int64_t>> input_data(4, {0, 1, 2, 3});
+  std::vector<int64_t*> input_gpu(4, nullptr);
+
+  for (size_t i = 0; i < 4; ++i) {
+    cudaMalloc(reinterpret_cast<void**>(&input_gpu[i]), 4 * sizeof(int64_t));
+    cudaMemcpy(input_gpu[i], input_data[i].data(), 4 * sizeof(int64_t),
+               cudaMemcpyHostToDevice);
+  }
+
+  w0->ShareExternalData<int64_t>(input_gpu[0], {4, 1}, PlaceType::kGPU);
+  w1->ShareExternalData<int64_t>(input_gpu[1], {4, 1}, PlaceType::kGPU);
+  w2->ShareExternalData<int64_t>(input_gpu[2], {4, 1}, PlaceType::kGPU);
+  w3->ShareExternalData<int64_t>(input_gpu[3], {4, 1}, PlaceType::kGPU);
+
+  predictor->Run();
+
+  auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  PlaceType place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  predictor->TryShrinkMemory();
+}
+#endif
 
 }  // namespace paddle_infer

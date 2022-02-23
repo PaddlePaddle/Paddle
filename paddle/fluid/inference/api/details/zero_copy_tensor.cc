@@ -262,12 +262,15 @@ void Tensor::ShareExternalData(const T *data, const std::vector<int> &shape,
                                            paddle::platform::CPUPlace()),
         meta);
     *tensor = std::move(dtensor);
-  } else {
+  } else if (place == PlaceType::kGPU) {
     pten::DenseTensor dtensor(
         std::make_shared<pten::Allocation>(
             const_cast<T *>(data), size, paddle::platform::CUDAPlace(device_)),
         meta);
     *tensor = std::move(dtensor);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "PlaceType must be PlaceType::kCPU or PlaceType::kGPU."));
   }
 }
 
