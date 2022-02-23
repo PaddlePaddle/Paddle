@@ -21,7 +21,7 @@
 
 namespace phi {
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__)
 template <typename T>
 void AbsGradKernelImpl(const GPUContext& dev_ctx,
                        const DenseTensor& x,
