@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CrossKernel(const Context& ctx,
+void CrossKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
                  int axis,
@@ -90,11 +90,11 @@ void CrossKernel(const Context& ctx,
   }
 
   std::vector<T> input_x_vec, input_y_vec;
-  paddle::framework::TensorToVector(input_x, ctx, &input_x_vec);
-  paddle::framework::TensorToVector(input_y, ctx, &input_y_vec);
+  paddle::framework::TensorToVector(input_x, dev_ctx, &input_x_vec);
+  paddle::framework::TensorToVector(input_y, dev_ctx, &input_y_vec);
   std::vector<T> out_vec(output->numel());
 
-  ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
 
   for (auto i = 0; i < outer_loops; i++) {
     for (auto j = 0; j < 3; j++) {
@@ -109,7 +109,7 @@ void CrossKernel(const Context& ctx,
       }
     }
   }
-  paddle::framework::TensorFromVector(out_vec, ctx, output);
+  paddle::framework::TensorFromVector(out_vec, dev_ctx, output);
   output->Resize(input_x_dims);
 }
 

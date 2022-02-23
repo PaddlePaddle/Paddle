@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void CrossKernel(const Context& ctx,
+void CrossKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
                  int axis,
