@@ -477,6 +477,9 @@ void PreparePtenData(const phi::Kernel& pt_kernel,
       auto var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
       if (tensor_in && tensor_in->IsInitialized()) {
+        if (in_def.backend == phi::Backend::ALL_BACKEND) {
+          continue;
+        }
         auto expected_place = phi::TransToPtenPlace(in_def.backend);
         if (platform::is_same_place(tensor_in->place(), expected_place)) {
           continue;

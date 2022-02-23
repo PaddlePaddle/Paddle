@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/tensor_base.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 using DataType = paddle::experimental::DataType;
 
 struct DeviceContext::Impl {
-  Impl() = default;
+  explicit Impl(DeviceContext* dev_ctx) : dev_ctx_(dev_ctx) {}
   ~Impl() = default;
 
   void SetAllocator(const Allocator* allocator) {
@@ -81,6 +82,12 @@ struct DeviceContext::Impl {
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
     }
+    // NOTE(paddle-dev): In case of tensor has already hold allocation and
+    // is going to allocate allocation on new place, we will clear its holder
+    // firstly and then re-alloc it.
+    if (tensor->initialized() && tensor->place() != dev_ctx_->GetPlace()) {
+      ClearHolder(tensor);
+    }
     auto* allocator =
         tensor->numel() == 0 ? zero_allocator_ : device_allocator_;
     return tensor->AllocateFrom(
@@ -102,6 +109,9 @@ struct DeviceContext::Impl {
             "Required tensor shall not be nullptr, but received nullptr."));
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
+    }
+    if (tensor->initialized() && tensor->place() != CPUPlace()) {
+      ClearHolder(tensor);
     }
     auto* allocator = tensor->numel() == 0 ? zero_allocator_ : host_allocator_;
     return tensor->AllocateFrom(
@@ -131,13 +141,27 @@ struct DeviceContext::Impl {
   }
 
  private:
+  void ClearHolder(TensorBase* tensor) const {
+    if (!tensor->initialized()) return;
+
+    if (DenseTensor::classof(tensor)) {
+      static_cast<DenseTensor*>(tensor)->clear();
+    } else if (SelectedRows::classof(tensor)) {
+      static_cast<SelectedRows*>(tensor)->mutable_value()->clear();
+    } else {
+      PADDLE_THROW(errors::Unimplemented(
+          "Only support DenseTensor and SelectedRows now."));
+    }
+  }
+
   const Allocator* device_allocator_{nullptr};
   const Allocator* host_allocator_{nullptr};
   const Allocator* zero_allocator_{nullptr};
   Generator* generator_{nullptr};
+  DeviceContext* dev_ctx_{nullptr};
 };
 
-DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
+DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(this); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetHostAllocator(&other.GetHostAllocator());
