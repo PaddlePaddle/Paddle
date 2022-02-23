@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -71,7 +70,7 @@ class TruncGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 DELCARE_INFER_SHAPE_FUNCTOR(trunc, TruncInferShapeFunctor,
-                            PT_INFER_META(phi::TruncInferMeta));
+                            PT_INFER_META(phi::UnchangedInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(trunc, ops::TruncOp, ops::TruncOpMaker,
