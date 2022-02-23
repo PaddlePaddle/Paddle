@@ -194,6 +194,7 @@ message ExtraInfoMap {
 
 message NodeTreesProto {
   required string version = 1;
-  repeated ThreadNodeTreeProto thread_trees = 2;
-  repeated ExtraInfoMap extra_info = 3;
+  required uint32 span_indx = 2;
+  repeated ThreadNodeTreeProto thread_trees = 3;
+  repeated ExtraInfoMap extra_info = 4;
 }

@@ -12,6 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 
 namespace paddle {
 namespace platform {
@@ -31,26 +32,26 @@ HostPythonNode::~HostPythonNode() {
   }
 }
 
-HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* node) {
+HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
   // Copy and transfer EventNode in NodeTree to PythonNode
-  if (node == nullptr) {
+  if (root == nullptr) {
     return nullptr;
   }
   // copy HostTraceEventNode and its children
   HostPythonNode* host_python_node = new HostPythonNode();
-  host_python_node->name = node->Name();
-  host_python_node->type = node->Type();
-  host_python_node->start_ns = node->StartNs();
-  host_python_node->end_ns = node->EndNs();
-  host_python_node->process_id = node->ProcessId();
-  host_python_node->thread_id = node->ThreadId();
-  for (auto it = node->GetChildren().begin(); it != node->GetChildren().end();
+  host_python_node->name = root->Name();
+  host_python_node->type = root->Type();
+  host_python_node->start_ns = root->StartNs();
+  host_python_node->end_ns = root->EndNs();
+  host_python_node->process_id = root->ProcessId();
+  host_python_node->thread_id = root->ThreadId();
+  for (auto it = root->GetChildren().begin(); it != root->GetChildren().end();
        ++it) {
     host_python_node->children_node_ptrs.push_back(CopyTree(*it));
   }
   // copy its CudaRuntimeTraceEventNode
-  for (auto runtimenode = node->GetRuntimeTraceEventNodes().begin();
-       runtimenode != node->GetRuntimeTraceEventNodes().end(); ++runtimenode) {
+  for (auto runtimenode = root->GetRuntimeTraceEventNodes().begin();
+       runtimenode != root->GetRuntimeTraceEventNodes().end(); ++runtimenode) {
     HostPythonNode* runtime_python_node = new HostPythonNode();
     runtime_python_node->name = (*runtimenode)->Name();
     runtime_python_node->type = (*runtimenode)->Type();
@@ -77,20 +78,21 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* node) {
   return host_python_node;
 }
 
-ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree)
-    : tree_(std::move(tree)) {
+ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
+                               const ExtraInfo& extra_info)
+    : tree_(std::move(tree)), extra_info_(extra_info) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
     for (auto it = nodetrees.begin(); it != nodetrees.end(); ++it) {
-      thread_event_trees_map[it->first] = CopyTree(it->second);
+      thread_event_trees_map_[it->first] = CopyTree(it->second);
     }
   }
 }
 
 ProfilerResult::~ProfilerResult() {
   // delete all root nodes
-  for (auto it = thread_event_trees_map.begin();
-       it != thread_event_trees_map.end(); ++it) {
+  for (auto it = thread_event_trees_map_.begin();
+       it != thread_event_trees_map_.end(); ++it) {
     delete it->second;
   }
 }
@@ -100,9 +102,11 @@ void ProfilerResult::Save(const std::string& file_name,
   if (format == std::string("json")) {
     ChromeTracingLogger logger(file_name);
     tree_->LogMe(&logger);
+    logger.LogMetaInfo(GetExtraInfo());
   } else if (format == std::string("pb")) {
     SerializationLogger logger(file_name);
     tree_->LogMe(&logger);
+    logger.LogMetaInfo(GetExtraInfo());
   }
   return;
 }

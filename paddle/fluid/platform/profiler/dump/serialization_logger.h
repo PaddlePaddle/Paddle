@@ -22,6 +22,7 @@ namespace platform {
 // Dump a NodeTrees into a profobuf file.
 // A SerializationLogger object can only dump a NodeTrees object,
 // creates a file in the constructor and closes the file in the destructor.
+// Should only call LogNodeTrees and LogMetaInfo.
 class SerializationLogger : public BaseLogger {
  public:
   explicit SerializationLogger(const std::string& filename);
@@ -32,13 +33,14 @@ class SerializationLogger : public BaseLogger {
   void LogHostTraceEventNode(const HostTraceEventNode&) override;
   void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) override;
   void LogNodeTrees(const NodeTrees&) override;
+  void LogMetaInfo(const std::unordered_map<std::string, std::string>);
 
  private:
   void OpenFile();
   void HandleTypeKernel(const DeviceTraceEventNode&);
   void HandleTypeMemset(const DeviceTraceEventNode&);
   void HandleTypeMemcpy(const DeviceTraceEventNode&);
-  void LogMetaInfo(const std::unordered_map<std::string, std::string>&);
+
   std::string filename_;
   std::ofstream output_file_stream_;
   NodeTreesProto* node_trees_proto_;
