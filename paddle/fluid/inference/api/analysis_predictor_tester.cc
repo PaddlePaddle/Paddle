@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#if defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime.h>
+#endif
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thread>  // NOLINT
