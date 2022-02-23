@@ -208,7 +208,7 @@ function cmake_base() {
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
-        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+        -DCUDA_ARCH_NAME=Volta
         -DWITH_PYTHON=${WITH_PYTHON:-ON}
         -DCUDNN_ROOT=/usr/
         -DWITH_TESTING=${WITH_TESTING:-ON}
@@ -259,7 +259,7 @@ EOF
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
-        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
+        -DCUDA_ARCH_NAME=Volta \
         -DWITH_PYTHON=${WITH_PYTHON:-ON} \
         -DCUDNN_ROOT=/usr/ \
         -DWITH_TESTING=${WITH_TESTING:-ON} \
@@ -2449,7 +2449,8 @@ function find_temporary_files() {
             -H "Authorization: token ${GITHUB_API_TOKEN}"\
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/files`
-    
+    set -x
+
     result=`echo ${jsonData}|python ${PADDLE_ROOT}/tools/check_file_suffix.py`
     
     if [ ${#result} -gt 0 ]
@@ -2520,7 +2521,6 @@ function main() {
         set +e
         check_style_info=$(check_style)
         check_style_code=$?
-        find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
@@ -2540,7 +2540,6 @@ function main() {
         ;;
       build_and_check_cpu)
         set +e
-        find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
