@@ -65,7 +65,8 @@ void UnfoldGradKernel(const Context& dev_ctx,
     DenseTensor out_grad_batch =
         out_grad.Slice(i, i + 1).Resize(out_matrix_shape);
     DenseTensor x_grad_batch = x_grad->Slice(i, i + 1).Resize(x_shape);
-    col2im(dev_ctx, out_grad_batch, dilations, strides, paddings, &x_grad_batch);
+    col2im(
+        dev_ctx, out_grad_batch, dilations, strides, paddings, &x_grad_batch);
   }
 }
 

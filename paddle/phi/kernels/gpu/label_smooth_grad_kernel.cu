@@ -42,7 +42,7 @@ void LabelSmoothGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outs = {label_grad};
   auto functor = LabelSmoothGradFunctor<T>(epsilon);
   paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-    dev_ctx, ins, &outs, functor);
+      dev_ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

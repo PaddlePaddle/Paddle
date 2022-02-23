@@ -58,6 +58,7 @@ void LabelSmoothKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];
   auto size_prob = label.numel();
+
   const T* in_data = label.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
@@ -76,7 +77,7 @@ void LabelSmoothKernel(const Context& dev_ctx,
     std::vector<DenseTensor*> outs = {out};
     auto functor = LabelSmoothFunctor<T>(epsilon, label_dim);
     paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-      dev_ctx, ins, &outs, functor);
+        dev_ctx, ins, &outs, functor);
   }
 }
 
