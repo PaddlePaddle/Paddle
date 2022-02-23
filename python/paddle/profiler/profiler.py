@@ -392,12 +392,14 @@ class Profiler:
         thread_sep: print op table each thread.
         time_unit: can be chosen form ['s', 'ms', 'us', 'ns']
         '''
-        statistic_data = StatisticData(self.profiler_result.get_data(),
-                                       self.profiler_result.get_extra_info())
-        print(
-            _build_table(
-                statistic_data,
-                sorted_by=sorted_by,
-                op_detail=op_detail,
-                thread_sep=thread_sep,
-                time_unit=time_unit))
+        if self.profiler_result:
+            statistic_data = StatisticData(
+                self.profiler_result.get_data(),
+                self.profiler_result.get_extra_info())
+            print(
+                _build_table(
+                    statistic_data,
+                    sorted_by=sorted_by,
+                    op_detail=op_detail,
+                    thread_sep=thread_sep,
+                    time_unit=time_unit))
