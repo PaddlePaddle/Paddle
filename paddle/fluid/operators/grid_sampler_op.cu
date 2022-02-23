@@ -294,8 +294,14 @@ class GridSampleOpCUDAKernel : public framework::OpKernel<T> {
             << "; " << output->dims()[2] << "; " << output->dims()[3];
     int count = static_cast<int>(n * out_h * out_w);
     auto cu_stream = dev_ctx.stream();
+    int sm_count = dev_ctx.GetSMCount();
     int block_size = 512;
     int grid_size = (count + block_size - 1) / block_size;
+    // performance decrease when grid_size is much less than #SM
+    if (grid_size < sm_count) {
+      grid_size = sm_count;
+      block_size = (count + grid_size - 1) / grid_size;
+    }
     VLOG(3) << "cuda launch - grid dims: " << grid_size << "; block dims"
             << block_size;
     grid_sample_cuda_kernel<T><<<grid_size, block_size, 0, cu_stream>>>(
@@ -469,8 +475,15 @@ class GridSampleGradOpCUDAKernel : public framework::OpKernel<T> {
 
     int count = static_cast<int>(n * out_h * out_w);
     auto cu_stream = dev_ctx.stream();
+    int sm_count = dev_ctx.GetSMCount();
     int block_size = 512;
     int grid_size = (count + block_size - 1) / block_size;
+    // performance decrease when grid_size is much less than #SM
+    if (grid_size < sm_count) {
+      grid_size = sm_count;
+      block_size = (count + grid_size - 1) / grid_size;
+    }
+
     VLOG(3) << "cuda launch grad kernel - grid dims: " << grid_size
             << "; block dims" << block_size << "; count: " << count;
     grid_sampler_cuda_backward_kernel<
