@@ -72,6 +72,7 @@ function(kernel_declare TARGET_LIST)
             string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_name "${kernel_name}")
             string(REPLACE "," "" kernel_name "${kernel_name}")
             string(REGEX REPLACE "[ \t\r\n]+" "" kernel_name "${kernel_name}")
+            string(REGEX REPLACE "//cuda_only" "" kernel_name "${kernel_name}")
             # append kernel declare into declarations.h
             # TODO(chenweihang): default declare ALL_LAYOUT for each kernel
             if (${kernel_path} MATCHES "./cpu\/")
