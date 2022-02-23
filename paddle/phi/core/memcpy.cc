@@ -12,19 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/core/memcpy.h"
+#include "paddle/phi/core/memcpy.h"
 
 #include <cstring>
 
-#include "paddle/pten/backends/gpu/gpu_info.h"
-#include "paddle/pten/backends/xpu/xpu_info.h"
-#include "paddle/pten/core/enforce.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/platform/device/device_manager.h"
 #endif
 
-namespace pten {
+namespace phi {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 static constexpr size_t kMaxGpuAsyncCopyBytes = 64 * 1024;  // 64K
@@ -52,10 +52,10 @@ static void MemcpyToCPU(const Place& dst_place,
                         const void* src,
                         size_t num,
                         void* stream) {
-  if (src_place.GetType() == pten::AllocationType::CPU) {
+  if (src_place.GetType() == phi::AllocationType::CPU) {
     std::memcpy(dst, src, num);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_CUDA)
-  } else if (src_place.GetType() == pten::AllocationType::GPU) {
+  } else if (src_place.GetType() == phi::AllocationType::GPU) {
     backends::gpu::SetDeviceId(dst_place.GetDeviceId());
     if (stream) {
       backends::gpu:: ::GpuMemcpyAsync(dst,
@@ -70,16 +70,16 @@ static void MemcpyToCPU(const Place& dst_place,
     if (num <= kMaxGpuAsyncCopyBytes) {
       SyncGPUStream();
     }
-  } else if (src_place.GetType() == pten::AllocationType::GPUPINNED) {
+  } else if (src_place.GetType() == phi::AllocationType::GPUPINNED) {
 #endif
 #ifdef PADDLE_WITh_XPU
-  } else if (src_place.GetType() == pten::AllocationType::XPU) {
+  } else if (src_place.GetType() == phi::AllocationType::XPU) {
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (src_place.GetType() == pten::AllocationType::CUSTOM) {
+  } else if (src_place.GetType() == phi::AllocationType::CUSTOM) {
 #endif
   } else {
-    PADDLE_THROW(pten::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported copy memory to CPU from `%s` device.",
         src_place.GetType()));
   }
@@ -92,11 +92,11 @@ static void MemcpyToGPU(const Place& dst_place,
                         const void* src,
                         size_t num,
                         void* stream) {
-  if (src_place.GetType() == pten::AllocationType::CPU) {
-  } else if (src_place.GetType() == pten::AllocationType::GPUPINNED) {
-  } else if (src_place.GetType() == pten::AllocationType::GPU) {
+  if (src_place.GetType() == phi::AllocationType::CPU) {
+  } else if (src_place.GetType() == phi::AllocationType::GPUPINNED) {
+  } else if (src_place.GetType() == phi::AllocationType::GPU) {
   } else {
-    PADDLE_THROW(pten::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported copy memory to GPU from `%s` device.",
         src_place.GetType()));
   }
@@ -108,10 +108,10 @@ static void MemcpyToGPUPinned(const Place& dst_place,
                               const void* src,
                               size_t num,
                               void* stream) {
-  if (src_place.GetType() == pten::AllocationType::CPU) {
-  } else if (src_place.GetType() == pten::AllocationType::GPUPINNED) {
+  if (src_place.GetType() == phi::AllocationType::CPU) {
+  } else if (src_place.GetType() == phi::AllocationType::GPUPINNED) {
   } else {
-    PADDLE_THROW(pten::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported copy memory to GPUPinned from `%s` device.",
         src_place.GetType()));
   }
@@ -125,10 +125,10 @@ static void MemcpyToXPU(const Place& dst_place,
                         const void* src,
                         size_t num,
                         void* stream) {
-  if (src_place.GetType() == pten::AllocationType::CPU) {
-  } else if (src_place.GetType() == pten::AllocationType::XPU) {
+  if (src_place.GetType() == phi::AllocationType::CPU) {
+  } else if (src_place.GetType() == phi::AllocationType::XPU) {
   } else {
-    PADDLE_THROW(pten::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported copy memory to XPU from `%s` device.",
         src_place.GetType()));
   }
@@ -142,10 +142,10 @@ static void MemcpyToCustomDevice(const Place& dst_place,
                                  const void* src,
                                  size_t num,
                                  void* stream) {
-  if (src_place.GetType() == pten::AllocationType::CPU) {
-  } else if (src_place.GetType() == pten::AllocationType::CUSTOM) {
+  if (src_place.GetType() == phi::AllocationType::CPU) {
+  } else if (src_place.GetType() == phi::AllocationType::CUSTOM) {
   } else {
-    PADDLE_THROW(pten::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported copy memory to CUSTOM device from `%s` device.",
         src_place.GetType()));
   }
@@ -165,26 +165,26 @@ void Memcpy(const Place& dst_place,
   VLOG(4) << "Memcpy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by stream " << stream;
 
-  if (dst_place.GetType() == pten::AllocationType::CPU) {
+  if (dst_place.GetType() == phi::AllocationType::CPU) {
     MemcpyToCPU(dst_place, dst, src_place, src, num, stream);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_CUDA)
-  } else if (dst_place.GetType() == pten::AllocationType::GPU) {
+  } else if (dst_place.GetType() == phi::AllocationType::GPU) {
     MemcpyToGPU(dst_place, dst, src_place, src, num, stream);
-  } else if (dst_place.GetType() == pten::AllocationType::GPUPINNED) {
+  } else if (dst_place.GetType() == phi::AllocationType::GPUPINNED) {
     MemcpyToGPUPinned(dst_place, dst, src_place, src, num, stream);
 #endif
 #ifdef PADDLE_WITh_XPU
-  } else if (dst_place.GetType() == pten::AllocationType::XPU) {
+  } else if (dst_place.GetType() == phi::AllocationType::XPU) {
     MemcpyToXPU(dst_place, dst, src_place, src, num, stream);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (dst_place.GetType() == pten::AllocationType::CUSTOM) {
+  } else if (dst_place.GetType() == phi::AllocationType::CUSTOM) {
     MemcpyToCustomDevice(dst_place, dst, src_place, src, num, stream);
 #endif
   } else {
-    PADDLE_THROW(pten::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "Unsupported copy memory to `%s` device.", dst_place.GetType()));
   }
 }
 
-}  // namespace pten
+}  // namespace phi

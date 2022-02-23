@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/common/place.h"
+#include "paddle/phi/common/place.h"
 
-namespace pten {
+namespace phi {
 
 /**
  * \brief   Copy memory from one place to another place.
@@ -41,4 +41,4 @@ void Memcpy(const Place& dst_place,
             size_t num,
             void* stream = nullptr);
 
-}  // namespace pten
+}  // namespace phi
