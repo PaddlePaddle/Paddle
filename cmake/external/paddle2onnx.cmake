@@ -31,7 +31,8 @@ INCLUDE_DIRECTORIES(${PADDLE2ONNX_INC_DIR}) # For PADDLE2ONNX code to include in
 IF(NOT WIN32)
     SET(PADDLE2ONNX_LIB "${PADDLE2ONNX_INSTALL_DIR}/${LIBDIR}/libpaddle2onnx.so" CACHE FILEPATH "PADDLE2ONNX library." FORCE)
 ELSE()
-    SET(PADDLE2ONNX_LIB "${PADDLE2ONNX_INSTALL_DIR}/${LIBDIR}/paddle2onnx.dll" CACHE FILEPATH "paddle2onnx library." FORCE)
+    SET(PADDLE2ONNX_LIB "${PADDLE2ONNX_INSTALL_DIR}/${LIBDIR}/paddle2onnx.lib" CACHE FILEPATH "paddle2onnx static library." FORCE)
+    SET(PADDLE2ONNX_SHARE_LIB "${PADDLE2ONNX_INSTALL_DIR}/${LIBDIR}/paddle2onnx.dll" CACHE FILEPATH "paddle2onnx share library." FORCE)
 ENDIF(NOT WIN32)
 
 # The protoc path is required to compile onnx.
@@ -39,18 +40,13 @@ string(REPLACE "/" ";" PROTOC_BIN_PATH ${PROTOBUF_PROTOC_EXECUTABLE})
 list(POP_BACK PROTOC_BIN_PATH)
 list(JOIN PROTOC_BIN_PATH "/" PROTOC_BIN_PATH)
 
-message("-paddle2onnx.cmake-----CMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}----------CMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}-------")
-message("-paddle2onnx.cmake2-----CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}----------CMAKE_C_FLAGS=${CMAKE_C_FLAGS}-------")
-message("-paddle2onnx.cmake3-----CMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}----------CMAKE_C_COMPILER=${CMAKE_C_COMPILER}-------")
-
-
 ExternalProject_Add(
     ${PADDLE2ONNX_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
     GIT_REPOSITORY      ${PADDLE2ONNX_REPOSITORY}
     GIT_TAG             ${PADDLE2ONNX_TAG}
-    DEPENDS             extern_protobuf
+    DEPENDS             protobuf
     PREFIX              ${PADDLE2ONNX_PREFIX_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

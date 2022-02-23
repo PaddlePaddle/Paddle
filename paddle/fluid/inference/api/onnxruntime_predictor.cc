@@ -109,7 +109,11 @@ bool ONNXRuntimePredictor::Init() {
   if (config_.profile_enabled()) {
     LOG(WARNING) << "ONNXRuntime Profiler is activated, which might affect the "
                     "performance";
+#if defined(_WIN32)
+    session_options.EnableProfiling(L"ONNX");
+#else
     session_options.EnableProfiling("ONNX");
+#endif
   } else {
     VLOG(2) << "ONNXRuntime Profiler is deactivated, and no profiling report "
                "will be "
@@ -135,8 +139,7 @@ bool ONNXRuntimePredictor::Init() {
         type_info.GetTensorTypeAndShapeInfo().GetShape();
     ONNXTensorElementDataType data_type =
         type_info.GetTensorTypeAndShapeInfo().GetElementType();
-    input_desc_.emplace_back(
-        ONNXDesc{.name = input_name, .shape = shape, .dtype = data_type});
+    input_desc_.emplace_back(ONNXDesc{input_name, shape, data_type});
     auto *ptr = scope_->Var(input_name);
     framework::InitializeVariable(ptr, proto_type);
     allocator.Free(input_name);
@@ -150,8 +153,7 @@ bool ONNXRuntimePredictor::Init() {
         type_info.GetTensorTypeAndShapeInfo().GetShape();
     ONNXTensorElementDataType data_type =
         type_info.GetTensorTypeAndShapeInfo().GetElementType();
-    output_desc_.emplace_back(
-        ONNXDesc{.name = output_name, .shape = shape, .dtype = data_type});
+    output_desc_.emplace_back(ONNXDesc{output_name, shape, data_type});
     auto *ptr = scope_->Var(output_name);
     framework::InitializeVariable(ptr, proto_type);
     allocator.Free(output_name);
