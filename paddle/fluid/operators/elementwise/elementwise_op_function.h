@@ -57,8 +57,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using ElementwiseType = phi::ElementwiseType;
-
 /*
 *  Pack input and output tensors into respective vectors with
 *  consideration of varible X`s class type.

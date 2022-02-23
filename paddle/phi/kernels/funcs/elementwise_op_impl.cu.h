@@ -58,3 +58,11 @@ void LaunchSameDimsElementwiseCudaKernel(
 
 }  // namespace funcs
 }  // namespace phi
+
+namespace paddle {
+namespace operators {
+
+using ElementwiseType = phi::ElementwiseType;
+
+}  // namespace operators
+}  // namespace paddle
