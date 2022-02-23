@@ -284,6 +284,8 @@ void GpuStreamSync(gpuStream_t stream) {
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
 }
 
+gpuError_t gpuStreamQuery(gpuStream_t stream) { return hipStreamQuery(stream); }
+
 void GpuDestroyStream(gpuStream_t stream) {
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream));
 }

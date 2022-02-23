@@ -66,6 +66,9 @@ DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory,
                          hipErrorOutOfMemory);
 DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady);
 DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
+DECLARE_CONSTANT_FOR_GPU(gpuMemcpyHostToDevice,
+                         cudaMemcpyHostToDevice,
+                         hipMemcpyHostToDevice);
 
 #undef DECLARE_CONSTANT_FOR_GPU
 }  // namespace pten

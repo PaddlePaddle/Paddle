@@ -97,6 +97,8 @@ void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream);
 //! Blocks until stream has completed all operations.
 void GpuStreamSync(gpuStream_t stream);
 
+gpuError_t gpuStreamQuery(gpuStream_t stream);
+
 void GpuDestroyStream(gpuStream_t stream);
 
 // ! Blocks until device has completed all operations.
