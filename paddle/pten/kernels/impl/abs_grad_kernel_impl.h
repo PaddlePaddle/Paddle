@@ -17,9 +17,31 @@
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/pten/kernels/abs_grad_kernel.h"
+#include "paddle/pten/kernels/funcs/elementwise_base.h"
 
 namespace pten {
 
+#if defined(__NVCC__) || defined(__HIPCC__)
+template <typename T>
+void AbsGradKernelImpl(const GPUContext& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& dout,
+                       DenseTensor* dx) {
+  std::vector<const DenseTensor*> ins = {&x, &dout};
+  std::vector<DenseTensor*> outs = {dx};
+  dev_ctx.Alloc<T>(dx);
+  paddle::operators::math::AbsGradCUDAFunctor<T> cuda_functor;
+  pten::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
+      dev_ctx, ins, &outs, cuda_functor);
+}
+template <typename T, typename Context>
+void AbsGradKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& dout,
+                   DenseTensor* dx) {
+  AbsGradKernelImpl<T>(dev_ctx, x, dout, dx);
+}
+#else
 template <typename T, typename Context>
 void AbsGradKernel(const Context& ctx,
                    const DenseTensor& x,
@@ -38,6 +60,7 @@ void AbsGradKernel(const Context& ctx,
   for_range(functor);
 }
 
+#endif
 template <typename T, typename Context>
 void AbsDoubleGradKernel(const Context& ctx,
                          const DenseTensor& x,

@@ -25,8 +25,7 @@ template <typename T>
 struct CondFunctor {
   HOSTDEVICE inline CondFunctor() {}
 
-  HOSTDEVICE inline T operator()(const bool& cond, const T& x,
-                                 const T& y) const {
+  HOSTDEVICE inline T operator()(const bool cond, const T x, const T y) const {
     return cond ? x : y;
   }
 };

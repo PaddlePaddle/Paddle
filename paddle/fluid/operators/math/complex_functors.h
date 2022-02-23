@@ -153,6 +153,53 @@ struct AbsFunctor<T, NoComplex<T, Real<T>>> {
 };
 
 template <typename T>
+struct AbsGradCUDAFunctor {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+
+  HOSTDEVICE inline T operator()(const T x, const T dout) const {
+    T output;
+    if (x == T(0)) {
+      output = T(0);
+    } else {
+      output = T(dout) * (x / T(std::abs(x)));
+    }
+    return output;
+  }
+};
+
+template <>
+struct AbsGradCUDAFunctor<paddle::platform::complex<float>> {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+  HOSTDEVICE inline paddle::platform::complex<float> operator()(
+      const paddle::platform::complex<float> x, const float dout) const {
+    paddle::platform::complex<float> output;
+    if (x == paddle::platform::complex<float>(0)) {
+      output = paddle::platform::complex<float>(0);
+    } else {
+      output = paddle::platform::complex<float>(dout) *
+               (x / paddle::platform::complex<float>(abs(x)));
+    }
+    return output;
+  }
+};
+
+template <>
+struct AbsGradCUDAFunctor<paddle::platform::complex<double>> {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+  HOSTDEVICE inline paddle::platform::complex<double> operator()(
+      const paddle::platform::complex<double> x, const double dout) const {
+    paddle::platform::complex<double> output;
+    if (x == paddle::platform::complex<double>(0)) {
+      output = paddle::platform::complex<double>(0);
+    } else {
+      output = paddle::platform::complex<double>(dout) *
+               (x / paddle::platform::complex<double>(abs(x)));
+    }
+    return output;
+  }
+};
+
+template <typename T>
 struct AbsGradFunctor {
   AbsGradFunctor(const math::Real<T>* dout, const T* x, T* output,
                  int64_t numel)
