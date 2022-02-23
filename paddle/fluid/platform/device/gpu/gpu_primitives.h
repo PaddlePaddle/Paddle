@@ -190,19 +190,6 @@ __device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
   CudaAtomicAdd(arr + index, value);
 }
 
-#if 0
-template <class T>
-__device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
-                                              const size_t numel, T value,
-                                              bool fast_atomics = false) {
-  if (fast_atomics) {
-    fastSpecializedAtomicAdd(arr, index, numel, value);
-  } else {
-    CudaAtomicAdd(arr + index, value);
-  }
-}
-#endif
-
 #ifdef PADDLE_WITH_CUDA
 /*
  * One thead block deals with elementwise atomicAdd for vector of len.
