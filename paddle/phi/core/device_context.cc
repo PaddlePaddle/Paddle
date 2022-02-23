@@ -21,7 +21,7 @@ namespace phi {
 using DataType = paddle::experimental::DataType;
 
 struct DeviceContext::Impl {
-  Impl(DeviceContext* dev_ctx) : dev_ctx_(dev_ctx) {}
+  explicit Impl(DeviceContext* dev_ctx) : dev_ctx_(dev_ctx) {}
   ~Impl() = default;
 
   void SetAllocator(const Allocator* allocator) {
@@ -110,7 +110,7 @@ struct DeviceContext::Impl {
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
     }
-    if (tensor->initialized() && tensor->place() != dev_ctx_->GetPlace()) {
+    if (tensor->initialized() && tensor->place() != CPUPlace()) {
       ClearHolder(tensor);
     }
     auto* allocator = tensor->numel() == 0 ? zero_allocator_ : host_allocator_;
