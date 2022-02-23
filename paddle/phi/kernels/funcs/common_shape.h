@@ -128,5 +128,17 @@ static void GetBroadcastDims(const DDim &in_dims,
   }
 }
 
+inline bool CheckDims(const DDim &dims_x, const DDim &dims_y) {
+  if (dims_x.size() != dims_y.size()) {
+    return false;
+  }
+  for (int i = 0; i < dims_x.size(); i++) {
+    if (dims_x[i] != dims_y[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace funcs
 }  // namespace phi

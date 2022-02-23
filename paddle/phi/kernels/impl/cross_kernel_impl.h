@@ -16,20 +16,9 @@
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
-
-inline bool CheckDims(const DDim& dims_x, const DDim& dims_y) {
-  if (dims_x.size() != dims_y.size()) {
-    return false;
-  }
-  for (int i = 0; i < dims_x.size(); i++) {
-    if (dims_x[i] != dims_y[i]) {
-      return false;
-    }
-  }
-  return true;
-}
 
 template <typename T, typename Context>
 void CrossKernel(const Context& ctx,
@@ -51,22 +40,22 @@ void CrossKernel(const Context& ctx,
 
   auto input_x_dims = input_x.dims();
   auto input_y_dims = input_y.dims();
-  bool dims_match = CheckDims(input_x_dims, input_y_dims);
+  bool dims_match = phi::funcs::CheckDims(input_x_dims, input_y_dims);
   PADDLE_ENFORCE_EQ(
       dims_match,
       true,
-      errors::InvalidArgument("The 'shape' of Input(X) should be equal to "
-                              "the 'shape' of Input(Y). But received "
-                              "Input(X).dimensions = [%s], "
-                              "Input(Y).dimensions = [%s]",
-                              input_x_dims,
-                              input_x_dims));
+      phi::errors::InvalidArgument("The 'shape' of Input(X) should be equal to "
+                                   "the 'shape' of Input(Y). But received "
+                                   "Input(X).dimensions = [%s], "
+                                   "Input(Y).dimensions = [%s]",
+                                   input_x_dims,
+                                   input_x_dims));
 
   if (dim != DDim::kMaxRank) {
     PADDLE_ENFORCE_EQ(
         dim < input_x_dims.size() && dim >= (0 - input_x_dims.size()),
         true,
-        errors::OutOfRange(
+        phi::errors::OutOfRange(
             "Attr(dim) is out of range, It's expected "
             "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
             input_x_dims.size(),
@@ -79,7 +68,7 @@ void CrossKernel(const Context& ctx,
     PADDLE_ENFORCE_EQ(
         input_x_dims[dim] == 3,
         true,
-        errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X/Y).dims[dim] must be equal to 3. But received: "
             "Input(X/Y).dims[dim] = [%d].",
             input_x_dims[dim]));
@@ -92,7 +81,7 @@ void CrossKernel(const Context& ctx,
     }
     PADDLE_ENFORCE_EQ(dim == DDim::kMaxRank,
                       false,
-                      errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "There must be at least one dimension 'd' so that "
                           "Input(X/Y).dims()[d] is equal to 3. "
                           "But received: Input(X/Y).dims() == [%s].",

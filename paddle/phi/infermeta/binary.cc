@@ -225,4 +225,56 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void CrossInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    int axis,
+                    MetaTensor* out) {
+  // auto x_dim = ctx->GetInputDim("X");
+  // auto y_dim = ctx->GetInputDim("Y");
+  // auto dim = ctx->Attrs().Get<int>("dim");
+
+  auto x_dim = x.dims();
+  auto y_dim = y.dims();
+  auto dim = axis;
+
+  bool dims_match = phi::funcs::CheckDims(x_dim, y_dim);
+  PADDLE_ENFORCE_EQ(
+      dims_match,
+      true,
+      phi::errors::InvalidArgument("The 'shape' of Input(X) should be equal to "
+                                   "the 'shape' of Input(Y). But received "
+                                   "Input(X).dimensions = [%s], "
+                                   "Input(Y).dimensions = [%s]",
+                                   x_dim,
+                                   y_dim));
+
+  if (dim != DDim::kMaxRank) {
+    PADDLE_ENFORCE_EQ(
+        dim < x_dim.size() && dim >= (0 - x_dim.size()),
+        true,
+        phi::errors::OutOfRange(
+            "Attr(dim) is out of range, It's expected "
+            "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+            x_dim.size(),
+            x_dim.size() - 1,
+            dim));
+    if (dim < 0) {
+      dim += x_dim.size();
+    }
+    PADDLE_ENFORCE_EQ(x_dim[dim] == 3 && y_dim[dim] == 3,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Input(X/Y).dims()[dim] should be equal to 3."
+                          "But received Input(X/Y).dims()[dim] = %d.",
+                          x_dim[dim]));
+  }
+
+  // ctx->SetOutputDim("Out", x_dim);
+  // auto type = ctx->GetInputsVarType("X")[0];
+  // if (type == framework::proto::VarType::LOD_TENSOR) {
+  //   ctx->ShareLoD("X", /*->*/ "Out");
+  // }
+  out->set_dims(x_dim);
+  out->share_lod(x);
+}
 }  // namespace phi

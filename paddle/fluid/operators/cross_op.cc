@@ -22,69 +22,11 @@ using framework::Tensor;
 using framework::DDim;
 const int kDefaultDim = framework::DDim::kMaxRank;
 
-inline bool CheckDims(const DDim& dims_x, const DDim& dims_y) {
-  if (dims_x.size() != dims_y.size()) {
-    return false;
-  }
-  for (int i = 0; i < dims_x.size(); i++) {
-    if (dims_x[i] != dims_y[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 class CrossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of CrossOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Index) of CrossOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of CrossOp should not be null."));
-
-    auto x_dim = ctx->GetInputDim("X");
-    auto y_dim = ctx->GetInputDim("Y");
-    auto dim = ctx->Attrs().Get<int>("dim");
-
-    bool dims_match = CheckDims(x_dim, y_dim);
-    PADDLE_ENFORCE_EQ(dims_match, true,
-                      platform::errors::InvalidArgument(
-                          "The 'shape' of Input(X) should be equal to "
-                          "the 'shape' of Input(Y). But received "
-                          "Input(X).dimensions = [%s], "
-                          "Input(Y).dimensions = [%s]",
-                          x_dim, y_dim));
-
-    if (dim != kDefaultDim) {
-      PADDLE_ENFORCE_EQ(
-          dim < x_dim.size() && dim >= (0 - x_dim.size()), true,
-          platform::errors::OutOfRange(
-              "Attr(dim) is out of range, It's expected "
-              "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
-              x_dim.size(), x_dim.size() - 1, dim));
-      if (dim < 0) {
-        dim += x_dim.size();
-      }
-      PADDLE_ENFORCE_EQ(x_dim[dim] == 3 && y_dim[dim] == 3, true,
-                        platform::errors::InvalidArgument(
-                            "Input(X/Y).dims()[dim] should be equal to 3."
-                            "But received Input(X/Y).dims()[dim] = %d.",
-                            x_dim[dim]));
-    }
-
-    ctx->SetOutputDim("Out", x_dim);
-    auto type = ctx->GetInputsVarType("X")[0];
-    if (type == framework::proto::VarType::LOD_TENSOR) {
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
-  }
+  void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
