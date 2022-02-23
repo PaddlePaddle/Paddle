@@ -15,87 +15,66 @@
 import os
 import yaml
 import argparse
+import re
 
-import gen_utils
+from api_base import BaseAPI
 
 
-class API:
-    prefix_tensor_name = 'dense_'
-
+class ForwardAPI(BaseAPI):
     def __init__(self, api_item_yaml):
-        self.api = api_item_yaml['api']
-        # args:
-        #   inputs:
-        #     names : [], list of input names
-        #     input_info : {input_name : type}
-        #   attrs:
-        #     names : [], list of attribute names
-        #     attr_info : { attr_name : (type, default_values)}
-        self.args = gen_utils.parse_args(self.api, api_item_yaml['args'])
-        self.out_type_list, _ = gen_utils.parse_output(self.api,
-                                                       api_item_yaml['output'])
-        self.return_type = self.out_type_list[0] if len(
-            self.out_type_list) == 1 else "std::tuple<" + ",".join(
-                self.out_type_list) + ">"
+        super(ForwardAPI, self).__init__(api_item_yaml)
+        self.is_dygraph_api = self.parse_intermediate(api_item_yaml)
 
-        self.is_base_api = True
-        if 'invoke' in api_item_yaml:
-            self.is_base_api = False
-            self.invoke = api_item_yaml['invoke']
+    def get_api_func_name(self):
+        if self.is_dygraph_api:
+            return self.api + '_intermediate'
         else:
-            self.kernel = api_item_yaml['kernel']
-            if 'backend' not in self.kernel or len(self.kernel['backend']) == 0:
-                self.kernel['backend'] = None
-            if 'layout' not in self.kernel or len(self.kernel['layout']) == 0:
-                self.kernel['layout'] = None
-            if 'data_type' not in self.kernel or len(self.kernel[
-                    'data_type']) == 0:
-                self.kernel['data_type'] = None
-            if 'param' not in self.kernel:
-                self.kernel['param'] = None
+            return self.api
 
-            self.infer_meta = api_item_yaml['infer_meta']
-            if 'param' not in self.infer_meta:
-                self.infer_meta['param'] = None
+    def parse_intermediate(self, api_item_yaml):
+        if 'intermediate' in api_item_yaml:
+            return True
+        else:
+            return False
 
-            self.data_transform = {
-                'skip_transform': [],
-                'support_trans_dtype': []
-            }
-            if 'data_transform' in api_item_yaml:
-                if 'skip_transform' in api_item_yaml['data_transform']:
-                    self.data_transform['skip_transform'] = api_item_yaml[
-                        'data_transform']['skip_transform']
-                if 'support_trans_dtype' in api_item_yaml['data_transform']:
-                    self.data_transform['support_trans_dtype'] = api_item_yaml[
-                        'data_transform']['support_trans_dtype']
+    def get_return_type(self, out_type_list):
+        return out_type_list[0] if len(
+            out_type_list) == 1 else "std::tuple<" + ",".join(
+                out_type_list) + ">"
 
-    def gene_api_declaration(self):
-        return f"""
-PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
-"""
-
-    def gene_output(self, output_type_list):
+    def gene_output(self,
+                    output_type_list,
+                    set_out_func,
+                    code_indent,
+                    inplace_flag=False):
         kernel_output = ""
         output_names = []
         output_create = ""
 
         if len(output_type_list) == 1:
-            kernel_output = 'dense_out'
-            output_names.append('dense_out')
+            kernel_output = 'kernel_out'
+            output_names.append('kernel_out')
+            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
+                0]] if inplace_flag and self.inplace_map is not None and self.outputs[
+                    'names'][0] in self.inplace_map else ""
             output_create = f"""
-  {self.return_type} out;
-  auto dense_out = SetKernelOutput(kernel_backend, &out);"""
+{code_indent}  {self.outputs['return_type']} out{inplace_assign};
+{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-  {self.return_type} out;"""
+{code_indent}  {self.outputs['return_type']} out;"""
 
             for i in range(len(output_type_list)):
-                kernel_output = kernel_output + f'dense_out_{i}, '
-                output_names.append(f'dense_out_{i}')
+                kernel_output = kernel_output + f'kernel_out_{i}, '
+                output_names.append(f'kernel_out_{i}')
+                if inplace_flag and self.inplace_map is not None and self.outputs[
+                        'names'][i] in self.inplace_map:
+                    output_create = output_create + f"""
+{code_indent}  std::get<{i}>(out) = {self.inplace_map[self.outputs['names'][i]]};"""
+
                 output_create = output_create + f"""
-  auto dense_out_{i} = SetKernelOutput(kernel_backend, &std::get<{i}>(out));"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(out));"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -105,44 +84,14 @@ PADDLE_API {self.return_type} {self.api}({self.args['args_declare']});
 
         return kernel_output, output_names, output_create
 
-    def gene_api_code(self):
-        if self.is_base_api:
-            input_tensors, kernel_args, kernel_signature = gen_utils.get_kernel_args(
-                self.args['inputs'], self.args['attrs'], self.out_type_list,
-                self.kernel['param'], self.data_transform)
-            outputs_args, output_names, output_create = self.gene_output(
-                self.out_type_list)
-            return f"""
-PADDLE_API {self.return_type} {self.api}({self.args["args_define"]}) {{
-{gen_utils.gene_kernel_select(self.api, self.args['inputs']['names'], self.args['attrs'], self.kernel)}
-
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
-{input_tensors}
-{output_create}
-{gen_utils.gene_infer_meta(self.args['inputs']['names'], self.args['attrs']['names'], output_names, self.infer_meta)}
-  using kernel_signature = {kernel_signature};
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)({kernel_args}, {outputs_args});
-
-  return out;
-}}
-"""
-
-        else:
-            return f"""
-PADDLE_API {self.return_type} {self.api}({self.args["args_define"]}) {{
-  return {self.invoke};
-}}
-"""
-
 
 def header_include():
     return """
 #include <tuple>
 
-#include "paddle/pten/api/include/tensor.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
 """
 
 
@@ -153,23 +102,23 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/pten/api/lib/api_registry.h"
-#include "paddle/pten/api/lib/api_utils.h"
-#include "paddle/pten/api/lib/data_transform.h"
-#include "paddle/pten/api/lib/kernel_dispatch.h"
-#include "paddle/pten/api/lib/utils/storage.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/infermeta/binary.h"
-#include "paddle/pten/infermeta/multiary.h"
-#include "paddle/pten/infermeta/nullary.h"
-#include "paddle/pten/infermeta/unary.h"
-#include "paddle/pten/kernels/declarations.h"
+#include "paddle/phi/api/lib/api_registry.h"
+#include "paddle/phi/api/lib/api_utils.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/declarations.h"
 """
 
 
 def api_register():
     return """
-PT_REGISTER_API(Math);
+PD_REGISTER_API(Math);
 """
 
 
@@ -185,12 +134,15 @@ namespace experimental {
 """)
 
 
-def generate_api(api_yaml_path, header_file_path, source_file_path):
+def generate_api(api_yaml_path, header_file_path, source_file_path,
+                 dygraph_header_file_path, dygraph_source_file_path):
 
     with open(api_yaml_path, 'r') as f:
         apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')
     source_file = open(source_file_path, 'w')
+    dygraph_header_file = open(dygraph_header_file_path, 'w')
+    dygraph_source_file = open(dygraph_source_file_path, 'w')
 
     namespace = api_namespace()
 
@@ -198,22 +150,40 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/pten/api/include/api.h"
+    include_header_file = "paddle/phi/api/include/api.h"
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
+    dygraph_header_file.write("#pragma once\n")
+    dygraph_header_file.write(header_include())
+    dygraph_header_file.write(namespace[0])
+
+    dygraph_include_header_file = "paddle/phi/api/lib/dygraph_api.h"
+    dygraph_source_file.write(source_include(dygraph_include_header_file))
+    dygraph_source_file.write(namespace[0])
+
     for api in apis:
-        api_code = API(api)
-        print(api_code.gene_api_declaration())
-        header_file.write(api_code.gene_api_declaration())
-        source_file.write(api_code.gene_api_code())
+        foward_api = ForwardAPI(api)
+        if foward_api.is_dygraph_api:
+            dygraph_header_file.write(foward_api.gene_api_declaration())
+            dygraph_source_file.write(foward_api.gene_api_code())
+        else:
+            header_file.write(foward_api.gene_api_declaration())
+            source_file.write(foward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
+
+    dygraph_header_file.write(namespace[1])
+    dygraph_source_file.write(namespace[1])
+
     source_file.write(api_register())
 
     header_file.close()
     source_file.close()
+
+    dygraph_header_file.close()
+    dygraph_source_file.close()
 
 
 def main():
@@ -223,23 +193,37 @@ def main():
         '--api_yaml_path',
         help='path to api yaml file',
         default='python/paddle/utils/code_gen/api.yaml')
+
     parser.add_argument(
         '--api_header_path',
         help='output of generated api header code file',
-        default='paddle/pten/api/include/api.h')
+        default='paddle/phi/api/include/api.h')
 
     parser.add_argument(
         '--api_source_path',
         help='output of generated api source code file',
-        default='paddle/pten/api/lib/api.cc')
+        default='paddle/phi/api/lib/api.cc')
+
+    parser.add_argument(
+        '--dygraph_api_header_path',
+        help='output of generated dygraph api header code file',
+        default='paddle/phi/api/lib/dygraph_api.h')
+
+    parser.add_argument(
+        '--dygraph_api_source_path',
+        help='output of generated dygraph api source code file',
+        default='paddle/phi/api/lib/dygraph_api.cc')
 
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
+    dygraph_header_file_path = options.dygraph_api_header_path
+    dygraph_source_file_path = options.dygraph_api_source_path
 
-    generate_api(api_yaml_path, header_file_path, source_file_path)
+    generate_api(api_yaml_path, header_file_path, source_file_path,
+                 dygraph_header_file_path, dygraph_source_file_path)
 
 
 if __name__ == '__main__':

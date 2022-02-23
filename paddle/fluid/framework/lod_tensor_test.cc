@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/pten/core/lod_utils.h"
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -99,7 +99,7 @@ TEST(LoD, AppendLoD) {
   origin.push_back(std::vector<size_t>({0, 1, 6}));
   origin.push_back(std::vector<size_t>({0, 2, 5, 7, 10, 12, 15}));
 
-  pten::AppendLoD(&origin, lod_lens);
+  phi::AppendLoD(&origin, lod_lens);
 
   LoD expected;
   expected.push_back(std::vector<size_t>({0, 2, 4}));
@@ -278,7 +278,7 @@ TEST(LoD, ConvertToLengthBasedLoD) {
   offset_lod.push_back(std::vector<size_t>({0, 1, 3}));
   offset_lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
 
-  LoD length_lod = pten::ConvertToLengthBasedLoD(offset_lod);
+  LoD length_lod = phi::ConvertToLengthBasedLoD(offset_lod);
 
   LoD expected;
   expected.push_back(std::vector<size_t>({2}));

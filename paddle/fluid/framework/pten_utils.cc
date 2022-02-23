@@ -14,16 +14,17 @@ limitations under the License. */
 
 #include <sstream>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/pten_utils.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/compat/op_utils.h"
-#include "paddle/pten/core/kernel_factory.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -57,16 +58,16 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
 };
 
 OpKernelType TransPtenKernelKeyToOpKernelType(
-    const pten::KernelKey& kernel_key) {
+    const phi::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
-      pten::TransToProtoVarType(kernel_key.dtype());
+      paddle::framework::TransToProtoVarType(kernel_key.dtype());
   // no need to set current device id here
-  platform::Place place = pten::TransToFluidPlace(kernel_key.backend(), false);
+  platform::Place place = phi::TransToPtenPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
-  if (kernel_key.backend() == pten::Backend::MKLDNN) {
+  if (kernel_key.backend() == phi::Backend::MKLDNN) {
     library_type = LibraryType::kMKLDNN;
-  } else if (kernel_key.backend() == pten::Backend::CUDNN) {
+  } else if (kernel_key.backend() == phi::Backend::CUDNN) {
     library_type = LibraryType::kCUDNN;
   } else {
     // do nothing
@@ -75,33 +76,33 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
   return OpKernelType(data_type, place, data_layout, library_type);
 }
 
-pten::KernelKey TransOpKernelTypeToPtenKernelKey(
+phi::KernelKey TransOpKernelTypeToPtenKernelKey(
     const OpKernelType& kernel_type) {
-  pten::Backend backend = pten::TransToPtenBackend(kernel_type.place_);
+  phi::Backend backend = phi::TransToPtenBackend(kernel_type.place_);
   if (kernel_type.library_type_ == LibraryType::kMKLDNN) {
-    backend = pten::Backend::MKLDNN;
+    backend = phi::Backend::MKLDNN;
   } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
-    backend = pten::Backend::CUDNN;
+    backend = phi::Backend::CUDNN;
   } else {
     // do
   }
   paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
-      pten::TransToPtenDataType(kernel_type.data_type_);
-  return pten::KernelKey(backend, layout, dtype);
+      paddle::framework::TransToPtenDataType(kernel_type.data_type_);
+  return phi::KernelKey(backend, layout, dtype);
 }
 
-pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
-                              const pten::KernelKey& kernel_key,
-                              const framework::OperatorBase& op) {
+phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
+                             const phi::KernelKey& kernel_key,
+                             const framework::OperatorBase& op) {
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(expected_kernel_key.place_) ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {
     VLOG(3) << "pten missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
-                           kernel_key.dtype());
+    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
+                          kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -109,8 +110,8 @@ pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
     VLOG(3) << "pten missing NPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
-                           kernel_key.dtype());
+    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
+                          kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_MLU
@@ -118,11 +119,11 @@ pten::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
     VLOG(3) << "pten missing MLU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
-    return pten::KernelKey(pten::Backend::CPU, kernel_key.layout(),
-                           kernel_key.dtype());
+    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
+                          kernel_key.dtype());
   }
 #endif
-  return pten::KernelKey();
+  return phi::KernelKey();
 }
 
 const paddle::SmallVector<std::string>&
@@ -185,8 +186,9 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(op_proto_->type(), GetInputArgsNames(),
-                         GetAttrsArgsNames(), GetOutputArgsNames());
+  return KernelSignature(phi::TransToPtenKernelName(op_proto_->type()),
+                         GetInputArgsNames(), GetAttrsArgsNames(),
+                         GetOutputArgsNames());
 }
 
 std::once_flag kernel_sig_map_init_flag;
@@ -196,11 +198,11 @@ void InitDefaultKernelSignatureMap() {
     for (const auto& pair : paddle::framework::OpInfoMap::Instance().map()) {
       const auto& op_type = pair.first;
       const auto* op_proto = pair.second.proto_;
-      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
+      if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
           op_proto) {
         paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register kernel signature for " << op_type;
-        pten::DefaultKernelSignatureMap::Instance().Insert(
+        phi::DefaultKernelSignatureMap::Instance().Insert(
             op_type, std::move(maker.GetKernelSignature()));
       }
     }
@@ -208,7 +210,7 @@ void InitDefaultKernelSignatureMap() {
 }
 
 static void SetAllocationForUninitializedDenseTensor(
-    pten::DenseTensor* dense_tensor, const platform::Place& place) {
+    phi::DenseTensor* dense_tensor, const platform::Place& place) {
   int dtype_size = dense_tensor->dtype() == DataType::UNDEFINED
                        ? 0
                        : experimental::SizeOf(dense_tensor->dtype());
@@ -218,20 +220,20 @@ static void SetAllocationForUninitializedDenseTensor(
   auto& deleter = tmp_allocation_ptr.get_deleter();
   auto* allocation_ptr = tmp_allocation_ptr.release();
   auto shared_allocation =
-      std::shared_ptr<pten::Allocation>(allocation_ptr, deleter);
+      std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
 
   dense_tensor->ResetHolder(shared_allocation);
 }
 
-void SetAllocationForOutputTenosr(pten::TensorBase* tensor,
+void SetAllocationForOutputTenosr(phi::TensorBase* tensor,
                                   const platform::Place& place) {
-  if (pten::DenseTensor::classof(tensor)) {
-    auto* dense_tensor = static_cast<pten::DenseTensor*>(tensor);
+  if (phi::DenseTensor::classof(tensor)) {
+    auto* dense_tensor = static_cast<phi::DenseTensor*>(tensor);
     if (!dense_tensor->IsInitialized() || !(dense_tensor->place() == place)) {
       SetAllocationForUninitializedDenseTensor(dense_tensor, place);
     }
-  } else if (pten::SelectedRows::classof(tensor)) {
-    auto* selected_rows = static_cast<pten::SelectedRows*>(tensor);
+  } else if (phi::SelectedRows::classof(tensor)) {
+    auto* selected_rows = static_cast<phi::SelectedRows*>(tensor);
     if (!selected_rows->value().IsInitialized() ||
         !(selected_rows->place() == place)) {
       SetAllocationForUninitializedDenseTensor(selected_rows->mutable_value(),

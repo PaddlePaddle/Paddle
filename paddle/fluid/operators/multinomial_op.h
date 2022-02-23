@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

@@ -17,13 +17,13 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace imperative {
@@ -76,6 +76,10 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         platform::errors::PreconditionNotMet(
             "Output %s should not have more than one outputs", name));
     return out[0] != nullptr;
+  }
+
+  bool HasAttr(const std::string& name) const override {
+    return attrs_->count(name) > 0 || default_attrs_->count(name) > 0;
   }
 
   bool HasInputs(const std::string& name) const override {
@@ -197,8 +201,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
-      auto& in_sele_rows = in_var->Get<pten::SelectedRows>();
-      auto out_sele_rows = out_var->GetMutable<pten::SelectedRows>();
+      auto& in_sele_rows = in_var->Get<phi::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<phi::SelectedRows>();
       out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
       out_sele_rows->set_rows(in_sele_rows.rows());
       out_sele_rows->set_height(in_sele_rows.height());
@@ -366,12 +370,13 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
                                      "Input variable should not be null"));
     if (var->IsType<framework::LoDTensor>()) {
       return var->Get<framework::LoDTensor>().dims();
-    } else if (var->IsType<pten::SelectedRows>()) {
-      return var->Get<pten::SelectedRows>().GetCompleteDims();
+    } else if (var->IsType<phi::SelectedRows>()) {
+      return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
-          "type_id is xx."));
+          "type_id is: %s.",
+          framework::ToTypeName(var->Type())));
     }
   }
 
@@ -383,8 +388,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   void SetDim(framework::Variable* var, const DDim& dim) {
     if (var->IsType<framework::LoDTensor>()) {
       var->GetMutable<framework::LoDTensor>()->Resize(dim);
-    } else if (var->IsType<pten::SelectedRows>()) {
-      var->GetMutable<pten::SelectedRows>()->set_height(dim[0]);
+    } else if (var->IsType<phi::SelectedRows>()) {
+      var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "Variable type_id %s, expect LoDTensor/SelectedRows."));

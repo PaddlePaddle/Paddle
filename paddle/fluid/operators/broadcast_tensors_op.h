@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #define SWITCH_OUT_RANK_CASE(n)                                \
   case n: {                                                    \
@@ -102,7 +102,7 @@ class BroadcastTensorsOpKernel : public framework::OpKernel<T> {
         new_input_dims_vec[out_axis] = input_dims[in_axis];
       }
     }
-    auto new_input_dims = framework::make_ddim(new_input_dims_vec);
+    auto new_input_dims = phi::make_ddim(new_input_dims_vec);
 
     // Initialize input X with new_input_dims_vec, so it's rank-aligned with the
     // output

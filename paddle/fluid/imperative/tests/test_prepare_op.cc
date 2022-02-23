@@ -32,6 +32,9 @@ namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
+extern void TestHandleComplexGradToRealGradEager(
+    const NameVarMap<egr::EagerVariable>& outs);
+
 static framework::VariableNameMap CreateVarNameMap(
     const framework::OpInfo& op_info, const std::string& op_type,
     const NameVarBaseMap& varbase_map, bool is_input) {
@@ -101,7 +104,7 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
 TEST(test_prepare_op, test_get_tensor_from_var) {
   std::shared_ptr<imperative::VarBase> vout_error(
       new imperative::VarBase(false, "vout_error"));
-  vout_error->MutableVar()->GetMutable<pten::SelectedRows>();
+  vout_error->MutableVar()->GetMutable<phi::SelectedRows>();
   auto* ts = GetTensorFromVar(*vout_error->MutableVar());
   ASSERT_TRUE(ts != nullptr);
 }
@@ -121,7 +124,7 @@ TEST(test_prepare_op, test_prepare_data) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
-  vin_tensor->Resize(framework::make_ddim(dims));
+  vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
                        src_data.data(), sizeof(float) * src_data.size());
@@ -170,7 +173,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<framework::LoDTensor>();
-  vin_tensor->Resize(framework::make_ddim(dims));
+  vin_tensor->Resize(phi::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place, vin_mutable_tensor, cpu_place,
                        src_data.data(), sizeof(float) * src_data.size());
@@ -209,6 +212,11 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
   TestPrepareDataSamePlace({});
 }
 
+TEST(test_prepare_op, test_complex_eager) {
+  NameVarMap<egr::EagerVariable> outs = {};
+  TestHandleComplexGradToRealGradEager(outs);
+}
+
 #ifdef PADDLE_WITH_MKLDNN
 TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
   TestPrepareDataSamePlace({{"use_mkldnn", true}});
@@ -217,7 +225,7 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(split);
+USE_OP_ITSELF(split);
 USE_OP(relu);
 #ifdef PADDLE_WITH_MKLDNN
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);

@@ -27,6 +27,10 @@ from paddle.fluid.core import CommContext
 import paddle.fluid.framework as framework
 import paddle.distributed.fleet as fleet
 
+#logging.basicConfig(
+#    format='%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s', level=logging.INFO)
+#logger = logging.getLogger(__name__)
+
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "gradient_clip"
 STEP_COUNTER = "@PS_STEP_COUNTER@"
@@ -38,9 +42,38 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
+backward = core.op_proto_and_checker_maker.OpRole.Backward
 
+DEVICE_LIST = ["cpu", "gpu", "xpu"]
+COMMUNICATE_OPS_TYPE = ["send", "recv", "fetch_barrier", "send_barrier"]
 SPARSE_OP_LIST = ["lookup_table", "lookup_table_v2"]
 SPARSE_OP_TYPE_DICT = {"lookup_table": "W", "lookup_table_v2": "W"}
+SPARSE_GRAD_OP_TYPE_DICT = {
+    "lookup_table_grad": "W",
+    "lookup_table_v2_grad": "W"
+}
+DEFAULT_DEVICE = 'cpu'
+
+DATA_NORM_NAME = [".batch_size", ".batch_sum", ".batch_square_sum"]
+DATA_NORM_GRAD_NAME = [x + "@GRAD" for x in DATA_NORM_NAME]
+
+
+def logger_config(log_path, logging_name):
+    logger = logging.getLogger(logging_name)
+    logger.setLevel(level=logging.DEBUG)
+    handler = logging.FileHandler(log_path, mode='a', encoding='UTF-8')
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter(
+        '%(levelname)s - %(asctime)s - %(pathname)s: %(lineno)s - %(message)s')
+    handler.setFormatter(formatter)
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    logger.addHandler(console)
+    return logger
+
+
+logger = logger_config(log_path='/ps_log', logging_name='ps_log')
 
 
 class DistributedMode:
@@ -53,8 +86,12 @@ class DistributedMode:
 
 class TrainerRuntimeConfig(object):
     def __init__(self, valid_strategy):
-
+        self.mode = None
+        num_threads = os.getenv("CPU_NUM", "1")
+        send_queue_size = num_threads
         k_steps = valid_strategy.a_sync_configs["k_steps"]
+        logger.info("ps mode in strategy: {}, {}".format(
+            valid_strategy.a_sync, valid_strategy.a_sync_configs["k_steps"]))
         if not valid_strategy.a_sync and k_steps == 0:
             self.mode = DistributedMode.SYNC
 
@@ -63,15 +100,13 @@ class TrainerRuntimeConfig(object):
 
         if valid_strategy.a_sync and k_steps > 0:
             self.mode = DistributedMode.GEO
-
-        self.mode = None
-        num_threads = os.getenv("CPU_NUM", "1")
+            send_queue_size = k_steps
 
         self.runtime_configs = {}
         self.runtime_configs['communicator_max_merge_var_num'] = os.getenv(
-            "FLAGS_communicator_max_merge_var_num", num_threads)
+            "FLAGS_communicator_max_merge_var_num", send_queue_size)
         self.runtime_configs['communicator_send_queue_size'] = os.getenv(
-            "FLAGS_communicator_send_queue_size", num_threads)
+            "FLAGS_communicator_send_queue_size", send_queue_size)
         self.runtime_configs[
             'communicator_independent_recv_thread'] = os.getenv(
                 "FLAGS_communicator_independent_recv_thread", "1")
@@ -84,6 +119,55 @@ class TrainerRuntimeConfig(object):
             "FLAGS_communicator_send_wait_times", "5")
         self.runtime_configs['communicator_is_sgd_optimizer'] = os.getenv(
             "FLAGS_communicator_is_sgd_optimizer", "1")
+
+    def get_communicator_flags(self):
+        need_keys = []
+        num_threads = os.getenv("CPU_NUM", "1")
+        mode_str = ""
+        if self.mode is None or self.mode == DistributedMode.ASYNC:
+            need_keys = self.runtime_configs.keys()
+            mode_str = "async"
+        elif self.mode == DistributedMode.SYNC or self.mode == DistributedMode.HALF_ASYNC:
+            mode_str = "sync or half_async"
+            need_keys = [
+                'communicator_max_merge_var_num',
+                'communicator_send_wait_times', 'communicator_thread_pool_size',
+                'communicator_send_queue_size'
+            ]
+        elif self.mode == DistributedMode.GEO:
+            mode_str = "GEO"
+            need_keys = [
+                'communicator_thread_pool_size', 'communicator_send_wait_times',
+                'communicator_max_merge_var_num', 'communicator_send_queue_size'
+            ]
+        else:
+            raise ValueError("Unsupported Mode")
+
+        if self.mode == DistributedMode.SYNC or self.mode == DistributedMode.HALF_ASYNC:
+            max_merge_var_num = self.runtime_configs[
+                'communicator_max_merge_var_num']
+            send_queue_size = self.runtime_configs[
+                'communicator_send_queue_size']
+            if max_merge_var_num != num_threads:
+                print('WARNING: In {} mode, communicator_max_merge_var_num '
+                      'must be equal to CPU_NUM. But received, '
+                      'communicator_max_merge_var_num = {}, CPU_NUM = '
+                      '{}. communicator_max_merge_var_num will be forced to {}.'
+                      .format(mode_str, max_merge_var_num, num_threads,
+                              num_threads))
+                self.runtime_configs[
+                    'communicator_max_merge_var_num'] = num_threads
+            if send_queue_size != num_threads:
+                print('WARNING: In {} mode, communicator_send_queue_size '
+                      'must be equal to CPU_NUM. But received, '
+                      'communicator_send_queue_size = {}, CPU_NUM = '
+                      '{}. communicator_send_queue_size will be forced to {}.'
+                      .format(mode_str, send_queue_size, num_threads,
+                              num_threads))
+                self.runtime_configs[
+                    'communicator_send_queue_size'] = num_threads
+
+        return dict((key, str(self.runtime_configs[key])) for key in need_keys)
 
 
 def get_lr_ops(program):
@@ -131,11 +215,25 @@ def get_dist_env():
     }
 
 
+def get_role_id(role_maker):
+    try:
+        return role_maker._role_id()
+    except Exception:
+        return role_maker.role_id()
+
+
 def get_ps_endpoint(role_maker):
     try:
         return role_maker._get_pserver_endpoints()[get_role_id(role_maker)]
     except Exception:
         return role_maker.get_pserver_endpoints()[get_role_id(role_maker)]
+
+
+def get_ps_endpoints(role_maker):
+    try:
+        return role_maker._get_pserver_endpoints()
+    except Exception:
+        return role_maker.get_pserver_endpoints()
 
 
 def get_heter_worker_endpoint(role_maker):
@@ -154,7 +252,7 @@ def get_trainer_endpoint(role_maker):
 
 def get_previous_stage_trainers(role_maker):
     try:
-        return role_maker_get_previous_trainers()
+        return role_maker._get_previous_trainers()
     except Exception:
         return role_maker.get_previous_trainers()
 
@@ -186,31 +284,18 @@ def is_sparse_op(op):
     return False
 
 
-def get_sparse_tablenames(program, is_distributed):
+def get_sparse_tablenames(programs, is_distributed):
     tablenames = set()
-    if is_distributed:
-        for op in program.global_block().ops:
-            if is_distributed_sparse_op(op):
-                tablenames.add(get_sparse_tablename(op))
-    else:
-        for op in program.global_block().ops:
-            if is_sparse_op(op):
-                tablenames.add(get_sparse_tablename(op))
+    for program in programs:
+        if is_distributed:
+            for op in program.global_block().ops:
+                if is_distributed_sparse_op(op):
+                    tablenames.add(get_sparse_tablename(op))
+        else:
+            for op in program.global_block().ops:
+                if is_sparse_op(op):
+                    tablenames.add(get_sparse_tablename(op))
     return list(tablenames)
-
-
-def get_role_id(role_maker):
-    try:
-        return role_maker._role_id()
-    except Exception:
-        return role_maker.role_id()
-
-
-def get_ps_endpoints(role_maker):
-    try:
-        return role_maker._get_pserver_endpoints()[get_role_id(role_maker)]
-    except Exception:
-        return role_maker.get_pserver_endpoints()[get_role_id(role_maker)]
 
 
 def get_trainers(role_maker):
@@ -220,7 +305,7 @@ def get_trainers(role_maker):
         return role_maker.worker_num()
 
 
-def get_dense_send_context(context,
+def get_dense_send_context(program,
                            send_ctx,
                            idx,
                            merged_dense_pairs,
@@ -229,34 +314,72 @@ def get_dense_send_context(context,
     if len(merged_dense_pairs) < 1:
         return idx
     if not split_dense_table:
+        dense_pairs = []
+        data_norm_pairs = []
+        for merged in merged_dense_pairs:
+            is_data_norm = False
+            grad = merged[1]
+            varname = grad.merged_var.name
+            for name in DATA_NORM_GRAD_NAME:
+                if varname.endswith(name):
+                    is_data_norm = True
+            if is_data_norm:
+                data_norm_pairs.append(merged)
+            else:
+                dense_pairs.append(merged)
+
+        # simple dense table
         origin_varnames = []
         var_numel = 0
-        for merged in merged_dense_pairs:
+        for merged in dense_pairs:
             grad = merged[1]
             origin_varnames.append(grad.merged_var.name)
-            var = context['origin_main_program'].global_block().vars[
-                grad.merged_var.name]
+            var = program.global_block().vars[grad.merged_var.name]
             var_numel += reduce(lambda x, y: x * y, var.shape)
-        grad_name = "Dense@Grad"
-        trainer_id = get_role_id(context['role_maker'])
+        grad_name = "Dense@GRAD_" + str(idx)
         aggregate = True
+        print("public get_dense_send_context dense_table:", grad_name,
+              var_numel, origin_varnames)
         dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                 [var_numel], origin_varnames, trainer_id,
-                                aggregate, False, False, idx, False)
+                                aggregate, False, False, idx, False, False,
+                                id(program))
         send_ctx[grad_name] = dense_ctx
+        idx += 1
+
+        if len(data_norm_pairs) <= 0:
+            return idx
+
+        # data norm table
+        origin_varnames = []
+        var_numel = 0
+        for merged in data_norm_pairs:
+            grad = merged[1]
+            origin_varnames.append(grad.merged_var.name)
+            var = program.global_block().vars[grad.merged_var.name]
+            var_numel += reduce(lambda x, y: x * y, var.shape)
+        grad_name = "DataNorm@GRAD_" + str(idx)
+        aggregate = True
+        print("public get_dense_send_context data_norm table:", grad_name,
+              var_numel, origin_varnames)
+        data_norm_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
+                                    [var_numel], origin_varnames, trainer_id,
+                                    aggregate, False, False, idx, False, True,
+                                    id(program))
+        send_ctx[grad_name] = data_norm_ctx
         idx += 1
     else:
         for merged in merged_dense_pairs:
             grad = merged[1]
             origin_varname = grad.merged_var.name
-            var = context['origin_main_program'].global_block().vars[
-                origin_varname]
+            var = program.global_block().vars[origin_varname]
             var_numel = reduce(lambda x, y: x * y, var.shape)
             grad_name = origin_varname
             aggregate = True
             dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
                                     [var_numel], [origin_varname], trainer_id,
-                                    aggregate, False, False, idx, False)
+                                    aggregate, False, False, idx, False, False,
+                                    id(program))
             send_ctx[grad_name] = dense_ctx
             idx += 1
     return idx
@@ -266,8 +389,38 @@ def get_geo_trainer_send_context(context):
     if context['ps_mode'] != DistributedMode.GEO:
         raise ValueError("ps mode: {} not matched {}",
                          format(ps_mode, "get_geo_trainer_send_context"))
-
     send_ctx = {}
+    trainer_id = get_role_id(context['role_maker'])
+    origin_programs = context['origin_main_programs']
+    idx = 0
+
+    distibuted_varnames = get_sparse_tablenames(origin_programs, True)
+    for i, program in enumerate(origin_programs):
+        merged_sparse_pairs = context['merged_sparse_pairs'][i]
+        for merged in merged_sparse_pairs:
+            param, grad = merged
+            grad_name = grad.merged_var.name
+            param_name = param.merged_var.name
+            is_distributed = True if param_name in distibuted_varnames else False
+
+            var = program.global_block().vars[grad.merged_var.name]
+            var_numel = reduce(lambda x, y: x * y, var.shape[1:])
+
+            sparse_ctx = CommContext(grad_name, [grad_name],
+                                     ["127.0.0.1:6071"], [var_numel],
+                                     [grad_name], trainer_id, True, True,
+                                     is_distributed, idx, False, False,
+                                     id(program))
+            idx += 1
+            send_ctx[sparse_ctx.var_name()] = sparse_ctx
+
+    if len(send_ctx) == 0:
+        raise ValueError("GeoSGD require sparse parameters in your net.")
+
+    if len(context['tensor_table']) > 0 and context['is_worker']:
+        name, ctx = _step_ctx(idx, context['role_maker'])
+        send_ctx[name] = ctx
+
     return send_ctx
 
 
@@ -278,7 +431,7 @@ def _step_ctx(idx, role_maker):
     sections = [1] * len(endpoints)
     names = [name] * len(endpoints)
     ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
-                      True, False, False, idx, True)
+                      True, False, False, idx, True, False, -1)
     return name, ctx
 
 
@@ -290,36 +443,45 @@ def get_the_one_send_context(context,
         ep_list = ["127.0.0.1:6071"]
     send_ctx = {}
     trainer_id = get_role_id(context['role_maker'])
+    origin_programs = context['origin_main_programs']
 
     idx = 0
-    idx += get_dense_send_context(context, send_ctx, idx,
-                                  context['merged_dense_pairs'], trainer_id,
-                                  split_dense_table)
-    distibuted_varnames = get_sparse_tablenames(context['origin_main_program'],
-                                                True)
-    for merged in context['merged_sparse_pairs']:
-        param, grad = merged
-        grad_name = grad.merged_var.name
-        param_name = param.merged_var.name
-        splited_varname = []
+    for i, program in enumerate(origin_programs):
+        merged_dense_pairs = context['merged_dense_pairs'][i]
+        idx += get_dense_send_context(program, send_ctx, idx,
+                                      merged_dense_pairs, trainer_id,
+                                      split_dense_table)
+    distibuted_varnames = get_sparse_tablenames(origin_programs, True)
+    print("public distibuted_varnames:", distibuted_varnames)
+    for i, program in enumerate(origin_programs):
+        merged_sparse_pairs = context['merged_sparse_pairs'][i]
+        for merged in merged_sparse_pairs:
+            param, grad = merged
+            grad_name = grad.merged_var.name
+            param_name = param.merged_var.name
+            splited_varname = []
 
-        for i in range(len(ep_list)):
-            splited_varname.append("{}.block{}".format(param_name, i))
+            for i in range(len(ep_list)):
+                splited_varname.append("{}.block{}".format(param_name, i))
 
-        is_distributed = True if param_name in distibuted_varnames else False
+            is_distributed = True if param_name in distibuted_varnames else False
 
-        var = context['origin_main_program'].global_block().vars[
-            grad.merged_var.name]
+            var = program.global_block().vars[grad.merged_var.name]
 
-        shape = list(var.shape)
-        shape[0] = 0 if is_distributed else shape[0]
+            shape = list(var.shape)
+            shape[0] = 0 if is_distributed else shape[0]
 
-        sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
-                                 [grad_name], trainer_id, True, True,
-                                 is_distributed, idx, False)
+            print("public get_the_one_send_context sparse:", grad_name,
+                  splited_varname, shape)
+            if grad_name in send_ctx:
+                continue
+            sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
+                                     [grad_name], trainer_id, True, True,
+                                     is_distributed, idx, False, False,
+                                     id(program))
 
-        idx += 1
-        send_ctx[sparse_ctx.var_name()] = sparse_ctx
+            idx += 1
+            send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
     if len(context['tensor_table']) > 0 and context['is_worker']:
         name, ctx = _step_ctx(idx, context['role_maker'])
@@ -618,6 +780,20 @@ def find_block_joints(program, program_block_ops_list, heter_ops):
     return block_var_detail
 
 
+def find_ops_list_input_output(program, ops_list):
+    input_var_list = []
+    output_var_list = []
+    for op in ops_list:
+        inputs = _get_input_map_from_op(program.global_block().vars, op)
+        input_var_list += get_varlist_from_op_map(inputs)
+        outputs = _get_output_map_from_op(program.global_block().vars, op)
+        output_var_list += get_varlist_from_op_map(outputs)
+
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
+    return input_var_list, output_var_list
+
+
 def find_entrance_exit_private(program, program_block_ops_list):
     block_var_detail = []
     persistables = []
@@ -828,6 +1004,54 @@ def _get_output_map_from_op(varmap, op):
     return iomap
 
 
+def get_varlist_from_op_map(var_map):
+    var_list = []
+    for key, varlist in six.iteritems(var_map):
+        if not isinstance(varlist, list):
+            varlist = [varlist]
+        for i in range(len(varlist)):
+            var = varlist[i]
+            var_list.append(var.name)
+    return var_list
+
+
+def _get_input_map_from_op(varmap, op):
+    """Returns a dict from op input name to the vars in varmap."""
+    iomap = collections.OrderedDict()
+    for key in op.input_names:
+        vars = []
+        for varname in op.input(key):
+            if varname == "@EMPTY@":
+                continue
+            if "lod_tensor_blocking_queue" in varname:
+                continue
+            vars.append(varmap[varname])
+        if len(vars) == 1:
+            iomap[key] = vars[0]
+        else:
+            iomap[key] = vars
+    return iomap
+
+
+def screen_persistables(program, var_list):
+    need_remove = []
+    for var_name in var_list:
+        if "@GRAD" in var_name:
+            if "GRAD" != var_name.split("@")[-1]:
+                continue
+            origin_var_name = var_name.split("@GRAD")[0]
+            var = program.global_block().vars[origin_var_name]
+        else:
+            var = program.global_block().vars[var_name]
+
+        if fluid.io.is_persistable(var):
+            need_remove.append(var_name)
+
+    for var_name in need_remove:
+        var_list.remove(var_name)
+    return need_remove
+
+
 def block_append_op(program, origin_program, block, op):
     merge_ordereddict = origin_program.global_block().vars.copy()
     merge_ordereddict.update(block.vars)
@@ -953,7 +1177,7 @@ def get_the_one_recv_context(context,
 
             param_names = []
             for grad_varname in origin_grad_varnames:
-                param_name = grad_name_to_param_name[grad_varname]
+                param_name = context["grad_name_to_param_name"][grad_varname]
                 param_names.append(param_name)
             recv_id_maps[ctx.table_id()] = param_names
     else:
@@ -970,7 +1194,7 @@ def get_the_one_recv_context(context,
 
             param_names = []
             for grad_varname in origin_grad_varnames:
-                param_name = grad_name_to_param_name[grad_varname]
+                param_name = context["grad_name_to_param_name"][grad_varname]
                 param_names.append(param_name)
             recv_id_maps[ctx.table_id()] = param_names
     return recv_id_maps
@@ -1021,57 +1245,87 @@ class MergedVariable:
 
 
 def build_var_distributed(context):
-    sparse_pairs, dense_pairs = get_param_grads(context['origin_main_program'])
-    origin_for_sparse = []
-    origin_for_dense = []
-    param_name_grad_name = {}
+    origin_programs = context['origin_main_programs']
+
+    param_name_to_grad_name = {}
     grad_name_to_param_name = {}
-    context["merged_variables_pairs"] = []
+    context["origin_sparse_pairs"] = []
+    context["origin_dense_pairs"] = []
     context["merged_sparse_pairs"] = []
     context['merged_dense_pairs'] = []
+    context["merged_variables_pairs"] = []
     context["merged_variable_map"] = {}
+    for origin_program in origin_programs:
+        sparse_pairs, dense_pairs = get_param_grads(origin_program)
+        print("public build_var_distributed sparse_pairs:", sparse_pairs)
+        print("public build_var_distributed dense_pairs:", dense_pairs)
+        origin_for_sparse = []
+        origin_for_dense = []
+        merged_sparse_pairs = []
+        merged_dense_pairs = []
+        merged_variables_pairs = []
 
-    for param, grad in sparse_pairs:
-        origin_for_sparse.append((param, grad))
+        for param, grad in sparse_pairs:
+            origin_for_sparse.append((param, grad))
 
-    for param, grad in dense_pairs:
-        origin_for_dense.append((param, grad))
+        for param, grad in dense_pairs:
+            origin_for_dense.append((param, grad))
 
-    for dense_pair in origin_for_dense:
-        param, grad = dense_pair
+        for dense_pair in origin_for_dense:
+            param, grad = dense_pair
 
-        m_param = MergedVariable(param, [param], [0])
-        m_grad = MergedVariable(grad, [grad], [0])
-        context["merged_variables_pairs"].append((m_param, m_grad))
-        context["merged_dense_pairs"].append((m_param, m_grad))
+            m_param = MergedVariable(param, [param], [0])
+            m_grad = MergedVariable(grad, [grad], [0])
+            merged_variables_pairs.append((m_param, m_grad))
+            merged_dense_pairs.append((m_param, m_grad))
+        print("public build_var_distributed merged_dense_pairs:",
+              merged_dense_pairs)
 
-    for sparse_pair in origin_for_sparse:
-        param, grad = sparse_pair
+        for sparse_pair in origin_for_sparse:
+            param, grad = sparse_pair
 
-        m_param = MergedVariable(param, [param], [0])
-        m_grad = MergedVariable(grad, [grad], [0])
-        context["merged_variables_pairs"].append((m_param, m_grad))
-        context["merged_sparse_pairs"].append((m_param, m_grad))
+            m_param = MergedVariable(param, [param], [0])
+            m_grad = MergedVariable(grad, [grad], [0])
+            merged_variables_pairs.append((m_param, m_grad))
+            merged_sparse_pairs.append((m_param, m_grad))
+        print("public build_var_distributed merged_sparse_pairs:",
+              merged_sparse_pairs)
 
-    for merged in context["merged_variables_pairs"]:
-        m_param, m_grad = merged
-        context["merged_variable_map"][
-            m_param.merged_var.name] = m_param.merged_var
-        context["merged_variable_map"][
-            m_grad.merged_var.name] = m_grad.merged_var
+        for merged in merged_variables_pairs:
+            m_param, m_grad = merged
+            context["merged_variable_map"][
+                m_param.merged_var.name] = m_param.merged_var
+            context["merged_variable_map"][
+                m_grad.merged_var.name] = m_grad.merged_var
 
-    param_merges = []
-    param_merges.extend(origin_for_sparse)
-    param_merges.extend(origin_for_dense)
+        param_merges = []
+        param_merges.extend(origin_for_sparse)
+        param_merges.extend(origin_for_dense)
 
-    for param, grad in param_merges:
-        param_name_grad_name[param.name] = grad.name
-        grad_name_to_param_name[grad.name] = param.name
+        for param, grad in param_merges:
+            param_name_to_grad_name[param.name] = grad.name
+            grad_name_to_param_name[grad.name] = param.name
 
-    context["origin_sparse_pairs"] = origin_for_sparse
-    context["origin_dense_pairs"] = origin_for_dense
-    context["param_name_to_grad_name"] = param_name_grad_name
+        context["origin_sparse_pairs"].append(origin_for_sparse)
+        context["origin_dense_pairs"].append(origin_for_dense)
+        context["merged_sparse_pairs"].append(merged_sparse_pairs)
+        context['merged_dense_pairs'].append(merged_dense_pairs)
+
+    context["param_name_to_grad_name"] = param_name_to_grad_name
     context["grad_name_to_param_name"] = grad_name_to_param_name
+
+    print("public build_var_distributed origin_sparse_pairs:",
+          context["origin_sparse_pairs"])
+    print("public build_var_distributed origin_for_dense:",
+          context["origin_dense_pairs"])
+    print("public build_var_distributed merged_sparse_pairs:",
+          context["merged_sparse_pairs"])
+    print("public build_var_distributed merged_dense_pairs:",
+          context['merged_dense_pairs'])
+    print("public build_var_distributed param_name_to_grad_name:",
+          param_name_to_grad_name)
+    print("public build_var_distributed grad_name_to_param_name:",
+          grad_name_to_param_name)
 
 
 def _is_opt_role_op(op):
@@ -1132,10 +1386,138 @@ def get_param_grads(origin_program):
     return sparse_param_grads, dense_param_grads
 
 
-def debug_program(file, program, is_trainer):
-    if is_trainer:
-        with open(file, 'w+') as f:
-            f.write(str(program))
-    else:
-        with open(file, 'w+') as f:
-            f.write(str(program))
+def delete_ops(block, ops):
+    for op in ops:
+        try:
+            idx = list(block.ops).index(op)
+            block._remove_op(idx)
+        except Exception as e:
+            print(e)
+
+
+def find_send_op(program):
+    send_op_list = []
+    for op in program.global_block().ops:
+        if op.type == "send":
+            send_op_list.append(op)
+    return send_op_list
+
+
+def find_op_input_output(program, block, op):
+    input_var_list = []
+    output_var_list = []
+    inputs = _get_input_map_from_op(block.vars, op)
+    input_var_list += get_varlist_from_op_map(inputs)
+    outputs = _get_output_map_from_op(block.vars, op)
+    output_var_list += get_varlist_from_op_map(outputs)
+    input_var_list = list(set(input_var_list))
+    output_var_list = list(set(output_var_list))
+    return input_var_list, output_var_list
+
+
+def add_heter_send_op(program, heter_program, block, block_var_detail):
+    def _get_send_op_dict():
+        send_op_dict = {}
+        send_op_list = find_send_op(program)
+        for op in send_op_list:
+            input_list, _ = find_op_input_output(program,
+                                                 program.global_block(), op)
+            for var in input_list:
+                send_op_dict[var] = op
+        return send_op_dict
+
+    send_grad_var_list = []
+    send_op_dict = _get_send_op_dict()
+    table_dict = {}
+    for persistable_var in block_var_detail["backward"]["persistables"]:
+        if "@GRAD" not in persistable_var:
+            continue
+        if "GRAD" != persistable_var.split("@")[-1]:
+            continue
+        if persistable_var not in send_op_dict:
+            continue
+        send_op = send_op_dict[persistable_var]
+        is_sparse = send_op.attr('is_sparse')
+        table_id = send_op.attr('table_id')
+        send_varnames = send_op.attr('send_varnames')
+        send_grad_var_list.append(persistable_var)
+        if table_id not in table_dict:
+            table_dict[table_id] = {}
+            table_dict[table_id]['var_list'] = []
+            table_dict[table_id]['is_sparse'] = is_sparse
+            table_dict[table_id]['send_varnames'] = send_varnames
+        table_dict[table_id]['var_list'].append(persistable_var)
+
+    for table_id in table_dict:
+        dummy_output = block.create_var(
+            name=framework.generate_control_dev_var_name())
+        send_input_vars = [
+            block.vars[union_var]
+            for union_var in table_dict[table_id]['var_list']
+        ]
+        block.append_op(
+            type="send",
+            inputs={"X": send_input_vars},
+            outputs={"Out": dummy_output},
+            attrs={
+                "send_varnames": table_dict[table_id]['send_varnames'],
+                "is_sparse": is_sparse,
+                "table_id": table_id,
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            })
+
+    return send_grad_var_list
+
+
+def get_vars_name_in_block(block):
+    vars_list = block.vars.keys()
+    vars_name_list = [var_name for var_name in vars_list]
+    return vars_name_list
+
+
+def delete_trainer_useless_var(program, static_var):
+    static_var = list(set(static_var))
+    program_useful_var_list = []
+    for op in program.global_block().ops:
+        input_var_list, output_var_list = find_op_input_output(
+            program, program.global_block(), op)
+        op_var_list = list(set(input_var_list).union(set(output_var_list)))
+        program_useful_var_list = list(
+            set(program_useful_var_list).union(set(op_var_list)))
+    program_useful_var_list += static_var
+    program_useless_var_list = list(
+        set(get_vars_name_in_block(program.global_block())).difference(
+            set(program_useful_var_list)))
+    for var in program_useless_var_list:
+        program.global_block()._remove_var(var)
+    return program_useless_var_list
+
+
+def create_backward_block(program, origin_program, bp_ops_list,
+                          block_var_detail):
+    pre_block_idx = program.num_blocks - 1
+    heter_block = program._create_block(pre_block_idx)
+
+    for _, op in enumerate(bp_ops_list):
+        if op.type == "send":
+            send_varnames = op.attr('send_varnames')
+            is_skip = False
+            for varname in send_varnames:
+                if varname not in program.global_block(
+                ).vars and varname not in heter_block.vars:
+                    is_skip = True
+                    break
+            if is_skip == True:
+                continue
+        block_append_op(program, origin_program, heter_block, op)
+
+    entrance_vars = block_var_detail[0]["backward"]["entrance"]
+    add_vars_by_var_list(entrance_vars, origin_program, program, heter_block)
+    exit_vars = block_var_detail[0]["backward"]["exit"]
+    add_vars_by_var_list(exit_vars, origin_program, program, heter_block)
+    return heter_block
+
+
+def debug_program(file, program):
+    with open(file, 'w+') as f:
+        f.write(str(program))

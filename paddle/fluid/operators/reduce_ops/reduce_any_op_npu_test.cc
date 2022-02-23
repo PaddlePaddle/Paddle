@@ -27,12 +27,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 using Tensor = paddle::framework::Tensor;
 
@@ -46,7 +45,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto tensor_x = x->GetMutable<f::LoDTensor>();
   std::vector<bool> init_x = {true, false, false, false};
   f::TensorFromVector<bool>(init_x, ctx, tensor_x);
-  tensor_x->Resize(paddle::framework::make_ddim({2}));
+  tensor_x->Resize(phi::make_ddim({2}));
 
   ctx.Wait();
 

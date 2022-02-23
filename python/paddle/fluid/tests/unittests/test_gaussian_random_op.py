@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
 
 

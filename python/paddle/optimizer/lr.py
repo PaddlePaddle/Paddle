@@ -1358,7 +1358,7 @@ class ReduceOnPlateau(LRScheduler):
             self.last_epoch = epoch
 
         if _in_eager_mode():
-            tmp = core.eager.EagerTensor
+            tmp = core.eager.Tensor
         else:
             tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
