@@ -17,9 +17,7 @@
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
-#if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#endif
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
 
@@ -32,9 +30,8 @@ void AbsGradKernelImpl(const GPUContext& dev_ctx,
   std::vector<const DenseTensor*> ins = {&x, &dout};
   std::vector<DenseTensor*> outs = {dx};
   dev_ctx.Alloc<T>(dx);
-  phi::funcs::AbsGradCUDAFunctor<T> cuda_functor;
-  paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-      dev_ctx, ins, &outs, cuda_functor);
+  phi::funcs::AbsGradCUDAFunctor<T> abs_grad_cuda_functor;
+  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, abs_grad_cuda_functor);
 }
 template <typename T, typename Context>
 void AbsGradKernel(const Context& dev_ctx,
