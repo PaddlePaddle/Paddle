@@ -1972,6 +1972,9 @@ Scope* OperatorWithKernel::PreparePtenData(
         continue;
       }
 
+      if (in_def.backend == phi::Backend::ALL_BACKEND) {
+        continue;
+      }
       auto expected_place = phi::TransToPtenPlace(in_def.backend);
       if (platform::is_same_place(tensor_in->place(), expected_place)) {
         continue;

@@ -27,8 +27,6 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/mixed_vector.h"
 namespace phi {
 class SelectedRowsImpl {
   /*
@@ -68,13 +66,11 @@ class SelectedRowsImpl {
 
   void set_height(int64_t height) { height_ = height; }
 
-  const paddle::framework::Vector<int64_t>& rows() const { return rows_; }
+  const std::vector<int64_t>& rows() const { return rows_; }
 
-  paddle::framework::Vector<int64_t>* mutable_rows() { return &rows_; }
+  std::vector<int64_t>* mutable_rows() { return &rows_; }
 
-  void set_rows(const paddle::framework::Vector<int64_t>& rows) {
-    rows_ = rows;
-  }
+  void set_rows(const std::vector<int64_t>& rows) { rows_ = rows; }
 
   /*
    * @brief Get the index of key in rows
@@ -84,7 +80,7 @@ class SelectedRowsImpl {
   int64_t Index(int64_t key) const {
     auto it = std::find(rows_.begin(), rows_.end(), key);
     if (it == rows_.end()) {
-      PADDLE_THROW(paddle::platform::errors::NotFound(
+      PADDLE_THROW(phi::errors::NotFound(
           "Input id (%lld) is not in current rows table.", key));
     }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
@@ -156,10 +152,7 @@ class SelectedRowsImpl {
 
   /// \brief Returns the dims of the tensor.
   /// \return The dims of the tensor.
-  const DDim& dims() const noexcept {
-    return value_->dims();
-    // return phi::make_ddim(dims);
-  }
+  const DDim& dims() const noexcept { return value_->dims(); }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
@@ -185,7 +178,7 @@ class SelectedRowsImpl {
   // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
   // SelectedRowsImpl are simply concated when adding together. Until a
   // SelectedRowsImpl add a Tensor, will the duplicate rows be handled.
-  paddle::framework::Vector<int64_t> rows_;
+  std::vector<int64_t> rows_;
   std::unordered_map<int64_t, int64_t>
       id_to_index_;  // should not be used when rows_ has duplicate member
   std::unique_ptr<DenseTensor> value_{nullptr};
