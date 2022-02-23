@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 
-PT_REGISTER_KERNEL(matmul_grad,
+PD_REGISTER_KERNEL(matmul_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::MatmulGradKernel,
@@ -28,7 +28,7 @@ PT_REGISTER_KERNEL(matmul_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(matmul_double_grad,
+PD_REGISTER_KERNEL(matmul_double_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::MatmulDoubleGradKernel,
@@ -37,7 +37,7 @@ PT_REGISTER_KERNEL(matmul_double_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(matmul_triple_grad,
+PD_REGISTER_KERNEL(matmul_triple_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::MatmulTripleGradKernel,

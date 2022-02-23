@@ -20,7 +20,7 @@ inline void check_shape(const DDim& dims) {
   bool valid = dims.size() == 2 || dims.size() == 3;
 
   PADDLE_ENFORCE(valid,
-                 paddle::platform::errors::InvalidArgument(
+                 phi::errors::InvalidArgument(
                      "the SparseCsrTensor only support 2-D Tensor."));
 }
 #define Check(non_zero_crows, non_zero_cols, non_zero_elements, dims)          \
@@ -29,12 +29,12 @@ inline void check_shape(const DDim& dims) {
     PADDLE_ENFORCE_EQ(                                                         \
         non_zero_cols.place(),                                                 \
         non_zero_crows.place(),                                                \
-        paddle::platform::errors::InvalidArgument(                             \
+        phi::errors::InvalidArgument(                                          \
             "non_zero_crows and non_zero_cols must have the same place."));    \
     PADDLE_ENFORCE_EQ(                                                         \
         non_zero_cols.place(),                                                 \
         non_zero_elements.place(),                                             \
-        paddle::platform::errors::InvalidArgument(                             \
+        phi::errors::InvalidArgument(                                          \
             "non_zero_cols and non_zero_elements must have the same place.")); \
   }
 
@@ -77,7 +77,7 @@ void* SparseCsrTensor::AllocateFrom(Allocator* allocator,
 void SparseCsrTensor::Resize(const DDim& dense_dims,
                              const int64_t non_zero_num) {
   PADDLE_ENFORCE(this->initialized(),
-                 paddle::platform::errors::InvalidArgument(
+                 phi::errors::InvalidArgument(
                      "the SparseCsrTensor must be initialized when call Resize "
                      "function."));
   check_shape(dense_dims);
