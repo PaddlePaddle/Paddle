@@ -2,7 +2,7 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
-  cost_model cuda_graph_with_memory_pool fleet_executor global_utils pten_utils new_profiler event_node chrometracinglogger serialization_logger deserialization_reader event_python)
+  cost_model cuda_graph_with_memory_pool fleet_executor global_utils pten_utils tcp_store new_profiler event_node chrometracinglogger serialization_logger deserialization_reader event_python)
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -35,6 +35,10 @@ if (WITH_ASCEND_CL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
   set(PYBIND_DEPS ${PYBIND_DEPS} hccl_context)
   set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
+endif()
+
+if (WITH_CNCL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} cncl_context)
 endif()
 
 if(NOT WIN32)
@@ -73,6 +77,7 @@ set(PYBIND_SRCS
   compatible.cc
   io.cc
   generator_py.cc
+  communication.cc
   cuda_streams_py.cc)
 
 if(WITH_ASCEND)
@@ -132,6 +137,10 @@ if(WITH_PYTHON)
   if(WITH_ASCEND_CL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
   endif(WITH_ASCEND_CL)
+
+  if(WITH_CNCL)
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
+  endif(WITH_CNCL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})

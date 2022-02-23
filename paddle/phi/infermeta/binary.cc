@@ -23,7 +23,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_rank = static_cast<size_t>(x_dims.size());
   PADDLE_ENFORCE_EQ(true,
                     1 == x_rank || 2 == x_rank,
-                    paddle::platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "ShapeError: The dimensions of input tensor X (%s) "
                         "should be 1 or 2",
                         x_dims.to_str()));
@@ -32,7 +32,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
       true,
       x_rank == static_cast<size_t>(y_dims.size()),
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "ShapeError: The shape of input tensor Y: %s should match with "
           "input tenosr X: %s",
           y_dims.to_str(),
@@ -47,7 +47,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 
   PADDLE_ENFORCE_EQ(true,
                     shape_match,
-                    paddle::platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "ShapeError: The shape of input tensor X: %s should "
                         "be exactly the same "
                         "with input tensor Y: %s",
@@ -71,12 +71,12 @@ void MatmulInferMeta(const MetaTensor& x,
   auto ndims_y = dims_y.size();
   PADDLE_ENFORCE_GT(ndims_x,
                     0UL,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The Input(x) dims size must be greater than 0,"
                         " but reviced dims size is 0. "));
   PADDLE_ENFORCE_GT(ndims_y,
                     0UL,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The Input(y) dims size must be greater than 0,"
                         " but reviced dims size is 0. "));
 
@@ -150,7 +150,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     if (x_dims.size() == y_dims.size()) {
       PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0),
                         true,
-                        paddle::platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "axis should be -1 or 0 while the dimension of "
                             "tensor X (%s) is equal to the dimension of "
                             "tensor Y (%s), but received axis: %s",
@@ -160,7 +160,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     }
     PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim),
                       true,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The axis range must be [%s, %s), but axis is %s. "
                           "Please set the axis again.",
                           -1 * max_dim,
@@ -223,6 +223,11 @@ void HuberLossInferMeta(const MetaTensor& input,
   residual->set_dims(out_dims);
   out->set_dims(out_dims);
   out->share_lod(input);
+}
+
+void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto in_dims = x.dims();
+  out->set_dims(in_dims);
 }
 
 }  // namespace phi
