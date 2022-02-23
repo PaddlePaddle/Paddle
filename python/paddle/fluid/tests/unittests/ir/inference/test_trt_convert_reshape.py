@@ -67,7 +67,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
         for dims in [4, 3, 2, 1]:
             for num_input in [0, 1, 2, 3]:
                 for shape in [[1, 6, 8], [1, 2, 4, 6], [1, 1, 0, 12],
-                              [-1, 3, 2, 4], [-1, 6, 1, 2],  [-1, 2, 4],
+                               [-1, 3, 2, 4], [-1, 6, 1, 2],  [-1, 2, 4],
                               [1, 0, 6], [1, -1, 12], [2, -1], [3, 16],
                               [3, 4, 4], [48]]:
                     dics = [{"shape": shape, }, {}]
