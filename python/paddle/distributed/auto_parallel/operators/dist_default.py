@@ -32,6 +32,8 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY,
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 
+__op_not_need_param_init__ = ["while", "cond"]
+
 
 class DistributedDefault(DistributedOperatorImplContainer):
     def __init__(self, op_type):
@@ -195,10 +197,10 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
     def forward(ctx, *args, **kwargs):
 
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        startup_block = dist_op_context.get_dst_startup_program().global_block()
-        src_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.work_block
+        startup_block = dist_op_context.startup_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -227,6 +229,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         main_block._sync_with_cpp()
 
         # param initialization sync
+        if src_op.type in __op_not_need_param_init__:
+            return
+
         for varname in dist_op_desc.input_arg_names():
             if startup_block.has_var(varname) and startup_block.var(
                     varname
@@ -278,12 +283,12 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        backward_op = dist_op_context.get_cur_src_op()
+        main_block = dist_op_context.work_block
+        backward_op = dist_op_context.cur_src_op
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(backward_op))
-        rank_id = dist_op_context.get_rank_id()
+        rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in backward_op.desc.input_names():

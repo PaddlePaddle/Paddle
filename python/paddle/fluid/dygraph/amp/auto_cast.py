@@ -149,7 +149,7 @@ def _is_gpu_bfloat16_supported():
     """
     prop = paddle.device.cuda.get_device_capability()
     cuda_version = paddle.version.cuda()
-    if cuda_version is not None:
+    if cuda_version is not None and cuda_version != 'False':
         cuda_version_check = int(cuda_version.split('.')[0]) >= 11
     else:
         cuda_version_check = False

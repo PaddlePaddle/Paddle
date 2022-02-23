@@ -98,6 +98,19 @@ TO GetCastSigAttrAllowNull(std::string attr, OpDesc* op_desc) {
   }
 }
 
+GraphHelper::GraphHelper(const Graph* g) {
+  graph = g;
+  sorted_ops = framework::ir::TopologySortOperations(*g);
+  for (auto* node : g->Nodes()) {
+    nodes_id_map[node->id()] = node;
+    if (node->IsVar()) {
+      vars_name_map[node->Name()] = node;
+      sorted_vars_id.push_back(node->id());
+    }
+  }
+  std::sort(sorted_vars_id.begin(), sorted_vars_id.end());
+}
+
 Compiler::Compiler() { RegisterOpFunc(); }
 
 Compiler::~Compiler() {
@@ -105,9 +118,10 @@ Compiler::~Compiler() {
   resources_.reset();
 }
 
-void Compiler::Prepare() {
+void Compiler::Prepare(const Graph* graph) {
   builder_ = popart::Builder::create();
   resources_ = std::make_unique<CompilerResources>();
+  graph_helper_ = std::make_unique<GraphHelper>(graph);
 }
 
 void Compiler::RegisterOpFunc() {
@@ -171,10 +185,108 @@ void Compiler::RegisterOpFunc() {
 #undef INT_VEC
 }
 
-void Compiler::LowerBody(const Graph* graph) {
+void Compiler::InitInputs(const std::vector<std::string>& feed_list) {
+  for (const auto& feed_name : feed_list) {
+    auto* node = graph_helper_->vars_name_map[feed_name];
+    auto* var_desc = node->Var();
+    VLOG(10) << "feed_name= " << var_desc->Name();
+    auto data_type = VarType2PopartType(var_desc->GetDataType());
+    popart::TensorInfo input_info{data_type, var_desc->GetShape()};
+    VLOG(10) << "popart input_info = " << input_info;
+    popart::TensorId tensor_id =
+        builder_->addInputTensor(input_info, feed_name);
+    VLOG(10) << "popart input tensor id = " << tensor_id;
+    resources_->inputs.push_back(tensor_id);
+    resources_->tensors.emplace(var_desc->Name(), tensor_id);
+  }
+}
+
+void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
+  for (const auto& fetch_name : fetch_list) {
+    auto tensor = resources_->tensors.find(fetch_name);
+    PADDLE_ENFORCE_NE(
+        tensor, resources_->tensors.end(),
+        platform::errors::NotFound(
+            "Output tensor %s is not found, please check the model.",
+            fetch_name));
+    VLOG(10) << "fetch_name= " << fetch_name;
+    VLOG(10) << "popart output tensor id = " << tensor->second;
+    builder_->addOutputTensor(tensor->second);
+    resources_->outputs.push_back(tensor->second);
+  }
+}
+
+void Compiler::LowerConstants(const Scope* scope) {
+  auto& kid_scope = scope->NewScope();
+  VLOG(10) << "enter Compiler::LowerConstants";
+  for (auto* node : graph_helper_->sorted_ops) {
+    auto* op_desc = node->Op();
+    auto op_type = op_desc->Type();
+    if (op_type == "popart_constant") {
+      auto shape =
+          BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("dims"));
+      auto dtype_ = BOOST_GET_CONST(int, op_desc->GetAttr("dtype"));
+      auto dtype = PopartType2VarType(OnnxDtype2PopartType(dtype_));
+      auto tensor_name = op_desc->Output("__outputs__")[0];
+      auto* var = kid_scope.Var(tensor_name);
+      VLOG(10) << "lowering constant: " << tensor_name;
+      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      ConstantOpAttrVisitor visitor(tensor, dtype);
+      auto value = op_desc->GetAttr("value");
+      boost::apply_visitor(visitor, value);
+      auto ddim = phi::make_ddim(shape);
+      tensor->Resize(ddim);
+
+      auto const_data = std::unique_ptr<popart::ConstVoidData>();
+      popart::TensorInfo tensor_info(PdDataType2PopartType(tensor->dtype()),
+                                     shape);
+      const_data.reset(new popart::ConstVoidData(tensor->data(), tensor_info));
+      popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
+      SetIpuIndexStage(result, op_desc);
+      resources_->tensors.emplace(tensor_name, result);
+    }
+  }
+  VLOG(10) << "leave Compiler::LowerConstants";
+}
+
+void Compiler::LowerWeights(const Scope* scope) {
+  VLOG(10) << "enter Compiler::LowerWeights";
+  // at this step, the graph doesn't contains optimizer related states
+  for (auto id : graph_helper_->sorted_vars_id) {
+    auto* node = graph_helper_->nodes_id_map[id];
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+      if (node->Var()->Persistable() && node->inputs.empty()) {
+        auto var_name = node->Var()->Name();
+        if (resources_->tensors.count(var_name) != 0) {
+          VLOG(10) << "found existed one, skip lowering Weight: " << var_name;
+          continue;
+        }
+        VLOG(10) << "lowering weight: " << var_name;
+
+        auto var = scope->FindVar(var_name);
+        if (var) {
+          auto tensor = var->Get<framework::LoDTensor>();
+          auto dtype = PdDataType2PopartType(tensor.dtype());
+          auto shape = std::vector<int64_t>();
+          for (size_t i = 0; i < tensor.dims().size(); ++i) {
+            shape.push_back(tensor.dims().at(i));
+          }
+          popart::TensorInfo tensor_info(dtype, shape);
+          popart::ConstVoidData const_data{tensor.data(), tensor_info};
+          popart::TensorId result =
+              builder_->addInitializedInputTensor(const_data, var_name);
+          resources_->tensors.emplace(var_name, result);
+          resources_->weights.push_back(result);
+        }
+      }
+    }
+  }
+  VLOG(10) << "leave Compiler::LowerWeights";
+}
+
+void Compiler::LowerBody() {
   VLOG(10) << "enter Compiler::LowerBody";
-  auto nodes = framework::ir::TopologySortOperations(*graph);
-  for (auto* node : nodes) {
+  for (auto* node : graph_helper_->sorted_ops) {
     auto* op_desc = node->Op();
     auto op_type = op_desc->Type();
     VLOG(10) << "lowering op: " << op_type;
@@ -232,124 +344,8 @@ void Compiler::LowerBody(const Graph* graph) {
   VLOG(10) << "leave Compiler::LowerBody";
 }
 
-void Compiler::InitInputs(Graph* graph,
-                          const std::vector<std::string>& feed_list) {
-  for (const auto& feed_name : feed_list) {
-    feed_list_.push_back(feed_name);
-    for (const Node* n : graph->Nodes()) {
-      if (n->IsVar()) {
-        auto* var_desc = n->Var();
-        if (feed_name == var_desc->Name()) {
-          VLOG(10) << "feed_name= " << var_desc->Name();
-          auto data_type = VarType2PopartType(var_desc->GetDataType());
-          popart::TensorInfo input_info{data_type, var_desc->GetShape()};
-          VLOG(10) << "popart input_info = " << input_info;
-          popart::TensorId tensor_id =
-              builder_->addInputTensor(input_info, feed_name);
-          VLOG(10) << "popart input tensor id = " << tensor_id;
-          resources_->inputs.push_back(tensor_id);
-          resources_->tensors.emplace(var_desc->Name(), tensor_id);
-        }
-      }
-    }
-  }
-}
-
-void Compiler::InitOutputs(const std::vector<std::string>& fetch_list) {
-  for (const auto& fetch_name : fetch_list) {
-    fetch_list_.push_back(fetch_name);
-    auto tensor = resources_->tensors.find(fetch_name);
-    PADDLE_ENFORCE_NE(
-        tensor, resources_->tensors.end(),
-        platform::errors::NotFound(
-            "Output tensor %s is not found, please check the model.",
-            fetch_name));
-    VLOG(10) << "fetch_name= " << fetch_name;
-    VLOG(10) << "popart output tensor id = " << tensor->second;
-    builder_->addOutputTensor(tensor->second);
-    resources_->outputs.push_back(tensor->second);
-  }
-}
-
-void Compiler::LowerConstants(const Graph* graph, const Scope* scope) {
-  auto& kid_scope = scope->NewScope();
-  VLOG(10) << "enter Compiler::LowerConstants";
-  for (auto* node : graph->Nodes()) {
-    if (!node->IsOp()) {
-      continue;
-    }
-
-    auto* op_desc = node->Op();
-    auto op_type = op_desc->Type();
-    if (op_type == "popart_constant") {
-      auto shape =
-          BOOST_GET_CONST(std::vector<int64_t>, op_desc->GetAttr("dims"));
-      auto dtype_ = BOOST_GET_CONST(int, op_desc->GetAttr("dtype"));
-      auto dtype = PopartType2VarType(OnnxDtype2PopartType(dtype_));
-      auto tensor_name = op_desc->Output("__outputs__")[0];
-      auto* var = kid_scope.Var(tensor_name);
-      VLOG(10) << "lowering constant: " << tensor_name;
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
-      ConstantOpAttrVisitor visitor(tensor, dtype);
-      auto value = op_desc->GetAttr("value");
-      boost::apply_visitor(visitor, value);
-      auto ddim = phi::make_ddim(shape);
-      tensor->Resize(ddim);
-
-      auto const_data = std::unique_ptr<popart::ConstVoidData>();
-      popart::TensorInfo tensor_info(PdDataType2PopartType(tensor->dtype()),
-                                     shape);
-      const_data.reset(new popart::ConstVoidData(tensor->data(), tensor_info));
-      popart::TensorId result = builder_->aiOnnxOpset11().constant(*const_data);
-      SetIpuIndexStage(result, op_desc);
-      resources_->tensors.emplace(tensor_name, result);
-    }
-  }
-  VLOG(10) << "leave Compiler::LowerConstants";
-}
-
-void Compiler::LowerWeights(const Graph* graph, const Scope* scope) {
-  VLOG(10) << "enter Compiler::LowerWeights";
-  PADDLE_ENFORCE_NOT_NULL(scope,
-                          platform::errors::PreconditionNotMet(
-                              "You should call set_scope before LowerWeights"));
-  // at this step, the graph doesn't contains optimizer related states
-  for (const auto* node : graph->Nodes()) {
-    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-      if (node->Var()->Persistable() && node->inputs.empty()) {
-        auto var_name = node->Var()->Name();
-        if (resources_->tensors.count(var_name) != 0) {
-          continue;
-        }
-        VLOG(10) << "lowering weight: " << var_name;
-
-        auto var = scope->FindVar(var_name);
-        if (var) {
-          auto tensor = var->Get<framework::LoDTensor>();
-          auto dtype = PdDataType2PopartType(tensor.dtype());
-          auto shape = std::vector<int64_t>();
-          for (size_t i = 0; i < tensor.dims().size(); ++i) {
-            shape.push_back(tensor.dims().at(i));
-          }
-          popart::TensorInfo tensor_info(dtype, shape);
-          popart::ConstVoidData const_data{tensor.data(), tensor_info};
-          popart::TensorId result =
-              builder_->addInitializedInputTensor(const_data, var_name);
-          resources_->tensors.emplace(var_name, result);
-          resources_->weights.push_back(result);
-        }
-      }
-    }
-  }
-  VLOG(10) << "leave Compiler::LowerWeights";
-}
-
-void Compiler::LowerOptimier(const Graph* graph, const Scope* scope) {
-  for (auto* node : graph->Nodes()) {
-    if (!node->IsOp()) {
-      continue;
-    }
-
+void Compiler::LowerOptimizer(const Scope* scope) {
+  for (auto* node : graph_helper_->sorted_ops) {
     auto* op_desc = node->Op();
     auto op_type = op_desc->Type();
     if (op_type == "popart_optimizer") {
