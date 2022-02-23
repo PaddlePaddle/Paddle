@@ -47,7 +47,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
-
+        logger.info("dummy_output: {}".format(dummy_output))
         program.global_block().append_op(
             type="send",
             inputs={"X": send_input_vars},
@@ -61,7 +61,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
 
         return dummy_output
 
-    def _append_barrier_op(self, program, dummys):
+    def _append_barrier_op(self, program, dummys, trainer_id):
         program.global_block().append_op(
             type="send_barrier",
             inputs={"X": dummys},
@@ -79,19 +79,24 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
             send_ctx = get_geo_trainer_send_context(attrs)  # geo 模式
         else:
             send_ctx = get_the_one_send_context(attrs)  # async、sync 等各种模式
+        logger.info("send_ctx: {}".format(send_ctx))
         dummys = []
         for merged_name, send in send_ctx.items():
             if send.is_sparse() and ps_mode != DistributedMode.GEO:
                 continue
+            logger.info('merged_name, send: {}, {}'.format(merged_name, send))
             is_sparse = 1 if send.is_sparse() else 0
             is_sparse = 2 if send.is_distributed() else is_sparse
             dummys.append(
                 self._append_send_op(main_program,
                                      send.origin_varnames(), merged_name,
                                      is_sparse, send.table_id(), ps_mode))
-
+        logger.info('ps trainer pass - ps mode: {}'.format(ps_mode))
+        logger.info('dummys: {}'.format(dummys))
         if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
-            self._append_barrier_op(main_program, dummys)
+            logger.info('insert send_barrier_op')
+            trainer_id = get_role_id(attrs['role_maker'])
+            self._append_barrier_op(main_program, dummys, trainer_id)
 
 
 @register_pass("distributed_ops_pass")
@@ -555,9 +560,9 @@ class FakeInitOpsPass(PassBase):
         return True
 
     def _get_sparse_table_names(self, attrs):
-        dist_varnames = get_sparse_tablenames(attrs['origin_main_program'],
+        dist_varnames = get_sparse_tablenames(attrs['origin_main_programs'],
                                               True)
-        sparse_varnames = get_sparse_tablenames(attrs['origin_main_program'],
+        sparse_varnames = get_sparse_tablenames(attrs['origin_main_programs'],
                                                 False)
         return list(set(dist_varnames + sparse_varnames))
 

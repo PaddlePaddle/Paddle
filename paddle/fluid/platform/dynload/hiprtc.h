@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <hip/hiprtc.h>
 #include <mutex>  // NOLINT
-#include "paddle/pten/backends/dynload/hiprtc.h"
+#include "paddle/phi/backends/dynload/hiprtc.h"
 
 namespace paddle {
 namespace platform {
@@ -24,8 +24,8 @@ namespace dynload {
 
 extern bool HasNVRTC();
 
-#define PLATFORM_DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP(__name)     \
-  using DynLoad__##__name = pten::dynload::DynLoad__##__name; \
+#define PLATFORM_DECLARE_DYNAMIC_LOAD_HIPRTC_WRAP(__name)    \
+  using DynLoad__##__name = phi::dynload::DynLoad__##__name; \
   extern DynLoad__##__name __name
 
 /**

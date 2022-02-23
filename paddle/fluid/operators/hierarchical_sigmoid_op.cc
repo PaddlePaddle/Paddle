@@ -82,7 +82,7 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
                           input_dims, label_dims));
 
     std::vector<int64_t> output_shape({input_dims, 1});
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 

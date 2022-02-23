@@ -27,7 +27,6 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -37,6 +36,7 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/ddim.h"
 
 DECLARE_string(allow_cinn_ops);
 DECLARE_string(deny_cinn_ops);
@@ -258,7 +258,7 @@ TEST(CinnCompilerTest, Compile) {
   std::unordered_map<std::string, LoDTensor> create_inputs;
   for (const auto& pair : inputs_info) {
     auto& tensor = create_inputs[pair.first];
-    tensor.Resize(make_ddim(pair.second));
+    tensor.Resize(phi::make_ddim(pair.second));
     tensor.mutable_data<float>(platform::CPUPlace());
   }
   std::map<std::string, const LoDTensor*> input_tensors;
@@ -302,4 +302,4 @@ USE_PASS(build_cinn_pass);
 USE_PASS(graph_viz_pass);
 USE_OP(mul);
 USE_OP(relu);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);

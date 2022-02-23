@@ -23,163 +23,175 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
-class TestAdamOp1(OpTest):
-    def setUp(self):
+
+class XPUTestAdamOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'adam'
+        self.use_dynamic_create_class = False
+
+    class TestAdamOp(XPUOpTest):
         '''Test Adam Op with supplied attributes
         '''
-        self.op_type = "adam"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        # The second moment is positive
-        moment2 = np.random.random((102, 105)).astype("float32")
 
-        learning_rate = 0.004
-        beta1 = 0.78
-        beta2 = 0.836
-        epsilon = 1e-4
-        beta1_pow = beta1**10
-        beta2_pow = beta2**10
-
-        self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Moment1': moment1,
-            'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
-        }
-
-        self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
-
-        param_out, moment1_out, \
-            moment2_out = adam_step(self.inputs, self.attrs)
-
-        self.outputs = {
-            'Moment1Out': moment1_out,
-            'Moment2Out': moment2_out,
-            'ParamOut': param_out,
-            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
-        }
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.XPUPlace(0), atol=1e-2)
-
-
-class TestAdamOp2(OpTest):
-    def setUp(self):
-        '''Test Adam Op with supplied attributes
-        '''
-        self.op_type = "adam"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        # The second moment is positive
-        moment2 = np.random.random((102, 105)).astype("float32")
-
-        learning_rate = 0.001
-        beta1 = 0.9
-        beta2 = 0.999
-        epsilon = 1e-8
-        beta1_pow = beta1**10
-        beta2_pow = beta2**10
-
-        self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Moment1': moment1,
-            'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
-        }
-
-        attributes = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
-
-        param_out, moment1_out, \
-            moment2_out = adam_step(self.inputs, attributes)
-
-        self.outputs = {
-            'Moment1Out': moment1_out,
-            'Moment2Out': moment2_out,
-            'ParamOut': param_out,
-            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
-        }
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.XPUPlace(0), atol=1e-2)
-
-
-class TestAdamOpMultipleSteps(OpTest):
-    def setUp(self):
-        '''Test Adam Operator with supplied attributes
-        '''
-        self.op_type = "adam"
-        self.num_steps = 10
-
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        # The second moment is positive
-        moment2 = np.random.random((102, 105)).astype("float32")
-
-        learning_rate = 0.001
-        self.beta1 = 0.9
-        self.beta2 = 0.999
-        epsilon = 1e-8
-        self.beta1_pow = self.beta1**10
-        self.beta2_pow = self.beta2**10
-
-        self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Moment1': moment1,
-            'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([self.beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([self.beta2_pow]).astype("float32")
-        }
-
-        self.attrs = {
-            'epsilon': epsilon,
-            'beta1': self.beta1,
-            'beta2': self.beta2
-        }
-
-    def test_check_output(self):
-        for _ in range(self.num_steps):
+        def setUp(self):
+            self.init_dtype()
+            self.set_xpu()
+            self.op_type = "adam"
+            self.place = paddle.XPUPlace(0)
+            self.set_data()
+            self.set_attrs()
+            self.set_shape()
+            self.set_inputs()
+            self.set_steps()
             param_out, moment1_out, \
                 moment2_out = adam_step(self.inputs, self.attrs)
 
-            beta1_pow_out = self.inputs['Beta1Pow'] * self.beta1
-            beta2_pow_out = self.inputs['Beta2Pow'] * self.beta2
             self.outputs = {
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
                 'ParamOut': param_out,
-                'Beta1PowOut': beta1_pow_out,
-                'Beta2PowOut': beta2_pow_out
+                'Beta1PowOut':
+                np.array([self.beta1_pow]).astype("float32") * self.beta1,
+                'Beta2PowOut':
+                np.array([self.beta2_pow]).astype("float32") * self.beta2
             }
 
-            # Verify output for this step
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
+            self.__class__.op_type = self.in_type
+
+        def init_dtype(self):
+            self.dtype = self.in_type
+
+        def set_attrs(self):
+            self.attrs = {
+                'epsilon': self.epsilon,
+                'beta1': self.beta1,
+                'beta2': self.beta2
+            }
+
+        def set_data(self):
+            self.beta1 = 0.78
+            self.beta2 = 0.836
+            self.learning_rate = 0.004
+            self.epsilon = 1e-4
+
+        def set_steps(self):
+            self.num_steps = 1
+
+        def set_shape(self):
+            self.shape = (102, 105)
+
+        def set_inputs(self):
+            param = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            grad = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            moment1 = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            # The second moment is positive
+            moment2 = np.random.random(self.shape).astype(self.dtype)
+
+            self.beta1_pow = self.beta1**10
+            self.beta2_pow = self.beta2**10
+
+            self.inputs = {
+                'Param': param,
+                'Grad': grad,
+                'Moment1': moment1,
+                'Moment2': moment2,
+                'LearningRate':
+                np.array([self.learning_rate]).astype("float32"),
+                'Beta1Pow': np.array([self.beta1_pow]).astype("float32"),
+                'Beta2Pow': np.array([self.beta2_pow]).astype("float32")
+            }
+
+        def test_check_output(self):
             self.check_output_with_place(place=paddle.XPUPlace(0), atol=1e-2)
 
-            # Output of this step becomes input for next step
-            self.inputs['Param'] = param_out
-            self.inputs['Moment1'] = moment1_out
-            self.inputs['Moment2'] = moment2_out
+    class TestAdamOp2(TestAdamOp):
+        '''Test Adam Op with supplied attributes
+        '''
 
-            # Update powers of Beta1 and Beta2 for next time step
-            self.inputs['Beta1Pow'] = beta1_pow_out
-            self.inputs['Beta2Pow'] = beta2_pow_out
+        def set_data(self):
+            self.beta1 = 0.9
+            self.beta2 = 0.999
+            self.learning_rate = 0.001
+            self.epsilon = 1e-8
 
-            # Randomize gradient for next step
-            self.inputs['Grad'] = np.random.uniform(
-                -1, 1, (102, 105)).astype("float32")
+    class TestAdamOp3(TestAdamOp2):
+        '''Test Adam Op with supplied attributes
+        '''
+
+        def set_shape(self):
+            self.shape = (101, 47)
+
+    class TestAdamOp4(TestAdamOp2):
+        '''Test Adam Op with supplied attributes
+        '''
+
+        def set_shape(self):
+            self.shape = (512, 26)
+
+    class TestAdamOp5(TestAdamOp2):
+        '''Test Adam Op with supplied attributes
+        '''
+
+        def set_shape(self):
+            self.shape = (11, 1)
+
+    class TestAdamOp6(TestAdamOp2):
+        '''Test Adam Op with beta as Variable
+        '''
+
+        def set_shape(self):
+            self.shape = (10, 10)
+
+        def set_data(self):
+            self.beta1 = 0.85
+            self.beta2 = 0.95
+            self.learning_rate = 0.001
+            self.epsilon = 1e-8
+
+    class TestAdamOpMultipleSteps(TestAdamOp2):
+        '''Test Adam Operator with supplied attributes
+        '''
+
+        def set_steps(self):
+            self.num_steps = 10
+
+        def test_check_output(self):
+            for _ in range(self.num_steps):
+                param_out, moment1_out, \
+                    moment2_out = adam_step(self.inputs, self.attrs)
+
+                beta1_pow_out = self.inputs['Beta1Pow'] * self.beta1
+                beta2_pow_out = self.inputs['Beta2Pow'] * self.beta2
+                self.outputs = {
+                    'Moment1Out': moment1_out,
+                    'Moment2Out': moment2_out,
+                    'ParamOut': param_out,
+                    'Beta1PowOut': beta1_pow_out,
+                    'Beta2PowOut': beta2_pow_out
+                }
+
+                # Verify output for this step
+                self.check_output_with_place(
+                    place=paddle.XPUPlace(0), atol=1e-2)
+
+                # Output of this step becomes input for next step
+                self.inputs['Param'] = param_out
+                self.inputs['Moment1'] = moment1_out
+                self.inputs['Moment2'] = moment2_out
+
+                # Update powers of Beta1 and Beta2 for next time step
+                self.inputs['Beta1Pow'] = beta1_pow_out
+                self.inputs['Beta2Pow'] = beta2_pow_out
+
+                # Randomize gradient for next step
+                self.inputs['Grad'] = np.random.uniform(
+                    -1, 1, (102, 105)).astype("float32")
 
 
 def adam_step(inputs, attributes):
@@ -354,52 +366,9 @@ class TestSparseAdamOp(unittest.TestCase):
             self.check_with_place(paddle.XPUPlace(0), False)
 
 
-class TestAdamOpBetaVariable(OpTest):
-    def setUp(self):
-        '''Test Adam Op with beta as Variable
-        '''
-        self.op_type = "adam"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        # The second moment is positive
-        moment2 = np.random.random((102, 105)).astype("float32")
-        beta1 = 0.85
-        beta2 = 0.95
-
-        learning_rate = 0.001
-        epsilon = 1e-8
-        beta1_pow = beta1**10
-        beta2_pow = beta2**10
-
-        self.inputs = {
-            'Param': param,
-            'Grad': grad,
-            'Moment1': moment1,
-            'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
-            "Beta1Tensor": np.array([beta1]).astype("float32"),
-            "Beta2Tensor": np.array([beta2]).astype("float32"),
-        }
-
-        attributes = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
-
-        param_out, moment1_out, \
-            moment2_out = adam_step(self.inputs, attributes)
-
-        self.outputs = {
-            'Moment1Out': moment1_out,
-            'Moment2Out': moment2_out,
-            'ParamOut': param_out,
-            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
-        }
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.XPUPlace(0), atol=1e-2)
-
+support_types = get_xpu_op_support_types('adam')
+for stype in support_types:
+    create_test_class(globals(), XPUTestAdamOp, stype)
 
 if __name__ == "__main__":
     paddle.enable_static()
