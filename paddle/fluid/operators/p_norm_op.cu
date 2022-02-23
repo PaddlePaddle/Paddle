@@ -21,12 +21,12 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/operators/p_norm_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/elementwise_op_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -126,7 +126,7 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
       std::vector<framework::Tensor*> outs = {out_norm};
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+      phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
           cuda_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
     }
   }

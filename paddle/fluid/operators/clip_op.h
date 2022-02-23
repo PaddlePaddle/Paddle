@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/transform.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/phi/kernels/funcs/elementwise_op_impl.cu.h"
 #endif
 
 namespace paddle {
@@ -103,7 +103,7 @@ class ClipKernel : public framework::OpKernel<T> {
         std::vector<const framework::Tensor*> ins = {x};
         std::vector<framework::Tensor*> outs = {out};
         auto functor = ClipFunctor<T>(min, max);
-        paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+        phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
             context.template device_context<platform::CUDADeviceContext>(), ins,
             &outs, functor);
 #endif

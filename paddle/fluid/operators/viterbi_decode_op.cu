@@ -80,7 +80,7 @@ struct GetMask<platform::CUDADeviceContext, CompareFunctor, T> {
     std::vector<const Tensor*> ins = {&lhs, &rhs};
     std::vector<Tensor*> outs = {mask};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+    phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
         dev_ctx, ins, &outs, CompareFunctor<int64_t, T>());
   }
 };

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <unsupported/Eigen/SpecialFunctions>
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/lgamma_op.h"
+#include "paddle/phi/kernels/funcs/elementwise_op_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -39,8 +39,8 @@ class LgammaKernel<platform::CUDADeviceContext, T>
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaLgammaFunctor<T>();
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
-                                                              &outs, functor);
+    phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins, &outs,
+                                                       functor);
   }
 };
 

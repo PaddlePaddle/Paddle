@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/operators/bce_loss_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/elementwise_op_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -72,8 +72,8 @@ class BCELossCUDAKernel : public framework::OpKernel<T> {
     std::vector<framework::Tensor*> outs = {out};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto functor = BCELossFunctor<T>();
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
-                                                              &outs, functor);
+    phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins, &outs,
+                                                       functor);
   }
 };
 
@@ -90,8 +90,8 @@ class BCELossGradCUDAKernel : public framework::OpKernel<T> {
     std::vector<framework::Tensor*> outs = {dx};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto functor = BCELossGradFunctor<T>();
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
-                                                              &outs, functor);
+    phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins, &outs,
+                                                       functor);
   }
 };
 

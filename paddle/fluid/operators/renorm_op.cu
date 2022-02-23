@@ -18,10 +18,10 @@
 #include <cstdio>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/elementwise_op_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -150,8 +150,8 @@ class CUDARenormKernel : public framework::OpKernel<T> {
     const auto& cuda_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(cuda_ctx, ins,
-                                                              &outs, func);
+    phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(cuda_ctx, ins, &outs,
+                                                       func);
     std::vector<int> reduce_axis = {0, 2};
     TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         cuda_ctx, pow_value, &dim_value, kps::IdentityFunctor<T>(), reduce_axis,

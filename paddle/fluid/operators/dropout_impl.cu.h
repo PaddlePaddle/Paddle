@@ -33,9 +33,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/elementwise_op_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -291,8 +291,8 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
         std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
         std::vector<framework::Tensor*> outs = {grad_x};
         auto functor = CudaDropoutGradFunctor<T, uint8_t>(factor);
-        paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-            dev_ctx, ins, &outs, functor);
+        phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins, &outs,
+                                                           functor);
       }
     } else {
       dX.device(place) = dY * M.cast<T>();

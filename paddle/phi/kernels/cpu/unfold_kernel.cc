@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/unfold_kernel.h"
+#include "paddle/phi/kernels/impl/unfold_kernel_impl.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/unfold_kernel_impl.h"
 
 PD_REGISTER_KERNEL(unfold, CPU, ALL_LAYOUT, phi::UnfoldKernel, float, double) {}

@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include <thrust/fill.h>
 #include "paddle/fluid/operators/controlflow/compare_all_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/phi/kernels/funcs/elementwise_op_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -55,8 +55,8 @@ class CompareReduceOpKernel
           context.template device_context<platform::CUDADeviceContext>();
       std::vector<const framework::Tensor*> ins = {x, y};
       std::vector<framework::Tensor*> outs = {&tmp};
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<bool>(
-          cuda_ctx, ins, &outs, Functor());
+      phi::funcs::LaunchSameDimsElementwiseCudaKernel<bool>(cuda_ctx, ins,
+                                                            &outs, Functor());
 
       // Reduce by 'bitwise and' operator
       std::vector<int> reduce_dims;
