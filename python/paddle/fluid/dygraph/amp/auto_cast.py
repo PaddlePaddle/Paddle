@@ -161,7 +161,7 @@ def pure_fp16_initialize(models):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             layer._casted_by_pure_fp16 = True
-            if (layer._dtype is 'float16') or isinstance(
+            if (layer._dtype == 'float16') or isinstance(
                     layer, (paddle.nn.BatchNorm, paddle.nn.BatchNorm1D,
                             paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
                             paddle.nn.LayerNorm)):
