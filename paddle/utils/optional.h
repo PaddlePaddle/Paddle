@@ -17,8 +17,7 @@
 // You are welcome to contact the author at:
 //  fernando_cacciola@hotmail.com
 //
-#ifndef PADDLE_OPTIONAL_OPTIONAL_FLC_19NOV2002_HPP
-#define PADDLE_OPTIONAL_OPTIONAL_FLC_19NOV2002_HPP
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -27,6 +26,8 @@
 #include <type_traits>
 
 #include "none.h"
+
+namespace paddle {
 
 // Daniel Wallin discovered that bind/apply.hpp badly interacts with the apply<>
 // member template of a factory as used in the optional<> implementation.
@@ -39,7 +40,6 @@ void construct(Factory const& factory, void* address) {
 }
 }
 
-namespace paddle {
 template <typename T>
 class optional;
 
@@ -866,5 +866,3 @@ inline void optional_swap(optional<T>& x, optional<T>& y) {
 }  // namespace optional_detail
 
 }  // namespace paddle
-
-#endif
