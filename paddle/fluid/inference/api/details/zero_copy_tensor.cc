@@ -21,7 +21,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/core/allocator.h"
+#include "paddle/phi/core/allocator.h"
 
 namespace paddle_infer {
 
