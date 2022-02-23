@@ -94,12 +94,12 @@ class PD_INFER_DECL Tensor {
   template <typename T>
   void CopyFromCpu(const T* data);
 
-  /// \brief Share the input data with tensor data.
-  /// It's usually used to set the input tensor data.
+  /// \brief Share the data with tensor data.
+  /// It's usually used to set the tensor data.
   /// \param data The pointer of the data, from which the tensor will share.
-  /// \param shape The shape of input data.
-  /// \param place The place of input data.
-  /// \param layout The layout of input data. Only NCHW is supported now.
+  /// \param shape The shape of data.
+  /// \param place The place of data.
+  /// \param layout The layout of data. Only NCHW is supported now.
   template <typename T>
   void ShareExternalData(const T* data, const std::vector<int>& shape,
                          PlaceType place,
