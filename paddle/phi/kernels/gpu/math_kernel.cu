@@ -131,6 +131,7 @@ PD_REGISTER_KERNEL(divide_raw,
                    int,
                    int64_t,
                    float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 PD_REGISTER_KERNEL(multiply_raw,
