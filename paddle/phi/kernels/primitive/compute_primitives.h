@@ -596,8 +596,8 @@ __device__ __forceinline__ void Cumsum(OutT* out,
     int index = (tidx + 1) * 2 * stride - 1;
     if ((index + stride) < (blockDim.x * 2)) {
       temp[index + stride + (stride + index) / 32] =
-        compute(temp[index+stride + (stride+ index)/32],
-                temp[index + (index) /32];
+          compute(temp[index + stride + (stride + index) / 32],
+                  temp[index + (index) / 32]);
     }
   }
 
@@ -634,7 +634,7 @@ __device__ __forceinline__ void Sort(OutT* out,
                                      int num,
                                      int monotonic_type) {
   // update upper_bound
-  int upper_bound = std::min(GetLastPow2(num), blockDim.x);
+  int upper_bound = std::min(details::GetLastPow2(num), blockDim.x);
   // shareMem for value and index  num must smaller than SHARED_SIZE_LIMIT / 2
   __shared__ InT value[SHARED_SIZE_LIMIT];
   // shareMem's size must larger than blockDim * 2
