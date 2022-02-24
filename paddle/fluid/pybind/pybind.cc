@@ -83,6 +83,7 @@ limitations under the License. */
 #include "paddle/phi/core/lod_utils.h"
 #ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/imperative.h"
 #endif
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
@@ -103,7 +104,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
-#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
@@ -531,6 +531,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
 #ifndef PADDLE_ON_INFERENCE
   BindEager(&m);
+  BindImperative(&m);
 #endif
   BindCudaStream(&m);
 
@@ -744,8 +745,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
-
-  BindImperative(&m);
 
   py::class_<framework::Tensor> framework_tensor(m, "Tensor",
                                                  py::buffer_protocol());
