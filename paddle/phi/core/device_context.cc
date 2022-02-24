@@ -156,6 +156,14 @@ struct DeviceContext::Impl {
     return host_generator_;
   }
 
+  void SetDeviceContext(DeviceContext* dev_ctx) {
+    PADDLE_ENFORCE_NOT_NULL(
+        dev_ctx,
+        phi::errors::InvalidArgument("Required dev_ctx shall not be "
+                                     "nullptr, but received nullptr."));
+    dev_ctx_ = dev_ctx;
+  }
+
  private:
   void ClearHolder(TensorBase* tensor) const {
     if (!tensor->initialized()) return;
@@ -175,6 +183,8 @@ struct DeviceContext::Impl {
   const Allocator* zero_allocator_{nullptr};
   Generator* device_generator_{nullptr};
   Generator* host_generator_{nullptr};
+  // NOTE(paddle-dev): Hold top DeviceContext to visit GetPlace() to re-alloc
+  // allocation in case of different place.
   DeviceContext* dev_ctx_{nullptr};
 };
 
@@ -186,13 +196,19 @@ DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetZeroAllocator(&other.GetZeroAllocator());
   impl_->SetHostGenerator(other.GetHostGenerator());
   impl_->SetGenerator(other.GetGenerator());
+  impl_->SetDeviceContext(this);
 }
 
 DeviceContext::DeviceContext(DeviceContext&& other) {
   impl_ = std::move(other.impl_);
+  impl_->SetDeviceContext(this);
 }
 
-DeviceContext& DeviceContext::operator=(DeviceContext&&) = default;
+DeviceContext& DeviceContext::operator=(DeviceContext&& other) {
+  impl_ = std::move(other.impl_);
+  impl_->SetDeviceContext(this);
+  return *this;
+}
 
 DeviceContext::~DeviceContext() = default;
 
