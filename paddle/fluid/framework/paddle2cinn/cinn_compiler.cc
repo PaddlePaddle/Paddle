@@ -248,10 +248,10 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   *compiled_obj = {std::move(graph_compiler),
                    std::move(compiled_res.runtime_program), scope,
                    symbol.var_model_to_program_map()};
-  compiled_obj->launch_context =
-      std::make_unique<operators::details::CinnLaunchContext>(
-          compiled_obj->paddle2cinn_varmap, compiled_obj->scope);
   compiled_obj->cached_index = compiled_num;
+  compiled_obj->launch_context =
+      std::make_unique<operators::details::CinnLaunchContext>(graph,
+                                                              *compiled_obj);
   return compiled_obj;
 }
 

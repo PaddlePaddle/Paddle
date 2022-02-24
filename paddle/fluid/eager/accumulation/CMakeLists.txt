@@ -1,1 +1,1 @@
-cc_library(accumulation_node SRCS accumulation_node.cc DEPS gradient_accumulator pten pten_api grad_node_info)
+cc_library(accumulation_node SRCS accumulation_node.cc DEPS gradient_accumulator phi phi_api grad_node_info)

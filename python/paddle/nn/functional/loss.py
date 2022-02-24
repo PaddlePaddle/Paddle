@@ -1113,7 +1113,7 @@ def margin_cross_entropy(logits,
                          group=None,
                          return_softmax=False,
                          reduction='mean'):
-    """
+    r"""
     .. math::
 
         L=-\\frac{1}{N}\sum^N_{i=1}\log\\frac{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\\neq y_i} e^{scos\\theta_{y_i}}}
