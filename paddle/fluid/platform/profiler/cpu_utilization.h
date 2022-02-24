@@ -35,6 +35,8 @@ class CpuUtilization {
   void RecordEndTimeInfo();
   float GetCpuUtilization();
   float GetCpuCurProcessUtilization();
+
+ private:
 #ifdef _MSC_VER
   FILETIME start_, end_;
   FILETIME process_user_time_start_, process_user_time_end_;
@@ -46,6 +48,11 @@ class CpuUtilization {
 #else
   clock_t start_, end_;
   uint64_t idle_start_, idle_end_;
+  uint64_t iowait_start_, iowait_end_;
+  uint64_t nice_time_start_, nice_time_end_;
+  uint64_t irq_start_, irq_end_;
+  uint64_t softirq_start_, softirq_end_;
+  uint64_t steal_start_, steal_end_;
   struct tms system_tms_start_, system_tms_end_;
   struct tms process_tms_start_, process_tms_end_;
 #endif

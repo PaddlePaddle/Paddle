@@ -54,27 +54,19 @@ void CpuUtilization::RecordBeginTimeInfo() {
   if (stat_file != nullptr) {
     char temp_str[200];
     uint64_t temp_lu;
-    uint64_t tms_utime;
-    uint64_t tms_stime;
-    uint64_t idle_start;
-    system_tms_start_.tms_utime = 0;
-    system_tms_start_.tms_stime = 0;
-    idle_start_ = 0;
     while (true) {
       int retval = fscanf(
           stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
                      "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-          temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_start, &temp_lu,
-          &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
+          temp_str, &system_tms_start_.tms_utime, &nice_time_start_,
+          &system_tms_start_.tms_stime, &idle_start_, &iowait_start_,
+          &irq_start_, &softirq_start_, &steal_start_, &temp_lu, &temp_lu);
       if (std::string(temp_str).find("cpu") != 0) {
         break;
       }
       if (retval != 11) {
         return;
       }
-      system_tms_start_.tms_utime += tms_utime;
-      system_tms_start_.tms_stime += tms_stime;
-      idle_start_ += idle_start;
     }
     fclose(stat_file);
   }
@@ -98,27 +90,19 @@ void CpuUtilization::RecordEndTimeInfo() {
   if (stat_file != nullptr) {
     char temp_str[200];
     uint64_t temp_lu;
-    uint64_t tms_utime;
-    uint64_t tms_stime;
-    uint64_t idle_end;
-    system_tms_end_.tms_utime = 0;
-    system_tms_end_.tms_stime = 0;
-    idle_end_ = 0;
     while (true) {
       int retval = fscanf(
           stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
                      "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-          temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_end, &temp_lu,
-          &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
+          temp_str, &system_tms_end_.tms_utime, &nice_time_end_,
+          &system_tms_end_.tms_stime, &idle_end_, &iowait_end_, &irq_end_,
+          &softirq_end_, &steal_end_, &temp_lu, &temp_lu);
       if (std::string(temp_str).find("cpu") != 0) {
         break;
       }
       if (retval != 11) {
         return;
       }
-      system_tms_end_.tms_utime += tms_utime;
-      system_tms_end_.tms_stime += tms_stime;
-      idle_end_ += idle_end;
     }
     fclose(stat_file);
   }
@@ -142,9 +126,13 @@ float CpuUtilization::GetCpuUtilization() {
   cpu_utilization = busy_time / (busy_time + idle_time);
 
 #elif defined(__linux__)
-  float busy_time = (system_tms_end_.tms_utime - system_tms_start_.tms_utime) +
-                    (system_tms_end_.tms_stime - system_tms_start_.tms_stime);
-  float idle_time = (idle_end_ - idle_start_);
+  NonIdle =
+      user + nice + system + irq + softirq + steal float busy_time =
+          (system_tms_end_.tms_utime - system_tms_start_.tms_utime) +
+          (system_tms_end_.tms_stime - system_tms_start_.tms_stime) +
+          （nice_time_end_ - nice_time_start_） + (irq_end_ - irq_start_) +
+          (softirq_end_ - softirq_start_) + (steal_end_ - steal_start_);
+  float idle_time = (idle_end_ - idle_start_) + (iowait_end_ - iowait_start_);
   cpu_utilization = busy_time / (busy_time + idle_time);
 #else
   LOG(WARN) << "Current System is not supported to get system cpu utilization"
