@@ -56,7 +56,7 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                          meta->OutRankInfo());
       } else {
-        meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+        meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
         VLOG(6) << "Add Edges for slot: " << slot_id
                 << " which is: " << meta->GetMutableGradNode()->name();
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
