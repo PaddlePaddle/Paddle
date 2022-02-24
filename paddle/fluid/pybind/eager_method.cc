@@ -186,7 +186,7 @@ static PyObject* tensor_retain_grads(TensorObject* self, PyObject* args,
     if (!meta->GetMutableGradNode()) {
       VLOG(6) << "Make grad node of tensor: " << self->tensor.name()
               << "become accumulation node";
-      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
     }
     egr::egr_utils_api::RetainGradForTensor(self->tensor);
   }
@@ -208,17 +208,12 @@ static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
 
   paddle::experimental::Tensor* grad;
   if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
-    // Add RetainGrad as PostHook to AccumulationNode
-    std::shared_ptr<egr::GradNodeBase> grad_node =
-        egr::EagerUtils::grad_node(self->tensor);
-    PADDLE_ENFORCE(
-        grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation"));
-    auto accumulation_grad_node =
-        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    grad = accumulation_grad_node->Grad();
+    grad = egr::EagerUtils::mutable_grad(self->tensor);
+    PADDLE_ENFORCE(grad != nullptr,
+                   paddle::platform::errors::Fatal(
+                       "Detected NULL grad"
+                       "Please check if you have manually cleared"
+                       "the grad inside autograd_meta"));
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
     grad = meta->MutableGrad();
@@ -257,19 +252,15 @@ static PyObject* tensor__zero_grads(TensorObject* self, PyObject* args,
 
   if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
     // Add RetainGrad as PostHook to AccumulationNode
-    std::shared_ptr<egr::GradNodeBase> grad_node =
-        egr::EagerUtils::grad_node(self->tensor);
-    PADDLE_ENFORCE(
-        grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation"));
-    auto accumulation_grad_node =
-        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    if (accumulation_grad_node->Grad()->initialized()) {
-      accumulation_grad_node->Grad()->set_impl(
-          paddle::experimental::zeros_like(*(accumulation_grad_node->Grad()))
-              .impl());
+    paddle::experimental::Tensor* grad =
+        egr::EagerUtils::mutable_grad(self->tensor);
+    PADDLE_ENFORCE(grad != nullptr,
+                   paddle::platform::errors::Fatal(
+                       "Detected NULL grad"
+                       "Please check if you have manually cleared"
+                       "the grad inside autograd_meta"));
+    if (grad->initialized()) {
+      grad->set_impl(paddle::experimental::zeros_like(*(grad)).impl());
     }
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);

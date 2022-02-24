@@ -155,6 +155,53 @@ struct AbsFunctor<T, NoComplex<T, Real<T>>> {
 };
 
 template <typename T>
+struct AbsGradCUDAFunctor {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+
+  HOSTDEVICE inline T operator()(const T x, const T dout) const {
+    T output;
+    if (x == T(0)) {
+      output = T(0);
+    } else {
+      output = T(dout) * (x / T(std::abs(x)));
+    }
+    return output;
+  }
+};
+
+template <>
+struct AbsGradCUDAFunctor<phi::dtype::complex<float>> {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+  HOSTDEVICE inline phi::dtype::complex<float> operator()(
+      const phi::dtype::complex<float> x, const float dout) const {
+    phi::dtype::complex<float> output;
+    if (x == phi::dtype::complex<float>(0)) {
+      output = phi::dtype::complex<float>(0);
+    } else {
+      output = phi::dtype::complex<float>(dout) *
+               (x / phi::dtype::complex<float>(abs(x)));
+    }
+    return output;
+  }
+};
+
+template <>
+struct AbsGradCUDAFunctor<phi::dtype::complex<double>> {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+  HOSTDEVICE inline phi::dtype::complex<double> operator()(
+      const phi::dtype::complex<double> x, const double dout) const {
+    phi::dtype::complex<double> output;
+    if (x == phi::dtype::complex<double>(0)) {
+      output = phi::dtype::complex<double>(0);
+    } else {
+      output = phi::dtype::complex<double>(dout) *
+               (x / phi::dtype::complex<double>(abs(x)));
+    }
+    return output;
+  }
+};
+
+template <typename T>
 struct AbsGradFunctor {
   AbsGradFunctor(const Real<T>* dout, const T* x, T* output, int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}

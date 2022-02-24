@@ -64,12 +64,6 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
   auto ddims = phi::make_ddim(dims);
-  PADDLE_ENFORCE_GE(
-      phi::product(ddims), 0,
-      paddle::platform::errors::InvalidArgument(
-          "Create Eager Tensor with dims contain minus num is ilegal"
-          "Please check your code and make sure you new a "
-          "eager tensor with fixed shape instead of using -1."));
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -92,7 +86,8 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
   if (!autograd_meta->GetMutableGradNode()) {
     VLOG(3) << "Tensor(" << name
             << ") have not GradNode, add GradNodeAccumulation for it.";
-    autograd_meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+    autograd_meta->SetGradNode(
+        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
   }
 }
 
