@@ -40,6 +40,9 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
         if inputs['input_data'].shape[1] != attrs[0]['groups']:
             return False
 
+        if attrs[0]['dilations'][0] != 1 or attrs[0]['dilations'][1] != 1:
+            return False
+
         return True
 
     def sample_program_configs(self):
@@ -157,35 +160,12 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs[
-                    'padding_algorithm'] == "SAME" or program_config.ops[
-                        0].attrs['padding_algorithm'] == "VALID":
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "When padding_algorithm is 'SAME' or 'VALID', Trt dose not support. In this case, trt build error is caused by scale op."
-        )
-
-        def teller2(program_config, predictor_config):
-            if program_config.ops[0].attrs['dilations'][
-                    0] != 1 or program_config.ops[0].attrs['dilations'][1] != 1:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "When dilations's element is not equal 1, there are different behaviors between Trt and Paddle."
-        )
-
-        def teller3(program_config, predictor_config):
             if self.trt_param.precision == paddle_infer.PrecisionType.Int8:
                 return True
             return False
 
         self.add_skip_case(
-            teller3, SkipReasons.TRT_NOT_IMPLEMENTED,
+            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
             "When precisionType is int8 without relu op, output is different between Trt and Paddle."
         )
 
