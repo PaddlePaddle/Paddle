@@ -83,7 +83,7 @@ class BaseAPI(object):
                       'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
                       'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
                       'Backend' : 'Backend', 'DataLayout' : 'DataLayout', 'DataType' : 'DataType', \
-                      'int64_t[]' : 'const std::vector<int64_t>&', 'int[]' : 'const std::vector<int>&'}
+                      'int64_t[]' : 'const std::vector<int64_t>&', 'int[]' : 'const std::vector<int>&', 'long[]':'const std::vector<int64_t>&'}
         args_declare_str = ""
         args_define_str = ""
 

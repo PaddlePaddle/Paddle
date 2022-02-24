@@ -35,7 +35,7 @@
 #     func : matmul_triple_grad
 
 - backward_api : create_sparse_coo_tensor_grad
-  forward : create_sparse_coo_tensor (Tensor indices, Tensor values, int64_t[] dims={}) -> Tensor(out)
+  forward : create_sparse_coo_tensor (Tensor indices, Tensor values, long[] dims={}) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(indices_grad), Tensor(values_grad) 
   infer_meta :

@@ -779,6 +779,9 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     for name, atype, default_val, pos in forward_attrs_list:
         inputs_call_list[pos] = name
         if default_val is not None:
+            if atype == "long[]":
+                atype = "const std::vector<int64_t>&"
+                
             inputs_args_declaration_list[
                 pos] = f"{atype} {name} = {default_val}"
         else:

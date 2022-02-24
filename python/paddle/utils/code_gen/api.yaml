@@ -186,7 +186,7 @@
   invoke : full_like(x, 0, dtype, place)
 
 - api : create_sparse_coo_tensor 
-  args : (Tensor indices, Tensor values, int64_t[] dims={})
+  args : (Tensor indices, Tensor values, long[] dims={})
   output : Tensor
   infer_meta :
     func : SparseInferMeta
