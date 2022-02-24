@@ -123,7 +123,9 @@ PADDLE_API std::vector<Tensor> split(const Tensor& x,
   std::vector<Tensor> out;
   auto dense_outs = SetKernelOutput(out_number, kernel_backend, &out);
   std::vector<phi::MetaTensor> meta_outs;
+  meta_outs.reserve(out_number);
   std::vector<phi::MetaTensor*> meta_out_ptrs;
+  meta_out_ptrs.reserve(out_number);
   for (size_t i = 0; i < out_number; ++i) {
     meta_outs.push_back(dense_outs[i]);
     meta_out_ptrs.push_back(&meta_outs.back());

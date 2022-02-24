@@ -350,21 +350,25 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           }
         } else {
           // If is not in runtime, we will set default value(-1) for ScalarArray
-          int64_t num_ele = 1;
           std::vector<VarDesc*> vars;
           vars.reserve(infershape_inputs.size());
-          for (size_t i = 0; i < infershape_inputs.size(); i++) {
+          for (size_t i = 0; i < infershape_inputs.size(); ++i) {
             vars.push_back(BOOST_GET_CONST(VarDesc*, infershape_inputs[i]));
           }
-          for (auto& var : vars) {
-            const auto& tensor_dims = var->GetShape();
+          if (vars.size() == 1) {
+            int64_t num_ele = 1;
+            const auto& tensor_dims = vars.front()->GetShape();
             for (size_t i = 0; i < tensor_dims.size(); ++i) {
               num_ele *= tensor_dims[i];
             }
+            phi::ScalarArray tensor_attr(std::vector<int64_t>(num_ele, -1));
+            tensor_attr.SetFromTensor(true);
+            infer_meta_context.EmplaceBackAttr(std::move(tensor_attr));
+          } else {
+            phi::ScalarArray tensor_attr(std::vector<int64_t>(vars.size(), -1));
+            tensor_attr.SetFromTensor(true);
+            infer_meta_context.EmplaceBackAttr(std::move(tensor_attr));
           }
-          phi::ScalarArray tensor_attr(std::vector<int32_t>(num_ele, -1));
-          tensor_attr.SetFromTensor(true);
-          infer_meta_context.EmplaceBackAttr(std::move(tensor_attr));
         }
       } else if (ctx->HasAttr(attr_name)) {
         auto& attr = attr_reader.GetAttr(attr_name);
@@ -375,7 +379,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int))) {
           infer_meta_context.EmplaceBackAttr(
-              std::move(phi::ScalarArray({BOOST_GET_CONST(int, attr)})));
+              phi::ScalarArray({BOOST_GET_CONST(int, attr)}));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to ScalarArray when "

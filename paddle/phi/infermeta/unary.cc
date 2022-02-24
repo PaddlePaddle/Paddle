@@ -390,7 +390,7 @@ void SplitInferMeta(const MetaTensor& x,
   std::vector<int64_t> sections;
   // num_or_sections is a number
   if (num_or_sections_data.size() == 1) {
-    if (config.is_runtime) {
+    if (config.is_runtime || input_axis_dim > 0) {
       int num = num_or_sections_data.at(0);
       PADDLE_ENFORCE_EQ(
           input_axis_dim % num,
