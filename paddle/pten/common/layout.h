@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/api/ext/exception.h"
+#include "paddle/phi/api/ext/exception.h"
 namespace paddle {
 namespace experimental {
 
@@ -27,9 +27,6 @@ enum class DataLayout {
   NHWC,
   NCHW,
   MKLDNN,
-  NCDHW,
-  DHWC,
-  NDHWC,
   SPARSE_COO,
   SPARSE_CSR,
   NUM_DATA_LAYOUTS,
@@ -46,7 +43,6 @@ enum class DataLayout {
   kNHWC = NHWC,
   kNCHW = NCHW,
   kMKLDNN = MKLDNN,  // all layouts supported by MKLDNN internally
-  kDHWC = DHWC,
 };
 
 }  // namespace experimental
@@ -109,6 +105,6 @@ inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
 }  // namespace experimental
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 using DataLayout = paddle::experimental::DataLayout;
 }

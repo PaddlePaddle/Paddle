@@ -18,12 +18,11 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
-#include "paddle/pten/common/place.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
 
-namespace pten {
+namespace phi {
 
 constexpr char kGradVarSuffix[] = "@GRAD";
 
@@ -83,7 +82,6 @@ class ArgumentMappingContext {
   // now we can't use Attribute here, it will cause pten relay on
   // boost::variant and BlockDesc
   virtual paddle::any Attr(const std::string& name) const = 0;
-  virtual pten::Place GetPlace() const = 0;
 
   virtual size_t InputSize(const std::string& name) const = 0;
   virtual size_t OutputSize(const std::string& name) const = 0;
@@ -95,4 +93,4 @@ class ArgumentMappingContext {
   virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
 };
 
-}  // namespace pten
+}  // namespace phi

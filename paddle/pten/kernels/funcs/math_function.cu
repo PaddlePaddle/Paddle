@@ -16,24 +16,24 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/kernels/funcs/eigen/common.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
-#include "paddle/pten/kernels/funcs/math_function_impl.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function_impl.h"
 
-namespace pten {
+namespace phi {
 namespace funcs {
 
-using float16 = paddle::platform::float16;
-using bfloat16 = paddle::platform::bfloat16;
+using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
 
 template struct SetConstant<paddle::platform::CUDADeviceContext,
-                            paddle::platform::float16>;
+                            phi::dtype::float16>;
 template struct SetConstant<paddle::platform::CUDADeviceContext,
-                            paddle::platform::bfloat16>;
+                            phi::dtype::bfloat16>;
 template struct SetConstant<paddle::platform::CUDADeviceContext, float>;
 template struct SetConstant<paddle::platform::CUDADeviceContext, double>;
 template struct SetConstant<paddle::platform::CUDADeviceContext, uint8_t>;
@@ -42,27 +42,26 @@ template struct SetConstant<paddle::platform::CUDADeviceContext, int16_t>;
 template struct SetConstant<paddle::platform::CUDADeviceContext, int64_t>;
 template struct SetConstant<paddle::platform::CUDADeviceContext, bool>;
 template struct SetConstant<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex<float>>;
+                            phi::dtype::complex<float>>;
 template struct SetConstant<paddle::platform::CUDADeviceContext,
-                            paddle::platform::complex<double>>;
+                            phi::dtype::complex<double>>;
 
-template struct SetConstant<pten::GPUContext, paddle::platform::float16>;
-template struct SetConstant<pten::GPUContext, paddle::platform::bfloat16>;
-template struct SetConstant<pten::GPUContext, float>;
-template struct SetConstant<pten::GPUContext, double>;
-template struct SetConstant<pten::GPUContext, uint8_t>;
-template struct SetConstant<pten::GPUContext, int>;
-template struct SetConstant<pten::GPUContext, int16_t>;
-template struct SetConstant<pten::GPUContext, int64_t>;
-template struct SetConstant<pten::GPUContext, bool>;
-template struct SetConstant<pten::GPUContext, paddle::platform::complex<float>>;
-template struct SetConstant<pten::GPUContext,
-                            paddle::platform::complex<double>>;
+template struct SetConstant<phi::GPUContext, phi::dtype::float16>;
+template struct SetConstant<phi::GPUContext, phi::dtype::bfloat16>;
+template struct SetConstant<phi::GPUContext, float>;
+template struct SetConstant<phi::GPUContext, double>;
+template struct SetConstant<phi::GPUContext, uint8_t>;
+template struct SetConstant<phi::GPUContext, int>;
+template struct SetConstant<phi::GPUContext, int16_t>;
+template struct SetConstant<phi::GPUContext, int64_t>;
+template struct SetConstant<phi::GPUContext, bool>;
+template struct SetConstant<phi::GPUContext, phi::dtype::complex<float>>;
+template struct SetConstant<phi::GPUContext, phi::dtype::complex<double>>;
 
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            paddle::platform::float16>;
+                            phi::dtype::float16>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            paddle::platform::bfloat16>;
+                            phi::dtype::bfloat16>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, double>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, uint8_t>;
@@ -71,9 +70,9 @@ template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int16_t>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int64_t>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, bool>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            paddle::platform::complex<float>>;
+                            phi::dtype::complex<float>>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            paddle::platform::complex<double>>;
+                            phi::dtype::complex<double>>;
 
 #define DEFINE_GPU_TRANS(RANK)                                                 \
   template struct Transpose<paddle::platform::CUDADeviceContext, bool, RANK>;  \
@@ -97,11 +96,23 @@ template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
                             int64_t,                                           \
                             RANK>;                                             \
   template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            paddle::platform::complex<float>,                  \
+                            phi::dtype::complex<float>,                        \
                             RANK>;                                             \
   template struct Transpose<paddle::platform::CUDADeviceContext,               \
-                            paddle::platform::complex<double>,                 \
-                            RANK>;
+                            phi::dtype::complex<double>,                       \
+                            RANK>;                                             \
+  template struct Transpose<phi::GPUContext, bool, RANK>;                      \
+  template struct Transpose<phi::GPUContext, float, RANK>;                     \
+  template struct Transpose<phi::GPUContext, double, RANK>;                    \
+  template struct Transpose<phi::GPUContext, float16, RANK>;                   \
+  template struct Transpose<phi::GPUContext, bfloat16, RANK>;                  \
+  template struct Transpose<phi::GPUContext, int8_t, RANK>;                    \
+  template struct Transpose<phi::GPUContext, int32_t, RANK>;                   \
+  template struct Transpose<phi::GPUContext, int64_t, RANK>;                   \
+  template struct Transpose<phi::GPUContext,                                   \
+                            phi::dtype::complex<float>,                        \
+                            RANK>;                                             \
+  template struct Transpose<phi::GPUContext, phi::dtype::complex<double>, RANK>;
 
 DEFINE_GPU_TRANS(1);
 DEFINE_GPU_TRANS(2);
@@ -133,114 +144,53 @@ __global__ void TransposeNormalKernel(const T* in_ptr,
   }
 }
 
-template <typename T>
-struct TransposeNormal<paddle::platform::CUDADeviceContext, T> {
-  void operator()(const paddle::platform::CUDADeviceContext& context,
-                  const paddle::framework::Tensor& in,
-                  paddle::framework::Tensor* out,
-                  const std::vector<int>& axis) {
-    const int rank = axis.size();
-    auto in_stride = paddle::framework::stride(in.dims());
-    auto out_stride = paddle::framework::stride(out->dims());
-    auto* in_ptr = in.data<T>();
-    auto* out_ptr = out->data<T>();
+template <typename DeviceContext, typename T>
+void TransposeNormal<DeviceContext, T>::operator()(
+    const DeviceContext& context,
+    const paddle::framework::Tensor& in,
+    paddle::framework::Tensor* out,
+    const std::vector<int>& axis) {
+  const int rank = axis.size();
+  auto in_stride = phi::stride(in.dims());
+  auto out_stride = phi::stride(out->dims());
+  auto* in_ptr = in.data<T>();
+  auto* out_ptr = out->data<T>();
 
-    // copy in_stride, out_stride, axis to gpu device
-    const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
-    paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
-    size_t size = 3 * rank * sizeof(int64_t);
-    auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
-    auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
-    REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
-    REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
-    for (int i = 0; i < rank; ++i) {
-      cpu_buf[i] = in_stride[i];
-      cpu_buf[rank + i] = out_stride[i];
-      cpu_buf[2 * rank + i] = axis[i];
-    }
-    paddle::memory::Copy(
-        cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
-    REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
-    REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
-    REINTERPRET(const int64_t, axis_ptr, cuda_buf + 2 * rank);
-
-    const int MAX_BLOCK_DIM = context.GetMaxThreadsPerBlock();
-    const int MAX_GRID_DIM =
-        context.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
-    int64_t elements = in.numel();
-    int block_size = (elements >= MAX_BLOCK_DIM)
-                         ? MAX_BLOCK_DIM
-                         : (1 << static_cast<int>(std::log2(elements)));
-    int grid_size = elements / block_size;
-    grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
-    TransposeNormalKernel<T><<<grid_size, block_size, 0, context.stream()>>>(
-        in_ptr,
-        out_ptr,
-        elements,
-        in_stride_ptr,
-        out_stride_ptr,
-        axis_ptr,
-        rank);
+  // copy in_stride, out_stride, axis to gpu device
+  const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
+  paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
+  size_t size = 3 * rank * sizeof(int64_t);
+  auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
+  auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
+  REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
+  REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
+  for (int i = 0; i < rank; ++i) {
+    cpu_buf[i] = in_stride[i];
+    cpu_buf[rank + i] = out_stride[i];
+    cpu_buf[2 * rank + i] = axis[i];
   }
-};
+  paddle::memory::Copy(
+      cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
+  REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
+  REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
+  REINTERPRET(const int64_t, axis_ptr, cuda_buf + 2 * rank);
 
-template <typename T>
-struct TransposeNormal<pten::GPUContext, T> {
-  void operator()(const pten::GPUContext& context,
-                  const DenseTensor& in,
-                  DenseTensor* out,
-                  const std::vector<int>& axis) {
-    const int rank = axis.size();
-    auto in_stride = framework::stride(in.dims());
-    auto out_stride = framework::stride(out->dims());
-    auto* in_ptr = in.data<T>();
-    auto* out_ptr = out->data<T>();
-
-    // copy in_stride, out_stride, axis to gpu device
-    const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
-    paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
-    size_t size = 3 * rank * sizeof(int64_t);
-    auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
-    auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
-    REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
-    REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
-    for (int i = 0; i < rank; ++i) {
-      cpu_buf[i] = in_stride[i];
-      cpu_buf[rank + i] = out_stride[i];
-      cpu_buf[2 * rank + i] = axis[i];
-    }
-    paddle::memory::Copy(
-        cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
-    REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
-    REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
-    REINTERPRET(const int64_t, axis_ptr, cuda_buf + 2 * rank);
-
-    const int MAX_BLOCK_DIM = context.GetMaxThreadsPerBlock();
-    const int MAX_GRID_DIM =
-        context.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
-    int64_t elements = in.numel();
-    int block_size = (elements >= MAX_BLOCK_DIM)
-                         ? MAX_BLOCK_DIM
-                         : (1 << static_cast<int>(std::log2(elements)));
-    int grid_size = elements / block_size;
-    grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
-    TransposeNormalKernel<T><<<grid_size, block_size, 0, context.stream()>>>(
-        in_ptr,
-        out_ptr,
-        elements,
-        in_stride_ptr,
-        out_stride_ptr,
-        axis_ptr,
-        rank);
-  }
-};
+  const int MAX_BLOCK_DIM = context.GetMaxThreadsPerBlock();
+  const int MAX_GRID_DIM = context.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
+  int64_t elements = in.numel();
+  int block_size = (elements >= MAX_BLOCK_DIM)
+                       ? MAX_BLOCK_DIM
+                       : (1 << static_cast<int>(std::log2(elements)));
+  int grid_size = elements / block_size;
+  grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
+  TransposeNormalKernel<T><<<grid_size, block_size, 0, context.stream()>>>(
+      in_ptr, out_ptr, elements, in_stride_ptr, out_stride_ptr, axis_ptr, rank);
+}
 
 // define transpose normal
-#define DEFINE_GPU_TRANS_NORMAL(TYPE) \
-  template struct TransposeNormal<paddle::platform::CUDADeviceContext, TYPE>
-
-#define DEFINE_GPU_TRANS_NORMAL_PTEN(TYPE) \
-  template struct TransposeNormal<pten::GPUContext, TYPE>
+#define DEFINE_GPU_TRANS_NORMAL(TYPE)                                         \
+  template struct TransposeNormal<paddle::platform::CUDADeviceContext, TYPE>; \
+  template struct TransposeNormal<phi::GPUContext, TYPE>
 
 DEFINE_GPU_TRANS_NORMAL(float16);
 DEFINE_GPU_TRANS_NORMAL(bfloat16);
@@ -252,21 +202,8 @@ DEFINE_GPU_TRANS_NORMAL(bool);
 DEFINE_GPU_TRANS_NORMAL(int16_t);
 DEFINE_GPU_TRANS_NORMAL(uint8_t);
 DEFINE_GPU_TRANS_NORMAL(int8_t);
-DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<float>);
-DEFINE_GPU_TRANS_NORMAL(paddle::platform::complex<double>);
-
-DEFINE_GPU_TRANS_NORMAL_PTEN(float16);
-DEFINE_GPU_TRANS_NORMAL_PTEN(bfloat16);
-DEFINE_GPU_TRANS_NORMAL_PTEN(float);
-DEFINE_GPU_TRANS_NORMAL_PTEN(double);
-DEFINE_GPU_TRANS_NORMAL_PTEN(int);
-DEFINE_GPU_TRANS_NORMAL_PTEN(int64_t);
-DEFINE_GPU_TRANS_NORMAL_PTEN(bool);
-DEFINE_GPU_TRANS_NORMAL_PTEN(int16_t);
-DEFINE_GPU_TRANS_NORMAL_PTEN(uint8_t);
-DEFINE_GPU_TRANS_NORMAL_PTEN(int8_t);
-DEFINE_GPU_TRANS_NORMAL_PTEN(paddle::platform::complex<float>);
-DEFINE_GPU_TRANS_NORMAL_PTEN(paddle::platform::complex<double>);
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<float>);
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<double>);
 
 struct TensorSetConstantGPU {
   TensorSetConstantGPU(const paddle::platform::DeviceContext& context,
@@ -293,8 +230,8 @@ void set_constant_with_place<paddle::platform::CUDAPlace>(
     const paddle::platform::DeviceContext& context,
     paddle::framework::Tensor* tensor,
     float value) {
-  paddle::framework::VisitDataType(
-      tensor->type(), TensorSetConstantGPU(context, tensor, value));
+  phi::VisitDataType(tensor->dtype(),
+                     TensorSetConstantGPU(context, tensor, value));
 }
 
 template <typename T>
@@ -320,7 +257,7 @@ struct RowwiseAdd<paddle::platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         vector.numel(),
         size,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input vector size"
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
@@ -331,7 +268,7 @@ struct RowwiseAdd<paddle::platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         out_dims,
         in_dims,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The output tensor shape should be same as the input tensor"
             " shape. Expected output tensor shape: %s,"
             " but received %s",
@@ -366,7 +303,7 @@ void ColwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
                     size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor column"
                         " dimension. Expected vector size=%d, but received %d",
@@ -376,8 +313,7 @@ void ColwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   one.mutable_data<double>({in_dims[0]}, context.GetPlace());
   SetConstant<paddle::platform::CUDADeviceContext, double> set;
   set(context, &one, static_cast<double>(1.0));
-  paddle::operators::math::GetBlas<paddle::platform::CUDADeviceContext, double>(
-      context)
+  phi::funcs::GetBlas<paddle::platform::CUDADeviceContext, double>(context)
       .GEMV(true,
             static_cast<int>(in_dims[0]),
             static_cast<int>(in_dims[1]),
@@ -403,7 +339,7 @@ void RowwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
                     in_dims[0],
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor row"
                         " dimension. Expected vector size=%d, but received %d",
@@ -413,8 +349,7 @@ void RowwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   one.mutable_data<double>({size}, context.GetPlace());
   SetConstant<paddle::platform::CUDADeviceContext, double> set;
   set(context, &one, static_cast<double>(1.0));
-  paddle::operators::math::GetBlas<paddle::platform::CUDADeviceContext, double>(
-      context)
+  phi::funcs::GetBlas<paddle::platform::CUDADeviceContext, double>(context)
       .GEMV(true,
             static_cast<int>(in_dims[1]),
             static_cast<int>(in_dims[0]),
@@ -441,7 +376,9 @@ struct ElementwiseAddTo<paddle::platform::CUDADeviceContext, T> {
 };
 
 template struct ElementwiseAddTo<paddle::platform::CUDADeviceContext,
-                                 paddle::platform::float16>;
+                                 phi::dtype::float16>;
+template struct ElementwiseAddTo<paddle::platform::CUDADeviceContext,
+                                 phi::dtype::bfloat16>;
 
 }  // namespace funcs
-}  // namespace pten
+}  // namespace phi
