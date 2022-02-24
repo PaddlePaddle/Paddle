@@ -377,7 +377,7 @@ function build_base() {
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
-
+    parallel_number=1
     if [ "$WITH_ARM" == "ON" ];then
         make TARGET=ARMV8 -j ${parallel_number};build_error=$?
     else
