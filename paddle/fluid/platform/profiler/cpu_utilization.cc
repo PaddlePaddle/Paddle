@@ -134,8 +134,9 @@ float CpuUtilization::GetCpuUtilization() {
   float idle_time = (idle_end_ - idle_start_) + (iowait_end_ - iowait_start_);
   cpu_utilization = busy_time / (busy_time + idle_time);
 #else
-  LOG(WARN) << "Current System is not supported to get system cpu utilization"
-            << cpu_utilization << std::endl;
+  LOG(WARNING)
+      << "Current System is not supported to get system cpu utilization"
+      << cpu_utilization << std::endl;
 #endif
   return cpu_utilization;
 }
@@ -160,8 +161,9 @@ float CpuUtilization::GetCpuCurProcessUtilization() {
       (process_tms_end_.tms_stime - process_tms_start_.tms_stime);
   cpu_process_utilization = busy_time / (end_ - start_);
 #else
-  LOG(WARN) << "Current System is not supported to get process cpu utilization"
-            << cpu_process_utilization << std::endl;
+  LOG(WARNING)
+      << "Current System is not supported to get process cpu utilization"
+      << cpu_process_utilization << std::endl;
 #endif
   return cpu_process_utilization;
 }
