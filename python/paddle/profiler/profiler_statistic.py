@@ -294,19 +294,18 @@ class OperatorSummary:
                     self.add_operator_item(hostnode)
 
     def add_operator_item(self, operator_node):
-        if operator_node.name in self.items:
-            self.items[operator_node.name].add_item(operator_node)
-            self.thread_items[operator_node.thread_id][
-                operator_node.name].add_item(operator_node)
-        else:
+        if operator_node.name not in self.items:
             self.items[operator_node.name] = OperatorSummary.OperatorItem(
                 operator_node.name)
+
+        self.items[operator_node.name].add_item(operator_node)
+
+        if operator_node.name not in self.thread_items[operator_node.thread_id]:
             self.thread_items[operator_node.thread_id][
                 operator_node.name] = OperatorSummary.OperatorItem(
                     operator_node.name)
-            self.items[operator_node.name].add_item(operator_node)
-            self.thread_items[operator_node.thread_id][
-                operator_node.name].add_item(operator_node)
+        self.thread_items[operator_node.thread_id][operator_node.name].add_item(
+            operator_node)
 
 
 class StatisticData:
