@@ -43,7 +43,7 @@ class VecT4<float> {
   using Type = int4;
 };
 template <>
-class VecT4<paddle::platform::float16> {
+class VecT4<phi::dtype::float16> {
  public:
   using Type = int2;
 };
