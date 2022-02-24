@@ -110,4 +110,5 @@ REGISTER_OPERATOR(index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
                   ops::IndexSampleGradMaker<paddle::framework::OpDesc>,
                   ops::IndexSampleGradMaker<paddle::imperative::OpBase>,
                   IndexSampleInferShapeFunctor);
-REGISTER_OPERATOR(index_sample_grad, ops::IndexSampleGradOp);
+REGISTER_OPERATOR(index_sample_grad, ops::IndexSampleGradOp,
+                  ops::IndexSampleGradNoNeedBufferVarInferer);
