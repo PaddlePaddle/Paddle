@@ -20,6 +20,29 @@ is_shell_attribute_set() { # attribute, like "x"
     *)    return 1 ;;
   esac
 }
+function get_docs_pr_num_from_paddle_pr_info(){
+    # get_repo_pr_info's output
+    pr_info_file=$1
+    if [ ! -r ${pr_info_file} ] ; then
+        return 1
+    fi
+
+    declare -A arr_kv
+    while read line
+    do
+        echo "$line" | grep '^\w\+\s*=\s*.*' > /dev/null
+        if [ $? = 0 ] ; then
+            kv=($(echo $line | sed 's/=/\n/g'))
+            k=($(echo "${kv[0]}" | sed 's/\s//g'))
+            v=($(echo "${kv[1]}" | sed 's/^\s*//g' | sed 's/\s*$//g'))
+            # arr_kv[${kv[1]}]=${kv[2]}
+            arr_kv[${k}]=${v}
+        fi
+    done < <(jq -r '.body' ${pr_info_file})
+
+    echo ${arr_kv[PADDLEDOCS_PR]}
+    return 0
+}
 
 # Attention:
 # 1. /FluidDoc will be used as the workspace of PaddlePaddle/docs. 
@@ -40,8 +63,8 @@ if [ ! -f /usr/local/bin/sphinx-build ] && [ -f /usr/local/python3.7.0/bin/sphin
 fi
 
 if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
-    export FLUIDDOCDIR=/FluidDoc
-    export OUTPUTDIR=/docs
+    export FLUIDDOCDIR=${FLUIDDOCDIR:=/FluidDoc}
+    export OUTPUTDIR=${OUTPUTDIR:=/docs}
     export VERSIONSTR=$(echo ${BRANCH} | sed 's@release/@@g')
 
     if [ -d ${FLUIDDOCDIR} ] ; then
@@ -61,6 +84,17 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
         rm -rf ${OUTPUTDIR}
         mkdir -p ${OUTPUTDIR}
     fi
+
+    source ${FLUIDDOCDIR}/ci_scripts/utils.sh
+    paddle_pr_info=$(get_repo_pr_info "PaddlePaddle/Paddle" ${GIT_PR_ID})
+    docs_pr_id=$(get_docs_pr_num_from_paddle_pr_info ${paddle_pr_info})
+    if [ -n "${docs_pr_id}" ] ; then
+        cd ${FLUIDDOCDIR}
+        git fetch origin pull/${docs_pr_id}/head
+        git checkout -b "pr${docs_pr_id}" FETCH_HEAD
+        git log -n 10
+    fi
+    echo "docs_pr_id=${docs_pr_id}"
 
     # install requirements
     apt-get install -y --no-install-recommends doxygen
