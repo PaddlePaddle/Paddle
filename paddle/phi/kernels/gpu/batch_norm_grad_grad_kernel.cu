@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/batch_norm_kernel.h"
-#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/enforce.h"
 
 #include "paddle/fluid/platform/flags.h"
-#include "paddle/pten/kernels/gpu/batch_norm_utils.h"
+#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -35,7 +35,7 @@
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void BatchNormGradGradKernel(const Context& ctx,
@@ -61,7 +61,7 @@ void BatchNormGradGradKernel(const Context& ctx,
                              DenseTensor* y_grad_grad) {
   PADDLE_ENFORCE_EQ(is_test,
                     false,
-                    pten::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "`is_test = True` CANNOT be used in train program. If "
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
@@ -93,21 +93,21 @@ void BatchNormGradGradKernel(const Context& ctx,
                                                        scale_grad,
                                                        y_grad_grad);
 }
-}  // namespace pten
+}  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
-PT_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_grad_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::BatchNormGradGradKernel,
+                   phi::BatchNormGradGradKernel,
                    float,
                    double) {}
 
 #else
-PT_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_grad_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::BatchNormGradGradKernel,
+                   phi::BatchNormGradGradKernel,
                    float,
                    double) {}
 #endif

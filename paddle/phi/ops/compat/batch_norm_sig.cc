@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("batch_norm",
@@ -80,10 +80,10 @@ KernelSignature BatchNormGradGradOpArgumentMapping(
                          {"DX", "DScale", "DDY"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(batch_norm, pten::BatchNormOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(batch_norm_grad,
-                           pten::BatchNormGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(batch_norm_grad_grad,
-                           pten::BatchNormGradGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(batch_norm, phi::BatchNormOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(batch_norm_grad,
+                           phi::BatchNormGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(batch_norm_grad_grad,
+                           phi::BatchNormGradGradOpArgumentMapping);

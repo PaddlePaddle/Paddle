@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/batch_norm_kernel.h"
-#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/enforce.h"
 
 #include "paddle/fluid/platform/flags.h"
-#include "paddle/pten/kernels/gpu/batch_norm_utils.h"
+#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -36,7 +36,7 @@
 #endif
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
-namespace pten {
+namespace phi {
 
 template <typename T>
 using CudnnDataType = paddle::platform::CudnnDataType<T>;
@@ -148,7 +148,7 @@ class InplaceHelper {
                   const gpuStream_t &stream) {
     PADDLE_ENFORCE_EQ(x,
                       y,
-                      pten::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "X and Y should be inplaced in inplace mode"));
     KeBNRestoreData<<<grid2, block, 0, stream>>>(
         layout, x, scale, bias, mean, variance, epsilon, C, M, num, y);
@@ -347,7 +347,7 @@ void BatchNormGradRawKernel(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       x_dims.size() >= 2 && x_dims.size() <= 5,
       true,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of input's dimensions should be between 2 and 5."
           "But received: the size of input's dimensions is [%d],"
           "the dimensions of input is [%s]",
@@ -369,7 +369,7 @@ void BatchNormGradRawKernel(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       scale.dims().size(),
       1UL,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of scale's dimensions must equal to 1. But received: "
           "the size of scale's dimensions is [%d], the dimensions of scale "
           "is [%s].",
@@ -378,7 +378,7 @@ void BatchNormGradRawKernel(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       scale.dims()[0],
       C,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The first dimension of scale must equal to Channels[%d]. But "
           "received: the first dimension of scale is [%d]",
           C,
@@ -450,7 +450,7 @@ void BatchNormGradRawKernel(const Context &ctx,
       if (d_x) {
         paddle::framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
       }
-      pten::funcs::SetConstant<Context, BatchNormParamType<T>> functor;
+      phi::funcs::SetConstant<Context, BatchNormParamType<T>> functor;
       functor(ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
       functor(ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
       return;
@@ -920,50 +920,50 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                      bias_grad);
 }
 
-}  // namespace pten
+}  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
-PT_REGISTER_KERNEL(batch_norm_grad,
+PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::BatchNormGradKernel,
+                   phi::BatchNormGradKernel,
                    float,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}
 
-PT_REGISTER_KERNEL(batch_norm_grad_raw,
+PD_REGISTER_KERNEL(batch_norm_grad_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::BatchNormGradRawKernel,
+                   phi::BatchNormGradRawKernel,
                    float,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}
 #else
-PT_REGISTER_KERNEL(batch_norm_grad,
+PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::BatchNormGradKernel,
+                   phi::BatchNormGradKernel,
                    float,
                    double,
-                   pten::dtype::float16) {
-  if (kernel_key.dtype() == pten::DataType::FLOAT16) {
-    kernel->OutputAt(1).SetDataType(pten::DataType::FLOAT32);
-    kernel->OutputAt(2).SetDataType(pten::DataType::FLOAT32);
-    kernel->OutputAt(3).SetDataType(pten::DataType::FLOAT32);
-    kernel->OutputAt(4).SetDataType(pten::DataType::FLOAT32);
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
 
-PT_REGISTER_KERNEL(batch_norm_grad_raw,
+PD_REGISTER_KERNEL(batch_norm_grad_raw,
                    GPU,
                    ALL_LAYOUT,
-                   pten::BatchNormGradRawKernel,
+                   phi::BatchNormGradRawKernel,
                    float,
                    double,
-                   pten::dtype::float16) {
-  if (kernel_key.dtype() == pten::DataType::FLOAT16) {
-    kernel->OutputAt(1).SetDataType(pten::DataType::FLOAT32);
-    kernel->OutputAt(2).SetDataType(pten::DataType::FLOAT32);
-    kernel->OutputAt(3).SetDataType(pten::DataType::FLOAT32);
-    kernel->OutputAt(4).SetDataType(pten::DataType::FLOAT32);
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
 

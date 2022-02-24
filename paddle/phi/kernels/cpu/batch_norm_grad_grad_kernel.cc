@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/batch_norm_kernel.h"
-#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#include "paddle/pten/kernels/funcs/math_function.h"
-#include "paddle/pten/kernels/gpu/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 using EigenArrayMap =
@@ -64,7 +64,7 @@ void BatchNormGradGradKernel(const Context &ctx,
 
   PADDLE_ENFORCE_EQ(is_test,
                     false,
-                    pten::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "`is_test = True` CANNOT be used in train program. If "
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
@@ -86,7 +86,7 @@ void BatchNormGradGradKernel(const Context &ctx,
   const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
                                                   : x_dims[x_dims.size() - 1]);
   const int sample_size = X->numel() / C;
-  pten::funcs::SetConstant<Context, T> set_constant;
+  phi::funcs::SetConstant<Context, T> set_constant;
 
   const T *mean_data = Saved_mean->data<T>();
   const T *inv_var_data = Saved_variance->data<T>();
@@ -356,11 +356,11 @@ void BatchNormGradGradKernel(const Context &ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_KERNEL(batch_norm_grad_grad,
+PD_REGISTER_KERNEL(batch_norm_grad_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::BatchNormGradGradKernel,
+                   phi::BatchNormGradGradKernel,
                    float,
                    double) {}

@@ -15,9 +15,9 @@
 #pragma once
 
 #include <string>
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context& dev_ctx,
@@ -64,4 +64,4 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad);
 
-}  // namespace pten
+}  // namespace phi

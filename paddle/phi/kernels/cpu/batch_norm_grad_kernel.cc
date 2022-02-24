@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/batch_norm_kernel.h"
-#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 using EigenArrayMap =
@@ -75,14 +75,14 @@ void BatchNormGradRawKernel(const Context& ctx,
     if (d_x) {
       PADDLE_ENFORCE_EQ(d_x,
                         d_y,
-                        pten::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
     }
   } else {
     if (d_x) {
       PADDLE_ENFORCE_NE(d_x,
                         d_y,
-                        pten::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
     }
   }
@@ -93,14 +93,14 @@ void BatchNormGradRawKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of input X's dimensions should be larger than 1."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
@@ -287,8 +287,8 @@ void BatchNormGradRawKernel(const Context& ctx,
       break;
     }
     default:
-      PADDLE_THROW(pten::errors::InvalidArgument("Unknown storage order: %s",
-                                                 data_layout_str));
+      PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
+                                                data_layout_str));
   }
 }
 
@@ -336,18 +336,15 @@ void BatchNormGradKernel(const Context& dev_ctx,
                                      bias_grad);
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_KERNEL(batch_norm_grad,
+PD_REGISTER_KERNEL(
+    batch_norm_grad, CPU, ALL_LAYOUT, phi::BatchNormGradKernel, float, double) {
+}
+
+PD_REGISTER_KERNEL(batch_norm_grad_raw,
                    CPU,
                    ALL_LAYOUT,
-                   pten::BatchNormGradKernel,
-                   float,
-                   double) {}
-
-PT_REGISTER_KERNEL(batch_norm_grad_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   pten::BatchNormGradRawKernel,
+                   phi::BatchNormGradRawKernel,
                    float,
                    double) {}

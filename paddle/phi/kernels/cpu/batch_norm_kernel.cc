@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/batch_norm_kernel.h"
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 using EigenArrayMap =
@@ -63,14 +63,14 @@ void BatchNormKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of input X's dimensions should be larger than 1."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensionss is [%d]",
           x_dims.size()));
@@ -141,8 +141,8 @@ void BatchNormKernel(const Context& ctx,
         break;
       }
       default:
-        PADDLE_THROW(pten::errors::InvalidArgument("Unknown storage order: %s",
-                                                   data_layout_str));
+        PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
+                                                  data_layout_str));
     }
 
     // if MomentumTensor is set, use MomentumTensor value, momentum
@@ -196,12 +196,12 @@ void BatchNormKernel(const Context& ctx,
       break;
     }
     default:
-      PADDLE_THROW(pten::errors::InvalidArgument("Unknown storage order: %d",
-                                                 data_layout));
+      PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %d",
+                                                data_layout));
   }
 }
 
 }  // namespace  pten
 
-PT_REGISTER_KERNEL(
-    batch_norm, CPU, ALL_LAYOUT, pten::BatchNormKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    batch_norm, CPU, ALL_LAYOUT, phi::BatchNormKernel, float, double) {}

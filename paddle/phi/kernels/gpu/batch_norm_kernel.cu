@@ -21,10 +21,10 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/batch_norm_kernel.h"
-#include "paddle/pten/kernels/funcs/eigen/common.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/operators/norm_utils.h"
@@ -34,7 +34,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/enforce.h"
 
 #include "paddle/fluid/platform/flags.h"
-#include "paddle/pten/kernels/gpu/batch_norm_utils.h"
+#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -44,7 +44,7 @@ namespace cub = hipcub;
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
-namespace pten {
+namespace phi {
 
 template <typename T>
 using CudnnDataType = paddle::platform::CudnnDataType<T>;
@@ -173,7 +173,7 @@ void BatchNormKernel(const Context &ctx,
   PADDLE_ENFORCE_EQ(
       x_dims.size() >= 2 && x_dims.size() <= 5,
       true,
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of input's dimensions should be between 2 and 5"
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
@@ -314,7 +314,7 @@ void BatchNormKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         est_mean->dims().size(),
         1UL,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of mean's dimensions must equal to 1."
             "But received: the size of mean's dimensions mean is [%d],"
             "the dimensions of mean is [%s].",
@@ -323,7 +323,7 @@ void BatchNormKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         est_var->dims().size(),
         1UL,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of variance's dimensions must equal to 1."
             "But received: the size of variance's dimensions is [%d],"
             "the dimensions of variance is [%s].",
@@ -332,7 +332,7 @@ void BatchNormKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         est_mean->dims()[0],
         C,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The first dimension of mean must equal to the number of "
             "Channels, which is [%d]. But received: the first dimension"
             "of mean is [%d], the dimensions of mean is [%s].",
@@ -342,7 +342,7 @@ void BatchNormKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         est_var->dims()[0],
         C,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The first dimension of variance must equal to the number"
             "of Channels, which is [%d]. But received: the first dimension of"
             "variance is [%d], the dimensions of variance is [%s].",
@@ -467,7 +467,7 @@ void BatchNormKernel(const Context &ctx,
       // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
       PADDLE_ENFORCE_NOT_NULL(
           reserve_space,
-          pten::errors::NotFound(
+          phi::errors::NotFound(
               "The argument ReserveSpace of batch_norm op is not found."));
       // --------------- cudnn batchnorm workspace ---------------
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -653,28 +653,28 @@ void BatchNormKernel(const Context &ctx,
 #endif
 }
 
-}  // namespace pten
+}  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
-PT_REGISTER_KERNEL(batch_norm,
+PD_REGISTER_KERNEL(batch_norm,
                    GPU,
                    ALL_LAYOUT,
-                   pten::BatchNormKernel,
+                   phi::BatchNormKernel,
                    float,
-                   pten::dtype::float16) {}
+                   phi::dtype::float16) {}
 #else
-PT_REGISTER_KERNEL(batch_norm,
+PD_REGISTER_KERNEL(batch_norm,
                    GPU,
                    ALL_LAYOUT,
-                   pten::BatchNormKernel,
+                   phi::BatchNormKernel,
                    float,
                    double,
-                   pten::dtype::float16) {
-  if (kernel_key.dtype() == pten::DataType::FLOAT16) {
-    kernel->OutputAt(1).SetDataType(pten::DataType::FLOAT32);
-    kernel->OutputAt(2).SetDataType(pten::DataType::FLOAT32);
-    kernel->OutputAt(3).SetDataType(pten::DataType::FLOAT32);
-    kernel->OutputAt(4).SetDataType(pten::DataType::FLOAT32);
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
 

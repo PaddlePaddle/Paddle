@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/inplace_abn_op.h"
 #include "paddle/fluid/operators/sync_batch_norm_op.cu.h"
-#include "paddle/pten/kernels/batch_norm_grad_kernel.h"
-#include "paddle/pten/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/batch_norm_grad_kernel.h"
+#include "paddle/phi/kernels/batch_norm_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -58,7 +58,7 @@ class InplaceABNKernel
       auto* reserve_space = ctx.Output<Tensor>("ReserveSpace");
 
       auto& dev_ctx = ctx.device_context<DeviceContext>();
-      pten::BatchNormKernel<T>(
+      phi::BatchNormKernel<T>(
           static_cast<const typename framework::ConvertToPtenContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *x, *scale, *bias, *mean, *variance, momentum, epsilon, data_layout,
@@ -137,7 +137,7 @@ class InplaceABNGradKernel
       }
 
       auto& dev_ctx = ctx.device_context<DeviceContext>();
-      pten::BatchNormGradRawKernel<T>(
+      phi::BatchNormGradRawKernel<T>(
           static_cast<const typename framework::ConvertToPtenContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *d_y, *y, *scale, *bias, *saved_mean, *saved_variance, space_opt,
