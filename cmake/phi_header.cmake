@@ -14,8 +14,8 @@
 
 set(PADDLE_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/paddle_inference_install_dir")
 
-function(pten_header_path_compat TARGET_PATH)
-message(STATUS "pten header path compat processing: ${TARGET_PATH}")
+function(phi_header_path_compat TARGET_PATH)
+message(STATUS "phi header path compat processing: ${TARGET_PATH}")
 string(FIND ${TARGET_PATH} "experimental" pos)
 if (pos GREATER 1)
     file(GLOB HEADERS "${TARGET_PATH}/*" "*.h")
@@ -25,17 +25,17 @@ if (pos GREATER 1)
             string(REPLACE "paddle/phi/" "paddle/include/experimental/phi/" HEADER_CONTENT "${HEADER_CONTENT}")
             string(REPLACE "paddle/utils/" "paddle/include/experimental/utils/" HEADER_CONTENT "${HEADER_CONTENT}")
             file(WRITE ${header} "${HEADER_CONTENT}")
-            message(STATUS "pten header path compat processing complete: ${header}")
+            message(STATUS "phi header path compat processing complete: ${header}")
         endif()
     endforeach()
 endif()
 endfunction()
 
-pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental)
-pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api)
-pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext)
-pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/include)
-pten_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common)
+phi_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental)
+phi_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api)
+phi_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext)
+phi_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/include)
+phi_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common)
 
 # In order to be compatible with the original behavior, the header file name needs to be changed
 file(RENAME ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
