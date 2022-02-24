@@ -54,7 +54,7 @@ TEST(ElementwiseAdd, launcher_registry) {
   host_context::KernelRegistry registry;
   RegisterInferShapeLaunchers(&registry);
   ASSERT_GE(registry.size(), 1UL);
-  auto creator = registry.GetKernel("add.cpu.any.fp32");
+  auto creator = registry.GetKernel("pten.add.cpu.any.fp32");
 
   const phi::DDim dims({1, 2});
   const phi::DataType dtype{phi::DataType::FLOAT32};
