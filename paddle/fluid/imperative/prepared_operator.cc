@@ -19,15 +19,15 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -49,8 +49,8 @@ const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
   if (var.IsType<framework::LoDTensor>()) {
     return &(var.Get<framework::LoDTensor>());
-  } else if (var.IsType<pten::SelectedRows>()) {
-    return &(var.Get<pten::SelectedRows>().value());
+  } else if (var.IsType<phi::SelectedRows>()) {
+    return &(var.Get<phi::SelectedRows>().value());
   } else {
     return nullptr;
   }
@@ -114,7 +114,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
                        const framework::OpKernelType& kernel_type,
                        const framework::KernelSignature& kernel_signature,
-                       const pten::Kernel& pt_kernel,
+                       const phi::Kernel& pt_kernel,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
@@ -159,17 +159,16 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
 
   framework::KernelSignature pt_kernel_signature;
-  pten::KernelKey pt_kernel_key;
+  phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
-  if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+  if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
     pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
     VLOG(6) << pt_kernel_signature;
 
     pt_kernel_name = pt_kernel_signature.name;
     pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
-    VLOG(6) << pt_kernel_name << "\t" << pt_kernel_key;
-    auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
-        pt_kernel_name, pt_kernel_key);
+    auto pt_kernel = phi::KernelFactory::Instance().SelectKernel(pt_kernel_name,
+                                                                 pt_kernel_key);
 
     if (pt_kernel.IsValid()) {
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
@@ -205,10 +204,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       paddle::platform::is_in_xpu_black_list(op.Type())
 #endif
           ) {
-    if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+    if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
-      auto pt_cpu_kernel = pten::KernelFactory::Instance().SelectKernel(
+      auto pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
           pt_kernel_name, pt_cpu_kernel_key);
       if (pt_cpu_kernel.IsValid()) {
         VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
@@ -349,16 +348,18 @@ static void PreparedOpRunImpl(
   framework::Scope scope;
 
   {
-    platform::RecordEvent record_event(op.Type() + " infer_shape",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::infer_shape",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 
   {
-    platform::RecordEvent record_event(op.Type() + " compute",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::compute",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
 
     func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
                                           attrs, default_attrs));
@@ -399,25 +400,27 @@ static void PreparedOpRunPtImpl(
     const framework::OperatorBase& op,
     const framework::OpKernelType& kernel_type,
     const framework::KernelSignature& pt_kernel_signature,
-    const pten::Kernel& pt_kernel, platform::DeviceContext* dev_ctx,
+    const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx,
     const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
   {
-    platform::RecordEvent record_event(op.Type() + " infer_shape",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::infer_shape",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 
   {
-    platform::RecordEvent record_event(op.Type() + " compute",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::compute",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
 
     PreparePtenData<VarType>(pt_kernel, pt_kernel_signature, ins);
 
-    pten::KernelContext pt_kernel_context;
+    phi::KernelContext pt_kernel_context;
     BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
                                            outs, attrs, default_attrs, dev_ctx,
                                            &pt_kernel_context);

@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace pten {
+namespace phi {
 
 template <typename Context>
 void Copy(const Context& dev_ctx,
@@ -32,31 +32,25 @@ void Copy(const Context& dev_ctx,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
-  //   auto dst_place = dst->place();
+  auto dst_place = dst->place();
 
-  //   if (src_place == dst_place && paddle::platform::is_cpu_place(src_place))
-  //   {
-  //     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-  //         "The src and dst tensor are all CPU tensor, you should call copy "
-  //         "function in CPU mode."));
-  //   }
+  if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The src and dst tensor are all CPU tensor, you should call copy "
+        "function in CPU mode."));
+  }
 
-  //   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to
-  //   "
-  //           << dst_place;
-  dst->set_meta(src.meta());
-  // dst->ResizeAndAllocate(src.dims());
-  // LOG(ERROR) << dst;
-  // dev_ctx.template Alloc( dst );
-  dst->mutable_data(src_place);
-  auto dst_place = src_place;
-  auto* dst_ptr = dst->data();  // mutable_data(src_place);
+  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
+          << dst_place;
 
-  //   if (src_ptr == dst_ptr && src_place == dst_place) {
-  //     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-  //             << dst_place;
-  //     return;
-  //   }
+  dst->ResizeAndAllocate(src.dims());
+  auto* dst_ptr = dst->mutable_data(dst_place);
+
+  if (src_ptr == dst_ptr && src_place == dst_place) {
+    VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+            << dst_place;
+    return;
+  }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
   CHECK(dst->layout() == src.layout());
@@ -80,20 +74,20 @@ void Copy(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
         true,
-        paddle::platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
-                      paddle::platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "Source place and context place do not match, source "
                           "place is %s, context place is %s.",
                           src_gpu_place,
                           ctx_gpu_place));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
@@ -104,20 +98,20 @@ void Copy(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
         true,
-        paddle::platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_gpu_place,
                       ctx_gpu_place,
-                      paddle::platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "Destination place and context place do not match, "
                           "destination place is %s, context place is %s.",
                           dst_gpu_place,
                           ctx_gpu_place));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -127,14 +121,14 @@ void Copy(const Context& dev_ctx,
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(ctx_place),
                       true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Device context place mismatch. When copying Tensor "
                           "data from GPU memory to CUDA Pinned memory, current "
                           "device context place should be GPU."));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(src_gpu_place,
                       ctx_gpu_place,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The source GPU device and current device context do "
                           "not match. The source GPU device number is %d, but "
                           "device context GPU number is %d.",
@@ -142,7 +136,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place.device));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
@@ -152,14 +146,14 @@ void Copy(const Context& dev_ctx,
     auto ctx_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(ctx_place),
                       true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Device context place mismatch. When copying Tensor "
                           "data from CUDA Pinned memory to GPU memory, current "
                           "device context place should be GPU."));
     auto ctx_gpu_place = ctx_place;
     PADDLE_ENFORCE_EQ(dst_gpu_place,
                       ctx_gpu_place,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The target GPU device and current device context do "
                           "not match. The target GPU device number is %d, but "
                           "device context GPU number is %d.",
@@ -167,7 +161,7 @@ void Copy(const Context& dev_ctx,
                           ctx_gpu_place.device));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
@@ -178,12 +172,12 @@ void Copy(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_gpu_place(ctx_place),
         true,
-        paddle::platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "Context place error, excepted GPUPlace, but actually %s.",
             ctx_place));
     auto stream =
         blocking ? nullptr
-                 : reinterpret_cast<const pten::GPUContext&>(dev_ctx).stream();
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     if (paddle::platform::is_same_place(src_place, dst_place)) {
       paddle::memory::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
@@ -201,17 +195,17 @@ void Copy(const Context& dev_ctx,
         paddle::memory::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
       } else {
-        PADDLE_THROW(paddle::platform::errors::Unavailable(
+        PADDLE_THROW(phi::errors::Unavailable(
             "Context place dose not match the source and destination place."));
       }
     }
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Place type error. Please check the place of src and dst Tensor."));
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(
-    copy, GPU, ALL_LAYOUT, pten::Copy<pten::GPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(
+    copy, GPU, ALL_LAYOUT, phi::Copy<phi::GPUContext>, ALL_DTYPE) {}

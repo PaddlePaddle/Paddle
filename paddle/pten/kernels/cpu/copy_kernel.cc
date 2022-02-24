@@ -12,17 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/pten/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
 
-namespace pten {
+namespace phi {
 
 // NOTE(chenweihang): blocking is useless in cpu kernel
 template <typename Context>
@@ -36,7 +36,6 @@ void Copy(const Context& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << src_place;
 
-  dst->set_meta(src.meta());
   dst->Resize(src.dims());
   auto* dst_ptr = dev_ctx.Alloc(dst, src.dtype());
 
@@ -55,7 +54,7 @@ void Copy(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(
-    copy, CPU, ALL_LAYOUT, pten::Copy<pten::CPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(
+    copy, CPU, ALL_LAYOUT, phi::Copy<phi::CPUContext>, ALL_DTYPE) {}
