@@ -299,7 +299,9 @@ inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR}
 set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
 download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" aa59192dd41ed377f9f168e3a1309fa6 "Ernie_data.txt.tar.gz" 5396e63548edad7ca561e7e26a9476d1)
 download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz" 73beea65abda2edb61c1662cd3180c62)
-inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
+if (WITH_GPU)
+    inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
+endif()
 inference_analysis_api_int8_test(test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR} analyzer_ernie_int8_tester.cc)
 
 # Ernie large
@@ -551,7 +553,9 @@ endif()
 # bert, max_len=20, embedding_dim=128
 set(BERT_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/bert_emb128")
 download_model_and_data_without_verify(${BERT_INSTALL_DIR} "bert_emb128_model.tar.gz" "bert_data_len20.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
+if (WITH_GPU)
+    inference_analysis_api_test(test_analyzer_bert ${BERT_INSTALL_DIR} analyzer_bert_tester.cc)
+endif()
 
 # multiple models prediction
 set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
