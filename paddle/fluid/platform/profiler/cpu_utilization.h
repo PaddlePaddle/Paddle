@@ -17,11 +17,9 @@
 #include <stdio.h>
 #include <cinttypes>
 #include <cstdint>
-
+#include "glog/logging.h"
 #ifdef _MSC_VER
-#include <minwinbase.h>
-#include <processthreadsapi.h>
-#include <sysinfoapi.h>
+#include <windows.h>
 #else
 #include <sys/times.h>
 #include <unistd.h>
