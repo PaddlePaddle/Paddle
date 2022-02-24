@@ -50,11 +50,6 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             int axis,
                             MetaTensor* out);
 
-void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
-                                const MetaTensor& dout,
-                                int axis,
-                                MetaTensor* dx);
-
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CopyToInferMeta(const MetaTensor& x,

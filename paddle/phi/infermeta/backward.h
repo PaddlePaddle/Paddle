@@ -25,4 +25,8 @@ void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 MetaTensor* dx,
                                 MetaTensor* dy);
 
+void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
+                                const MetaTensor& dout,
+                                int axis,
+                                MetaTensor* dx);
 }  // namespace phi

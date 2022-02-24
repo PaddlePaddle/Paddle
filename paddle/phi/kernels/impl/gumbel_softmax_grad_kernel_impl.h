@@ -39,10 +39,10 @@ void GumbelSoftmaxGradKernel(const Context& ctx,
 
   const int size_to_axis = SizeToAxis(axis, dx->dims());
   const int size_from_axis = SizeFromAxis(axis, dx->dims());
-  DenseTensor dx_2d, out_2d, dout_2d;
-  dx_2d.ShareDataWith(*dx).Resize({size_to_axis, size_from_axis});
-  out_2d.ShareDataWith(out).Resize({size_to_axis, size_from_axis});
-  dout_2d.ShareDataWith(dout).Resize({size_to_axis, size_from_axis});
+  DenseTensor dx_2d(*dx), out_2d(out), dout_2d(dout);
+  dx_2d.Resize({size_to_axis, size_from_axis});
+  out_2d.Resize({size_to_axis, size_from_axis});
+  dout_2d.Resize({size_to_axis, size_from_axis});
   paddle::operators::math::SoftmaxGradFunctor<Context, T>()(
       ctx, axis_dim, &out_2d, &dout_2d, &dx_2d);
 }

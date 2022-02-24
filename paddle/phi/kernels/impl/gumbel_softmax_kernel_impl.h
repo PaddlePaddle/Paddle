@@ -84,7 +84,7 @@ void GumbelSoftmaxKernel(const Context& ctx,
 
   PADDLE_ENFORCE_GT(temperature,
                     0,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The temperature must be greater than 0. But "
                         "received temperature = %f",
                         temperature));
@@ -97,9 +97,9 @@ void GumbelSoftmaxKernel(const Context& ctx,
 
   const int size_to_axis = SizeToAxis(axis, x.dims());
   const int size_from_axis = SizeFromAxis(axis, x.dims());
-  DenseTensor x_noise_2d, out_2d;
+  DenseTensor x_noise_2d, out_2d(*out);
   x_noise_2d.Resize({size_to_axis, size_from_axis});
-  out_2d.ShareDataWith(*out).Resize({size_to_axis, size_from_axis});
+  out_2d.Resize({size_to_axis, size_from_axis});
 
   // generate gumbel noise and add it to X
   auto* x_noise_data = ctx.template Alloc<T>(&x_noise_2d);
