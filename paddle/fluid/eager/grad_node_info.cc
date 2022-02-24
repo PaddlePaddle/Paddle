@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/utils.h"
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -96,7 +96,8 @@ const std::vector<GradSlotMeta>& GradNodeBase::OutputMeta() const {
   return bwd_out_meta_;
 }
 
-void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out, size_t slot_rank) {
+void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
+                                 size_t slot_rank) {
   auto* fwd_out_meta = egr::EagerUtils::unsafe_autograd_meta(fwd_out);
   PADDLE_ENFORCE_LE(
       slot_rank, (bwd_in_meta_.size() - 1),
@@ -121,16 +122,17 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out, si
     phi::DenseTensor* dense_tensor =
         static_cast<phi::DenseTensor*>(fwd_out.impl().get());
     meta.SetTensorMeta(0, dense_tensor->meta());
-    
-    if(paddle::framework::IsComplexType(paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
-       need_complex_to_real_ = true; 
+
+    if (paddle::framework::IsComplexType(
+            paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
+      need_complex_to_real_ = true;
     }
   }
 }
 
-
-void GradNodeBase::SetGradInMeta(const std::vector<paddle::experimental::Tensor>& fwd_out,
-                                 size_t slot_rank) {
+void GradNodeBase::SetGradInMeta(
+    const std::vector<paddle::experimental::Tensor>& fwd_out,
+    size_t slot_rank) {
   size_t slot_size = fwd_out.size();
   PADDLE_ENFORCE_LE(
       slot_rank, (bwd_in_meta_.size() - 1),
@@ -159,21 +161,23 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::experimental::Tensor>
       // since all default value is false.
       meta.SetStopGradient(i, fwd_out_meta->StopGradient());
     }
-    
+
     // Record TensorMeta
     if (phi::DenseTensor::classof(fwd_out_tensor.impl().get())) {
-        // Only Copy Meta
-        phi::DenseTensor* dense_tensor =
-            static_cast<phi::DenseTensor*>(fwd_out_tensor.impl().get());
-        meta.SetTensorMeta(i, dense_tensor->meta());
-        if(paddle::framework::IsComplexType(paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
-           need_complex_to_real_ = true; 
-        }
+      // Only Copy Meta
+      phi::DenseTensor* dense_tensor =
+          static_cast<phi::DenseTensor*>(fwd_out_tensor.impl().get());
+      meta.SetTensorMeta(i, dense_tensor->meta());
+      if (paddle::framework::IsComplexType(
+              paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
+        need_complex_to_real_ = true;
+      }
     }
   }
 }
 
-void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in, size_t slot_rank) {
+void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
+                                  size_t slot_rank) {
   auto* fwd_in_meta = egr::EagerUtils::unsafe_autograd_meta(fwd_in);
   PADDLE_ENFORCE_LE(
       (slot_rank + 1), bwd_out_meta_.size(),
@@ -194,7 +198,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in, si
   } else {
     meta.SetStopGradient(0, true);
   }
-  
+
   // Record TensorMeta
   if (phi::DenseTensor::classof(fwd_in.impl().get())) {
     // Only Copy Meta
@@ -204,8 +208,8 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in, si
   }
 }
 
-void GradNodeBase::SetGradOutMeta(const std::vector<paddle::experimental::Tensor>& fwd_in,
-                                  size_t slot_rank) {
+void GradNodeBase::SetGradOutMeta(
+    const std::vector<paddle::experimental::Tensor>& fwd_in, size_t slot_rank) {
   size_t slot_size = fwd_in.size();
   PADDLE_ENFORCE_LE(
       slot_rank, (bwd_out_meta_.size() - 1),
@@ -229,13 +233,13 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::experimental::Tensor
       // since all default value is false.
       meta.SetStopGradient(i, fwd_in_meta->StopGradient());
     }
-    
+
     // Record TensorMeta
     if (phi::DenseTensor::classof(fwd_in_tensor.impl().get())) {
-        // Only Copy Meta
-        phi::DenseTensor* dense_tensor =
-            static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
-        meta.SetTensorMeta(i, dense_tensor->meta());
+      // Only Copy Meta
+      phi::DenseTensor* dense_tensor =
+          static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
+      meta.SetTensorMeta(i, dense_tensor->meta());
     }
   }
 }
@@ -311,32 +315,37 @@ GradNodeBase::ApplyGradientHooks(
   return outs;
 }
 
-void GradNodeBase::HandleComplexGradToRealGrad(std::vector<std::vector<paddle::experimental::Tensor>>* out_grads) {
-    for(size_t slot_id=0; slot_id < out_grads->size(); slot_id++) {
-        const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id];
-        const std::vector<paddle::experimental::Tensor>& slot_out_grads = (*out_grads)[slot_id];
-        for(size_t rank_id=0; rank_id < slot_out_grads.size(); rank_id++) {
-            auto fwd_data_type = paddle::framework::TransToProtoVarType(slot_meta.GetTensorMeta(rank_id).dtype);
-            const paddle::experimental::Tensor& grad = slot_out_grads[rank_id];
-            
-            if(paddle::framework::IsComplexType(fwd_data_type)) continue;
+void GradNodeBase::HandleComplexGradToRealGrad(
+    std::vector<std::vector<paddle::experimental::Tensor>>* out_grads) {
+  for (size_t slot_id = 0; slot_id < out_grads->size(); slot_id++) {
+    const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id];
+    const std::vector<paddle::experimental::Tensor>& slot_out_grads =
+        (*out_grads)[slot_id];
+    for (size_t rank_id = 0; rank_id < slot_out_grads.size(); rank_id++) {
+      auto fwd_data_type = paddle::framework::TransToProtoVarType(
+          slot_meta.GetTensorMeta(rank_id).dtype);
+      const paddle::experimental::Tensor& grad = slot_out_grads[rank_id];
 
-            // Only Handle Complex To Real for DenseTensor for now
-            if (phi::DenseTensor::classof(grad.impl().get())) {
-                phi::DenseTensor* grad_dense_tensor =
-                    static_cast<phi::DenseTensor*>(grad.impl().get());
-                
-                auto curr_data_type = paddle::framework::TransToProtoVarType(grad_dense_tensor->type());
-                if(!paddle::framework::IsComplexType(curr_data_type)) continue;
-                
-                // Convert Complex GradOut to Real
-                auto out = std::make_shared<phi::DenseTensor>();
-                paddle::framework::TransComplexToReal(fwd_data_type, curr_data_type, *grad_dense_tensor, out.get());
-                
-                (*out_grads)[slot_id][rank_id].set_impl(out);
-            }
-        }
+      if (paddle::framework::IsComplexType(fwd_data_type)) continue;
+
+      // Only Handle Complex To Real for DenseTensor for now
+      if (phi::DenseTensor::classof(grad.impl().get())) {
+        phi::DenseTensor* grad_dense_tensor =
+            static_cast<phi::DenseTensor*>(grad.impl().get());
+
+        auto curr_data_type =
+            paddle::framework::TransToProtoVarType(grad_dense_tensor->type());
+        if (!paddle::framework::IsComplexType(curr_data_type)) continue;
+
+        // Convert Complex GradOut to Real
+        auto out = std::make_shared<phi::DenseTensor>();
+        paddle::framework::TransComplexToReal(fwd_data_type, curr_data_type,
+                                              *grad_dense_tensor, out.get());
+
+        (*out_grads)[slot_id][rank_id].set_impl(out);
+      }
     }
+  }
 }
 
 }  // namespace egr

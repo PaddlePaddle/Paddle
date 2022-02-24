@@ -129,11 +129,15 @@ class GradNodeBase {
    * Set bwd ins and outs info with forward vars
    * **/
 
-  void SetGradInMeta(const std::vector<paddle::experimental::Tensor>& fwd_out, size_t slot_rank);
-  void SetGradInMeta(const paddle::experimental::Tensor& fwd_out, size_t slot_rank);
+  void SetGradInMeta(const std::vector<paddle::experimental::Tensor>& fwd_out,
+                     size_t slot_rank);
+  void SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
+                     size_t slot_rank);
 
-  void SetGradOutMeta(const std::vector<paddle::experimental::Tensor>& fwd_in, size_t slot_rank);
-  void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in, size_t slot_rank);
+  void SetGradOutMeta(const std::vector<paddle::experimental::Tensor>& fwd_in,
+                      size_t slot_rank);
+  void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
+                      size_t slot_rank);
 
   /**
    * Default setters for Grad in/out meta this should be used for same special
@@ -154,11 +158,12 @@ class GradNodeBase {
 
   std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
       const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
-  
+
   /**
     * Handle Complex - Real Type Promotion
     * **/
-  void HandleComplexGradToRealGrad(std::vector<std::vector<paddle::experimental::Tensor>>* out_grads);
+  void HandleComplexGradToRealGrad(
+      std::vector<std::vector<paddle::experimental::Tensor>>* out_grads);
   bool NeedComplexToRealConversion() { return need_complex_to_real_; }
 
  private:
@@ -184,7 +189,7 @@ class GradNodeBase {
       /* hook */ std::function<paddle::experimental::Tensor(
           const paddle::experimental::Tensor&)>>>
       gradient_hooks_;
-  
+
   // We handle complex to real conversion only if any complex GradIn is involved
   bool need_complex_to_real_ = false;
 };
