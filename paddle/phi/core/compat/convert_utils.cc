@@ -30,6 +30,8 @@ Backend TransToPtenBackend(const phi::Place& place) {
     return Backend::CPU;
   } else if (place.GetType() == phi::AllocationType::GPU) {
     return Backend::GPU;
+  } else if (place.GetType() == phi::AllocationType::XPU) {
+    return Backend::XPU;
   } else if (place.GetType() == phi::AllocationType::CUSTOM) {
     return static_cast<Backend>(
         static_cast<size_t>(Backend::NUM_BACKENDS) +
