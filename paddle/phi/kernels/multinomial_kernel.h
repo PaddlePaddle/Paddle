@@ -1,31 +1,30 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
-#include <vector>
+
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/hostdevice.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
-/**
- * Samples a multinomial distribution given a probability input
- */
+template <typename T, typename Context>
+void MultinomialKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int num_samples,
+                  bool replacement,
+                  DenseTensor* out);
 
 template <typename T>
 void MultinomialFunctor(int64_t* out_data, const T* in_data,
@@ -35,7 +34,7 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
   std::vector<T> cumulative_probs(num_categories);
 
   std::uniform_real_distribution<T> dist(0, 1);
-  auto gen_ptr = framework::DefaultCPUGenerator();
+  auto gen_ptr = paddle::framework::DefaultCPUGenerator();
   auto engine = gen_ptr->GetCPUEngine();
 
   for (int64_t i = 0; i < num_distributions; i++) {
@@ -45,7 +44,7 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
     for (int64_t j = 0; j < num_categories; j++) {
       prob_value = in_data[i * num_categories + j];
       PADDLE_ENFORCE_GE(prob_value, 0.0,
-                        platform::errors::InvalidArgument(
+                        errors::InvalidArgument(
                             "The input of multinomial distribution "
                             "should be >= 0, but got %f.",
                             prob_value));
@@ -57,13 +56,13 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
       cumulative_probs[j] = probs_sum;
     }
     PADDLE_ENFORCE_GT(probs_sum, 0.0,
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "The sum of one multinomial distribution "
                           "probability should be > 0, but got %f.",
                           probs_sum));
     PADDLE_ENFORCE_EQ(
         (replacement || (num_categories - num_zeros >= num_samples)), true,
-        platform::errors::InvalidArgument(
+        errors::InvalidArgument(
             "When replacement is False, number of "
             "samples should be less than non-zero "
             "categories."));
@@ -121,8 +120,4 @@ void MultinomialFunctor(int64_t* out_data, const T* in_data,
   }
 }
 
-template <typename DeviceContext, typename T>
-class MultinomialOpKernel;
-
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
