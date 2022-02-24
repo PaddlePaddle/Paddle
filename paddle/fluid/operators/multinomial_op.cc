@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/multinomial_op.h"
 
 #include <algorithm>
 #include <string>
@@ -80,29 +79,6 @@ class MultinomialOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
-class MultinomialOpKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto x = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
-    const int64_t num_samples = ctx.Attr<int>("num_samples");
-    const bool replacement = ctx.Attr<bool>("replacement");
-
-    auto *in_data = x->data<T>();
-    int64_t *out_data = out->mutable_data<int64_t>(ctx.GetPlace());
-
-    auto in_dims = x->dims();
-    int64_t in_rank = in_dims.size();
-    const int64_t num_categories = in_dims[in_rank - 1];
-    const int64_t num_distributions = in_rank > 1 ? in_dims[in_rank - 2] : 1;
-
-    MultinomialFunctor<T>(out_data, in_data, num_samples, replacement,
-                          num_categories, num_distributions);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -112,7 +88,3 @@ REGISTER_OPERATOR(
     multinomial, ops::MultinomialOp, ops::MultinomialOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    multinomial, ops::MultinomialOpKernel<plat::CPUDeviceContext, float>,
-    ops::MultinomialOpKernel<plat::CPUDeviceContext, double>);

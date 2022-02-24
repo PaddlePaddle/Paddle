@@ -560,9 +560,9 @@ class FakeInitOpsPass(PassBase):
         return True
 
     def _get_sparse_table_names(self, attrs):
-        dist_varnames = get_sparse_tablenames(attrs['origin_main_program'],
+        dist_varnames = get_sparse_tablenames(attrs['origin_main_programs'],
                                               True)
-        sparse_varnames = get_sparse_tablenames(attrs['origin_main_program'],
+        sparse_varnames = get_sparse_tablenames(attrs['origin_main_programs'],
                                                 False)
         return list(set(dist_varnames + sparse_varnames))
 
