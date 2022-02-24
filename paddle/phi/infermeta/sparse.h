@@ -23,6 +23,6 @@ void SparseInferMeta(const MetaTensor& indices,
                      const std::vector<int64_t>& dims,
                      MetaTensor* out);
 
-void SparseGradInferMeta(const MetaTensor& values, MetaTensor* out);
+void SparseGradInferMeta(const MetaTensor& out_grad, MetaTensor* out1, MetaTensor* out2);
 
 }  // namespace phi

@@ -64,6 +64,7 @@ def GetCxxType(atype):
 
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
+        print(atype)
         assert False
 
     return atype_to_parsing_function[atype]

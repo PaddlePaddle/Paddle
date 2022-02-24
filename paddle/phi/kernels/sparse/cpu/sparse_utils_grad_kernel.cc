@@ -15,11 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/sparse_utils_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace sparse {}  // namespace sparse
-}  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_coo_tensor_grad,
+PD_REGISTER_KERNEL(create_sparse_coo_tensor_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::CreateSparseCooTensorGradKernel,

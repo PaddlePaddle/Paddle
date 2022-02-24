@@ -13,17 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
 namespace phi {
 namespace sparse {
 
-#include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/sparse_coo_tensor.h"
-
 template <typename T, typename Context>
 void CreateSparseCooTensorGradKernel(const Context& ctx,
-                                     const SparseCooTensor& dout,
-                                     DenseTensor* x_grad) {
+                                     const SparseCooTensor& out_grad,
+                                     DenseTensor* indices_grad,
+                                     DenseTensor* values_grad) {
   printf("test sparse grad...\n");
 }
 

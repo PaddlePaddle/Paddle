@@ -192,5 +192,4 @@
     func : SparseInferMeta
   kernel :
     func : create_sparse_coo_tensor
-    param : [indices, values, dims]
-    data_type : values
+  backward : create_sparse_coo_tensor_grad

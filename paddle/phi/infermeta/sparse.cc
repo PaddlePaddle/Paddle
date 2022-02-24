@@ -24,6 +24,6 @@ void SparseInferMeta(const MetaTensor& indices,
   // do nothing
 }
 
-void SparseGradInferMeta(const MetaTensor& values, MetaTensor* out) {}
+void SparseGradInferMeta(const MetaTensor& out_grad, MetaTensor* out1, MetaTensor* out2) {}
 
 }  // namespace phi
