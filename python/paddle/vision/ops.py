@@ -1303,7 +1303,7 @@ class RoIAlign(Layer):
 class ConvNormActivation(Sequential):
     """
     Configurable block used for Convolution-Normalzation-Activation blocks.
-    This code is based on the pytorch code with modifications.
+    This code is based on the torchvision code with modifications.
     You can also see at https://github.com/pytorch/vision/blob/main/torchvision/ops/misc.py#L68
     Args:
         in_channels (int): Number of channels in the input image

@@ -40,7 +40,7 @@ class SqueezeExcitation(nn.Layer):
     """
     This block implements the Squeeze-and-Excitation block from https://arxiv.org/abs/1709.01507 (see Fig. 1).
     Parameters ``activation``, and ``scale_activation`` correspond to ``delta`` and ``sigma`` in in eq. 3.
-    This code is based on the pytorch code with modifications.
+    This code is based on the torchvision code with modifications.
     You can also see at https://github.com/pytorch/vision/blob/main/torchvision/ops/misc.py#L127
     Args:
         input_channels (int): Number of channels in the input image
