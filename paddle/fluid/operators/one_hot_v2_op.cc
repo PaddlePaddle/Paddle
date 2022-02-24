@@ -14,7 +14,11 @@
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,26 +26,6 @@ namespace operators {
 class OneHotV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "one_hot_v2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "one_hot_v2");
-
-    auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Rank of Input(X) should be at least 1."));
-
-    int depth = ctx->Attrs().Get<int>("depth");
-    if (ctx->HasInput("depth_tensor")) {
-      depth = -1;
-    }
-
-    auto out_dims_vec = phi::vectorize(x_dims);
-    out_dims_vec.push_back(depth);
-    auto out_dims = phi::make_ddim(out_dims_vec);
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("X", /* --> */ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -114,7 +98,12 @@ Out is a LoDTensor:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DELCARE_INFER_SHAPE_FUNCTOR(one_hot_v2, OneHotInferShapeFunctor,
+                            PT_INFER_META(phi::OneHotInferMeta));
+
 REGISTER_OPERATOR(
     one_hot_v2, ops::OneHotV2Op, ops::OneHotV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    OneHotInferShapeFunctor);

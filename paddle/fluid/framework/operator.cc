@@ -2179,7 +2179,6 @@ void OperatorWithKernel::BuildPtenKernelContext(
     } else {
       // TODO(chenweihang): support other attrs later
       auto attr_it = attrs_.find(attr_names[i]);
-      auto& attr = Attrs().at(attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         if (attr_it == attrs_.end()) {
           auto in_it = ctx.inputs.find(attr_names[i]);
@@ -2218,7 +2217,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
         pt_kernel_context->EmplaceBackAttr(data_type);
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
-        if (std::type_index(attr.type()) ==
+        if (std::type_index(attr_it->second.type()) ==
             std::type_index(typeid(std::vector<int>))) {
           // Emplace Back Attr according to the type of Pten_Kernel args.
           const auto& vector_int_attr =
@@ -2231,7 +2230,8 @@ void OperatorWithKernel::BuildPtenKernelContext(
 
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int32_t>))) {
-        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+        const auto& vector_int_attr =
+            BOOST_GET_CONST(std::vector<int>, attr_it->second);
         pt_kernel_context->EmplaceBackAttr(vector_int_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
