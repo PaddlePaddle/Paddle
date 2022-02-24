@@ -59,6 +59,7 @@ class GradSlotMeta {
   void Init(size_t size) {
     size_ = static_cast<int>(size);
     stop_gradient_.resize(size, false);
+    meta_.resize(size);
   }
 
   bool IsInitialized() const { return size_ != -1; }
@@ -67,10 +68,17 @@ class GradSlotMeta {
   void SetStopGradient(size_t rank, bool stop_gradient = true) {
     stop_gradient_.at(rank) = stop_gradient;
   }
+  void SetTensorMeta(size_t rank, const phi::DenseTensorMeta& meta) {
+    meta_.at(rank) = meta;
+  }
+  const phi::DenseTensorMeta& GetTensorMeta(size_t rank) const {
+    return meta_[rank];
+  }
 
  private:
   int size_{-1};
   std::vector<bool> stop_gradient_{false};
+  std::vector<phi::DenseTensorMeta> meta_;
 };
 
 class GradNodeBase {
@@ -121,11 +129,11 @@ class GradNodeBase {
    * Set bwd ins and outs info with forward vars
    * **/
 
-  void SetGradInMeta(std::vector<AutogradMeta*>* fwd_out, size_t slot_rank);
-  void SetGradInMeta(AutogradMeta* fwd_out, size_t slot_rank);
+  void SetGradInMeta(const std::vector<paddle::experimental::Tensor>& fwd_out, size_t slot_rank);
+  void SetGradInMeta(const paddle::experimental::Tensor& fwd_out, size_t slot_rank);
 
-  void SetGradOutMeta(std::vector<AutogradMeta*>* fwd_in, size_t slot_rank);
-  void SetGradOutMeta(AutogradMeta* fwd_in, size_t slot_rank);
+  void SetGradOutMeta(const std::vector<paddle::experimental::Tensor>& fwd_in, size_t slot_rank);
+  void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in, size_t slot_rank);
 
   /**
    * Default setters for Grad in/out meta this should be used for same special
@@ -146,6 +154,12 @@ class GradNodeBase {
 
   std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
       const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
+  
+  /**
+    * Handle Complex - Real Type Promotion
+    * **/
+  void HandleComplexGradToRealGrad(std::vector<std::vector<paddle::experimental::Tensor>>* out_grads);
+  bool NeedComplexToRealConversion() { return need_complex_to_real_; }
 
  private:
   // TODO(jiabin): Use SmallVector instead after merge PR from develop
@@ -170,6 +184,9 @@ class GradNodeBase {
       /* hook */ std::function<paddle::experimental::Tensor(
           const paddle::experimental::Tensor&)>>>
       gradient_hooks_;
+  
+  // We handle complex to real conversion only if any complex GradIn is involved
+  bool need_complex_to_real_ = false;
 };
 
 class Edge {

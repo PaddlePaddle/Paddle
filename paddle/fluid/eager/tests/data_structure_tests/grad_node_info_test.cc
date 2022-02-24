@@ -75,14 +75,18 @@ TEST(GradNodeInfo, GradNodeBase) {
 
   VLOG(6) << "Test Set Meta and Get Meta";
   auto_grad1->SetStopGradient(true);
-  grad_test_node0->SetGradInMeta(&metas, 0);
-  grad_test_node0->SetGradInMeta(auto_grad1.get(), 1);
-  grad_test_node0->SetGradOutMeta(&metas, 0);
-  grad_test_node0->SetGradOutMeta(auto_grad1.get(), 1);
+  grad_test_node0->SetGradInMeta(et1, 0);
+  grad_test_node0->SetGradInMeta({et1}, 1);
+  grad_test_node0->SetGradOutMeta(et1, 0);
+  grad_test_node0->SetGradOutMeta({et1}, 1);
   CHECK_EQ(grad_test_node0->InputMeta()[0].Size(), 1);
   CHECK_EQ(grad_test_node0->InputMeta()[1].Size(), 1);
+  CHECK_EQ(grad_test_node0->InputMeta()[0].GetTensorMeta(0).dtype, meta.dtype);
+  CHECK_EQ(grad_test_node0->InputMeta()[1].GetTensorMeta(0).dtype, meta.dtype);
   CHECK(grad_test_node0->OutputMeta()[0].IsStopGradient(0));
   CHECK(grad_test_node0->OutputMeta()[1].IsStopGradient(0));
+  CHECK_EQ(grad_test_node0->OutputMeta()[0].GetTensorMeta(0).dtype, meta.dtype);
+  CHECK_EQ(grad_test_node0->OutputMeta()[1].GetTensorMeta(0).dtype, meta.dtype);
 
   VLOG(6) << "Test Default Set Meta and Get Meta";
   auto grad_test_node2 = std::make_shared<eager_test::GradTestNode>(
@@ -133,11 +137,8 @@ TEST(GradNodeInfo, Edge) {
   VLOG(6) << "Test Set Edge's Grad Node";
   auto* grad_node = edge1.GetGradNode();
   CHECK_EQ(grad_node->InputMeta().size(), size_t(2));
-  auto mt_grad_node = edge1.GetMutableGradNode();
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>();
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
-  // Uninitialized AutogradMeta indicates
-  mt_grad_node->SetGradInMeta(&metas, 0);
   CHECK(grad_node->InputMeta()[0].IsStopGradient(0) == true);
   VLOG(6) << "Test Get/Set Edge Rank Info";
   CHECK_EQ(edge2.GetEdgeRankInfo().first, size_t(1));

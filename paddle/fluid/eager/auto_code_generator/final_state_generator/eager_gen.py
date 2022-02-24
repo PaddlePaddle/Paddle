@@ -559,6 +559,7 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
         else:
             # Rearrange output order accordingly
             returns_str += f"returns[{fwd_position}] =  grad_api_returns[{grad_api_position}];\n"
+    returns_str += f"if(NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);\n"
     returns_str += f"return returns;\n"
 
     grad_node_name = GetGradNodeName(fwd_api_name)
@@ -666,7 +667,7 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     set_edges_list = []
     for name, (_, pos) in forward_inputs_position_map.items():
         input_autograd_meta_name = GetAutoGradMetaName(name)
-        set_grad_out_meta = f"        grad_node->SetGradOutMeta({input_autograd_meta_name}, {pos});"
+        set_grad_out_meta = f"        grad_node->SetGradOutMeta({name}, {pos});"
         set_edges = f"        grad_node->AddEdges({input_autograd_meta_name}, {pos});"
         set_grad_out_meta_list.append(set_grad_out_meta)
         set_edges_list.append(set_edges)
@@ -683,17 +684,18 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
         output_autograd_meta_name = GetAutoGradMetaName(name)
         set_out_rank = f"        egr::EagerUtils::SetOutRankWithSlot({output_autograd_meta_name}, {pos});"
         set_history = f"        egr::EagerUtils::SetHistory({output_autograd_meta_name}, grad_node);"
-        set_grad_in_meta = f"        grad_node->SetGradInMeta({output_autograd_meta_name}, {pos});"
+        if num_outputs == 1:
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
+            set_grad_in_meta = f"        grad_node->SetGradInMeta(api_result, {pos});"
+        else:
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result[{pos}]);"
+            set_grad_in_meta = f"        grad_node->SetGradInMeta(api_result[{pos}], {pos});"
 
         set_out_rank_list.append(set_out_rank)
         set_history_list.append(set_history)
         set_grad_in_meta_list.append(set_grad_in_meta)
-
-        if num_outputs == 1:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
-        else:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result[{pos}]);"
         set_retain_grad_list.append(set_retain_grad)
+
     set_out_rank_str = "\n".join(set_out_rank_list)
     set_history_str = "\n".join(set_history_list)
     set_grad_in_meta_str = "\n".join(set_grad_in_meta_list)

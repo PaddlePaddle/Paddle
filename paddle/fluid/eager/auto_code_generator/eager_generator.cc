@@ -1114,7 +1114,7 @@ static std::string GenerateGradNodeCreationContent(
       const char* SET_GRAD_OUT_META_TEMPLATE =
           "    grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
+          SET_GRAD_OUT_META_TEMPLATE, input_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE =
           "    if(%s) grad_node->AddEdges(%s, %d);\n";
@@ -1126,9 +1126,9 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    grad_node->SetGradOutMeta(&%s, %d);\n";
+          "    grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
+          SET_GRAD_OUT_META_TEMPLATE, input_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
@@ -1158,9 +1158,9 @@ static std::string GenerateGradNodeCreationContent(
           paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
 
       const char* SET_GRAD_IN_META_TEMPLATE =
-          "    grad_node->SetGradInMeta(&%s, %d);\n";
+          "    grad_node->SetGradInMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+          SET_GRAD_IN_META_TEMPLATE, output_name, output_position);
 
     } else {
       pass_stop_gradient_args += ", " + output_autograd_name;
@@ -1177,7 +1177,7 @@ static std::string GenerateGradNodeCreationContent(
       const char* SET_GRAD_IN_META_TEMPLATE =
           "    grad_node->SetGradInMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
+          SET_GRAD_IN_META_TEMPLATE, output_name, output_position);
     }
 
     VLOG(6) << "Generated Call RetainGradForTensor";
