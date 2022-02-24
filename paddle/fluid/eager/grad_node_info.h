@@ -166,6 +166,8 @@ class GradNodeBase {
       std::vector<std::vector<paddle::experimental::Tensor>>* out_grads);
   bool NeedComplexToRealConversion() { return need_complex_to_real_; }
 
+  virtual std::string name() { return "GradNodeBase"; }
+
  private:
   // TODO(jiabin): Use SmallVector instead after merge PR from develop
 
