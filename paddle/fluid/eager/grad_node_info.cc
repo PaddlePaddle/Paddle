@@ -53,7 +53,7 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                          meta->OutRankInfo());
       } else {
-        meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+        meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                          meta->OutRankInfo());
       }
@@ -69,13 +69,16 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
           "adj_edges is designed to has the same size of grad "
           "inputs's slot num."));
   if (meta && !meta->StopGradient()) {
-    VLOG(6) << "Add Edges for slot: " << slot_id;
     auto node = meta->GetMutableGradNode();
     if (node) {
+      VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
+              << this->name() << " to " << meta->GetMutableGradNode()->name();
       adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                        meta->OutRankInfo());
     } else {
-      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
+      VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
+              << this->name() << " to " << meta->GetMutableGradNode()->name();
       adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                        meta->OutRankInfo());
     }
