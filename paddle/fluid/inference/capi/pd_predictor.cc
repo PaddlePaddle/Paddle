@@ -172,7 +172,8 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
     snprintf(output_i.name, output_names[i].length() + 1, "%s",
              output_names[i].c_str());
     auto output_t = predictor->GetOutputTensor(output_names[i]);
-    output_i.dtype = ConvertToPDDataType(output_t->type());
+    output_i.dtype =
+        ConvertToPDDataType(framework::TransToProtoVarType(output_t->dtype()));
     std::vector<int> output_shape = output_t->shape();
     output_i.shape = new int[output_shape.size()];
     memmove(output_i.shape, output_shape.data(),
@@ -256,7 +257,8 @@ void PD_SetZeroCopyInput(PD_Predictor* predictor,
 
 void PD_GetZeroCopyOutput(PD_Predictor* predictor, PD_ZeroCopyTensor* tensor) {
   auto output = predictor->predictor->GetOutputTensor(tensor->name);
-  tensor->dtype = ConvertToPDDataType(output->type());
+  tensor->dtype =
+      ConvertToPDDataType(framework::TransToProtoVarType(output->dtype()));
   auto shape = output->shape();
   size_t shape_size = shape.size();
   if (tensor->shape.capacity < shape_size * sizeof(int)) {
@@ -271,7 +273,8 @@ void PD_GetZeroCopyOutput(PD_Predictor* predictor, PD_ZeroCopyTensor* tensor) {
 
   int n =
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-  size_t length = n * paddle::PaddleDtypeSize(output->type());
+  size_t length = n * paddle::PaddleDtypeSize(
+                          framework::TransToProtoVarType(output->dtype()));
   if (tensor->data.capacity < length) {
     if (tensor->data.data) {
       std::free(tensor->data.data);

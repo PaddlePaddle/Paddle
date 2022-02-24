@@ -32,7 +32,7 @@ from paddle.distributed.passes import new_pass, PassContext
 from .dist_context import DistributedContext
 from .dist_context import get_default_distributed_context
 from .dist_context import set_default_distributed_context
-from .completion import complete_annotation, complete_backward_annotation, complete_update_annotation
+from .completion import Completer
 from .partitioner import Partitioner
 from .process_group import get_all_process_groups
 from .process_group import get_process_group
@@ -130,9 +130,9 @@ class AutoParallelizer:
                 no_grad_set,
                 callbacks,
                 distop_context=self._dist_context.dist_op_context)
-        complete_backward_annotation(
-            main_program, dist_context=self._dist_context)
-
+        self._completer = Completer(self._dist_context)
+        self._completer.complete_backward_annotation(main_program)
+        self._dist_context.block_state.parse_backward_blocks(main_program)
         return params_grads
 
     def _apply_optimize(self, main_program, startup_program, params_grads):
@@ -142,8 +142,8 @@ class AutoParallelizer:
                 params_grads)
 
         # update completion 
-        complete_update_annotation(
-            main_program, dist_context=self._dist_context)
+        self._completer = Completer(self._dist_context)
+        self._completer.complete_update_annotation(main_program)
 
         return optimize_ops
 
@@ -174,16 +174,21 @@ class AutoParallelizer:
         serial_main_program = self._main_program.clone()
         serial_startup_program = self._startup_program.clone()
         serial_loss = serial_main_program.global_block().var(self._loss.name)
+
         # generating serial 
         if dist_context is None:
             # Annotation completion
             self._dist_context = DistributedContext()
             _logger.info("Start annotation dist attr.")
-            completed_main_program = complete_annotation(serial_main_program,
-                                                         self._dist_context)
+            self._completer = Completer(self._dist_context)
+            completed_main_program = self._completer.complete_forward_annotation(
+                serial_main_program)
         else:
             completed_main_program = serial_main_program
             self._dist_context = copy.deepcopy(dist_context)
+
+        # parse forward sub block
+        self._dist_context.block_state.parse_forward_blocks(serial_main_program)
 
         # serial backward pass
         params_grads = self._generate_backward(
@@ -208,7 +213,8 @@ class AutoParallelizer:
 
         make_data_unshard(dist_main_prog, dist_startup_prog, self._dist_context)
 
-        reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank, self._dist_context,
+                dist_params_grads)
 
         self._apply_post_optimization_passes(dist_main_prog, dist_startup_prog,
                                              rank, dist_params_grads)
@@ -220,6 +226,8 @@ class AutoParallelizer:
             HAS_ALLGATHER.clear()
             _g_process_group_map.clear()
             _g_process_group_map[0] = ProcessGroup(0, [])
+            for process_mesh in dist_context._process_meshes:
+                _g_process_group_map[0].add_ranks(process_mesh.processes)
         return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, g_process_group_map
 
     def parallelize(self,

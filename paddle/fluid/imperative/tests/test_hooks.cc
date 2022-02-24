@@ -78,12 +78,12 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   auto* x_tensor = x->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_tensor = y->MutableVar()->GetMutable<framework::LoDTensor>();
 
-  x_tensor->Resize(framework::make_ddim(x_dims));
+  x_tensor->Resize(phi::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_x, place, src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(framework::make_ddim(y_dims));
+  y_tensor->Resize(phi::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_y, place, src_data.data(),
                sizeof(float) * src_data.size());
@@ -107,7 +107,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
       std::make_shared<std::function<void()>>([&]() { hook_value = 10; }));
 
   // 2. forward
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   ASSERT_EQ(x->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y->GradVarBase()->GradOpNum(), 0UL);
@@ -162,17 +162,17 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   auto* y_tensor = y->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* z_tensor = z->MutableVar()->GetMutable<framework::LoDTensor>();
 
-  x_tensor->Resize(framework::make_ddim(x_dims));
+  x_tensor->Resize(phi::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_x, place, src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(framework::make_ddim(y_dims));
+  y_tensor->Resize(phi::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_y, place, src_data.data(),
                sizeof(float) * src_data.size());
 
-  z_tensor->Resize(framework::make_ddim(z_dims));
+  z_tensor->Resize(phi::make_ddim(z_dims));
   auto* mutable_z = z_tensor->mutable_data<float>(place);
   memory::Copy(place, mutable_z, place, src_data.data(),
                sizeof(float) * src_data.size());
@@ -194,13 +194,13 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   NameVarBaseMap outs = {out_xy_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   var_pair z_pair = var_pair("Y", vb_vector(1, z));
   var_pair out_xz_pair = var_pair("Out", vb_vector(1, out_xz));
   ins = {x_pair, z_pair};
   outs = {out_xz_pair};
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   var_pair xy_pair = var_pair("X", vb_vector(1, out_xy));
   var_pair xz_pair = var_pair("Y", vb_vector(1, out_xz));
@@ -208,7 +208,8 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   ins = {xy_pair, xz_pair};
   outs = {out_pair};
   framework::AttributeMap add_attr_map;
-  tracer.TraceOp("elementwise_add", ins, outs, add_attr_map, place, true);
+  tracer.TraceOp<VarBase>("elementwise_add", ins, outs, add_attr_map, place,
+                          true);
 
   ASSERT_EQ(x->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y->GradVarBase()->GradOpNum(), 0UL);
@@ -264,5 +265,5 @@ TEST(TestHooks, TestGradVarLeafBackwardHookWithSortedGradAccmulated) {
 
 USE_OP(mul);
 USE_OP(mul_grad);
-USE_OP(elementwise_add);
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(elementwise_add_grad);

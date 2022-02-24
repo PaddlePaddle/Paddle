@@ -2,6 +2,15 @@ if (NOT WITH_INFRT)
     return()
 endif()
 
+option(INFRT_WITH_PHI  "Compile INFRT with PHI"    ON)
+
+#TODO(xiaowei) remove fluid
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
+
+if (INFRT_WITH_PHI)
+    add_definitions("-DINFRT_WITH_PHI")
+endif()
+
 # compile flags
 set(INFRT_FLAGS -Wno-comment)
 foreach(flag ${INFRT_FLAGS})
@@ -73,6 +82,7 @@ add_subdirectory(tensor)
 add_subdirectory(support)
 add_subdirectory(external_kernels)
 add_subdirectory(paddle)
+add_subdirectory(tests)
 
 
 # MLIR td file generations
@@ -83,13 +93,20 @@ set(infrt_mlir_incs
         tensor_shape_inc
         dense_tensor_inc
         pd_ops_inc
+        pd_extra_ops_inc
         rewrite_inc
         trt_ops_inc
         )
-message(STATUS "infrt srcs:\n${infrt_src}")
+if (INFRT_WITH_PHI)
+    set(phi_libs pten)
+    set(infrt_mlir_incs ${infrt_mlir_incs}
+        MLIRinfrt_phi_tensorIncGen
+        MLIRinfrt_phi_baseIncGen
+        )
+endif()
 
-cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
-cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} paddle_framework_proto)
-add_dependencies(infrt ${infrt_mlir_incs})
+cc_library(infrt SHARED SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto infrt_naive)
+cc_library(infrt_static SRCS ${infrt_src} DEPS glog boost ${mlir_libs} ${phi_libs} paddle_framework_proto)
+add_dependencies(infrt ${infrt_mlir_incs} mlir-headers)
 
 add_custom_target(test_infrt_exec DEPENDS ${INFRT_TEST_TARGETS})

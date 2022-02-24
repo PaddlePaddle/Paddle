@@ -33,7 +33,7 @@ framework::Tensor* CreateTensor(framework::Scope* scope,
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   if (shape.size() > 0) {
-    tensor->mutable_data<T>(framework::make_ddim(shape), place);
+    tensor->mutable_data<T>(phi::make_ddim(shape), place);
   }
   return tensor;
 }
@@ -45,8 +45,7 @@ void SetupRandomCPUTensor(framework::Tensor* tensor,
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
-  T* ptr = tensor->mutable_data<T>(framework::make_ddim(shape),
-                                   platform::CPUPlace());
+  T* ptr = tensor->mutable_data<T>(phi::make_ddim(shape), platform::CPUPlace());
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
   }

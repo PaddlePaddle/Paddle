@@ -16,10 +16,25 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename DeviceContext, typename T>
+void default_elementwise_sub(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y, framework::Tensor* z) {
+  int axis = ctx.Attr<int>("axis");
+  auto x_dims = x->dims();
+  auto y_dims = y->dims();
+  if (x_dims.size() >= y_dims.size()) {
+    ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          SubFunctor<T>(), z);
+  } else {
+    ElementwiseComputeEx<InverseSubFunctor<T>, DeviceContext, T>(
+        ctx, x, y, axis, InverseSubFunctor<T>(), z);
+  }
+}
 
 template <typename DeviceContext, typename T>
 void default_elementwise_div(const framework::ExecutionContext& ctx,
@@ -51,7 +66,10 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
     auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
     auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
     auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
-    pten::DivideKernel<T>(dev_ctx, *pt_x.get(), *pt_y.get(), axis, pt_z.get());
+    phi::DivideRawKernel<T>(
+        static_cast<const typename framework::ConvertToPtenContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *pt_x.get(), *pt_y.get(), axis, pt_z.get());
   }
 };
 
@@ -178,8 +196,9 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
+      return framework::OpKernelType(
+          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          tensor.layout());
     } else {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(), tensor.layout());

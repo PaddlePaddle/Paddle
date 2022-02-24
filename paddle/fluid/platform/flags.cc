@@ -433,8 +433,9 @@ PADDLE_DEFINE_EXPORTED_double(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 
 /**
  * Memory related FLAG
@@ -688,28 +689,16 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
- * Pt kernel related FLAG
- * Name: FLAGS_run_pten_kernel
- * Since Version: 2.3.0
- * Value Range: bool, default=false
- * Example: FLAGS_run_pten_kernel=true would use the pt kernel to compute in the
- * Op.
- * Note:
- */
-PADDLE_DEFINE_EXPORTED_bool(run_pten_kernel, true,
-                            "It controls whether to use pten kernel");
-
-/**
- * Pt kernel related FLAG
+ * KP kernel related FLAG
  * Name: FLAGS_run_kp_kernel
  * Since Version: 2.3.0
  * Value Range: bool, default=false
- * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in
- * the Op for XPU2.
+ * Example: FLAGS_run_kp_kernel=true would use the kp kernel to compute in the
+ * Op.
  * Note:
  */
-PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, true,
-                            "It controls whether to use kp kernel for xpu2");
+PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel, false,
+                            "It controls whether to run PaddlePaddle using KP");
 
 /**
  * Distributed related FLAG
@@ -772,3 +761,15 @@ DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file, false,
             "enable parser ins file , default false");
+
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: nccl_blocking_wait
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: nccl blocking wait.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
+#endif

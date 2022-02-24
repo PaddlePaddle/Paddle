@@ -24,13 +24,18 @@ void TestNNZ(const std::vector<T>& dense_data, const int correct_nnz,
              const int rows, const int cols) {
   paddle::platform::CUDADeviceContext* context =
       new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace());
+  context->SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPlace(), context->stream())
+          .get());
+  context->PartialInitWithAllocator();
   auto sparse =
       paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
                                          T>(*context);
 
   paddle::framework::Tensor dense, nnz_tensor;
-  auto dense_dims = paddle::framework::make_ddim({rows, cols});
-  auto nnz_dims = paddle::framework::make_ddim({dense_dims[0] + 1});
+  auto dense_dims = phi::make_ddim({rows, cols});
+  auto nnz_dims = phi::make_ddim({dense_dims[0] + 1});
   dense.mutable_data<T>(dense_dims, paddle::platform::CUDAPlace());
   paddle::framework::TensorFromVector<T>(dense_data, *context, &dense);
   int32_t* nnz_ptr =
@@ -61,6 +66,11 @@ void TestDenseToSparse(const std::vector<T>& correct_dense_data,
                        const std::string& mode) {
   paddle::platform::CUDADeviceContext* context =
       new paddle::platform::CUDADeviceContext(paddle::platform::CUDAPlace());
+  context->SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPlace(), context->stream())
+          .get());
+  context->PartialInitWithAllocator();
   // get sparse
   auto sparse =
       paddle::operators::math::GetSparse<paddle::platform::CUDADeviceContext,
@@ -69,7 +79,7 @@ void TestDenseToSparse(const std::vector<T>& correct_dense_data,
   // create tensor and copy vector to tensor
   paddle::framework::Tensor dense_tensor, rows_tensor, cols_tensor,
       values_tensor, actual_dense_tensor;
-  auto dense_dims = paddle::framework::make_ddim({rows, cols});
+  auto dense_dims = phi::make_ddim({rows, cols});
   T* dense_data =
       dense_tensor.mutable_data<T>(dense_dims, paddle::platform::CUDAPlace());
   T* actual_dense_data = actual_dense_tensor.mutable_data<T>(
@@ -77,8 +87,8 @@ void TestDenseToSparse(const std::vector<T>& correct_dense_data,
   paddle::framework::TensorFromVector<T>(correct_dense_data, *context,
                                          &dense_tensor);
 
-  auto nnz_dims = paddle::framework::make_ddim({correct_nnz});
-  auto crows_dims = paddle::framework::make_ddim({rows + 1});
+  auto nnz_dims = phi::make_ddim({correct_nnz});
+  auto crows_dims = phi::make_ddim({rows + 1});
   int64_t* rows_data = nullptr;
   if (mode == "COO") {
     rows_data = rows_tensor.mutable_data<int64_t>(

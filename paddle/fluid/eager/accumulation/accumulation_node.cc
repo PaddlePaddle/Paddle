@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
-#include "paddle/fluid/eager/accumulation/gradient_accumulation.h"
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/imperative/gradient_accumulator.h"
 
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -25,29 +25,23 @@
 
 #include "glog/logging.h"
 
-static void CopyOrAddTensor(egr::EagerTensor* tensor,
-                            const egr::EagerTensor& t) {
-  if (t.Var().IsInitialized()) {
-    const_cast<egr::EagerTensor*>(&t)->SyncToTensor();
-  }
+namespace egr {
+
+static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
+                            const paddle::experimental::Tensor& t) {
   if (!tensor->defined() || !tensor->initialized()) {
     // Simply copy tensor->impl
     *tensor = t;
   } else {
     // Accumulation
-    egr::TensorAdd(t, tensor);
+    paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
   }
 }
 
-namespace egr {
-
-void GradNodeAccumulation::RetainGrad(
-    const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook) {
-  retain_grad_hook_ = hook;
-}
-
-std::vector<std::vector<egr::EagerTensor>> GradNodeAccumulation::operator()(
-    const std::vector<std::vector<egr::EagerTensor>>& grads) {
+std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
+operator()(
+    const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
+  VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
@@ -59,17 +53,18 @@ std::vector<std::vector<egr::EagerTensor>> GradNodeAccumulation::operator()(
                      "However received: %d in slot %d .",
                      grads[0].size(), 0));
   // Apply Gradient Hooks
+  paddle::experimental::Tensor grad_out;
   if (GradientHooksRegistered()) {
-    std::vector<std::vector<egr::EagerTensor>> hooked_grads =
+    std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
         ApplyGradientHooks(grads);
-    // TODO(jiabin): It's little weird
-    CopyOrAddTensor(&accumulated_grad, hooked_grads[0][0]);
+    grad_out = hooked_grads[0][0];
   } else {
-    CopyOrAddTensor(&accumulated_grad, grads[0][0]);
+    grad_out = grads[0][0];
   }
 
-  if (retain_grad_hook_ != nullptr) {
-    retain_grad_hook_(accumulated_grad);
+  if (!weak_grad_.expired()) {
+    auto grad = weak_grad_.lock();
+    CopyOrAddTensor(grad.get(), grad_out);
   }
 
   // Apply Reduce Hooks
@@ -77,7 +72,17 @@ std::vector<std::vector<egr::EagerTensor>> GradNodeAccumulation::operator()(
     ApplyReduceHooks();
   }
 
-  return {{accumulated_grad}};
+  return {{grad_out}};
 }
 
+void GradNodeAccumulation::RegisterReduceHook(
+    const std::function<void(void)>& hook) {
+  reduce_hooks_.emplace_back(hook);
+}
+
+void GradNodeAccumulation::ApplyReduceHooks() {
+  for (auto& hook : reduce_hooks_) {
+    hook();
+  }
+}
 }  // namespace egr

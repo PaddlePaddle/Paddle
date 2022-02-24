@@ -19,10 +19,10 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and
@@ -53,6 +53,8 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
   bool HasInput(const std::string& name) const override;
 
   bool HasOutput(const std::string& name) const override;
+
+  bool HasAttr(const std::string& name) const override;
 
   bool HasInputs(const std::string& name) const override;
 
@@ -299,7 +301,7 @@ struct OpFuncNode {
   platform::DeviceContext* dev_ctx_;  // not owned
 
   // fit for pten kernel
-  pten::Kernel* pt_kernel_{nullptr};  // not owned
+  phi::Kernel* pt_kernel_{nullptr};  // not owned
 
   OpFuncType type_;
 };
@@ -319,7 +321,7 @@ class Instruction {
 
   OpKernelComputeFunc KernelFunc() const;
 
-  pten::Kernel* PtenKernel() const;
+  phi::Kernel* PtenKernel() const;
 
   OpFuncType KernelType() const;
 

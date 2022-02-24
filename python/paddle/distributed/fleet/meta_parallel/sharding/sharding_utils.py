@@ -57,14 +57,15 @@ class ShardingClipGrad:
 
     @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
-        params_and_grads = []
-
-        sum_square_fp16 = []
-        sum_square_fp32 = []
+        sum_square_fp32, sum_square_fp16 = [], []
+        unslice_params_fp32, unslice_params_fp16 = [], []
 
         for p, g in params_grads:
+            p_slice = True  # using for slice parameter in sharding stage3
             if g is None or getattr(p, 'need_clip', True) is False:
                 continue
+            if hasattr(p, "unslice"):
+                p_slice = False
 
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
@@ -74,9 +75,11 @@ class ShardingClipGrad:
             sum_square = layers.reduce_sum(square)
 
             if p.dtype == paddle.float16:
-                sum_square_fp16.append(sum_square)
+                if p_slice: sum_square_fp16.append(sum_square)
+                else: unslice_params_fp16.append(sum_square)
             elif p.dtype == paddle.float32:
-                sum_square_fp32.append(sum_square)
+                if p_slice: sum_square_fp32.append(sum_square)
+                else: unslice_params_fp32.append(sum_square)
 
         # global norm of non-distributed FP16 params_and_grads
         if len(sum_square_fp16) == 0:
@@ -87,11 +90,27 @@ class ShardingClipGrad:
             global_norm_fp16 = paddle.cast(
                 global_norm_fp16, dtype=paddle.float32)
 
+        # global norm of non-distributed FP16 params_and_grads for slice parameter
+        if len(unslice_params_fp16) == 0:
+            global_unslice_fp16 = paddle.to_tensor([0.], dtype=paddle.float32)
+        else:
+            global_unslice_fp16 = layers.concat(unslice_params_fp16)
+            global_unslice_fp16 = layers.reduce_sum(global_unslice_fp16)
+            global_unslice_fp16 = paddle.cast(
+                global_unslice_fp16, dtype=paddle.float32)
+
         # global norm of non-distributed FP32 params_and_grads
         global_norm_fp32 = layers.concat(sum_square_fp32) if len(
             sum_square_fp32) != 0 else paddle.to_tensor(
                 [0.], dtype=paddle.float32)
         global_norm_fp32 = layers.reduce_sum(global_norm_fp32)
+
+        # global norm of non-distributed FP32 params_and_grads for slice parameter
+        global_unslice_fp32 = layers.concat(unslice_params_fp32) if len(
+            unslice_params_fp32) != 0 else paddle.to_tensor(
+                [0.], dtype=paddle.float32)
+        global_unslice_fp32 = layers.reduce_sum(global_unslice_fp32)
+        global_unslice_var = global_unslice_fp16 + global_unslice_fp32
 
         global_norm_var = global_norm_fp16 + global_norm_fp32
 
@@ -100,6 +119,7 @@ class ShardingClipGrad:
         with device_guard(dev_id, "gpu"):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
+        global_norm_var += global_unslice_var
         global_norm_var = layers.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
@@ -111,18 +131,18 @@ class ShardingClipGrad:
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
         for p, g in params_grads:
-            if g is None:
+            if getattr(p, 'need_clip', True) is False or g is None:
                 continue
-            if getattr(p, 'need_clip', True) is False:
-                params_and_grads.append((p, g))
-                continue
+            origin_state = g.stop_gradient
+            g.stop_gradient = True
             if p.dtype == paddle.float16:
-                new_grad = layers.elementwise_mul(x=g, y=clip_var_fp16)
+                g.scale_(clip_var_fp16)
             else:
-                new_grad = layers.elementwise_mul(x=g, y=clip_var)
-            params_and_grads.append((p, new_grad))
+                g.scale_(clip_var)
+            g.stop_gradient = origin_state
+            p._reset_grad_inplace_version(True)
 
-        return params_and_grads
+        return params_grads
 
     def __getattr__(self, item):
         return getattr(self._clip, item)

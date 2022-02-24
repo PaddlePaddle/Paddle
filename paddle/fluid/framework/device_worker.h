@@ -38,17 +38,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 namespace paddle {
 namespace framework {
 class ProgramDesc;
 class Scope;
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -64,7 +61,7 @@ bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 class HeterWrapper;
 #endif
 
@@ -362,7 +359,7 @@ class DownpourWorkerOpt : public DownpourWorker {
   uint64_t async_tid_ = 0;
 };
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 class HeterCpuWorker : public HogwildWorker {
  public:
   HeterCpuWorker() {}

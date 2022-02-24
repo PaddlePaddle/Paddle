@@ -29,27 +29,61 @@
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
 
+#ifdef INFRT_WITH_PHI
+#include "paddle/infrt/backends/host/phi_allocator.h"
+#include "paddle/infrt/backends/host/phi_context.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/meta_tensor.h"
+#endif
+
 namespace infrt {
 namespace host_context {
 
+struct None {};
+
 struct MlirFunctionExecutable;
 
-using ValueVariantType = Variant<int16_t,
-                                 int32_t,
-                                 int64_t,
-                                 float,
-                                 double,
-                                 bool,
-                                 std::string,
-                                 tensor::TensorShape,
-                                 tensor::DenseHostTensor,
-                                 MlirFunctionExecutable*,
-                                 tensor::TensorMap,
-                                 std::vector<int16_t>,
-                                 std::vector<int32_t>,
-                                 std::vector<int64_t>,
-                                 std::vector<float>,
-                                 std::vector<double>>;
+using ValueVariantType =
+    Variant<None,
+            int16_t,
+            int32_t,
+            int64_t,
+            float,
+            double,
+            bool,
+            uint32_t,
+            uint64_t,
+            std::string,
+            tensor::TensorShape,
+            tensor::DenseHostTensor,
+            MlirFunctionExecutable*,
+            tensor::TensorMap,
+#ifdef INFRT_WITH_PHI
+            ::phi::MetaTensor,
+            ::phi::DenseTensor,
+            backends::CpuPhiAllocator,
+            backends::CpuPhiContext,
+            ::phi::CPUContext,
+            std::vector<phi::DenseTensor>,
+            paddle::experimental::ScalarBase<phi::DenseTensor>,
+            paddle::experimental::ScalarArrayBase<phi::DenseTensor>,
+            std::vector<phi::MetaTensor>,
+            phi::MetaConfig,
+            paddle::experimental::Backend,
+            paddle::experimental::DataLayout,
+            paddle::experimental::DataType,
+#endif
+            std::vector<int16_t>,
+            std::vector<int32_t>,
+            std::vector<int64_t>,
+            std::vector<float>,
+            std::vector<double>>;
 
 //! Copy content from \param from to \param to.
 void CopyTo(const Value& from, Value* to);
@@ -77,14 +111,35 @@ class Value : public common::Object {
   explicit Value(tensor::TensorShape&& x) : data(std::move(x)) {}
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
+#ifdef INFRT_WITH_PHI
+  explicit Value(backends::CpuPhiContext&& x) : data(std::move(x)) {}
+  explicit Value(::phi::CPUContext&& x) : data(std::move(x)) {}
+  explicit Value(::phi::DenseTensor&& x) : data(std::move(x)) {}
+  explicit Value(::phi::MetaTensor&& x) : data(std::move(x)) {}
+  explicit Value(backends::CpuPhiAllocator&& x) : data(std::move(x)) {}
+#endif
 
   template <typename T>
   const T& get() const {
+    CHECK(data.template is<T>()) << "typeid: " << data.index()
+                                 << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
+
   template <typename T>
   T& get() {
+    CHECK(data.template is<T>()) << "typeid: " << data.index()
+                                 << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
+  }
+
+  //! Get the value if assigned before or return a default value instead.
+  template <class T>
+  T& get_or_default() {
+    if (!data.template is<T>()) {
+      this->set(T{});
+    }
+    return get<T>();
   }
 
   template <typename T>
@@ -96,7 +151,14 @@ class Value : public common::Object {
 
   bool valid() const { return true; }
 
+  template <typename T>
+  bool is_type() const {
+    return data.template is<T>();
+  }
+
   const char* type_info() const override;
+
+  ValueVariantType::IndexT index() const { return data.index(); }
 
   friend void CopyTo(const Value& from, Value* to);
 
@@ -117,11 +179,16 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(float val);
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
+  explicit ValueRef(::phi::MetaTensor&& val);
+  explicit ValueRef(backends::CpuPhiContext&& x);
+  explicit ValueRef(::phi::CPUContext&& x);
+  explicit ValueRef(::phi::DenseTensor&& x);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;
   using common::Shared<Value>::operator->;
   using common::Shared<Value>::operator*;
+
   //! Get a readonly data.
   template <typename T>
   const T& get() const {

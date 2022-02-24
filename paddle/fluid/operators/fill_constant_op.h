@@ -19,10 +19,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -92,8 +93,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->Resize(shape);
-    } else if (out_var->IsType<framework::SelectedRows>()) {
-      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
+    } else if (out_var->IsType<phi::SelectedRows>()) {
+      tensor = out_var->GetMutable<phi::SelectedRows>()->mutable_value();
       tensor->Resize(shape);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -102,7 +103,6 @@ class FillConstantKernel : public framework::OpKernel<T> {
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(ctx.GetPlace());
     int actual_place = place_type;
 
     if (actual_place == -1) {
@@ -121,14 +121,18 @@ class FillConstantKernel : public framework::OpKernel<T> {
       VLOG(4) << "[CPU] FillConstantKernel"
               << ((data_type == framework::proto::VarType::BF16) ? "<bfloat16>"
                                                                  : "<T>");
-      tensor->mutable_data(platform::CPUPlace(), data_type);
-      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      tensor->mutable_data(platform::CPUPlace(),
+                           framework::TransToPtenDataType(data_type));
+      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      auto &dev_ctx = *pool.Get(platform::CPUPlace());
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
     } else if (actual_place == 1) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      tensor->mutable_data(ctx.GetPlace(), data_type);
-      math::SetConstant<platform::CUDADeviceContext, T> functor;
+      tensor->mutable_data(ctx.GetPlace(),
+                           framework::TransToPtenDataType(data_type));
+      phi::funcs::SetConstant<platform::CUDADeviceContext, T> functor;
+      auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
 #else
@@ -137,18 +141,23 @@ class FillConstantKernel : public framework::OpKernel<T> {
 #endif
     } else if (actual_place == 2) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      tensor->mutable_data(platform::CUDAPinnedPlace(), data_type);
-      math::SetConstant<platform::CPUDeviceContext, T> functor;
-      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
-              tensor, static_cast<T>(value));
+      tensor->mutable_data(platform::CUDAPinnedPlace(),
+                           framework::TransToPtenDataType(data_type));
+      phi::funcs::SetConstant<platform::CUDAPinnedDeviceContext, T> functor;
+      auto &dev_ctx = *pool.Get(platform::CUDAPinnedPlace());
+      functor(
+          reinterpret_cast<const platform::CUDAPinnedDeviceContext &>(dev_ctx),
+          tensor, static_cast<T>(value));
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU."));
 #endif
     } else if (actual_place == 3) {
 #ifdef PADDLE_WITH_XPU
-      tensor->mutable_data(ctx.GetPlace(), data_type);
-      math::SetConstant<platform::XPUDeviceContext, T> functor;
+      tensor->mutable_data(ctx.GetPlace(),
+                           framework::TransToPtenDataType(data_type));
+      phi::funcs::SetConstant<platform::XPUDeviceContext, T> functor;
+      auto &dev_ctx = *pool.Get(ctx.GetPlace());
       functor(reinterpret_cast<const platform::XPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
 #else

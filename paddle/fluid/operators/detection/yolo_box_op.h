@@ -13,8 +13,8 @@
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

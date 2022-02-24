@@ -56,8 +56,8 @@ TEST(bfloat16, lod_tensor_on_gpu) {
   framework::LoDTensor gpu_tensor;
   framework::LoDTensor dst_tensor;
 
-  bfloat16 *src_ptr = src_tensor.mutable_data<bfloat16>(
-      framework::make_ddim({2, 2}), CPUPlace());
+  bfloat16 *src_ptr =
+      src_tensor.mutable_data<bfloat16>(phi::make_ddim({2, 2}), CPUPlace());
 
   bfloat16 arr[4] = {bfloat16(1.0f), bfloat16(0.5f), bfloat16(0.33333f),
                      bfloat16(0.0f)};
@@ -66,6 +66,10 @@ TEST(bfloat16, lod_tensor_on_gpu) {
   // CPU LoDTensor to GPU LoDTensor
   CUDAPlace gpu_place(0);
   CUDADeviceContext gpu_ctx(gpu_place);
+  gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(gpu_place, gpu_ctx.stream())
+                           .get());
+  gpu_ctx.PartialInitWithAllocator();
   framework::TensorCopy(src_tensor, gpu_place, gpu_ctx, &gpu_tensor);
 
   // GPU LoDTensor to CPU LoDTensor

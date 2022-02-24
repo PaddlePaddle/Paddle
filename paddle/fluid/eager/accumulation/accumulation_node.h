@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 
 namespace egr {
@@ -21,23 +22,39 @@ namespace egr {
 class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  GradNodeAccumulation() : GradNodeBase(1, 1) { SetDefaultGradInOutMeta(); }
+  explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {
+    weak_grad_ = meta->WeakGrad();
+    SetDefaultGradInOutMeta();
+  }
 
   ~GradNodeAccumulation() override = default;
 
   // Functor: perform backward computations
-  virtual std::vector<std::vector<egr::EagerTensor>> operator()(
-      const std::vector<std::vector<egr::EagerTensor>>& grads) override;
+  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
+      override;
 
-  void RetainGrad(
-      const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook);
+  std::string name() { return "GradNodeAccumulation"; }
 
-  egr::EagerTensor* Grad() { return &accumulated_grad; }
+  /**
+   * Register ReduceHook
+   * **/
+  void RegisterReduceHook(const std::function<void(void)>& hook);
+
+  /**
+   * Apply ReduceHook here
+   * **/
+  inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
+  void ApplyReduceHooks();
 
  private:
-  egr::EagerTensor accumulated_grad;
+  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
 
-  std::function<egr::EagerTensor(const egr::EagerTensor&)> retain_grad_hook_;
+  std::function<paddle::experimental::Tensor(
+      const paddle::experimental::Tensor&)>
+      retain_grad_hook_;
+
+  std::vector<std::function<void(void)>> reduce_hooks_;
 };
 
 }  // namespace egr

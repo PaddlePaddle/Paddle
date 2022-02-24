@@ -82,7 +82,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
         for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
           reduced_dout_dims.push_back(dout->dims()[i]);
         }
-        reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
+        reduced_dout.Resize(phi::make_ddim(reduced_dout_dims));
         reduced_dout.mutable_data<T>(ctx.GetPlace());
         const auto& runner =
             NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
@@ -126,7 +126,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
         for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
           reduced_dout_dims.push_back(dout->dims()[i]);
         }
-        reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
+        reduced_dout.Resize(phi::make_ddim(reduced_dout_dims));
         reduced_dout.mutable_data<T>(ctx.GetPlace());
         const auto& runner =
             NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},

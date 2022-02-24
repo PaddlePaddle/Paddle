@@ -33,7 +33,7 @@ class GatherNdOpCUDAKernel : public framework::OpKernel<T> {
 
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -71,7 +71,7 @@ class GatherNdGradOpCUDAKernel : public framework::OpKernel<T> {
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
 
-    const auto &index_type = index->type();
+    const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
 
@@ -103,6 +103,7 @@ REGISTER_OP_CUDA_KERNEL(gather_nd, ops::GatherNdOpCUDAKernel<CUDA, float>,
                         ops::GatherNdOpCUDAKernel<CUDA, double>,
                         ops::GatherNdOpCUDAKernel<CUDA, int64_t>,
                         ops::GatherNdOpCUDAKernel<CUDA, int>,
+                        ops::GatherNdOpCUDAKernel<CUDA, int16_t>,
                         ops::GatherNdOpCUDAKernel<CUDA, bool>,
                         ops::GatherNdOpCUDAKernel<CUDA, plat::float16>);
 

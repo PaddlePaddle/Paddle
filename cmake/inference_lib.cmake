@@ -181,6 +181,13 @@ IF(WITH_XPU)
         DSTS ${dst_dir} ${dst_dir})
 ENDIF()
 
+IF(WITH_IPU)
+    set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/ipu")
+    copy(inference_lib_dist
+        SRCS ${CMAKE_BINARY_DIR}/paddle/fluid/platform/device/ipu/libpaddle_ipu.so
+        DSTS ${dst_dir})
+ENDIF()
+
 # CMakeCache Info
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
@@ -189,6 +196,7 @@ copy(inference_lib_dist
 copy_part_of_thrid_party(inference_lib_dist ${PADDLE_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
+
 if(WIN32)
     if(WITH_STATIC_LIB)
         set(paddle_inference_lib $<TARGET_FILE_DIR:paddle_inference>/libpaddle_inference.lib
@@ -218,23 +226,17 @@ include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 
 # copy api headers for pten & custom op
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/ext/*.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/ext/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/ext/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/include/*.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/include/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/include/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/include/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/api/all.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/api/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/api/all.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/pten/common/*.h
-              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/bfloat16.h
-              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
-              ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
-              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
-              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/
-              ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/pten/common/)
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/phi/common/*.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
@@ -310,7 +312,7 @@ copy(fluid_lib_dist
         )
 
 set(module "platform")
-set(platform_lib_deps profiler_proto error_codes_proto)
+set(platform_lib_deps profiler_proto errors)
 if(WITH_GPU)
   set(platform_lib_deps ${platform_lib_deps} external_error_proto)
 endif(WITH_GPU)
@@ -323,7 +325,7 @@ copy(fluid_lib_dist
 
 set(module "string")
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
+        SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/${module}/*.h ${PADDLE_SOURCE_DIR}/paddle/utils/${module}/tinyformat/*.h 
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
         )
 
