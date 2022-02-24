@@ -268,7 +268,7 @@ if avx_supported():
         from .core_avx import _get_eager_deletion_vars
         from .core_avx import _set_fuse_parameter_group_size
         from .core_avx import _set_fuse_parameter_memory_size
-        from .core_noavx import _is_build_with_eager
+        from .core_avx import _is_build_with_eager
         if _is_build_with_eager():
             from .core_avx import _is_dygraph_debug_enabled
             from .core_avx import _dygraph_debug_level
