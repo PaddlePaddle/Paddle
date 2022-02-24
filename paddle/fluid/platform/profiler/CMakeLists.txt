@@ -7,7 +7,6 @@ cc_test(test_event_node SRCS test_event_node.cc DEPS event_node chrometracinglog
 add_subdirectory(dump)
 cc_library(event_python SRCS event_python.cc DEPS chrometracinglogger serialization_logger)
 cc_library(cpu_utilization SRCS cpu_utilization.cc DEPS cpu_info os_info enforce glog)
-cc_test(test_cpu_utilization SRCS test_cpu_utilization.cc DEPS cpu_utilization)
 cc_test(test_extra_info SRCS test_extra_info.cc DEPS profiler_utils)
 cc_library(new_profiler SRCS profiler.cc DEPS host_tracer cuda_tracer profiler_utils cpu_utilization)
 cc_test(new_profiler_test SRCS profiler_test.cc DEPS new_profiler event_node event_python)
