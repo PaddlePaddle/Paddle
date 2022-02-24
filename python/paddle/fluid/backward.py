@@ -620,7 +620,8 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
                 # the reason should be: arg can be input of another grad op
                 # and the op is a not-to-remove op
                 to_insert.append((_create_op_desc_(
-                    "fill_any_like", {"X": [x_in]}, {"Out": [arg]}, {'value': 0, "dtype": core.VarDesc.VarType.FP32}), idx))
+                    "fill_any_like", {"X": [x_in]}, {"Out": [arg]},
+                    {'value': 0, "dtype": core.VarDesc.VarType.FP32}), idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 
