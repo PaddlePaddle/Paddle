@@ -32,15 +32,36 @@ struct Dims4D {
   HOSTDEVICE const int& operator[](int i) const { return dims[i]; }
 };
 
-template <typename Dim>
 inline HOSTDEVICE bool Check(const int& x,
-                             const int& y,
-                             const int& z,
-                             const Dim& dims) {
-  if (x >= 0 && x < dims[3] && y >= 0 && y < dims[2] && z >= 0 && z < dims[1]) {
-    return true;
-  }
-  return false;
+                             const int& kx,
+                             const int& pad,
+                             const int& stride,
+                             const int dilation,
+                             const int kdim,
+                             const int xdim) {
+  const int lower = x - dilation * kx + pad;
+  const int uper = x + (kdim - kx - 1) * dilation - pad;
+  return (lower >= 0 && lower % stride == 0 && uper < xdim);
+}
+
+inline HOSTDEVICE bool Check(const Dims4D& dims,
+                             const Dims4D& kernel_dims,
+                             const Dims4D& paddings,
+                             const Dims4D& dilations,
+                             const Dims4D& strides,
+                             const int x,
+                             const int y,
+                             const int z,
+                             const int kx,
+                             const int ky,
+                             const int kz) {
+  bool x_valid = Check(
+      x, kx, paddings[3], strides[3], dilations[3], kernel_dims[3], dims[3]);
+  bool y_valid = Check(
+      y, ky, paddings[2], strides[2], dilations[2], kernel_dims[2], dims[2]);
+  bool z_valid = Check(
+      z, kz, paddings[1], strides[1], dilations[1], kernel_dims[1], dims[1]);
+  return (x_valid && y_valid && z_valid);
 }
 
 template <typename Dim>

@@ -48,6 +48,14 @@ void ProductRuleBook(const Context& dev_ctx,
 
   int rulebook_len = 0;
   // calc the rulebook_len
+  const auto& x_dims = x.dims();
+  const Dims4D c_x_dims(x_dims[0], x_dims[3], x_dims[2], x_dims[1]);
+  const Dims4D c_kernel_dims(1, kernel_dims[2], kernel_dims[1], kernel_dims[0]);
+  const Dims4D c_out_dims(out_dims[0], out_dims[3], out_dims[2], out_dims[1]);
+  const Dims4D c_paddings(1, paddings[2], paddings[1], paddings[0]);
+  const Dims4D c_strides(1, strides[2], strides[1], strides[0]);
+  const Dims4D c_dilations(1, dilations[2], dilations[1], dilations[0]);
+
   auto f_calc_rulebook = [&](int* rulebook_ptr) {
     int kernel_index = 0, rulebook_index = 0;
     for (int kz = 0; kz < kernel_dims[0]; kz++) {
@@ -61,7 +69,17 @@ void ProductRuleBook(const Context& dev_ctx,
             int out_z = (in_z + paddings[0] - kz * dilations[0]) / strides[0];
             int out_y = (in_y + paddings[1] - ky * dilations[1]) / strides[1];
             int out_x = (in_x + paddings[2] - kx * dilations[2]) / strides[2];
-            if (Check<DDim>(out_x, out_y, out_z, out_dims)) {
+            if (Check(c_x_dims,
+                      c_kernel_dims,
+                      c_paddings,
+                      c_dilations,
+                      c_strides,
+                      in_x,
+                      in_y,
+                      in_z,
+                      kx,
+                      ky,
+                      kz)) {
               if (rulebook_ptr == nullptr) {
                 counter_ptr[kernel_index] += 1;
                 ++rulebook_len;

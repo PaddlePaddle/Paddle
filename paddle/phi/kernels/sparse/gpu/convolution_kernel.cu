@@ -68,6 +68,7 @@ __global__ void UpdateIndexKernel(const int* unique_keys,
 }
 
 __global__ void ProductRuleBookKernel(const int* x_indices,
+                                      const Dims4D x_dims,
                                       const Dims4D kernel_dims,
                                       const Dims4D out_dims,
                                       const int64_t non_zero_num,
@@ -94,11 +95,21 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
           int in_z = x_indices[i + non_zero_num];
           int in_y = x_indices[i + 2 * non_zero_num];
           int in_x = x_indices[i + 3 * non_zero_num];
-          int out_z = (in_z + paddings[1] - kz * dilations[1]) / strides[1];
-          int out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
-          int out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
           int in_i = -1, out_index = -1;
-          if (Check<Dims4D>(out_x, out_y, out_z, out_dims)) {
+          if (Check(x_dims,
+                    kernel_dims,
+                    paddings,
+                    dilations,
+                    strides,
+                    in_x,
+                    in_y,
+                    in_z,
+                    kx,
+                    ky,
+                    kz)) {
+            int out_z = (in_z + paddings[1] - kz * dilations[1]) / strides[1];
+            int out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
+            int out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             in_i = i;
             out_index =
                 PointToIndex<Dims4D>(batch, out_x, out_y, out_z, out_dims);
@@ -203,6 +214,8 @@ int ProductRuleBook(const Context& dev_ctx,
   rulebook->ResizeAndAllocate({2 * kernel_size * non_zero_num});
   int* rulebook_ptr = rulebook->mutable_data<int>(place);
 
+  const auto x_dims = x.dims();
+  Dims4D d_x_dims(x_dims[0], x_dims[3], x_dims[2], x_dims[1]);
   Dims4D d_kernel_dims(1, kernel_dims[2], kernel_dims[1], kernel_dims[0]);
   Dims4D d_out_dims(out_dims[0], out_dims[3], out_dims[2], out_dims[1]);
   Dims4D d_paddings(1, paddings[2], paddings[1], paddings[0]);
@@ -219,6 +232,7 @@ int ProductRuleBook(const Context& dev_ctx,
                           config.thread_per_block.x,
                           kernel_size * sizeof(int),
                           dev_ctx.stream()>>>(indices_ptr,
+                                              d_x_dims,
                                               d_kernel_dims,
                                               d_out_dims,
                                               non_zero_num,
