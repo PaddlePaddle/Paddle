@@ -41,7 +41,7 @@ namespace trt {
  *     %m = "trt.Convolution"(%a)...
  *     %n = "trt.Convolution"(%m)...
  *     %s = "trt.Convolution"(%a)...
- *     "trt.return" %n, %s
+ *     "pd.return" %n, %s
  *   } ...
  *   "pd.fetch" %d, %f
  * }
@@ -52,7 +52,7 @@ struct trtOpConverterPass
   void getDependentDialects(mlir::DialectRegistry &registry) const override {
     registry.insert<TensorRTDialect>();
   }
-  ::llvm::StringRef getName() const override { return "trtOpTellerPass"; }
+  ::llvm::StringRef getName() const override { return "trtOpConverterPass"; }
   void runOnOperation() final;
 };
 }  // namespace trt

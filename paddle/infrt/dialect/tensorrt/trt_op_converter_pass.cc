@@ -11,8 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <iostream>
-
 #include "mlir/IR/Builders.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "paddle/infrt/dialect/infrt_base.h"
@@ -42,7 +40,6 @@ void trtOpConverterPass::runOnOperation() {
   // the set of patterns that will lower the TensorRT operations.
   RewritePatternSet patterns(&getContext());
   populateWithGenerated(patterns);
-  // patterns.add<PD2TRT_MatmulLower>(&getContext());
 
   // With the target and rewrite patterns defined, we can now attempt the
   // conversion. The conversion will signal failure if any of our `illegal`
