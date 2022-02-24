@@ -101,20 +101,20 @@ class IndexSampleGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  // void InferShape(framework::InferShapeContext* ctx) const override {
-  //   PADDLE_ENFORCE_EQ(
-  //       ctx->HasInput("Index"), true,
-  //       platform::errors::InvalidArgument("Input(Index) should be not
-  //       null."));
-  //   PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-  //                     platform::errors::InvalidArgument(
-  //                         "Input(Out@GRAD) should be not null."));
-  //   PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-  //                     platform::errors::InvalidArgument(
-  //                         "Output(X@GRAD) should be not null."));
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Index"), true,
+        platform::errors::InvalidArgument("Input(Index) should be not
+        null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) should be not null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      platform::errors::InvalidArgument(
+                          "Output(X@GRAD) should be not null."));
 
-  //   ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  // }
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
