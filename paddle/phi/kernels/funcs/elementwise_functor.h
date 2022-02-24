@@ -66,6 +66,11 @@ struct InverseMultiplyFunctor<bool> {
   }
 };
 
+template <typename T>
+struct IsZeroFunctor {
+  HOSTDEVICE bool operator()(T x) const { return x == static_cast<T>(0); }
+};
+
 // Divide
 #define DIV_ERROR_INFO                                             \
   "InvalidArgumentError: Integer division by zero encountered in " \

@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/cumprod_op.h"
+#include <cstdint>
+#include <type_traits>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -87,16 +92,3 @@ REGISTER_OPERATOR(cumprod, ops::CumprodOp, ops::CumprodOpMaker,
                   ops::CumprodGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(cumprod_grad, ops::CumprodGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    cumprod, ops::CumprodOpCPUKernel<float>, ops::CumprodOpCPUKernel<double>,
-    ops::CumprodOpCPUKernel<int>, ops::CumprodOpCPUKernel<int64_t>,
-    ops::CumprodOpCPUKernel<paddle::platform::complex<float>>,
-    ops::CumprodOpCPUKernel<paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    cumprod_grad, ops::CumprodGradOpCPUKernel<float>,
-    ops::CumprodGradOpCPUKernel<double>, ops::CumprodGradOpCPUKernel<int>,
-    ops::CumprodGradOpCPUKernel<int64_t>,
-    ops::CumprodGradOpCPUKernel<paddle::platform::complex<float>>,
-    ops::CumprodGradOpCPUKernel<paddle::platform::complex<double>>);

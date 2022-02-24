@@ -19,6 +19,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/enforce.h"
+
 namespace paddle {
 namespace experimental {
 
@@ -105,11 +107,13 @@ class ScalarBase {
   // The Tensor must have one dim
   ScalarBase(const T& tensor) : dtype_(tensor.dtype()) {  // NOLINT
     is_from_tensor_ = true;
-    PD_CHECK(
-        tensor.numel() == 1,
-        "The Scalar only supports Tensor with 1 element, but now Tensor has `",
-        tensor.numel(),
-        "` element.");
+    PADDLE_ENFORCE_EQ(tensor.numel(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The Scalar only supports Tensor with 1 element, but "
+                          "now Tensor has `%d` elements",
+                          tensor.numel()));
+
     switch (dtype_) {
       case DataType::FLOAT32:
         data_.f32 = tensor.template data<float>()[0];
@@ -156,6 +160,10 @@ class ScalarBase {
   ScalarBase(const ScalarBase<OtherT>& other) {
     CopyScalar(other, this);
   }
+
+  // NOTE(xiongkun): some op need to judge the dtype of the Scalar, we expose a
+  // interface.
+  bool is_dype(DataType d) const { return d == dtype_; }
 
   template <typename RT>
   inline RT to() const {

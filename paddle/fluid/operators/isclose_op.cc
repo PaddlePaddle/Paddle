@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/isclose_op.h"
 #include <cmath>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
@@ -22,45 +21,6 @@
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct GetTensorValue<platform::CPUDeviceContext, T> {
-  T operator()(const platform::CPUDeviceContext& dev_ctx,
-               const framework::Tensor& tensor) const {
-    return *(tensor.data<T>());
-  }
-};
-
-template <typename T>
-struct IscloseFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& ctx,
-                  const framework::Tensor& in, const framework::Tensor& other,
-                  const double rtol, const double atol, bool equal_nan,
-                  framework::Tensor* output) {
-    auto* in_a = in.data<T>();
-    auto* in_b = other.data<T>();
-    auto* out_data = output->mutable_data<bool>(ctx.GetPlace());
-    auto num = in.numel();
-    // *out_data = true;
-    for (int i = 0; i < num; i++) {
-      out_data[i] = true;
-    }
-    for (int i = 0; i < num; i++) {
-      const T a = in_a[i], b = in_b[i];
-      bool val;
-      if (std::isnan(a) || std::isnan(b)) {
-        val = equal_nan && std::isnan(a) == std::isnan(b);
-      } else {
-        T left = (a > b ? a - b : b - a);
-        T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-        T diff = (left > right ? left - right : right - left);
-        val = a == b || left <= right || diff <= 1e-15;
-      }
-      // *out_data &= val;
-      out_data[i] = val;
-    }
-  }
-};
 
 class IscloseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -161,5 +121,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::IscloseOpVarTypeInference);
-REGISTER_OP_CPU_KERNEL(isclose, ops::IscloseKernel<CPU, float>,
-                       ops::IscloseKernel<CPU, double>);
