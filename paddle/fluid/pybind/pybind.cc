@@ -214,6 +214,14 @@ bool IsCompiledWithAscend() {
 #endif
 }
 
+bool IsBuildWithEager() {
+#ifndef PADDLE_ON_INFERENCE
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
   return false;
@@ -2612,6 +2620,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_variable_tensor", framework::GetVariableTensor);
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
+
+  m.def("_is_build_with_eager", IsBuildWithEager);
 
   BindProgramDesc(&m);
   BindBlockDesc(&m);
