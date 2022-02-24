@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
-PT_REGISTER_KERNEL(matmul,
+PD_REGISTER_KERNEL(matmul,
                    GPU,
                    ALL_LAYOUT,
                    phi::MatmulKernel,

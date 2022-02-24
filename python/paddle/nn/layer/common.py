@@ -15,10 +15,10 @@
 # TODO: define the common classes to build a neural network
 import paddle
 from ...fluid.dygraph import Flatten  # noqa: F401
-from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 from paddle.nn import Layer
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -1456,7 +1456,7 @@ class Embedding(Layer):
             dtype=self._dtype,
             is_bias=False)
 
-        if in_dygraph_mode() and padding_idx != -1:
+        if in_dynamic_mode() and padding_idx != -1:
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
@@ -1554,7 +1554,7 @@ class Unfold(Layer):
 
 
 class Fold(Layer):
-    """
+    r"""
 
     This Op is used to combines an array of sliding local blocks into a large containing
     tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 
