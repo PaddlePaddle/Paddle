@@ -265,8 +265,8 @@ void CrossInferMeta(const MetaTensor& x,
                           x_dim[dim]));
   }
   out->set_dims(x_dim);
-  out->set_dtype(x.dtype);
-  out->set_layout(x.layout);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
   out->share_lod(x);
 }
 
