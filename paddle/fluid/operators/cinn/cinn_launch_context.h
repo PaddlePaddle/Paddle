@@ -148,6 +148,9 @@ class CinnLaunchContext {
   std::unordered_set<std::string> internal_var_names_;
   // the names of the cinn arguments used in compiled executable program
   std::unordered_set<std::string> cinn_argument_names_;
+  // TODO(CtfGo): remove this list after fixing batch_norm bug
+  // due to duplicate association in the same variable.
+  std::vector<std::string> initialized_beforehand_vars_;
   // the variable scope compiled from cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
 
@@ -157,8 +160,6 @@ class CinnLaunchContext {
   std::unique_ptr<framework::ParallelExecutor> parallel_executor_;
   // the name list of skip_eager_vars in runtime
   std::vector<std::string> skip_eager_vars_;
-
-  std::vector<std::string> initialized_beforehand_vars_;
 
   // because a cinn_pod_value_t does not own a cinn_buffer_t object,
   // an extra stroage is necessary to keep those objects and they can

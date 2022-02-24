@@ -396,9 +396,6 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
     auto dim = framework::DDim(buffer->dims, buffer->dimensions);
     var->GetMutable<LoDTensor>()->Resize(dim);
     var->GetMutable<LoDTensor>()->mutable_data<float>(place);
-    LOG(WARNING) << string::Sprintf(
-        "Variable(%s) is initialized beforehand with dims[%s]", var_name,
-        dim.to_str());
   }
   return parallel_executor_.get();
 }
