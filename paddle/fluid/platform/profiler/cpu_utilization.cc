@@ -126,12 +126,11 @@ float CpuUtilization::GetCpuUtilization() {
   cpu_utilization = busy_time / (busy_time + idle_time);
 
 #elif defined(__linux__)
-  NonIdle =
-      user + nice + system + irq + softirq + steal float busy_time =
-          (system_tms_end_.tms_utime - system_tms_start_.tms_utime) +
-          (system_tms_end_.tms_stime - system_tms_start_.tms_stime) +
-          （nice_time_end_ - nice_time_start_） + (irq_end_ - irq_start_) +
-          (softirq_end_ - softirq_start_) + (steal_end_ - steal_start_);
+  float busy_time = (system_tms_end_.tms_utime - system_tms_start_.tms_utime) +
+                    (system_tms_end_.tms_stime - system_tms_start_.tms_stime) +
+                    (nice_time_end_ - nice_time_start_) +
+                    (irq_end_ - irq_start_) + (softirq_end_ - softirq_start_) +
+                    (steal_end_ - steal_start_);
   float idle_time = (idle_end_ - idle_start_) + (iowait_end_ - iowait_start_);
   cpu_utilization = busy_time / (busy_time + idle_time);
 #else
