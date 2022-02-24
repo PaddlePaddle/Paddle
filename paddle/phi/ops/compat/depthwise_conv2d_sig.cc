@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature DepthwiseConv2dOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -67,11 +67,11 @@ KernelSignature DepthwiseConv2dDoubleGradOpArgumentMapping(
                          {"DDOutput", "DInput", "DFilter"});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(depthwise_conv2d,
-                           pten::DepthwiseConv2dOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(depthwise_conv2d_grad,
-                           pten::DepthwiseConv2dGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(depthwise_conv2d_grad_grad,
-                           pten::DepthwiseConv2dDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(depthwise_conv2d,
+                           phi::DepthwiseConv2dOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(depthwise_conv2d_grad,
+                           phi::DepthwiseConv2dGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(depthwise_conv2d_grad_grad,
+                           phi::DepthwiseConv2dDoubleGradOpArgumentMapping);

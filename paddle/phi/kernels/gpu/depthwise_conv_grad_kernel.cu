@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/math/depthwise_conv.h"
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/kernel_registry.h"
-#include "paddle/pten/kernels/cpu/conv_util.h"
-#include "paddle/pten/kernels/funcs/batch_norm_utils.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DepthwiseConvGradKernel(const Context& dev_ctx,
@@ -51,17 +51,16 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   auto in_dims = input.dims();
   auto filter_dims = filter.dims();
 
-  framework::DDim in_data_dims;
+  DDim in_data_dims;
   const paddle::framework::DataLayout data_layout =
       paddle::framework::StringToDataLayout(data_format);
   if (data_layout != paddle::framework::DataLayout::kNHWC) {
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
-    in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
   }
-  framework::DDim filter_data_dims =
-      framework::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+  DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -71,7 +70,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
       paddings.erase(paddings.begin() + i + 1);
     }
   }
-  pten::funcs::SetConstant<Context, T> set_zero;
+  phi::funcs::SetConstant<Context, T> set_zero;
 
   if (input_grad) {
     input_grad->mutable_data<T>(dev_ctx.GetPlace());
@@ -133,11 +132,11 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_KERNEL(depthwise_conv2d_grad,
+PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::DepthwiseConvGradKernel,
+                   phi::DepthwiseConvGradKernel,
                    float,
                    double) {}

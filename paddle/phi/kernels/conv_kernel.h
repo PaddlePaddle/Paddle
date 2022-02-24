@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ConvKernel(const Context& dev_ctx,
@@ -48,4 +48,4 @@ void Conv3DKernel(const Context& dev_ctx,
                   bool exhaustive_search,
                   DenseTensor* out);
 
-}  // namespace pten
+}  // namespace phi

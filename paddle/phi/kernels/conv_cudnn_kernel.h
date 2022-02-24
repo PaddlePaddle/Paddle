@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_CUDA
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ConvCudnnKernel(const Context& dev_ctx,
@@ -34,6 +34,6 @@ void ConvCudnnKernel(const Context& dev_ctx,
                      bool exhaustive_search,
                      DenseTensor* out);
 
-}  // namespace pten
+}  // namespace phi
 
 #endif

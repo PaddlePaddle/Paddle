@@ -12,14 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
-KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (paddle::any_cast<bool>(ctx.Attr("use_cudnn")) &&
-      (ctx.GetPlace().GetType() == pten::AllocationType::GPU)) {
-    return KernelSignature("conv3d_cudnn",
+      (ctx.GetPlace().GetType() == phi::AllocationType::GPU)) {
+    return KernelSignature("conv2d_cudnn",
+                           {"Input", "Filter"},
+                           {"strides",
+                            "paddings",
+                            "padding_algorithm",
+                            "groups",
+                            "dilations",
+                            "data_format",
+                            "use_addto",
+                            "workspace_size_MB",
+                            "exhaustive_search"},
+                           {"Output"});
+  } else {
+    return KernelSignature("conv2d",
                            {"Input", "Filter"},
                            {"strides",
                             "paddings",
@@ -32,23 +45,11 @@ KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
                             "exhaustive_search"},
                            {"Output"});
   }
-  return KernelSignature("conv3d",
-                         {"Input", "Filter"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "groups",
-                          "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search"},
-                         {"Output"});
 }
 
-KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (paddle::any_cast<bool>(ctx.Attr("use_cudnn")) &&
-      (ctx.GetPlace().GetType() == pten::AllocationType::GPU)) {
+      (ctx.GetPlace().GetType() == phi::AllocationType::GPU)) {
     return KernelSignature("conv2d_cudnn_grad",
                            {GradVarName("Output"), "Input", "Filter"},
                            {"strides",
@@ -77,12 +78,12 @@ KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {GradVarName("Input"), GradVarName("Filter")});
 }
 
-KernelSignature Conv3dDoubleGradOpArgumentMapping(
+KernelSignature Conv2dDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (paddle::any_cast<bool>(ctx.Attr("use_cudnn")) &&
-      (ctx.GetPlace().GetType() == pten::AllocationType::GPU)) {
+      (ctx.GetPlace().GetType() == phi::AllocationType::GPU)) {
     return KernelSignature(
-        "conv3d_cudnn_grad_grad",
+        "conv2d_cudnn_grad_grad",
         {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
         {"strides",
          "paddings",
@@ -96,7 +97,7 @@ KernelSignature Conv3dDoubleGradOpArgumentMapping(
         {"DDOutput", "DInput", "DFilter"});
   } else {
     return KernelSignature(
-        "conv3d_grad_grad",
+        "conv2d_grad_grad",
         {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
         {"strides",
          "paddings",
@@ -111,9 +112,9 @@ KernelSignature Conv3dDoubleGradOpArgumentMapping(
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(conv3d, pten::Conv3dOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(conv3d_grad, pten::Conv3dGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(conv3d_grad_grad,
-                           pten::Conv3dDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(conv2d, phi::Conv2dOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(conv2d_grad, phi::Conv2dGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(conv2d_grad_grad,
+                           phi::Conv2dDoubleGradOpArgumentMapping);

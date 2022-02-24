@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/conv_grad_kernel.h"
-#include "paddle/pten/kernels/impl/conv_grad_kernel_impl.h"
+#include "paddle/phi/kernels/conv_grad_kernel.h"
+#include "paddle/phi/kernels/impl/conv_grad_kernel_impl.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DepthwiseConvGradKernel(const Context& dev_ctx,
@@ -87,17 +87,17 @@ void Conv3DGradKernel(const Context& dev_ctx,
                     filter_grad);
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_KERNEL(
-    conv2d_grad, CPU, ALL_LAYOUT, pten::ConvGradKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    conv2d_grad, CPU, ALL_LAYOUT, phi::ConvGradKernel, float, double) {}
 
-PT_REGISTER_KERNEL(depthwise_conv2d_grad,
+PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    CPU,
                    ALL_LAYOUT,
-                   pten::DepthwiseConvGradKernel,
+                   phi::DepthwiseConvGradKernel,
                    float,
                    double) {}
 
-PT_REGISTER_KERNEL(
-    conv3d_grad, CPU, ALL_LAYOUT, pten::Conv3DGradKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    conv3d_grad, CPU, ALL_LAYOUT, phi::Conv3DGradKernel, float, double) {}

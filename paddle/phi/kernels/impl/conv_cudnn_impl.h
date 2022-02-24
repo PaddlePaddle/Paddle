@@ -63,7 +63,7 @@ static inline bool IsVoltaOrLater(const phi::GPUContext& dev_ctx) {
 //   return CUDNN_TENSOR_NCHW;
 // }
 
-static inline void GetNCDHW(const paddle::framework::DDim& dims,
+static inline void GetNCDHW(const DDim& dims,
                             const phi::DataLayout& layout,
                             int* N,
                             int* C,

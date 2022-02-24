@@ -22,6 +22,7 @@
 #include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -68,12 +69,10 @@ void ConvKernel(const Context& dev_ctx,
   auto trans_in_dims = transformed_input.dims();
   auto filter_dims = filter.dims();
 
-  framework::DDim in_data_dims =
-      framework::slice_ddim(trans_in_dims, 2, trans_in_dims.size());
-  framework::DDim filter_data_dims =
-      framework::slice_ddim(filter_dims, 2, filter_dims.size());
+  DDim in_data_dims = slice_ddim(trans_in_dims, 2, trans_in_dims.size());
+  DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
 
-  std::vector<int> ksize = paddle::framework::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -81,13 +80,11 @@ void ConvKernel(const Context& dev_ctx,
 
   // filter_shape_vec:
   // {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
-  std::vector<int64_t> filter_shape_vec(
-      paddle::framework::vectorize(filter.dims()));
+  std::vector<int64_t> filter_shape_vec(vectorize(filter.dims()));
 
   // output_shape_vec:
   // {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
-  std::vector<int64_t> output_shape_vec(
-      paddle::framework::vectorize(transformed_output.dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(transformed_output.dims()));
 
   // use col_shape in the im2col calculation
   // col_shape_vec:
@@ -102,15 +99,14 @@ void ConvKernel(const Context& dev_ctx,
     col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
   }
 
-  framework::DDim col_shape(framework::make_ddim(col_shape_vec));
+  DDim col_shape(make_ddim(col_shape_vec));
 
   // use col_matrix_shape in the gemm calculation
   // size:
   // (i_c/g * k_h * k_w, o_h * o_w) or (i_c/g * k_d * k_h * k_w, o_d * o_h *
   // o_w)
 
-  framework::DDim col_matrix_shape =
-      framework::flatten_to_2d(col_shape, data_dim);
+  DDim col_matrix_shape = flatten_to_2d(col_shape, data_dim);
 
   bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
 
@@ -127,14 +123,14 @@ void ConvKernel(const Context& dev_ctx,
     col_matrix.Resize(col_matrix_shape);
   }
 
-  framework::DDim in_matrix_shape = framework::slice_ddim(
-      transformed_input.dims(), 1, transformed_input.dims().size());
+  DDim in_matrix_shape =
+      slice_ddim(transformed_input.dims(), 1, transformed_input.dims().size());
 
-  framework::DDim filter_matrix_shape = {filter.dims()[0],
-                                         filter.numel() / filter.dims()[0]};
+  DDim filter_matrix_shape = {filter.dims()[0],
+                              filter.numel() / filter.dims()[0]};
   filter.Resize(filter_matrix_shape);
 
-  framework::DDim output_matrix_shape = {
+  DDim output_matrix_shape = {
       transformed_output.dims()[1],
       transformed_output.numel() /
           (transformed_output.dims()[0] * transformed_output.dims()[1])};
@@ -148,7 +144,7 @@ void ConvKernel(const Context& dev_ctx,
       Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
           im2col;
 
-  auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   for (int i = 0; i < batch_size; i++) {
     DenseTensor in_batch =
         transformed_input.Slice(i, i + 1).Resize(in_matrix_shape);

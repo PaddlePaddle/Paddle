@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/vol2col.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 
 namespace paddle {
 namespace platform {
@@ -144,9 +144,9 @@ class Vol2ColFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <class T>
-class Vol2ColFunctor<pten::CPUContext, T> {
+class Vol2ColFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const pten::CPUContext& context, const framework::Tensor& vol,
+  void operator()(const phi::CPUContext& context, const framework::Tensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, framework::Tensor* col,
@@ -371,9 +371,9 @@ class Col2VolFunctor<platform::CPUDeviceContext, T> {
 };
 
 template <class T>
-class Col2VolFunctor<pten::CPUContext, T> {
+class Col2VolFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const pten::CPUContext& context, const framework::Tensor& col,
+  void operator()(const phi::CPUContext& context, const framework::Tensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, framework::Tensor* vol,
@@ -482,13 +482,13 @@ class Col2VolFunctor<pten::CPUContext, T> {
 
 template class Vol2ColFunctor<platform::CPUDeviceContext, float>;
 template class Vol2ColFunctor<platform::CPUDeviceContext, double>;
-template class Vol2ColFunctor<pten::CPUContext, float>;
-template class Vol2ColFunctor<pten::CPUContext, double>;
+template class Vol2ColFunctor<phi::CPUContext, float>;
+template class Vol2ColFunctor<phi::CPUContext, double>;
 
 template class Col2VolFunctor<platform::CPUDeviceContext, float>;
 template class Col2VolFunctor<platform::CPUDeviceContext, double>;
-template class Col2VolFunctor<pten::CPUContext, float>;
-template class Col2VolFunctor<pten::CPUContext, double>;
+template class Col2VolFunctor<phi::CPUContext, float>;
+template class Col2VolFunctor<phi::CPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

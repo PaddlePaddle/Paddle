@@ -55,7 +55,7 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return GetAttrValue(attr);
   }
 
-  pten::Place GetPlace() const override { return pten::CPUPlace(); }
+  phi::Place GetPlace() const override { return phi::CPUPlace(); }
 
   size_t InputSize(const std::string& name) const override {
     if (ctx_.HasInputs(name)) {

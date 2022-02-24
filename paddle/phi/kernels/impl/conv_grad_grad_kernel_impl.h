@@ -91,18 +91,15 @@ void ConvGradGradKernel(const Context& dev_ctx,
   auto in_dims = transformed_X.dims();
   auto filter_dims = W.dims();
 
-  framework::DDim in_data_dims =
-      framework::slice_ddim(in_dims, 2, in_dims.size());
-  framework::DDim filter_data_dims =
-      framework::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+  DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
+  DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
   const int batch_size = static_cast<int>(transformed_X.dims()[0]);
-  std::vector<int64_t> filter_shape_vec(framework::vectorize(W.dims()));
-  std::vector<int64_t> output_shape_vec(
-      framework::vectorize(transformed_dY.dims()));
+  std::vector<int64_t> filter_shape_vec(vectorize(W.dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(transformed_dY.dims()));
 
   size_t data_dim = filter_shape_vec.size() - 2;
   std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
@@ -112,18 +109,17 @@ void ConvGradGradKernel(const Context& dev_ctx,
     col_shape_vec[j + 1] = filter_shape_vec[j + 2];
     col_shape_vec[j + data_dim + 1] = output_shape_vec[j + 2];
   }
-  framework::DDim col_shape(framework::make_ddim(col_shape_vec));
+  DDim col_shape(make_ddim(col_shape_vec));
   // col_matrix_shape [in_channel/group * kh * kw, oh * ow]
-  framework::DDim col_matrix_shape =
-      framework::flatten_to_2d(col_shape, data_dim + 1);
+  DDim col_matrix_shape = flatten_to_2d(col_shape, data_dim + 1);
   // input_shape [Cin, H, W]
-  framework::DDim input_shape = framework::slice_ddim(
-      transformed_X.dims(), 1, transformed_X.dims().size());
+  DDim input_shape =
+      slice_ddim(transformed_X.dims(), 1, transformed_X.dims().size());
   // filter_matrix_shape [Cout, Cin * kh * kw]
-  framework::DDim filter_matrix_shape = {W.dims()[0], W.numel() / W.dims()[0]};
+  DDim filter_matrix_shape = {W.dims()[0], W.numel() / W.dims()[0]};
 
   W.Resize(filter_matrix_shape);
-  framework::DDim output_matrix_shape = {
+  DDim output_matrix_shape = {
       transformed_dY.dims()[1],
       transformed_dY.numel() /
           (transformed_dY.dims()[0] * transformed_dY.dims()[1])};
@@ -141,7 +137,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   }
 
   phi::funcs::SetConstant<Context, T> set_zero;
-  auto blas = paddle::operators::math::GetBlas<Context, T>(dev_ctx);
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   // dx convolution double grad:  gemm + col2im(col2vol)
   // dx = ddw * dy  ==> dx(N, Cin, H, W), ddw(Cout, Cin, kh, kw), dy(N, Cout,

@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/fluid/operators/conv_op.h"
 
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 
-#include "paddle/pten/kernels/cpu/conv_util.h"
-#include "paddle/pten/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void DepthwiseConvKernel(const Context& dev_ctx,
@@ -52,7 +52,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
         output->dims()[output->dims().size() - 1] %
             input.dims()[input.dims().size() - 1],
         0,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ShapeError: The output channels must be a multiple of the "
             "input channels. But receivced output channel number is %d "
             "and input channel number is %d",
@@ -62,7 +62,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         output->dims()[1] % input.dims()[1],
         0,
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ShapeError: The output channels must be a multiple of the "
             "input channels. But receivced output channel number is %d "
             "and input channel number is %d",
@@ -74,18 +74,17 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   auto in_dims = input.dims();
   auto filter_dims = filter.dims();
 
-  framework::DDim in_data_dims;
+  DDim in_data_dims;
   const paddle::framework::DataLayout data_layout =
       paddle::framework::StringToDataLayout(data_format);
   if (data_layout != paddle::framework::DataLayout::kNHWC) {
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
-    in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
   }
 
-  framework::DDim filter_data_dims =
-      framework::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+  DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -121,11 +120,11 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_KERNEL(depthwise_conv2d,
+PD_REGISTER_KERNEL(depthwise_conv2d,
                    GPU,
                    ALL_LAYOUT,
-                   pten::DepthwiseConvKernel,
+                   phi::DepthwiseConvKernel,
                    float,
                    double) {}

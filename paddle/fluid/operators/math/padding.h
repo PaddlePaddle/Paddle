@@ -17,13 +17,13 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-using DenseTensor = pten::DenseTensor;
+using DenseTensor = phi::DenseTensor;
 
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -200,8 +200,8 @@ void PaddingFunctor(int rank, const DeviceContext& context,
       break;
     default:
       PADDLE_THROW(
-          pten::errors::Unimplemented("PadOp only support tensors with no more"
-                                      " than 6 dimensions currently."));
+          phi::errors::Unimplemented("PadOp only support tensors with no more"
+                                     " than 6 dimensions currently."));
   }
 }
 

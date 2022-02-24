@@ -14,15 +14,12 @@
 
 #pragma once
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-#ifdef PADDLE_WITH_CUDA
-
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
-void ConvCudnnGradKernel(const Context& dev_ctx,
-                         const DenseTensor& out_grad,
+void DepthwiseConvKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const DenseTensor& filter,
                          const std::vector<int>& strides,
@@ -34,9 +31,7 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
                          bool use_addto,
                          int workspace_size_MB,
                          bool exhaustive_search,
-                         DenseTensor* input_grad,
-                         DenseTensor* filter_grad);
+                         bool fuse_relu,
+                         DenseTensor* out);
 
-}  // namespace pten
-
-#endif
+}  // namespace phi

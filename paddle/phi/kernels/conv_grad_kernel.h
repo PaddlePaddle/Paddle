@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ConvGradKernel(const Context& dev_ctx,
@@ -52,4 +52,4 @@ void Conv3DGradKernel(const Context& dev_ctx,
                       DenseTensor* input_grad,
                       DenseTensor* filter_grad);
 
-}  // namespace pten
+}  // namespace phi

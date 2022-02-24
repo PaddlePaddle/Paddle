@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/kernels/funcs/transpose.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -30,31 +30,31 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = paddle::framework::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[4];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input->Resize(paddle::framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
 
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = paddle::framework::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input->Resize(paddle::framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = paddle::framework::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(paddle::framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
   }
 }
@@ -68,31 +68,31 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = paddle::framework::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[4];
     in_dims_vec[4] = input->dims()[1];
-    transformed_input->Resize(paddle::framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
 
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = paddle::framework::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
-    transformed_input->Resize(paddle::framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = paddle::framework::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(paddle::framework::make_ddim(in_dims_vec));
+    transformed_input->Resize(make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
   }
 }
@@ -105,16 +105,16 @@ inline void TransToChannelFirst(const DeviceContext& context,
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     std::vector<int> axis{0, 4, 1, 2, 3};
-    phi::math::Transpose<DeviceContext, T, 5> trans5;
+    phi::funcs::Transpose<DeviceContext, T, 5> trans5;
     trans5(context, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     std::vector<int> axis{0, 3, 1, 2};
-    phi::math::Transpose<DeviceContext, T, 4> trans4;
+    phi::funcs::Transpose<DeviceContext, T, 4> trans4;
     trans4(context, *input, transformed_input, axis);
   } else if (dim == 1) {
     std::vector<int> axis{0, 2, 1};
-    phi::math::Transpose<DeviceContext, T, 3> trans3;
+    phi::funcs::Transpose<DeviceContext, T, 3> trans3;
     trans3(context, *input, transformed_input, axis);
   }
 }
@@ -126,16 +126,16 @@ inline void TransToChannelLast(const DeviceContext& context,
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     std::vector<int> axis{0, 2, 3, 4, 1};
-    phi::math::Transpose<DeviceContext, T, 5> trans5;
+    phi::funcs::Transpose<DeviceContext, T, 5> trans5;
     trans5(context, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     std::vector<int> axis{0, 2, 3, 1};
-    phi::math::Transpose<DeviceContext, T, 4> trans4;
+    phi::funcs::Transpose<DeviceContext, T, 4> trans4;
     trans4(context, *input, transformed_input, axis);
   } else if (dim == 1) {
     std::vector<int> axis{0, 2, 1};
-    phi::math::Transpose<DeviceContext, T, 3> trans3;
+    phi::funcs::Transpose<DeviceContext, T, 3> trans3;
     trans3(context, *input, transformed_input, axis);
   }
 }

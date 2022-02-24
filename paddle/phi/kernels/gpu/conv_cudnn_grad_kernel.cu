@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-#include "paddle/pten/backends/gpu/gpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/fluid/framework/eigen.h"
 #ifdef PADDLE_WITH_HIP
@@ -30,17 +30,17 @@
 #include "paddle/fluid/platform/profiler.h"
 
 #include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/pten/kernels/cpu/conv_util.h"
-#include "paddle/pten/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 
-#include "paddle/pten/kernels/impl/conv_cudnn_impl.h"
+#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
-#include "paddle/pten/common/bfloat16.h"
-#include "paddle/pten/common/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ConvCudnnGradKernel(const Context& ctx,
@@ -74,7 +74,7 @@ void ConvCudnnGradKernel(const Context& ctx,
   auto exhaustive_deterministic = exhaustive_search && deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_deterministic,
                     false,
-                    pten::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
@@ -151,18 +151,16 @@ void ConvCudnnGradKernel(const Context& ctx,
   //  update paddings
   auto in_dims = transformed_input_channel.dims();
   auto filter_dims = transformed_filter_channel.dims();
-  framework::DDim in_data_dims;
-  framework::DDim filter_data_dims;
+  DDim in_data_dims;
+  DDim filter_data_dims;
   if (compute_format == paddle::platform::DataLayout::kNCHW) {
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-    filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
+    filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
   } else {
-    in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
-    filter_data_dims =
-        framework::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+    in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
+    filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   }
-  std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -206,7 +204,7 @@ void ConvCudnnGradKernel(const Context& ctx,
         input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
     }
-    framework::DDim new_input_shape(framework::make_ddim(new_input_shape_vec));
+    DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     transformed_input.mutable_data<T>(ctx.GetPlace());
 
@@ -236,7 +234,7 @@ void ConvCudnnGradKernel(const Context& ctx,
             &transformed_input);
       } break;
       default:
-        PADDLE_THROW(pten::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "ConvOp only support tensors with 4 or 5 dimensions."));
     }
   } else {
@@ -278,7 +276,7 @@ void ConvCudnnGradKernel(const Context& ctx,
                                     dtype};
 
   auto handle = ctx.cudnn_handle();
-  // TODO(phlrain): replace paddle::platform::DataLaytout to pten::DataLayout
+  // TODO(phlrain): replace paddle::platform::DataLaytout to phi::DataLayout
   paddle::platform::DataLayout layout =
       compute_format == paddle::platform::DataLayout::kNHWC
           ? paddle::platform::DataLayout::kNHWC
@@ -630,20 +628,20 @@ void Conv3DCudnnGradKernel(const Context& dev_ctx,
                          filter_grad);
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_KERNEL(conv2d_cudnn_grad,
+PD_REGISTER_KERNEL(conv2d_cudnn_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::ConvCudnnGradKernel,
+                   phi::ConvCudnnGradKernel,
                    float,
                    double,
                    paddle::platform::float16) {}
 
-PT_REGISTER_KERNEL(conv3d_cudnn_grad,
+PD_REGISTER_KERNEL(conv3d_cudnn_grad,
                    GPU,
                    ALL_LAYOUT,
-                   pten::Conv3DCudnnGradKernel,
+                   phi::Conv3DCudnnGradKernel,
                    float,
                    double,
                    paddle::platform::float16) {}

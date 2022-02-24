@@ -631,7 +631,7 @@ class DepthwiseConvTransposeKernel : public framework::OpKernel<T> {
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, output, static_cast<T>(0));
 
-    math::DepthwiseConvInputGradFunctor<pten::GPUContext, T>
+    math::DepthwiseConvInputGradFunctor<phi::GPUContext, T>
         depthwiseConvInputGrad;
     depthwiseConvInputGrad(
         static_cast<const typename framework::ConvertToPtenContext<
@@ -684,7 +684,7 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     if (input_grad) {
-      math::DepthwiseConvFunctor<pten::GPUContext, T> depthwiseConv;
+      math::DepthwiseConvFunctor<phi::GPUContext, T> depthwiseConv;
       depthwiseConv(
           static_cast<const typename framework::ConvertToPtenContext<
               DeviceContext>::TYPE&>(dev_ctx),
@@ -698,7 +698,7 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
       filter_grad->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, filter_grad, static_cast<T>(0));
 
-      math::DepthwiseConvFilterGradFunctor<pten::GPUContext, T>
+      math::DepthwiseConvFilterGradFunctor<phi::GPUContext, T>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(
           static_cast<const typename framework::ConvertToPtenContext<

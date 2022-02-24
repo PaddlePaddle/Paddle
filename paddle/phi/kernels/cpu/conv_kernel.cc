@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/conv_kernel.h"
-#include "paddle/pten/kernels/impl/conv_kernel_impl.h"
+#include "paddle/phi/kernels/conv_kernel.h"
+#include "paddle/phi/kernels/impl/conv_kernel_impl.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace pten {
+namespace phi {
 template <typename T, typename Context>
 void DepthwiseConvKernel(const Context& dev_ctx,
                          const DenseTensor& input,
@@ -78,16 +78,15 @@ void Conv3DKernel(const Context& dev_ctx,
                 out);
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_KERNEL(conv2d, CPU, ALL_LAYOUT, pten::ConvKernel, float, double) {}
+PD_REGISTER_KERNEL(conv2d, CPU, ALL_LAYOUT, phi::ConvKernel, float, double) {}
 
-PT_REGISTER_KERNEL(depthwise_conv2d,
+PD_REGISTER_KERNEL(depthwise_conv2d,
                    CPU,
                    ALL_LAYOUT,
-                   pten::DepthwiseConvKernel,
+                   phi::DepthwiseConvKernel,
                    float,
                    double) {}
 
-PT_REGISTER_KERNEL(conv3d, CPU, ALL_LAYOUT, pten::Conv3DKernel, float, double) {
-}
+PD_REGISTER_KERNEL(conv3d, CPU, ALL_LAYOUT, phi::Conv3DKernel, float, double) {}

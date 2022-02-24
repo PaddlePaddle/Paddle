@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_CUDA
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context>
 void ConvCudnnGradGradKernel(
@@ -41,6 +41,6 @@ void ConvCudnnGradGradKernel(
     DenseTensor* input_grad,
     DenseTensor* filter_grad);
 
-}  // namespace pten
+}  // namespace phi
 
 #endif
