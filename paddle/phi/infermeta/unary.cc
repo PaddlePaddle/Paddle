@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/unary.h"
 
+#include <algorithm>
 #include <set>
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
@@ -713,6 +714,45 @@ void UnfoldInferMeta(const MetaTensor& x,
   int output_col_length = output_height * output_width;
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
+}
+
+void DiagInferMeta(const MetaTensor& x,
+                   int offset,
+                   float padding_value,
+                   MetaTensor* out) {
+  auto x_dims = x.dims();
+
+  if (x_dims.size() == 1UL) {
+    int64_t size_ = x_dims[0] + std::abs(offset);
+    out->set_dims({size_, size_});
+    out->set_dtype(x.dtype());
+  } else if (x_dims.size() == 2UL) {
+    int64_t size_ = 0;
+    if (offset >= 0) {
+      // Note(LutaoChu): Do not use std::min here, otherwise the calculation
+      // of `size_` will have unexpected result on Windows Python3.8
+      if (x_dims[0] < x_dims[1] - offset) {
+        size_ = x_dims[0];
+      } else {
+        size_ = x_dims[1] - offset;
+      }
+    } else {
+      // Note(LutaoChu): Do not use std::min here, otherwise the calculation
+      // of `size_` will have unexpected result on Windows Python3.8
+      if (x_dims[0] + offset < x_dims[1]) {
+        size_ = x_dims[0] + offset;
+      } else {
+        size_ = x_dims[1];
+      }
+    }
+    out->set_dims({size_});
+    out->set_dtype(x.dtype());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The input tensor X's dimensions of DiagV2Op should be either 1 or "
+        "2, but received %d.",
+        x_dims.size()));
+  }
 }
 
 }  // namespace phi
