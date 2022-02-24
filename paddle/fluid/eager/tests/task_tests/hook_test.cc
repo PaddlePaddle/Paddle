@@ -99,6 +99,8 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
     egr_utils_api::RegisterGradientHookForTensor(target_tensor, hook);
     egr_utils_api::RetainGradForTensor(
         target_tensor);  // result: 1.0 + 3.0 = 4.0
+    egr_utils_api::RetainGradForTensor(
+        target_tensor);  // result: 1.0 + 3.0 = 4.0
   }
 
   // Retain Grad for leaf tensor1

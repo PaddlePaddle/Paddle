@@ -10,7 +10,7 @@ add_subdirectory(funcs)
 set_property(GLOBAL PROPERTY PTEN_KERNELS "")
 
 set(COMMON_KERNEL_DEPS dense_tensor sparse_coo_tensor sparse_csr_tensor kernel_context kernel_factory arg_map_context convert_utils lod_utils)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function im2col concat_and_split_functor)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} pten_api_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)

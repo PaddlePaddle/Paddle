@@ -34,7 +34,8 @@ class TensorWrapper {
  public:
   TensorWrapper() = default;
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
-                         bool full_reserved = false) {
+                         bool full_reserved = false,
+                         bool no_need_buffer = false) {
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
@@ -48,14 +49,29 @@ class TensorWrapper {
     }
 
     // shallow copy tensor_impl here
-    intermidiate_tensor_.set_impl(tensor.impl());
+    if (no_need_buffer) {
+      if (phi::DenseTensor::classof(tensor.impl().get())) {
+        // Only Copy Meta
+        phi::DenseTensor* dense_tensor =
+            static_cast<phi::DenseTensor*>(tensor.impl().get());
+        auto tw_dense_tensor = std::make_shared<phi::DenseTensor>();
+        tw_dense_tensor->set_meta(dense_tensor->meta());
+        intermidiate_tensor_.set_impl(tw_dense_tensor);
+      } else {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Unrecognized tensor type for no_need_buffer feature"));
+      }
+    } else {
+      intermidiate_tensor_.set_impl(tensor.impl());
+    }
+
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
-    
-    // If an output is marked "intermedaite", we won't create 
+
+    // If an output is marked "intermedaite", we won't create
     // autograd_meta for it.
     // In that case, simply skip OutRankInfo Copy
-    if(EagerUtils::nullable_autograd_meta(tensor)) {
-        out_rank_info_ = EagerUtils::OutRankInfo(tensor);
+    if (EagerUtils::nullable_autograd_meta(tensor)) {
+      out_rank_info_ = EagerUtils::OutRankInfo(tensor);
     }
   }
 

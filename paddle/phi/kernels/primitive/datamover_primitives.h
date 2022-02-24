@@ -714,5 +714,14 @@ __device__ __forceinline__ void ReadDataBc(
   }
 }
 
+template <typename T, int NX, int NY, int BlockSize>
+__device__ __forceinline__ void InitWithDataIndex(T* dst, int block_offset) {
+  int thread_offset = block_offset + threadIdx.x * NX;
+#pragma unroll
+  for (int nx = 0; nx < NX; ++nx) {
+    dst[nx] = static_cast<T>(thread_offset + nx);
+  }
+}
+
 }  // namespace kps
 }  // namespace phi

@@ -577,9 +577,9 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/common')) +  # pten common headers
     # pten level api headers (low level api)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # pten core headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # pten backends headers
     # utila api headers
-    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/utils/small_vector.h'] +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)) +  # paddle utils headers
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/device/device_ext.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
