@@ -43,16 +43,27 @@ struct TensorMetaList {
                 "kChunkNum must be inside (0, 65536).");
 
   int offsets[kTensorNum + 1];
-  int chunk_ids[kChunkNum];
-  int tensor_ids[kChunkNum];
+  uint8_t tensor_ids[kChunkNum];
+  uint16_t chunk_ids[kChunkNum];
   int start_tensor_id;
+  int start_chunk_id;
 };
 
 template <typename Functor, int NumTensor, int NumChunk, typename... Args>
 static __global__ void MultiTensorApplyCUDAKernel(
-    Functor functor, TensorMetaList<NumTensor, NumChunk> metas, int chunk_size,
+    Functor functor, TensorMetaList<NumTensor, NumChunk> meta, int chunk_size,
     Args... args) {
-  functor(metas, chunk_size, args...);
+  const int block_id = blockIdx.x;
+  const int tensor_id = meta.tensor_ids[block_id];
+  const int chunk_id = static_cast<int>(meta.chunk_ids[block_id]) +
+                       (tensor_id == 0) * meta.start_chunk_id;
+  const int prev_offset = meta.offsets[tensor_id];
+  const int next_offset = meta.offsets[tensor_id + 1];
+  const int ptr_offset = prev_offset + chunk_id * chunk_size;
+  const int size = min(next_offset - ptr_offset, chunk_size);
+
+  functor(tensor_id + meta.start_tensor_id, chunk_id, ptr_offset, size,
+          args...);
 }
 
 template <typename T>
@@ -73,6 +84,8 @@ static void MultiTensorApply(Functor functor, gpuStream_t stream,
   int tensor_id = 0;
   int chunk_id = 0;
   int numel_offset = 0;
+  metas.start_tensor_id = 0;
+  metas.start_chunk_id = 0;
   for (int i = 0; i < n; ++i) {
     auto length = offsets[i + 1] - offsets[i];
     if (tensor_id == 0) {
@@ -84,8 +97,9 @@ static void MultiTensorApply(Functor functor, gpuStream_t stream,
     numel_offset += length;
 
     auto chunk_num = (length + chunk_size - 1) / chunk_size;
+    int last_launch_chunk_id = 0;
     for (int j = 0; j < chunk_num; ++j) {
-      metas.chunk_ids[chunk_id] = j;
+      metas.chunk_ids[chunk_id] = j - last_launch_chunk_id;
       metas.tensor_ids[chunk_id] = tensor_id - 1;
       ++chunk_id;
 
@@ -99,11 +113,14 @@ static void MultiTensorApply(Functor functor, gpuStream_t stream,
             functor, metas, chunk_size, args...);
         chunk_id = 0;
         if (j + 1 == chunk_num) {  // chunk for the current tensor is full
+          metas.start_chunk_id = 0;
           tensor_id = 0;
         } else {
           metas.offsets[0] = metas.offsets[tensor_id - 1];
           metas.offsets[1] = metas.offsets[tensor_id];
           metas.start_tensor_id = i;
+          metas.start_chunk_id = j + 1;
+          last_launch_chunk_id = j + 1;
           tensor_id = 1;
         }
       }
@@ -115,19 +132,9 @@ template <typename T, int BlockDim, int VecSize>
 struct L2NormFunctor {
   using MT = typename details::MPTypeTrait<T>::Type;
 
-  template <typename MetaT>
-  DEVICE void operator()(const MetaT &meta, int chunk_size, const T *x, MT *y,
-                         int max_chunk_num) const {
-    int block_id = blockIdx.x;
-    int tensor_id = meta.tensor_ids[block_id];
-    int chunk_id = meta.chunk_ids[block_id];
-
-    int prev_offset = meta.offsets[tensor_id];
-    int next_offset = meta.offsets[tensor_id + 1];
-    tensor_id += meta.start_tensor_id;
-    const int ptr_offset = prev_offset + chunk_id * chunk_size;
-    const T *ptr = x + ptr_offset;
-    const int size = min(next_offset - ptr_offset, chunk_size);
+  DEVICE void operator()(int tensor_id, int chunk_id, int offset, int size,
+                         const T *x, MT *y, int max_chunk_num) const {
+    const T *ptr = x + offset;
 
     using BlockReduce = cub::BlockReduce<MT, BlockDim>;
     __shared__ typename BlockReduce::TempStorage storage;
@@ -222,9 +229,11 @@ static void MultiTensorL2Norm(const platform::CUDADeviceContext &dev_ctx,
                               OutT *y) {
   if (n == 0) return;
 
-  constexpr int kNumTensor = 5;
-  constexpr int kNumChunk = 7;
+  constexpr int kNumTensor = 110;
+  constexpr int kNumChunk = 320;
   constexpr int kBlockDim = 512;
+
+  // TODO(zengjinle): which chunk_size is better?
   constexpr int chunk_size = 2048 * 32;
 
   int max_chunk_num = -1;
@@ -243,8 +252,12 @@ static void MultiTensorL2Norm(const platform::CUDADeviceContext &dev_ctx,
   auto stream = dev_ctx.stream();
   memory::Buffer tmp_out(place);
   auto *tmp_out_ptr = tmp_out.Alloc<MT>(n * max_chunk_num);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemsetAsync(tmp_out_ptr, 0, n * max_chunk_num * sizeof(MT), stream));
+  auto nbytes = n * max_chunk_num * sizeof(MT);
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(tmp_out_ptr, 0, nbytes, stream));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(tmp_out_ptr, 0, nbytes, stream));
+#endif
 
 #define PD_LAUNCH_MULTI_TENSOR_APPLY_KERNEL                         \
   do {                                                              \
