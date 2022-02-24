@@ -62,9 +62,9 @@ def get_default_accessor_proto(accessor, varname, o_main_program):
     if not accessor.HasField("accessor_class"):
         accessor.accessor_class = "CtrCommonAccessor"
     if not accessor.HasField("fea_dim"):
-        accessor.fea_dim = embedding_dim + 2
+        accessor.fea_dim = embedding_dim
     if not accessor.HasField("embedx_dim"):
-        accessor.embedx_dim = embedding_dim - 1
+        accessor.embedx_dim = embedding_dim - 3
     if not accessor.HasField("embedx_threshold"):
         accessor.embedx_threshold = 0
 
