@@ -92,10 +92,11 @@ DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 }  // namespace phi
 
 using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PT_REGISTER_KERNEL(add_raw,
+PD_REGISTER_KERNEL(add_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::AddRawKernel,
@@ -107,7 +108,7 @@ PT_REGISTER_KERNEL(add_raw,
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(subtract_raw,
+PD_REGISTER_KERNEL(subtract_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::SubtractRawKernel,
@@ -119,7 +120,7 @@ PT_REGISTER_KERNEL(subtract_raw,
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(divide_raw,
+PD_REGISTER_KERNEL(divide_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::DivideRawKernel,
@@ -128,9 +129,10 @@ PT_REGISTER_KERNEL(divide_raw,
                    int,
                    int64_t,
                    float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(multiply_raw,
+PD_REGISTER_KERNEL(multiply_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultiplyRawKernel,
@@ -142,7 +144,7 @@ PT_REGISTER_KERNEL(multiply_raw,
                    float16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(sum_raw,
+PD_REGISTER_KERNEL(sum_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::SumRawKernel,
@@ -158,7 +160,7 @@ PT_REGISTER_KERNEL(sum_raw,
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 
-PT_REGISTER_KERNEL(mean_raw,
+PD_REGISTER_KERNEL(mean_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::MeanRawKernel,

@@ -1972,6 +1972,9 @@ Scope* OperatorWithKernel::PreparePtenData(
         continue;
       }
 
+      if (in_def.backend == phi::Backend::ALL_BACKEND) {
+        continue;
+      }
       auto expected_place = phi::TransToPtenPlace(in_def.backend);
       if (platform::is_same_place(tensor_in->place(), expected_place)) {
         continue;
@@ -2037,7 +2040,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
 
     // deal with optional here
-    if ((it == ctx.inputs.end()) &&
+    if ((it == ctx.inputs.end() || it->second.size() == 0) &&
         (input_defs[i].type_index ==
          std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);

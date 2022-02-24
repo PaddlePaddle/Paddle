@@ -12,18 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
+#ifdef __NVCC__
+#include <curand_kernel.h>
+#endif
+#ifdef __HIPCC__
+#include <hiprand_kernel.h>
+#endif
+
 #include <algorithm>
 #include <vector>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/bernoulli_kernel.h"
 
 // See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/operators/distribution_helper.h"
 #include "paddle/fluid/platform/transform.h"
+
+DECLARE_bool(use_curand);
 
 namespace phi {
 
@@ -49,29 +60,72 @@ struct BernoulliCudaFunctor {
   }
 };
 
+// 'curand_uniform4/hiprand_uniform4' generate 4 random number each time
+template <typename T>
+__global__ void bernoulli_cuda_kernel(
+    size_t size, uint64_t seed, uint64_t offset, const T* x_data, T* out_data) {
+  size_t thread_idx =
+      static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+
+#if defined(__NVCC__)
+  curandStatePhilox4_32_10_t state;
+  curand_init(seed, thread_idx, offset, &state);
+#else
+  hiprandStatePhilox4_32_10_t state;
+  hiprand_init(seed, thread_idx, offset, &state);
+#endif
+
+  size_t total_thread = gridDim.x * blockDim.x;
+  for (size_t i = 4 * thread_idx; i < size; i += total_thread * 4) {
+    paddle::distribution::uniform_distribution<float> dist;
+    float4 rand = dist(&state);
+#pragma unroll
+    for (size_t j = 0; j < 4; j++) {
+      size_t idx = i + j;
+      if (idx < size) {
+        out_data[idx] = static_cast<T>((&rand.x)[j] <= x_data[idx]);
+      }
+    }
+  }
+}
+
 template <typename T, typename Context>
 void BernoulliKernel(const Context& ctx,
                      const DenseTensor& x,
                      DenseTensor* out) {
-  auto numel = x.numel();
-  auto* x_data = x.data<T>();
+  const T* x_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(out);
+  auto numel = x.numel();
 
   auto gen_cuda = ctx.GetGenerator();
-  auto seed_offset = gen_cuda->IncrementOffset(1);
-  int64_t gen_offset = numel * seed_offset.second;
-  paddle::platform::Transform<phi::GPUContext> trans;
-  thrust::counting_iterator<int64_t> index_sequence_begin(0);
-  trans(ctx,
-        index_sequence_begin,
-        index_sequence_begin + numel,
-        x_data,
-        out_data,
-        BernoulliCudaFunctor<T>(static_cast<int64_t>(seed_offset.first),
-                                static_cast<int64_t>(gen_offset)));
+
+  if (FLAGS_use_curand) {
+    auto seed_offset = gen_cuda->IncrementOffset(12);
+    uint64_t seed = seed_offset.first;
+    uint64_t offset = seed_offset.second;
+
+    auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 4);
+    size_t grid_size = gpu_config.GetGridSize();
+    size_t block_size = gpu_config.GetBlockSize();
+
+    bernoulli_cuda_kernel<<<grid_size, block_size, 0, ctx.stream()>>>(
+        numel, seed, offset, x_data, out_data);
+  } else {
+    auto seed_offset = gen_cuda->IncrementOffset(1);
+    int64_t gen_offset = numel * seed_offset.second;
+    paddle::platform::Transform<phi::GPUContext> trans;
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
+    trans(ctx,
+          index_sequence_begin,
+          index_sequence_begin + numel,
+          x_data,
+          out_data,
+          BernoulliCudaFunctor<T>(static_cast<int64_t>(seed_offset.first),
+                                  static_cast<int64_t>(gen_offset)));
+  }
 }
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     bernoulli, GPU, ALL_LAYOUT, phi::BernoulliKernel, float, double) {}
