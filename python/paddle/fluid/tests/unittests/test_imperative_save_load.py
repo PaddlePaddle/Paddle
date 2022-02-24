@@ -27,6 +27,7 @@ from test_imperative_base import new_program_scope
 import numpy as np
 import six
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -208,7 +209,7 @@ class PtbModel(fluid.Layer):
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
-    def setUp(self):
+    def func_setUp(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -277,7 +278,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             self.opti_dict = adam.state_dict()
             self.base_opti = {}
             for k, v in self.opti_dict.items():
-                if isinstance(v, core.VarBase):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     self.base_opti[v.name] = v.numpy()
                     self.assertTrue(np.sum(np.abs(v.numpy())) != 0)
                 else:
@@ -294,7 +295,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             fluid.save_dygraph(self.state_dict, "./test_dy")
 
-    def testLoadAndSetVarBase(self):
+    def func_testLoadAndSetVarBase(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -363,7 +364,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             # set to zero
             for k, v in opti_dict.items():
-                if isinstance(v, core.VarBase):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     np_t = v.numpy()
                     var = v.value().get_tensor()
                     var.set(np.zeros_like(np_t), place)
@@ -374,11 +375,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 adam._learning_rate.step_num = 0
 
             para_state_dict, opti_state_dict = fluid.load_dygraph("./test_dy")
+            print(opti_state_dict.keys())
             adam.set_state_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                if isinstance(v, core.VarBase):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     self.assertTrue(
                         np.array_equal(v.numpy(), self.base_opti[v.name]))
                 else:
@@ -403,7 +405,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testSetVariable(self):
+    def func_testSetVariable(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -472,7 +474,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             opti_dict = adam.state_dict()
             # set to zero
             for k, v in opti_dict.items():
-                if isinstance(v, core.VarBase):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     np_t = v.numpy()
                     var = v.value().get_tensor()
                     var.set(np.zeros_like(np_t), place)
@@ -485,7 +487,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             adam.set_state_dict(self.opti_dict)
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                if isinstance(v, core.VarBase):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     self.assertTrue(
                         np.array_equal(v.numpy(), self.base_opti[v.name]))
                 else:
@@ -510,7 +512,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testSetNumpy(self):
+    def func_testSetNumpy(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -580,7 +582,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             np_opti_dict = {}
             # set to zero
             for k, v in opti_dict.items():
-                if isinstance(v, core.VarBase):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     np_t = v.numpy()
                     np_opti_dict[v.name] = np_t
                     var = v.value().get_tensor()
@@ -596,7 +598,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             opti_dict = adam.state_dict()
             for k, v in opti_dict.items():
-                if isinstance(v, core.VarBase):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     self.assertTrue(
                         np.array_equal(v.numpy(), self.base_opti[v.name]))
                 else:
@@ -623,7 +625,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testSetVariableBeforeTrain(self):
+    def func_testSetVariableBeforeTrain(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -700,7 +702,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 base_t = self.model_base[k]
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testLoadAndSetVarBaseBeforeTrain(self):
+    def func_testLoadAndSetVarBaseBeforeTrain(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -791,7 +793,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 base_t = self.model_base[k]
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testSetNumpyBeforeTrain(self):
+    def func_testSetNumpyBeforeTrain(self):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -840,7 +842,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             np_state_dict = {}
 
             for k, v in self.opti_dict.items():
-                if isinstance(v, core.VarBase):
+                if isinstance(v, (core.VarBase, core.eager.Tensor)):
                     np_opti_dict[v.name] = v.numpy()
                 else:
                     np_opti_dict[k] = v
@@ -894,7 +896,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 base_t = self.model_base[k]
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-    def testOnlyLoadParams(self):
+    def func_testOnlyLoadParams(self):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
@@ -911,7 +913,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             para_state_dict, opti_state_dict = fluid.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy.pdopt'))
 
-    def test_load_compatible_with_keep_name_table(self):
+    def func_test_load_compatible_with_keep_name_table(self):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
@@ -921,6 +923,27 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 os.path.join('saved_dy', 'emb_dy'), keep_name_table=True)
             self.assertTrue(para_state_dict != None)
             self.assertTrue(opti_state_dict == None)
+
+    def test_main(self):
+        self.func_setUp()
+        self.func_testLoadAndSetVarBase()
+        self.func_testSetVariable()
+        self.func_testSetNumpy()
+        self.func_testSetVariableBeforeTrain()
+        self.func_testLoadAndSetVarBaseBeforeTrain()
+        self.func_testSetNumpyBeforeTrain()
+        self.func_testOnlyLoadParams()
+        self.func_test_load_compatible_with_keep_name_table()
+        with _test_eager_guard():
+            self.func_setUp()
+            self.func_testLoadAndSetVarBase()
+            self.func_testSetVariable()
+            self.func_testSetNumpy()
+            self.func_testSetVariableBeforeTrain()
+            self.func_testLoadAndSetVarBaseBeforeTrain()
+            self.func_testSetNumpyBeforeTrain()
+            self.func_testOnlyLoadParams()
+            self.func_test_load_compatible_with_keep_name_table()
 
 
 if __name__ == '__main__':
