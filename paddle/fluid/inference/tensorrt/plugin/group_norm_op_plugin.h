@@ -33,8 +33,11 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
   std::vector<int> input_dims_;
   bool with_fp16_ = false;
 
-  float* bn_scale_;
-  float* bn_bias_;
+  std::vector<float> ones_for_serialize_;
+  std::vector<float> zeroes_for_serialize_;
+
+  float* bn_scale_ = nullptr;
+  float* bn_bias_ = nullptr;
 
   cudnnHandle_t handle_;
   cudnnTensorDescriptor_t desc_, bn_desc_;
@@ -54,9 +57,23 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
     DeserializeValue(&serialData, &serialLength, &input_dims_);
     DeserializeValue(&serialData, &serialLength, &with_fp16_);
 
+    DeserializeValue(&serialData, &serialLength, &ones_for_serialize_);
+    DeserializeValue(&serialData, &serialLength, &zeroes_for_serialize_);
+    deserializeToDevice();
+
     platform::dynload::cudnnCreate(&handle_);
     platform::dynload::cudnnCreateTensorDescriptor(&desc_);
     platform::dynload::cudnnCreateTensorDescriptor(&bn_desc_);
+  }
+
+  void deserializeToDevice() {
+    const int size = static_cast<int>(ones_for_serialize_.size());
+    cudaMalloc(&bn_scale_, sizeof(float) * size);
+    cudaMalloc(&bn_bias_, sizeof(float) * size);
+    cudaMemcpy(bn_scale_, ones_for_serialize_.data(), sizeof(float) * size,
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(bn_bias_, zeroes_for_serialize_.data(), sizeof(float) * size,
+               cudaMemcpyHostToDevice);
   }
 
   ~GroupNormPlugin() {
@@ -74,6 +91,10 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
     ptr->setPluginNamespace(this->getPluginNamespace());
     ptr->input_dims_.assign(this->input_dims_.begin(), this->input_dims_.end());
     ptr->with_fp16_ = this->with_fp16_;
+    ptr->bn_scale_ = this->bn_scale_;
+    ptr->bn_bias_ = this->bn_bias_;
+    ptr->ones_for_serialize_ = this->ones_for_serialize_;
+    ptr->zeroes_for_serialize_ = this->zeroes_for_serialize_;
     return ptr;
   }
 
@@ -136,18 +157,22 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
       with_fp16_ = true;
     }
 
-    // const int c = input_dims->d[0];
-    // cudaMalloc(&bn_scale_, max_batch_size * c * sizeof(float));
-    // cudaMalloc(&bn_bias_, max_batch_size * c * sizeof(float));
+    const int c = input_dims->d[0];
+    cudaMalloc(&bn_scale_, max_batch_size * c * sizeof(float));
+    cudaMalloc(&bn_bias_, max_batch_size * c * sizeof(float));
 
-    // std::vector<float> ones(c, 1.F);
-    // std::vector<float> zeroes(c, 0.F);
-    // for (int i = 0; i < max_batch_size; i++) {
-    //   cudaMemcpy(bn_scale_ + i * c, ones.data(), sizeof(float) * c,
-    //   cudaMemcpyHostToDevice);
-    //   cudaMemcpy(bn_bias_ + i * c, zeroes.data(), sizeof(float) * c,
-    //   cudaMemcpyHostToDevice);
-    // }
+    std::vector<float> ones(c, 1.F);
+    std::vector<float> zeroes(c, 0.F);
+    for (int i = 0; i < max_batch_size; i++) {
+      ones_for_serialize_.insert(ones_for_serialize_.end(), ones.begin(),
+                                 ones.end());
+      zeroes_for_serialize_.insert(zeroes_for_serialize_.end(), zeroes.begin(),
+                                   zeroes.end());
+      cudaMemcpy(bn_scale_ + i * c, ones.data(), sizeof(float) * c,
+                 cudaMemcpyHostToDevice);
+      cudaMemcpy(bn_bias_ + i * c, zeroes.data(), sizeof(float) * c,
+                 cudaMemcpyHostToDevice);
+    }
   }
 
 #if IS_TRT_VERSION_LT(8000)
@@ -159,7 +184,9 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return getBaseSerializationSize() + SerializedSize(epsilon_) +
-           SerializedSize(groups_) + SerializedSize(input_dims_);
+           SerializedSize(groups_) + SerializedSize(input_dims_) +
+           SerializedSize(with_fp16_) + SerializedSize(ones_for_serialize_) +
+           SerializedSize(zeroes_for_serialize_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT override {
@@ -168,6 +195,8 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
     SerializeValue(&buffer, groups_);
     SerializeValue(&buffer, input_dims_);
     SerializeValue(&buffer, with_fp16_);
+    SerializeValue(&buffer, ones_for_serialize_);
+    SerializeValue(&buffer, zeroes_for_serialize_);
   }
 };
 
