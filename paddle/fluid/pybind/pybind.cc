@@ -81,6 +81,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/distributed_py.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #ifndef PADDLE_ON_INFERENCE
@@ -3978,6 +3979,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
+#ifndef PADDLE_ON_INFERENCE
+  BindDistributed(&m);
+#endif
 #ifdef PADDLE_WITH_ASCEND
   BindAscendWrapper(&m);
   BindAscendGraph(&m);

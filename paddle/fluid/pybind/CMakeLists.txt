@@ -80,6 +80,14 @@ set(PYBIND_SRCS
   communication.cc
   cuda_streams_py.cc)
 
+if(NOT ON_INFER)
+  set (PYBIND_DEPS ${PYBIND_DEPS} processgroup)
+  if (WITH_NCCL)
+    set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
+  endif()
+  set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
+endif()
+
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
   set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
