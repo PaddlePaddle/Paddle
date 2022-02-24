@@ -16,6 +16,7 @@ limitations under the License. */
 #include <iostream>
 #include <memory>
 #include "dnnl.hpp"
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/multi_gru_op.h"
 #include "paddle/fluid/platform/errors.h"
@@ -31,7 +32,7 @@ using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
 using platform::to_void_cast;
-using framework::vectorize;
+using phi::vectorize;
 using Direction = dnnl::rnn_direction;
 
 namespace {

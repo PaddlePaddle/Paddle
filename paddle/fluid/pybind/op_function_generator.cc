@@ -33,7 +33,7 @@
 #endif
 
 // pten
-#include "paddle/pten/kernels/declarations.h"
+#include "paddle/phi/kernels/declarations.h"
 
 // NOTE(pangyoki): Inplace OP with duplicable input.
 // The set includes inplace ops that have duplicable input.
@@ -402,7 +402,7 @@ GenerateOpFunctions() {
     // since only OperatorWithKernel can run in dygraph mode.
     // if the pten lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
-        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+        !phi::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
       continue;
     }
 

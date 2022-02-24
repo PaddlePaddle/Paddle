@@ -41,10 +41,10 @@ TEST(Benchmark, EagerScaleCPU) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   for (const std::string& mode : {"Accuracy", "Performance"}) {
-    paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+    paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
     paddle::experimental::Tensor tensor = CreateTensorWithValue(
-        ddim, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-        pten::DataLayout::NCHW, 5.0, true);
+        ddim, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, 5.0, true);
     RetainGradForTensor(tensor);
 
     if (mode == "Accuracy") {
@@ -80,16 +80,16 @@ TEST(Benchmark, EagerIntermediateMatmulCPU) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   for (const std::string& mode : {"Accuracy", "Performance"}) {
-    paddle::framework::DDim ddimX = paddle::framework::make_ddim({2, 2});
+    paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
     paddle::experimental::Tensor X = CreateTensorWithValue(
-        ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-        pten::DataLayout::NCHW, 1.0, true);
+        ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, 1.0, true);
     RetainGradForTensor(X);
 
-    paddle::framework::DDim ddimY = paddle::framework::make_ddim({2, 2});
+    paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
     paddle::experimental::Tensor Y = CreateTensorWithValue(
-        ddimY, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-        pten::DataLayout::NCHW, 2.0, true);
+        ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, 2.0, true);
     RetainGradForTensor(Y);
 
     if (mode == "Accuracy") {
@@ -124,27 +124,25 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   for (const std::string& mode : {"Accuracy", "Performance"}) {
-    paddle::framework::DDim ddimX =
-        paddle::framework::make_ddim({MLP_M, MLP_N});
+    paddle::framework::DDim ddimX = phi::make_ddim({MLP_M, MLP_N});
     paddle::experimental::Tensor X = CreateTensorWithValue(
-        ddimX, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-        pten::DataLayout::NCHW, MLP_X_VAL, true);
+        ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, MLP_X_VAL, true);
     RetainGradForTensor(X);
 
     std::vector<paddle::experimental::Tensor> Ws;
     std::vector<paddle::experimental::Tensor> Bs;
     for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
-      paddle::framework::DDim ddimW =
-          paddle::framework::make_ddim({MLP_N, MLP_K});
+      paddle::framework::DDim ddimW = phi::make_ddim({MLP_N, MLP_K});
       paddle::experimental::Tensor W = CreateTensorWithValue(
-          ddimW, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-          pten::DataLayout::NCHW, MLP_W_VAL, true);
+          ddimW, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+          phi::DataLayout::NCHW, MLP_W_VAL, true);
       RetainGradForTensor(W);
 
-      paddle::framework::DDim ddimB = paddle::framework::make_ddim({MLP_K});
+      paddle::framework::DDim ddimB = phi::make_ddim({MLP_K});
       paddle::experimental::Tensor B = CreateTensorWithValue(
-          ddimB, paddle::platform::CPUPlace(), pten::DataType::FLOAT32,
-          pten::DataLayout::NCHW, MLP_B_VAL, true);
+          ddimB, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+          phi::DataLayout::NCHW, MLP_B_VAL, true);
       RetainGradForTensor(B);
 
       Ws.emplace_back(std::move(W));
@@ -177,5 +175,5 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
 
 USE_OP_ITSELF(scale);
 USE_OP_ITSELF(elementwise_add);
-USE_OP(matmul_v2);
-USE_OP(reduce_sum);
+USE_OP_ITSELF(matmul_v2);
+USE_OP_ITSELF(reduce_sum);

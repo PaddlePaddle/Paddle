@@ -21,7 +21,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -30,18 +30,17 @@ namespace paddle {
 namespace imperative {
 
 TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
-  pten::CPUPlace cpu;
+  phi::CPUPlace cpu;
 
   std::vector<int64_t> rows{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   int64_t table_size = 10;
   int64_t embedding_width = 10;
 
-  auto sr1 = std::make_shared<pten::SelectedRows>(rows, table_size);
-  auto sr2 = std::make_shared<pten::SelectedRows>(rows, table_size);
+  auto sr1 = std::make_shared<phi::SelectedRows>(rows, table_size);
+  auto sr2 = std::make_shared<phi::SelectedRows>(rows, table_size);
 
   // initialize a sparse table 1
-  sr1->mutable_value()->Resize(
-      pten::framework::make_ddim({table_size, embedding_width}));
+  sr1->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
   auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -50,15 +49,14 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
   }
 
   // initialize a sparse table 2
-  sr2->mutable_value()->Resize(
-      pten::framework::make_ddim({table_size, embedding_width}));
+  sr2->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
   auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
       data_sr2[i * embedding_width + j] = static_cast<float>(i);
     }
   }
-  // new 2 pten::Tensor
+  // new 2 phi::Tensor
   paddle::experimental::Tensor t1(sr1);
   paddle::experimental::Tensor t2(sr2);
 
@@ -67,7 +65,7 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
       paddle::imperative::SelectedRowsMerge<paddle::experimental::Tensor>(t1,
                                                                           t2);
   auto* new_buffer_tensor =
-      static_cast<pten::SelectedRows*>(new_buffer->impl().get());
+      static_cast<phi::SelectedRows*>(new_buffer->impl().get());
   auto* new_buffer_data_sr1 =
       new_buffer_tensor->mutable_value()->mutable_data<float>(cpu);
 
@@ -95,8 +93,8 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   std::vector<int64_t> dims = {2, 5};
   auto* src = var1.GetMutable<framework::LoDTensor>();
   auto* dst = var2.GetMutable<framework::LoDTensor>();
-  src->Resize(framework::make_ddim(dims));
-  dst->Resize(framework::make_ddim(dims));
+  src->Resize(phi::make_ddim(dims));
+  dst->Resize(phi::make_ddim(dims));
   auto* src_mutable = src->mutable_data<T>(place1);
   auto* dst_mutable = dst->mutable_data<T>(place2);
 
@@ -163,8 +161,28 @@ TEST(test_add_functor, add_functor) {
   gpu_res = TensorddTest(gpu_place, gpu_place, static_cast<double>(1.0),
                          static_cast<double>(2.0));
   EXPECT_EQ(gpu_res, 0);
+
+  // normal
+  gpu_res = TensorddTest(gpu_place, gpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
   gpu_res =
       TensorddTest(gpu_place, gpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  // different places
+  gpu_res = TensorddTest(cpu_place, gpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res = TensorddTest(gpu_place, cpu_place, static_cast<float>(1.0),
+                         static_cast<float>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res =
+      TensorddTest(cpu_place, gpu_place, static_cast<platform::float16>(1.0),
+                   static_cast<platform::float16>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res =
+      TensorddTest(gpu_place, cpu_place, static_cast<platform::float16>(1.0),
                    static_cast<platform::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
 #endif
@@ -222,8 +240,8 @@ static void CopyVar(const framework::Variable& var,
     auto* dst_tensor = dst.GetMutable<framework::LoDTensor>();
     framework::TensorCopySync(src_tensor, src_tensor.place(), dst_tensor);
   } else {
-    const auto& src_selected_rows = var.Get<pten::SelectedRows>();
-    auto* dst_selected_rows = dst.GetMutable<pten::SelectedRows>();
+    const auto& src_selected_rows = var.Get<phi::SelectedRows>();
+    auto* dst_selected_rows = dst.GetMutable<phi::SelectedRows>();
     dst_selected_rows->set_rows(src_selected_rows.rows());
     dst_selected_rows->set_height(src_selected_rows.height());
     framework::TensorCopySync(src_selected_rows.value(),
@@ -246,8 +264,8 @@ static bool IsEqualVar(const framework::Variable& var1,
     framework::TensorCopySync(var2.Get<framework::LoDTensor>(),
                               platform::CPUPlace(), &t2);
   } else {
-    auto& s1 = var1.Get<pten::SelectedRows>();
-    auto& s2 = var2.Get<pten::SelectedRows>();
+    auto& s1 = var1.Get<phi::SelectedRows>();
+    auto& s2 = var2.Get<phi::SelectedRows>();
 
     if (s1.height() != s2.height()) {
       return false;
@@ -264,9 +282,9 @@ static bool IsEqualVar(const framework::Variable& var1,
       return false;
     }
 
-    framework::TensorCopySync(var1.Get<pten::SelectedRows>().value(),
+    framework::TensorCopySync(var1.Get<phi::SelectedRows>().value(),
                               platform::CPUPlace(), &t1);
-    framework::TensorCopySync(var2.Get<pten::SelectedRows>().value(),
+    framework::TensorCopySync(var2.Get<phi::SelectedRows>().value(),
                               platform::CPUPlace(), &t2);
   }
 
@@ -311,7 +329,7 @@ static framework::Variable RandomSelectedRows(framework::DDim dims,
   dims[0] = row_number;
 
   framework::Variable ret;
-  auto* sr = ret.GetMutable<pten::SelectedRows>();
+  auto* sr = ret.GetMutable<phi::SelectedRows>();
   auto tensor_var = RandomTensor<T>(dims, place, low, high);
   sr->mutable_value()->ShareDataWith(
       tensor_var.template Get<framework::LoDTensor>());

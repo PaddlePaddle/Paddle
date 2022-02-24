@@ -225,6 +225,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size();
         return false;
       }
+      if (desc.HasAttr("data_format")) {
+        std::string data_format =
+            BOOST_GET_CONST(std::string, desc.GetAttr("data_format"));
+        if (data_format == "NHWC" || data_format == "NDHWC") {
+          return false;
+        }
+      }
       if (!desc.HasAttr("pooling_type")) {
         return false;
       } else {
@@ -553,12 +560,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                      "the pass.";
           return false;
         }
+#if !IS_TRT_VERSION_GE(7000)
         auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
         const auto x_shape = x_var_desc->GetShape();
         if (x_shape.size() == 1) {
           VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
           return false;
         }
+#endif
       }
     }
 
