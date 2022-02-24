@@ -26,9 +26,6 @@ void InferShapedKernelLauncher::CreateKernelFrameForInferShape(
     if (value->is_type<::phi::DenseTensor>()) {
       values.emplace_back(::phi::MetaTensor{&value->get<::phi::DenseTensor>()});
       infershape_kernel_frame_builder.AddArgument(values.back().get());
-    } else if (value->is_type<phi::DenseTensor>()) {
-      values.emplace_back(phi::MetaTensor{&value->get<phi::DenseTensor>()});
-      infershape_kernel_frame_builder.AddArgument(values.back().get());
     } else {
       infershape_kernel_frame_builder.AddArgument(value);
     }

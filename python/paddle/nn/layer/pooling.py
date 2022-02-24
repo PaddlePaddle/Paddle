@@ -1131,7 +1131,7 @@ class AdaptiveMaxPool3D(Layer):
 
 
 class MaxUnPool1D(Layer):
-    """
+    r"""
     This API implements max unpooling 1d opereation.
 
     `max_unpool1d` accepts the output of `max_pool1d` as input, 
@@ -1213,7 +1213,7 @@ class MaxUnPool1D(Layer):
 
 
 class MaxUnPool2D(Layer):
-    """
+    r"""
     This API implements max unpooling 2d opereation.
 
     'max_unpool2d' accepts the output of 'max_unpool2d' as input
@@ -1299,7 +1299,7 @@ class MaxUnPool2D(Layer):
 
 
 class MaxUnPool3D(Layer):
-    """
+    r"""
     This API implements max unpooling 3d opereation.
 
     `max_unpool3d` accepts the output of `max_pool3d` as input, 

@@ -485,6 +485,25 @@ void SplitInferMeta(const MetaTensor& x,
   }
 }
 
+void UnbindInferMeta(const MetaTensor& x,
+                     int axis,
+                     std::vector<MetaTensor>* outs) {
+  auto in_dims = x.dims();
+  std::vector<int> out_dim;
+  axis = axis < 0 ? in_dims.size() + axis : axis;
+  for (int i = 0; i < in_dims.size(); ++i) {
+    if (i != axis) out_dim.push_back(in_dims[i]);
+  }
+  auto out_dims = phi::make_ddim(out_dim);
+
+  for (size_t i = 0; i < outs->size(); ++i) {
+    (*outs)[i].set_dtype(x.dtype());
+    (*outs)[i].set_dims(out_dims);
+    (*outs)[i].set_layout(x.layout());
+    (*outs)[i].share_lod(x);
+  }
+}
+
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out) {
   int dim1 = axis1;
