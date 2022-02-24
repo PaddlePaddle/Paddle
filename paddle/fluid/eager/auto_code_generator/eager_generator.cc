@@ -2039,6 +2039,8 @@ static std::string GenerateGradNodeCCContents(
       "egr::GradNodeBase::ApplyGradientHooks(grads);\n"
       "  std::vector<std::vector<paddle::experimental::Tensor>> outputs(%d);\n"
       "  %s\n"
+      "  if(NeedComplexToRealConversion()) "
+      "HandleComplexGradToRealGrad(&outputs);\n"
       "  return outputs;\n";
   generated_grad_function_body = paddle::string::Sprintf(
       BWD_RETURN_TEMPLATE, in_vars.size(), generated_grad_function_body);
