@@ -1310,10 +1310,13 @@ class ConvNormActivation(Sequential):
         out_channels (int): Number of channels produced by the Convolution-Normalzation-Activation block
         kernel_size: (int, optional): Size of the convolving kernel. Default: 3
         stride (int, optional): Stride of the convolution. Default: 1
-        padding (int, tuple or str, optional): Padding added to all four sides of the input. Default: None, in wich case it will calculated as ``padding = (kernel_size - 1) // 2 * dilation``
+        padding (int, tuple or str, optional): Padding added to all four sides of the input. Default: None,
+            in wich case it will calculated as ``padding = (kernel_size - 1) // 2 * dilation``
         groups (int, optional): Number of blocked connections from input channels to output channels. Default: 1
-        norm_layer (Callable[..., paddle.nn.Layer], optional): Norm layer that will be stacked on top of the convolutiuon layer. If ``None`` this layer wont be used. Default: ``paddle.nn.BatchNorm2d``
-        activation_layer (Callable[..., paddle.nn.Layer], optional): Activation function which will be stacked on top of the normalization layer (if not ``None``), otherwise on top of the conv layer. If ``None`` this layer wont be used. Default: ``paddle.nn.ReLU``
+        norm_layer (Callable[..., paddle.nn.Layer], optional): Norm layer that will be stacked on top of the convolutiuon layer.
+            If ``None`` this layer wont be used. Default: ``paddle.nn.BatchNorm2d``
+        activation_layer (Callable[..., paddle.nn.Layer], optional): Activation function which will be stacked on top of the normalization
+            layer (if not ``None``), otherwise on top of the conv layer. If ``None`` this layer wont be used. Default: ``paddle.nn.ReLU``
         dilation (int): Spacing between kernel elements. Default: 1
         bias (bool, optional): Whether to use bias in the convolution layer. By default, biases are included if ``norm_layer is None``.
     """
