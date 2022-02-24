@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include <mlir/Pass/Pass.h>
+#include "mlir/IR/Dialect.h"
+#include "mlir/Pass/Pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
 namespace trt {
@@ -44,10 +46,12 @@ namespace trt {
  *   "pd.fetch" %d, %f
  * }
  */
-class trtOpConverterPass
+struct trtOpConverterPass
     : public mlir::PassWrapper<trtOpConverterPass,
                                mlir::OperationPass<mlir::FuncOp>> {
- public:
+  void getDependentDialects(mlir::DialectRegistry &registry) const override {
+    registry.insert<TensorRTDialect>();
+  }
   ::llvm::StringRef getName() const override { return "trtOpTellerPass"; }
   void runOnOperation() final;
 };

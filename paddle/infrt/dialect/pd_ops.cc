@@ -24,6 +24,8 @@
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/pd_extra_ops.cpp.inc"  // NOLINT
 
+static void LLVM_ATTRIBUTE_UNUSED
+populateWithGenerated(::mlir::RewritePatternSet &patterns);
 #include "paddle/infrt/dialect/rewrite.hpp.inc"  // NOLINT
 
 namespace mlir {

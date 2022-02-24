@@ -23,7 +23,7 @@ def TRT_GraphOp : TRT_Op<"graph", [SingleBlockImplicitTerminator<"FetchOp">]> {
     Describe a tensorrt subgraph.
   }];
   let regions = (region SizedRegion<1>:$body);
-  
+  let arguments = (ins Variadic<TRT_Tensor>:$inputs);
   let results = (outs Variadic<TRT_Tensor>:$outputs);
 
 }
@@ -35,7 +35,9 @@ def TRT_ActivationOp : TRT_Op<"Activation", [NoSideEffect]> {
     TensorRT IActivationLayer.
     
   }];
-  let arguments = (ins  TRT_Tensor:$input, SI32Attr:$activation_type);
+  let arguments = (ins  TRT_Tensor:$input, SI32Attr:$activation_type,
+                        DefaultValuedAttr<F32Attr, "0.0">:$alpha,
+                        DefaultValuedAttr<F32Attr, "0.0">:$beta);
 
   let results = (outs TRT_Tensor:$output);
 }
@@ -59,8 +61,8 @@ def TRT_MatrixMultiplyOp : TRT_Op<"MatrixMultiply", [NoSideEffect]> {
     TensorRT IMatrixMultiplyLayer.
     
   }];
-  let arguments = (ins  TRT_Tensor:$input1, SI32Attr:$matrix_operation1,
-                        TRT_Tensor:$input2, SI32Attr:$matrix_operation2);
+  let arguments = (ins  TRT_Tensor:$input1, BoolAttr:$transpose1,
+                        TRT_Tensor:$input2, BoolAttr:$transpose2);
 
   let results = (outs TRT_Tensor:$output);
 }
