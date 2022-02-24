@@ -44,7 +44,7 @@ void RandintRawKernel(const Context& ctx,
     engine = std::make_shared<std::mt19937_64>();
     engine->seed(seed);
   } else {
-    engine = ctx.GetGenerator()->GetCPUEngine();
+    engine = ctx.GetHostGenerator()->GetCPUEngine();
   }
   std::uniform_int_distribution<T> dist(low, high - 1);
   auto data = out->data<T>();
