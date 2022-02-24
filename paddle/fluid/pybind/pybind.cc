@@ -216,9 +216,9 @@ bool IsCompiledWithAscend() {
 
 bool IsBuildWithEager() {
 #ifndef PADDLE_ON_INFERENCE
-  return false;
-#else
   return true;
+#else
+  return false;
 #endif
 }
 
