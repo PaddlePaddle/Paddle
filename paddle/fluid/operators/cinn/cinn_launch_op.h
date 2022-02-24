@@ -103,7 +103,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     details::DebugCinnCompiledResult(cinn_compiled_object);
 
     auto* launch_context = cinn_compiled_object.launch_context.get();
-    // Step 3. check the equiality of some aspects
+    // Step 3. check the computational consistency of the subgraph
     //         before and after the compilation
     // 3.1 Input variables: tensors of input variables have
     //     been initialized before graph compiled, just check the
