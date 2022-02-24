@@ -6,12 +6,13 @@ include "paddle/infrt/dialect/infrt_base.td"
 include "paddle/infrt/dialect/pd_ops.td"
 include "paddle/infrt/dialect/tensorrt/trt_ops.td"
 
-
+//TO DO(shangzhizhou):add restriction to alpha and head_number 
 def PD2TRT_Matmul_Lower : Pat<
                  (PD_MatmulOp $X, $Y, $transpose_X, $transpose_Y, $alpha, $head_number),
                  (TRT_MatrixMultiplyOp $X, $transpose_X, $Y, $transpose_Y)>;
 
 //TO DO(shangzhizhou):replace '"INFRT_createI32Attr<"0">' to enum nvinfer1::ElementWiseOperation::kSUM
+//TO DO(shangzhizhou):add restriction -> axis == -1
 def PD2TRT_ElementwiseAdd_Lower : Pat<
                  (PD_Elementwise_addOp $X, $Y, $axis),
                  (TRT_ElementWiseOp $X, $Y, (INFRT_createSI32Attr<"0">)/*kSUM*/)>;
