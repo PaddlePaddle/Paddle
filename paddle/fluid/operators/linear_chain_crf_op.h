@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -102,8 +102,8 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       label_tmp.Resize({batch_size, 1});
       alpha_tmp.Resize({batch_size, tag_num});
       emission_exps_tmp.Resize({batch_size, tag_num});
-      pten::funcs::set_constant(ctx.device_context(), emission_exps, 0.0);
-      pten::funcs::set_constant(ctx.device_context(), alpha, 0.0);
+      phi::funcs::set_constant(ctx.device_context(), emission_exps, 0.0);
+      phi::funcs::set_constant(ctx.device_context(), alpha, 0.0);
     } else {
       in_lod = ctx.Input<LoDTensor>("Label")->lod();
       PADDLE_ENFORCE_NE(in_lod.size(), 0,
@@ -120,7 +120,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     // Now, all the inputs and outputs should be on the CPU memory.
     Tensor emission_row_max;
     emission_row_max.mutable_data<T>(
-        framework::make_ddim({static_cast<int64_t>(batch_size), 1}),
+        phi::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
     auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
@@ -274,7 +274,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // data reader operator, it can have no gradients.
     if (transition_grad) {
       transition_grad->mutable_data<T>(platform::CPUPlace());
-      pten::funcs::set_constant(ctx.device_context(), transition_grad, 0.);
+      phi::funcs::set_constant(ctx.device_context(), transition_grad, 0.);
     }
     // Now, all the inputs and outputs should be on the CPU memory.
     auto emission_dims = emission_exps->dims();

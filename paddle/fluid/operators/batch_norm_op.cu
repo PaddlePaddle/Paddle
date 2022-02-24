@@ -27,7 +27,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
@@ -969,8 +969,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         if (d_x) {
           framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
         }
-        pten::funcs::SetConstant<platform::CUDADeviceContext,
-                                 BatchNormParamType<T>>
+        phi::funcs::SetConstant<platform::CUDADeviceContext,
+                                BatchNormParamType<T>>
             functor;
         functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
         functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));

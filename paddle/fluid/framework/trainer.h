@@ -34,7 +34,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
-#include "paddle/pten/backends/dynload/port.h"
+#include "paddle/phi/backends/dynload/port.h"
+
+#ifdef PADDLE_WITH_PSLIB
+#include <pslib.h>
+#endif
 
 namespace paddle {
 namespace framework {
@@ -287,6 +291,9 @@ class PSGPUTrainer : public TrainerBase {
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;
+
+  // _ps_param for gpups optimizer config
+  ::paddle::PSParameter _ps_param;
 };
 #endif
 

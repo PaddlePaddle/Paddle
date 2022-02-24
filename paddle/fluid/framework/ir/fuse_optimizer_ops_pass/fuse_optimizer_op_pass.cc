@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -274,16 +274,15 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
   }
   bool support_cpu = false;
   bool support_gpu = false;
-  auto &kernel_factory = pten::KernelFactory::Instance();
+  auto &kernel_factory = phi::KernelFactory::Instance();
   auto kernel_key_map =
-      kernel_factory.SelectKernelMap(pten::TransToPtenKernelName(op_type));
+      kernel_factory.SelectKernelMap(phi::TransToPtenKernelName(op_type));
   bool has_op_kernel = kernel_key_map.size() > 0 ? true : false;
   for (auto &kernel : kernel_key_map) {
-    if (platform::is_gpu_place(
-            pten::TransToPtenPlace(kernel.first.backend()))) {
+    if (platform::is_gpu_place(phi::TransToPtenPlace(kernel.first.backend()))) {
       support_gpu = true;
     } else if (platform::is_cpu_place(
-                   pten::TransToPtenPlace(kernel.first.backend()))) {
+                   phi::TransToPtenPlace(kernel.first.backend()))) {
       support_cpu = true;
     }
   }

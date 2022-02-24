@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/hiprtc.h"
-#include "paddle/pten/backends/dynload/hiprtc.h"
+#include "paddle/phi/backends/dynload/hiprtc.h"
 
 namespace paddle {
 namespace platform {
@@ -23,7 +23,7 @@ namespace dynload {
 
 HIPRTC_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasNVRTC() { return pten::dynload::HasNVRTC(); }
+bool HasNVRTC() { return phi::dynload::HasNVRTC(); }
 
 }  // namespace dynload
 }  // namespace platform
