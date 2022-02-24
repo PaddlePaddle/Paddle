@@ -119,22 +119,39 @@ struct DeviceContext::Impl {
         gen,
         phi::errors::InvalidArgument(
             "Required generator shall not be nullptr, but received nullptr."));
-    generator_ = gen;
+    device_generator_ = gen;
   }
 
   Generator* GetGenerator() const {
     PADDLE_ENFORCE_NOT_NULL(
-        generator_,
+        device_generator_,
         phi::errors::InvalidArgument("Required generator_ shall not be "
                                      "nullptr, but received nullptr."));
-    return generator_;
+    return device_generator_;
+  }
+
+  void SetHostGenerator(Generator* gen) {
+    PADDLE_ENFORCE_NOT_NULL(
+        gen,
+        phi::errors::InvalidArgument(
+            "Required generator shall not be nullptr, but received nullptr."));
+    host_generator_ = gen;
+  }
+
+  Generator* GetHostGenerator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        host_generator_,
+        phi::errors::InvalidArgument("Required generator_ shall not be "
+                                     "nullptr, but received nullptr."));
+    return host_generator_;
   }
 
  private:
   const Allocator* device_allocator_{nullptr};
   const Allocator* host_allocator_{nullptr};
   const Allocator* zero_allocator_{nullptr};
-  Generator* generator_{nullptr};
+  Generator* device_generator_{nullptr};
+  Generator* host_generator_{nullptr};
 };
 
 DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
@@ -143,6 +160,8 @@ DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetHostAllocator(&other.GetHostAllocator());
   impl_->SetAllocator(&other.GetAllocator());
   impl_->SetZeroAllocator(&other.GetZeroAllocator());
+  impl_->SetHostGenerator(other.GetHostGenerator());
+  impl_->SetGenerator(other.GetGenerator());
 }
 
 DeviceContext::DeviceContext(DeviceContext&& other) {
@@ -223,5 +242,13 @@ DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
 void DeviceContext::SetGenerator(Generator* gen) { impl_->SetGenerator(gen); }
 
 Generator* DeviceContext::GetGenerator() const { return impl_->GetGenerator(); }
+
+void DeviceContext::SetHostGenerator(Generator* gen) {
+  impl_->SetHostGenerator(gen);
+}
+
+Generator* DeviceContext::GetHostGenerator() const {
+  return impl_->GetHostGenerator();
+}
 
 }  // namespace phi

@@ -32,13 +32,13 @@ void ScaleKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   out->mutable_data<T>(dev_ctx.GetPlace());
 
-  PADDLE_ENFORCE_EQ(x.dims(),
-                    out->dims(),
-                    paddle::platform::errors::InvalidArgument(
-                        "In and out should have the same dim,"
-                        " expected %s, but got %s.",
-                        x.dims().to_str().c_str(),
-                        out->dims().to_str().c_str()));
+  PADDLE_ENFORCE_EQ(
+      x.dims(),
+      out->dims(),
+      phi::errors::InvalidArgument("In and out should have the same dim,"
+                                   " expected %s, but got %s.",
+                                   x.dims().to_str().c_str(),
+                                   out->dims().to_str().c_str()));
   using XPUType = typename XPUTypeTrait<T>::Type;
   int r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -50,13 +50,13 @@ void ScaleKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       r,
       XPU_SUCCESS,
-      paddle::platform::errors::External(
+      phi::errors::External(
           "XPU scale kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
 }
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(scale,
+PD_REGISTER_KERNEL(scale,
                    XPU,
                    ALL_LAYOUT,
                    phi::ScaleKernel,

@@ -19,7 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/cpu/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -54,13 +54,14 @@ void SplitKernel(const Context& dev_ctx,
     paddle::operators::StridedMemcpyWithAxis0<T>(
         dev_ctx, x, shape_refer, &outs);
   } else {
-    SplitImpl<T, Context>(dev_ctx, x, shape_refer, axis, &outs);
+    phi::funcs::SplitFunctor<Context, T> functor;
+    functor(dev_ctx, x, shape_refer, axis, &outs);
   }
 }
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(split,
+PD_REGISTER_KERNEL(split,
                    CPU,
                    ALL_LAYOUT,
                    phi::SplitKernel,
@@ -69,4 +70,5 @@ PT_REGISTER_KERNEL(split,
                    int64_t,
                    int,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

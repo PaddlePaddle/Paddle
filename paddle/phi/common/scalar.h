@@ -27,7 +27,6 @@ namespace experimental {
 template <typename T>
 class ScalarBase {
  public:
-  bool FromTensor() const { return is_from_tensor_; }
   // Constructor support implicit
   ScalarBase(double val) : dtype_(DataType::FLOAT64) {  // NOLINT
     data_.f64 = val;
@@ -165,6 +164,10 @@ class ScalarBase {
   // interface.
   bool is_dype(DataType d) const { return d == dtype_; }
 
+  bool FromTensor() const { return is_from_tensor_; }
+
+  void SetFromTensor(bool from_tensor) { is_from_tensor_ = from_tensor; }
+
   template <typename RT>
   inline RT to() const {
     switch (dtype_) {
@@ -198,6 +201,8 @@ class ScalarBase {
         PD_THROW("Invalid enum scalar data type `", dtype_, "`.");
     }
   }
+
+  DataType dtype() const { return dtype_; }
 
  private:
   template <typename T1, typename T2>
