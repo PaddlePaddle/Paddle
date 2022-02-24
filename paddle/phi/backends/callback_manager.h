@@ -32,8 +32,7 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 namespace stream {
 class Stream;
@@ -58,5 +57,4 @@ class CallbackManager {
   mutable std::future<void> last_future_;
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

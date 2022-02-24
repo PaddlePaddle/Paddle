@@ -393,10 +393,10 @@ void SetTensorFromPyArrayT(
   } else if (paddle::platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::Place tmp_place = place;
-    platform::DeviceGuard guard(tmp_place);
+    phi::DeviceGuard guard(tmp_place);
     auto dst = self->mutable_data<T>(place);
 
-    platform::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopyH2D(
+    phi::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopyH2D(
         reinterpret_cast<void *>(dst),
         const_cast<void *>(reinterpret_cast<const void *>(array.data())),
         array.nbytes());

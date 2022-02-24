@@ -17,9 +17,9 @@
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device/custom/fake_cpu_device.h"
-#include "paddle/fluid/platform/device/device_manager.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/custom/fake_cpu_device.h"
+#include "paddle/phi/backends/device_manager.h"
 
 void RegisterDevice() {
   CustomRuntimeParams runtime_params;
@@ -30,23 +30,22 @@ void RegisterDevice() {
   runtime_params.interface->size = sizeof(C_DeviceInterface);
 
   InitFakeCPUDevice(&runtime_params);
-  paddle::platform::LoadCustomRuntimeLib(
+  phi::LoadCustomRuntimeLib(
       runtime_params, std::move(device_interface), "", nullptr);
 }
 
 void InitDevice() {
   RegisterDevice();
-  EXPECT_GT(static_cast<int>(
-                paddle::platform::DeviceManager::GetAllDeviceTypes().size()),
+  EXPECT_GT(static_cast<int>(phi::DeviceManager::GetAllDeviceTypes().size()),
             0);
   auto place = paddle::platform::CustomPlace(DEVICE_TYPE, 0);
-  auto device = paddle::platform::DeviceManager::GetDeviceWithPlace(place);
+  auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   EXPECT_NE(device, nullptr);
 
   std::vector<paddle::platform::Place> places;
-  auto device_types = paddle::platform::DeviceManager::GetAllDeviceTypes();
+  auto device_types = phi::DeviceManager::GetAllDeviceTypes();
   for (auto dev_type : device_types) {
-    auto devices = paddle::platform::DeviceManager::GetDeviceList(dev_type);
+    auto devices = phi::DeviceManager::GetDeviceList(dev_type);
     for (auto dev_id : devices) {
       places.push_back(
           paddle::platform::PlaceHelper::CreatePlace(dev_type, dev_id));
@@ -60,14 +59,14 @@ void InitDevice() {
 void TestDeviceInterface(const paddle::platform::Place& place) {
   std::cout << "TestDeviceInterface on " << place << std::endl;
   if (paddle::platform::is_custom_place(place)) {
-    auto device = paddle::platform::DeviceManager::GetDeviceWithPlace(place);
+    auto device = phi::DeviceManager::GetDeviceWithPlace(place);
     auto dev_type = paddle::platform::PlaceHelper::GetDeviceType(place);
-    auto p1 = device->MemoryAllocate(
-        paddle::platform::DeviceManager::GetMinChunkSize(place));
+    auto p1 =
+        device->MemoryAllocate(phi::DeviceManager::GetMinChunkSize(place));
     EXPECT_NE(p1, nullptr);
 
-    paddle::platform::DeviceManager::SetDevice(place);
-    auto dev_id = paddle::platform::DeviceManager::GetDevice(dev_type);
+    phi::DeviceManager::SetDevice(place);
+    auto dev_id = phi::DeviceManager::GetDevice(dev_type);
     EXPECT_EQ(dev_id, place.GetDeviceId());
   }
 }
@@ -168,11 +167,10 @@ void TestTensorUtils(const paddle::platform::Place& place) {
 
 TEST(CustomDevice, Tensor) {
   InitDevice();
-  auto dev_types = paddle::platform::DeviceManager::GetAllDeviceTypes();
+  auto dev_types = phi::DeviceManager::GetAllDeviceTypes();
   for (const auto& dev_type : dev_types) {
     std::cout << "Test on " << dev_type << std::endl;
-    EXPECT_GT(static_cast<int>(
-                  paddle::platform::DeviceManager::GetDeviceCount(dev_type)),
+    EXPECT_GT(static_cast<int>(phi::DeviceManager::GetDeviceCount(dev_type)),
               0);
     auto place = paddle::platform::PlaceHelper::CreatePlace(dev_type);
 

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/op_utils.h"
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/phi/backends/device_manager.h"
 #endif
 
 namespace phi {
@@ -75,9 +75,7 @@ phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
       if (!device_type.empty()) {
         return phi::CustomPlace(
             device_type,
-            set_device_id
-                ? paddle::platform::DeviceManager::GetDevice(device_type)
-                : 0);
+            set_device_id ? phi::DeviceManager::GetDevice(device_type) : 0);
       }
 #endif
       PADDLE_THROW(phi::errors::Unimplemented(

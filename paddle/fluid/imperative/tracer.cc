@@ -251,7 +251,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
 #endif
     } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      platform::DeviceManager::SetDevice(place);
+      phi::DeviceManager::SetDevice(place);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with CustomDevice if use "
