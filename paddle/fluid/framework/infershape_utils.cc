@@ -422,6 +422,22 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             "Unsupported attribute type is received when call "
             "InferShapeFunctor."));
       }
+    } else if (ctx->HasInput(attr_name)) {
+      // convert from data
+      if (attr_defs[i].type_index == std::type_index(typeid(int32_t))) {
+        if (ctx->IsRuntime()) {
+          const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
+          auto var_temp = BOOST_GET_CONST(Variable*, infershape_inputs[i]);
+          auto val = experimental::MakePtenScalarFromVar(*var_temp);
+          int32_t val_int = val.template to<int32_t>();
+          infer_meta_context.EmplaceBackAttr(val_int);
+        } else {
+          infer_meta_context.EmplaceBackAttr(-1);
+        }
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Get value from variable only support int yet"));
+      }
     }
   }
 

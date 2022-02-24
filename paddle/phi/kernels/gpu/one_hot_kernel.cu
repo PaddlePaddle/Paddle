@@ -82,5 +82,5 @@ void OneHotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     one_hot_raw, GPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}

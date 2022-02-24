@@ -32,5 +32,6 @@ KernelSignature OneHotOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(one_hot_v2, one_hot_raw);
-PT_REGISTER_ARG_MAPPING_FN(one_hot_v2, phi::OneHotOpArgumentMapping);
+PD_REGISTER_BASE_KERNEL_NAME(one_hot_v2, one_hot_raw);
+
+PD_REGISTER_ARG_MAPPING_FN(one_hot_v2, phi::OneHotOpArgumentMapping);
