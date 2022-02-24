@@ -563,10 +563,24 @@ def exec_gen_doc():
     end_time = time.time()
 
     if subprc.returncode != 0:
-        logger.info("----exec gen_doc failed----")
+        logger.info("----gen_doc msg----")
+        logger.info(msg)
+        logger.error("----gen_doc error msg----")
+        logger.error(err)
+        logger.error("----exec gen_doc failed----")
         result = False
     else:
+        logger.info("----gen_doc msg----")
+        logger.info(msg)
         logger.info("----exec gen_doc success----")
+
+    for fn in [
+            '/docs/en/develop/index_en.html', '/docs/zh/develop/index_cn.html'
+    ]:
+        if os.path.exists(fn):
+            logger.info('%s exists.', fn)
+        else:
+            logger.error('%s not exists.', fn)
 
     # msg is the returned code execution report
     return result, msg, end_time - start_time
@@ -730,4 +744,6 @@ if __name__ == '__main__':
 
     logger.info("Sample code check is successful!")
 
-    exec_gen_doc()
+    if args.mode == "cpu":
+        # As cpu mode is also run with the GPU whl, so skip it in gpu mode.
+        exec_gen_doc()
