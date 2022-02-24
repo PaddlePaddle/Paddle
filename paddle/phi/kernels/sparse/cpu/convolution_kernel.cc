@@ -286,6 +286,5 @@ void Conv3dKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-// float16 GEMM not supported on CPU
 PT_REGISTER_KERNEL(
     conv, CPU, ALL_LAYOUT, phi::sparse::Conv3dKernel, float, double) {}
