@@ -125,9 +125,25 @@ __device__ __forceinline__ void ThreadReduce(const T* input, int size,
   }
 }
 
+template <typename T>
+__global__ void ScalarGetMeanAndVarNCHW(const T* x, int size, T* mean, T* var) {
+  int i = blockIdx.x;
+  T x_mean = 0, x_var = 0;
+  for (int j = threadIdx.x; j < size; j += blockDim.x) {
+    T val;
+    val = x[i * size + j];
+    x_mean += val;
+    x_var += val * val;
+  }
+  x_mean /= size;
+  x_var /= size;
+  CudaAtomicAddWithWarp(&mean[i], x_mean);
+  CudaAtomicAddWithWarp(&var[i], x_var);
+}
+
 template <typename T, typename AccT, int VecSize>
-__global__ void GroupNormForwardGetMeanAndVarNCHW(const T* x, int size, T* mean,
-                                                  T* var) {
+__global__ void VectorizedGetMeanAndVarNCHW(const T* x, int size, T* mean,
+                                            T* var) {
   int i = blockIdx.x;
   AccT x_mean = static_cast<AccT>(0);
   AccT x_var = static_cast<AccT>(0);
@@ -267,9 +283,14 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
       block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
       dim3 grids(x_dims[0] * groups);
       dim3 blocks(block_size_nchw);
-      GroupNormForwardGetMeanAndVarNCHW<
-          T, AccT, vec_size><<<grids, blocks, 0, dev_ctx.stream()>>>(
-          x_data, size, mean_data, temp_var_data);
+      if (size < vec_size) {
+        ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
+            x_data, size, mean_data, temp_var_data);
+      } else {
+        VectorizedGetMeanAndVarNCHW<
+            T, AccT, vec_size><<<grids, blocks, 0, dev_ctx.stream()>>>(
+            x_data, size, mean_data, temp_var_data);
+      }
     } else {
       GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
           x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
