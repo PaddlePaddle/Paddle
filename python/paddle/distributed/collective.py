@@ -29,7 +29,6 @@ from ..fluid.layers import utils
 from ..fluid.dygraph import layers
 from ..fluid.dygraph.parallel import prepare_context
 import paddle
-from .fleet import fleet
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle import _C_ops
@@ -1422,6 +1421,7 @@ def split(x,
             "graph mode, plese use ParallelEmbedding, ParallelRowLinear, "
             "ParallelColumnLinear instead.")
     else:
+        from .fleet import fleet
         assert fleet._role_maker, ("To use paddle.distributed.split, "
                                    "you must call fleet.init() firstly.")
         rank = fleet.worker_index()

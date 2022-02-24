@@ -31,14 +31,19 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
-        self.pass_ctx = PassContext()
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
         super(ParameterServerOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
+    def _set_origin_programs(self, losses):
+        self.origin_main_programs = []
+        for loss in losses:
+            self.origin_main_programs.append(loss.block.program)
+
     def _init_ps_pass_context(self, loss, startup_program):
+        self.pass_ctx = PassContext()
         attrs = {}
         # trainer
         attrs["env"] = get_dist_env()
@@ -46,9 +51,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         attrs['loss'] = loss
         attrs['min_block_size'] = 81920
         attrs['origin_main_program'] = loss.block.program
-        attrs['origin_main_programs'] = [loss.block.program]
         attrs['origin_startup_program'] = startup_program
-        attrs['origin_startup_programs'] = [startup_program]
+
+        attrs['origin_main_programs'] = self.origin_main_programs
 
         attrs['cloned_main'] = attrs['origin_main_program'].clone()
         attrs['cloned_startup'] = attrs['origin_startup_program'].clone()
@@ -89,10 +94,11 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return False
 
     def _can_apply(self):
-        if self._attrs['role_maker']._is_collective or self._attrs[
-                'k_steps'] < 0:
+        if self.role_maker._is_collective:
             return False
-        return True
+
+        k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
+        return True if k_steps >= 0 else False
 
     def minimize_impl(self,
                       loss,
@@ -101,12 +107,34 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self.inner_opt.minimize(loss, startup_program, parameter_list,
                                 no_grad_set)
-        if startup_program == None:
-            startup_program = paddle.static.default_startup_program()
+        print("program after inner optimizer minimize:",
+              str(loss.block.program))
+        self._set_origin_programs([loss])
         self._init_ps_pass_context(loss, startup_program)
         ps_builder = PsProgramBuilderFactory()._create_ps_program_builder(
             self.pass_ctx)
         ps_builder._build_programs()
+        return None, None
+
+    def minimize_losses_impl(self,
+                             losses,
+                             startup_program=None,
+                             parameter_list=None,
+                             no_grad_set=None):
+        if parameter_list is None:
+            parameter_list = [None] * len(losses)
+        for idx, loss in enumerate(losses):
+            startup_prog = startup_program[idx]
+            parameters = parameter_list[idx]
+            self.inner_opt.minimize(loss, startup_prog, parameters, no_grad_set)
+        self._set_origin_programs(losses)
+        for idx, loss in enumerate(losses):
+            print("ps_optimizer idx loss:", idx, loss)
+            startup_prog = startup_program[idx]
+            self._init_ps_pass_context(loss, startup_prog)
+            ps_builder = PsProgramBuilderFactory()._create_ps_program_builder(
+                self.pass_ctx)
+            ps_builder._build_programs()
         return None, None
 
     def _can_apply_geo(self, program):

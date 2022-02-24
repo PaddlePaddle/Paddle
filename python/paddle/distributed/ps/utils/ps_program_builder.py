@@ -88,7 +88,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
         self.attrs['origin_main_program'] = self.cloned_main
 
         if self.launch_barrier and self.launch_barrier_flag:
-            wait_server_ready(server_endpoints)
+            wait_server_ready(self.server_endpoints)
 
         return
 
@@ -102,10 +102,13 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
                              format(self.ps_mode, "CpuSyncPsProgramBuilder"))
 
     def _build_trainer_programs(self):
+        print("build trainer program entry")
+        print("before ps program builder program:", self.cloned_main)
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
                                            self.attrs)
         add_lr_decay_table_pass.apply([], [], self.pass_ctx)
 
+        print("before distributed op pass")
         distributed_ops_pass = new_pass("distributed_ops_pass", self.attrs)
         distributed_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
@@ -125,9 +128,10 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
         self.attrs['origin_main_program'] = self.cloned_main
         self.attrs['origin_startup_program'] = self.cloned_startup
+        print("after ps program builder program:", self.cloned_main)
 
         if self.launch_barrier and self.launch_barrier_flag:
-            wait_server_ready(server_endpoints)
+            wait_server_ready(self.server_endpoints)
 
         return
 
@@ -166,7 +170,7 @@ class GpuPsProgramBuilder(PsProgramBuilder):
         self.attrs['origin_startup_program'] = self.cloned_startup
 
         if self.launch_barrier and self.launch_barrier_flag:
-            wait_server_ready(server_endpoints)
+            wait_server_ready(self.server_endpoints)
 
         return
 
@@ -219,7 +223,7 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
                                           [self.cloned_startup], self.pass_ctx)
 
         if self.launch_barrier and self.launch_barrier_flag:
-            wait_server_ready(server_endpoints)
+            wait_server_ready(self.server_endpoints)
 
         return
 

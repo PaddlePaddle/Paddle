@@ -43,12 +43,12 @@ def get_program_by_id(context, program_id):
     programs = context["origin_main_programs"]
     for i, program in enumerate(programs):
         if id(program) == program_id:
-            return program, context["origin_startup_programs"][i]
+            return program, context["origin_startup_programs"][i], i
     return None, None
 
 
 def parse_table_class(varname, program_id, context):
-    main_program, startup_program = get_program_by_id(context, program_id)
+    main_program, startup_program, idx = get_program_by_id(context, program_id)
     for op in main_program.global_block().ops:
         if not is_distributed_sparse_op(op) and not is_sparse_op(op):
             continue
@@ -63,7 +63,7 @@ def parse_table_class(varname, program_id, context):
 
 
 def get_default_accessor_proto(accessor, varname, program_id, context):
-    main_program, startup_program = get_program_by_id(context, program_id)
+    main_program, startup_program, idx = get_program_by_id(context, program_id)
     embedding_dim = 0
     for var in main_program.list_vars():
         if var.name == varname:
@@ -134,7 +134,7 @@ def get_default_accessor_proto(accessor, varname, program_id, context):
 
 
 def check_embedding_dim(accessor, varname, program_id, context):
-    main_program, startup_program = get_program_by_id(context, program_id)
+    main_program, startup_program, idx = get_program_by_id(context, program_id)
     embedding_dim = 0
     for var in main_program.list_vars():
         if var.name == varname:
@@ -228,7 +228,8 @@ class CommonAccessor:
         self.opt_init_map = opt_init_map
 
     def parse_entry(self, varname, program_id, context):
-        main_program, startup_program = get_program_by_id(context, program_id)
+        main_program, startup_program, idx = get_program_by_id(context,
+                                                               program_id)
         for op in main_program.global_block().ops:
             if not is_distributed_sparse_op(op) and not is_sparse_op(op):
                 continue
@@ -282,8 +283,8 @@ class CommonAccessor:
         print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
             ctx.table_id(), ctx.is_datanorm_table()))
 
-        main_program, startup_program = get_program_by_id(context,
-                                                          ctx.program_id())
+        main_program, startup_program, idx = get_program_by_id(context,
+                                                               ctx.program_id())
         pserver_id = get_role_id(context['role_maker'])
         pserver_num = len(get_ps_endpoints(context['role_maker']))
         optimizer_ops = get_optimize_ops(main_program)
@@ -351,10 +352,11 @@ class CommonAccessor:
                     param = main_program.global_block().vars[oop.input(
                         formal_name)[0]]
                     #TODO: for dense learning_rate, can be different from sparse lr
-                    if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                    if formal_name == "LearningRate" and param.name != "learning_rate_" + str(
+                            idx):
                         warnings.warn("will support decay soon")
                         param = main_program.global_block().vars[
-                            "learning_rate_0"]
+                            "learning_rate_" + str(idx)]
 
                     initializer = self.get_initializer_attr(param.name,
                                                             startup_program)
@@ -396,10 +398,11 @@ class CommonAccessor:
                 else:
                     param = main_program.global_block().vars[oop.input(
                         formal_name)[0]]
-                    if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                    if formal_name == "LearningRate" and param.name != "learning_rate_" + str(
+                            idx):
                         warnings.warn("will support decay soon")
                         param = main_program.global_block().vars[
-                            "learning_rate_0"]
+                            "learning_rate_" + str(idx)]
 
                     if shape is None:
                         if is_sparse:
@@ -1135,7 +1138,7 @@ class TheOnePSRuntime(RuntimeBase):
             if origin_varname.endswith("@GRAD"):
                 return False
 
-            if origin_varname == "learning_rate_0":
+            if origin_varname.startswith("learning_rate_"):
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
@@ -1239,7 +1242,7 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save() function, executor must be as Executor type")
 
         if main_program is None:
-            main_program = self.context['origin_ps_main_program']
+            main_program = self.context['origin_main_program']
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(
