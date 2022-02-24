@@ -174,7 +174,7 @@ float CpuUtilization::GetCpuCurProcessUtilization() {
   cpu_process_utilization = busy_time / (end_ - start_);
 #else
   LOG(WARN) << "Current System is not supported to get process cpu utilization"
-            << cpu_utilization << std::endl;
+            << cpu_process_utilization << std::endl;
 #endif
   return cpu_process_utilization;
 }
