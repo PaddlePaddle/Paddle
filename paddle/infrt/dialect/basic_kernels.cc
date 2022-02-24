@@ -90,7 +90,7 @@ static ParseResult parseReturnOp(OpAsmParser &parser,       // NOLINT
 }
 
 static void print(OpAsmPrinter &p, CallOp op) {  // NOLINT
-  p << "infrt.call " << op->getAttr("callee") << "(";
+  p << op->getAttr("callee") << "(";
   p.printOperands(op.getOperands());
   p << ")";
   p.printOptionalAttrDict(op->getAttrs(), {"callee"});
@@ -98,7 +98,7 @@ static void print(OpAsmPrinter &p, CallOp op) {  // NOLINT
 }
 
 static void printConstant(OpAsmPrinter &p, mlir::Operation *op) {  // NOLINT
-  p << op->getName() << " ";
+  p << " ";
   p.printOptionalAttrDict(op->getAttrs(), /*elidedAttrs=*/{"value"});
 
   if (op->getAttrs().size() > 1) p << ' ';
@@ -128,7 +128,6 @@ static void print(OpAsmPrinter &p, ConstantI64Op op) {  // NOLINT
 }
 
 static void print(OpAsmPrinter &p, ReturnOp op) {  // NOLINT
-  p << "infrt.return";
   if (op.getNumOperands() > 0) {
     p << ' ';
     p.printOperands(op.getOperands());

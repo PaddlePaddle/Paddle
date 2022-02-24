@@ -39,7 +39,6 @@ struct PrelnSkipLayerNorm : public PatternBase {
   void operator()(PDNode *x, PDNode *y);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(fused_skipe_layernorm);
   PATTERN_DECL_NODE(elementwise);
   PATTERN_DECL_NODE(layer_norm);
   // declare variable node's name
@@ -62,8 +61,13 @@ void PrelnSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
   auto *elementwise_out_var = pattern->NewNode(elementwise_out_repr())
                                   ->assert_is_op_output("elementwise_add")
                                   ->assert_is_op_input("layer_norm", "X")
-                                  ->assert_is_op_input("elementwise_add", "Y");
-
+                                  ->assert_more([](Node *x) {
+                                    if (x->outputs.size() == 2) {
+                                      return true;
+                                    } else {
+                                      return false;
+                                    }
+                                  });
   // Add links for elementwise_add op.
   elementwise->LinksFrom({x, y}).LinksTo({elementwise_out_var});
 
@@ -104,6 +108,18 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_skip_layernorm_fuse", graph);
+  bool enable_int8 = Get<bool>("enable_int8");
+  bool use_oss = Get<bool>("use_oss");
+  bool with_interleaved = Get<bool>("with_interleaved");
+  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  if (!(enable_int8 && use_oss && with_interleaved && with_dynamic_shape)) {
+    VLOG(4) << "preln_skip_layernorm_fuse_pass need: use_trt, enable_int8, "
+               "use_oss, "
+               "with_interleaved, with_dynamic_shape. Stop this pass, please "
+               "reconfig. ";
+    return;
+  }
+
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;

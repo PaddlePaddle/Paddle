@@ -79,7 +79,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
         super(GeoPsProgramBuilder, self).__init__(pass_ctx)
         if self.ps_mode != DistributedMode.GEO:
             raise ValueError("ps mode: {} not matched {}",
-                             format(ps_mode, "GeoPsProgramBuilder"))
+                             format(self.ps_mode, "GeoPsProgramBuilder"))
 
     def _build_trainer_programs(self):
         append_send_ops_pass = new_pass("append_send_ops_pass", self.attrs)
@@ -97,9 +97,9 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
         logger.info("start building cpu-sync-ps program")
         super(CpuSyncPsProgramBuilder, self).__init__(pass_ctx)
-        if self.ps_mode != DistributedMode.SYNC:
+        if self.ps_mode != DistributedMode.SYNC and self.ps_mode != DistributedMode.ASYNC:
             raise ValueError("ps mode: {} not matched {}",
-                             format(ps_mode, "CpuSyncPsProgramBuilder"))
+                             format(self.ps_mode, "CpuSyncPsProgramBuilder"))
 
     def _build_trainer_programs(self):
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
@@ -178,7 +178,7 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
         if self.use_ps_gpu or self.ps_mode == DistributedMode.GEO or self.attrs[
                 'is_heter_ps_mode'] == False:
             raise ValueError("ps mode: {} not matched {}",
-                             format(ps_mode, "HeterAsyncPsProgramBuilder"))
+                             format(self.ps_mode, "HeterAsyncPsProgramBuilder"))
 
     def _build_trainer_programs(self):
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
