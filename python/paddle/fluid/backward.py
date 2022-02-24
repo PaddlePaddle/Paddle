@@ -1253,6 +1253,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             val(tuple): a tuple of (str, Block), str is the corresponding grad name, Block is the block containing grad variable
     """
     ops_to_remove = []
+    ops_to_remove_output = set()
     '''
     NOTE(paddle-dev): while_grad op may hold some inputs which are not found 
     in the parent/forward block, and they are also the outputs of while_grad 
@@ -1294,6 +1295,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         # If the outputs of grad op is empty, just remove it
         if not outputs:
             ops_to_remove.append(op_idx)
+            ops_to_remove_output.update(outputs)
             continue
         else:
             '''
@@ -1317,6 +1319,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     '''
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)
+                        ops_to_remove_output.update(outputs)
                         continue
 
         new_vars = set()
@@ -1330,6 +1333,13 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             if grad_var_name not in grad_to_var:
                 continue
             grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
+
+        for name, arg_names in op_desc.inputs().items():
+            arg_names_exist = [
+                var for var in arg_names if var not in ops_to_remove_output
+            ]
+            if set(arg_names_exist) != set(arg_names):
+                op_desc.set_input(name, arg_names_exist)
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
