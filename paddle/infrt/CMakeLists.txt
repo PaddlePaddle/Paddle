@@ -74,6 +74,7 @@ endif()
 
 
 add_subdirectory(api)
+add_subdirectory(backends)
 add_subdirectory(common)
 add_subdirectory(dialect)
 add_subdirectory(host_context)
