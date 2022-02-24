@@ -53,8 +53,9 @@ function get_docs_pr_num_from_paddle_pr_info(){
 #    All the Chinese and English docs will be generated, and then uploaded.
 
 PREVIEW_URL_PROMPT="ipipe_log_param_preview_url: None"
-BUILD_DOC=${BUILD_DOC:=false}
-UPLOAD_DOC=${UPLOAD_DOC:=false}
+BUILD_DOC=${BUILD_DOC:=true}
+UPLOAD_DOC=${UPLOAD_DOC:=true}
+PREVIEW_SITE=${PREVIEW_SITE:=paddle.run}
 
 CURPWD=${PWD}
 
