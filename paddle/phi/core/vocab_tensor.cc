@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 
 namespace phi {
-VocabTensor::VocabTensor(const std::unordered_map<std::string, int32_t>& data) {
+VocabTensor::VocabTensor(const std::unordered_map<int32_t, int32_t>& data) {
   if (data.size() != 0) {
     data_ = data;
   }

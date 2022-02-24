@@ -29,6 +29,7 @@
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/type_defs.h"
+#include "paddle/phi/core/vocab_tensor.h"
 
 namespace phi {
 
@@ -233,6 +234,10 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCsrTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCsrTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCsrTensor);
+
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(VocabTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(VocabTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(VocabTensor);
 
   /* Attribute Helpers */
 

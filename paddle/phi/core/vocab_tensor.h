@@ -38,14 +38,14 @@ namespace phi {
 class VocabTensor : public TensorBase,
                     public TypeInfoTraits<TensorBase, VocabTensor> {
  private:
-  std::unordered_map<std::string, int32_t> data_;
+  std::unordered_map<int32_t, int32_t> data_;
   DDim* dim_;
   phi::CPUPlace cpu_place_;
 
  public:
   /// \brief Construct a vocab tensor and allocate space.
   /// \param data The vocab data.
-  explicit VocabTensor(const std::unordered_map<std::string, int32_t>& data);
+  explicit VocabTensor(const std::unordered_map<int32_t, int32_t>& data);
 
   /// \brief Because vocab tensor is a kind of container, we give a default
   /// constructor to use for stl container. But the vocab tensor created with
@@ -83,7 +83,7 @@ class VocabTensor : public TensorBase,
 
   /// \brief Returns the data of the tensor.
   /// \return The data of the tensor.
-  const std::unordered_map<std::string, int32_t>& data() const { return data_; }
+  const std::unordered_map<int32_t, int32_t>& data() const { return data_; }
 
   /// \brief Returns the data type of the resource tensor.
   /// \return The data type of the tensor.

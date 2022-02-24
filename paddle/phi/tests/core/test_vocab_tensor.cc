@@ -20,11 +20,10 @@ namespace phi {
 namespace tests {
 
 TEST(VocabTensor, construct) {
-  std::unordered_map<std::string, std::int32_t> vocab = {{"今天", 1},
-                                                         {"昨天", 2}};
+  std::unordered_map<int32_t, std::int32_t> vocab = {{1, 1}, {2, 2}};
 
-  auto check_vocab_tensor = [](
-      VocabTensor& t, std::unordered_map<std::string, std::int32_t>& m) {
+  auto check_vocab_tensor = [](VocabTensor& t,
+                               std::unordered_map<int32_t, std::int32_t>& m) {
     bool r{true};
     r = r && (t.numel() == static_cast<int64_t>(m.size()));
     r = r && (t.place() == phi::CPUPlace());
