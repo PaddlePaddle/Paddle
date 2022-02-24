@@ -27,4 +27,4 @@ KernelSignature IscloseOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 }  // namespace phi
-PT_REGISTER_ARG_MAPPING_FN(isclose, phi::IscloseOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(isclose, phi::IscloseOpArgumentMapping);

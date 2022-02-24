@@ -26,4 +26,4 @@ KernelSignature CumprodGradGradOpArgumentMapping(
 }
 
 }  // namespace phi
-PT_REGISTER_ARG_MAPPING_FN(cumprod_grad, phi::CumprodGradGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(cumprod_grad, phi::CumprodGradGradOpArgumentMapping);

@@ -17,8 +17,5 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/isclose_kernel_impl.h"
 
-namespace phi {}  // namespace phi
-
-// TODO(add supported dtype.)
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     isclose, CPU, ALL_LAYOUT, phi::IscloseKernel, float, double) {}

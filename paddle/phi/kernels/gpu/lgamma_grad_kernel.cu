@@ -16,5 +16,5 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/lgamma_grad.h"
 #include "paddle/phi/kernels/lgamma_grad_kernel.h"
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     lgamma_grad, GPU, ALL_LAYOUT, phi::LgammaGradKernel, float, double) {}

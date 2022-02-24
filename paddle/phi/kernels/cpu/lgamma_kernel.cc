@@ -46,5 +46,4 @@ void LgammaKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-// XKTODO(change the dtype.)
-PT_REGISTER_KERNEL(lgamma, CPU, ALL_LAYOUT, phi::LgammaKernel, float, double) {}
+PD_REGISTER_KERNEL(lgamma, CPU, ALL_LAYOUT, phi::LgammaKernel, float, double) {}

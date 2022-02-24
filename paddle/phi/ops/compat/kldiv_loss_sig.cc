@@ -26,5 +26,5 @@ KernelSignature KLDivLossGradOpArgumentMapping(
 }
 
 }  // namespace phi
-PT_REGISTER_ARG_MAPPING_FN(kldiv_loss_grad,
+PD_REGISTER_ARG_MAPPING_FN(kldiv_loss_grad,
                            phi::KLDivLossGradOpArgumentMapping);

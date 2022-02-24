@@ -22,4 +22,4 @@ KernelSignature LgammaGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 }  // namespace phi
-PT_REGISTER_ARG_MAPPING_FN(lgamma_grad, phi::LgammaGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(lgamma_grad, phi::LgammaGradOpArgumentMapping);

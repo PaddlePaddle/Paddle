@@ -100,9 +100,7 @@ void CumprodGradKernel(const Context& dev_ctx,
   }
 }
 }  // namespace phi
-
-// TODO(add supported dtype.)
-PT_REGISTER_KERNEL(cumprod_grad,
+PD_REGISTER_KERNEL(cumprod_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::CumprodGradKernel,

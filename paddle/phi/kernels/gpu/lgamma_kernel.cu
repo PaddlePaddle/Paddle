@@ -40,4 +40,4 @@ void LgammaKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PT_REGISTER_KERNEL(lgamma, GPU, ALL_LAYOUT, phi::LgammaKernel, float, double) {}
+PD_REGISTER_KERNEL(lgamma, GPU, ALL_LAYOUT, phi::LgammaKernel, float, double) {}

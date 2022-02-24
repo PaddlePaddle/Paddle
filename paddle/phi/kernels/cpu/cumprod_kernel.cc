@@ -55,7 +55,7 @@ void CumprodKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(cumprod,
+PD_REGISTER_KERNEL(cumprod,
                    CPU,
                    ALL_LAYOUT,
                    phi::CumprodKernel,

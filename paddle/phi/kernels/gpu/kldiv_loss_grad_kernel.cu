@@ -16,6 +16,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/kldiv_loss_grad.h"
 #include "paddle/phi/kernels/kldiv_loss_grad_kernel.h"
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     kldiv_loss_grad, GPU, ALL_LAYOUT, phi::KLDivLossGradKernel, float, double) {
 }

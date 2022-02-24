@@ -48,8 +48,7 @@ void CumprodKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-// TODO(add supported dtype.)
-PT_REGISTER_KERNEL(cumprod,
+PD_REGISTER_KERNEL(cumprod,
                    GPU,
                    ALL_LAYOUT,
                    phi::CumprodKernel,
