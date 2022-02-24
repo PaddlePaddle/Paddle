@@ -259,17 +259,27 @@ if(WITH_PYTHON)
     # LD_LIBRARY_PATH. This is different with Windows platformm, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
-      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so
+      if (APPLE)
+        set(PADDLE2ONNX_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.dylib)
+        set(ONNXRUNTIME_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.dylib)
+      else()
+        set(PADDLE2ONNX_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
+        set(ONNXRUNTIME_PYBIND_OUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
+      endif()
+      ADD_CUSTOM_COMMAND(OUTPUT ${PADDLE2ONNX_PYBIND_OUT}
         COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB} ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS paddle2onnx)
-      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
-      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libpaddle2onnx.so)
+      
 
-      ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so
+      ADD_CUSTOM_COMMAND(OUTPUT ${ONNXRUNTIME_PYBIND_OUT}
         COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_LIB} ${CMAKE_CURRENT_BINARY_DIR} 
         DEPENDS onnxruntime)
-      list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
-      list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libonnxruntime.so)
+      if(NOT APPLE)
+        list(APPEND OP_IMPL_DEPS ${PADDLE2ONNX_PYBIND_OUT})
+        list(APPEND EAGER_OP_IMPL_DEPS ${PADDLE2ONNX_PYBIND_OUT})
+        list(APPEND OP_IMPL_DEPS ${ONNXRUNTIME_PYBIND_OUT})
+        list(APPEND EAGER_OP_IMPL_DEPS ${ONNXRUNTIME_PYBIND_OUT})
+      endif()
     endif()
 
     if(WITH_MKLML)

@@ -505,12 +505,12 @@ if '${WITH_MKLDNN}' == 'ON':
 
 if '${WITH_ONNXRUNTIME}' == 'ON':
     shutil.copy('${ONNXRUNTIME_SHARE_LIB}', libs_path)
-    if os.name != 'nt':
-        shutil.copy('${PADDLE2ONNX_LIB}', libs_path)
-        package_data['paddle.libs']+=['libpaddle2onnx.so', 'libonnxruntime.so.1.10.0']
-    else:
+    if os.name == 'nt':
         shutil.copy('${PADDLE2ONNX_SHARE_LIB}', libs_path)
         package_data['paddle.libs']+=['paddle2onnx.dll', 'onnxruntime.dll']
+    else:
+        shutil.copy('${PADDLE2ONNX_LIB}', libs_path)
+        package_data['paddle.libs']+=['libpaddle2onnx'+ext_name, 'libonnxruntime'+ext_name+'.1.10.0']
 
 if '${WITH_XPU}' == 'ON':
     # only change rpath in Release mode,

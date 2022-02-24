@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT WITH_ONNXRUNTIME)
+if (NOT WITH_ONNXRUNTIME)
   return()
-endif()
+endif ()
+
+if (WITH_ARM)
+  message(SEND_ERROR "onnxruntmie no support arm")
+endif ()
 
 INCLUDE(ExternalProject)
 
@@ -29,6 +33,8 @@ SET(ONNXRUNTIME_LIB_DIR        "${ONNXRUNTIME_INSTALL_DIR}/lib" CACHE PATH "onnx
 
 if (WIN32)
   SET(ONNXRUNTIME_URL             "https://github.com/microsoft/onnxruntime/releases/download/v1.10.0/onnxruntime-win-x64-1.10.0.zip")
+elseif (APPLE)
+  SET(ONNXRUNTIME_URL           "https://github.com/microsoft/onnxruntime/releases/download/v1.10.0/onnxruntime-osx-x86_64-1.10.0.tgz")
 else ()
   SET(ONNXRUNTIME_URL             "https://github.com/microsoft/onnxruntime/releases/download/v1.10.0/onnxruntime-linux-x64-1.10.0.tgz")
 endif()
@@ -39,6 +45,10 @@ if (WIN32)
   SET(ONNXRUNTIME_SOURCE_LIB "${ONNXRUNTIME_SOURCE_DIR}/lib/onnxruntime.dll" CACHE FILEPATH "ONNXRUNTIME source library." FORCE)
   SET(ONNXRUNTIME_SHARE_LIB "${ONNXRUNTIME_INSTALL_DIR}/lib/onnxruntime.dll" CACHE FILEPATH "ONNXRUNTIME share library." FORCE)
   SET(ONNXRUNTIME_LIB "${ONNXRUNTIME_INSTALL_DIR}/lib/onnxruntime.lib" CACHE FILEPATH "ONNXRUNTIME static library." FORCE)
+elseif (APPLE)
+  SET(ONNXRUNTIME_SOURCE_LIB "${ONNXRUNTIME_SOURCE_DIR}/lib/libonnxruntime.1.10.0.dylib" CACHE FILEPATH "ONNXRUNTIME source library." FORCE)
+  SET(ONNXRUNTIME_LIB "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.1.10.0.dylib" CACHE FILEPATH "ONNXRUNTIME static library." FORCE)
+  SET(ONNXRUNTIME_SHARE_LIB ${ONNXRUNTIME_LIB} CACHE FILEPATH "ONNXRUNTIME share library." FORCE)
 else ()
   SET(ONNXRUNTIME_SOURCE_LIB "${ONNXRUNTIME_SOURCE_DIR}/lib/libonnxruntime.so.1.10.0" CACHE FILEPATH "ONNXRUNTIME source library." FORCE)
   SET(ONNXRUNTIME_LIB "${ONNXRUNTIME_INSTALL_DIR}/lib/libonnxruntime.so.1.10.0" CACHE FILEPATH "ONNXRUNTIME static library." FORCE)
