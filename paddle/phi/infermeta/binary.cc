@@ -238,7 +238,7 @@ void IndexSampleInferMeta(const MetaTensor& x,
 
   auto index_dims = y.dims();
   PADDLE_ENFORCE_EQ(
-      input_dims.size(),
+      index_dims.size(),
       2,
       errors::InvalidArgument(
           "Inputs(Index) shape of IndexSample op should be 2-D, but "
