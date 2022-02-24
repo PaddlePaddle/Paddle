@@ -18,13 +18,13 @@ namespace phi {
 
 KernelSignature IndexSampleOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("index_sample", {"X", "Y"}, {}, {"Out"});
+  return KernelSignature("index_sample", {"X", "Index"}, {}, {"Out"});
 }
 
 KernelSignature IndexSampleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("index_sample_grad",
-                         {GradVarName("Out"), "X", "Y"},
+                         {GradVarName("Out"), "X", "Index"},
                          {},
                          {GradVarName("X")});
 }
