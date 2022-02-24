@@ -123,6 +123,6 @@ KernelSignature FillConstantOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(fill_constant, full);
+PD_REGISTER_BASE_KERNEL_NAME(fill_constant, full);
 
-PT_REGISTER_ARG_MAPPING_FN(fill_constant, phi::FillConstantOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(fill_constant, phi::FillConstantOpArgumentMapping);

@@ -62,12 +62,12 @@ void Copy(const Context& dev_ctx,
     }
     paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else {
-    PADDLE_THROW(paddle::platform::errors::Unimplemented(
+    PADDLE_THROW(phi::errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 }
 
 }  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_GENERAL_KERNEL(
     copy, XPU, ALL_LAYOUT, phi::Copy<phi::XPUContext>, ALL_DTYPE) {}

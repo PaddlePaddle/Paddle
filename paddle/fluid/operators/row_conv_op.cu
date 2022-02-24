@@ -336,7 +336,8 @@ class RowConvKernel<platform::CUDADeviceContext, T>
 
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    paddle::framework::MixVector<size_t> mix_vector(&batch_indices);
+    size_t *idx = mix_vector.CUDAMutableData(context.GetPlace());
     auto stream = context.cuda_device_context().stream();
 
     if (future_context <= 32) {
@@ -352,6 +353,7 @@ class RowConvKernel<platform::CUDADeviceContext, T>
       RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
           in, weight, num_sequence, input_dim, future_context, idx, out);
     }
+    mix_vector.CopyToCPU();
   }
 };
 
@@ -392,7 +394,8 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     // int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    paddle::framework::MixVector<size_t> mixv_batch_indices(&batch_indices);
+    size_t *idx = mixv_batch_indices.CUDAMutableData(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();
     phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
@@ -444,6 +447,7 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
             dout, weights, num_sequence, input_dim, future_context, idx, din);
       }
     }
+    mixv_batch_indices.CopyToCPU();
   }
 };
 }  // namespace operators

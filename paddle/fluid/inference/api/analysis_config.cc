@@ -142,17 +142,28 @@ void AnalysisConfig::EnableNpu(int device_id) {
 
   Update();
 }
-void AnalysisConfig::EnableIpu(int device_num, bool ipu_enable_pipelining,
-                               int ipu_batches_per_step, int ipu_batch_size,
-                               bool ipu_need_avg_shard) {
+
+void AnalysisConfig::EnableIpu(int ipu_device_num, int ipu_micro_batch_size,
+                               bool ipu_enable_pipelining,
+                               int ipu_batches_per_step) {
   enable_ir_optim_ = true;
 
   use_ipu_ = true;
-  ipu_device_num_ = device_num;
+  ipu_device_num_ = ipu_device_num;
+  ipu_micro_batch_size_ = ipu_micro_batch_size;
   ipu_enable_pipelining_ = ipu_enable_pipelining;
   ipu_batches_per_step_ = ipu_batches_per_step;
-  ipu_batch_size_ = ipu_batch_size;
-  ipu_need_avg_shard_ = ipu_need_avg_shard;
+
+  Update();
+}
+
+void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16, int ipu_replica_num,
+                                  float ipu_available_memory_proportion,
+                                  bool ipu_enable_half_partial) {
+  ipu_enable_fp16_ = ipu_enable_fp16;
+  ipu_replica_num_ = ipu_replica_num;
+  ipu_available_memory_proportion_ = ipu_available_memory_proportion;
+  ipu_enable_half_partial_ = ipu_enable_half_partial;
 
   Update();
 }
@@ -255,10 +266,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // ipu related
   CP_MEMBER(use_ipu_);
   CP_MEMBER(ipu_device_num_);
+  CP_MEMBER(ipu_micro_batch_size_);
   CP_MEMBER(ipu_enable_pipelining_);
   CP_MEMBER(ipu_batches_per_step_);
-  CP_MEMBER(ipu_batch_size_);
-  CP_MEMBER(ipu_need_avg_shard_);
+  CP_MEMBER(ipu_enable_fp16_);
+  CP_MEMBER(ipu_replica_num_);
+  CP_MEMBER(ipu_available_memory_proportion_);
+  CP_MEMBER(ipu_enable_half_partial_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
@@ -684,10 +698,13 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << use_ipu_;
   ss << ipu_device_num_;
+  ss << ipu_micro_batch_size_;
   ss << ipu_enable_pipelining_;
   ss << ipu_batches_per_step_;
-  ss << ipu_batch_size_;
-  ss << ipu_need_avg_shard_;
+  ss << ipu_enable_fp16_;
+  ss << ipu_replica_num_;
+  ss << ipu_available_memory_proportion_;
+  ss << ipu_enable_half_partial_;
 
   return ss.str();
 }

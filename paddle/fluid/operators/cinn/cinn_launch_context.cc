@@ -110,9 +110,14 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   VLOG(4) << string::Sprintf(
       "Distribution of variables in the graph compiled:"
       "input[%lu],internal[%lu],output[%lu],"
-      "outer_eager_deletion[%lu],skip_eager_deletion[%lu]",
+      "outer_eager_deletion[%lu],skip_eager_deletion[%lu],"
+      "initialized_beforehand[%lu]",
       input_var_names.size(), internal_var_names_.size(),
-      output_var_names.size(), outer_varinfo.size(), skip_eager_vars_.size());
+      output_var_names.size(), outer_varinfo.size(), skip_eager_vars_.size(),
+      initialized_beforehand_vars_.size());
+  runtime_graph_->SetNotOwned<Name2VarInfoMap>(
+      kMemOptVarInfoFromMainGraph,
+      &graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph));
 }
 
 void CinnLaunchContext::BuildVarNameMap(
@@ -384,8 +389,7 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
   }
 
   // update the scope bound to an OpHandle and rebuild temporary variables
-  VLOG(4) << "Reset scope and initialize temporary variables "
-          << "for execution of the runtime graph";
+  VLOG(4) << "Reset scope and initialize temporary variables";
   std::unordered_map<Scope*, Scope*> scope_map = {
       {parallel_executor_->GetLocalScopes().front(), scope}};
   parallel_executor_->ResetOpHandleScopeMapOfGraphs(scope_map);

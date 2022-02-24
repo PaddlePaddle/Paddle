@@ -103,7 +103,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     details::DebugCinnCompiledResult(cinn_compiled_object);
 
     auto* launch_context = cinn_compiled_object.launch_context.get();
-    // Step 3. Prepare arguments needed for the compiled executable program.
+    // Step 3. check the equiality of some aspects
+    //         before and after the compilation
     // 3.1 Input variables: tensors of input variables have
     //     been initialized before graph compiled, just check the
     //     equiality between tensors of paddle and cinn.
@@ -122,11 +123,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 4. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
-    // Step 5. Launch CINN to execute the compiled executable program
-    // VLOG(4) << "Run Cinn compiled executable program with stream: " <<
-    // stream;
-    // details::LaunchCinnExecution(cinn_compiled_object, *launch_context,
-    // stream);
+    // Step 5. use PE to execute the compiled CINN instructions
+    //         in nodes of the runtime graph
     VLOG(4) << "Execute the runtime graph by PE";
     framework::Scope& exec_scope = scope.NewScope();
     auto* pe = launch_context->InitializePE(place, &exec_scope);
