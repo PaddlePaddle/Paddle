@@ -139,6 +139,28 @@ class TestWhereAPI(unittest.TestCase):
                               fetch_list=[result])
                 assert np.array_equal(out[0], np.where((x_i > 1), x_i, y_i))
 
+    def test_scalar(self):
+        paddle.enable_static()
+        main_program = Program()
+        with fluid.program_guard(main_program):
+            cond_shape = [2, 4]
+            cond = fluid.layers.data(
+                name='cond', shape=cond_shape, dtype='bool')
+            x_data = 1.0
+            y_data = 2.0
+            cond_data = np.array([False, False, True, True]).astype('bool')
+            result = paddle.where(condition=cond, x=x_data, y=y_data)
+            for use_cuda in [False, True]:
+                if (use_cuda and (not fluid.core.is_compiled_with_cuda())):
+                    return
+                place = (fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace())
+                exe = fluid.Executor(place)
+                out = exe.run(fluid.default_main_program(),
+                              feed={'cond': cond_data},
+                              fetch_list=[result])
+                expect = np.where(cond_data, x_data, y_data)
+                assert np.array_equal(out[0], expect)
+
     def __test_where_with_broadcast_static(self, cond_shape, x_shape, y_shape):
         paddle.enable_static()
         main_program = Program()
@@ -226,6 +248,15 @@ class TestWhereDygraphAPI(unittest.TestCase):
             cond = fluid.dygraph.to_variable(cond_i)
             out = paddle.where(cond, x, y)
             assert np.array_equal(out.numpy(), np.where(cond_i, x_i, y_i))
+
+    def test_scalar(self):
+        with fluid.dygraph.guard():
+            cond_i = np.array([False, False, True, True]).astype('bool')
+            x = 1.0
+            y = 2.0
+            cond = fluid.dygraph.to_variable(cond_i)
+            out = paddle.where(cond, x, y)
+            assert np.array_equal(out.numpy(), np.where(cond_i, x, y))
 
     def __test_where_with_broadcast_dygraph(self, cond_shape, a_shape, b_shape):
         with fluid.dygraph.guard():
