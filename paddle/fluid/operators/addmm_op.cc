@@ -12,17 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/addmm_op.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
 namespace paddle {
 namespace operators {
+
+constexpr int kMULMKLDNNINT8 = 1;
 
 using framework::OpKernelType;
 using framework::Tensor;
@@ -227,11 +229,3 @@ REGISTER_OPERATOR(addmm, ops::AddMMOp, ops::AddMMOpMaker,
                   ops::AddMMOpGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(addmm_grad, ops::AddMMGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    addmm, ops::AddMMKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AddMMKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    addmm_grad, ops::AddMMGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AddMMGradKernel<paddle::platform::CPUDeviceContext, double>);
