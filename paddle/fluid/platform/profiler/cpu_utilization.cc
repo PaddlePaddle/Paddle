@@ -24,7 +24,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/cpu_utilization.h"
-#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
@@ -44,7 +43,7 @@ void CpuUtilization::RecordBeginTimeInfo() {
   GetSystemTimeAsFileTime(&start_);
   GetSystemTimes(&system_idle_time_start_, &system_kernel_time_start_,
                  &system_user_time_start_);
-  GetProcessTimes(handle, &process_creation_time_, &process_exit_time_,
+  GetProcessTimes(process_handle, &process_creation_time_, &process_exit_time_,
                   &process_kernel_time_start_, &process_user_time_start_);
 
 #elif defined(__linux__)
@@ -89,7 +88,7 @@ void CpuUtilization::RecordEndTimeInfo() {
   GetSystemTimeAsFileTime(&end_);
   GetSystemTimes(&system_idle_time_end_, &system_kernel_time_end_,
                  &system_user_time_end_);
-  GetProcessTimes(handle, &process_creation_time_, &process_exit_time_,
+  GetProcessTimes(process_handle, &process_creation_time_, &process_exit_time_,
                   &process_kernel_time_end_, &process_user_time_end_);
 #elif defined(__linux__)
   end_ = times(&process_tms_end_);
