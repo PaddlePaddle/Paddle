@@ -128,13 +128,11 @@ TEST(ManagedMemoryTest, OversubscribeGPUMemoryTest) {
 }
 
 TEST(ManagedMemoryTest, OOMExceptionTest) {
-#ifdef PADDLE_WITH_CUDA
+  if (!platform::IsGPUManagedMemorySupported(0)) {
+    return;
+  }
   EXPECT_THROW(Alloc(platform::CUDAPlace(0), size_t(1) << 60),
                memory::allocation::BadAlloc);
-#else  // Hygon DCU get hipDeviceAttributeManagedMemory to 0
-  EXPECT_THROW(Alloc(platform::CUDAPlace(0), size_t(1) << 60),
-               platform::EnforceNotMet);
-#endif
 }
 
 }  // namespace memory
