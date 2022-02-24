@@ -64,12 +64,6 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
   auto ddims = phi::make_ddim(dims);
-  PADDLE_ENFORCE_GE(
-      phi::product(ddims), 0,
-      paddle::platform::errors::InvalidArgument(
-          "Create Eager Tensor with dims contain minus num is ilegal"
-          "Please check your code and make sure you new a "
-          "eager tensor with fixed shape instead of using -1."));
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -83,13 +77,10 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
             phi::make_intrusive<paddle::experimental::SharedStorage>(place),
             phi::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
                                  ddims));
-    dense_tensor->mutable_data(place);
+    if (phi::product(ddims) > 0) {
+      dense_tensor->mutable_data(place);
+    }
     self->tensor.set_impl(dense_tensor);
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "We only support LoDTensor to be constructed by this initializer, "
-        "please check your var type first and make sure you are going to "
-        "construct LoDTensor."));
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
