@@ -225,4 +225,42 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void IndexSampleInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Inputs(X) shape of IndexSample op should be 2-D, but "
+                        "got X's shape = [%s], please check X shape.",
+                        input_dims));
+
+  auto index_dims = y.dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      2,
+      errors::InvalidArgument(
+          "Inputs(Index) shape of IndexSample op should be 2-D, but "
+          "got Index's shape [%s] , please check index shape.",
+          input_dims));
+  // if (ctx->IsRuntime()) {
+  PADDLE_ENFORCE_EQ(input_dims[0],
+                    index_dims[0],
+                    errors::InvalidArgument(
+                        "Inputs(X)'s value of dimension 0 must same with "
+                        "Inputs(Index)'s value of dimension 0, but "
+                        "got %d of Inputs(X), and got %d of Inputs(Index), "
+                        "please check Inputs shape.",
+                        input_dims[0],
+                        index_dims[0]));
+  //}
+  // ctx->SetOutputDim("Out", index_dims);
+  out->set_dims(index_dims);
+  // auto type = ctx->GetInputsVarType("Index")[0];
+  // if (type == framework::proto::VarType::LOD_TENSOR) {
+  //   ctx->ShareLoD("Index", /*->*/ "Out");
+  // }
+  out->share_lod(y);
+}
 }  // namespace phi

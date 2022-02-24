@@ -52,4 +52,9 @@ void HuberLossInferMeta(const MetaTensor& input_meta,
                         MetaTensor* out,
                         MetaTensor* residual,
                         MetaConfig config = MetaConfig());
+
+void IndexSampleInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          MetaTensor* out);
+
 }  // namespace phi
