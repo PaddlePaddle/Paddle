@@ -219,7 +219,7 @@ def gen_register_info(resources: List[List[str]]):
         for ir_dtype, origin_dtype in zip(ir_dtypes, origin_dtypes):
             kernel_func = gen_kernel_func(update_item[3], ctx_name,
                                           origin_dtype)
-            ir_name = '.'.join(
+            ir_name = 'pten.' + '.'.join(
                 [it.lower() for it in update_item[:3]]) + "." + ir_dtype
             res += f"""
   registry->AddKernel("{ir_name}","""
