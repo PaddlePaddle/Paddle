@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 
 namespace paddle {
 namespace framework {
@@ -29,12 +30,10 @@ class GroupNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid group_norm op";
+    VLOG(3) << "convert a fluid group_norm op to tensorrt plugin";
 
     framework::OpDesc op_desc(op, nullptr);
-
-    auto* input_itensor = engine_->GetITensor(op_desc.Input("X").front());
-
+    auto* x = engine_->GetITensor(op_desc.Input("X").front());
     int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
     float epsilon = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
 
@@ -84,34 +83,17 @@ class GroupNormOpConverter : public OpConverter {
                                             bias_weights.get());
 
     std::vector<nvinfer1::ITensor*> plugin_inputs;
-    plugin_inputs.emplace_back(input_itensor);
+    plugin_inputs.emplace_back(x);
     plugin_inputs.emplace_back(scale_layer->getOutput(0));
     plugin_inputs.emplace_back(bias_layer->getOutput(0));
 
-    const std::vector<nvinfer1::PluginField> fields{
-        {"eps", &epsilon, nvinfer1::PluginFieldType::kFLOAT32, 1},
-        {"num_groups", &groups, nvinfer1::PluginFieldType::kINT32, 1},
-    };
-
-    nvinfer1::PluginFieldCollection* plugin_collections =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_collections) +
-                   fields.size() * sizeof(nvinfer1::PluginField)));
-    plugin_collections->nbFields = static_cast<int>(fields.size());
-    plugin_collections->fields = fields.data();
-
-    auto creator =
-        GetPluginRegistry()->getPluginCreator("GroupNormalizationPlugin", "1");
-    auto group_norm_plugin =
-        creator->createPlugin("GroupNormalizationPlugin", plugin_collections);
-    free(plugin_collections);
-
-    auto group_norm_plugin_layer = engine_->network()->addPluginV2(
-        plugin_inputs.data(), plugin_inputs.size(), *group_norm_plugin);
+    plugin::GroupNormPlugin* plugin =
+        new plugin::GroupNormPlugin(epsilon, groups);
+    auto* layer = engine_->AddPluginV2Ext(plugin_inputs.data(),
+                                          plugin_inputs.size(), plugin);
 
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(group_norm_plugin_layer, "group_norm",
-                             {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "group_norm", {output_name}, test_mode);
   }
 };
 
