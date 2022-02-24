@@ -92,8 +92,10 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
             "fail to add CustomPrelnSkipLayerNormPluginDynamic layer"));
     layer = plugin_layer;
 
-    auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "preln_skip_layernorm", {output_name},
+    std::vector<std::string> output_names;
+    output_names.push_back(op_desc.Output("Out_0")[0]);
+    output_names.push_back(op_desc.Output("Out_1")[0]);
+    RreplenishLayerAndOutput(layer, "preln_skip_layernorm", {output_names},
                              test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(

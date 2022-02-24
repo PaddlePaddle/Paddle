@@ -72,8 +72,9 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
     dim3 threads(128, 8);
     dim3 grid(8, 1);
     auto stream = context.stream();
+    paddle::framework::MixVector<size_t> mix_index_lod(&index_lod);
     CopyMatrixRowsKernel<T, 128, 8, 8><<<grid, threads, 0, stream>>>(
-        src_data, dst_data, index_lod.CUDAData(context.GetPlace()), height,
+        src_data, dst_data, mix_index_lod.CUDAData(context.GetPlace()), height,
         width, is_src_index);
   }
 };

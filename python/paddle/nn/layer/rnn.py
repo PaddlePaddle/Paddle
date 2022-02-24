@@ -33,6 +33,11 @@ from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
 from paddle import _C_ops
+from paddle import in_dynamic_mode
+from paddle.framework import core
+from paddle.static import default_startup_program
+from paddle.static import program_guard
+
 __all__ = []
 
 
@@ -386,7 +391,7 @@ class SimpleRNNCell(RNNCellBase):
 
     def extra_repr(self):
         s = '{input_size}, {hidden_size}'
-        if self.activation is not "tanh":
+        if self.activation != "tanh":
             s += ', activation={activation}'
         return s.format(**self.__dict__)
 
@@ -970,8 +975,8 @@ class RNNBase(LayerList):
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
-                dtype=fluid.core.VarDesc.VarType.UINT8)
-            if fluid.framework.in_dygraph_mode():
+                dtype=core.VarDesc.VarType.UINT8)
+            if in_dynamic_mode():
                 with paddle.no_grad():
                     _C_ops.coalesce_tensor(self._all_weights, self._all_weights,
                                            self._flat_weight[0], "copy_data",
@@ -979,8 +984,8 @@ class RNNBase(LayerList):
                                            params[0].dtype)
                     return
             # for static-graph, append coalesce_tensor into startup program
-            with fluid.program_guard(fluid.default_startup_program(),
-                                     fluid.default_startup_program()):
+            with program_guard(default_startup_program(),
+                               default_startup_program()):
                 with paddle.no_grad():
                     self._helper.append_op(
                         type="coalesce_tensor",
@@ -999,7 +1004,7 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if fluid.framework.in_dygraph_mode():
+        if in_dynamic_mode():
             _, _, out, state = _C_ops.rnn(
                 inputs, initial_states, self._all_weights, sequence_length,
                 self._dropout_state, self.state_components, 'dropout_prob',
@@ -1014,7 +1019,7 @@ class RNNBase(LayerList):
                 for i in range(self.state_components)
             ]
             reserve = self._helper.create_variable_for_type_inference(
-                dtype=fluid.core.VarDesc.VarType.UINT8, stop_gradient=True)
+                dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
 
             inputs = {
                 'Input': inputs,
