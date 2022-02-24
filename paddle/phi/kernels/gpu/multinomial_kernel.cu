@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/multinomial_functor.h"
 
 namespace phi {
 
@@ -154,7 +155,7 @@ void MultinomialKernel(const Context& dev_ctx,
   // can
   // be used only once. So after every sample, probability of the distribution
   // will change. The implementation can't be parallelizable. Thus, call CPU
-  // implementation ``MultinomialFunctor`` to sample the distribution.
+  // implementation ``funcs::MultinomialFunctor`` to sample the distribution.
   if (!replacement) {
     int64_t in_data_numel = x.numel();
     int64_t out_data_numel = out->numel();
@@ -172,12 +173,12 @@ void MultinomialKernel(const Context& dev_ctx,
                cudaMemcpyDeviceToHost);
 #endif
 
-    MultinomialFunctor<T>(cpu_out_data,
-                          cpu_in_data,
-                          num_samples,
-                          replacement,
-                          num_categories,
-                          num_distributions);
+    funcs::MultinomialFunctor<T>(cpu_out_data,
+                                 cpu_in_data,
+                                 num_samples,
+                                 replacement,
+                                 num_categories,
+                                 num_distributions);
 
 #ifdef PADDLE_WITH_HIP
     hipMemcpy(out_data,
