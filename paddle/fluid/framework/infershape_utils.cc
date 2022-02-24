@@ -355,6 +355,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           }
 
           if (vars.size() == 1) {
+            num_ele = 1;
             const auto& tensor_dims = vars[0]->GetShape();
             for (size_t i = 0; i < tensor_dims.size(); ++i) {
               num_ele *= tensor_dims[i];
