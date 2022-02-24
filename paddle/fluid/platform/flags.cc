@@ -761,3 +761,5 @@ DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file, false,
             "enable parser ins file , default false");
+
+PADDLE_DEFINE_EXPORTED_bool(use_multi_tensor_apply, false, "");

@@ -21,6 +21,8 @@
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+DECLARE_bool(use_multi_tensor_apply);
+
 namespace paddle {
 namespace operators {
 
@@ -687,23 +689,25 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
                                            lengths.back());
     }
 
-    CopyVectorToTensor(
-        fp32_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP32ShardFusedParamOffsets"), place,
-        stream);
-    CopyVectorToTensor(
-        fp16_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsets"), place,
-        stream);
-
-    CopyVectorToCPUTensor(
-        numel_offsets, ctx.Output<framework::Tensor>("FusedParamOffsetsCPU"));
-    CopyVectorToCPUTensor(
-        fp32_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP32ShardFusedParamOffsetsCPU"));
-    CopyVectorToCPUTensor(
-        fp16_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsetsCPU"));
+    if (!FLAGS_use_multi_tensor_apply) {
+      CopyVectorToTensor(
+          fp32_partial_numel_offsets,
+          ctx.Output<framework::Tensor>("FP32ShardFusedParamOffsets"), place,
+          stream);
+      CopyVectorToTensor(
+          fp16_partial_numel_offsets,
+          ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsets"), place,
+          stream);
+    } else {
+      CopyVectorToCPUTensor(numel_offsets,
+                            ctx.Output<framework::Tensor>("FusedParamOffsets"));
+      CopyVectorToCPUTensor(
+          fp32_partial_numel_offsets,
+          ctx.Output<framework::Tensor>("FP32ShardFusedParamOffsets"));
+      CopyVectorToCPUTensor(
+          fp16_partial_numel_offsets,
+          ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsets"));
+    }
 
     // Fill the weight decay tensor
     PADDLE_ENFORCE_EQ(lengths.size(), shard_weight_decay.size(),

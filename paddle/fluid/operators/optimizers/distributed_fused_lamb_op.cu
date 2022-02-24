@@ -16,7 +16,7 @@
 #include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
-#include "paddle/fluid/operators/optimizers/multi_tensor_l2_norm.h"
+#include "paddle/fluid/operators/optimizers/multi_tensor_apply.h"
 #include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -35,8 +35,7 @@
 namespace cub = hipcub;
 #endif
 
-PADDLE_DEFINE_EXPORTED_bool(lamb_allreduce_first, true, "");
-PADDLE_DEFINE_EXPORTED_bool(use_multi_tensor_apply, false, "");
+DECLARE_bool(use_multi_tensor_apply);
 
 namespace paddle {
 namespace operators {
@@ -671,34 +670,31 @@ struct OffsetWithBiasFunctor {
 };
 
 template <typename T, typename OffsetT>
-static void CubDeviceSegmentedSquareNorm(const T *x, MasterT<T> *y, int n,
-                                         const OffsetT *offset,
-                                         OffsetT init_offset,
-                                         gpuStream_t stream,
-                                         memory::Buffer *buffer) {
-  if (FLAGS_use_multi_tensor_apply) {
-    auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
-        platform::DeviceContextPool::Instance().Get(buffer->GetPlace()));
-    MultiTensorL2Norm(*dev_ctx, x, offset, n, y);
+static void DeviceSegmentedSquareNorm(
+    const platform::CUDADeviceContext &dev_ctx, const T *x, MasterT<T> *y,
+    int n, const OffsetT *offset, OffsetT init_offset, memory::Buffer *buffer) {
+  if (!FLAGS_use_multi_tensor_apply) {
+    if (n <= 0) return;
+    auto stream = dev_ctx.stream();
+    cub::TransformInputIterator<MasterT<T>, SquareFunctor<T>, const T *> iter(
+        x, SquareFunctor<T>());
+    if (init_offset == static_cast<OffsetT>(0)) {
+      CubDeviceSegmentedReduce(iter, y, n, offset, offset + 1, cub::Sum(),
+                               static_cast<MasterT<T>>(0), stream, buffer);
+    } else {
+      cub::CountingInputIterator<OffsetT> cnt_iter(0);
+      OffsetWithBiasFunctor<OffsetT> functor(offset, init_offset);
+      cub::TransformInputIterator<OffsetT, OffsetWithBiasFunctor<OffsetT>,
+                                  cub::CountingInputIterator<OffsetT>>
+          offset_iter(cnt_iter, functor);
+      CubDeviceSegmentedReduce(iter, y, n, offset_iter, offset_iter + 1,
+                               cub::Sum(), static_cast<MasterT<T>>(0), stream,
+                               buffer);
+    }
     return;
   }
 
-  if (n <= 0) return;
-  cub::TransformInputIterator<MasterT<T>, SquareFunctor<T>, const T *> iter(
-      x, SquareFunctor<T>());
-  if (init_offset == static_cast<OffsetT>(0)) {
-    CubDeviceSegmentedReduce(iter, y, n, offset, offset + 1, cub::Sum(),
-                             static_cast<MasterT<T>>(0), stream, buffer);
-  } else {
-    cub::CountingInputIterator<OffsetT> cnt_iter(0);
-    OffsetWithBiasFunctor<OffsetT> functor(offset, init_offset);
-    cub::TransformInputIterator<OffsetT, OffsetWithBiasFunctor<OffsetT>,
-                                cub::CountingInputIterator<OffsetT>>
-        offset_iter(cnt_iter, functor);
-    CubDeviceSegmentedReduce(iter, y, n, offset_iter, offset_iter + 1,
-                             cub::Sum(), static_cast<MasterT<T>>(0), stream,
-                             buffer);
-  }
+  MultiTensorL2Norm(dev_ctx, x, offset, n, y);
 }
 
 template <typename T>
@@ -1114,7 +1110,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
             global_scale, max_global_grad_norm, fp32_square_grad_norm,
             fp32_scale, fp16_scale, clip_scale);
         VLOG(1) << "Grad scale: " << FlattenToString(fp32_scale, 1, place);
-        if (num_devices > 1 && FLAGS_lamb_allreduce_first) {
+        if (num_devices > 1) {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
               fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
               ncclSum, comm, stream));
@@ -1126,11 +1122,6 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         NCCLReduceScatterWithScale(fp16_grad, fp16_sum_grad,
                                    fp16_numel_each_device, num_devices, comm,
                                    stream, dev_ctx, fp16_scale);
-        if (num_devices > 1 && !FLAGS_lamb_allreduce_first) {
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-              fp32_square_grad_norm, fp32_square_grad_norm, 1, ncclFloat32,
-              ncclSum, comm, stream));
-        }
         // (4) mark max_global_grad_norm as 0, meaning that clip has been
         // already performed
         max_global_grad_norm = 0;
@@ -1195,29 +1186,28 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     auto *param_square_norm = square_norm_buffer.Alloc<float>(2 * param_num);
     auto *trust_ratio_div_square_norm = param_square_norm + param_num;
 
-    auto *fused_offsets_t = ctx.Input<framework::Tensor>(
-        FLAGS_use_multi_tensor_apply ? "FusedParamOffsetsCPU"
-                                     : "FusedParamOffsets");
+    auto *fused_offsets_t = ctx.Input<framework::Tensor>("FusedParamOffsets");
     auto *fused_offsets = fused_offsets_t->data<int>();
-    auto *fp32_partial_fused_offsets_t = ctx.Input<framework::Tensor>(
-        FLAGS_use_multi_tensor_apply ? "FP32ShardFusedParamOffsetsCPU"
-                                     : "FP32ShardFusedParamOffsets");
+    auto *fp32_partial_fused_offsets_t =
+        ctx.Input<framework::Tensor>("FP32ShardFusedParamOffsets");
     const auto *fp32_partial_fused_offsets =
         fp32_partial_fused_offsets_t->data<int>();
-    auto *fp16_partial_fused_offsets_t = ctx.Input<framework::Tensor>(
-        FLAGS_use_multi_tensor_apply ? "FP16ShardFusedParamOffsetsCPU"
-                                     : "FP16ShardFusedParamOffsets");
+    auto *fp16_partial_fused_offsets_t =
+        ctx.Input<framework::Tensor>("FP16ShardFusedParamOffsets");
     const auto *fp16_partial_fused_offsets =
         fp16_partial_fused_offsets_t->data<int>();
 
     VLOG(1) << "FusedParamOffsets: "
-            << FlattenToString(fused_offsets, fused_offsets_t->numel(), place);
+            << FlattenToString(fused_offsets, fused_offsets_t->numel(),
+                               fused_offsets_t->place());
     VLOG(1) << "FP32ShardFusedParamOffsets: "
             << FlattenToString(fp32_partial_fused_offsets,
-                               fp32_partial_fused_offsets_t->numel(), place);
+                               fp32_partial_fused_offsets_t->numel(),
+                               fp32_partial_fused_offsets_t->place());
     VLOG(1) << "FP16ShardFusedParamOffsets: "
             << FlattenToString(fp16_partial_fused_offsets,
-                               fp16_partial_fused_offsets_t->numel(), place);
+                               fp16_partial_fused_offsets_t->numel(),
+                               fp16_partial_fused_offsets_t->place());
 
     if (num_devices > 1) {
       if (use_master_param_norm) {
@@ -1227,32 +1217,31 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
         FillZeroWithPtr(trust_ratio_div_square_norm, param_num, stream);
       }
     }
-    CubDeviceSegmentedSquareNorm(fp32_param, param_square_norm,
-                                 fp32_global_param_num, fused_offsets, 0,
-                                 stream, &cub_tmp_buffer);
+    DeviceSegmentedSquareNorm(dev_ctx, fp32_param, param_square_norm,
+                              fp32_global_param_num, fused_offsets, 0,
+                              &cub_tmp_buffer);
     if (use_master_param_norm) {
-      CubDeviceSegmentedSquareNorm(
-          master_param + fp16_offset, param_square_norm + fp16_local_start_idx,
-          fp16_local_param_num, fp16_partial_fused_offsets, 0, stream,
-          &cub_tmp_buffer);
+      DeviceSegmentedSquareNorm(dev_ctx, master_param + fp16_offset,
+                                param_square_norm + fp16_local_start_idx,
+                                fp16_local_param_num,
+                                fp16_partial_fused_offsets, 0, &cub_tmp_buffer);
     } else {
       // NOTE: extra computation is performed. We can improve this performance
       // if needed in the future.
-      CubDeviceSegmentedSquareNorm(
-          fp16_param, param_square_norm + fp32_global_param_num,
+      DeviceSegmentedSquareNorm(
+          dev_ctx, fp16_param, param_square_norm + fp32_global_param_num,
           fp16_global_param_num, fused_offsets + fp32_global_param_num,
-          static_cast<int>(fp32_numel), stream, &cub_tmp_buffer);
+          static_cast<int>(fp32_numel), &cub_tmp_buffer);
     }
 
-    CubDeviceSegmentedSquareNorm(
-        trust_ratio_div, trust_ratio_div_square_norm + fp32_local_start_idx,
-        fp32_local_param_num, fp32_partial_fused_offsets, 0, stream,
-        &cub_tmp_buffer);
-    CubDeviceSegmentedSquareNorm(
-        trust_ratio_div + fp32_numel_each_device,
+    DeviceSegmentedSquareNorm(
+        dev_ctx, trust_ratio_div,
+        trust_ratio_div_square_norm + fp32_local_start_idx,
+        fp32_local_param_num, fp32_partial_fused_offsets, 0, &cub_tmp_buffer);
+    DeviceSegmentedSquareNorm(
+        dev_ctx, trust_ratio_div + fp32_numel_each_device,
         trust_ratio_div_square_norm + fp16_local_start_idx,
-        fp16_local_param_num, fp16_partial_fused_offsets, 0, stream,
-        &cub_tmp_buffer);
+        fp16_local_param_num, fp16_partial_fused_offsets, 0, &cub_tmp_buffer);
 
     VLOG(1) << "TrustRatioDiv L2-Norm before allreduce: "
             << FlattenToString(trust_ratio_div_square_norm, param_num, place);
