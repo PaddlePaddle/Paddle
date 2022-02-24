@@ -228,6 +228,14 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         main_block._sync_with_cpp()
 
+        # (FIXME)
+        if dist_op_desc.type == "fill_constant_batch_size_like":
+            assert main_block.ops[-1] == "fill_constant_batch_size_like"
+            op = main_block.ops[-1]
+            original_shape = op.attr("shape")
+            original_shape[1] = original_shape[1] // 2
+            main_block.ops[-1]._set_attr("shape", original_shape)
+
         # param initialization sync
         if src_op.type in __op_not_need_param_init__:
             return

@@ -208,6 +208,9 @@ class Partitioner(object):
         # partiiton
         for op in serial_ops:
 
+            if op.type == "while":
+                print(str(target_block.program))
+                print(str(op))
             # partititon input variables
             for serial_input_varname in op.desc.input_arg_names():
                 if serial_input_varname not in self._serial2dist_varname_mapping:
@@ -285,6 +288,9 @@ def _get_dist_shape(var, dist_attr):
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
     mesh = dist_attr.process_mesh.topology
+    if mapping == []:
+        return var_shape
+
     assert len(var_shape) == len(
         mapping
     ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
