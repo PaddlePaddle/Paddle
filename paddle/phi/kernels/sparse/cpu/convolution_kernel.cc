@@ -288,4 +288,4 @@ void Conv3dKernel(const Context& dev_ctx,
 
 // float16 GEMM not supported on CPU
 PT_REGISTER_KERNEL(
-    conv3d, CPU, ALL_LAYOUT, phi::sparse::Conv3dKernel, float, double) {}
+    conv, CPU, ALL_LAYOUT, phi::sparse::Conv3dKernel, float, double) {}
