@@ -135,13 +135,13 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     }
 
     std::vector<int64_t> dim_out({dim_x[0]});
-    ctx->SetOutputDim("Loss", framework::make_ddim(dim_out));
+    ctx->SetOutputDim("Loss", phi::make_ddim(dim_out));
 
     std::vector<int64_t> dim_obj_mask({dim_x[0], mask_num, dim_x[2], dim_x[3]});
-    ctx->SetOutputDim("ObjectnessMask", framework::make_ddim(dim_obj_mask));
+    ctx->SetOutputDim("ObjectnessMask", phi::make_ddim(dim_obj_mask));
 
     std::vector<int64_t> dim_gt_match_mask({dim_gtbox[0], dim_gtbox[1]});
-    ctx->SetOutputDim("GTMatchMask", framework::make_ddim(dim_gt_match_mask));
+    ctx->SetOutputDim("GTMatchMask", phi::make_ddim(dim_gt_match_mask));
   }
 
  protected:

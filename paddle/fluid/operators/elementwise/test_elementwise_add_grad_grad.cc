@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/test_elementwise_op_grad_grad.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/ddim.h"
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 
 namespace paddle {
 namespace operators {
@@ -36,7 +36,7 @@ class TestElementwiseAddGradGradWithoutDDX
   using TestElementwiseOpGradGrad<T>::expected_outs_;
   using TestElementwiseOpGradGrad<T>::dims_;
   void ComputeExpectedOuts() override {
-    size_t numel = static_cast<size_t>(framework::product(dims_));
+    size_t numel = static_cast<size_t>(phi::product(dims_));
     std::vector<T> dy(numel);
     std::vector<T> ddout(numel);
     for (size_t i = 0; i < numel; ++i) {

@@ -141,9 +141,19 @@ if(WITH_GPU OR WITH_ROCM)
     target_link_libraries(device_context gpu_info gpu_context pten_gpu_info)
     target_link_libraries(device_context gpu_resource_pool)
 endif()
-
+if (WITH_CUSTOM_DEVICE)
+    target_link_libraries(device_context custom_context)
+endif()
 if(WITH_ASCEND_CL)
     target_link_libraries(device_context npu_resource_pool)
+endif()
+
+if(WITH_MLU)
+    target_link_libraries(device_context mlu_resource_pool)
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+    target_link_libraries(device_context custom_context)
 endif()
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)

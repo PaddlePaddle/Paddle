@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/abs_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -28,16 +30,6 @@ namespace operators {
 class AbsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "abs");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "abs");
-
-    auto in_dims = ctx->GetInputDim("X");
-
-    ctx->SetOutputDim("Out", in_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class AbsOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -108,7 +100,7 @@ class AbsDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    op->SetType("abs_grad_grad");
+    op->SetType("abs_double_grad");
     // input1: x
     op->SetInput("X", this->Input("X"));
     // input2: ddx
@@ -140,55 +132,27 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
-    return framework::OpKernelType(tensor.type(), tensor.place(),
-                                   tensor.layout());
+    return framework::OpKernelType(
+        framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+        tensor.layout());
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
+DELCARE_INFER_SHAPE_FUNCTOR(abs, AbsInferShapeFunctor,
+                            PT_INFER_META(phi::UnchangedInferMeta));
+
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(abs, ops::AbsOp, ops::AbsOpMaker,
                   ops::AbsGradMaker<paddle::framework::OpDesc>,
-                  ops::AbsGradMaker<paddle::imperative::OpBase>);
+                  ops::AbsGradMaker<paddle::imperative::OpBase>,
+                  AbsInferShapeFunctor);
 
 REGISTER_OPERATOR(abs_grad, ops::AbsGradOp,
                   ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(abs_grad_grad, ops::AbsDoubleGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    abs, ops::AbsKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex<float>>,
-    ops::AbsKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    abs_grad, ops::AbsGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<float>>,
-    ops::AbsGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    abs_grad_grad,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::float16>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex<double>>);
+REGISTER_OPERATOR(abs_double_grad, ops::AbsDoubleGradOp);

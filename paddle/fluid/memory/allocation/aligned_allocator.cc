@@ -52,7 +52,7 @@ bool AlignedAllocator::IsAllocThreadSafe() const {
   return underlying_allocator_->IsAllocThreadSafe();
 }
 
-pten::Allocation* AlignedAllocator::AllocateImpl(size_t size) {
+phi::Allocation* AlignedAllocator::AllocateImpl(size_t size) {
   auto raw_allocation = underlying_allocator_->Allocate(size + alignment_);
   size_t offset = AlignedPtrOffset(raw_allocation->ptr(), alignment_);
   auto* p = new AlignedAllocation(
@@ -60,7 +60,7 @@ pten::Allocation* AlignedAllocator::AllocateImpl(size_t size) {
   return p;
 }
 
-void AlignedAllocator::FreeImpl(pten::Allocation* allocation) {
+void AlignedAllocator::FreeImpl(phi::Allocation* allocation) {
   delete allocation;
 }
 

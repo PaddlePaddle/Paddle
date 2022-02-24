@@ -46,7 +46,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         attrs['loss'] = loss
         attrs['min_block_size'] = 81920
         attrs['origin_main_program'] = loss.block.program
+        attrs['origin_main_programs'] = [loss.block.program]
         attrs['origin_startup_program'] = startup_program
+        attrs['origin_startup_programs'] = [startup_program]
 
         attrs['cloned_main'] = attrs['origin_main_program'].clone()
         attrs['cloned_startup'] = attrs['origin_startup_program'].clone()
@@ -54,14 +56,15 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         attrs['user_defined_strategy'] = self.user_defined_strategy
         attrs['trainer'] = TrainerRuntimeConfig(self.user_defined_strategy)
         attrs['ps_mode'] = attrs['trainer'].mode
-
+        logger.info("ps_mode: {}".format(attrs['ps_mode']))
         attrs['role_maker'] = self.role_maker
         attrs[
             'is_heter_ps_mode'] = self.role_maker._is_heter_parameter_server_mode
         attrs['is_worker'] = self.role_maker._is_worker()
         attrs['is_server'] = self.role_maker._is_server()
         attrs['is_heter_worker'] = self.role_maker._is_heter_worker()
-
+        logger.info("this process is heter? {}".format(attrs[
+            'is_heter_worker']))
         attrs['use_ps_gpu'] = self.user_defined_strategy.a_sync_configs[
             "use_ps_gpu"]
         attrs['lr_decay_steps'] = self.user_defined_strategy.a_sync_configs[

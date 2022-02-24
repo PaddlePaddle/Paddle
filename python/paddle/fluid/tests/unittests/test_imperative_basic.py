@@ -203,7 +203,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             if fluid.framework._in_eager_mode():
                 var_base = paddle.to_tensor(np.array([3, 4, 5]))
-                self.assertTrue(isinstance(var_base, core.eager.EagerTensor))
+                self.assertTrue(isinstance(var_base, core.eager.Tensor))
             else:
                 var_base = paddle.to_tensor(np.array([3, 4, 5]))
                 self.assertTrue(isinstance(var_base, core.VarBase))
@@ -221,13 +221,13 @@ class TestImperative(unittest.TestCase):
         t.set(x, fluid.CPUPlace())
         if _in_eager_mode():
             # TODO(jiabin): Support Kwargs and uncomment these tests
-            # egr_tmp = fluid.core.eager.EagerTensor(value=x, place=fluid.core.CPUPlace())
-            egr_tmp2 = fluid.core.eager.EagerTensor(y, fluid.core.CPUPlace())
+            # egr_tmp = fluid.core.eager.Tensor(value=x, place=fluid.core.CPUPlace())
+            egr_tmp2 = fluid.core.eager.Tensor(y, fluid.core.CPUPlace())
             egr_tmp3 = paddle.to_tensor(x)
-            egr_tmp4 = fluid.core.eager.EagerTensor(y)
-            # egr_tmp5 = fluid.core.eager.EagerTensor(value=x)
+            egr_tmp4 = fluid.core.eager.Tensor(y)
+            # egr_tmp5 = fluid.core.eager.Tensor(value=x)
             # TODO(jiabin): Support it when we merge LoDTensor with DenseTensor
-            egr_tmp6 = fluid.core.eager.EagerTensor(t)
+            egr_tmp6 = fluid.core.eager.Tensor(t)
 
             # self.assertTrue(np.array_equal(x, egr_tmp.numpy()))
             self.assertTrue(np.array_equal(y, egr_tmp2.numpy()))
@@ -953,8 +953,7 @@ class TestMetaclass(unittest.TestCase):
         self.assertNotEqual(type(MyLayer).__name__, 'pybind11_type')
         if core._in_eager_mode():
             self.assertEqual(
-                type(paddle.fluid.core.eager.EagerTensor).__name__,
-                'pybind11_type')
+                type(paddle.fluid.core.eager.Tensor).__name__, 'type')
         else:
             self.assertEqual(
                 type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')

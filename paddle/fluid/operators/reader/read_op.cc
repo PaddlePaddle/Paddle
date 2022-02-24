@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -105,7 +106,8 @@ class ReadOp : public framework::OperatorBase {
     std::vector<framework::LoDTensor> ins;
 
     // For profiling
-    platform::RecordEvent record_event(Type());
+    platform::RecordEvent record_event(
+        Type().c_str(), platform::TracerEventType::UserDefined, 1);
 
     reader->ReadNext(&ins);
     if (ins.empty()) {
@@ -141,7 +143,7 @@ class ReadOp : public framework::OperatorBase {
                 "shape = [%s], but received fed shape [%s]",
                 out_arg_names[i], shapes[i].size(), shapes[i], in_dims));
         PADDLE_ENFORCE_EQ(
-            ins[i].type(), var_types[i],
+            framework::TransToProtoVarType(ins[i].dtype()), var_types[i],
             platform::errors::InvalidArgument(
                 "The data type of fed Variable %s must be %s, but received %s",
                 out_arg_names[i], var_types[i], ins[i].type()));

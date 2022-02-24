@@ -17,9 +17,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/mul_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {}  // namespace framework
@@ -116,8 +116,9 @@ class MulPrimitiveFactory {
 
     auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }
@@ -240,7 +241,7 @@ class MulPrimitiveFactory {
   memory::desc CreateMemDescriptor(
       const Tensor *tensor, MKLDNNMemoryFormat format,
       memory::data_type type = platform::MKLDNNGetDataType<T>()) {
-    auto dims = framework::vectorize<int64_t>(tensor->dims());
+    auto dims = phi::vectorize<int64_t>(tensor->dims());
     return platform::MKLDNNMemDesc(dims, type, format);
   }
 
@@ -277,8 +278,9 @@ class MulPrimitiveFactory {
 
     auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
     {
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
       reorder.execute(astream, src_mem, dst_mem);
       astream.wait();
     }
@@ -287,7 +289,7 @@ class MulPrimitiveFactory {
   }
 
   memory TransposeInputY(const Tensor *input_y) {
-    auto dims = framework::vectorize<int64_t>(input_y->dims());
+    auto dims = phi::vectorize<int64_t>(input_y->dims());
     std::swap(dims[0], dims[1]);  // Correct output dimensions
     auto src_desc = CreateMemDescriptor<YT>(dims, MKLDNNMemoryFormat::io);
     auto dst_desc = CreateMemDescriptor<YT>(dims, MKLDNNMemoryFormat::oi);
@@ -310,9 +312,10 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const Tensor *input_x, const Tensor *input_y,
     const dnnl::engine &mkldnn_engine) {
   std::string key = platform::CreateKey(
-      dev_ctx, input_x->type(), framework::vectorize(input_x->dims()),
-      input_y->type(), framework::vectorize(input_y->dims()),
-      ctx.OutputName("Out"));
+      dev_ctx, framework::TransToProtoVarType(input_x->dtype()),
+      phi::vectorize(input_x->dims()),
+      framework::TransToProtoVarType(input_y->dtype()),
+      phi::vectorize(input_y->dims()), ctx.OutputName("Out"));
   key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
   auto prim_creator = std::static_pointer_cast<MulPrimitiveFactory<XT, YT, OT>>(
@@ -479,9 +482,8 @@ class MulGradMKLDNNKernel : public MulMKLDNNKernel<XT, YT> {
                                 : static_cast<const Tensor &>(*y);
 
     Tensor dout_matrix = *dout;
-    dout_matrix.Resize(
-        {framework::flatten_to_2d(x->dims(), x_num_col_dims)[0],
-         framework::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
+    dout_matrix.Resize({phi::flatten_to_2d(x->dims(), x_num_col_dims)[0],
+                        phi::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
 
     // adding mb dim because MatMulV2 handler needs it
     std::vector<int64_t> x_dims(3, 1);

@@ -14,40 +14,34 @@ limitations under the License. */
 
 #pragma once
 
-#include <popart/op.hpp>
+#include <popart/patterns/patterns.hpp>
 #include <popart/sessionoptions.hpp>
 #include <popart/tensorlocation.hpp>
-#include "popart/patterns/patterns.hpp"
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 namespace ipu {
 
-using VirtualGraphMode = popart::VirtualGraphMode;
-using RecomputationType = popart::RecomputationType;
-
 struct IpuStrategy {
-  IpuStrategy() {
-    // we always save optimizer state to OffChip and enable rts for saving
-    // memory
-    auto storage = popart::TensorLocation(popart::TensorStorage::OffChip,
-                                          popart::ReplicatedTensorSharding::On);
-    popart_options.optimizerStateTensorLocationSettings =
-        popart::TensorLocationSettings(storage);
+  IpuStrategy();
 
-    // We divide the accumulationFactor and replicatedGraphCount after all
-    // reduce
-    popart_options.accumulationAndReplicationReductionType =
-        popart::ReductionType::Mean;
-    popart_options.meanAccumulationAndReplicationReductionStrategy =
-        popart::MeanReductionStrategy::Post;
+  // TODO(alleng) create PaddleOptions
+  // training flag, true for training
+  bool is_training = true;
 
-    popart_options.enableFloatingPointChecks = false;
+  // save the onnx model lowered by paddle program description
+  bool save_init_onnx = false;
 
-    // A directory for log traces to be written into.
-    popart_options.logDir = "popart_log";
-  }
-  ~IpuStrategy() {}
+  // save the trained model
+  bool save_onnx_checkpoint = false;
+
+  // average sharding, debugging used
+  bool need_avg_shard = false;
+
+  // flag for fp16, true for pure fp16
+  bool enable_fp16 = false;
 
   // Number ipus total needed, replica * ipu_per_replica
   int num_ipus = 1;
@@ -58,24 +52,10 @@ struct IpuStrategy {
   // micro batch-size
   int micro_batch_size = 1;
 
-  // training flag, true for training
-  bool is_training = true;
-
-  // save the onnx model lowered by paddle program description
-  bool save_init_onnx = false;
-
-  // save the trained model
-  bool save_onnx_checkpoint = false;
-
   // save paddle model per n steps
   int save_per_n_step = 1;
 
-  // average sharding, debugging used
-  bool need_avg_shard = false;
-
-  // flag for fp16, true for pure fp16
-  bool enable_fp16 = false;
-
+  // TODO(alleng) remove this param
   // available memory proportion, 0.0f for disable
   float available_memory_proportion = 0.0f;
 
@@ -88,12 +68,76 @@ struct IpuStrategy {
 
   // popart session option
   popart::SessionOptions popart_options;
+
+  // popart pattern manager
   popart::Patterns popart_patterns;
 
+  // custom ops
+  std::vector<IpuCustomOpIdentifier> custom_ops;
+
+ private:
+  std::map<std::string, std::function<void(bool)>> bool_options;
+  std::map<std::string, std::function<void(std::uint64_t)>> uint64_options;
+  std::map<std::string, std::function<void(double)>> double_options;
+  std::map<std::string, std::function<void(std::string)>> string_options;
+  std::map<std::string,
+           std::function<void(std::pair<std::string, std::string>)>>
+      container_options;
+
+  std::map<std::string, std::function<std::string()>> options_getter;
+  std::map<std::string, std::function<std::vector<std::string>()>>
+      vector_options_getter;
+  std::map<std::string, std::function<std::map<std::string, std::string>()>>
+      map_options_getter;
+  std::map<std::string, std::string> options_type;
+
+  template <typename ValueType>
+  void set(
+      const std::string &key, ValueType value,
+      std::map<std::string, std::function<void(ValueType)>> &options,  // NOLINT
+      const std::string &type_str) {
+    auto it = options.find(key);
+    PADDLE_ENFORCE_NE(it, options.end(), platform::errors::InvalidArgument(
+                                             "Cannot find option: %s, type: %s "
+                                             "when setting IpuStrategy options",
+                                             key, type_str));
+    it->second(value);
+  }
+
+  template <typename ValueType>
+  ValueType get(
+      const std::string &key,
+      std::map<std::string, std::function<ValueType()>> &options) {  // NOLINT
+    auto it = options.find(key);
+    PADDLE_ENFORCE_NE(
+        it, options.end(),
+        platform::errors::InvalidArgument(
+            "Cannot find option name: %s when trying to get IpuStrategy option",
+            key));
+    return it->second();
+  }
+
  public:
-  void enablePattern(const std::string& t);
-  void disablePattern(const std::string& t);
-  const bool isPatternEnabled(const std::string& t);
+  void AddBoolOption(const std::string &option, bool value);
+  void AddUint64Option(const std::string &option, std::uint64_t value);
+  void AddDoubleOption(const std::string &option, double value);
+  void AddStringOption(const std::string &option, const std::string &value);
+  void InsertStringOption(const std::string &option, const std::string &value);
+  void InsertStringPairOption(const std::string &option, const std::string &key,
+                              const std::string &value);
+  void SetTensorLocation(const std::string &tensor, const std::string &option,
+                         std::uint64_t value);
+  void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
+                   const std::string &domain, int version);
+
+  std::string GetOption(const std::string &);
+  std::vector<std::string> GetVectorOption(const std::string &);
+  std::map<std::string, std::string> GetMapOption(const std::string &);
+  std::string GetOptionType(const std::string &);
+
+  void EnablePattern(const std::string &t);
+  void DisablePattern(const std::string &t);
+  const bool IsPatternEnabled(const std::string &t);
 };
 
 }  // namespace ipu

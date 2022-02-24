@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace platform {
@@ -112,7 +113,8 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
     } else {
       HardLabelCrossEntropyCPUFunctorImpl<T> functor_impl(
           out, prob, labels, ignore_index, axis_dim);
-      framework::VisitIntDataType(labels->type(), functor_impl);
+      framework::VisitIntDataType(
+          framework::TransToProtoVarType(labels->dtype()), functor_impl);
     }
   }
 };
