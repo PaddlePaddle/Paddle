@@ -58,16 +58,6 @@ TrtUniquePtr<nvinfer1::INetworkDefinition> ConstructNetwork(
   CHECK_NOTNULL(data);
   IActivationLayer* act =
       network->addActivation(*data, ActivationType::kSIGMOID);
-  // TODO(wilber): Scale has bug in dynamic_shape mode. Is trt8's bug?.
-  // act->setAlpha(0.0125f);
-  // Create scale layer with default power/shift and specified scale parameter.
-  // const float scaleParam = 0.0125f;
-  // const nvinfer1::Weights power{nvinfer1::DataType::kFLOAT, nullptr, 0};
-  // const nvinfer1::Weights shift{nvinfer1::DataType::kFLOAT, nullptr, 0};
-  // const nvinfer1::Weights scale{nvinfer1::DataType::kFLOAT, &scaleParam, 1};
-  // IScaleLayer* scale_1 = network->addScale(
-  //     *act->getOutput(0), nvinfer1::ScaleMode::kUNIFORM, shift, scale,
-  //     power);
   CHECK_NOTNULL(act);
   auto* act_out = act->getOutput(0);
   std::vector<int> output_length{1, 2};

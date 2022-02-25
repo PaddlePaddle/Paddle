@@ -28,7 +28,6 @@ namespace tensorrt {
 // Build default params
 constexpr int32_t max_batch_not_provided{0};
 constexpr int32_t default_workspace{16};
-
 // Inference default params
 constexpr int32_t default_batch{1};
 constexpr int32_t batch_not_provided{0};

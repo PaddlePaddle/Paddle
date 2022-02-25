@@ -1,4 +1,5 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -83,9 +84,7 @@ class TrtLogger : public nvinfer1::ILogger {
         break;
     }
   }
-
   nvinfer1::ILogger& GetTrtLogger() noexcept { return *this; }
-
   ~TrtLogger() override = default;
 };
 

@@ -1,4 +1,5 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -104,12 +105,8 @@ class TRTEngine {
   TrtUniquePtr<nvinfer1::ICudaEngine> engine_{nullptr};
   std::vector<TrtUniquePtr<nvinfer1::IExecutionContext>> contexts_;
   std::vector<std::unique_ptr<Bindings>> bindings_;
-
   int device_id_{0};
   bool is_dynamic_shape_{false};
-
-  // TrtUniquePtr<nvinfer1::IBuilderConfig> builder_config_;
-  // std::vector<nvinfer1::IOptimizationProfile*> optim_profiles_;
 };
 
 }  // namespace tensorrt
