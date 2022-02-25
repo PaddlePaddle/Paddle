@@ -70,8 +70,8 @@ class IPUOpTest(unittest.TestCase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
-    @property
-    def use_ipumodel():
+    @classmethod
+    def use_ipumodel(cls):
         if 'POPLAR_IPUMODEL' not in os.environ:
             return False
         else:
