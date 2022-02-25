@@ -51,7 +51,7 @@ if(WITH_MLU)
 endif()
 
 if(NOT WITH_ASCEND_CL)
-cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows_utils selected_rows_functor var_type_traits layer math_function pten_tensor ${MLU_DEPS})
+cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows_utils selected_rows_functor var_type_traits layer math_function phi_tensor ${MLU_DEPS})
 else()
 cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows_utils selected_rows_functor var_type_traits layer math_function npu_op_runner phi_tensor)
 endif()
