@@ -18,13 +18,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/label_smooth_grad_kernel.h"
 
-#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
-#include "paddle/fluid/platform/enforce.h"
-
-#include "paddle/fluid/framework/infershape_utils.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/op_registry.h"
 namespace phi {
 template <typename T>
 struct LabelSmoothGradFunctor {
