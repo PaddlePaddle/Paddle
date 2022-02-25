@@ -193,19 +193,19 @@ cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_va
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 
 IF(WITH_XPU)
-cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info xpu_op_list)
+cc_library(phi_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info xpu_op_list)
 ELSE()
-cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info)
+cc_library(phi_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info)
 ENDIF()
 
 IF(WITH_XPU)
 cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    pten pten_utils kernel_factory infershape_utils op_utils)
+    phi phi_utils kernel_factory infershape_utils op_utils)
 ELSE()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    pten pten_utils kernel_factory infershape_utils op_utils)
+    phi phi_utils kernel_factory infershape_utils op_utils)
 ENDIF()
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
@@ -412,7 +412,7 @@ cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
-cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place pten var_type_traits pten pten_api_utils op_info shape_inference)
+cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place phi var_type_traits phi phi_api_utils op_info shape_inference)
 cc_test(infershape_utils_test SRCS infershape_utils_test.cc DEPS infershape_utils infermeta_utils meta_tensor)
 
 # Get the current working branch
@@ -436,9 +436,8 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info pten_api)
-cc_library(custom_kernel SRCS custom_kernel.cc DEPS
-           tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_kernel_info pten_api)
+cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper phi_tensor op_meta_info phi_api)
+cc_library(custom_kernel SRCS custom_kernel.cc DEPS op_registry phi_custom_kernel phi_tensor_raw)
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
@@ -451,7 +450,7 @@ if(WITH_TESTING AND TEST selected_rows_utils_test)
 endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
-cc_test(pten_utils_test SRCS pten_utils_test.cc DEPS pten_utils)
+cc_test(phi_utils_test SRCS pten_utils_test.cc DEPS phi_utils)
 
 if(WITH_GPU OR WITH_ROCM)
   cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
@@ -459,4 +458,3 @@ else()
   cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place)
 endif()
 cc_test(convert_utils_test SRCS convert_utils_test.cc DEPS fluid_convert_utils)
-cc_test(custom_kernel_test SRCS custom_kernel_test.cc DEPS custom_kernel pten_tensor)

@@ -126,10 +126,10 @@ void Device::MemorySet(void* ptr, uint8_t value, size_t size) {
 
 std::string Device::Type() { return impl_->Type(); }
 
-static pten::RWLock _global_device_manager_rw_lock;
+static phi::RWLock _global_device_manager_rw_lock;
 
 bool DeviceManager::Register(std::unique_ptr<DeviceInterface> device_impl) {
-  pten::AutoWRLock lock(&_global_device_manager_rw_lock);
+  phi::AutoWRLock lock(&_global_device_manager_rw_lock);
   VLOG(4) << "Register Device - " << device_impl->Type();
   auto device_type = device_impl->Type();
   auto& dev_impl_map = Instance().device_impl_map_;
@@ -165,7 +165,7 @@ bool DeviceManager::Register(std::unique_ptr<DeviceInterface> device_impl) {
 
 DeviceInterface* DeviceManager::GetDeviceInterfaceWithType(
     const std::string& device_type) {
-  pten::AutoRDLock lock(&_global_device_manager_rw_lock);
+  phi::AutoRDLock lock(&_global_device_manager_rw_lock);
 
   auto& dev_impl_map = Instance().device_impl_map_;
   if (dev_impl_map.find(device_type) != dev_impl_map.end()) {
@@ -179,7 +179,7 @@ DeviceInterface* DeviceManager::GetDeviceInterfaceWithType(
 }
 
 Device* DeviceManager::GetDeviceWithPlace(const Place& place) {
-  pten::AutoRDLock lock(&_global_device_manager_rw_lock);
+  phi::AutoRDLock lock(&_global_device_manager_rw_lock);
 
   auto& dev_map = Instance().device_map_;
   auto dev_type = PlaceHelper::GetDeviceType(place);
@@ -197,7 +197,7 @@ Device* DeviceManager::GetDeviceWithPlace(const Place& place) {
 }
 
 std::vector<std::string> DeviceManager::GetAllDeviceTypes() {
-  pten::AutoRDLock lock(&_global_device_manager_rw_lock);
+  phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
   for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
@@ -207,7 +207,7 @@ std::vector<std::string> DeviceManager::GetAllDeviceTypes() {
 }
 
 std::vector<std::string> DeviceManager::GetAllCustomDeviceTypes() {
-  pten::AutoRDLock lock(&_global_device_manager_rw_lock);
+  phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
   for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
@@ -219,7 +219,7 @@ std::vector<std::string> DeviceManager::GetAllCustomDeviceTypes() {
 }
 
 std::vector<std::string> DeviceManager::GetAllDeviceList() {
-  pten::AutoRDLock lock(&_global_device_manager_rw_lock);
+  phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
   for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {
@@ -237,7 +237,7 @@ std::vector<std::string> DeviceManager::GetAllDeviceList() {
 }
 
 std::vector<std::string> DeviceManager::GetAllCustomDeviceList() {
-  pten::AutoRDLock lock(&_global_device_manager_rw_lock);
+  phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
   for (auto iter = dev_impl_map.cbegin(); iter != dev_impl_map.cend(); ++iter) {

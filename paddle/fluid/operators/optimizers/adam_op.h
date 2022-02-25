@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pten/kernels/funcs/algorithm.h"
+#include "paddle/phi/kernels/funcs/algorithm.h"
 
 namespace paddle {
 namespace operators {
@@ -279,7 +279,7 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
 
   inline HOSTDEVICE void operator()(size_t i) const {
     auto row_idx =
-        pten::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        phi::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     if (lazy_mode_ && row_idx < 0) {
       return;
     } else {
@@ -560,8 +560,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
              mom1_out_ptr + offset, mom2_out_ptr + offset,
              param_out_ptr + offset);
       }
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
-      auto* grad = ctx.Input<pten::SelectedRows>("Grad");
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
+      auto* grad = ctx.Input<phi::SelectedRows>("Grad");
       if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
@@ -576,8 +576,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      pten::SelectedRows tmp_grad_merge;
-      const pten::SelectedRows* grad_merge_ptr;
+      phi::SelectedRows tmp_grad_merge;
+      const phi::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = grad;
       } else {
@@ -592,7 +592,10 @@ class AdamOpKernel : public framework::OpKernel<T> {
       auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
+      auto* grad_merge_rows = &grad_merge.rows();
+      paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(
+          grad_merge_rows);
+      const int64_t* rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
       SparseAdamFunctor<T, CPUAdam> functor(
