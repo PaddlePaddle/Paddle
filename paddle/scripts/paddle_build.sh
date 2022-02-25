@@ -1117,7 +1117,7 @@ function card_test() {
     elif [ "${WITH_ASCEND_CL}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
-        CUDA_DEVICE_COUNT=4
+        CUDA_DEVICE_COUNT=$(rocm-smi -i | grep GPU | wc -l)
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
     fi
