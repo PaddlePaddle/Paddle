@@ -351,24 +351,30 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           }
         } else {
           // If is not in runtime, we will set default value(-1) for ScalarArray
+          int64_t num_ele = 0;
           std::vector<VarDesc*> vars;
           vars.reserve(infershape_inputs.size());
           for (size_t i = 0; i < infershape_inputs.size(); ++i) {
             vars.push_back(BOOST_GET_CONST(VarDesc*, infershape_inputs[i]));
           }
+
           if (vars.size() == 1) {
-            int64_t num_ele = 1;
-            const auto& tensor_dims = vars.front()->GetShape();
+            num_ele = 1;
+            const auto& tensor_dims = vars[0]->GetShape();
             for (size_t i = 0; i < tensor_dims.size(); ++i) {
               num_ele *= tensor_dims[i];
             }
-            phi::ScalarArray tensor_attr(std::vector<int64_t>(num_ele, -1));
-            tensor_attr.SetFromTensor(true);
-            infer_meta_context.EmplaceBackAttr(std::move(tensor_attr));
           } else {
-            phi::ScalarArray tensor_attr(std::vector<int64_t>(vars.size(), -1));
-            tensor_attr.SetFromTensor(true);
-            infer_meta_context.EmplaceBackAttr(std::move(tensor_attr));
+            for (auto& var : vars) {
+              const auto& tensor_dims = var->GetShape();
+              PADDLE_ENFORCE_EQ(tensor_dims.size(), 1,
+                                platform::errors::InvalidArgument(
+                                    "The shape is constructed by multi-tensor, "
+                                    "every tensor's dims should be 1. But your "
+                                    "shape has tensor that dims is %s.",
+                                    tensor_dims.size()));
+              num_ele += tensor_dims[0];
+            }
           }
         }
       } else if (ctx->HasAttr(attr_name)) {
