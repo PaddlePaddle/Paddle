@@ -114,7 +114,6 @@ class IscloseOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
     isclose, ops::IscloseOp, ops::IscloseOpMaker,

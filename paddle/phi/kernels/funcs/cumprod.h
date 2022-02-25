@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#if defined(__NVCC__) || defined(__HIPCC__)
-// TODO( add GPU related file here )
-#endif
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 

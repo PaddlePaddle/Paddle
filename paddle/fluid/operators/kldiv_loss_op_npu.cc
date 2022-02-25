@@ -16,7 +16,6 @@ limitations under the Licnse. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

@@ -13,13 +13,14 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/cumprod_grad_kernel.h"
+
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
+#include "paddle/phi/core/ddim.h"
 
 // NOTE(@xiongkun): use of IsComplex<>
 #include "paddle/fluid/framework/data_type.h"
