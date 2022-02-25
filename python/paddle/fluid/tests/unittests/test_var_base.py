@@ -52,6 +52,8 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP16)
 
                 # set_default_dtype take effect on float
+                x = paddle.to_tensor(1, place=place)
+                self.assertTrue(x.dtype, core.VarDesc.VarType.INT64)
                 x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
                 self.assertTrue(
                     np.array_equal(x.numpy(), np.array([1.2]).astype(

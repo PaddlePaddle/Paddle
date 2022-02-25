@@ -423,6 +423,14 @@ class TestMoveAxis(unittest.TestCase):
         self.assertEqual(np.array_equal(out.numpy(), expected), True)
         paddle.enable_static()
 
+    def test_moveaxis3(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            [[1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j]])
+        x.moveaxis(0, 1)
+        self.assertEqual(x.shape, [2, 3])
+        paddle.enable_static()
+
     def test_error(self):
         x = paddle.randn([2, 3, 4, 5])
         # src must have the same number with dst
