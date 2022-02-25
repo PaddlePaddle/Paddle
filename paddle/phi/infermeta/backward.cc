@@ -35,7 +35,7 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
   PADDLE_ENFORCE_EQ(
       out.dims(),
       dout.dims(),
-      phi::errors::InvalidArgument(
+      errors::InvalidArgument(
           "Input(Out) and its gradients should have the same shape."));
   dx->share_meta(dout);
 }

@@ -96,12 +96,12 @@ struct OneHotGenerator<CPUContext, T> {
         CALL_ARG_MINMAX_FUNCTOR(6);
         break;
       default:
-        PADDLE_ENFORCE_LE(out->dims().size(),
-                          6,
-                          paddle::platform::errors::InvalidArgument(
-                              "gumbel_softmax operator doesn't supports "
-                              "tensors whose ranks are greater "
-                              "than 6 in CPU mode."));
+        PADDLE_ENFORCE_LE(
+            out->dims().size(),
+            6,
+            errors::InvalidArgument("gumbel_softmax operator doesn't supports "
+                                    "tensors whose ranks are greater "
+                                    "than 6 in CPU mode."));
         break;
 #undef CALL_ARG_MINMAX_FUNCTOR
     }
