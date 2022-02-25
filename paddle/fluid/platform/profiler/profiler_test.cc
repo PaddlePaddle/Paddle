@@ -22,6 +22,7 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 
@@ -30,8 +31,10 @@ TEST(ProfilerTest, TestHostTracer) {
   using paddle::platform::Profiler;
   using paddle::platform::RecordInstantEvent;
   using paddle::platform::TracerEventType;
+  using paddle::platform::ProfilerResult;
   ProfilerOptions options;
   options.trace_level = 2;
+  options.trace_switch = 3;
   auto profiler = Profiler::Create(options);
   EXPECT_TRUE(profiler);
   profiler->Prepare();
@@ -42,7 +45,8 @@ TEST(ProfilerTest, TestHostTracer) {
     RecordInstantEvent("TestTraceLevel_record2", TracerEventType::UserDefined,
                        3);
   }
-  auto nodetree = profiler->Stop();
+  auto profiler_result = profiler->Stop();
+  auto& nodetree = profiler_result->GetNodeTrees();
   std::set<std::string> host_events;
   for (const auto pair : nodetree->Traverse(true)) {
     for (const auto evt : pair.second) {
@@ -56,8 +60,10 @@ TEST(ProfilerTest, TestHostTracer) {
 TEST(ProfilerTest, TestCudaTracer) {
   using paddle::platform::ProfilerOptions;
   using paddle::platform::Profiler;
+  using paddle::platform::ProfilerResult;
   ProfilerOptions options;
   options.trace_level = 0;
+  options.trace_switch = 3;
   auto profiler = Profiler::Create(options);
   EXPECT_TRUE(profiler);
   profiler->Prepare();
@@ -72,7 +78,8 @@ TEST(ProfilerTest, TestCudaTracer) {
   hipStreamCreate(&stream);
   hipStreamSynchronize(stream);
 #endif
-  auto nodetree = profiler->Stop();
+  auto profiler_result = profiler->Stop();
+  auto& nodetree = profiler_result->GetNodeTrees();
   std::vector<std::string> runtime_events;
   for (const auto pair : nodetree->Traverse(true)) {
     for (const auto host_node : pair.second) {

@@ -244,7 +244,7 @@ void SerializationLogger::HandleTypeMemset(
 }
 
 void SerializationLogger::LogMetaInfo(
-    const std::unordered_map<std::string, std::string>& extra_info) {
+    const std::unordered_map<std::string, std::string> extra_info) {
   for (const auto& kv : extra_info) {
     ExtraInfoMap* extra_info_map = node_trees_proto_->add_extra_info();
     extra_info_map->set_key(kv.first);
@@ -268,8 +268,6 @@ SerializationLogger::~SerializationLogger() {
     delete node_trees_proto_;
     return;
   }
-  ExtraInfo& extra_info = ExtraInfo::GetInstance();
-  LogMetaInfo(extra_info.GetMetaInfo());
   node_trees_proto_->SerializeToOstream(&output_file_stream_);
   delete node_trees_proto_;
   output_file_stream_.close();

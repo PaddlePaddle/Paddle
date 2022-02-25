@@ -9,9 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
-#include "paddle/fluid/platform/profiler/extra_info.h"
-
 #include <cstring>
+#include "paddle/fluid/platform/profiler/extra_info.h"
 
 namespace paddle {
 namespace platform {
@@ -37,17 +36,17 @@ void DeserializationReader::OpenFile() {
   }
 }
 
-std::unique_ptr<NodeTrees> DeserializationReader::Parse() {
+std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   if (!node_trees_proto_->ParseFromIstream(&input_file_stream_)) {
     VLOG(2) << "Unable to load node trees in protobuf." << std::endl;
     return nullptr;
   }
   // restore extra info
-  ExtraInfo& extrainfo = ExtraInfo::GetInstance();
+  ExtraInfo extrainfo;
   for (auto indx = 0; indx < node_trees_proto_->extra_info_size(); indx++) {
     ExtraInfoMap extra_info_map = node_trees_proto_->extra_info(indx);
-    extrainfo.AddMetaInfo(extra_info_map.key(), std::string("%s"),
-                          extra_info_map.value().c_str());
+    extrainfo.AddExtraInfo(extra_info_map.key(), std::string("%s"),
+                           extra_info_map.value().c_str());
   }
   // restore NodeTrees
   std::map<uint64_t, HostTraceEventNode*> thread_event_trees_map;
@@ -104,7 +103,9 @@ std::unique_ptr<NodeTrees> DeserializationReader::Parse() {
     }
   }
   // restore NodeTrees object
-  return std::unique_ptr<NodeTrees>(new NodeTrees(thread_event_trees_map));
+  std::unique_ptr<NodeTrees> tree(new NodeTrees(thread_event_trees_map));
+  return std::unique_ptr<ProfilerResult>(
+      new ProfilerResult(std::move(tree), extrainfo));
 }
 
 DeserializationReader::~DeserializationReader() {

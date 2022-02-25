@@ -17,6 +17,7 @@
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
+#include "paddle/fluid/platform/profiler/event_python.h"
 
 using paddle::platform::SerializationLogger;
 using paddle::platform::DeserializationReader;
@@ -31,6 +32,7 @@ using paddle::platform::TracerEventType;
 using paddle::platform::KernelEventInfo;
 using paddle::platform::MemcpyEventInfo;
 using paddle::platform::MemsetEventInfo;
+using paddle::platform::ProfilerResult;
 
 TEST(SerializationLoggerTest, dump_case0) {
   std::list<HostTraceEvent> host_events;
@@ -149,7 +151,8 @@ TEST(SerializationLoggerTest, dump_case1) {
 
 TEST(DeserializationReaderTest, restore_case0) {
   DeserializationReader reader("test_serialization_logger_case0.pb");
-  std::unique_ptr<NodeTrees> tree = reader.Parse();
+  auto profiler_result = reader.Parse();
+  auto& tree = profiler_result->GetNodeTrees();
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree->Traverse(true);
   EXPECT_EQ(nodes[10].size(), 4u);
@@ -175,7 +178,8 @@ TEST(DeserializationReaderTest, restore_case0) {
 
 TEST(DeserializationReaderTest, restore_case1) {
   DeserializationReader reader("test_serialization_logger_case1.pb");
-  std::unique_ptr<NodeTrees> tree = reader.Parse();
+  auto profiler_result = reader.Parse();
+  auto& tree = profiler_result->GetNodeTrees();
   std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
       tree->Traverse(true);
   EXPECT_EQ(nodes[10].size(), 1u);

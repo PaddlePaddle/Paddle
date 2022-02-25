@@ -18,15 +18,21 @@
 #include <cstdint>
 #include <functional>
 #include <list>
+#include <bitset>
 #include <memory>
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
+#include "paddle/fluid/platform/profiler/cpu_utilization.h"
+#include "paddle/fluid/platform/profiler/event_python.h"
 
 DECLARE_int64(host_trace_level);
 
 namespace paddle {
 namespace platform {
+
+static constexpr uint32_t kProfileCPUOptionBit = 0;
+static constexpr uint32_t kProfileGPUOptionBit = 1;
 
 struct ProfilerOptions {
   uint32_t trace_level = FLAGS_host_trace_level;
@@ -41,7 +47,7 @@ class Profiler {
 
   void Start();
 
-  std::unique_ptr<NodeTrees> Stop();
+  std::unique_ptr<ProfilerResult> Stop();
 
   ~Profiler();
 
@@ -71,6 +77,7 @@ class Profiler {
   ProfilerOptions options_;
   uint64_t start_ns_ = UINT64_MAX;
   std::list<TracerHolder> tracers_;
+  CpuUtilization cpu_utilization_;
 };
 
 }  // namespace platform

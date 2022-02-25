@@ -23,8 +23,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/profiler/cpu_overview.h"
-#include "glog/logging.h"
+#include "paddle/fluid/platform/profiler/cpu_utilization.h"
 
 namespace paddle {
 namespace platform {
@@ -38,91 +37,82 @@ static uint64_t FileTimeToUint64(FILETIME time) {
 }
 #endif
 
-void CPUOverview::RecordBeginTimeInfo() {
-#ifdef _MSC_VER
+void CpuUtilization::RecordBeginTimeInfo() {
+#if defined(_MSC_VER)
   HANDLE process_handle = GetCurrentProcess();
   GetSystemTimeAsFileTime(&start_);
   GetSystemTimes(&system_idle_time_start_, &system_kernel_time_start_,
                  &system_user_time_start_);
-  GetProcessTimes(handle, &process_creation_time_, &process_exit_time_,
+  GetProcessTimes(process_handle, &process_creation_time_, &process_exit_time_,
                   &process_kernel_time_start_, &process_user_time_start_);
 
-#else
+#elif defined(__linux__)
   start_ = times(&process_tms_start_);
 #define proc_path_size 1024
   static char proc_stat_path[proc_path_size] = "/proc/stat";
   FILE *stat_file = fopen(proc_stat_path, "r");
-  char temp_str[200];
-  uint64_t temp_lu;
-  uint64_t tms_utime;
-  uint64_t tms_stime;
-  uint64_t idle_start;
-  system_tms_start_.tms_utime = 0;
-  system_tms_start_.tms_stime = 0;
-  idle_start_ = 0;
-  while (true) {
-    int retval = fscanf(
-        stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
-                   "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-        temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_start, &temp_lu,
-        &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
-    if (std::string(temp_str).find("cpu") != 0) {
-      break;
+  if (stat_file != nullptr) {
+    char temp_str[200];
+    uint64_t temp_lu;
+    while (true) {
+      int retval = fscanf(
+          stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
+                     "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
+          temp_str, &system_tms_start_.tms_utime, &nice_time_start_,
+          &system_tms_start_.tms_stime, &idle_start_, &iowait_start_,
+          &irq_start_, &softirq_start_, &steal_start_, &temp_lu, &temp_lu);
+      if (std::string(temp_str).find("cpu") != 0) {
+        break;
+      }
+      if (retval != 11) {
+        return;
+      }
     }
-    if (retval != 11) {
-      return;
-    }
-    system_tms_start_.tms_utime += tms_utime;
-    system_tms_start_.tms_stime += tms_stime;
-    idle_start_ += idle_start;
+    fclose(stat_file);
   }
+#else
 #endif
 }
 
-void CPUOverview::RecordEndTimeInfo() {
-#ifdef _MSC_VER
+void CpuUtilization::RecordEndTimeInfo() {
+#if defined(_MSC_VER)
   HANDLE process_handle = GetCurrentProcess();
   GetSystemTimeAsFileTime(&end_);
   GetSystemTimes(&system_idle_time_end_, &system_kernel_time_end_,
                  &system_user_time_end_);
-  GetProcessTimes(handle, &process_creation_time_, &process_exit_time_,
+  GetProcessTimes(process_handle, &process_creation_time_, &process_exit_time_,
                   &process_kernel_time_end_, &process_user_time_end_);
-#else
+#elif defined(__linux__)
   end_ = times(&process_tms_end_);
 #define proc_path_size 1024
   static char proc_stat_path[proc_path_size] = "/proc/stat";
   FILE *stat_file = fopen(proc_stat_path, "r");
-  char temp_str[200];
-  uint64_t temp_lu;
-  uint64_t tms_utime;
-  uint64_t tms_stime;
-  uint64_t idle_end;
-  system_tms_end_.tms_utime = 0;
-  system_tms_end_.tms_stime = 0;
-  idle_end_ = 0;
-  while (true) {
-    int retval = fscanf(
-        stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
-                   "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-        temp_str, &tms_utime, &temp_lu, &tms_stime, &idle_end, &temp_lu,
-        &temp_lu, &temp_lu, &temp_lu, &temp_lu, &temp_lu);
-    if (std::string(temp_str).find("cpu") != 0) {
-      break;
+  if (stat_file != nullptr) {
+    char temp_str[200];
+    uint64_t temp_lu;
+    while (true) {
+      int retval = fscanf(
+          stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
+                     "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
+          temp_str, &system_tms_end_.tms_utime, &nice_time_end_,
+          &system_tms_end_.tms_stime, &idle_end_, &iowait_end_, &irq_end_,
+          &softirq_end_, &steal_end_, &temp_lu, &temp_lu);
+      if (std::string(temp_str).find("cpu") != 0) {
+        break;
+      }
+      if (retval != 11) {
+        return;
+      }
     }
-    if (retval != 11) {
-      return;
-    }
-    system_tms_end_.tms_utime += tms_utime;
-    system_tms_end_.tms_stime += tms_stime;
-    idle_end_ += idle_end;
+    fclose(stat_file);
   }
-
+#else
 #endif
 }
 
-float CPUOverview::GetCpuUtilization() {
+float CpuUtilization::GetCpuUtilization() {
   float cpu_utilization = 0.0;
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
   uint64_t system_user_time_start = FileTimeToUint64(system_user_time_start_);
   uint64_t system_user_time_end = FileTimeToUint64(system_user_time_end_);
   uint64_t system_kernel_time_start =
@@ -134,39 +124,24 @@ float CPUOverview::GetCpuUtilization() {
                     (system_user_time_end - system_user_time_start);
   float idle_time = system_idle_time_end - system_idle_time_start;
   cpu_utilization = busy_time / (busy_time + idle_time);
-  LOG(INFO) << "CPU Utilization = " << cpu_utilization << std::endl;
-#else
-  // LOG(INFO) << "start time" << std::endl;
-  // LOG(INFO) << "system user_time = " << system_tms_start_.tms_utime <<
-  // "system kernel_time = " << system_tms_start_.tms_stime << std::endl;
-  // LOG(INFO) << "process user_time = " <<  process_tms_start_.tms_utime <<
-  // "process kernel_time = " << process_tms_start_.tms_stime << std::endl;
-  // LOG(INFO) << "Idle time" << idle_start_ <<std::endl;
-  // LOG(INFO) << "end time" << std::endl;
-  // LOG(INFO) << "system user_time = " << system_tms_end_.tms_utime << "system
-  // kernel_time = " << system_tms_end_.tms_stime << std::endl;
-  // LOG(INFO) << "process user_time = " << process_tms_end_.tms_utime <<
-  // "process kernel_time = " << process_tms_end_.tms_stime << std::endl;
-  // LOG(INFO) << "Idle time" << idle_end_ <<std::endl;
-  // LOG(INFO) << "Duration time" << std::endl;
-  // LOG(INFO) << "system user_time = " << system_tms_end_.tms_utime -
-  // system_tms_start_.tms_utime <<  "system kernel_time = " <<
-  // system_tms_end_.tms_stime - system_tms_start_.tms_stime <<std::endl;
-  // LOG(INFO) << "Process user_time = " << process_tms_end_.tms_utime -
-  // process_tms_start_.tms_utime <<  "Process kernel_time = " <<
-  // process_tms_end_.tms_stime - process_tms_start_.tms_stime <<std::endl;
-  // LOG(INFO) << "Idle time = " << idle_end_ - idle_start_<< std::endl;
-  // LOG(INFO) << "CLOCK TIME = " << end_ - start_ << std::endl;
+
+#elif defined(__linux__)
   float busy_time = (system_tms_end_.tms_utime - system_tms_start_.tms_utime) +
-                    (system_tms_end_.tms_stime - system_tms_start_.tms_stime);
-  float idle_time = (idle_end_ - idle_start_);
+                    (system_tms_end_.tms_stime - system_tms_start_.tms_stime) +
+                    (nice_time_end_ - nice_time_start_) +
+                    (irq_end_ - irq_start_) + (softirq_end_ - softirq_start_) +
+                    (steal_end_ - steal_start_);
+  float idle_time = (idle_end_ - idle_start_) + (iowait_end_ - iowait_start_);
   cpu_utilization = busy_time / (busy_time + idle_time);
-  LOG(INFO) << "CPU Utilization = " << cpu_utilization << std::endl;
+#else
+  LOG(WARNING)
+      << "Current System is not supported to get system cpu utilization"
+      << cpu_utilization << std::endl;
 #endif
   return cpu_utilization;
 }
 
-float CPUOverview::GetCpuCurProcessUtilization() {
+float CpuUtilization::GetCpuCurProcessUtilization() {
   float cpu_process_utilization = 0.0;
 #ifdef _MSC_VER
   uint64_t process_user_time_start = FileTimeToUint64(process_user_time_start_);
@@ -180,12 +155,15 @@ float CPUOverview::GetCpuCurProcessUtilization() {
                     (process_user_time_end - process_user_time_start);
   cpu_process_utilization = busy_time / (end - start);
   LOG(INFO) << "Process Utilization = " << cpu_process_utilization << std::endl;
-#else
+#elif defined(__linux__)
   float busy_time =
       (process_tms_end_.tms_utime - process_tms_start_.tms_utime) +
       (process_tms_end_.tms_stime - process_tms_start_.tms_stime);
   cpu_process_utilization = busy_time / (end_ - start_);
-  LOG(INFO) << "Process Utilization = " << cpu_process_utilization << std::endl;
+#else
+  LOG(WARNING)
+      << "Current System is not supported to get process cpu utilization"
+      << cpu_process_utilization << std::endl;
 #endif
   return cpu_process_utilization;
 }

@@ -18,7 +18,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
@@ -26,27 +25,21 @@ namespace platform {
 
 class ExtraInfo {
  public:
-  // Singleton.
-  static ExtraInfo& GetInstance() {
-    static ExtraInfo instance;
-    return instance;
-  }
+  ExtraInfo() {}
   template <typename... Args>
-  void AddMetaInfo(const std::string& key, const std::string& format,
+  void AddExtraInfo(const std::string& key, const std::string& format,
                    Args... args);
   void Clear() { extra_info_.clear(); }
-  std::unordered_map<std::string, std::string> GetMetaInfo() {
+  std::unordered_map<std::string, std::string> GetExtraInfo() {
     return extra_info_;
   }
 
  private:
-  ExtraInfo() {}
   std::unordered_map<std::string, std::string> extra_info_;
-  DISABLE_COPY_AND_ASSIGN(ExtraInfo);
 };
 
 template <typename... Args>
-void ExtraInfo::AddMetaInfo(const std::string& key, const std::string& format,
+void ExtraInfo::AddExtraInfo(const std::string& key, const std::string& format,
                             Args... args) {
   std::string value = string_format(format, args...);
   extra_info_[key] = value;

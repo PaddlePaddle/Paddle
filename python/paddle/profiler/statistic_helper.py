@@ -99,8 +99,8 @@ def intersection_ranges(range_list1, range_list2, is_sorted=False):
     if len(range_list1) == 0 or len(range_list2) == 0:
         return result_range
     if not is_sorted:
-        range_list1.sort(key=lambda x: x[0])
-        range_list2.sort(key=lambda x: x[0])
+        range_list1 = merge_self_ranges(range_list1)
+        range_list2 = merge_self_ranges(range_list2)
 
     len1 = len(range_list1)
     len2 = len(range_list2)
@@ -157,6 +157,58 @@ def intersection_ranges(range_list1, range_list2, is_sorted=False):
             if indx1 == len1:
                 break
             range1 = range_list1[indx1]
+    return result_range
+
+
+def subtract_ranges(range_list1, range_list2, is_sorted=False):
+    result_range = []
+    if not is_sorted:
+        range_list1 = merge_self_ranges(range_list1)
+        range_list2 = merge_self_ranges(range_list2)
+    if len(range_list1) == 0:
+        return result_range
+    if len(range_list2) == 0:
+        return range_list1
+
+    len1 = len(range_list1)
+    len2 = len(range_list2)
+    indx1 = 0
+    indx2 = 0
+    range1 = range_list1[indx1]
+    range2 = range_list2[indx2]
+
+    while indx1 < len(range_list1):
+        if indx2 == len(range_list2):
+            result_range.append(range1)
+            indx1 += 1
+            if indx1 == len1:
+                break
+            range1 = range_list1[indx1]
+        elif range2[1] <= range1[0]:
+            indx2 += 1
+            if indx2 != len2:
+                range2 = range_list2[indx2]
+        elif range2[0] <= range1[0] and range2[1] < range1[1]:
+            range1 = (range2[1], range1[1])
+            indx2 += 1
+            if indx2 != len2:
+                range2 = range_list2[indx2]
+        elif range2[0] <= range1[0]:
+            assert (range2[1] >= range1[1])
+            range2 = (range1[1], range2[1])
+            indx1 += 1
+            if indx1 != len1:
+                range1 = range_list1[indx1]
+        elif range2[0] < range1[1]:
+            assert (range2[0] > range1[0])
+            result_range.append((range1[0], range2[0]))
+            range1 = (range2[0], range1[1])
+        else:
+            assert (range2[0] >= range1[1])
+            result_range.append(range1)
+            indx1 += 1
+            if indx1 != len1:
+                range1 = range_list1[indx1]
     return result_range
 
 

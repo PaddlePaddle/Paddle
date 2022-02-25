@@ -17,12 +17,9 @@
 #include <stdio.h>
 #include <cinttypes>
 #include <cstdint>
-
-#include "paddle/fluid/platform/macros.h"
+#include "glog/logging.h"
 #ifdef _MSC_VER
-#include <minwinbase.h>
-#include <processthreadsapi.h>
-#include <sysinfoapi.h>
+#include <windows.h>
 #else
 #include <sys/times.h>
 #include <unistd.h>
@@ -31,17 +28,15 @@
 namespace paddle {
 namespace platform {
 
-class CPUOverview {
+class CpuUtilization {
  public:
-  // Singleton.
-  static CPUOverview& GetInstance() {
-    static CPUOverview instance;
-    return instance;
-  }
+  CpuUtilization() {}
   void RecordBeginTimeInfo();
   void RecordEndTimeInfo();
   float GetCpuUtilization();
   float GetCpuCurProcessUtilization();
+
+ private:
 #ifdef _MSC_VER
   FILETIME start_, end_;
   FILETIME process_user_time_start_, process_user_time_end_;
@@ -53,13 +48,14 @@ class CPUOverview {
 #else
   clock_t start_, end_;
   uint64_t idle_start_, idle_end_;
+  uint64_t iowait_start_, iowait_end_;
+  uint64_t nice_time_start_, nice_time_end_;
+  uint64_t irq_start_, irq_end_;
+  uint64_t softirq_start_, softirq_end_;
+  uint64_t steal_start_, steal_end_;
   struct tms system_tms_start_, system_tms_end_;
   struct tms process_tms_start_, process_tms_end_;
 #endif
-
- private:
-  CPUOverview() {}
-  DISABLE_COPY_AND_ASSIGN(CPUOverview);
 };
 
 }  // namespace platform

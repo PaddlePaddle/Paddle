@@ -2964,11 +2964,7 @@ All parameter, weight, gradient are variables in Paddle.
              profiler->Prepare();
            })
       .def("Start", &paddle::platform::Profiler::Start)
-      .def("Stop",
-           [](paddle::platform::Profiler *profiler) {
-             std::unique_ptr<platform::NodeTrees> nodetrees = profiler->Stop();
-             return new platform::ProfilerResult(std::move(nodetrees));
-           },
+      .def("Stop", &paddle::platform::Profiler::Stop,
            py::return_value_policy::automatic_reference);
 
   py::class_<paddle::platform::ProfilerOptions>(m, "ProfilerOptions")
