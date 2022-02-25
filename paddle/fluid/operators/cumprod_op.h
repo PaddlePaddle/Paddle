@@ -18,8 +18,8 @@
 #include <type_traits>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -124,12 +124,12 @@ class CumprodGradOpCPUKernel : public framework::OpKernel<T> {
 
       platform::ForRange<platform::CPUDeviceContext> for_range_x(dev_ctx,
                                                                  numel);
-      math::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
+      phi::funcs::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
       for_range_x(functor_x);
 
       platform::ForRange<platform::CPUDeviceContext> for_range_out(dev_ctx,
                                                                    numel);
-      math::ConjFunctor<T> functor_out(out_data, numel, out_data_conj);
+      phi::funcs::ConjFunctor<T> functor_out(out_data, numel, out_data_conj);
       for_range_out(functor_out);
 
       x_data_deal = x_data_conj;

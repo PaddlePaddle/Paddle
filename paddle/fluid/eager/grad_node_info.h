@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/pten/api/all.h"
+#include "paddle/phi/api/all.h"
 
 namespace egr {
 /**
@@ -133,22 +133,21 @@ class GradNodeBase {
    * **/
   void SetDefaultGradInOutMeta();
   /**
-   * Register GradientHook or ReduceHook
+   * Register GradientHook
    * **/
   void RegisterGradientHook(size_t slot_id, size_t rank,
                             const std::function<paddle::experimental::Tensor(
                                 const paddle::experimental::Tensor&)>& hook);
-  void RegisterReduceHook(const std::function<void(void)>& hook);
 
   /**
-   * Apply GradientHook or ReduceHook
+   * Apply GradientHook
    * **/
   inline bool GradientHooksRegistered() { return gradient_hooks_.size() != 0; }
-  inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
 
   std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
       const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
-  void ApplyReduceHooks();
+
+  virtual std::string name() { return "GradNodeBase"; }
 
  private:
   // TODO(jiabin): Use SmallVector instead after merge PR from develop
@@ -173,7 +172,6 @@ class GradNodeBase {
       /* hook */ std::function<paddle::experimental::Tensor(
           const paddle::experimental::Tensor&)>>>
       gradient_hooks_;
-  std::vector<std::function<void(void)>> reduce_hooks_;
 };
 
 class Edge {

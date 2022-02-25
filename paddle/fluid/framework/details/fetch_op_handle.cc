@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -128,7 +128,8 @@ static void TransData(const framework::LoDTensor &src_item,
 }
 
 void FetchOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::Operator, 1);
   WaitInputVarGenerated(platform::CPUPlace());
 
   tensors_.resize(inputs_.size());

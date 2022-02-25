@@ -33,7 +33,7 @@ namespace memory {
 namespace allocation {
 bool CUDAManagedAllocator::IsAllocThreadSafe() const { return true; }
 
-void CUDAManagedAllocator::FreeImpl(pten::Allocation* allocation) {
+void CUDAManagedAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(), place_,
       platform::errors::PermissionDenied(
@@ -43,7 +43,7 @@ void CUDAManagedAllocator::FreeImpl(pten::Allocation* allocation) {
   delete allocation;
 }
 
-pten::Allocation* CUDAManagedAllocator::AllocateImpl(size_t size) {
+phi::Allocation* CUDAManagedAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
 
   int dev_id = place_.device;

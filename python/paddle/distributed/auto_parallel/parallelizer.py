@@ -132,7 +132,7 @@ class AutoParallelizer:
                 distop_context=self._dist_context.dist_op_context)
         self._completer = Completer(self._dist_context)
         self._completer.complete_backward_annotation(main_program)
-
+        self._dist_context.block_state.parse_backward_blocks(main_program)
         return params_grads
 
     def _apply_optimize(self, main_program, startup_program, params_grads):
@@ -174,6 +174,7 @@ class AutoParallelizer:
         serial_main_program = self._main_program.clone()
         serial_startup_program = self._startup_program.clone()
         serial_loss = serial_main_program.global_block().var(self._loss.name)
+
         # generating serial 
         if dist_context is None:
             # Annotation completion
@@ -185,6 +186,9 @@ class AutoParallelizer:
         else:
             completed_main_program = serial_main_program
             self._dist_context = copy.deepcopy(dist_context)
+
+        # parse forward sub block
+        self._dist_context.block_state.parse_forward_blocks(serial_main_program)
 
         # serial backward pass
         params_grads = self._generate_backward(
@@ -222,6 +226,8 @@ class AutoParallelizer:
             HAS_ALLGATHER.clear()
             _g_process_group_map.clear()
             _g_process_group_map[0] = ProcessGroup(0, [])
+            for process_mesh in dist_context._process_meshes:
+                _g_process_group_map[0].add_ranks(process_mesh.processes)
         return dist_optimize_ops, dist_params_grads, dist_startup_prog, dist_main_prog, g_process_group_map
 
     def parallelize(self,

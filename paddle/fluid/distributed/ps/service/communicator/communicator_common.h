@@ -31,7 +31,8 @@ struct CommContext {
               const std::vector<std::string> &origin_names, int id,
               bool merge_add_ = true, bool is_sparse_ = true,
               bool is_distributed_ = false, int table_id_ = -1,
-              bool is_tensor_table_ = false)
+              bool is_tensor_table_ = false, bool is_datanorm_table_ = false,
+              int64_t program_id_ = -1)
       : var_name(name),
         splited_varnames(names),
         epmap(emap),
@@ -42,7 +43,9 @@ struct CommContext {
         is_sparse(is_sparse_),
         is_distributed(is_distributed_),
         table_id(table_id_),
-        is_tensor_table(is_tensor_table_) {}
+        program_id(program_id_),
+        is_tensor_table(is_tensor_table_),
+        is_datanorm_table(is_datanorm_table_) {}
 
   CommContext(const CommContext &ctx) {
     var_name = ctx.var_name;
@@ -55,7 +58,9 @@ struct CommContext {
     origin_varnames = ctx.origin_varnames;
     is_distributed = ctx.is_distributed;
     table_id = ctx.table_id;
+    program_id = ctx.program_id;
     is_tensor_table = ctx.is_tensor_table;
+    is_datanorm_table = ctx.is_datanorm_table;
   }
 
   std::string print() const {
@@ -78,7 +83,9 @@ struct CommContext {
     ss << " is_sparse: " << is_sparse;
     ss << " is_distributed: " << is_distributed << "\n";
     ss << " table_id: " << table_id << "\n";
+    ss << " program_id: " << program_id << "\n";
     ss << " is_tensor_table: " << is_tensor_table << "\n";
+    ss << " is_datanorm_table: " << is_datanorm_table << "\n";
 
     return ss.str();
   }
@@ -93,7 +100,9 @@ struct CommContext {
   bool is_sparse;
   bool is_distributed;
   int table_id;
+  int64_t program_id;
   bool is_tensor_table;
+  bool is_datanorm_table;
 };
 
 }  // namespace distributed

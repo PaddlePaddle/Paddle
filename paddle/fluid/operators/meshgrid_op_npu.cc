@@ -53,12 +53,12 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
       std::vector<int64_t> view_shape(size, 1);
       view_shape[i] = shape[i];
 
-      framework::DDim out_dims_reshape = framework::make_ddim(view_shape);
+      framework::DDim out_dims_reshape = phi::make_ddim(view_shape);
       framework::Tensor reshape_ins_tensor(ins[i]->dtype());
       reshape_ins_tensor.ShareDataWith(*ins[i]);
       reshape_ins_tensor.Resize(out_dims_reshape);
 
-      framework::DDim out_dims = framework::make_ddim(shape);
+      framework::DDim out_dims = phi::make_ddim(shape);
       outs[i]->Resize(out_dims);
       outs[i]->mutable_data<T>(context.GetPlace());
 

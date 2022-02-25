@@ -26,7 +26,8 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -246,8 +247,8 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     const auto& labels_dims = labels->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int N = SizeToAxis(axis, logits_dims);
-    const int D = SizeFromAxis(axis, logits_dims);
+    const int N = phi::funcs::SizeToAxis(axis, logits_dims);
+    const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     int blocks = NumBlocks(N);
     int threads = kNumCUDAThreads;
@@ -344,7 +345,7 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
     // step 6, prob = exp((logit - logit_max) - log(sum(exp(logit -
     // logit_max))))
     // loss = -((logit_i - logit_max) - log(sum(exp(logit - logit_max))))
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T>()(
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T>()(
         dev_ctx, loss, static_cast<T>(0.0));
     if (label_type == framework::proto::VarType::INT32) {
       typedef int32_t LabelT;
@@ -401,8 +402,8 @@ class MarginCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 
     const auto sofrmax_dims = softmax->dims();
     const int axis = sofrmax_dims.size() - 1;
-    const int N = SizeToAxis(axis, sofrmax_dims);
-    const int D = SizeFromAxis(axis, sofrmax_dims);
+    const int N = phi::funcs::SizeToAxis(axis, sofrmax_dims);
+    const int D = phi::funcs::SizeFromAxis(axis, sofrmax_dims);
 
     if (return_softmax) {
       framework::TensorCopy(*softmax, context.GetPlace(),

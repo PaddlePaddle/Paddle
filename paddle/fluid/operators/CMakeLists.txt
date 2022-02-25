@@ -1,5 +1,9 @@
 include(operators)
 
+# solve "math constants not defined" problems caused by the order of inclusion 
+# of <cmath> and the definition of macro _USE_MATH_DEFINES
+add_definitions(-D_USE_MATH_DEFINES)
+
 # clean cache and pybind_file content first when rebuild
 unset(GLOB_OP_LIB CACHE)
 unset(OP_LIBRARY CACHE)
@@ -96,7 +100,7 @@ else()
     cc_library(gather_scatter_kernel SRCS gather_scatter_kernel.cc gather_scatter_kernel.cu DEPS tensor)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten pten_api_utils gather_scatter_kernel)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils gather_scatter_kernel)
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})

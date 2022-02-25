@@ -45,7 +45,7 @@ void PrintTensor(const DenseHostTensor &tensor) {
 }
 
 template <typename T>
-void FillTensorWithConstant(DenseHostTensor *tensor, Attribute<T> v) {
+void FillTensorWithConstant(Attribute<T> v, DenseHostTensor *tensor) {
   MutableDTArrayView<T>(tensor).Fill(v.get());
 }
 
@@ -53,12 +53,11 @@ TensorMap LoadParams(const std::string &path) {
   return *(infrt::tensor::LoadParams(path));
 }
 
-void TensorMapGetTensor(TensorMap map,
-                        const std::string &name,
-                        DenseHostTensor *out) {
-  auto it = map.find(name);
-  CHECK(it != map.end()) << "No tensor called " << name << " in the TensorMap";
-  *out = *it->second;
+DenseHostTensor TensorMapGetTensor(TensorMap map, Attribute<std::string> name) {
+  auto it = map.find(name.get());
+  CHECK(it != map.end()) << "No tensor called " << name.get()
+                         << " in the TensorMap";
+  return *it->second;
 }
 
 int32_t TensorMapGetSize(TensorMap map) { return map.size(); }

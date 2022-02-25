@@ -20,9 +20,9 @@
 #include <set>
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
