@@ -46,6 +46,8 @@ class ProtoArgumentMappingContext : public phi::ArgumentMappingContext {
   bool IsDenseTensorOutput(const std::string& name) const override;
   bool IsSelectedRowsOutput(const std::string& name) const override;
 
+  bool IsForInferShape() const override { return false; }
+
  private:
   mlir::Operation* op_;
   const std::unordered_map<std::string, uint8_t>& input_map_;

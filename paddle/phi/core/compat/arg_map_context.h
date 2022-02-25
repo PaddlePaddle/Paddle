@@ -91,6 +91,8 @@ class ArgumentMappingContext {
 
   virtual bool IsDenseTensorOutput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
+
+  virtual bool IsForInferShape() const = 0;
 };
 
 }  // namespace phi

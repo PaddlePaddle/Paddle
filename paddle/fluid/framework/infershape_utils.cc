@@ -88,6 +88,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_types[0] == proto::VarType::SELECTED_ROWS;
   }
 
+  bool IsForInferShape() const override { return true; }
+
  private:
   const InferShapeContext& ctx_;
 };

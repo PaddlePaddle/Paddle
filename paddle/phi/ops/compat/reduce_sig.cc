@@ -17,14 +17,19 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature ReduceSumOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  // bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+  if (ctx.IsForInferShape()) {
+    return KernelSignature("sum_raw",
+                           {"X"},
+                           {"dim", "keep_dim", "reduce_all", "out_dtype"},
+                           {"Out"});
+  }
+
+  bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
   if (ctx.IsDenseTensorInput("X")) {
-    /*
     if (!reduce_all) {
       return KernelSignature(
           "sum", {"X"}, {"dim", "out_dtype", "keep_dim"}, {"Out"});
     }
-    */
     return KernelSignature("sum_raw",
                            {"X"},
                            {"dim", "keep_dim", "reduce_all", "out_dtype"},

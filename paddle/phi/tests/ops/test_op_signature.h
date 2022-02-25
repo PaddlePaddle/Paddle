@@ -80,6 +80,8 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
     return selected_rows_outputs.count(name) > 0;
   }
 
+  bool IsForInferShape() const override { return false; }
+
  private:
   const std::unordered_set<std::string> dense_tensor_inputs;
   const std::unordered_set<std::string> selected_rows_inputs;
