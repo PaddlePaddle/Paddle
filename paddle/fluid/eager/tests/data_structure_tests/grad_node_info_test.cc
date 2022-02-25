@@ -61,6 +61,7 @@ TEST(GradNodeInfo, GradNodeBase) {
   auto_grad0->SetStopGradient(false);
   egr::Edge edge1(grad_test_node1, 3, 4);
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>(edge1);
+  et1.set_autograd_meta(auto_grad1);
   auto_grad1->SetStopGradient(false);
   grad_test_node0->AddEdges(auto_grad0.get(), 0);
   CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().first,
@@ -127,7 +128,17 @@ TEST(GradNodeInfo, GradNodeBase) {
 }
 
 TEST(GradNodeInfo, Edge) {
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
+      std::make_unique<paddle::experimental::DefaultAllocator>(
+          paddle::platform::CPUPlace())
+          .get(),
+      meta);
+  paddle::experimental::Tensor et1(dt);
+
   auto grad_test_node0 = std::make_shared<eager_test::GradTestNode>(5, 2, 2);
+  auto auto_grad1 = std::make_shared<egr::AutogradMeta>();
   VLOG(6) << "Test Construct Edge";
   egr::Edge edge0 = egr::Edge();
   CHECK(edge0.IsInitialized() == false);
@@ -137,8 +148,10 @@ TEST(GradNodeInfo, Edge) {
       egr::Edge(grad_test_node0, std::make_pair(size_t(1), size_t(0)));
   VLOG(6) << "Test Set Edge's Grad Node";
   auto* grad_node = edge1.GetGradNode();
+  et1.set_autograd_meta(auto_grad1);
+  grad_node->SetGradInMeta(et1, 0);
+
   CHECK_EQ(grad_node->InputMeta().size(), size_t(2));
-  auto auto_grad1 = std::make_shared<egr::AutogradMeta>();
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
   CHECK(grad_node->InputMeta()[0].IsStopGradient(0) == true);
   VLOG(6) << "Test Get/Set Edge Rank Info";
