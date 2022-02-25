@@ -15,7 +15,7 @@ limitations under the License. */
 #include <sstream>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"

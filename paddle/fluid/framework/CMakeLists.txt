@@ -193,9 +193,9 @@ cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_va
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 
 IF(WITH_XPU)
-cc_library(phi_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info xpu_op_list)
+cc_library(phi_utils SRCS phi_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info xpu_op_list)
 ELSE()
-cc_library(phi_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info)
+cc_library(phi_utils SRCS phi_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info)
 ENDIF()
 
 IF(WITH_XPU)

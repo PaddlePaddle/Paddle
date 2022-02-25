@@ -22,7 +22,7 @@
 #include "paddle/phi/api/all.h"
 
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
 namespace egr {
