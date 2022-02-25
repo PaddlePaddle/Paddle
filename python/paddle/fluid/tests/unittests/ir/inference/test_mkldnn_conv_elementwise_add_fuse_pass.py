@@ -84,12 +84,12 @@ class TestConvElementwiseAddMkldnnFusePass(PassAutoScanTest):
         relu_op = OpConfig(
             type="relu",
             inputs={"X": ["input_data1"]},
-            outputs={"Out": ["sigmoid_out"]},
+            outputs={"Out": ["relu_out"]},
             attrs={})
 
         conv2d_op = OpConfig(
             type="conv2d",
-            inputs={"Input": ["sigmoid_out"],
+            inputs={"Input": ["relu_out"],
                     "Filter": ["conv_weight"]},
             outputs={"Output": ["conv_output"]},
             attrs={
