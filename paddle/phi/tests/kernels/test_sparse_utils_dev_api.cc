@@ -861,12 +861,13 @@ void TestSparseCsrToDense(const DDim& dense_dims,
   phi::DenseTensor d_crows(cuda_alloc.get(), crows_meta);
   phi::DenseTensor d_cols(cuda_alloc.get(), cols_meta);
   phi::DenseTensor d_values(cuda_alloc.get(), values_meta);
+  phi::Copy(dev_ctx_gpu, crows, phi::GPUPlace(), true, &d_crows);
   phi::Copy(dev_ctx_gpu, cols, phi::GPUPlace(), true, &d_cols);
   phi::Copy(dev_ctx_gpu, values, phi::GPUPlace(), true, &d_values);
   phi::SparseCsrTensor d_csr(d_crows, d_cols, d_values, dense_dims);
   auto cuda_sparse_out = sparse::SparseCsrToDense<T>(dev_ctx_gpu, d_csr);
   phi::DenseTensor h_out(alloc.get(), cpu_sparse_out.meta());
-  phi::Copy(dev_ctx_gpu, cuda_sparse_out, h_out.place(), true, &h_out);
+  phi::Copy(dev_ctx_gpu, cuda_sparse_out, phi::CPUPlace(), true, &h_out);
   int cmp_cuda =
       memcmp(h_out.data<T>(), dense_data.data(), sizeof(T) * dense_data.size());
   ASSERT_EQ(cmp_cuda, 0);
