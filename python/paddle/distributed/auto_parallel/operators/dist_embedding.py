@@ -159,9 +159,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         Out_var = main_block.var(kwargs['Out'][0])
 
         # got dist attribute info
-        print("$$$$$$$" * 8)
-        print(main_block.idx)
-        print(str(src_op))
         embedding_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
             Weight_var.name)[0]
         assert embedding_row_dim_mapping >= 0, "row_parallel_embedding's row should be divided by a specific mesh axis, but got [{}]".format(
