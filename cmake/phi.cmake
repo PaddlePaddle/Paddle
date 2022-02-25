@@ -82,7 +82,7 @@ function(kernel_declare TARGET_LIST)
             elseif (${kernel_path} MATCHES "./xpu\/")
                 file(APPEND ${kernel_declare_file} "PD_DECLARE_KERNEL(${kernel_name}, XPU, ALL_LAYOUT);\n")
             elseif (${kernel_path} MATCHES "./gpudnn\/")
-                file(APPEND ${kernel_declare_file} "PD_DECLARE_KERNEL(${kernel_name}, GPUDNN, ALL_LAYOUT);\n")\
+                file(APPEND ${kernel_declare_file} "PD_DECLARE_KERNEL(${kernel_name}, GPUDNN, ALL_LAYOUT);\n")
             elseif (${kernel_path} MATCHES "./kps\/")
                 file(APPEND ${kernel_declare_file} "PD_DECLARE_KERNEL(${kernel_name}, KPS, ALL_LAYOUT);\n")
             else ()
@@ -283,7 +283,7 @@ function(kernel_library TARGET)
 
     if (${target_build_flag} EQUAL 1)
         if (${common_srcs_len} GREATER 0 OR ${cpu_srcs_len} GREATER 0 OR
-            ${gpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0 OR
+            ${gpu_srcs_len} GREATER 0 OR ${xpu_srcs_len} GREATER 0 OR ${kps_srcs_len} GREATER 0 OR
             ${gpudnn_srcs_len} GREATER 0 OR ${selected_rows_srcs_len} GREATER 0)
             # append target into PHI_KERNELS property
             get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
