@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/gumbel_softmax_kernel.h"
 #include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -33,7 +32,7 @@ struct GumbleNoiseGenerator<CPUContext, T> {
     // generate uniform random number
     const int size = size_to_axis * size_from_axis;
     std::uniform_real_distribution<T> dist(0.00001, 1);
-    auto engine = paddle::framework::GetCPURandomEngine(0);
+    auto engine = ctx.GetGenerator()->GetCPUEngine();
     DenseTensor random_tensor;
     random_tensor.Resize(make_ddim({size}));
     auto* random_data = ctx.template Alloc<T>(&random_tensor);
