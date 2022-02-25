@@ -2994,7 +2994,9 @@ All parameter, weight, gradient are variables in Paddle.
       .value("Backward", paddle::platform::TracerEventType::Backward)
       .value("Optimization", paddle::platform::TracerEventType::Optimization)
       .value("Communication", paddle::platform::TracerEventType::Communication)
-      .value("PythonOp", paddle::platform::TracerEventType::PythonOp);
+      .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
+      .value("PythonUserDefined",
+             paddle::platform::TracerEventType::PythonUserDefined);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);

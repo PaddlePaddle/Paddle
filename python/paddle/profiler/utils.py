@@ -41,7 +41,7 @@ _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
     TracerEventType.UserDefined, TracerEventType.Forward,
     TracerEventType.Backward, TracerEventType.Optimization,
-    TracerEventType.PythonOp
+    TracerEventType.PythonOp, TracerEventType.PythonUserDefined
 ]
 
 
@@ -75,6 +75,8 @@ class RecordEvent(ContextDecorator):
                   can be recorded.".format(*_AllowedEventTypeList))
             self.event = None
         else:
+            if self.event_type == TracerEventType.UserDefined:
+                self.event_type == TracerEventType.PythonUserDefined
             self.event = _RecordEvent(self.name, self.event_type)
 
     def end(self):
@@ -115,3 +117,20 @@ def wrap_functional():
     for funcname in functional.__all__:
         funcobject = getattr(functional, funcname)
         setattr(functional, funcname, functional_warpper(funcobject))
+
+
+def wrap_paddle_manipulations():
+    def functional_warpper(func):
+        @functools.wraps(func)
+        def warpper(*args, **kwargs):
+            with RecordEvent(
+                    func.__name__, event_type=TracerEventType.PythonOp):
+                return func(*args, **kwargs)
+
+        return warpper
+
+    import paddle
+    for funcname in paddle.tensor.tensor_method_func:
+        if hasattr(paddle, funcname):
+            funcobject = getattr(paddle, funcname)
+            setattr(paddle, funcname, functional_warpper(funcobject))
