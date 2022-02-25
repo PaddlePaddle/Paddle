@@ -66,6 +66,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
 void ReduceInferMetaBase(const MetaTensor& x,
                          const std::vector<int64_t>& axis,
                          bool keep_dim,
+                         bool reduce_all,
                          DataType dtype,
                          MetaTensor* out);
 

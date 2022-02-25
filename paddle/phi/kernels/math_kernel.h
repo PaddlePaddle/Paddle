@@ -156,7 +156,7 @@ DenseTensor Mean(const Context& dev_ctx,
                  bool keep_dim) {
   auto dense_out = phi::Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
-  ReduceInferMetaBase(x, axis, keep_dim, x.dtype(), &meta_out);
+  ReduceInferMetaBase(x, axis, keep_dim, false, x.dtype(), &meta_out);
   MeanKernel<T, Context>(dev_ctx, x, axis, keep_dim, &dense_out);
   return dense_out;
 }

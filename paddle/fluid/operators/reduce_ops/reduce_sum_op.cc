@@ -103,7 +103,7 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
 };
 
 DELCARE_INFER_SHAPE_FUNCTOR(reduce_sum, ReduceSumInferShapeFunctor,
-                            PT_INFER_META(phi::ReduceInferMeta));
+                            PT_INFER_META(phi::ReduceInferMetaBase));
 
 REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,
