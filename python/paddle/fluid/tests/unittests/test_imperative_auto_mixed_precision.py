@@ -1143,7 +1143,7 @@ class TestBf16(unittest.TestCase):
     def test_bf16(self):
         out_fp32 = self.train(enable_amp=False)
         out_bf16 = self.train(enable_amp=True)
-        self.assertTrue(np.allclose(out_fp32, out_bf16, rtol=1.e-3, atol=1.e-2))
+        self.assertTrue(np.allclose(out_fp32, out_bf16, rtol=1.e-3, atol=1.e-1))
 
 
 if __name__ == '__main__':

@@ -147,6 +147,101 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
   }
 }
 #endif
+
+// The performance of "atomicAdd(half* )" is bad, but for "atomicAdd(half2* )"
+// is good. So for fp16 type, we can use "atomicAdd(half2* )" to speed up.
+template <typename T, typename std::enable_if<std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastAtomicAdd(T *tensor, size_t index,
+                                              const size_t numel, T value) {
+#if ((CUDA_VERSION < 10000) || \
+     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
+  CudaAtomicAdd(reinterpret_cast<platform::float16 *>(tensor) + index,
+                static_cast<platform::float16>(value));
+#else
+  // whether the address is 32-byte aligned.
+  __half *target_addr = reinterpret_cast<__half *>(tensor + index);
+  bool aligned_half2 =
+      (reinterpret_cast<std::uintptr_t>(target_addr) % sizeof(__half2) == 0);
+
+  if (aligned_half2 && index < (numel - 1)) {
+    __half2 value2;
+    value2.x = *reinterpret_cast<__half *>(&value);
+    value2.y = __int2half_rz(0);
+    atomicAdd(reinterpret_cast<__half2 *>(target_addr), value2);
+
+  } else if (!aligned_half2 && index > 0) {
+    __half2 value2;
+    value2.x = __int2half_rz(0);
+    value2.y = *reinterpret_cast<__half *>(&value);
+    atomicAdd(reinterpret_cast<__half2 *>(target_addr - 1), value2);
+
+  } else {
+    atomicAdd(reinterpret_cast<__half *>(tensor) + index,
+              *reinterpret_cast<__half *>(&value));
+  }
+#endif
+}
+
+template <typename T, typename std::enable_if<!std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void fastAtomicAdd(T *arr, size_t index,
+                                              const size_t numel, T value) {
+  CudaAtomicAdd(arr + index, value);
+}
+
+#ifdef PADDLE_WITH_CUDA
+/*
+ * One thead block deals with elementwise atomicAdd for vector of len.
+ * @in: [x1, x2, x3, ...]
+ * @out:[y1+x1, y2+x2, y3+x3, ...]
+ * */
+template <typename T, typename std::enable_if<!std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void VectorizedAtomicAddPerBlock(
+    const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
+  for (int i = tid; i < len; i += threads_per_block) {
+    CudaAtomicAdd(&out[i], in[i]);
+  }
+}
+
+// Note: assume that len is even. If len is odd, call fastAtomicAdd directly.
+template <typename T, typename std::enable_if<std::is_same<
+                          platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void VectorizedAtomicAddPerBlock(
+    const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
+#if ((CUDA_VERSION < 10000) || \
+     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
+  for (int i = tid; i < len; i += threads_per_block) {
+    CudaAtomicAdd(&out[i], in[i]);
+  }
+#else
+  int i = 0;
+  int loops = len / 2 * 2;
+
+  bool aligned_half2 =
+      (reinterpret_cast<std::uintptr_t>(out) % sizeof(__half2) == 0);
+
+  if (aligned_half2) {
+    for (i = tid * 2; i < loops; i += threads_per_block * 2) {
+      __half2 value2;
+      T value_1 = in[i];
+      T value_2 = in[i + 1];
+      value2.x = *reinterpret_cast<__half *>(&value_1);
+      value2.y = *reinterpret_cast<__half *>(&value_2);
+      atomicAdd(reinterpret_cast<__half2 *>(&out[i]), value2);
+    }
+    for (; i < len; i += threads_per_block) {
+      fastAtomicAdd(out, i, len, in[i]);
+    }
+  } else {
+    for (int i = tid; i < len; i += threads_per_block) {
+      fastAtomicAdd(out, i, len, in[i]);
+    }
+  }
+#endif
+}
+#endif
 #endif
 
 CUDA_ATOMIC_WRAPPER(Add, complex<float>) {

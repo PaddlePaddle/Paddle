@@ -380,7 +380,7 @@ class OpTest(unittest.TestCase):
             hasattr(self, 'output_dtype') and
             self.output_dtype == np.uint16) or (
                 hasattr(self, 'mkldnn_data_type') and
-                getattr(self, 'mkldnn_data_type') is "bfloat16") or (
+                getattr(self, 'mkldnn_data_type') == "bfloat16") or (
                     hasattr(self, 'attrs') and
                     'mkldnn_data_type' in self.attrs and
                     self.attrs['mkldnn_data_type'] == 'bfloat16')
@@ -606,8 +606,12 @@ class OpTest(unittest.TestCase):
 
             if is_input:
                 v = self._create_var_from_numpy(np_value_temp)
+
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
+                    if _in_eager_mode():
+                        v.retain_grads()
+
                 if has_lod:
                     v.value().get_tensor().set_recursive_sequence_lengths(
                         lod_temp)
@@ -618,7 +622,6 @@ class OpTest(unittest.TestCase):
                     type=core.VarDesc.VarType.LOD_TENSOR,
                     persistable=False,
                     stop_gradient=False)
-
             return v
 
         # prepare variable for input or output
@@ -681,7 +684,6 @@ class OpTest(unittest.TestCase):
             # prepare input variable
             inputs = self.append_input_output_for_dygraph(op_proto, self.inputs,
                                                           True, False, block)
-
             # prepare output variable
             outputs = self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
@@ -1741,6 +1743,7 @@ class OpTest(unittest.TestCase):
                 for attrs_name in self.attrs:
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
+
             block.append_op(
                 type=self.op_type,
                 inputs=inputs,
@@ -1817,7 +1820,9 @@ class OpTest(unittest.TestCase):
                         inputs={"X": loss_sum},
                         outputs={"Out": loss},
                         attrs={'scale': 1.0 / float(len(avg_sum))})
+
                 loss.backward()
+
                 fetch_list_grad = []
                 for inputs_to_check_name in inputs_to_check:
                     a = inputs_grad_dict[inputs_to_check_name].gradient()
