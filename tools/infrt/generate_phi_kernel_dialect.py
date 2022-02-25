@@ -18,25 +18,25 @@ import sys
 attr_type_converter = {"i": 'SI32Attr', "b": 'BoolAttr', "l": 'SI64Attr'}
 supported_kernels = ['sign', 'dot', 'digamma', 'conj']
 
-target_type_converter = {"CPU": "X86", "GPU": "CUDA"}
+target_type_converter = {"CPU": "CPU", "GPU": "GPU"}
 layout_type_converter = {
     "NCHW": "NCHW",
     "NHWC": "NHWC",
     "Undefined(AnyLayout)": "ANY"
 }
 precision_type_converter = {
-    "uint8": "U8",
-    "int8": "I8",
-    "int16": "I16",
-    "int32": "I32",
-    "int64": "I64",
+    "uint8": "UINT8",
+    "int8": "INT8",
+    "int16": "INT16",
+    "int32": "INT32",
+    "int64": "INT64",
     "float16": "FLOAT16",
-    "bfloat16": "BF16",
+    "bfloat16": "BFLOAT16",
     "float32": "FLOAT32",
     "float64": "FLOAT64",
-    "complex64": "C64",
-    "complex128": "C128",
-    "bool": "B"
+    "complex64": "COMPLEX64",
+    "complex128": "COMPLEX128",
+    "bool": "BOOL"
 }
 
 
@@ -152,12 +152,36 @@ def scan_kernel_info(load_dict):
     print(precision_type_)
 
 
-def generate_kernel_dialect(op_name, kernel_alias_, kernel_info):
+def generate_cpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 
     alias = generate_kernel_name(op_name, kernel_alias_)
     summary = 'let summary = "{name}";'.format(name=alias)
 
-    header = 'def {name}Kernel : PDT_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
+    header = 'def {name}Kernel : PDTCPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
+        name=alias.replace(".", ""), left_brace="{")
+
+    inputs_ = kernel_info["input"]
+    attributes = kernel_info["attribute"]
+    arguments = generate_arguments_info(op_name, inputs_, attributes)
+
+    outputs = kernel_info["output"]
+    results = generate_results_info(outputs)
+
+    kernel_dialect = '{header_}\n  {summary_}\n  {arguments_}\n  {results_}\n{right_brace}\n'.format(
+        header_=header,
+        summary_=summary,
+        arguments_=arguments,
+        results_=results,
+        right_brace="}")
+    return kernel_dialect
+
+
+def generate_gpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
+
+    alias = generate_kernel_name(op_name, kernel_alias_)
+    summary = 'let summary = "{name}";'.format(name=alias)
+
+    header = 'def {name}Kernel : PDTGPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
         name=alias.replace(".", ""), left_brace="{")
 
     inputs_ = kernel_info["input"]
@@ -200,27 +224,45 @@ include \"paddle/infrt/dialect/phi/infrt_phi_kernel.td\""
     return (comment_ + includes_)
 
 
+def get_kernel_target(kernel_alias_):
+    target = kernel_alias_[1:-1].split(",")
+    return target[0]
+
+
 def main(path_):
     with open(path_, "r") as f:
         load_dict = json.load(f)
 
         head = generate_dialect_head()
 
-        registry_ = ""
+        cpu_registry_ = ""
+        gpu_registry_ = ""
         for op_name in load_dict:
             if op_name not in supported_kernels:
                 continue
             kernel_list = load_dict[op_name]
             for kernel_info in kernel_list:
                 for kernel_alias_ in kernel_info:
-                    kernel_registry = generate_kernel_dialect(
-                        op_name, kernel_alias_, kernel_info[kernel_alias_])
-                    registry_ += kernel_registry
-
+                    if get_kernel_target(kernel_alias_) == "CPU":
+                        kernel_registry = generate_cpu_kernel_dialect(
+                            op_name, kernel_alias_, kernel_info[kernel_alias_])
+                        cpu_registry_ += kernel_registry
+                    elif get_kernel_target(kernel_alias_) == "GPU":
+                        kernel_registry = generate_gpu_kernel_dialect(
+                            op_name, kernel_alias_, kernel_info[kernel_alias_])
+                        gpu_registry_ += kernel_registry
+                    else:
+                        print("Unsupported backend:" + get_kernel_target(
+                            kernel_alias_))
         end = "#endif  // PTEN_KERNELS"
-        with open("../../paddle/infrt/dialect/phi/phi_kernels.td", "w") as dst:
+        with open("../../paddle/infrt/dialect/phi/phi_cpu_kernels.td",
+                  "w") as dst:
             dst.write('{start_}\n{dialect_}\n{end_}'.format(
-                start_=head, dialect_=registry_, end_=end))
+                start_=head, dialect_=cpu_registry_, end_=end))
+        with open("../../paddle/infrt/dialect/phi/phi_gpu_kernels.td",
+                  "w") as dst:
+            dst.write('{start_}\n{dialect_}\n{end_}'.format(
+                start_=head, dialect_=gpu_registry_, end_=end))
 
 
 if __name__ == '__main__':
