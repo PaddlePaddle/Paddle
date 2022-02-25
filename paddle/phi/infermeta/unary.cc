@@ -824,6 +824,63 @@ void DiagInferMeta(const MetaTensor& x,
   }
 }
 
+void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
+  out->set_dtype(DataType::INT64);
+  out->set_dims({1});
+}
+
+void ErfinvInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
+
+void PixelShuffleInferMeta(const MetaTensor& x,
+                           int upscale_factor,
+                           const std::string& data_format,
+                           MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  if (!channel_last) {
+    PADDLE_ENFORCE_EQ(input_dims[1] % (upscale_factor * upscale_factor),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The square of upscale_factor[%u] should divide the "
+                          "number of channel[%u]",
+                          upscale_factor * upscale_factor,
+                          input_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(input_dims[3] % (upscale_factor * upscale_factor),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The square of upscale_factor[%u] should divide the "
+                          "number of channel[%u]",
+                          upscale_factor * upscale_factor,
+                          input_dims[3]));
+  }
+  auto output_dims = input_dims;
+  output_dims[0] = input_dims[0];
+  if (!channel_last) {
+    output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
+    output_dims[2] = input_dims[2] * upscale_factor;
+    output_dims[3] = input_dims[3] * upscale_factor;
+  } else {
+    output_dims[1] = input_dims[1] * upscale_factor;
+    output_dims[2] = input_dims[2] * upscale_factor;
+    output_dims[3] = input_dims[3] / (upscale_factor * upscale_factor);
+  }
+  out->set_dtype(x.dtype());
+  out->set_dims(output_dims);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);

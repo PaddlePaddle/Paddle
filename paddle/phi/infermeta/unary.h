@@ -118,4 +118,13 @@ void DiagInferMeta(const MetaTensor& x,
                    float padding_value,
                    MetaTensor* out);
 
+void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
+
+void ErfinvInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void PixelShuffleInferMeta(const MetaTensor& x,
+                           int upscale_factor,
+                           const std::string& data_format,
+                           MetaTensor* out);
+
 }  // namespace phi
