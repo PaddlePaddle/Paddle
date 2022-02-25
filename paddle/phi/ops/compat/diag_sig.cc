@@ -16,14 +16,12 @@
 
 namespace phi {
 
-KernelSignature CholeskyGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("cholesky_grad",
-                         {"Out", GradVarName("Out")},
-                         {"upper"},
-                         {GradVarName("X")});
+KernelSignature DiagOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("diag", {"X"}, {"offset", "padding_value"}, {"Out"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(cholesky_grad, phi::CholeskyGradOpArgumentMapping);
+PD_REGISTER_BASE_KERNEL_NAME(diag_v2, diag);
+
+PD_REGISTER_ARG_MAPPING_FN(diag_v2, phi::DiagOpArgumentMapping);
