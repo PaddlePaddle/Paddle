@@ -208,9 +208,6 @@ class Partitioner(object):
         # partiiton
         for op in serial_ops:
 
-            if op.type == "while":
-                print(str(target_block.program))
-                print(str(op))
             # partititon input variables
             for serial_input_varname in op.desc.input_arg_names():
                 if serial_input_varname not in self._serial2dist_varname_mapping:
