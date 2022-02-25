@@ -114,4 +114,5 @@ void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& dilations,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
 }  // namespace phi
