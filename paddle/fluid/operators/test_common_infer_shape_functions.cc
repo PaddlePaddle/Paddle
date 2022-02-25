@@ -22,7 +22,7 @@ limitations under the License. */
 
 USE_OP(relu);
 USE_OP_ITSELF(elementwise_add);
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 
 namespace paddle {
 namespace operators {
