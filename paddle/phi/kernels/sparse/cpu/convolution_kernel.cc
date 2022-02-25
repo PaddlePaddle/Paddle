@@ -76,9 +76,9 @@ void Conv3dKernel(const Context& dev_ctx,
 
   // 2. gather
   DenseTensorMeta in_features_meta(
-      x.dtype(), {n, in_channels}, DataLayout::NCHW);
+      x.dtype(), {n, in_channels}, DataLayout::NHWC);
   DenseTensorMeta out_features_meta(
-      x.dtype(), {n, out_channels}, DataLayout::NCHW);
+      x.dtype(), {n, out_channels}, DataLayout::NHWC);
   phi::DenseTensor in_features =
       phi::Empty(dev_ctx, std::move(in_features_meta));
   phi::DenseTensor out_features =
@@ -146,4 +146,6 @@ void Conv3dKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    conv, CPU, ALL_LAYOUT, phi::sparse::Conv3dKernel, float, double) {}
+    conv, CPU, SPARSE_COO, phi::sparse::Conv3dKernel, float, double) {
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::NHWC);
+}

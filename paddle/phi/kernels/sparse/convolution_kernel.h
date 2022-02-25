@@ -32,6 +32,7 @@ struct Dims4D {
   HOSTDEVICE const int& operator[](int i) const { return dims[i]; }
 };
 
+// Judge whether the current position x is in (lower, upper)
 inline HOSTDEVICE bool Check(const int& x,
                              const int& kx,
                              const int& pad,
@@ -44,6 +45,8 @@ inline HOSTDEVICE bool Check(const int& x,
   return (lower >= 0 && lower % stride == 0 && uper < xdim);
 }
 
+// Check whether the current position(x, y, z) is legal:
+// Judge the minimum and maximum values at each latitude
 inline HOSTDEVICE bool Check(const Dims4D& dims,
                              const Dims4D& kernel_dims,
                              const Dims4D& paddings,
@@ -93,13 +96,13 @@ inline void GetOutShape(const DDim& x_dims,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
                         DDim* out_dims) {
-  PADDLE_ENFORCE_EQ(x_dims.size(),
-                    5,
-                    paddle::platform::errors::InvalidArgument(
-                        "the shape of x should be (N, D, H, W, C)"));
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      5,
+      phi::errors::InvalidArgument("the shape of x should be (N, D, H, W, C)"));
   PADDLE_ENFORCE_EQ(kernel_dims.size(),
                     5,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "the shape of kernel should be (D, H, W, C, OC)"));
 
   // infer out shape

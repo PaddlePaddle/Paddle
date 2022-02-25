@@ -135,7 +135,9 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
       x.dtype(), {out_non_zero_num, out_channels}, x.layout());
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
-  int* out_indices_ptr = out_indices.mutable_data<int>(dev_ctx.GetPlace());
+  dev_ctx.Alloc(
+      &out_indices, out_indices.dtype(), out_indices.numel() * sizeof(int));
+  int* out_indices_ptr = out_indices.data<int>();
   int i = 0;
   for (auto it = out_indexs.begin(); it != out_indexs.end(); it++, i++) {
     const int index = *it;

@@ -82,7 +82,7 @@ void TestConv3dBase(const std::vector<int>& indices,
       dev_ctx_cpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       {non_zero_num, in_channels},
-                      DataLayout::NCHW));
+                      DataLayout::NHWC));
   dev_ctx_cpu.Alloc(&features_tensor,
                     features_tensor.dtype(),
                     features_tensor.numel() * sizeof(T));
@@ -91,12 +91,11 @@ void TestConv3dBase(const std::vector<int>& indices,
 
   SparseCooTensor x_tensor(indices_tensor, features_tensor, x_dims);
 
-  // TODO(zhangkaihuo) change layout to DHWCOC
   DenseTensor kernel_tensor = phi::Empty(
       dev_ctx_cpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       kernel_dims,
-                      DataLayout::NCHW));
+                      DataLayout::NHWC));
   dev_ctx_cpu.Alloc(
       &kernel_tensor, kernel_tensor.dtype(), kernel_tensor.numel() * sizeof(T));
   memcpy(kernel_tensor.data<T>(), kernel.data(), kernel.size() * sizeof(T));
