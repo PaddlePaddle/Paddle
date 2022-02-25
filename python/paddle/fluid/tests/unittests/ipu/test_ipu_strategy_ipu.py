@@ -22,103 +22,50 @@ paddle.enable_static()
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestDefaultConfigure(unittest.TestCase):
-    def test_func(self):
+class TestIpuStrategy(unittest.TestCase):
+    def test_set_options(self):
         ipu_strategy = paddle.static.IpuStrategy()
+        all_option_names = ipu_strategy._ipu_strategy.get_all_option_names()
+        for option_name in all_option_names:
+            option = ipu_strategy._ipu_strategy.get_option(option_name)
+            option_type = option['type']
+            option_value = option['value']
+            if option_type in ['double']:
+                set_value = option_value + 0.5
+            elif option_type == 'uint64':
+                set_value = option_value + 1
+            elif option_type == 'bool':
+                set_value = not option_value
+            else:
+                continue
+            ipu_strategy.set_options({option_name: set_value})
+            new_value = ipu_strategy.get_option(option_name)
+            assert new_value == set_value, f"set {option_name} to {set_value} failed"
 
-        confs = {}
-        confs['num_ipus'] = 1
-
-        for k, v in confs.items():
-            assert v == ipu_strategy.get_option(
-                k), f"Check default option: {k} to value: {v} failed "
-
-
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
-class TestConfigure(unittest.TestCase):
-    def test_func(self):
+    def test_set_string_options(self):
         ipu_strategy = paddle.static.IpuStrategy()
-
-        confs = {}
-        confs['is_training'] = False
-        confs['enable_pipelining'] = False
-        confs['enable_manual_shard'] = True
-        confs['save_init_onnx'] = True
-        confs['save_onnx_checkpoint'] = True
-        confs['need_avg_shard'] = True
-        confs['enable_fp16'] = True
-        confs['enable_pipelining'] = True
-        confs['enable_manual_shard'] = True
-        confs['enable_half_partial'] = True
-        confs['enable_stochastic_rounding'] = True
-
-        confs['num_ipus'] = 2
-        confs['batches_per_step'] = 5
-        confs['micro_batch_size'] = 4
-        confs['save_per_n_step'] = 10
-
-        confs['loss_scaling'] = 5.0
-        confs['max_weight_norm'] = 100.0
-        confs['available_memory_proportion'] = 0.3
-
-        for k, v in confs.items():
-            ipu_strategy.set_option({k: v})
-            assert v == ipu_strategy.get_option(
-                k), f"Setting option: {k} to value: {v} failed "
-
-
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
-class TestEnablePattern(unittest.TestCase):
-    def test_enable_patern(self):
-        ipu_strategy = paddle.static.IpuStrategy()
-        pattern = 'LSTMOp'
-        # LSTMOp Pattern is not enabled by default
-        # assert not ipu_strategy.is_pattern_enabled(pattern)
-        ipu_strategy.enable_pattern(pattern)
-        assert ipu_strategy.is_pattern_enabled(pattern) == True
-
-    def test_disable_pattern(self):
-        ipu_strategy = paddle.static.IpuStrategy()
-        pattern = 'LSTMOp'
-        ipu_strategy.enable_pattern(pattern)
-        ipu_strategy.disable_pattern(pattern)
-        assert ipu_strategy.is_pattern_enabled(pattern) == False
-
-
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
-class TestIpuStrategyLoadDict(unittest.TestCase):
-    def test_enable_patern(self):
-        ipu_strategy = paddle.static.IpuStrategy()
-        test_conf = {
-            "micro_batch_size": 23,
-            "batches_per_step": 233,
-            "enableGradientAccumulation": True,
-            "enableReplicatedGraphs": True,
-            "enable_fp16": True,
-            "save_init_onnx": True,
-            "save_onnx_checkpoint": True
+        options = {
+            'cache_path': 'paddle_cache',
+            'log_dir': 'paddle_log',
+            'partials_type_matmuls': 'half',
+            'partials_type_matmuls': 'float',
         }
-        ipu_strategy.set_option(test_conf)
-        for k, v in test_conf.items():
-            assert v == ipu_strategy.get_option(k)
+        ipu_strategy.set_options(options)
+        for k, v in options.items():
+            assert v == ipu_strategy.get_option(k), f"set {k} to {v} failed "
 
-
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
-class TestIpuStrategyEngineOptions(unittest.TestCase):
-    def test_enable_patern(self):
+    def test_set_other_options(self):
         ipu_strategy = paddle.static.IpuStrategy()
-        engine_conf = {
+        options = {}
+        options['dot_checks'] = ['0', '1', '2', '3']
+        options['engine_options'] = {
             'debug.allowOutOfMemory': 'true',
             'autoReport.directory': 'path',
             'autoReport.all': 'true'
         }
-        ipu_strategy.set_option({'engineOptions': engine_conf})
-        for k, v in ipu_strategy.get_option('engineOptions').items():
-            assert v == engine_conf[k]
+        for k, v in options.items():
+            ipu_strategy.set_options({k: v})
+            assert v == ipu_strategy.get_option(k), f"set {k} to {v} failed "
 
 
 if __name__ == "__main__":
