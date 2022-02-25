@@ -30,10 +30,10 @@ precision_type_converter = {
     "int16": "I16",
     "int32": "I32",
     "int64": "I64",
-    "float16": "F16",
+    "float16": "FLOAT16",
     "bfloat16": "BF16",
-    "float32": "F32",
-    "float64": "F64",
+    "float32": "FLOAT32",
+    "float64": "FLOAT64",
     "complex64": "C64",
     "complex128": "C128",
     "bool": "B"
@@ -86,7 +86,7 @@ def generate_inputs_info(input_info):
         target_ = target_type_converter[target_.strip()]
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
-        input_args_ += " DTTensorType<\"{}\",\"{}\",\"{}\">:$in{},".format(
+        input_args_ += " DenseTensorType<\"{}\",\"{}\",\"{}\">:$in{},".format(
             target_.strip(), layout_.strip(), precision_.strip(), str(index))
     input_args_ = input_args_[:-1]
     return input_args_
@@ -107,7 +107,7 @@ def generate_results_info(output_info):
         target_ = target_type_converter[target_.strip()]
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
-        output_args_ += " DTTensorType<\"{}\",\"{}\",\"{}\">:$out{},".format(
+        output_args_ += " DenseTensorType<\"{}\",\"{}\",\"{}\">:$out{},".format(
             target_.strip(), layout_.strip(), precision_.strip(), str(index))
     return ("{});".format(output_args_[:-1]))
 
@@ -157,8 +157,8 @@ def generate_kernel_dialect(op_name, kernel_alias_, kernel_info):
     alias = generate_kernel_name(op_name, kernel_alias_)
     summary = 'let summary = "{name}";'.format(name=alias)
 
-    header = 'def {name}_Kernel : PDT_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
-        name=alias.replace(".", "_"), left_brace="{")
+    header = 'def {name}Kernel : PDT_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
+        name=alias.replace(".", ""), left_brace="{")
 
     inputs_ = kernel_info["input"]
     attributes = kernel_info["attribute"]
@@ -191,10 +191,11 @@ def generate_dialect_head():
 include \"mlir/Interfaces/InferTypeOpInterface.td\"\n\
 include \"mlir/Interfaces/LoopLikeInterface.td\"\n\
 include \"mlir/IR/OpBase.td\"\n\
-include \"paddle/infrt/dialect/pten/infrt_pten_base.td\"\n\
-include \"paddle/infrt/dialect/pten/infrt_pten_kernel.td\"\n\
-include \"paddle/infrt/dialect/infrt_base.td\"\n\
-include \"paddle/infrt/dialect/dense_tensor.td\"\n"
+include \"paddle/infrt/dialect/phi/infrt_phi_kernel.td\""
+
+    #include \"paddle/infrt/dialect/phi/infrt_phi_base.td\"\n\
+    #include \"paddle/infrt/dialect/phi/infrt_phi_kernel.td\"\n\
+    #include \"paddle/infrt/dialect/phi/infrt_phi_tensor.td\""
 
     return (comment_ + includes_)
 
@@ -217,7 +218,7 @@ def main(path_):
                     registry_ += kernel_registry
 
         end = "#endif  // PTEN_KERNELS"
-        with open("pten_kernels.td", "w") as dst:
+        with open("../../paddle/infrt/dialect/phi/phi_kernels.td", "w") as dst:
             dst.write('{start_}\n{dialect_}\n{end_}'.format(
                 start_=head, dialect_=registry_, end_=end))
 

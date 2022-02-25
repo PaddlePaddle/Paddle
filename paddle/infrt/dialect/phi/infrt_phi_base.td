@@ -13,9 +13,6 @@ def PHI_Dialect : Dialect {
   let cppNamespace = "::infrt::phi";
 }
 
-class PTEN_KERNEL<string mnemonic, list<OpTrait> traits = []> :
-      Op<PTEN_Dialect, mnemonic, traits>;
-
 class AllocatorTypeOf<string place, list<Trait> traits=[]>:
     TypeDef<PHI_Dialect, place # "Allocator", traits> {
     let summary = !strconcat("!phi.allocator_", place, " type");
