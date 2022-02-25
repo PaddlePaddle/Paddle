@@ -77,7 +77,7 @@ class PassStopGradientIter : public IterHelper<AutogradMeta*> {
       VLOG(2) << "Tensor is NULL";
       return;
     }
-    element->SetStopGradient(stop_gradient_);
+    element->WeakSetStopGradient(stop_gradient_);
   }
 
   bool stop_gradient_ = true;
@@ -101,6 +101,8 @@ class EagerUtils {
       const paddle::experimental::Tensor& target);
 
   static std::shared_ptr<GradNodeBase> grad_node(
+      const paddle::experimental::Tensor& target);
+  static paddle::experimental::Tensor* mutable_grad(
       const paddle::experimental::Tensor& target);
 
   // Set history is used to set backward info during forward process, it will
@@ -173,17 +175,24 @@ class EagerUtils {
       const std::vector<std::shared_ptr<EagerVariable>>& outs);
   static paddle::experimental::Tensor GetOutput(
       const std::shared_ptr<EagerVariable>& out);
-  // Sync Back to origin output Tensor
-  static void OverwriteOutputs(const std::shared_ptr<EagerVariable>& out,
-                               paddle::experimental::Tensor* tensor);
-  static void OverwriteOutputs(const paddle::experimental::Tensor& out,
-                               paddle::experimental::Tensor* tensor);
-  static void OverwriteOutputs(
+  static void GetOutput(const std::shared_ptr<EagerVariable>& out,
+                        paddle::experimental::Tensor* out_var);
+  static void GetOutputs(
       const std::vector<std::shared_ptr<EagerVariable>>& outs,
-      const std::vector<paddle::experimental::Tensor*>& tensors);
-  static void OverwriteOutputs(
-      const std::vector<paddle::experimental::Tensor>& outs,
-      const std::vector<paddle::experimental::Tensor*>& tensors);
+      std::vector<paddle::experimental::Tensor>* result);
+  static void GetOutputs(
+      const std::vector<std::shared_ptr<EagerVariable>>& outs,
+      const std::vector<paddle::experimental::Tensor*>& out_var);
+  static void GetOutputs(const std::shared_ptr<EagerVariable>& out,
+                         std::vector<paddle::experimental::Tensor>* result);
+  static void GetOutputs(
+      const std::shared_ptr<EagerVariable>& out,
+      const std::vector<paddle::experimental::Tensor*>& out_var);
+
+  static void Output2Result(
+      const std::vector<paddle::experimental::Tensor*>& out_var,
+      std::vector<paddle::experimental::Tensor>* result);
+
   // end Intermidate needed
 
   static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);

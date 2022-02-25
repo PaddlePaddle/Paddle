@@ -160,7 +160,7 @@ def get_dist_prog(train_program,
     completer = Completer(dist_context)
     complete_train_program = completer.complete_forward_annotation(
         train_program)
-
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
     if change_process_mesh:
         global PP_MESH_1
         dist_context.get_tensor_dist_attr_for_program(

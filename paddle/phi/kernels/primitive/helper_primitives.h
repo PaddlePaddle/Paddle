@@ -17,7 +17,7 @@
 namespace phi {
 namespace kps {
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
 struct dim3 {
   int x;
   int y;
