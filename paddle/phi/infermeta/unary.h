@@ -161,4 +161,6 @@ void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
                         MetaTensor* out);
 
+void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
+
 }  // namespace phi
