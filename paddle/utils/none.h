@@ -15,8 +15,7 @@
 // You are welcome to contact the author at:
 //  fernando_cacciola@hotmail.com
 //
-#ifndef PADDLE_NONE_17SEP2003_HPP
-#define PADDLE_NONE_17SEP2003_HPP
+#pragma once
 
 namespace paddle {
 
@@ -26,7 +25,7 @@ struct none_helper {};
 
 typedef int detail::none_helper::*none_t;
 
-}  // namespace boost
+}  // namespace paddle
 
 // NOTE: Borland users have to include this header outside any precompiled
 // headers
@@ -37,6 +36,4 @@ namespace paddle {
 
 none_t const none = ((none_t)0);
 
-}  // namespace boost
-
-#endif
+}  // namespace paddle

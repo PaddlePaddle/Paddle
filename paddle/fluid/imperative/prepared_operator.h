@@ -442,7 +442,9 @@ void BuildDygraphPtenKernelContext(
                                                        vector_int_attr.end());
           kernel_ctx->EmplaceBackAttr(vector_int64_attr);
         }
-        // TODO(YuanRisheng) Need support vector<int64_t> attr
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int>))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "
@@ -477,6 +479,9 @@ void PreparePtenData(const phi::Kernel& pt_kernel,
       auto var = ins_vector[offset];
       const auto* tensor_in = GetTensorFromVar(var->Var());
       if (tensor_in && tensor_in->IsInitialized()) {
+        if (in_def.backend == phi::Backend::ALL_BACKEND) {
+          continue;
+        }
         auto expected_place = phi::TransToPtenPlace(in_def.backend);
         if (platform::is_same_place(tensor_in->place(), expected_place)) {
           continue;

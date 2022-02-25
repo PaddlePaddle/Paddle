@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/where_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 
@@ -19,6 +20,15 @@ namespace platform = paddle::platform;
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+struct CondFunctor {
+  HOSTDEVICE inline CondFunctor() {}
+
+  HOSTDEVICE inline T operator()(const bool cond, const T x, const T y) const {
+    return cond ? x : y;
+  }
+};
 
 template <typename T>
 __global__ void WhereCUDAKernel(const int N, const bool* cond, const T* x,
@@ -63,10 +73,11 @@ class WhereKernel<platform::CUDADeviceContext, T>
     auto stream = context.cuda_device_context().stream();
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
-    auto config = GetGpuLaunchConfig1D(dev_ctx, numel);
-    WhereCUDAKernel<
-        T><<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-        numel, cond_data, x_data, y_data, out_data);
+    auto functor = CondFunctor<T>();
+    std::vector<const framework::Tensor*> ins = {condition, X, Y};
+    std::vector<framework::Tensor*> outs = {out};
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                              &outs, functor);
   }
 };
 

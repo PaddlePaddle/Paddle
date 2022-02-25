@@ -14,12 +14,11 @@
 
 from __future__ import print_function
 import warnings
-from ...fluid.framework import in_dygraph_mode
 from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.layers import core
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle import _C_ops
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -87,7 +86,7 @@ def one_hot(x, num_classes, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.one_hot_v2(x, 'depth', num_classes, 'allow_out_of_range',
                                  False)
     else:
@@ -196,7 +195,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         raise ValueError("padding_idx must be within [-{}, {})".format(
             weight.shape[0], weight.shape[0]))
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.lookup_table_v2(
             weight, x, 'is_sparse', sparse, 'is_distributed', False,
             'remote_prefetch', False, 'padding_idx', padding_idx)
