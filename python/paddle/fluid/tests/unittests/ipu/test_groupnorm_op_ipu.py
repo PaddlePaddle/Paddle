@@ -153,7 +153,7 @@ class TestTrainCase1(TestBase):
         self.epoch = 10
 
 
-@unittest.skipIf(IPUOpTest.use_ipumodel, "skip for ipumodel")
+@unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestTrainCase2(TestBase):
     def set_atol(self):
         self.atol = 7e-4
