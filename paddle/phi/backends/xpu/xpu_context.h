@@ -66,4 +66,12 @@ class XPUContext : public DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
+// KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,
+// because we want to implement a KPS-based kernel and make it run
+// on GPU and XPU at the same time, so we need KPSContext when registering
+// KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
+#if PADDLE_WITH_XPU_KP
+using KPSContext = XPUContext;
+#endif
+
 }  // namespace phi

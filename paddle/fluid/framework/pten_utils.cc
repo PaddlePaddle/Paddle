@@ -69,6 +69,8 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
     library_type = LibraryType::kMKLDNN;
   } else if (kernel_key.backend() == phi::Backend::CUDNN) {
     library_type = LibraryType::kCUDNN;
+  } else if (kernel_key.backend() == phi::Backend::KPS) {
+    library_type = LibraryType::kKP;
   } else {
     // do nothing
   }
@@ -83,6 +85,8 @@ phi::KernelKey TransOpKernelTypeToPtenKernelKey(
     backend = phi::Backend::MKLDNN;
   } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
     backend = phi::Backend::CUDNN;
+  } else if (kernel_type.library_type_ == LibraryType::kKP) {
+    backend = phi::Backend::KPS;
   } else {
     // do
   }
