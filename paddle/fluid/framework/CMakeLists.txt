@@ -450,7 +450,7 @@ if(WITH_TESTING AND TEST selected_rows_utils_test)
 endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
-cc_test(phi_utils_test SRCS pten_utils_test.cc DEPS phi_utils)
+cc_test(phi_utils_test SRCS phi_utils_test.cc DEPS phi_utils)
 
 if(WITH_GPU OR WITH_ROCM)
   cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)
