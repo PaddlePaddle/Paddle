@@ -23,11 +23,13 @@
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
 
+DECLARE_int64(host_trace_level);
+
 namespace paddle {
 namespace platform {
 
 struct ProfilerOptions {
-  uint32_t trace_level = 0;
+  uint32_t trace_level = FLAGS_host_trace_level;
 };
 
 class Profiler {
