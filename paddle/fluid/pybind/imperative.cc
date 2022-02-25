@@ -52,9 +52,9 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 
 namespace paddle {
@@ -320,6 +320,23 @@ static std::string GetTypeName(const imperative::VarBase &var) {
   }
 }
 
+Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
+  if (py::isinstance<imperative::VarBase>(obj)) {
+    VLOG(6) << "Call GetSliceIndexFromTensor in Imperative";
+    return GetSliceIndexFromTensor(
+        py::cast<std::shared_ptr<imperative::VarBase>>(obj)
+            ->Var()
+            .Get<framework::LoDTensor>());
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "We should only get paddle::experimental::Tensor or VarBase in this "
+        "method, when you reach this means we got another type index."));
+  }
+}
+
+bool PyCheckTensor(PyObject *obj) {
+  return py::isinstance<imperative::VarBase>(obj);
+}
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 // NOTE(zjl): py::handle is a very light wrapper of PyObject *.

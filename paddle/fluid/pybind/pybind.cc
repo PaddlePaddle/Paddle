@@ -79,11 +79,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #ifndef PADDLE_ON_INFERENCE
 #include "paddle/fluid/pybind/eager.h"
-#include "paddle/fluid/pybind/imperative.h"
 #endif
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
@@ -211,14 +211,6 @@ bool IsCompiledWithAscend() {
   return false;
 #else
   return true;
-#endif
-}
-
-bool IsBuildWithEager() {
-#ifndef PADDLE_ON_INFERENCE
-  return true;
-#else
-  return false;
 #endif
 }
 
@@ -537,9 +529,10 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
+  BindImperative(&m);
+
 #ifndef PADDLE_ON_INFERENCE
   BindEager(&m);
-  BindImperative(&m);
 #endif
   BindCudaStream(&m);
 
@@ -2620,8 +2613,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_variable_tensor", framework::GetVariableTensor);
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
-
-  m.def("_is_build_with_eager", IsBuildWithEager);
 
   BindProgramDesc(&m);
   BindBlockDesc(&m);

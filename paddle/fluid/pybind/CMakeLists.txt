@@ -69,6 +69,7 @@ set(PYBIND_SRCS
   box_helper_py.cc
   metrics_py.cc
   data_set_py.cc
+  imperative.cc
   ir.cc
   bind_cost_model.cc
   bind_fleet_executor.cc
@@ -80,7 +81,6 @@ set(PYBIND_SRCS
   cuda_streams_py.cc)
 
 if(NOT ON_INFER)
-  list(APPEND PYBIND_SRCS imperative.cc)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup)
   if (WITH_NCCL)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)

@@ -11,10 +11,10 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+#include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-
 namespace paddle {
 namespace pybind {
 
@@ -114,21 +114,6 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
-// Slice related methods
-bool PyCheckInteger(PyObject* obj);
-bool IsNumpyType(PyObject* obj);
-bool PyCheckTensor(PyObject* obj);
-Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor);
-Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
-int _PySlice_GetIndices(PySliceObject* r, Py_ssize_t length, Py_ssize_t* start,
-                        Py_ssize_t* stop, Py_ssize_t* step);
-void ParseIndexingSlice(
-    framework::LoDTensor* tensor, PyObject* _index,
-    std::vector<int>* slice_axes, std::vector<int>* slice_starts,
-    std::vector<int>* slice_ends, std::vector<int>* slice_strides,
-    std::vector<int>* decrease_axis, std::vector<int>* none_axes,
-    std::vector<int>* infer_flags, std::vector<int>* list_select_idxs,
-    bool* list_select_flag);
 // end of Slice related methods
 
 }  // namespace pybind
