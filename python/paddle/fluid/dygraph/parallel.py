@@ -560,13 +560,19 @@ class DataParallel(layers.Layer):
                  strategy=None,
                  comm_buffer_size=25,
                  last_comm_buffer_size=1,
-                 find_unused_parameters=False):
+                 find_unused_parameters=False,
+                 process_group=None,
+                 gradient_as_buffer_view=False,
+                 static_graph=False):
         super(DataParallel,
               self).__init__(layers.full_name() + "_data_parallel")
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
+        self.process_group = process_group
+        self.gradient_as_buffer_view = gradient_as_buffer_view
+        self.static_graph = static_graph
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 

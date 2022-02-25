@@ -81,7 +81,7 @@ set(PYBIND_SRCS
   cuda_streams_py.cc)
 
 if(NOT ON_INFER)
-  set (PYBIND_DEPS ${PYBIND_DEPS} processgroup)
+  set (PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if (WITH_NCCL)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
   endif()

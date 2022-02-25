@@ -26,158 +26,148 @@ import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.nn import Linear
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-
-
-class MLP(fluid.Layer):
-    def __init__(self, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
-
-        self._linear1 = Linear(784, 10)
-        self._linear2 = Linear(10, 10)
-
-    def forward(self, inputs):
-        y = self._linear1(inputs)
-        y = self._linear2(y)
-        return y
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDataParallelGroup(unittest.TestCase):
-    def create_varbase(self, dtype, shape,
-                       type=core.VarDesc.VarType.LOD_TENSOR):
-        return core.VarBase(dtype, shape, "", type, True)
+    def create_varbase(self, dtype, shape):
+        return paddle.rand(shape=shape, dtype=dtype)
+
+    def assign_group_by_size(self, *args):
+        return core.assign_group_by_size(*args)
 
     def test_construct_group0(self):
         # one dtype & one limit capability
         var_list = []
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
-        var_list.append(
-            self.create_varbase(core.VarDesc.VarType.FP32, [2, 100]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
-        res = core.assign_group_by_size(var_list, [False, False, False, False],
+        var_list.append(self.create_varbase("float32", [2, 50]))
+        var_list.append(self.create_varbase("float32", [2, 100]))
+        var_list.append(self.create_varbase("float32", [2, 50]))
+        var_list.append(self.create_varbase("float32", [2, 25]))
+        res = self.assign_group_by_size(var_list, [False, False, False, False],
                                         [400])
         self.assertEqual([[0], [1], [2], [3]], res)
 
     def test_construct_group1(self):
         # multi dtype & one limit capability
         var_list = []
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        res = core.assign_group_by_size(
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        res = self.assign_group_by_size(
             var_list, [False, False, False, False, False, False], [400])
         self.assertEqual([[0, 2], [1, 3], [4], [5]], res)
 
     def test_construct_group2(self):
         # one dtype & multi limit capability
         var_list = []
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
-        res = core.assign_group_by_size(var_list, [False, False, False, False],
+        var_list.append(self.create_varbase("float32", [2, 50]))
+        var_list.append(self.create_varbase("float32", [2, 50]))
+        var_list.append(self.create_varbase("float32", [2, 50]))
+        var_list.append(self.create_varbase("float32", [2, 50]))
+        res = self.assign_group_by_size(var_list, [False, False, False, False],
                                         [400, 800])
         self.assertEqual([[0], [1, 2], [3]], res)
 
     def test_construct_group3(self):
         # multi dtype & multi limit capability
         var_list = []
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        res = core.assign_group_by_size(
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        res = self.assign_group_by_size(
             var_list, [False, False, False, False, False, False], [200, 400])
         self.assertEqual([[0], [1], [2, 4], [3, 5]], res)
 
     def test_construct_group4(self):
         # multi dtype & zero limit capability
         var_list = []
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        res = core.assign_group_by_size(
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        res = self.assign_group_by_size(
             var_list, [False, False, False, False, False, False], [0])
         self.assertEqual([[0], [1], [2], [3], [4], [5]], res)
 
     def test_construct_group5(self):
         # multi dtype & infinite capability
         var_list = []
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        res = core.assign_group_by_size(
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        res = self.assign_group_by_size(
             var_list, [False, False, False, False, False, False], [10000])
         self.assertEqual([[0, 2, 4], [1, 3, 5]], res)
 
     def test_construct_group6(self):
         # multi dtype & limit capability & multi tensor type
         var_list = []
-        var_list.append(
-            self.create_varbase(core.VarDesc.VarType.FP32, [1, 50],
-                                core.VarDesc.VarType.SELECTED_ROWS))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(
-            self.create_varbase(core.VarDesc.VarType.FP64, [1, 25],
-                                core.VarDesc.VarType.SELECTED_ROWS))
-        res = core.assign_group_by_size(
+        var_list.append(self.create_varbase(
+            "float32",
+            [1, 50], ))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        res = self.assign_group_by_size(
             var_list, [True, False, False, False, False, True], [400])
         self.assertEqual([[0], [1, 3], [2, 4], [5]], res)
 
     def test_construct_group7(self):
         # multi dtype & multi limit capability & multi tensor type
         var_list = []
-        var_list.append(
-            self.create_varbase(core.VarDesc.VarType.FP32, [1, 50],
-                                core.VarDesc.VarType.SELECTED_ROWS))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP64, [1, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [1, 50]))
-        var_list.append(
-            self.create_varbase(core.VarDesc.VarType.FP64, [1, 25],
-                                core.VarDesc.VarType.SELECTED_ROWS))
-        res = core.assign_group_by_size(
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self.create_varbase("float32", [1, 50]))
+        var_list.append(self.create_varbase("float64", [1, 25]))
+        res = self.assign_group_by_size(
             var_list, [True, False, False, False, False, True], [200, 400])
         self.assertEqual([[0], [1], [2], [3], [4], [5]], res)
 
     def test_construct_group8(self):
         # one dtype & one limit capability & have tensor_indices
         var_list = []
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
-        var_list.append(
-            self.create_varbase(core.VarDesc.VarType.FP32, [2, 100]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 50]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
-        res = core.assign_group_by_size(var_list, [False, False, False, False],
+        var_list.append(self.create_varbase("float32", [2, 25]))
+        var_list.append(self.create_varbase("float32", [2, 100]))
+        var_list.append(self.create_varbase("float32", [2, 50]))
+        var_list.append(self.create_varbase("float32", [2, 25]))
+        res = self.assign_group_by_size(var_list, [False, False, False, False],
                                         [400], [3, 0, 1, 2])
         self.assertEqual([[3, 0], [1], [2]], res)
 
     def test_construct_group9(self):
         # one dtype & one limit capability & have tensor_indices
         var_list = []
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
-        var_list.append(self.create_varbase(core.VarDesc.VarType.FP32, [2, 25]))
-        var_list.append(
-            self.create_varbase(core.VarDesc.VarType.FP32, [2, 1000]))
-        res = core.assign_group_by_size(var_list, [False, False, False, True],
+        var_list.append(self.create_varbase("float32", [2, 25]))
+        var_list.append(self.create_varbase("float32", [2, 25]))
+        var_list.append(self.create_varbase("float32", [2, 25]))
+        var_list.append(self.create_varbase("float32", [2, 1000]))
+        res = self.assign_group_by_size(var_list, [False, False, False, True],
                                         [300], [1, 0, 2, 3])
         self.assertEqual([[1, 0], [3], [2]], res)
+
+
+class TestDataParallelGroupEager(TestDataParallelGroup):
+    def create_varbase(self, dtype, shape):
+        with _test_eager_guard():
+            return paddle.rand(shape=shape, dtype=dtype)
+
+    def assign_group_by_size(self, *args):
+        return core.eager_assign_group_by_size(*args)
 
 
 if __name__ == '__main__':
