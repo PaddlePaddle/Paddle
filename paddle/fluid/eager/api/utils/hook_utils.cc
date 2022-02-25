@@ -52,9 +52,15 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
   }
 }
 
-void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
-  // TODO(jiabin): Support More Tensor type here
+static void RetainGradForRegularNode(
+    const paddle::experimental::Tensor& tensor) {
   AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
+  if (meta->RetainGrads()) {
+    return;
+  } else {
+    meta->SetRetainGrads(true);
+  }
+
   std::weak_ptr<paddle::experimental::Tensor> weak_grad_tensor =
       meta->WeakGrad();
 
@@ -70,12 +76,8 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
             grad_tensor->set_impl(t.impl());
             return *grad_tensor.get();
           } else {
-            PADDLE_THROW(paddle::platform::errors::Fatal(
-                "Detected uninitialized variable, causing segmentation "
-                "fault "
-                "inside the hook."
-                "Tensor has to be initialized while we need to set it."
-                "please check tensor initialization status."));
+            VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+            return paddle::experimental::Tensor();
           }
         } else {
           VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
@@ -83,21 +85,17 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
         }
       };
 
-  if (IsLeafTensor(tensor)) {
-    // Add RetainGrad as PostHook to AccumulationNode
-    std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
-    PADDLE_ENFORCE(
-        grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation"));
-    auto accumulation_grad_node =
-        std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
-    accumulation_grad_node->RetainGrad(hook);
+  // Append to GradientHooks
+  RegisterGradientHookForTensor(tensor, hook);
+}
 
+void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
+  if (IsLeafTensor(tensor)) {
+    // Leaf tensor's grad will always be retained
+    // Refer to implementation of AccumulationNode for more details
+    return;
   } else {
-    // Append to GradientHooks
-    RegisterGradientHookForTensor(tensor, hook);
+    RetainGradForRegularNode(tensor);
   }
 }
 

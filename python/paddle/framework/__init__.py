@@ -32,7 +32,7 @@ from ..fluid.core import MLUPlace  # noqa: F401
 from ..fluid.core import CustomPlace  # noqa: F401
 from ..fluid.core import VarBase  # noqa: F401
 
-from paddle.fluid import core  # noqa: F401
+from ..fluid import core  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from ..fluid.dygraph.base import grad  # noqa: F401
 from .io import save  # noqa: F401
@@ -47,5 +47,10 @@ from ..fluid.framework import set_flags  # noqa: F401
 from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
 from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
 from ..fluid.framework import in_dygraph_mode as in_dynamic_mode  # noqa: F401
+from ..fluid.framework import _current_expected_place, _get_paddle_place  # noqa: F401
+from ..fluid.framework import dygraph_only  # noqa: F401
+from ..fluid.framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder  # noqa: F401
+from ..fluid.framework import _in_eager_mode  # noqa: F401
+from ..fluid.framework import _dygraph_tracer  # noqa: F401
 
 __all__ = []

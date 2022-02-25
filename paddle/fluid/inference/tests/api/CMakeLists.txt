@@ -758,11 +758,30 @@ if(ON_INFER OR WITH_GPU)
     set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT 120)
 endif()
 
-# IPU
 if (WITH_IPU)
-    #resnet50
+    #word2vec sample
+    set(WORD2VEC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/word2vec/word2vec.inference.model")
+    inference_analysis_test(ipu_word2vec_sample SRCS ipu_word2vec_sample.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${WORD2VEC_INSTALL_DIR})
+
+    # ERNIE
+    set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+    inference_analysis_api_test(ipu_ernie_test ${ERNIE_INSTALL_DIR} ipu_ernie_test.cc
+            ARGS --warmup=true --repeat=10)
+    inference_analysis_api_test(ipu_ernie_fp16_test ${ERNIE_INSTALL_DIR} ipu_ernie_fp16_test.cc
+            ARGS --warmup=true --repeat=10)
+
+    # Resnet50
     set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
     inference_analysis_test(ipu_resnet50_test SRCS ipu_resnet50_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=1000)
+        ARGS --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=10)
+    inference_analysis_test(ipu_resnet50_fp16_test SRCS ipu_resnet50_fp16_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=10)
+
+    # Only support Resnet50 and Ernie currently
+    inference_analysis_api_test(ipu_multi_model_profile SRCS ipu_multi_model_profile.cc
+        ARGS --model_name="Resnet50" --infer_model=${RESNET50_MODEL_DIR} --warmup=true --repeat=10)
 endif()
