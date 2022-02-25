@@ -28,36 +28,37 @@ namespace tests {
 std::vector<int> flatten(const std::vector<std::vector<int>>& in) {
   std::vector<int> out;
   if (in.size() == 0) return out;
-  const int rows = in.size();
   const int cols = in[0].size();
-  const int n = rows * cols;
-  out.resize(n);
-  for (int i = 0; i < rows; i++) {
+  out.resize(in.size() * cols);
+  for (uint64_t i = 0; i < in.size(); i++) {
     memcpy(&out[i * cols], in[i].data(), cols * sizeof(int));
   }
   return out;
 }
 
 template <typename T1, typename T2>
-void cast(const std::vector<T1>& in, std::vector<T2>* out) {
+std::vector<T2> cast(const std::vector<T1>& in) {
+  std::vector<T2> out(in.size());
   for (uint64_t i = 0; i < in.size(); i++) {
-    (*out)[i] = static_cast<T2>(in[i]);
+    out[i] = static_cast<T2>(in[i]);
   }
+  return out;
 }
 
 template <typename T>
-void TestConv3d(const std::vector<int>& indices,
-                const std::vector<T>& features,
-                const DDim& x_dims,
-                const std::vector<T>& kernel,
-                const DDim& kernel_dims,
-                const std::vector<int>& correct_out_indices,
-                const std::vector<T>& correct_out_features,
-                const DDim& correct_out_dims,
-                const int non_zero_num,
-                const std::vector<int>& paddings,
-                const std::vector<int>& strides,
-                const std::vector<int>& dilations) {
+void TestConv3dBase(const std::vector<int>& indices,
+                    const std::vector<T>& features,
+                    const DDim& x_dims,
+                    const std::vector<T>& kernel,
+                    const DDim& kernel_dims,
+                    const std::vector<int>& correct_out_indices,
+                    const std::vector<T>& correct_out_features,
+                    const DDim& correct_out_dims,
+                    const int non_zero_num,
+                    const std::vector<int>& paddings,
+                    const std::vector<int>& strides,
+                    const std::vector<int>& dilations,
+                    const float diff = 1e-3) {
   phi::CPUContext dev_ctx_cpu;
   dev_ctx_cpu.Init();
   phi::CPUPlace cpu;
@@ -92,7 +93,6 @@ void TestConv3d(const std::vector<int>& indices,
          kernel.data(),
          kernel.size() * sizeof(T));
 
-  const float diff = 1e-3;
   if (!std::is_same<T, phi::dtype::float16>::value) {
     SparseCooTensor out = sparse::Conv3d<T>(
         dev_ctx_cpu, x_tensor, kernel_tensor, paddings, dilations, strides, 1);
@@ -114,6 +114,46 @@ void TestConv3d(const std::vector<int>& indices,
       ASSERT_LT(tmp, diff);
     }
   }
+}
+
+void TestConv3d(const std::vector<int>& indices,
+                const std::vector<float>& features,
+                const DDim& x_dims,
+                const std::vector<float>& kernel,
+                const DDim& kernel_dims,
+                const std::vector<int>& correct_out_indices,
+                const std::vector<float>& correct_out_features,
+                const DDim& correct_out_dims,
+                const int non_zero_num,
+                const std::vector<int>& paddings,
+                const std::vector<int>& strides,
+                const std::vector<int>& dilations) {
+  // test float
+  TestConv3dBase<float>(indices,
+                        features,
+                        x_dims,
+                        kernel,
+                        kernel_dims,
+                        correct_out_indices,
+                        correct_out_features,
+                        correct_out_dims,
+                        non_zero_num,
+                        paddings,
+                        strides,
+                        dilations);
+  // test double
+  TestConv3dBase<double>(indices,
+                         cast<float, double>(features),
+                         x_dims,
+                         cast<float, double>(kernel),
+                         kernel_dims,
+                         correct_out_indices,
+                         cast<float, double>(correct_out_features),
+                         correct_out_dims,
+                         non_zero_num,
+                         paddings,
+                         strides,
+                         dilations);
 }
 
 TEST(DEV_API, sparse_conv3d) {
@@ -149,39 +189,18 @@ TEST(DEV_API, sparse_conv3d) {
   std::vector<float> out_features = {
       0.0254, 0.1455, -0.0615, 0.0862, 0.0077, 0.0200, -0.0160, -0.0433};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  // test fp16
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 TEST(DEV_API, sparse_conv3d_batch) {
@@ -235,38 +254,18 @@ TEST(DEV_API, sparse_conv3d_batch) {
                                      -0.0160,
                                      -0.0433};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 TEST(DEV_API, sparse_conv3d_stride) {
@@ -298,39 +297,18 @@ TEST(DEV_API, sparse_conv3d_stride) {
 
   std::vector<float> out_features = {0.01791};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  // test fp16
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 TEST(DEV_API, sparse_conv3d_dilation) {
@@ -362,39 +340,18 @@ TEST(DEV_API, sparse_conv3d_dilation) {
 
   std::vector<float> out_features = {-0.64014, -0.37402};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  // test fp16
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 TEST(DEV_API, sparse_conv3d_padding) {
@@ -437,39 +394,18 @@ TEST(DEV_API, sparse_conv3d_padding) {
                                      -0.17847,
                                      -0.27295};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  // test fp16
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 TEST(DEV_API, sparse_conv2d) {
@@ -503,39 +439,19 @@ TEST(DEV_API, sparse_conv2d) {
   std::vector<float> out_features = {
       -0.17004, -0.71338, -0.00206, -0.22205, -0.09009};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  // test fp16
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
+
 }  // namespace tests
 }  // namespace phi
