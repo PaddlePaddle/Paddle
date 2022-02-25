@@ -53,28 +53,27 @@ class TestBase(IPUOpTest):
         self.attrs = {}
 
     def _test_base(self, exec_mode):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
 
-                with paddle.static.amp.fp16_guard():
-                    conv1 = paddle.static.nn.conv2d(
-                        x, num_filters=3, filter_size=3, bias_attr=False)
-                    conv2 = paddle.static.nn.conv2d(
-                        conv1, num_filters=3, filter_size=3, bias_attr=False)
-                    conv3 = paddle.static.nn.conv2d(
-                        conv2, num_filters=3, filter_size=3, bias_attr=False)
-                    conv4 = paddle.static.nn.conv2d(
-                        conv3, num_filters=3, filter_size=3, bias_attr=False)
+                conv1 = paddle.static.nn.conv2d(
+                    x, num_filters=3, filter_size=3, bias_attr=False)
+                conv2 = paddle.static.nn.conv2d(
+                    conv1, num_filters=3, filter_size=3, bias_attr=False)
+                conv3 = paddle.static.nn.conv2d(
+                    conv2, num_filters=3, filter_size=3, bias_attr=False)
+                conv4 = paddle.static.nn.conv2d(
+                    conv3, num_filters=3, filter_size=3, bias_attr=False)
 
             fetch_list = [conv4.name]
 

@@ -48,34 +48,32 @@ class TestTopKOp(IPUOpTest):
         self.feed_list = list(self.feed_fp32.keys())
 
     def set_op_attrs(self):
-        self.use_K_as_const_variable = False
+        self.use_k_as_const_variable = False
         self.attrs = {}
-        if not self.use_K_as_const_variable:
+        if not self.use_k_as_const_variable:
             self.attrs["k"] = 3
 
     def _test_base(self, exec_mode):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
 
-                with paddle.static.amp.fp16_guard():
-                    if not self.use_K_as_const_variable:
-                        topk_values, topk_indices = self.op(x, **self.attrs)
-                    else:
-                        # !important, popart cannot accept non const tensor
-                        K_t = paddle.fluid.layers.fill_constant(
-                            shape=[1], dtype='int32', value=self.k, name="in_2")
-                        topk_values, topk_indices = self.op(x, K_t,
-                                                            **self.attrs)
+                if not self.use_k_as_const_variable:
+                    topk_values, topk_indices = self.op(x, **self.attrs)
+                else:
+                    # !important, popart cannot accept non const tensor
+                    K_t = paddle.fluid.layers.fill_constant(
+                        shape=[1], dtype='int32', value=self.k, name="in_2")
+                    topk_values, topk_indices = self.op(x, K_t, **self.attrs)
 
                 fetch_list = [topk_values.name, topk_indices.name]
 
@@ -128,7 +126,7 @@ class TestCase2(TestTopKOp):
 @unittest.skip("Trying to get data as int64 but it is of type int32")
 class TestCase3(TestTopKOp):
     def set_op_attrs(self):
-        self.use_K_as_const_variable = True
+        self.use_k_as_const_variable = True
         self.attrs = {}
         self.k = 2
 

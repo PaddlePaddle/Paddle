@@ -58,13 +58,13 @@ class TestBase(IPUOpTest):
         self.attrs = {"axis": 0}
 
     def _test_base(self, exec_mode):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
@@ -79,8 +79,7 @@ class TestBase(IPUOpTest):
                     shape=self.feed_shape[2],
                     dtype='float32')
 
-                with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.stack([x, y, z], **self.attrs)
+                out = paddle.fluid.layers.stack([x, y, z], **self.attrs)
 
             fetch_list = [out.name]
 

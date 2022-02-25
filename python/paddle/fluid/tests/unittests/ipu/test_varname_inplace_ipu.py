@@ -47,13 +47,13 @@ class TestBase(IPUOpTest):
         }
 
     def _test_base(self, run_ipu=True):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
