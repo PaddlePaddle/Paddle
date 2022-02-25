@@ -1,9 +1,9 @@
 <!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->
 ### PR types
-<!-- One of [ New features | Bug fixes | Function optimization | Performance optimization | Breaking changes | Others ] -->
+others
 
 ### PR changes
-<!-- One of [ OPs | APIs | Docs | Others ] -->
+others
 
 ### Describe
-<!-- Describe what this PR does -->
+test relu op *test=kunlun
