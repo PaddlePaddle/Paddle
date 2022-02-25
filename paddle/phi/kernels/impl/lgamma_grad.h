@@ -32,14 +32,12 @@ struct LgammaGradFunctor {
 };
 template <typename T, typename Context>
 void LgammaGradKernel(const Context& dev_ctx,
-                      const DenseTensor& d_out_tmp,
-                      const DenseTensor& x_tmp,
+                      const DenseTensor& d_out,
+                      const DenseTensor& x,
                       DenseTensor* d_x) {
-  const DenseTensor* d_out = &d_out_tmp;
-  const DenseTensor* x = &x_tmp;
-  auto numel = d_out->numel();
-  auto* dout_data = d_out->data<T>();
-  auto* x_data = x->data<T>();
+  auto numel = d_out.numel();
+  auto* dout_data = d_out.data<T>();
+  auto* x_data = x.data<T>();
   auto* dx_data =
       dev_ctx.template Alloc<T>(d_x, static_cast<size_t>(numel * sizeof(T)));
   paddle::platform::ForRange<Context> for_range(dev_ctx, numel);

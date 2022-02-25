@@ -13,10 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <unsupported/Eigen/SpecialFunctions>
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/lgamma_kernel.h"
 
 namespace phi {
@@ -35,8 +34,7 @@ void LgammaKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaLgammaFunctor<T>();
-  paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-      dev_ctx, ins, &outs, functor);
+  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 }  // namespace phi
 

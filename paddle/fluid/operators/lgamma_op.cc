@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <unsupported/Eigen/SpecialFunctions>
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
