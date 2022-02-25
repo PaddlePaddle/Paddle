@@ -50,7 +50,7 @@ enum class Backend : uint8_t {
 
   // the third library backend
   MKLDNN,
-  CUDNN,
+  GPUDNN,  // cuDNN and hipDNN
 
   // paddle kernel primitives backend
   KPS,
@@ -115,8 +115,8 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::MKLDNN:
       os << "MKLDNN";
       break;
-    case Backend::CUDNN:
-      os << "CUDNN";
+    case Backend::GPUDNN:
+      os << "GPUDNN";
       break;
     case Backend::KPS:
       os << "KPS";
@@ -151,8 +151,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::NPU;
   } else if (s == std::string("MKLDNN")) {
     return Backend::MKLDNN;
-  } else if (s == std::string("CUDNN")) {
-    return Backend::CUDNN;
+  } else if (s == std::string("GPUDNN")) {
+    return Backend::GPUDNN;
   } else if (s == std::string("KPS")) {
     return Backend::KPS;
   } else {

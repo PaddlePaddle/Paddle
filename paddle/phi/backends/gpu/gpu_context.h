@@ -220,6 +220,13 @@ class GPUContext : public DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
+// Note: In order to register the kernel of CUDNN, GPUDNNContext is required.
+// Currently, CUDNN kernel directly uses GPUContext. But if the kernel function
+// has the same name, this will lead to duplicate instantiations of GPU kernel
+// and GPUDNN kernel function, so if we using GPUDNNContext = GPUContext, we
+// must use different function name for cudnn kernel
+using GPUDNNContext = GPUContext;
+
 // KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,
 // because we want to implement a KPS-based kernel and make it run
 // on GPU and XPU at the same time, so we need KPSContext when registering
