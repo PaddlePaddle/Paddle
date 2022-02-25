@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <vector>
+
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/transpose_kernel.h"

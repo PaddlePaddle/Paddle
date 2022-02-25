@@ -655,8 +655,8 @@ struct TransposeSimple {
 
 template <typename T>
 void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx, const int ndims,
-                              const Tensor& in, const std::vector<int32_t> perm,
-                              Tensor* out) {
+                              const Tensor& in,
+                              const std::vector<int32_t>& perm, Tensor* out) {
   auto ret = TransposeSimple<T>::run(dev_ctx, in, perm, out);
   if (!ret) {
     TransCompute<phi::GPUContext, T>(ndims, dev_ctx, in, out, perm);

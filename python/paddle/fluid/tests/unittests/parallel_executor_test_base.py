@@ -131,7 +131,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                             feed_dict=None,
                             get_data_from_feeder=None,
                             use_reduce=False,
-                            use_ir_memory_optimize=False,
+                            use_ir_memory_optimize=True,
                             enable_inplace=True,
                             fuse_elewise_add_act_ops=False,
                             fuse_all_optimizer_ops=False,

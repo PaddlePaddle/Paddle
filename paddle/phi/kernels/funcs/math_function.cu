@@ -200,8 +200,8 @@ struct TransposeNormal<phi::GPUContext, T> {
     auto* out_ptr = out->data<T>();
 
     // copy in_stride, out_stride, axis to gpu device
-    const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
-    paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
+    const phi::CUDAPlace& cuda_place = context.GetPlace();
+    phi::CPUPlace cpu_place = paddle::platform::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
     auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
     auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
