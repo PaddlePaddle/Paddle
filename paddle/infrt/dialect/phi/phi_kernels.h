@@ -36,11 +36,10 @@
 
 namespace infrt {
 namespace phi {
-  class DenseTensor;
+class DenseTensor;
 }
 }
 
 // NOLINT
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/phi/phi_kernels.h.inc"
-
