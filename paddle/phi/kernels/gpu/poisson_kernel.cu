@@ -19,9 +19,9 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/poisson_kernel.h"
 
 namespace phi {
@@ -65,7 +65,7 @@ void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
 
-  paddle::platform::ForRange<Context> for_range(ctx, size);
+  phi::funcs::ForRange<Context> for_range(ctx, size);
 
   PoissonCudaFunctor<T> functor(x_data, out_data, seed, offset);
   for_range(functor);
