@@ -33,6 +33,14 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+
+#include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/operators/py_func_op.h"
+#include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/pybind/op_function_common.h"
+#include "paddle/fluid/pybind/slice_utils.h"
+#include "paddle/fluid/pybind/tensor_py.h"
+
 namespace paddle {
 namespace pybind {
 
@@ -42,13 +50,28 @@ extern void InitTensorWithNumpyValue(TensorObject* self,
 
 extern PyTypeObject* p_tensor_type;
 
-extern void ParseIndexingSlice(
-    framework::LoDTensor* tensor, PyObject* _index,
-    std::vector<int>* slice_axes, std::vector<int>* slice_starts,
-    std::vector<int>* slice_ends, std::vector<int>* slice_strides,
-    std::vector<int>* decrease_axis, std::vector<int>* none_axes,
-    std::vector<int>* infer_flags, std::vector<int>* list_select_idxs,
-    bool* list_select_flag);
+Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
+  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    VLOG(6) << "Call GetSliceIndexFromTensor in Eager";
+    paddle::experimental::Tensor tensor = CastPyArg2Tensor(obj, 0);
+    PADDLE_ENFORCE_EQ(
+        tensor.initialized(), true,
+        paddle::platform::errors::InvalidArgument(
+            "We can only support initialized tensor in slice, however we got "
+            "uninitialized tensor %s, please check your code.",
+            tensor.name()));
+    return GetSliceIndexFromTensor((*static_cast<phi::DenseTensor*>(
+        CastPyArg2Tensor(obj, 0).impl().get())));
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "We should only get paddle::experimental::Tensor or VarBase in this "
+        "method, when you reach this means we got another type index."));
+  }
+}
+
+bool PyCheckTensor(PyObject* obj) {
+  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
+}
 
 static PyObject* tensor_method_numpy(TensorObject* self, PyObject* args,
                                      PyObject* kwargs) {

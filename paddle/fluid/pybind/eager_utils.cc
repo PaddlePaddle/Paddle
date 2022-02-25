@@ -746,28 +746,5 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
   return result;
 }
 
-Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
-    VLOG(6) << "Call GetSliceIndexFromTensor in Eager";
-    paddle::experimental::Tensor tensor = CastPyArg2Tensor(obj, 0);
-    PADDLE_ENFORCE_EQ(
-        tensor.initialized(), true,
-        paddle::platform::errors::InvalidArgument(
-            "We can only support initialized tensor in slice, however we got "
-            "uninitialized tensor %s, please check your code.",
-            tensor.name()));
-    return GetSliceIndexFromTensor((*static_cast<phi::DenseTensor*>(
-        CastPyArg2Tensor(obj, 0).impl().get())));
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "We should only get paddle::experimental::Tensor or VarBase in this "
-        "method, when you reach this means we got another type index."));
-  }
-}
-
-bool PyCheckTensor(PyObject* obj) {
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
-}
-
 }  // namespace pybind
 }  // namespace paddle
