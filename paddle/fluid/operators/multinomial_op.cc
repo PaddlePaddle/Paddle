@@ -16,10 +16,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -45,38 +46,6 @@ This OP returns a Tensor filled with the sampled categoris according to Multinom
 class MultinomialOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Multinomial");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Multinomial");
-
-    auto x_dim = ctx->GetInputDim("X");
-    int64_t x_rank = x_dim.size();
-    PADDLE_ENFORCE_GT(x_rank, 0,
-                      platform::errors::InvalidArgument(
-                          "The number of dimensions of the input probability "
-                          "distribution should be > 0, but got %d.",
-                          x_rank));
-    PADDLE_ENFORCE_LE(x_rank, 2,
-                      platform::errors::InvalidArgument(
-                          "The number of dimensions of the input probability "
-                          "distribution should be <= 2, but got %d.",
-                          x_rank));
-
-    std::vector<int64_t> out_dims(x_rank);
-    for (int64_t i = 0; i < x_rank - 1; i++) {
-      out_dims[i] = x_dim[i];
-    }
-
-    int64_t num_samples = ctx->Attrs().Get<int>("num_samples");
-    PADDLE_ENFORCE_GT(
-        num_samples, 0,
-        platform::errors::InvalidArgument(
-            "The number of samples should be > 0, but got %d.", num_samples));
-    out_dims[x_rank - 1] = num_samples;
-
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
-  }
 };
 
 }  // namespace operators
@@ -84,7 +53,10 @@ class MultinomialOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+DELCARE_INFER_SHAPE_FUNCTOR(multinomial, MultinomialInferShapeFunctor,
+                            PT_INFER_META(phi::MultinomialInferMeta));
 REGISTER_OPERATOR(
     multinomial, ops::MultinomialOp, ops::MultinomialOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    MultinomialInferShapeFunctor);
