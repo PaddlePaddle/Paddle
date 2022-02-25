@@ -1,4 +1,5 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,15 +28,10 @@ namespace tensorrt {
 // Build default params
 constexpr int32_t max_batch_not_provided{0};
 constexpr int32_t default_workspace{16};
-// constexpr int32_t default_min_timing{1};
-// constexpr int32_t default_avg_timing{8};
 
 // Inference default params
 constexpr int32_t default_batch{1};
 constexpr int32_t batch_not_provided{0};
-// constexpr int32_t defaultStreams{1};
-// constexpr int32_t defaultDuration{3};
-// constexpr int32_t defaultIdle{0};
 
 enum class PrecisionConstraints { kNONE, kOBEY, kPREFER };
 
@@ -87,45 +83,10 @@ struct BuildOptions {
   // Type and format of each of the output tensors (default = all outputs in
   // fp32:chw)
   std::vector<IOFormat> output_formats;
-
-  // bool directIO{false};
-
-  // bool safe{false};
-  // bool consistency{false};
-  // bool restricted{false};
-
-  // bool refittable{false};
-  // SparsityFlag sparsity{SparsityFlag::kDISABLE};
-  // nvinfer1::ProfilingVerbosity profiling_verbosity{
-  // nvinfer1::ProfilingVerbosity::kLAYER_NAMES_ONLY};
-  // std::string engine;
-  // std::string calibration;
-
-  // std::unordered_map<std::string, ShapeRange> shapes_calib;
-
-  // nvinfer1::TacticSources enabledTactics{0};
-  // nvinfer1::TacticSources disabledTactics{0};
-  // TimingCacheMode timingCacheMode{TimingCacheMode::kLOCAL};
-  // std::string timingCacheFile{};
 };
 
 struct InferenceOptions {
   int32_t batch{batch_not_provided};
-  // int32_t duration{defaultDuration};
-  // int32_t sleep{defaultSleep};
-  // int32_t streams{defaultStreams};
-  // int32_t idle{defaultIdle};
-  // bool overlap{true};
-  // bool skipTransfers{false};
-  // bool useManaged{false};
-  // bool spin{false};
-  // bool threads{false};
-  // bool graph{false};
-  // bool skip{false};
-  // bool rerun{false};
-  // bool timeDeserialize{false};
-  // bool timeRefit{false};
-  // std::unordered_map<std::string, std::string> inputs;
   std::unordered_map<std::string, std::vector<int32_t>> shapes;
 };
 
