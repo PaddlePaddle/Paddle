@@ -573,16 +573,18 @@ __device__ __forceinline__ void ElementwiseRandom(OutT* out,
 * in: The register pointer of input, the size is 2;
 * compute: Compute function which was declared like OpFunc<T>().
 */
-#define shared_size 512
+#define SHARED_SIZE_LIMIT 512
 template <typename InT, typename OutT, int BlockSize, class OpFunc>
 __device__ __forceinline__ void Cumsum(OutT* out,
                                        const InT* in,
                                        OpFunc compute) {
-  __shared__ InT temp[shared_size * 2 + (shared_size * 2) / 32];
+  constexpr int kSize = SHARED_SIZE_LIMIT * 2 + (SHARED_SIZE_LIMIT * 2) / 32;
+  __shared__ InT temp[kSize];
+  int stride_size = blockDim.x;
   int tidx = threadIdx.x;
   temp[tidx + tidx / 32] = in[0];
-  temp[shared_size + tidx + (shared_size + tidx) / 32] = in[1];
-  for (int stride = 1; stride <= blockDim.x; stride *= 2) {
+  temp[stride_size + tidx + (stride_size + tidx) / 32] = in[1];
+  for (int stride = 1; stride <= stride_size; stride *= 2) {
     __syncthreads();
     int index = (tidx + 1) * 2 * stride - 1;
     if (index < (blockDim.x * 2)) {
@@ -604,43 +606,46 @@ __device__ __forceinline__ void Cumsum(OutT* out,
   __syncthreads();
   out[0] = static_cast<OutT>(temp[tidx + tidx / 32]);
   out[1] =
-      static_cast<OutT>(temp[tidx + shared_size + (tidx + shared_size) / 32]);
+      static_cast<OutT>(temp[tidx + stride_size + (tidx + stride_size) / 32]);
 }
-#undef shared_size
+#undef SHARED_SIZE_LIMIT
 
 #define SHARED_SIZE_LIMIT \
   1024  // each thread load 2 data from global memory so SHARED_SIZE_LIMIT must
         // larger than blockDim.x * 2
-        /*
-        * @brief Sort data in this block, each thread calculates 2 data, the size of out
-        * and in is 2, and BlockDim.x must be less then 512.
-        *
-        * @template paraments
-        * InT: the type of input register.
-        * OutT: the type of out register.
-        * BlockSize: Identifies the current device thread index method. Currently only
-        * GPU was supported.
-        *
-        * @param
-        * out: The register pointer of out, the size is 2.
-        * in: The register pointer of input, the size is 2.
-        * num: The num of this block
-        * monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
-        * sorted in escending.
-        */
+
+/*
+* @brief Sort data in this block, each thread calculates 2 data, the size of out
+* and in is 2, and BlockDim.x must be less then 512.
+*
+* @template paraments
+* InT: the type of input register.
+* OutT: the type of out register.
+* BlockSize: Identifies the current device thread index method. Currently only
+* GPU was supported.
+*
+* @param
+* out: The register pointer of out, the size is 2.
+* in: The register pointer of input, the size is 2.
+* num: The num of this block
+* monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
+* sorted in escending.
+*/
 template <typename InT, typename OutT, int BlockSize>
 __device__ __forceinline__ void Sort(OutT* out,
                                      const InT* in,
                                      int num,
                                      int monotonic_type) {
+  int upper_bound = blockDim.x;
   // update upper_bound
-  int upper_bound = std::min(details::GetLastPow2(num), blockDim.x);
+  upper_bound = std::min(details::GetLastPow2(num), upper_bound);
   // shareMem for value and index  num must smaller than SHARED_SIZE_LIMIT / 2
   __shared__ InT value[SHARED_SIZE_LIMIT];
+  int stride_size = blockDim.x;
   // shareMem's size must larger than blockDim * 2
   // Copy value from in
   value[threadIdx.x] = in[0];
-  value[threadIdx.x + (SHARED_SIZE_LIMIT / 2)] = in[1];
+  value[threadIdx.x + stride_size] = in[1];
   // make bitonicSort
   for (int size = 2; size < upper_bound; size <<= 1) {
     int bitonic_type = (threadIdx.x & (size / 2)) != 0;
@@ -651,7 +656,7 @@ __device__ __forceinline__ void Sort(OutT* out,
     }
   }
   // last sort
-  for (int stride = SHARED_SIZE_LIMIT / 2; stride > 0; stride >>= 1) {
+  for (int stride = stride_size; stride > 0; stride >>= 1) {
     __syncthreads();
     int pos = 2 * threadIdx.x - (threadIdx.x & (stride - 1));
     // last sort when monotonic_type = 1 then increase
@@ -659,7 +664,7 @@ __device__ __forceinline__ void Sort(OutT* out,
   }
   __syncthreads();
   out[0] = static_cast<OutT>(value[threadIdx.x]);
-  out[1] = static_cast<OutT>(value[threadIdx.x + (SHARED_SIZE_LIMIT / 2)]);
+  out[1] = static_cast<OutT>(value[threadIdx.x + stride_size]);
 }
 
 /*
@@ -689,18 +694,20 @@ __device__ __forceinline__ void Sort(OutT* out,
                                      IndexType* in_index,
                                      int num,
                                      int monotonic_type) {
+  int upper_bound = blockDim.x;
   // update upper_bound
-  int upper_bound = std::min(details::GetLastPow2(num), blockDim.x);
+  upper_bound = std::min(details::GetLastPow2(num), upper_bound);
   // shareMem for value and index  num must smaller than SHARED_SIZE_LIMIT / 2
   __shared__ InT value[SHARED_SIZE_LIMIT];
   // shareMem's size must larger than blockDim * 2
   __shared__ IndexType index[SHARED_SIZE_LIMIT];
   // Copy value and index from in and in_index
+  int stride_size = blockDim.x;
   value[threadIdx.x] = in[0];
-  value[threadIdx.x + (SHARED_SIZE_LIMIT / 2)] = in[1];
+  value[threadIdx.x + stride_size] = in[1];
   // index
   index[threadIdx.x] = in_index[0];
-  index[threadIdx.x + (SHARED_SIZE_LIMIT / 2)] = in_index[1];
+  index[threadIdx.x + stride_size] = in_index[1];
   // make bitonicSort
   for (int size = 2; size < upper_bound; size <<= 1) {
     int bitonic_type = (threadIdx.x & (size / 2)) != 0;
@@ -715,7 +722,7 @@ __device__ __forceinline__ void Sort(OutT* out,
     }
   }
 
-  for (int stride = SHARED_SIZE_LIMIT / 2; stride > 0; stride >>= 1) {
+  for (int stride = stride_size; stride > 0; stride >>= 1) {
     __syncthreads();
     int pos = 2 * threadIdx.x - (threadIdx.x & (stride - 1));
     // last sort when monotonic_type = 1 then increase
@@ -728,9 +735,9 @@ __device__ __forceinline__ void Sort(OutT* out,
 
   __syncthreads();
   out[0] = static_cast<OutT>(value[threadIdx.x]);
-  out[1] = static_cast<OutT>(value[threadIdx.x + (SHARED_SIZE_LIMIT / 2)]);
+  out[1] = static_cast<OutT>(value[threadIdx.x + stride_size]);
   out_index[0] = index[threadIdx.x];
-  out_index[1] = index[threadIdx.x + (SHARED_SIZE_LIMIT / 2)];
+  out_index[1] = index[threadIdx.x + stride_size];
 }
 
 }  // namespace kps
