@@ -27,7 +27,7 @@
 namespace mlir {
 namespace pd {
 
-#include "paddle/infrt/dialect/rewrite.hpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/rewrite.cpp.inc"  // NOLINT
 
 PaddleDialect::PaddleDialect(MLIRContext *context)
     : Dialect("pd", context, TypeID::get<PaddleDialect>()) {

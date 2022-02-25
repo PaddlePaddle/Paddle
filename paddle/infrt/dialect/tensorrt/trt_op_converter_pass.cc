@@ -20,7 +20,7 @@
 namespace infrt {
 namespace trt {
 
-#include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.hpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.cpp.inc"  // NOLINT
 
 using namespace mlir;
 
