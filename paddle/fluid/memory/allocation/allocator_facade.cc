@@ -493,7 +493,8 @@ class AllocatorFacadePrivate {
             "support allocating managed memory.\n"
             "If you don't actually need to use managed memory, please disable "
             "it with command `export FLAGS_use_cuda_managed_memory=false`.\n"
-            "Or you must use the gpu device that supports managed memory."));
+            "Or you must use the gpu device that supports managed memory.",
+            p.device));
       }
       return std::make_shared<CUDAManagedAllocator>(p);
     }
