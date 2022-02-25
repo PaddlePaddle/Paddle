@@ -71,12 +71,6 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   return node_in_degree_map;
 }
 
-void RunBackwardHooks(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& grad_tensors,
-    egr::GradNodeBase* grad_node) {
-  grad_node->ApplyGradientHooks(grad_tensors);
-}
-
 void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
                  const std::vector<paddle::experimental::Tensor>& grad_tensors,
                  bool retain_graph) {
