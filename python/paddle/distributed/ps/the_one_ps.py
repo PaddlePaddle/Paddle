@@ -15,7 +15,7 @@
 import warnings
 
 import os
-from paddle.distributed.ps import ps_pb2
+from paddle.distributed.fleet.proto import ps_pb2
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle.fluid import core

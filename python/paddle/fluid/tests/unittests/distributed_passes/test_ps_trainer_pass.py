@@ -154,9 +154,9 @@ class TestPsTrainerPass(PsPassTestBase):
         file1 = '/ps_log/gpubox_run_minimize_debug:_0_worker_main.prototxt'
         file2 = '/ps_log/gpubox_run_minimize_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
-            logger.info('test_ps_optimizer_minimize_cpu_gpu passed!')
+            logger.info('test_ps_optimizer_minimize_gpu passed!')
         else:
-            logger.error('test_ps_optimizer_minimize_cpu_gpu failed!')
+            logger.error('test_ps_optimizer_minimize_gpu failed!')
 
     def test_append_send_ops_pass(self):
         self.init()
@@ -179,9 +179,9 @@ class TestPsTrainerPass(PsPassTestBase):
         file1 = '/ps_log/async_append_send_ops_pass_debug:_0_worker_main.prototxt'
         file2 = '/ps_log/async_append_send_ops_pass_debug:_1_worker_main.prototxt'
         if self.check(file1, file2):
-            logger('test_append_send_ops_pass passed!')
+            logger.info('test_append_send_ops_pass passed!')
         else:
-            logger('test_append_send_ops_pass failed!')
+            logger.info('test_append_send_ops_pass failed!')
 
     def test_distributed_ops_pass(self):
         pass

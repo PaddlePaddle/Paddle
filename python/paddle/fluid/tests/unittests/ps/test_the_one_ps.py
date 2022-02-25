@@ -26,7 +26,7 @@ import paddle
 from paddle.fluid.tests.unittests.distributed_passes.ps_pass_test_base import *
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
 from ps_dnn_trainer import DnnTrainer
-from paddle.distributed.ps import ps_pb2
+from paddle.distributed.fleet.proto import ps_pb2
 from google.protobuf import text_format
 
 
