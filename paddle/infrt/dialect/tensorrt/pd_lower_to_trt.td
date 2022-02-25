@@ -7,15 +7,12 @@ include "paddle/infrt/dialect/pd_ops.td"
 include "paddle/infrt/dialect/tensorrt/trt_ops.td"
 
 def PD2TRT_Matmul_Lower : Pat<
-        (PD_MatmulOp $X, $Y, $transpose_X, $transpose_Y,
-            AttrConstraint<CPred<"$_self.cast<::mlir::FloatAttr>().getValue().convertToFloat() == 1.0">,"alpha == 1.0">,
-            AttrConstraint<CPred<"$_self.cast<::mlir::IntegerAttr>().getSInt() == 1">,"head_number == 1">),
+        (PD_MatmulOp $X, $Y, $transpose_X, $transpose_Y, ConstantAttr<F32Attr, "1.0">, ConstantAttr<SI32Attr, "1">),
         (TRT_MatrixMultiplyOp $X, $transpose_X, $Y, $transpose_Y)>;
 
 //TO DO(shangzhizhou):replace '"INFRT_createI32Attr<"0">' to enum nvinfer1::ElementWiseOperation::kSUM
 def PD2TRT_ElementwiseAdd_Lower : Pat<
-        (PD_Elementwise_addOp $X, $Y,
-                   AttrConstraint<CPred<"$_self.cast<::mlir::IntegerAttr>().getSInt() == -1">,"axis == -1">),
+        (PD_Elementwise_addOp $X, $Y, ConstantAttr<SI32Attr, "-1">),
         (TRT_ElementWiseOp $X, $Y, (INFRT_createSI32Attr<"0">)/*kSUM*/)>;
 
 //TO DO(shangzhizhou):replace '"INFRT_createI32Attr<"0">' to enum  nvinfer1::ActivationType::kRELU
