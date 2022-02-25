@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature CholeskyGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("cholesky_grad",
-                         {"Out", GradVarName("Out")},
-                         {"upper"},
-                         {GradVarName("X")});
-}
+template <typename T, typename Context>
+void DiagKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                int offset,
+                float padding_value,
+                DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(cholesky_grad, phi::CholeskyGradOpArgumentMapping);
