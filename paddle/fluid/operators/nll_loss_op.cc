@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/nll_loss_op.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math.h"
 
 namespace paddle {
 namespace operators {
@@ -264,10 +266,3 @@ REGISTER_OPERATOR(nll_loss, ops::NLLLossOp, ops::NLLLossOpMaker,
                   ops::NLLLossGradMaker<paddle::framework::OpDesc>,
                   ops::NLLLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nll_loss_grad, ops::NLLLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    nll_loss, ops::NLLLossOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::NLLLossOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    nll_loss_grad,
-    ops::NLLLossGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::NLLLossGradOpKernel<paddle::platform::CPUDeviceContext, double>);
