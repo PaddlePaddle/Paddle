@@ -15,6 +15,7 @@
 #include "paddle/infrt/host_context/kernel_frame.h"
 
 #include <memory>
+#include <sstream>
 
 namespace infrt {
 namespace host_context {
@@ -24,6 +25,37 @@ std::ostream& operator<<(std::ostream& os, const KernelFrame& frame) {
      << frame.GetNumResults() << " res, " << frame.GetNumResults() << " attrs";
   return os;
 }
+
+#ifndef NDEBUG
+std::string KernelFrame::DumpArgTypes() const {
+  std::stringstream ss;
+  for (auto* value : GetValues(0, GetNumElements())) {
+    if (value->is_type<bool>()) {
+      ss << "bool (" << &value->get<bool>() << "), ";
+    } else if (value->is_type<tensor::DenseHostTensor>()) {
+      ss << "DenseHostTensor(" << &value->get<tensor::DenseHostTensor>()
+         << "), ";
+    } else if (value->is_type<float>()) {
+      ss << "float(" << &value->get<float>() << "), ";
+    } else if (value->is_type<int>()) {
+      ss << "int(" << &value->get<int>() << "), ";
+    } else if (value->is_type<phi::DenseTensor>()) {
+      ss << "phi::DenseTensor(" << &value->get<phi::DenseTensor>() << "), ";
+    } else if (value->is_type<phi::MetaTensor>()) {
+      ss << "phi::MetaTensor(" << &value->get<phi::MetaTensor>() << "), ";
+    } else if (value->is_type<::phi::CPUContext>()) {
+      ss << "phi::CPUContext(" << &value->get<::phi::CPUContext>() << "), ";
+    } else if (value->is_type<host_context::None>()) {
+      ss << "none(" << &value->get<host_context::None>() << "), ";
+    } else if (value->is_type<backends::CpuPhiContext>()) {
+      ss << "CpuPhiContext(" << &value->get<backends::CpuPhiContext>() << "), ";
+    } else {
+      ss << "typeid: " << value->index() << ", ";
+    }
+  }
+  return ss.str();
+}
+#endif
 
 }  // namespace host_context
 }  // namespace infrt
