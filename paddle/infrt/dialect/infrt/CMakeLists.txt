@@ -7,7 +7,6 @@ gather_srcs(infrt_src SRCS
 
 
 add_mlir_dialect(infrt_ops infrt)
-add_mlir_dialect(infrt_ops_base infrt)
 
 set(LLVM_TARGET_DEFINITIONS infrt_ops.td)
 mlir_tablegen(infrt_opsAttributes.h.inc -gen-attrdef-decls -dialect=infrt)

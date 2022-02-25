@@ -30,8 +30,6 @@ def LoDTensor : Infrt_Type<"LoDTensor"> {
   );
 }
 
-
-
 def DenseTensor : Infrt_Type<"DenseTensor"> {
   let summary = "infrt dense tensor";
   let description = [{dense_tensor<, 3>}];
