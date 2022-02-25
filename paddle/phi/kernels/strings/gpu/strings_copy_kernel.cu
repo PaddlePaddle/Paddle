@@ -53,8 +53,8 @@ void Copy(const Context& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
 
-  dst->ResizeAndAllocate(src.dims());
-  auto* dst_ptr = dst->mutable_data(dst_place);
+  dst->Resize(src.dims());
+  auto* dst_ptr = dev_ctx.template Alloc<dtype::pstring>(dst);
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "

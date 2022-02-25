@@ -81,6 +81,8 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
       return paddle::framework::proto::VarType::BF16;
     case DataType::BOOL:
       return paddle::framework::proto::VarType::BOOL;
+    case DataType::STRING:
+      return paddle::framework::proto::VarType::RAW;
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported data type `%s` when casting it into "

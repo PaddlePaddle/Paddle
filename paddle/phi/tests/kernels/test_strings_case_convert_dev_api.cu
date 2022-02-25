@@ -62,7 +62,9 @@ TEST(DEV_API, strings_cast_convert) {
 
   std::string short_str = "A Short Pstring.";
   std::string long_str = "A Large Pstring Whose Length Is Longer Than 22.";
-  pstring* cpu_strings_x_data = cpu_strings_x.mutable_data(cpu);
+
+  pstring* cpu_strings_x_data =
+      cpu_ctx->template Alloc<pstring>(&cpu_strings_x);
   cpu_strings_x_data[0] = short_str;
   cpu_strings_x_data[1] = long_str;
 
@@ -127,7 +129,9 @@ TEST(DEV_API, strings_cast_convert_utf8) {
   const char* cpu_results[] = {cpu_strings_lower_out.data()[0].data(),
                                cpu_strings_upper_out.data()[0].data()};
   std::string utf8_str = "óÓsscHloëË";
-  pstring* cpu_strings_x_data = cpu_strings_x.mutable_data(cpu);
+  pstring* cpu_strings_x_data =
+      cpu_ctx->template Alloc<pstring>(&cpu_strings_x);
+
   cpu_strings_x_data[0] = utf8_str;
   phi::strings::Copy(*dev_ctx, cpu_strings_x, false, &gpu_strings_x);
 

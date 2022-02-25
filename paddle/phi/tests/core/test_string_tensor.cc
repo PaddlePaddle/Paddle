@@ -13,6 +13,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/tests/core/allocator.h"
@@ -39,6 +40,11 @@ TEST(string_tensor, ctor) {
     r = r && t.IsSharedWith(t);
     return r;
   };
+  auto cpu = CPUPlace();
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  CPUContext* cpu_ctx = reinterpret_cast<CPUContext*>(pool.Get(cpu));
 
   StringTensor tensor_0(alloc, meta);
   check_string_tensor(tensor_0, meta);
@@ -46,11 +52,8 @@ TEST(string_tensor, ctor) {
   pstring pshort_str = pstring("A short pstring.");
   pstring plong_str =
       pstring("A large pstring whose length is longer than 22.");
-  pstring* data = tensor_0.mutable_data(tensor_0.place());
 
-  // need to init all pstrings, unless it will occur some unexpected segment
-  // faults
-  // memset(reinterpret_cast<char*>(data), 0, tensor_0.capacity());
+  pstring* data = cpu_ctx->template Alloc<pstring>(&tensor_0);
   data[0] = plong_str;
   data[1] = pshort_str;
   CHECK_EQ(tensor_0.data()[0], plong_str);

@@ -70,8 +70,8 @@ int GetAllStringsSize(const Context& dev_ctx,
   auto nums_meta =
       phi::DenseTensorMeta(DataType::INT32, {1}, phi::DataLayout::NCHW);
   DenseTensor nums_tensor = phi::Empty(dev_ctx, std::move(nums_meta));
-  const auto place = dev_ctx.GetPlace();
-  int* nums_ptr = nums_tensor.mutable_data<int>(place);
+
+  int* nums_ptr = dev_ctx.template Alloc<int>(&nums_tensor);
   phi::backends::gpu::GpuMemsetAsync(
       nums_ptr, 0, sizeof(int), dev_ctx.stream());
 
@@ -102,9 +102,11 @@ void Serialize(const Context& dev_ctx,
   // 1.get the number of bytes of all strings in string tensor
   auto strings_size = GetAllStringsSize(dev_ctx, src_str, numel);
   strings_size += sizeof(int32_t) * (numel + 1);
-  dst->ResizeAndAllocate({strings_size});
-  auto* strings_data = dst->mutable_data<uint8_t>(src.place());
-  auto* strings_offset = reinterpret_cast<int32_t*>(strings_data);
+
+  dst->Resize({strings_size});
+  uint8_t* strings_data = dev_ctx.template Alloc<uint8_t>(dst);
+  auto* strings_offset = reinterpret_cast<int*>(strings_data);
+
   int32_t start_offset = sizeof(int32_t) * (numel + 1);
   // 2. serialize strings data to dense tensor
   dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);

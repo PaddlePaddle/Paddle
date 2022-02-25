@@ -50,7 +50,9 @@ void Deserialize(const Context& dev_ctx,
       &numel, strings_data, sizeof(numel), cudaMemcpyDeviceToHost);
 #endif
   numel = numel / sizeof(int) - 1;
-  auto* dst_str = dst->mutable_data(src.place(), numel);
+  dst->Resize({numel});
+  dtype::pstring* dst_str = dev_ctx.template Alloc<dtype::pstring>(dst);
+
   dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
   dim3 grid_size =
       dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);

@@ -104,28 +104,12 @@ class StringTensor : public TensorBase,
 
   const std::shared_ptr<phi::Allocation>& Holder() const { return holder_; }
 
-  /// \brief Change the shape information in the metadata. If the new size is
-  /// larger than the original value, the storage area will be reallocated.
-  /// \param dims The new dims of the dense tensor.
-  /// \param lod The new lod of the dense tensor.
-  void ResizeAndAllocate(const DDim& dims);
   StringTensor& Resize(const DDim& dims);
 
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.
   /// \return The actual storage size occupied by tensor.
   size_t capacity() const { return holder_->size(); }
-
-  /// \brief Get the mutable data pointer value of pstring type.
-  /// Memory allocation may occur when calling this interface:
-  /// 1. When the storage size is not enough to meet the current shape of the
-  /// data.
-  /// 2. When more request_bytes parameters are used to reserve the data
-  /// storage.
-  /// param request_bytes The bytes to reserve the data storage.
-  /// \return The mutable data pointer value of type T.
-  dtype::pstring* mutable_data(const paddle::platform::Place& place,
-                               size_t request_bytes = 0);
 
   /// \brief Get the const data pointer value of pstring type.
   /// \return The const data pointer value of pstring type.

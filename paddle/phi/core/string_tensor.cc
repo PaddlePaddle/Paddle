@@ -54,34 +54,6 @@ const Place& StringTensor::place() const {
   return holder_->place();
 }
 
-dtype::pstring* StringTensor::mutable_data(const paddle::platform::Place& place,
-                                           size_t request_bytes /* = 0 */) {
-  PADDLE_ENFORCE_GE(
-      numel(),
-      0,
-      paddle::platform::errors::PreconditionNotMet(
-          "The Tensor's element number must be equal or greater than zero. "
-          "The Tensor's shape is [",
-          dims(),
-          "] now"));
-  size_t size = numel() * SizeOf(dtype());
-  if (request_bytes && (request_bytes > size)) {
-    size = request_bytes;
-  }
-
-  /* some versions of boost::variant don't have operator!= */
-  if (holder_ == nullptr || !(holder_->place() == place) ||
-      holder_->size() < size + meta_.offset) {
-    holder_.reset();
-    holder_ = paddle::memory::AllocShared(place, size);
-    // Initialize the allocated bytes
-    init_holder();
-    meta_.offset = 0;
-  }
-  return reinterpret_cast<dtype::pstring*>(
-      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
-}
-
 const dtype::pstring* StringTensor::data() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
@@ -109,13 +81,6 @@ void StringTensor::set_meta(const StringTensorMeta& meta) {
   meta_.offset = meta.offset;
 }
 
-void StringTensor::ResizeAndAllocate(const DDim& dims) {
-  meta_.dims = dims;
-  if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
-    mutable_data(place());
-  }
-}
-
 StringTensor& StringTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
   return *this;
@@ -135,11 +100,41 @@ void StringTensor::init_holder() {
 #endif
   }
 }
+
 void* StringTensor::AllocateFrom(Allocator* allocator,
                                  DataType dtype,
                                  size_t requested_size) {
-  // TODO(zhoushunjie): implement it later.
-  return nullptr;
+  PADDLE_ENFORCE_NOT_NULL(
+      allocator,
+      errors::InvalidArgument(
+          "Required allocator shall not be nullptr, but received nullptr."));
+  PADDLE_ENFORCE(
+      valid(),
+      errors::PreconditionNotMet(
+          "The meta data must be valid when call the mutable data function."));
+  size_t bytes = numel() * SizeOf(this->dtype());
+  if (requested_size) {
+    PADDLE_ENFORCE_GE(requested_size,
+                      bytes,
+                      errors::InvalidArgument(
+                          "The reserved size %d should be enough to meet the "
+                          "volume required by metadata %d.",
+                          requested_size,
+                          bytes));
+    bytes = requested_size;
+  }
+
+  if (!holder_ || holder_->size() < bytes + meta_.offset) {
+    meta_.offset = 0;
+    VLOG(10) << "Allocate data with bytes: " << bytes;
+    holder_.reset();
+    holder_ = allocator->Allocate(bytes);
+    // Initialize the allocated bytes
+    init_holder();
+    meta_.offset = 0;
+  }
+  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
+                                 meta_.offset);
 }
 
 }  // namespace phi

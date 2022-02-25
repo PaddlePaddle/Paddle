@@ -25,7 +25,8 @@ void Deserialize(const Context& dev_ctx,
   auto* strings_data = reinterpret_cast<const char*>(src.data<uint8_t>());
   auto* strings_offset = reinterpret_cast<const int*>(strings_data);
   int numel = strings_offset[0] / sizeof(int) - 1;
-  auto* dst_str = dst->mutable_data(src.place(), numel);
+  dst->Resize({numel});
+  dtype::pstring* dst_str = dev_ctx.template Alloc<dtype::pstring>(dst);
   for (int i = 0; i < numel; ++i) {
     // -1 not include '\0'
     auto len = strings_offset[i + 1] - strings_offset[i] - 1;

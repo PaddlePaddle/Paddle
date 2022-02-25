@@ -49,7 +49,7 @@ TEST(DEV_API, strings_copy) {
                          "defg",
                          "hijklmn",
                          "opqrst"};
-  pstring* string_src_data = string_src.mutable_data(dev_ctx->GetPlace());
+  pstring* string_src_data = dev_ctx->template Alloc<pstring>(&string_src);
   for (int i = 0; i < string_src.numel(); ++i) {
     string_src_data[i] = input[i];
   }

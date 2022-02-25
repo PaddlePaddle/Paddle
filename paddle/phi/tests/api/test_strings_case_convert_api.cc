@@ -41,7 +41,11 @@ TEST(API, case_convert) {
   StringTensorMeta meta(dims);
   auto cpu_strings_x = std::make_shared<phi::StringTensor>(
       alloc.get(), phi::StringTensorMeta(meta));
-  pstring* cpu_strings_x_data = cpu_strings_x->mutable_data(cpu);
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
+
+  pstring* cpu_strings_x_data =
+      dev_ctx->template Alloc<pstring>(cpu_strings_x.get());
   std::string strs[] = {"A Short Pstring.",
                         "A Large Pstring Whose Length Is Longer Than 22."};
   for (int i = 0; i < 2; ++i) {
@@ -91,7 +95,11 @@ TEST(API, case_convert_utf8) {
   StringTensorMeta meta(dims);
   auto cpu_strings_x = std::make_shared<phi::StringTensor>(
       alloc.get(), phi::StringTensorMeta(meta));
-  pstring* cpu_strings_x_data = cpu_strings_x->mutable_data(cpu);
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
+
+  pstring* cpu_strings_x_data =
+      dev_ctx->template Alloc<pstring>(cpu_strings_x.get());
   std::string strs[] = {"óÓsscHloëË", "óÓsscHloëËóÓsscHloëËóÓsscHloëË"};
   for (int i = 0; i < 2; ++i) {
     cpu_strings_x_data[i] = strs[i];

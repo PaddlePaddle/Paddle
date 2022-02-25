@@ -28,8 +28,8 @@ void Serialize(const Context& dev_ctx,
   for (int64_t i = 0; i < numel; ++i) {
     num += src_str[i].length() + 1;
   }
-  dst->ResizeAndAllocate({num});
-  auto* strings_data = dst->mutable_data<uint8_t>(src.place());
+  dst->Resize({num});
+  uint8_t* strings_data = dev_ctx.template Alloc<uint8_t>(dst);
   auto* strings_offset = reinterpret_cast<int*>(strings_data);
   int start_offset = sizeof(int) * (numel + 1);
   for (int64_t i = 0; i <= numel; ++i) {

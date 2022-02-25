@@ -37,8 +37,8 @@ TEST(DEV_API, strings_cast_convert) {
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace());
   const auto alloc = string_allocator.get();
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+
   auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
 
   StringTensor dense_x(alloc, meta);
@@ -46,7 +46,7 @@ TEST(DEV_API, strings_cast_convert) {
   std::string short_str = "A Short Pstring.";
   std::string long_str = "A Large Pstring Whose Length Is Longer Than 22.";
 
-  pstring* dense_x_data = dense_x.mutable_data(dev_ctx->GetPlace());
+  pstring* dense_x_data = dev_ctx->template Alloc<pstring>(&dense_x);
   dense_x_data[0] = short_str;
   dense_x_data[1] = long_str;
 
@@ -100,7 +100,7 @@ TEST(DEV_API, strings_cast_convert_utf8) {
 
   std::string utf8_str = "óÓsscHloëËóÓsscHloëËóÓsscHloëË";
 
-  pstring* dense_x_data = dense_x.mutable_data(dev_ctx->GetPlace());
+  pstring* dense_x_data = dev_ctx->template Alloc<pstring>(&dense_x);
   dense_x_data[0] = utf8_str;
 
   // 2. get expected results

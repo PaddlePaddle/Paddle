@@ -24,12 +24,13 @@ template <typename Context>
 void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
                  StringTensor* out) {
-  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
+  out->Resize(phi::make_ddim(shape.GetData()));
+  dev_ctx.template Alloc<dtype::pstring>(out);
 }
 
 template <typename Context>
 void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out) {
-  out->mutable_data(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<dtype::pstring>(out);
 }
 
 }  // namespace strings
