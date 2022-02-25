@@ -27,8 +27,6 @@ namespace phi {
 namespace {
 template <typename Context>
 void LimitGridDim(const Context& ctx, dim3* grid_dim) {
-  // auto max_grid_dim = ctx.template device_context<CUDADeviceContext>()
-  //                        .GetCUDAMaxGridDimSize();
   auto max_grid_dim =
       reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
   grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
@@ -64,9 +62,6 @@ void IndexSampleKernel(const Context& ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        DenseTensor* out) {
-  // T* output = ctx.template Alloc<T>(out);
-  // const auto& index_type =
-  //    paddle::framework::TransToProtoVarType(index.dtype());
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
@@ -79,10 +74,8 @@ void IndexSampleKernel(const Context& ctx,
           paddle::framework::DataTypeToString(
               paddle::framework::TransToProtoVarType(index_type)),
           paddle::framework::DataTypeToString(
-              // paddle::framework::proto::VarType::INT32),
               paddle::framework::TransToProtoVarType(DataType::INT32)),
           paddle::framework::DataTypeToString(
-              // paddle::framework::proto::VarType::INT64)));
               paddle::framework::TransToProtoVarType((DataType::INT64)))));
   const T* in_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(out);

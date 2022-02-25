@@ -80,7 +80,6 @@ void IndexSampleInner(const Context &context,
   }
 
   auto ddim = phi::make_ddim({batch_size, index_length});
-  // output->mutable_data<T>(context.GetPlace());
   context.template Alloc<T>(output);
   paddle::framework::TensorFromVector(res, context, output);
   output->Resize(ddim);
@@ -92,12 +91,6 @@ void IndexSampleKernel(const Context &ctx,
                        const DenseTensor &index,
                        DenseTensor *out) {
   ctx.template Alloc<T>(out);
-  // const auto &index_type =
-  //     paddle::framework::TransToProtoVarType(index.dtype());
-  // bool index_type_match =
-  //     index_type == paddle::framework::proto::VarType::INT32 ||
-  //     index_type == paddle::framework::proto::VarType::INT64;
-
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
@@ -110,10 +103,8 @@ void IndexSampleKernel(const Context &ctx,
           paddle::framework::DataTypeToString(
               paddle::framework::TransToProtoVarType(index_type)),
           paddle::framework::DataTypeToString(
-              // paddle::framework::proto::VarType::INT32),
               paddle::framework::TransToProtoVarType(DataType::INT32)),
           paddle::framework::DataTypeToString(
-              // paddle::framework::proto::VarType::INT64)));
               paddle::framework::TransToProtoVarType((DataType::INT64)))));
   if (index_type == DataType::INT32) {
     IndexSampleInner<T, Context, int>(ctx, x, index, out);

@@ -73,7 +73,6 @@ void IndexSampleGradKernel(const Context& ctx,
                            const DenseTensor& index,
                            DenseTensor* x_grad) {
   const T* output_grad_data = out_grad.data<T>();
-  // T* input_grad_data = x_grad->mutable_data<T>(ctx.GetPlace());
   T* input_grad_data = ctx.template Alloc<T>(x_grad);
   auto index_type = index.dtype();
   bool index_type_match =
@@ -87,10 +86,8 @@ void IndexSampleGradKernel(const Context& ctx,
           paddle::framework::DataTypeToString(
               paddle::framework::TransToProtoVarType(index_type)),
           paddle::framework::DataTypeToString(
-              // paddle::framework::proto::VarType::INT32),
               paddle::framework::TransToProtoVarType(DataType::INT32)),
           paddle::framework::DataTypeToString(
-              // paddle::framework::proto::VarType::INT64)));
               paddle::framework::TransToProtoVarType((DataType::INT64)))));
 
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
