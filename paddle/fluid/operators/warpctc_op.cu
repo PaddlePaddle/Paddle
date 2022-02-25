@@ -19,9 +19,6 @@ namespace ops = paddle::operators;
 // Eigen can be used on GPU device, but must be in *.cu file not *.cu.cc file.
 // *.cu.cc also using GCC compiler. *.cu using NVCC compiler
 REGISTER_OP_CUDA_KERNEL(
-    warpctc, ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::WarpCTCKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
     warpctc_grad,
     ops::WarpCTCGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::WarpCTCGradKernel<paddle::platform::CUDADeviceContext, double>);
