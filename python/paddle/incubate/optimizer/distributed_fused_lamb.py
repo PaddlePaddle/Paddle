@@ -178,11 +178,13 @@ class DistributedFusedLamb(Optimizer):
         param_info = self._create_persistable_var('param_info', dtype='int32')
         param_info.is_distributed = True
 
-        fused_offsets = self._create_persistable_var('fused_offsets')
+        fused_offsets = self._create_persistable_var(
+            'fused_offsets', dtype='int32')
 
         fp32_partial_fused_offsets = self._create_persistable_var(
             'fp32_partial_fused_offsets', dtype='int32')
         fp32_partial_fused_offsets.is_distributed = True
+
         fp16_partial_fused_offsets = self._create_persistable_var(
             'fp16_partial_fused_offsets', dtype='int32')
         fp16_partial_fused_offsets.is_distributed = True
