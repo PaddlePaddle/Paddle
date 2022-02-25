@@ -51,17 +51,16 @@ class TestBase(IPUOpTest):
         }
 
     def _test_base(self, exec_mode):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                with paddle.static.amp.fp16_guard():
-                    x = paddle.fluid.layers.fill_constant(**self.attrs)
-                    out = paddle.fluid.layers.elementwise_add(x, x)
+                x = paddle.fluid.layers.fill_constant(**self.attrs)
+                out = paddle.fluid.layers.elementwise_add(x, x)
                 fetch_list = [out.name]
 
             if exec_mode == ExecutionMode.CPU_FP32:

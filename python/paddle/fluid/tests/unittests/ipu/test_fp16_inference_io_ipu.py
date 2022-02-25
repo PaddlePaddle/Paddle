@@ -56,7 +56,7 @@ class TestBase(IPUOpTest):
         self.attrs['model_name'] = 'test'
 
     def _test_save(self):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
@@ -66,7 +66,7 @@ class TestBase(IPUOpTest):
             [self.attrs['path'], self.attrs['model_name']])
 
         with paddle.fluid.unique_name.guard(generator):
-            with paddle.fluid.scope_guard(scope):
+            with paddle.static.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
                     x = paddle.static.data(
                         name=self.feed_list[0],

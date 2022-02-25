@@ -53,37 +53,33 @@ class TestBase(IPUOpTest):
         self.attrs = {"epsilon": 1e-05}
 
     def _test_base(self, exec_mode):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
 
-                with paddle.static.amp.fp16_guard():
-                    if self.is_training:
-                        ch = self.feed_shape[0][1]
-                        conv1 = paddle.static.nn.conv2d(
-                            x, num_filters=ch, filter_size=3, bias_attr=False)
-                        scale = paddle.ParamAttr(trainable=True)
-                        bias = paddle.ParamAttr(trainable=True)
-                        out = paddle.fluid.layers.nn.instance_norm(
-                            conv1,
-                            param_attr=scale,
-                            bias_attr=bias,
-                            **self.attrs)
-                        loss = paddle.mean(out)
-                        adam = paddle.optimizer.Adam(learning_rate=1e-2)
-                        adam.minimize(loss)
-                    else:
-                        out = paddle.fluid.layers.nn.instance_norm(
-                            x, param_attr=True, bias_attr=True, **self.attrs)
+                if self.is_training:
+                    ch = self.feed_shape[0][1]
+                    conv1 = paddle.static.nn.conv2d(
+                        x, num_filters=ch, filter_size=3, bias_attr=False)
+                    scale = paddle.ParamAttr(trainable=True)
+                    bias = paddle.ParamAttr(trainable=True)
+                    out = paddle.fluid.layers.nn.instance_norm(
+                        conv1, param_attr=scale, bias_attr=bias, **self.attrs)
+                    loss = paddle.mean(out)
+                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
+                    adam.minimize(loss)
+                else:
+                    out = paddle.fluid.layers.nn.instance_norm(
+                        x, param_attr=True, bias_attr=True, **self.attrs)
 
                 if self.is_training:
                     fetch_list = [loss.name]
