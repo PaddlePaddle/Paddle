@@ -104,4 +104,9 @@ void UnfoldInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void DiagInferMeta(const MetaTensor& x,
+                   int offset,
+                   float padding_value,
+                   MetaTensor* out);
+
 }  // namespace phi

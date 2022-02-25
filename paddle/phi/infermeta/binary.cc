@@ -310,6 +310,7 @@ void BCELossInferMeta(const MetaTensor& input,
   }
 
   out->set_dims(input_dims);
+  out->set_dtype(input.dtype());
   out->share_lod(input);
 }
 
