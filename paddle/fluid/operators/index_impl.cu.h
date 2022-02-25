@@ -45,7 +45,7 @@ __global__ void VectorizedIndexKernel(T *out, int numel, int main_offset,
                                             BLOCK_NUM_X * VecSize);
   }
   int num = numel - data_offset;
-  if (numel > 0) {
+  if (num > 0) {
     kps::InitWithDataIndex<int, VecSize, 1, 1>(&args[0], data_offset);
     kps::ElementwiseUnary<int, T, VecSize, 1, 1, Functor>(&result[0], &args[0],
                                                           func);

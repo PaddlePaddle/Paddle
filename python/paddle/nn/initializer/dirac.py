@@ -15,13 +15,15 @@
 from ...fluid.initializer import Initializer
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.core import VarDesc
-from ...fluid import unique_name, framework
+from ...fluid import framework
+from paddle import in_dynamic_mode
+from paddle.utils import unique_name
 
 __all__ = []
 
 
 class Dirac(Initializer):
-    """Initialize the 3D/4D/5D Tensor with Dirac delta function.
+    r"""Initialize the 3D/4D/5D Tensor with Dirac delta function.
     
     It can reserve the feature of convolution layer input, which means that
     as many channels are reserved as possible.
@@ -221,6 +223,6 @@ class Dirac(Initializer):
                        "out_dtype": var.dtype},
                 stop_gradient=True)
 
-        if not framework.in_dygraph_mode():
+        if not in_dynamic_mode():
             var.op = op
         return op

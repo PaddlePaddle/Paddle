@@ -30,7 +30,7 @@ from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict, _pickle_loads
 from paddle.fluid.io import _legacy_save as _legacy_static_save
 from paddle.fluid.io import _open_file_buffer, _is_file_path, _is_memory_buffer
 
-from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, _current_expected_place, Program
+from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, in_dygraph_mode, ParamBase, EagerParamBase, _current_expected_place, Program
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
@@ -42,7 +42,7 @@ def _build_saved_state_dict(state_dict):
     save_dict = {}
     name_table = {}
     for key, value in state_dict.items():
-        if isinstance(value, (Variable, core.VarBase)):
+        if isinstance(value, (Variable, core.VarBase, core.eager.Tensor)):
             if value.type == core.VarDesc.VarType.VOCAB:
                 save_dict[key] = value.value().get_map_tensor()
             else:
@@ -260,6 +260,8 @@ def _pickle_save(obj, f, protocol):
         # This is not a good method, because the pickle module has been modified.
         pickle.dispatch_table[core.VarBase] = reduce_varbase
         pickle.dispatch_table[ParamBase] = reduce_varbase
+        pickle.dispatch_table[core.eager.Tensor] = reduce_varbase
+        pickle.dispatch_table[EagerParamBase] = reduce_varbase
         pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
         pickle.dispatch_table.update(dispatch_table_layer)
 
@@ -267,6 +269,8 @@ def _pickle_save(obj, f, protocol):
         pickle.dispatch_table.pop(core.VarBase)
         pickle.dispatch_table.pop(core.LoDTensor)
         pickle.dispatch_table.pop(ParamBase)
+        pickle.dispatch_table.pop(core.eager.Tensor)
+        pickle.dispatch_table.pop(EagerParamBase)
         for k in dispatch_table_layer:
             pickle.dispatch_table.pop(k)
 
@@ -286,6 +290,8 @@ def _pickle_save(obj, f, protocol):
         pickler.dispatch_table[core.VarBase] = reduce_varbase
         pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
         pickler.dispatch_table[ParamBase] = reduce_varbase
+        pickler.dispatch_table[core.eager.Tensor] = reduce_varbase
+        pickler.dispatch_table[EagerParamBase] = reduce_varbase
         pickler.dispatch_table.update(dispatch_table_layer)
         pickler.dump(obj)
 
@@ -317,7 +323,8 @@ def _is_state_dict(obj):
 
         def condition(obj):
             return isinstance(obj, (fluid.Layer, Program, core.VarBase,
-                                    core.LoDTensor, core.SelectedRows))
+                                    core.eager.Tensor, core.LoDTensor,
+                                    core.SelectedRows))
 
         # If the value of a dict is a core.VarBase/LoDTensor or a dict 
         # that does not contain a paddle type(Layer, Program, VarBase, LoDTensor, SelectedRows), 
@@ -327,7 +334,8 @@ def _is_state_dict(obj):
                 for k, v in value.items():
                     if _contain_x(v, condition):
                         return False
-            elif not isinstance(value, (core.VarBase, core.LoDTensor)):
+            elif not isinstance(value, (core.VarBase, core.eager.Tensor,
+                                        core.LoDTensor)):
                 return False
         return True
 
@@ -412,8 +420,9 @@ def _parse_every_object(obj, condition_func, convert_func):
     elif type(obj) == set:
         return set(_parse_every_object(list(obj), condition_func, convert_func))
     else:
-        if isinstance(obj, collections.Iterable) and not isinstance(obj, (
-                str, np.ndarray, core.VarBase, core.LoDTensor)):
+        if isinstance(obj, collections.Iterable) and not isinstance(
+                obj,
+            (str, np.ndarray, core.VarBase, core.eager.Tensor, core.LoDTensor)):
             raise NotImplementedError(
                 "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".
                 format(type(obj)))
@@ -541,7 +550,7 @@ def _save_binary_var(obj, path):
         _save_lod_tensor(obj, path)
     elif isinstance(obj, core.SelectedRows):
         _save_selected_rows(obj, path)
-    elif isinstance(obj, core.VarBase):
+    elif isinstance(obj, (core.VarBase, core.eager.Tensor)):
         _save_lod_tensor(obj.value().get_tensor(), path)
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
