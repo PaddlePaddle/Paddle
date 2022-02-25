@@ -14,7 +14,10 @@
 
 #include "paddle/phi/kernels/index_sample_kernel.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -25,26 +28,15 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "gflags/gflags.h"
-
-#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
-#include "paddle/fluid/platform/enforce.h"
-
-#include "paddle/fluid/framework/infershape_utils.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/op_registry.h"
 namespace phi {
-
-using Tensor = paddle::framework::Tensor;
-using LoDTensor = paddle::framework::LoDTensor;
-using DDim = paddle::framework::DDim;
-
+using DataType = paddle::experimental::DataType;
 template <typename T, typename Context, typename IndexT = int>
 void IndexSampleInner(const Context &context,
-                      const LoDTensor &input,
-                      const LoDTensor &index,
-                      LoDTensor *output) {
+                      const DenseTensor &input,
+                      const DenseTensor &index,
+                      DenseTensor *output) {
   auto input_dims = input.dims();
   auto index_dims = index.dims();
 
@@ -88,7 +80,8 @@ void IndexSampleInner(const Context &context,
   }
 
   auto ddim = phi::make_ddim({batch_size, index_length});
-  output->mutable_data<T>(context.GetPlace());
+  // output->mutable_data<T>(context.GetPlace());
+  context.template Alloc<T>(output);
   paddle::framework::TensorFromVector(res, context, output);
   output->Resize(ddim);
 }
@@ -99,24 +92,32 @@ void IndexSampleKernel(const Context &ctx,
                        const DenseTensor &index,
                        DenseTensor *out) {
   ctx.template Alloc<T>(out);
-  const auto &index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
+  // const auto &index_type =
+  //     paddle::framework::TransToProtoVarType(index.dtype());
+  // bool index_type_match =
+  //     index_type == paddle::framework::proto::VarType::INT32 ||
+  //     index_type == paddle::framework::proto::VarType::INT64;
+
+  auto index_type = index.dtype();
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT32 ||
-      index_type == paddle::framework::proto::VarType::INT64;
-  PADDLE_ENFORCE_EQ(index_type_match,
-                    true,
-                    errors::InvalidArgument(
-                        "Input(Index) holds the wrong type, it holds %s, but "
-                        "desires to be %s or %s",
-                        paddle::framework::DataTypeToString(index_type),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT32),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT64)));
-  if (index_type == paddle::framework::proto::VarType::INT32) {
+      index_type == DataType::INT32 || index_type == DataType::INT64;
+  PADDLE_ENFORCE_EQ(
+      index_type_match,
+      true,
+      errors::InvalidArgument(
+          "Input(Index) holds the wrong type, it holds %s, but "
+          "desires to be %s or %s",
+          paddle::framework::DataTypeToString(
+              paddle::framework::TransToProtoVarType(index_type)),
+          paddle::framework::DataTypeToString(
+              // paddle::framework::proto::VarType::INT32),
+              paddle::framework::TransToProtoVarType(DataType::INT32)),
+          paddle::framework::DataTypeToString(
+              // paddle::framework::proto::VarType::INT64)));
+              paddle::framework::TransToProtoVarType((DataType::INT64)))));
+  if (index_type == DataType::INT32) {
     IndexSampleInner<T, Context, int>(ctx, x, index, out);
-  } else if (index_type == paddle::framework::proto::VarType::INT64) {
+  } else if (index_type == DataType::INT64) {
     IndexSampleInner<T, Context, int64_t>(ctx, x, index, out);
   }
 }

@@ -133,6 +133,7 @@ if (NOT WIN32)
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
+    -g
     -Werror
     -Wall
     -Wextra

@@ -12,11 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/label_smooth_grad_kernel.h"
 
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/platform/enforce.h"
+
+#include "paddle/fluid/framework/infershape_utils.h"
+
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 namespace phi {
 template <typename T>
 struct LabelSmoothGradFunctor {

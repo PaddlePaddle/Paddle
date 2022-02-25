@@ -14,13 +14,14 @@
 
 #include <algorithm>
 #include <vector>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/index_sample_kernel.h"
-
 namespace phi {
 
 namespace {
@@ -37,9 +38,6 @@ void LimitGridDim(const Context& ctx, dim3* grid_dim) {
 #define PREDEFINED_BLOCK_SIZE 1024
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 }
-
-using Tensor = paddle::framework::Tensor;
-using LoDTensor = paddle::framework::LoDTensor;
 
 template <typename T, typename IndexT = int>
 __global__ void IndexSampleForward(const IndexT* index,
@@ -66,26 +64,26 @@ void IndexSampleKernel(const Context& ctx,
                        const DenseTensor& x,
                        const DenseTensor& index,
                        DenseTensor* out) {
-  //    auto* input = ctx.Input<LoDTensor>("X");
-  //    auto* index = ctx.Input<LoDTensor>("Index");
-  //    auto* output = ctx.Output<LoDTensor>("Out");
-
   // T* output = ctx.template Alloc<T>(out);
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
+  // const auto& index_type =
+  //    paddle::framework::TransToProtoVarType(index.dtype());
+  auto index_type = index.dtype();
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT64 ||
-      index_type == paddle::framework::proto::VarType::INT32;
-  PADDLE_ENFORCE_EQ(index_type_match,
-                    true,
-                    errors::InvalidArgument(
-                        "Input(Index) holds the wrong type, it holds %s, but "
-                        "desires to be %s or %s",
-                        paddle::framework::DataTypeToString(index_type),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT32),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT64)));
+      index_type == DataType::INT32 || index_type == DataType::INT64;
+  PADDLE_ENFORCE_EQ(
+      index_type_match,
+      true,
+      errors::InvalidArgument(
+          "Input(Index) holds the wrong type, it holds %s, but "
+          "desires to be %s or %s",
+          paddle::framework::DataTypeToString(
+              paddle::framework::TransToProtoVarType(index_type)),
+          paddle::framework::DataTypeToString(
+              // paddle::framework::proto::VarType::INT32),
+              paddle::framework::TransToProtoVarType(DataType::INT32)),
+          paddle::framework::DataTypeToString(
+              // paddle::framework::proto::VarType::INT64)));
+              paddle::framework::TransToProtoVarType((DataType::INT64)))));
   const T* in_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(out);
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
@@ -106,11 +104,11 @@ void IndexSampleKernel(const Context& ctx,
                 (batch_size + block_dim.y - 1) / block_dim.y);
   LimitGridDim(ctx, &grid_dim);
 
-  if (index_type == paddle::framework::proto::VarType::INT64) {
+  if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     IndexSampleForward<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
         index_data, in_data, out_data, index_length, input_length, batch_size);
-  } else if (index_type == paddle::framework::proto::VarType::INT32) {
+  } else if (index_type == DataType::INT32) {
     const int* index_data = index.data<int>();
     IndexSampleForward<T, int><<<grid_dim, block_dim, 0, stream>>>(
         index_data, in_data, out_data, index_length, input_length, batch_size);

@@ -13,26 +13,22 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/fluid/framework/convert_utils.h"
 namespace phi {
-
-using Tensor = paddle::framework::Tensor;
-using LoDTensor = paddle::framework::LoDTensor;
-using DDim = paddle::framework::DDim;
-
+using DataType = paddle::experimental::DataType;
 template <typename T, typename Context, typename IndexT = int>
 void IndexSampleGradInner(const Context& context,
-                          const LoDTensor& out_grad,
-                          const LoDTensor& index,
-                          LoDTensor* x_grad) {
+                          const DenseTensor& out_grad,
+                          const DenseTensor& index,
+                          DenseTensor* x_grad) {
   std::vector<T> out_grad_vec;
   std::vector<IndexT> index_vec;
   paddle::framework::TensorToVector(out_grad, context, &out_grad_vec);
@@ -70,7 +66,8 @@ void IndexSampleGradInner(const Context& context,
     int v_i = b * value_length + static_cast<int>(index_vec[i]);
     x_grad_vec[v_i] += out_grad_vec[i];
   }
-  x_grad->mutable_data<T>(context.GetPlace());
+  // x_grad->mutable_data<T>(context.GetPlace());
+  context.template Alloc<T>(x_grad);
   paddle::framework::TensorFromVector(x_grad_vec, context, x_grad);
   x_grad->Resize(x_grad_dims);
 }
@@ -81,24 +78,46 @@ void IndexSampleGradKernel(const Context& ctx,
                            const DenseTensor& x,
                            const DenseTensor& index,
                            DenseTensor* x_grad) {
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
+  // const auto& index_type =
+  //     paddle::framework::TransToProtoVarType(index.dtype());
+  auto index_type = index.dtype();
+  // bool index_type_match =
+  //     index_type == paddle::framework::proto::VarType::INT32 ||
+  //     index_type == paddle::framework::proto::VarType::INT64;
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT32 ||
-      index_type == paddle::framework::proto::VarType::INT64;
-  PADDLE_ENFORCE_EQ(index_type_match,
-                    true,
-                    errors::InvalidArgument(
-                        "Input(Index) holds the wrong type, it holds %s, but "
-                        "desires to be %s or %s",
-                        paddle::framework::DataTypeToString(index_type),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT32),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT64)));
-  if (index_type == paddle::framework::proto::VarType::INT32) {
+      index_type == DataType::INT32 || index_type == DataType::INT64;
+  // PADDLE_ENFORCE_EQ(index_type_match,
+  //                   true,
+  //                   errors::InvalidArgument(
+  //                       "Input(Index) holds the wrong type, it holds %s, but
+  //                       "
+  //                       "desires to be %s or %s",
+  //                       paddle::framework::DataTypeToString(index_type),
+  //                       paddle::framework::DataTypeToString(
+  //                           //paddle::framework::proto::VarType::INT32),
+  //                           DataType::INT32),
+  //                       paddle::framework::DataTypeToString(
+  //                           //paddle::framework::proto::VarType::INT64)));
+  //                           DataType::INT64)));
+  PADDLE_ENFORCE_EQ(
+      index_type_match,
+      true,
+      errors::InvalidArgument(
+          "Input(Index) holds the wrong type, it holds %s, but "
+          "desires to be %s or %s",
+          paddle::framework::DataTypeToString(
+              paddle::framework::TransToProtoVarType(index_type)),
+          paddle::framework::DataTypeToString(
+              // paddle::framework::proto::VarType::INT32),
+              paddle::framework::TransToProtoVarType(DataType::INT32)),
+          paddle::framework::DataTypeToString(
+              // paddle::framework::proto::VarType::INT64)));
+              paddle::framework::TransToProtoVarType((DataType::INT64)))));
+  // if (index_type == paddle::framework::proto::VarType::INT32) {
+  if (index_type == DataType::INT32) {
     IndexSampleGradInner<T, Context, int>(ctx, out_grad, index, x_grad);
-  } else if (index_type == paddle::framework::proto::VarType::INT64) {
+  }  // else if (index_type == paddle::framework::proto::VarType::INT64) {
+  else if (index_type == DataType::INT64) {
     IndexSampleGradInner<T, Context, int64_t>(ctx, out_grad, index, x_grad);
   }
 }

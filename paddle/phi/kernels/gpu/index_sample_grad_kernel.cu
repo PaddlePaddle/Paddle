@@ -14,15 +14,16 @@
 
 #include <algorithm>
 #include <vector>
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
-
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 namespace phi {
 
 namespace {
@@ -37,9 +38,6 @@ void LimitGridDim(const Context& ctx, dim3* grid_dim) {
 #define PREDEFINED_BLOCK_SIZE 1024
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 };
-
-using Tensor = paddle::framework::Tensor;
-using LoDTensor = paddle::framework::LoDTensor;
 
 template <typename T, typename IndexT = int>
 __global__ void IndexSampleGrad(const IndexT* index,
@@ -75,23 +73,25 @@ void IndexSampleGradKernel(const Context& ctx,
                            const DenseTensor& index,
                            DenseTensor* x_grad) {
   const T* output_grad_data = out_grad.data<T>();
-  T* input_grad_data = x_grad->mutable_data<T>(ctx.GetPlace());
-
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
+  // T* input_grad_data = x_grad->mutable_data<T>(ctx.GetPlace());
+  T* input_grad_data = ctx.template Alloc<T>(x_grad);
+  auto index_type = index.dtype();
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT64 ||
-      index_type == paddle::framework::proto::VarType::INT32;
-  PADDLE_ENFORCE_EQ(index_type_match,
-                    true,
-                    errors::InvalidArgument(
-                        "Input(Index) holds the wrong type, it holds %s, but "
-                        "desires to be %s or %s",
-                        paddle::framework::DataTypeToString(index_type),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT32),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT64)));
+      index_type == DataType::INT32 || index_type == DataType::INT64;
+  PADDLE_ENFORCE_EQ(
+      index_type_match,
+      true,
+      errors::InvalidArgument(
+          "Input(Index) holds the wrong type, it holds %s, but "
+          "desires to be %s or %s",
+          paddle::framework::DataTypeToString(
+              paddle::framework::TransToProtoVarType(index_type)),
+          paddle::framework::DataTypeToString(
+              // paddle::framework::proto::VarType::INT32),
+              paddle::framework::TransToProtoVarType(DataType::INT32)),
+          paddle::framework::DataTypeToString(
+              // paddle::framework::proto::VarType::INT64)));
+              paddle::framework::TransToProtoVarType((DataType::INT64)))));
 
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
   auto input_num = x.numel();
@@ -116,7 +116,7 @@ void IndexSampleGradKernel(const Context& ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, x_grad, static_cast<T>(0));
 
-  if (index_type == paddle::framework::proto::VarType::INT64) {
+  if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     IndexSampleGrad<T, int64_t><<<grid_dim, block_dim, 0, stream>>>(
         index_data,
@@ -126,7 +126,7 @@ void IndexSampleGradKernel(const Context& ctx,
         input_length,
         batch_size,
         same_data_in_index_row);
-  } else if (index_type == paddle::framework::proto::VarType::INT32) {
+  } else if (index_type == DataType::INT32) {
     const int* index_data = index.data<int>();
     IndexSampleGrad<T, int><<<grid_dim, block_dim, 0, stream>>>(
         index_data,

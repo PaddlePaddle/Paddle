@@ -227,7 +227,8 @@ void HuberLossInferMeta(const MetaTensor& input,
 
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
-                          MetaTensor* out) {
+                          MetaTensor* out,
+                          MetaConfig config) {
   auto input_dims = x.dims();
   PADDLE_ENFORCE_EQ(input_dims.size(),
                     2,
@@ -244,23 +245,18 @@ void IndexSampleInferMeta(const MetaTensor& x,
           "Inputs(Index) shape of IndexSample op should be 2-D, but "
           "got Index's shape [%s] , please check index shape.",
           input_dims));
-  // if (ctx->IsRuntime()) {
-  PADDLE_ENFORCE_EQ(input_dims[0],
-                    index_dims[0],
-                    errors::InvalidArgument(
-                        "Inputs(X)'s value of dimension 0 must same with "
-                        "Inputs(Index)'s value of dimension 0, but "
-                        "got %d of Inputs(X), and got %d of Inputs(Index), "
-                        "please check Inputs shape.",
-                        input_dims[0],
-                        index_dims[0]));
-  //}
-  // ctx->SetOutputDim("Out", index_dims);
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(input_dims[0],
+                      index_dims[0],
+                      errors::InvalidArgument(
+                          "Inputs(X)'s value of dimension 0 must same with "
+                          "Inputs(Index)'s value of dimension 0, but "
+                          "got %d of Inputs(X), and got %d of Inputs(Index), "
+                          "please check Inputs shape.",
+                          input_dims[0],
+                          index_dims[0]));
+  }
   out->set_dims(index_dims);
-  // auto type = ctx->GetInputsVarType("Index")[0];
-  // if (type == framework::proto::VarType::LOD_TENSOR) {
-  //   ctx->ShareLoD("Index", /*->*/ "Out");
-  // }
   out->share_lod(y);
 }
 void CrossInferMeta(const MetaTensor& x,
