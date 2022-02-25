@@ -426,7 +426,7 @@ class CostModel(object):
         return merged_node_id, merged_node
 
     def merge_linear(self):
-        '''
+        r'''
         This method does the following: 
         If X depends on Y only, they must be run sequentially.
             [ e.g. A ->- C ->- D   D and E depends on C only.] 
@@ -442,7 +442,7 @@ class CostModel(object):
         return cnt
 
     def merge_branch(self):
-        '''
+        r'''
         This method does the following:
         If a node has more than one successor, there is *branch*.
             [ e.g. A ->- B ->- D                                       ] 

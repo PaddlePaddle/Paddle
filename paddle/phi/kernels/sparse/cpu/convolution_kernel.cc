@@ -286,5 +286,5 @@ void Conv3dKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     conv, CPU, ALL_LAYOUT, phi::sparse::Conv3dKernel, float, double) {}

@@ -229,7 +229,7 @@ def gelu(x, approximate):
     return y_ref.astype(x.dtype)
 
 
-class XPUTestHardSwishGeluOP(XPUOpTestWrapper):
+class XPUTestHardSwishOP(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'hard_swish'
         self.use_dynamic_create_class = False

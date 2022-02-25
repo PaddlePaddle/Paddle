@@ -14,15 +14,12 @@
 # limitations under the License.
 
 import paddle
-from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
-import paddle.fluid as fluid
 
 # TODO: define loss functions of neural network
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from ...fluid.framework import core, in_dygraph_mode
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
 from ...fluid.layers import dice_loss  # noqa: F401
 from ...fluid.layers import log_loss  # noqa: F401
@@ -34,11 +31,12 @@ from ...fluid.layers import square_error_cost  # noqa: F401
 from ...fluid.layers import edit_distance  # noqa: F401
 from ...fluid.layers import huber_loss
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import in_dygraph_mode
 from ...fluid.framework import _varbase_creator
 from ...static import Variable
 from paddle.utils import deprecated
 from paddle import _C_ops
+from paddle import in_dynamic_mode
+from paddle.framework import core
 
 __all__ = []
 
@@ -115,7 +113,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
             "'mean' or 'none', but received %s, which is not allowed." %
             reduction)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.bce_loss(input, label)
         if weight is not None:
             out = _C_ops.elementwise_mul(out, weight, 'axis', -1)
@@ -133,7 +131,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
 
-    sub_name = name if weight is None and reduction is 'none' else None
+    sub_name = name if weight is None and reduction == 'none' else None
     helper = LayerHelper("binary_cross_entropy", name=sub_name)
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -146,7 +144,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
 
     if weight is not None:
         if isinstance(weight, paddle.static.Variable):
-            weight_name = name if reduction is 'none' else None
+            weight_name = name if reduction == 'none' else None
             out = paddle.multiply(out, weight, name=weight_name)
         else:
             raise ValueError(
@@ -249,7 +247,7 @@ def binary_cross_entropy_with_logits(logit,
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         one = _varbase_creator(dtype=logit.dtype)
         _C_ops.fill_constant(one, 'value',
                              float(1.0), 'force_cpu', False, 'dtype', one.dtype,
@@ -284,8 +282,7 @@ def binary_cross_entropy_with_logits(logit,
     out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
         logit, label, name=sigmoid_name)
 
-    one = paddle.fluid.layers.fill_constant(
-        shape=[1], value=1.0, dtype=logit.dtype)
+    one = paddle.full(shape=[1], fill_value=1.0, dtype=logit.dtype)
     if pos_weight is not None:
         fluid.data_feeder.check_variable_and_dtype(
             pos_weight, 'pos_weight', ['float32', 'float64'],
@@ -392,7 +389,7 @@ def hsigmoid_loss(input,
             #  [2.2407534]]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out, _, _ = _C_ops.hierarchical_sigmoid(
             input, weight, label, path_table, path_code, bias, 'num_classes',
             num_classes, 'is_sparse', is_sparse, 'remote_prefetch', is_sparse)
@@ -569,7 +566,7 @@ def margin_ranking_loss(input,
         raise ValueError(
             "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction)
-    if fluid.framework.in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.elementwise_sub(other, input)
         out = _C_ops.elementwise_mul(out, label)
         if margin != 0.0:
@@ -595,8 +592,7 @@ def margin_ranking_loss(input,
 
     if margin != 0.0:
         margin_var = out.block.create_var(dtype=out.dtype)
-        paddle.fluid.layers.fill_constant(
-            [1], out.dtype, margin, out=margin_var)
+        margin_var = paddle.full(shape=[1], fill_value=margin, dtype=out.dtype)
         out = paddle.add(out, margin_var)
 
     result_out = helper.create_variable_for_type_inference(input.dtype)
@@ -686,7 +682,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         unreduced = _elementwise_op_in_dygraph(
             input, label, axis=-1, act='abs', op_name='elementwise_sub')
         if reduction == 'mean':
@@ -776,7 +772,7 @@ def nll_loss(input,
             input_dims))
     n = input_shape[0]
     c = input_shape[1]
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if input_dims != 2 and input_dims != 4:
             input, _ = _C_ops.reshape2(input, None, 'shape', [n, c, 1, -1])
             label, _ = _C_ops.reshape2(label, None, 'shape', [n, 1, -1])
@@ -995,7 +991,7 @@ def mse_loss(input, label, reduction='mean', name=None):
             "'reduction' in 'mse_loss' should be 'sum', 'mean' or 'none', "
             "but received {}.".format(reduction))
 
-    if not paddle.fluid.framework.in_dygraph_mode():
+    if not in_dynamic_mode():
         paddle.fluid.data_feeder.check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'mse_loss')
         paddle.fluid.data_feeder.check_variable_and_dtype(
@@ -1099,7 +1095,7 @@ def ctc_loss(log_probs,
     loss_out = fluid.layers.warpctc(log_probs, labels, blank, norm_by_times,
                                     input_lengths, label_lengths)
 
-    loss_out = fluid.layers.squeeze(loss_out, [-1])
+    loss_out = paddle.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.mean(loss_out / label_lengths)
@@ -1117,7 +1113,7 @@ def margin_cross_entropy(logits,
                          group=None,
                          return_softmax=False,
                          reduction='mean'):
-    """
+    r"""
     .. math::
 
         L=-\\frac{1}{N}\sum^N_{i=1}\log\\frac{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\\neq y_i} e^{scos\\theta_{y_i}}}
@@ -1319,7 +1315,7 @@ def margin_cross_entropy(logits,
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         softmax, loss = _C_ops.margin_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks,
             'margin1', margin1, 'margin2', margin2, 'margin3', margin3, 'scale',
@@ -1664,7 +1660,7 @@ def cross_entropy(input,
              (got nput_dims{}, label_dims{})'.format(input_dims, label_dims))
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if soft_label == False:
             valid_label = paddle.cast(
                 label != ignore_index, dtype=label.dtype) * label
@@ -1978,7 +1974,7 @@ def sigmoid_focal_loss(logit,
                 "Expected one dimension of normalizer in sigmoid_focal_loss but got {}.".
                 format(normalizer_dims))
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         one = _varbase_creator(dtype=logit.dtype)
         _C_ops.fill_constant(one, 'value',
                              float(1.0), 'force_cpu', False, 'dtype', one.dtype,
@@ -2025,7 +2021,7 @@ def sigmoid_focal_loss(logit,
     loss = paddle.nn.functional.binary_cross_entropy_with_logits(
         logit, label, reduction='none', name=bce_name)
 
-    pred = fluid.layers.sigmoid(logit)
+    pred = paddle.nn.functional.sigmoid(logit)
     p_t = pred * label + (1 - pred) * (1 - label)
 
     alpha_t = alpha * label + (1 - alpha) * (1 - label)
@@ -2125,7 +2121,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
             "'reduction' in 'hinge_embedding_loss' should be 'sum', 'mean' or 'none', "
             "but received {}.".format(reduction))
 
-    if not paddle.fluid.framework.in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                                  'hinge_embedding_loss')
         check_variable_and_dtype(label, 'label', ['float32', 'float64'],

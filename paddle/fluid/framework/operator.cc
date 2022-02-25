@@ -1211,7 +1211,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 << "` not found.";
       }
     }
-    if (pt_kernel_->IsValid()) {
+#ifdef PADDLE_WITH_XPU
+    bool is_xpu_unsupport =
+        paddle::platform::is_xpu_place(kernel_type_->place_) &&
+            !paddle::platform::is_xpu_support_op(type_, *kernel_type_.get()) ||
+        paddle::platform::is_in_xpu_black_list(type_);
+#endif
+    if (pt_kernel_->IsValid()
+#ifdef PADDLE_WITH_XPU
+        && !is_xpu_unsupport
+#endif
+        ) {
       run_pten_kernel_ = true;
     } else {
       auto& all_op_kernels = AllOpKernels();
@@ -1220,13 +1230,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           kernels_iter->second.find(*kernel_type_.get()) ==
               kernels_iter->second.end()
 #ifdef PADDLE_WITH_XPU
-          ||
-          paddle::platform::is_xpu_place(kernel_type_->place_) &&  // NOLINT
-              !paddle::platform::is_xpu_support_op(
-                  type_, *kernel_type_.get())  // NOLINT
-          || paddle::platform::is_in_xpu_black_list(type_)
+          || is_xpu_unsupport
 #endif
-              ) {
+          ) {
         auto pt_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
         pt_kernel_.reset(
@@ -1972,6 +1978,9 @@ Scope* OperatorWithKernel::PreparePtenData(
         continue;
       }
 
+      if (in_def.backend == phi::Backend::ALL_BACKEND) {
+        continue;
+      }
       auto expected_place = phi::TransToPtenPlace(in_def.backend);
       if (platform::is_same_place(tensor_in->place(), expected_place)) {
         continue;
@@ -2037,7 +2046,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
 
     // deal with optional here
-    if ((it == ctx.inputs.end()) &&
+    if ((it == ctx.inputs.end() || it->second.size() == 0) &&
         (input_defs[i].type_index ==
          std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
