@@ -19,7 +19,7 @@ limitations under the License. */
 
 // only can include the headers in paddle/top/api dirs
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace paddle {
 namespace operators {

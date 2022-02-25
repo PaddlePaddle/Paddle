@@ -39,7 +39,7 @@ struct DimensionsTransform {
   void InputDimensionsExtend(int N, int axis) {
     for (auto &in_dim : in_dims) {
       int64_t in_idx = 0;
-      if (in_dim.size() < dim_size) {
+      if (in_dim.size() < static_cast<size_t>(dim_size)) {
         DimVector tmp_dim(dim_size, 1);
         do {
           if (in_dim[in_idx] == out_dims[axis] || in_dim[in_idx] == 1) {
@@ -56,7 +56,7 @@ struct DimensionsTransform {
                 out_dims[axis],
                 in_dim[in_idx]));
           }
-        } while (in_idx < in_dim.size());
+        } while (static_cast<size_t>(in_idx) < in_dim.size());
         in_dim.resize(dim_size);
         std::copy(tmp_dim.begin(), tmp_dim.end(), in_dim.begin());
       } else {
@@ -576,6 +576,20 @@ void BroadcastKernel(const KPDevice &ctx,
     BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, axis, func);
   }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+void ElementwiseCompute(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        int axis,
+                        Functor func,
+                        DenseTensor *z) {
+  std::vector<const DenseTensor *> ins = {&x, &y};
+  std::vector<DenseTensor *> outs = {z};
+  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  BroadcastKernel<ElementwiseType::kBinary, T, OutType, Functor, 1>(
+      dev_ctx, ins, &outs, axis, func);
 }
 
 #endif

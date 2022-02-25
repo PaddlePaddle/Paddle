@@ -17,8 +17,9 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/gpu/elementwise.h"
+#include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
 namespace phi {
@@ -58,15 +59,7 @@ void AddDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout,
                          int axis,
                          DenseTensor* ddout) {
-  phi::AddDoubleGradImpl<T>(dev_ctx,
-                            y,
-                            ddx,
-                            ddy,
-                            dout,
-                            axis,
-                            ddout,
-                            ElementwiseCompute<funcs::AddFunctor<T>, T>,
-                            ElementwiseCompute<funcs::InverseAddFunctor<T>, T>);
+  phi::AddDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
 }
 
 template <typename T, typename Context>
@@ -106,15 +99,7 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               int axis,
                               DenseTensor* ddout) {
-  phi::SubtractDoubleGradImpl<T>(
-      dev_ctx,
-      y,
-      ddx,
-      ddy,
-      dout,
-      axis,
-      ddout,
-      ElementwiseCompute<funcs::SubtractFunctor<T>, T>);
+  phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
 }
 
 }  // namespace phi
