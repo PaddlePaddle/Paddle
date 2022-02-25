@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 
 namespace paddle {
 namespace operators {
@@ -184,14 +185,15 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                               const Tensor* seed, Tensor* mask, Tensor* y) {
   auto& place = *dev_ctx.eigen_device();
 
+  int64_t x_numel = x.numel();
+  auto stream = dev_ctx.stream();
+  auto* x_data = x.data<T>();
+  auto* y_data = y->data<T>();
+
   if (!is_test) {
-    int64_t x_numel = x.numel();
-    auto stream = dev_ctx.stream();
     auto* mask_data = mask->data<uint8_t>();
     size_t size = phi::product(mask->dims());
 
-    auto* x_data = x.data<T>();
-    auto* y_data = y->data<T>();
     if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -253,12 +255,18 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     }
 #endif
   } else {
-    auto X = EigenMatrix<T>::Reshape(x, 1);
-    auto Y = EigenMatrix<T>::Reshape(*y, 1);
     if (upscale_in_train) {
-      Y.device(place) = X;
+      // todo: can y share with data with x directly?
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemcpyAsync(y_data, x_data, sizeof(T) * x_numel,
+                          cudaMemcpyDeviceToDevice, stream));
     } else {
-      Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+      T factor = static_cast<T>(1.0f - dropout_prob);
+      std::vector<const framework::Tensor*> ins = {&x};
+      std::vector<framework::Tensor*> outs = {y};
+      auto functor = phi::funcs::ScaleFunctor<T>(factor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                                &outs, functor);
     }
   }
 }
