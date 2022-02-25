@@ -90,17 +90,39 @@ class DistributedOperator:
                 tensor_shape = []
             else:
                 tensor_shape = tensor.shape
+            # if tensor_name == "array_write_0.out":
+            #     print(tensor_name, tensor_shape)
             self._serial_outputs[tensor_name] = tensor
             if self._dist_attr.get_output_dims_mapping(tensor_name) is None:
                 tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
                 self._dist_attr.set_output_dims_mapping(tensor_name,
                                                         tensor_dims_mapping)
+        if self._dist_attr.op_type is None:
+            self._dist_attr.op_type = self.serial_op.type
         if self._dist_attr.impl_type is None:
             self._dist_attr.impl_type = "default"
         if self._dist_attr.impl_idx is None:
             self._dist_attr.impl_idx = 0
         if self._dist_attr.is_recompute is None:
             self._dist_attr.is_recompute = False
+
+    def _reset_to_default_dist_attr(self):
+        for tensor_dist_attr in self.dist_attr.inputs_dist_attrs.values():
+            old_tensor_dims_mapping = tensor_dist_attr.dims_mapping
+            new_tensor_dims_mapping = [
+                -1 for _ in range(len(old_tensor_dims_mapping))
+            ]
+            tensor_dist_attr.dims_mapping = new_tensor_dims_mapping
+        for tensor_dist_attr in self.dist_attr.outputs_dist_attrs.values():
+            old_tensor_dims_mapping = tensor_dist_attr.dims_mapping
+            new_tensor_dims_mapping = [
+                -1 for _ in range(len(old_tensor_dims_mapping))
+            ]
+            tensor_dist_attr.dims_mapping = new_tensor_dims_mapping
+        self._dist_attr.op_type = self.serial_op.type
+        self._dist_attr.impl_type = "default"
+        self._dist_attr.impl_idx = 0
+        self._dist_attr.is_recompute = False
 
     def _filter_dist_attr(self, dist_attr):
         if dist_attr is None:
@@ -134,7 +156,7 @@ class DistributedOperator:
         return new_dist_attr
 
     def validate_dist_attr(self):
-        if "read" in self.serial_op.type:
+        if "read" in self.serial_op.type or "while" == self.serial_op.type:
             return True
         for name in self.serial_op.input_arg_names:
             input_dist_attr = self.dist_attr.get_input_dist_attr(name)

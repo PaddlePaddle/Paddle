@@ -997,14 +997,20 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+        # print("col")
+        # print("col 0", op_dist_attr)
+        # print("col 1")
         if is_dim_shard(x_dims_mapping[-1]):
             return False
+        # print("col 2")
         if is_dim_shard(y_dims_mapping[-2]) or is_dim_replicate(y_dims_mapping[
                 -1]):
             return False
+        # print("col 3")
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
+        # print("col 4")
         return True
 
     def is_output_compatible(self, dist_op):
@@ -1214,15 +1220,21 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         y_name = op_desc.input('Y')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+        # print("row")
+        # print("row 0", op_dist_attr)
+        # print("row 1")
         if is_dim_replicate(x_dims_mapping[-1]):
             return False
+        # print("row 2")
         if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(y_dims_mapping[
                 -1]):
             return False
+        # print("row 3")
         # Other dimensions must be replicate except the batch dimension
         for mapping in x_dims_mapping[1:-1]:
             if is_dim_shard(mapping):
                 return False
+        # print("row 4")
         return True
 
     def is_output_compatible(self, dist_op):
@@ -1417,18 +1429,24 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
 
+        # print("replicate")
+        # print("replicate 0", op_dist_attr)
+        # print("replicate 1")
         if is_dim_shard(x_dims_mapping[-1]):
             return False
+        # print("replicate 2")
         if is_valid_list_index(x_dims_mapping,
                                -2) and is_dim_shard(x_dims_mapping[-2]):
             return False
 
+        # print("replicate 3")
         if is_dim_shard(y_dims_mapping[-1]):
             return False
+        # print("replicate 4")
         if is_valid_list_index(y_dims_mapping,
                                -2) and is_dim_shard(y_dims_mapping[-2]):
             return False
-
+        # print("replicate 5")
         return True
 
     def is_output_compatible(self, dist_op):

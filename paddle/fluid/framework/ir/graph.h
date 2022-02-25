@@ -230,6 +230,7 @@ class Graph {
     auto *x =
         AddNode(new ir::Node(var_desc, block_id == -1 ? block_id_ : block_id));
     x->SetId(num_node_created_++);
+    x->SetGraphId(block_id_);
     return x;
   }
 
@@ -245,6 +246,7 @@ class Graph {
                      "The OpDesc used to create operator node is null."));
     auto *x = AddNode(new ir::Node(op_desc));
     x->SetId(num_node_created_++);
+    x->SetGraphId(block_id_);
     return x;
   }
 
@@ -263,6 +265,7 @@ class Graph {
         num_node_created_);
     auto *x = AddNode(new ir::Node(name, ir::Node::Type::kVariable, block_id_));
     x->SetId(num_node_created_++);
+    x->SetGraphId(block_id_);
     return x;
   }
 
@@ -276,6 +279,7 @@ class Graph {
     }
     auto *x = AddNode(new ir::Node(name, type, block_id_));
     x->SetId(num_node_created_++);
+    x->SetGraphId(block_id_);
     return x;
   }
 
