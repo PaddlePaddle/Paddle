@@ -17,12 +17,10 @@
 #include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/pd_ops.h"
 
-static void LLVM_ATTRIBUTE_UNUSED
-populateWithGenerated(::mlir::RewritePatternSet &patterns);
-#include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.hpp.inc"
-
 namespace infrt {
 namespace trt {
+
+#include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.hpp.inc"  // NOLINT
 
 using namespace mlir;
 

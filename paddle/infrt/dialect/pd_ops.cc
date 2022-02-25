@@ -24,12 +24,10 @@
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/pd_extra_ops.cpp.inc"  // NOLINT
 
-static void LLVM_ATTRIBUTE_UNUSED
-populateWithGenerated(::mlir::RewritePatternSet &patterns);
-#include "paddle/infrt/dialect/rewrite.hpp.inc"  // NOLINT
-
 namespace mlir {
 namespace pd {
+
+#include "paddle/infrt/dialect/rewrite.hpp.inc"  // NOLINT
 
 PaddleDialect::PaddleDialect(MLIRContext *context)
     : Dialect("pd", context, TypeID::get<PaddleDialect>()) {
