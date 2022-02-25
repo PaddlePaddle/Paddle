@@ -14,27 +14,22 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-#include "paddle/phi/kernels/unbind_kernel.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
+// Using dimensional constraints on matrix multiplication, it is
+// straight-forward to check the following table for when X and Y
+// are both matrices.
+//
+// dX = | dOut vec^T
+// dVec = | X^T dOut
 template <typename T, typename Context>
-void UnbindKernel(const Context& dev_ctx,
+void MvGradKernel(const Context& ctx,
                   const DenseTensor& x,
-                  int axis,
-                  std::vector<DenseTensor*> outs) {
-  auto x_dims = x.dims();
-  axis = axis < 0 ? x_dims.size() + axis : axis;
-
-  std::vector<const DenseTensor*> shape_refer;
-  for (size_t j = 0; j < outs.size(); ++j) {
-    dev_ctx.template Alloc<T>(outs[j]);
-    shape_refer.emplace_back(outs[j]);
-  }
-
-  phi::funcs::SplitFunctor<Context, T> functor;
-  functor(dev_ctx, x, shape_refer, axis, &outs);
-}
+                  const DenseTensor& vec,
+                  const DenseTensor& out_grad,
+                  DenseTensor* x_grad,
+                  DenseTensor* vec_grad);
 
 }  // namespace phi

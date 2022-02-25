@@ -86,6 +86,26 @@ struct CBlas<phi::dtype::bfloat16> {
       z[i] = x[i] + y[i];
     }
   }
+
+  template <typename... ARGS>
+  static void VMUL(int n,
+                   const phi::dtype::bfloat16 *x,
+                   const phi::dtype::bfloat16 *y,
+                   phi::dtype::bfloat16 *z) {
+    for (int i = 0; i < n; ++i) {
+      z[i] = x[i] * y[i];
+    }
+  }
+
+  template <typename... ARGS>
+  static void VSUB(int n,
+                   const phi::dtype::bfloat16 *x,
+                   const phi::dtype::bfloat16 *y,
+                   phi::dtype::bfloat16 *z) {
+    for (int i = 0; i < n; ++i) {
+      z[i] = x[i] - y[i];
+    }
+  }
 };
 
 #ifdef PADDLE_WITH_MKLML

@@ -12,21 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void RandpermRawKernel(
-    const Context& dev_ctx, int n, DataType dtype, int seed, DenseTensor* out);
+KernelSignature MvOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("mv", {"X", "Vec"}, {}, {"Out"});
+}
 
-template <typename T, typename Context>
-void RandpermKernel(const Context& dev_ctx,
-                    int n,
-                    DataType dtype,
-                    DenseTensor* out);
+KernelSignature MvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("mv_grad",
+                         {"X", "Vec", GradVarName("Out")},
+                         {},
+                         {GradVarName("X"), GradVarName("Vec")});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(mv, phi::MvOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(mv_grad, phi::MvGradOpArgumentMapping);

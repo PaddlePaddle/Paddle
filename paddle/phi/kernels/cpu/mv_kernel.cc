@@ -1,4 +1,4 @@
-//   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/unbind_kernel.h"
+#include "paddle/phi/kernels/mv_kernel.h"
 
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/unbind_kernel_impl.h"
 
-PD_REGISTER_KERNEL(unbind,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::UnbindKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   int,
-                   int64_t) {}
+#include "paddle/phi/kernels/impl/mv_kernel_impl.h"
+
+PD_REGISTER_KERNEL(mv, CPU, ALL_LAYOUT, phi::MvKernel, float, double) {}
