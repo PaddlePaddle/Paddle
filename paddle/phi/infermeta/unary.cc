@@ -233,6 +233,11 @@ void InferMetaFromVecValue(const MetaTensor& x,
   }
 }
 
+void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({1}));
+  out->set_dtype(DataType::BOOL);
+}
+
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
                       MetaTensor* out,
