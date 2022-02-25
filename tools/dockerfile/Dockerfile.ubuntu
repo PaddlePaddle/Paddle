@@ -15,8 +15,9 @@ ENV HOME /root
 # Add bash enhancements
 COPY paddle/scripts/docker/root/ /root/
 
+RUN chmod 777 /tmp
 # Prepare packages for Python
-RUN apt-get update && \
+RUN apt-get update --allow-unauthenticated && \
     apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
     xz-utils tk-dev libffi-dev liblzma-dev
