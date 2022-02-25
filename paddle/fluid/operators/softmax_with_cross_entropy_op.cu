@@ -500,7 +500,7 @@ template <typename T, typename AccT, typename LabelT, int VecSize,
           bool IgnoreIndex>
 __device__ __forceinline__ void VectorizedSoftmaxForwardImpl(
     T* loss, T* softmax, const T* logits, const LabelT* label, int size,
-    const int offset, const LogSoftmaxForwardFunctor<AccT>& func,
+    const int offset, const phi::LogSoftmaxForwardFunctor<AccT>& func,
     const int ignore_index) {
   using VecT = kps::details::VectorType<T, VecSize>;
   int tid = threadIdx.x;
@@ -583,7 +583,7 @@ template <typename T, typename AccT, typename LabelT, int VecSize,
           bool IgnoreIndex>
 __device__ __forceinline__ void ScalarSoftmaxForwardImpl(
     T* loss, T* softmax, const T* logits, const LabelT* label, const int size,
-    const LogSoftmaxForwardFunctor<AccT>& func, const int ignore_index) {
+    const phi::LogSoftmaxForwardFunctor<AccT>& func, const int ignore_index) {
   int tid = threadIdx.x;
   int remain = size % (VecSize * blockDim.x);
   int label_id = blockIdx.x;
@@ -658,7 +658,7 @@ __global__ void VectorizedSoftmaxForward(T* loss, T* softmax, const T* logits,
       sum, kps::AddFunctor<AccT>());
 
   // 3. softmax
-  LogSoftmaxForwardFunctor<AccT> func(max, sum);
+  phi::LogSoftmaxForwardFunctor<AccT> func(max, sum);
   if (input_offset == output_offset) {
     VectorizedSoftmaxForwardImpl<T, AccT, LabelT, VecSize, IgnoreIndex>(
         loss, softmax, logits, label, mid_dim, input_offset, func,
