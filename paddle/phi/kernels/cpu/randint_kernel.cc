@@ -22,42 +22,43 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RandintRawKernel(const Context& ctx,
+void RandintRawKernel(const Context& dev_ctx,
                       int low,
                       int high,
                       const ScalarArray& shape,
                       DataType dtype,
                       int seed,
                       DenseTensor* out) {
-  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
-  auto size = out->numel();
+  out->Resize(phi::make_ddim(shape.GetData()));
+  T* data = dev_ctx.template Alloc<T>(out);
+  auto numel = out->numel();
   std::shared_ptr<std::mt19937_64> engine;
   if (seed) {
     engine = std::make_shared<std::mt19937_64>();
     engine->seed(seed);
   } else {
-    engine = ctx.GetGenerator()->GetCPUEngine();
+    engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
   std::uniform_int_distribution<T> dist(low, high - 1);
-  auto data = out->data<T>();
-  for (int64_t i = 0; i < size; ++i) {
+  for (int64_t i = 0; i < numel; ++i) {
     data[i] = dist(*engine);
   }
 }
 
 template <typename T, typename Context>
-void RandintKernel(const Context& ctx,
+void RandintKernel(const Context& dev_ctx,
                    int low,
                    int high,
                    const ScalarArray& shape,
                    DataType dtype,
                    DenseTensor* out) {
-  RandintRawKernel<T>(ctx, low, high, shape, dtype, 0, out);
+  RandintRawKernel<T>(dev_ctx, low, high, shape, dtype, 0, out);
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     randint_raw, CPU, ALL_LAYOUT, phi::RandintRawKernel, int, int64_t) {}
+
 PD_REGISTER_KERNEL(randint, CPU, ALL_LAYOUT, phi::RandintKernel, int, int64_t) {
 }
