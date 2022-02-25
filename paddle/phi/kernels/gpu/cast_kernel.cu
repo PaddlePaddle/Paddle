@@ -80,8 +80,8 @@ void CastKernel(const Context& dev_ctx,
         paddle::experimental::DataType::UNDEFINED);     \
   }
 
-// #if !defined(PADDLE_WITH_HIP)
+#if !defined(PADDLE_WITH_HIP)
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, phi::dtype::bfloat16)
-// #else
-// PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
-// #endif
+#else
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast)
+#endif
