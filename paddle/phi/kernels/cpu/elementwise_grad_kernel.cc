@@ -170,6 +170,7 @@ PD_REGISTER_KERNEL(subtract_grad,
                    int16_t,
                    int,
                    int64_t,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -182,5 +183,6 @@ PD_REGISTER_KERNEL(subtract_double_grad,
                    int16_t,
                    int,
                    int64_t,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
