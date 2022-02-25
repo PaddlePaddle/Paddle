@@ -188,4 +188,5 @@ class TestPsTrainerPass(PsPassTestBase):
 
 
 if __name__ == '__main__':
+    remove_path_if_exists('/ps_log')
     unittest.main()
