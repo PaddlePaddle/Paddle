@@ -97,7 +97,7 @@ class PyTensorVoidHook : public egr::TensorVoidHook {
     VLOG(3) << "Call PyTensorVoidHook";
 
     try {
-      PyObject_CallFunctionObjArgs(py_func_);
+      PyObject_CallFunctionObjArgs(py_func_, nullptr);
     } catch (platform::EnforceNotMet& e) {
       throw std::move(e);
     } catch (std::exception& e) {
