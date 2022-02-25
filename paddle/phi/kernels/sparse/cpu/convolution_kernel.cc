@@ -36,7 +36,8 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
-                  SparseCooTensor* out) {
+                  SparseCooTensor* out,
+                  DenseTensor* rulebook) {
   // update padding and dilation
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
@@ -54,7 +55,7 @@ void Conv3dKernel(const Context& dev_ctx,
   // 1. product rulebook
   DenseTensorMeta counter_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensor rulebook = phi::Empty<int, Context>(dev_ctx);
+  // DenseTensor rulebook = phi::Empty<int, Context>(dev_ctx);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
 
   ProductRuleBook<T, Context>(dev_ctx,
@@ -64,13 +65,13 @@ void Conv3dKernel(const Context& dev_ctx,
                               dilations,
                               strides,
                               out_dims,
-                              &rulebook,
+                              rulebook,
                               &counter_per_kernel);
 
   UpdateRulebookAndOutIndex<T>(
-      dev_ctx, x, kernel_size, out_channels, out_dims, &rulebook, out);
+      dev_ctx, x, kernel_size, out_channels, out_dims, rulebook, out);
 
-  int n = rulebook.dims()[1];
+  int n = rulebook->dims()[1];
   const int* counter_ptr = counter_per_kernel.data<int>();
 
   // 2. gather
@@ -88,7 +89,7 @@ void Conv3dKernel(const Context& dev_ctx,
   T* out_features_ptr = out_features.data<T>();
 
   Gather<T>(x.non_zero_elements().data<T>(),
-            rulebook.data<int>() + n,
+            rulebook->data<int>() + n,
             n,
             in_channels,
             in_features_ptr);
@@ -135,7 +136,7 @@ void Conv3dKernel(const Context& dev_ctx,
   T* out_values_ptr = out->mutable_non_zero_elements()->data<T>();
   memset(out_values_ptr, 0, sizeof(T) * out->nnz() * out_channels);
   Scatter<T>(out_features_ptr,
-             rulebook.data<int>() + n * 2,
+             rulebook->data<int>() + n * 2,
              n,
              out_channels,
              out_values_ptr);

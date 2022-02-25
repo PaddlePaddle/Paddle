@@ -102,8 +102,15 @@ void TestConv3dBase(const std::vector<int>& indices,
   memcpy(kernel_tensor.data<T>(), kernel.data(), kernel.size() * sizeof(T));
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    SparseCooTensor out = sparse::Conv3d<T>(
-        dev_ctx_cpu, x_tensor, kernel_tensor, paddings, dilations, strides, 1);
+    DenseTensor rulebook = phi::Empty<int, phi::CPUContext>(dev_ctx_cpu);
+    SparseCooTensor out = sparse::Conv3d<T>(dev_ctx_cpu,
+                                            x_tensor,
+                                            kernel_tensor,
+                                            paddings,
+                                            dilations,
+                                            strides,
+                                            1,
+                                            &rulebook);
 
     ASSERT_EQ(correct_out_dims.size(), out.dims().size());
     for (int i = 0; i < correct_out_dims.size(); i++) {

@@ -121,7 +121,8 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
-                  SparseCooTensor* out);
+                  SparseCooTensor* out,
+                  DenseTensor* rulebook);
 
 template <typename T, typename Context>
 SparseCooTensor Conv3d(const Context& dev_ctx,
@@ -130,12 +131,13 @@ SparseCooTensor Conv3d(const Context& dev_ctx,
                        const std::vector<int>& paddings,
                        const std::vector<int>& dilations,
                        const std::vector<int>& strides,
-                       const int groups) {
+                       const int groups,
+                       DenseTensor* rulebook) {
   DenseTensor indices = phi::Empty<T, Context>(dev_ctx);
   DenseTensor values = phi::Empty<T, Context>(dev_ctx);
   SparseCooTensor coo(indices, values, x.dims());
   Conv3dKernel<T, Context>(
-      dev_ctx, x, kernel, paddings, dilations, strides, groups, &coo);
+      dev_ctx, x, kernel, paddings, dilations, strides, groups, &coo, rulebook);
   return coo;
 }
 
