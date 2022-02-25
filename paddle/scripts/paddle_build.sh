@@ -840,9 +840,8 @@ set +x
                                     retry_unittests_regular="$retry_unittests_regular|^$line$"
                                 fi
                             done
-                        
                         failed_test_lists=''
-                        ctest -R "$retry_unittests_regular" --output-on-failure -j 1 | tee $tmpfile
+                        ctest -R "$retry_unittests_regular" --output-on-failure -j 2 | tee $tmpfile
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         exec_times=$[$exec_times+1]

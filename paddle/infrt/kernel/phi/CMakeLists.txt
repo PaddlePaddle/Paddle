@@ -25,7 +25,7 @@ add_custom_command(
 
 cc_library(infrt_naive SRCS infershaped/infershaped_kernel_launcher.cc
         infershaped/infershaped_kernel_launchers.cc
-        DEPS pten wrapped_infermeta)
+        DEPS phi wrapped_infermeta)
 
 cc_test_tiny(test_infrt_infershape_launchers SRCS
 infershaped/infershape_launchers_test.cc DEPS infrt)
