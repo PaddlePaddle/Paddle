@@ -14,14 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace funcs {
 
-template <typename T>
-void MultinomialFunctor(int64_t* out_data,
+template <typename T, typename Context>
+void MultinomialFunctor(const Context& dev_ctx,
+                        int64_t* out_data,
                         const T* in_data,
                         const int64_t num_samples,
                         const bool replacement,
@@ -30,8 +31,7 @@ void MultinomialFunctor(int64_t* out_data,
   std::vector<T> cumulative_probs(num_categories);
 
   std::uniform_real_distribution<T> dist(0, 1);
-  auto gen_ptr = paddle::framework::DefaultCPUGenerator();
-  auto engine = gen_ptr->GetCPUEngine();
+  auto engine = dev_ctx.GetHostGenerator()->GetCPUEngine();
 
   for (int64_t i = 0; i < num_distributions; i++) {
     T probs_sum = 0;

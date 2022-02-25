@@ -173,7 +173,8 @@ void MultinomialKernel(const Context& dev_ctx,
                cudaMemcpyDeviceToHost);
 #endif
 
-    funcs::MultinomialFunctor<T>(cpu_out_data,
+    funcs::MultinomialFunctor<T>(dev_ctx,
+                                 cpu_out_data,
                                  cpu_in_data,
                                  num_samples,
                                  replacement,

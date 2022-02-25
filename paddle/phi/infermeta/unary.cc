@@ -99,6 +99,7 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
           dims[rank - 2],
           dims[rank - 1]));
   out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void CopyToInferMeta(const MetaTensor& x,
@@ -123,6 +124,7 @@ void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
                               product(x.dims())));
   out->set_dims(x.dims());
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 static phi::DDim ValidateShape(const std::vector<int64_t> shape,
@@ -297,6 +299,7 @@ void MultinomialInferMeta(const MetaTensor& x,
   out_dims[x_rank - 1] = num_samples;
 
   out->set_dims(make_ddim(out_dims));
+  out->set_dtype(DataType::INT64);
 }
 
 void ReshapeInferMeta(const MetaTensor& x,

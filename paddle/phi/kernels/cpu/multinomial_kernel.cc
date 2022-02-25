@@ -33,7 +33,8 @@ void MultinomialKernel(const Context& dev_ctx,
   const int64_t num_categories = in_dims[in_rank - 1];
   const int64_t num_distributions = in_rank > 1 ? in_dims[in_rank - 2] : 1;
 
-  funcs::MultinomialFunctor<T>(out_data,
+  funcs::MultinomialFunctor<T>(dev_ctx,
+                               out_data,
                                in_data,
                                num_samples,
                                replacement,

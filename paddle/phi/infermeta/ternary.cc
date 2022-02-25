@@ -86,6 +86,7 @@ void AddmmInferMeta(const MetaTensor& input,
 
   out->set_dims(make_ddim(output_dims));
   out->share_lod(input);
+  out->set_dtype(input.dtype());
 }
 
 }  // namespace phi
