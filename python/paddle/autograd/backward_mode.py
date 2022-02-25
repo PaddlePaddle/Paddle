@@ -116,9 +116,5 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
             grad_tensors), "The length of grad_tensors must be equal to tensors"
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
-    record_event = profiler.Record_Event("Gradient Backward",
-                                         profiler.TracerEventType.Backward)
-    record_event.begin()
     core.dygraph_run_backward(tensors, grad_tensors, retain_graph,
                               framework._dygraph_tracer())
-    record_event.end()

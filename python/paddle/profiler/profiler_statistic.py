@@ -393,10 +393,7 @@ def _build_table(statistic_data,
     total_time = statistic_data.time_range_summary.get_cpu_range_sum(
         TracerEventType.ProfileStep)
     ###### Print Device Summary ######
-    headers = [
-        'Device',
-        'Utilization (%)',
-    ]
+    headers = ['Device', 'Process Utilization (%)']
     device_names = ['CPU']
     device_names.extend([
         'GPU{}'.format(key)

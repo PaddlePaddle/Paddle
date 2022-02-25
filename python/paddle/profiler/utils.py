@@ -15,11 +15,11 @@
 from paddle.fluid.core import (_RecordEvent, TracerEventType)
 from typing import Any
 from warnings import warn
+import functools
 try:
     # Available in Python >= 3.2
     from contextlib import ContextDecorator
 except ImportError:
-    import functools
 
     class ContextDecorator(object):
         def __enter__(self):
@@ -45,13 +45,13 @@ _AllowedEventTypeList = [
 ]
 
 
-class Record_Event(ContextDecorator):
+class RecordEvent(ContextDecorator):
     '''
   Interface for recording a time range.
   Examples:
     .. code-block:: python
     import paddle.profiler as profiler
-    with profiler.Record_Event(name='op1'):
+    with profiler.RecordEvent(name='op1'):
       op1()
   '''
 
@@ -80,3 +80,38 @@ class Record_Event(ContextDecorator):
     def end(self):
         if self.event:
             self.event.end()
+
+
+def wrap_optimizers():
+    def optimizer_warpper(func):
+        @functools.wraps(func)
+        def warpper(*args, **kwargs):
+            with RecordEvent(
+                    'Optimization Step',
+                    event_type=TracerEventType.Optimization):
+                return func(*args, **kwargs)
+
+        return warpper
+
+    import paddle.optimizer as optimizer
+    for classname in optimizer.__all__:
+        if classname != 'Optimizer':
+            classobject = getattr(optimizer, classname)
+            if getattr(classobject, 'step', None) != None:
+                classobject.step = optimizer_warpper(classobject.step)
+
+
+def wrap_functional():
+    def functional_warpper(func):
+        @functools.wraps(func)
+        def warpper(*args, **kwargs):
+            with RecordEvent(
+                    func.__name__, event_type=TracerEventType.PythonOp):
+                return func(*args, **kwargs)
+
+        return warpper
+
+    import paddle.nn.functional as functional
+    for funcname in functional.__all__:
+        funcobject = getattr(functional, funcname)
+        setattr(functional, funcname, functional_warpper(funcobject))
