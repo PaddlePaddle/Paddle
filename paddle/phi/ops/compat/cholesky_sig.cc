@@ -16,10 +16,6 @@
 
 namespace phi {
 
-KernelSignature CholeskyOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("cholesky", {"X"}, {"upper"}, {"Out"});
-}
-
 KernelSignature CholeskyGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("cholesky_grad",
@@ -30,5 +26,4 @@ KernelSignature CholeskyGradOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(cholesky, phi::CholeskyOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(cholesky_grad, phi::CholeskyGradOpArgumentMapping);

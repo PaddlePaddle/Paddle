@@ -81,6 +81,28 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
+  auto dims = x.dims();
+  auto rank = dims.size();
+  PADDLE_ENFORCE_GE(rank,
+                    2,
+                    errors::InvalidArgument(
+                        "The Input(X) should have at least 2 dimensions. But "
+                        "received a %d dimension tensor.",
+                        rank));
+  PADDLE_ENFORCE_EQ(
+      dims[rank - 2],
+      dims[rank - 1],
+      errors::InvalidArgument(
+          "The inner-most 2 dimensions of Input(X) all should be symmetric "
+          "positive-definite matrices and have the same size. But received "
+          "X's shape[-2] = %d and shape[-1] = %d.",
+          dims[rank - 2],
+          dims[rank - 1]));
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void CopyToInferMeta(const MetaTensor& x,
                      Backend backend,
                      bool blocking,
@@ -92,6 +114,18 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
   out->set_layout(x.layout());
+}
+
+void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      product(x.dims()),
+      1UL,
+      errors::InvalidArgument("The number of elements in Input(X) should be 1."
+                              "Now the number is %d.",
+                              product(x.dims())));
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 static phi::DDim ValidateShape(const std::vector<int64_t> shape,
@@ -232,6 +266,41 @@ void InferMetaFromVecValue(const MetaTensor& x,
     // are the same.
     out->share_lod(x);
   }
+}
+
+void MultinomialInferMeta(const MetaTensor& x,
+                          int num_samples,
+                          bool replacement,
+                          MetaTensor* out) {
+  auto x_dim = x.dims();
+  int64_t x_rank = x_dim.size();
+  PADDLE_ENFORCE_GT(x_rank,
+                    0,
+                    errors::InvalidArgument(
+                        "The number of dimensions of the input probability "
+                        "distribution should be > 0, but got %d.",
+                        x_rank));
+  PADDLE_ENFORCE_LE(x_rank,
+                    2,
+                    errors::InvalidArgument(
+                        "The number of dimensions of the input probability "
+                        "distribution should be <= 2, but got %d.",
+                        x_rank));
+
+  std::vector<int64_t> out_dims(x_rank);
+  for (int64_t i = 0; i < x_rank - 1; i++) {
+    out_dims[i] = x_dim[i];
+  }
+
+  PADDLE_ENFORCE_GT(
+      num_samples,
+      0,
+      errors::InvalidArgument(
+          "The number of samples should be > 0, but got %d.", num_samples));
+  out_dims[x_rank - 1] = num_samples;
+
+  out->set_dims(make_ddim(out_dims));
+  out->set_dtype(DataType::INT64);
 }
 
 void ReshapeInferMeta(const MetaTensor& x,
