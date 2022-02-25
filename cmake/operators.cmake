@@ -75,11 +75,8 @@ function(op_library TARGET)
             endif()
             # rename in KP: .kps -> .cu
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
-                add_custom_command(OUTPUT kp_rename 
-                    COMMAND ${CMAKE_COMMAND} cp ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu
-                    VERBATIM
-                )
-                add_custom_target(KP_RENAME_FINISH DEPENDS kp_rename)
+                file(COPY ${TARGET}.kps DESTINATION  ${CMAKE_CURRENT_BINARY_DIR})
+                file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
                 list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
             endif()
             if (WITH_NV_JETSON)
@@ -107,11 +104,8 @@ function(op_library TARGET)
             endif()
             # rename in KP: .kps -> .cu
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
-                add_custom_command(OUTPUT kp_rename 
-                    COMMAND ${CMAKE_COMMAND} cp ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu
-                    VERBATIM
-                )
-                add_custom_target(KP_RENAME_FINISH DEPENDS kp_rename)
+                file(COPY ${TARGET}.kps DESTINATION  ${CMAKE_CURRENT_BINARY_DIR})
+                file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
                 list(APPEND hip_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
             endif()
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu)
