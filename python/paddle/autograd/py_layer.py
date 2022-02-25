@@ -317,3 +317,114 @@ class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
 
         raise NotImplementedError(
             "You must implement the backward function for PyLayer.")
+
+
+class EagerPyLayerContext(object):
+    def save_for_backward(self, *tensors: core.eager.Tensor):
+        self.to_save = tensors
+
+    def mark_dirty(self, *args: core.eager.Tensor):
+        self.dirty_tensors = args
+
+    def mark_non_differentiable(self, *args: core.eager.Tensor):
+        self.non_differentiable = args
+
+    def set_materialize_grads(self, value: bool):
+        self.materialize_grads = value
+
+
+class EagerPyLayerBackward(core.eager.PyLayer, EagerPyLayerContext):
+    def backward(self, *args, **kwargs):
+        with paddle.fluid.dygraph.guard():
+            return self._forward_cls.backward(*args, **kwargs)
+
+
+class EagerPyLayerMeta(type):
+    def __init__(cls, name, bases, attrs):
+        cls._backward_function = type(name + '_backward',
+                                      (EagerPyLayerBackward, ),
+                                      {"_forward_cls": cls})
+
+        return super(EagerPyLayerMeta, cls).__init__(name, bases, attrs)
+
+
+class EagerPyLayer(
+        with_mateclass(EagerPyLayerMeta, core.eager.PyLayer,
+                       EagerPyLayerContext)):
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        """
+        It is to be overloaded by subclasses. It must accept a object of `PyLayerContext` as 
+        the first argument, followed by any number of arguments (tensors or other types). 
+        `None` can not be included in the returned result.
+
+        Args:
+            *args(tuple): input of PyLayer.
+            **kwargs(dict): input of PyLayer.
+
+        Returns:
+            tensors or other types : output of PyLayer.
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+
+                class cus_tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        y = paddle.tanh(x)
+                        # Pass tensors to backward.
+                        ctx.save_for_backward(y)
+                        return y
+
+                    @staticmethod
+                    def backward(ctx, dy):
+                        # Get the tensors passed by forward.
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - paddle.square(y))
+                        return grad
+        """
+        raise NotImplementedError(
+            "You must implement the forward function for PyLayer.")
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        """
+        This is a function to calculate the gradient. It is to be overloaded by subclasses. 
+        It must accept a object of `PyLayerContext` as the first argument, and the rest 
+        arguments are the gradient of forward's output tensors. Output tensors of backward 
+        are the gradient of forward's input tensors.
+
+        Args:
+            *args(tuple): The gradient of forward's output tensor(s).
+            **kwargs(dict): The gradient of forward's output tensor(s).
+
+        Returns:
+            Tensor or list of Tensors: The gradient of forward's input tensor(s).
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+
+                class cus_tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        y = paddle.tanh(x)
+                        # Pass tensors to backward.
+                        ctx.save_for_backward(y)
+                        return y
+
+                    @staticmethod
+                    def backward(ctx, dy):
+                        # Get the tensors passed by forward.
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - paddle.square(y))
+                        return grad
+        """
+
+        raise NotImplementedError(
+            "You must implement the backward function for PyLayer.")

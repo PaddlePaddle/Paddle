@@ -298,7 +298,7 @@ if(WITH_PYTHON)
 
   if(NOT ON_INFER)
     cc_library(paddle_eager
-    SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
+    SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc eager_pylayer.cc
     DEPS eager_api autograd_meta backward grad_node_info phi op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
