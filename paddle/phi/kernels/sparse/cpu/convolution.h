@@ -40,12 +40,14 @@ void ProductRuleBook(const Context& dev_ctx,
                      const DDim& out_dims,
                      DenseTensor* rulebook,
                      DenseTensor* counter_per_kernel) {
-  const auto place = dev_ctx.GetPlace();
   const auto& kernel_dims = kernel.dims();
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
   const int* indices_ptr = non_zero_indices.data<int>();
-  int* counter_ptr = counter_per_kernel->mutable_data<int>(place);
+  dev_ctx.Alloc(counter_per_kernel,
+                counter_per_kernel->dtype(),
+                sizeof(int) * counter_per_kernel->numel());
+  int* counter_ptr = counter_per_kernel->data<int>();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   memset(counter_ptr, 0, kernel_size * sizeof(int));
 
@@ -105,7 +107,8 @@ void ProductRuleBook(const Context& dev_ctx,
   f_calc_rulebook(nullptr);
   // alloc the rulebook
   rulebook->ResizeAndAllocate({3, rulebook_len});
-  int* rulebook_ptr = rulebook->mutable_data<int>(place);
+  dev_ctx.Alloc(rulebook, rulebook->dtype(), rulebook->numel() * sizeof(int));
+  int* rulebook_ptr = rulebook->data<int>();
   f_calc_rulebook(rulebook_ptr);
 }
 

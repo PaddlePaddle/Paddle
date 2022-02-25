@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -60,8 +61,11 @@ void TestConv3dBase(const std::vector<int>& indices,
                     const std::vector<int>& dilations,
                     const float diff = 1e-3) {
   phi::CPUContext dev_ctx_cpu;
+  dev_ctx_cpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
   dev_ctx_cpu.Init();
-  phi::CPUPlace cpu;
 
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
@@ -69,17 +73,21 @@ void TestConv3dBase(const std::vector<int>& indices,
   DenseTensor indices_tensor = phi::Empty(
       dev_ctx_cpu,
       DenseTensorMeta(DataType::INT32, {4, non_zero_num}, DataLayout::NCHW));
-  memcpy(indices_tensor.mutable_data<int>(cpu),
-         indices.data(),
-         indices.size() * sizeof(int));
+  dev_ctx_cpu.Alloc(&indices_tensor,
+                    indices_tensor.dtype(),
+                    sizeof(int) * indices_tensor.numel());
+  memcpy(
+      indices_tensor.data<int>(), indices.data(), indices.size() * sizeof(int));
   DenseTensor features_tensor = phi::Empty(
       dev_ctx_cpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       {non_zero_num, in_channels},
                       DataLayout::NCHW));
-  memcpy(features_tensor.mutable_data<T>(cpu),
-         features.data(),
-         features.size() * sizeof(T));
+  dev_ctx_cpu.Alloc(&features_tensor,
+                    features_tensor.dtype(),
+                    features_tensor.numel() * sizeof(T));
+  memcpy(
+      features_tensor.data<T>(), features.data(), features.size() * sizeof(T));
 
   SparseCooTensor x_tensor(indices_tensor, features_tensor, x_dims);
 
@@ -89,9 +97,9 @@ void TestConv3dBase(const std::vector<int>& indices,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       kernel_dims,
                       DataLayout::NCHW));
-  memcpy(kernel_tensor.mutable_data<T>(cpu),
-         kernel.data(),
-         kernel.size() * sizeof(T));
+  dev_ctx_cpu.Alloc(
+      &kernel_tensor, kernel_tensor.dtype(), kernel_tensor.numel() * sizeof(T));
+  memcpy(kernel_tensor.data<T>(), kernel.data(), kernel.size() * sizeof(T));
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
     SparseCooTensor out = sparse::Conv3d<T>(
