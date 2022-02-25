@@ -25,6 +25,8 @@ namespace kps = phi::kps;
 namespace phi {
 namespace funcs {
 
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+
 struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
   typedef void (*MergeFunctor)(
@@ -39,7 +41,7 @@ struct DimensionsTransform {
   void InputDimensionsExtend(int N, int axis) {
     for (auto &in_dim : in_dims) {
       int64_t in_idx = 0;
-      if (in_dim.size() < static_cast<size_t>(dim_size)) {
+      if (in_dim.size() < dim_size) {
         DimVector tmp_dim(dim_size, 1);
         do {
           if (in_dim[in_idx] == out_dims[axis] || in_dim[in_idx] == 1) {
@@ -56,7 +58,7 @@ struct DimensionsTransform {
                 out_dims[axis],
                 in_dim[in_idx]));
           }
-        } while (static_cast<size_t>(in_idx) < in_dim.size());
+        } while (in_idx < in_dim.size());
         in_dim.resize(dim_size);
         std::copy(tmp_dim.begin(), tmp_dim.end(), in_dim.begin());
       } else {
@@ -182,8 +184,6 @@ struct DimensionsTransform {
     std::swap(in_dims[min_idx], in_dims[0]);
   }
 };
-
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 template <typename T, int VecSize, int Rank, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
