@@ -17,12 +17,14 @@
 #include <Python.h>
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
-#include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
+
+namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {

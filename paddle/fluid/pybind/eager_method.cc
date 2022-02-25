@@ -29,17 +29,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/fluid/framework/scope_guard.h"
-#include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/operators/utils.h"
-#include "paddle/fluid/pybind/op_function_common.h"
-#include "paddle/fluid/pybind/slice_utils.h"
-#include "paddle/fluid/pybind/tensor_py.h"
 
 namespace paddle {
 namespace pybind {
