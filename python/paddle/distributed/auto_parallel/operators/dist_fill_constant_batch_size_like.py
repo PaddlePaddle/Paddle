@@ -66,7 +66,13 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
             (not self.is_output_compatible(dist_op)):
             return False
 
-        return True
+        out_name = op_desc.output('Out')[0]
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        in_name = op_desc.input('Input')[0]
+        in_dims_mapping = op_dist_attr.get_input_dims_mapping(in_name)
+
+        # the dim_mapping of batch dimension should be the same
+        return out_dims_mapping[0] == in_dims_mapping[0]
 
     def update_dims_mapping(self, dist_op):
         changed = False
@@ -100,11 +106,11 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
 
         # modify shape attr according to how output are partitioned
         out_name = op.output('Out')[0]
-        dim_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         process_mesh_shape = op_dist_attr.process_mesh.topology
         shape_list = op.attr("shape")
         # modify target shape
-        for idx, axis in enumerate(dim_mapping):
+        for idx, axis in enumerate(dims_mapping):
             if axis >= 0:
                 shape_list[idx] = shape_list[idx] // process_mesh_shape[axis]
 
