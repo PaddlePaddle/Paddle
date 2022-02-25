@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <vector>
+#include "paddle/phi/kernels/index_sample_grad_kernel.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/index_sample_grad_kernel.h"
+#include <algorithm>
+#include <vector>
 namespace phi {
 
 namespace {
