@@ -21,16 +21,16 @@ namespace phi {
 
 template <typename T, typename Context>
 void RandintKernel(const Context& dev_ctx,
-                   int low,
-                   int high,
+                   int64_t low,
+                   int64_t high,
                    const ScalarArray& shape,
                    DataType dtype,
                    DenseTensor* out);
 
 template <typename T, typename Context>
 void RandintRawKernel(const Context& dev_ctx,
-                      int low,
-                      int high,
+                      int64_t low,
+                      int64_t high,
                       const ScalarArray& shape,
                       DataType dtype,
                       int seed,

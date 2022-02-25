@@ -33,11 +33,11 @@ class RandintOp : public framework::OperatorWithKernel {
         ctx->HasOutput("Out"), true,
         platform::errors::InvalidArgument("Output(Out) of RandintOp is null."));
     PADDLE_ENFORCE_LT(
-        ctx->Attrs().Get<int>("low"), ctx->Attrs().Get<int>("high"),
+        ctx->Attrs().Get<int64_t>("low"), ctx->Attrs().Get<int64_t>("high"),
         platform::errors::InvalidArgument("randint's low must less then high, "
                                           "but received: low = %d, high = %d.",
-                                          ctx->Attrs().Get<int>("low"),
-                                          ctx->Attrs().Get<int>("high")));
+                                          ctx->Attrs().Get<int64_t>("low"),
+                                          ctx->Attrs().Get<int64_t>("high")));
 
     if (ctx->HasInputs("ShapeTensorList")) {
       // top prority shape
@@ -121,10 +121,10 @@ uniform distribution. The random result is in set [low, high).
 )DOC");
     AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor.")
         .SetDefault({});
-    AddAttr<int>("low",
-                 "The lower bound on the range of random values to generate.");
-    AddAttr<int>("high",
-                 "The upper bound on the range of random values to generate.");
+    AddAttr<int64_t>(
+        "low", "The lower bound on the range of random values to generate.");
+    AddAttr<int64_t>(
+        "high", "The upper bound on the range of random values to generate.");
     AddAttr<int>("dtype", "Output tensor data type. [Default INT64].")
         .SetDefault(framework::proto::VarType::INT64);
     AddAttr<int>("seed",
