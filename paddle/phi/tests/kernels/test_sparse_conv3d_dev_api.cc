@@ -22,8 +22,6 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-
 namespace phi {
 namespace tests {
 
@@ -60,9 +58,6 @@ void TestConv3d(const std::vector<int>& indices,
                 const std::vector<int>& paddings,
                 const std::vector<int>& strides,
                 const std::vector<int>& dilations) {
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
-      paddle::platform::CPUPlace());
-
   phi::CPUContext dev_ctx_cpu;
   dev_ctx_cpu.Init();
   phi::CPUPlace cpu;
@@ -70,17 +65,17 @@ void TestConv3d(const std::vector<int>& indices,
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
 
-  DenseTensor indices_tensor(
-      alloc.get(),
+  DenseTensor indices_tensor = phi::Empty(
+      dev_ctx_cpu,
       DenseTensorMeta(DataType::INT32, {4, non_zero_num}, DataLayout::NCHW));
   memcpy(indices_tensor.mutable_data<int>(cpu),
          indices.data(),
          indices.size() * sizeof(int));
-  DenseTensor features_tensor(
-      alloc.get(),
+  DenseTensor features_tensor = phi::Empty(
+      dev_ctx_cpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       {non_zero_num, in_channels},
-                      DataLayout::NHWC));
+                      DataLayout::NCHW));
   memcpy(features_tensor.mutable_data<T>(cpu),
          features.data(),
          features.size() * sizeof(T));
@@ -88,11 +83,11 @@ void TestConv3d(const std::vector<int>& indices,
   SparseCooTensor x_tensor(indices_tensor, features_tensor, x_dims);
 
   // TODO(zhangkaihuo) change layout to DHWCOC
-  DenseTensor kernel_tensor(
-      alloc.get(),
+  DenseTensor kernel_tensor = phi::Empty(
+      dev_ctx_cpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       kernel_dims,
-                      DataLayout::NHWC));
+                      DataLayout::NCHW));
   memcpy(kernel_tensor.mutable_data<T>(cpu),
          kernel.data(),
          kernel.size() * sizeof(T));
