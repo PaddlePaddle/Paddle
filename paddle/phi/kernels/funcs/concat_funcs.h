@@ -92,4 +92,4 @@ static inline phi::DDim ComputeAndCheckShape(
 }
 
 }  // namespace funcs
-}  // namespace  phi
+}  // namespace phi
