@@ -325,8 +325,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_fwd_1024_kernel(
         // mu_local));
         // x[it][jt] = gamma[it][jt] *  tmp + beta[it][jt];
         if (deterministic) {
-          ScaleT tmp = static_cast<ScaleT>(rsigma * (xf[it * VecSize + jt] -
-                                           mu_local);
+          ScaleT tmp =
+              static_cast<ScaleT>(rsigma * (xf[it * VecSize + jt] - mu_local));
           x[it][jt] = static_cast<T>(gamma[it][jt] * tmp + beta[it][jt]);
         } else {
           // cast to fp32 to compute
