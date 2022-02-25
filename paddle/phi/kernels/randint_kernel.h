@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RandintKernel(const Context& ctx,
+void RandintKernel(const Context& dev_ctx,
                    int low,
                    int high,
                    const ScalarArray& shape,
@@ -28,7 +28,7 @@ void RandintKernel(const Context& ctx,
                    DenseTensor* out);
 
 template <typename T, typename Context>
-void RandintRawKernel(const Context& ctx,
+void RandintRawKernel(const Context& dev_ctx,
                       int low,
                       int high,
                       const ScalarArray& shape,
