@@ -12,7 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mv_op.h"
+#include <algorithm>
+#include <utility>
+#include <vector>
+
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -116,10 +122,3 @@ REGISTER_OPERATOR(mv, ops::MVOp, ops::MVOpMaker,
                   ops::MVOpGradMaker<paddle::framework::OpDesc>,
                   ops::MVOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(mv_grad, ops::MVOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    mv, ops::MVKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MVKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    mv_grad, ops::MVGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MVGradKernel<paddle::platform::CPUDeviceContext, double>);
