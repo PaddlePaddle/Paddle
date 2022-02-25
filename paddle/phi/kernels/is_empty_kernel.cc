@@ -21,21 +21,32 @@ namespace phi {
 
 template <typename T, typename Context>
 void IsEmptyKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 DenseTensor* out){ 
-    // Note: is_empty is always executed on CPU and the output data should
-    // always be allocated for CPUPlace. We reigister CUDA kernel for this op to
-    // avoid the unnecessary data transform.
-    out->mutable_data<bool>(phi::CPUPlace())[0] =
-        phi::product(x.dims()) == 0;
-  } 
+                   const DenseTensor& x,
+                   DenseTensor* out) {
+  // Note: is_empty is always executed on CPU and the output data should
+  // always be allocated for CPUPlace. We reigister CUDA kernel for this op to
+  // avoid the unnecessary data transform.
+  out->mutable_data<bool>(phi::CPUPlace())[0] = phi::product(x.dims()) == 0;
+}
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    is_empty, CPU, ALL_LAYOUT, phi::IsEmptyKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(is_empty,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::IsEmptyKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(
-    is_empty, GPU, ALL_LAYOUT, phi::IsEmptyKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(is_empty,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::IsEmptyKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 #endif

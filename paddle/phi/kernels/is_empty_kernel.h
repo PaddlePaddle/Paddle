@@ -19,8 +19,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IsEmptyKernel(const Context& ctx,
-                 const DenseTensor& x,
-                 DenseTensor* out);
+void IsEmptyKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
 
 }  // namespace phi
