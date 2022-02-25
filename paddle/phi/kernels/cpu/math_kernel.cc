@@ -139,7 +139,8 @@ PD_REGISTER_KERNEL(subtract_raw,
                    int,
                    int64_t,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(divide_raw,
                    CPU,
                    ALL_LAYOUT,
@@ -160,7 +161,8 @@ PD_REGISTER_KERNEL(multiply_raw,
                    int64_t,
                    bool,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(sum_raw,
                    CPU,
                    ALL_LAYOUT,

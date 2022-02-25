@@ -45,4 +45,4 @@ TEST(SoftMaxOpConverter, main) {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
