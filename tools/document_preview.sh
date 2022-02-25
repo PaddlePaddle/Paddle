@@ -85,27 +85,32 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
         mkdir -p ${OUTPUTDIR}
     fi
 
+    # install requirements
+    apt-get install -y --no-install-recommends doxygen jq
+    echo 'beautifulsoup4
+Markdown
+sphinx-sitemap
+sphinx-markdown-tables
+breathe
+exhale
+sphinx_design
+nbsphinx
+' >/tmp/doc-build.requirements && \
+    pip install --no-cache-dir -i https://mirror.baidu.com/pypi/simple -r /tmp/doc-build.requirements && \
+    rm /tmp/doc-build.requirements
+
+
     source ${FLUIDDOCDIR}/ci_scripts/utils.sh
     paddle_pr_info=$(get_repo_pr_info "PaddlePaddle/Paddle" ${GIT_PR_ID})
     docs_pr_id=$(get_docs_pr_num_from_paddle_pr_info ${paddle_pr_info})
     if [ -n "${docs_pr_id}" ] ; then
         cd ${FLUIDDOCDIR}
-        git fetch origin pull/${docs_pr_id}/head
+        git fetch --depth=1 origin pull/${docs_pr_id}/head
         git checkout -b "pr${docs_pr_id}" FETCH_HEAD
-        git log -n 10
+        git log --pretty=oneline -10
     fi
     echo "docs_pr_id=${docs_pr_id}"
 
-    # install requirements
-    apt-get install -y --no-install-recommends doxygen
-    pip install beautifulsoup4 -i https://mirror.baidu.com/pypi/simple
-    pip install Markdown -i https://mirror.baidu.com/pypi/simple
-    pip install sphinx-sitemap -i https://mirror.baidu.com/pypi/simple
-    pip install sphinx-markdown-tables -i https://mirror.baidu.com/pypi/simple
-    pip install breathe -i https://mirror.baidu.com/pypi/simple
-    pip install exhale -i https://mirror.baidu.com/pypi/simple
-    pip install sphinx_design -i https://mirror.baidu.com/pypi/simple
-    pip install nbsphinx -i https://mirror.baidu.com/pypi/simple
 
     # build doc
     /bin/bash -x ${FLUIDDOCDIR}/ci_scripts/gendoc.sh
