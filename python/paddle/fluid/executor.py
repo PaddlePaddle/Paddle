@@ -622,7 +622,9 @@ class Executor(object):
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
             GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
             If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x`` 
-            is the index of the GPUs.
+            is the index of the GPUs. Note: users only pass one Place or None to initialize
+            Executor when using multiple-cards. Other APIs will override the cards. See
+            `document for multiple-cards <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/01_paddle2.0_introduction/update_en.html#stand-alone-multi-card-launch>`_ 
 
     Returns:
         Executor
@@ -1581,9 +1583,6 @@ class Executor(object):
             lr_sheduler = program.lr_sheduler
             lr_value = lr_sheduler()
             lr_var = program.global_block().vars[lr_sheduler._var_name]
-            if core.is_compiled_with_ipu():
-                if hasattr(program.lr_sheduler, 'lr_var'):
-                    lr_var = program.lr_sheduler.lr_var
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
             tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
             tensor.set(data, self.place)

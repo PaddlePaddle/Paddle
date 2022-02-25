@@ -14,17 +14,18 @@
 
 #pragma once
 #include "paddle/phi/kernels/primitive/helper_primitives.h"
-#ifdef PADDLE_WITH_XPU2
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/kernels/primitive/compute_primitives_xpu2.h"
-#include "paddle/phi/kernels/primitive/datamover_primitives_xpu2.h"
-#include "paddle/phi/kernels/primitive/functor_primitives_xpu2.h"
+#ifdef PADDLE_WITH_XPU_KP
 
 #define KPStream XPUStream
 #define KPDevice phi::XPUContext
 #define _ptr_ _global_ptr_
 #define __forceinline__ __inline__
 #define __restrict__
+
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/kernels/primitive/compute_primitives_xpu2.h"
+#include "paddle/phi/kernels/primitive/datamover_primitives_xpu2.h"
+#include "paddle/phi/kernels/primitive/functor_primitives_xpu2.h"
 
 #define THREAD_ID_X core_id()
 #define THREAD_ID_Y 0

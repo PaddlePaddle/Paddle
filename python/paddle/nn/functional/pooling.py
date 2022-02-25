@@ -13,13 +13,11 @@
 # limitations under the License.
 
 # TODO: define pooling functions
-from ...fluid import core
-from ...fluid.framework import in_dygraph_mode
 from ...fluid.layers import utils, LayerHelper
 from ...tensor.manipulation import unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle import _C_ops
-from paddle import _C_ops
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -210,7 +208,7 @@ def avg_pool1d(x,
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool1d')
     _check_input(x, 3)
     x = unsqueeze(x, [2])
@@ -232,7 +230,7 @@ def avg_pool1d(x,
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         output = _C_ops.pool2d(
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'global_pooling',
             False, 'strides', stride, 'paddings', padding, 'padding_algorithm',
@@ -346,7 +344,7 @@ def avg_pool2d(x,
     padding, padding_algorithm = _update_padding_nd(
         padding, 2, channel_last, ceil_mode=ceil_mode)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         output = _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize', kernel_size,
                                'global_pooling', False, 'padding_algorithm',
                                padding_algorithm, 'strides', stride, 'paddings',
@@ -468,7 +466,7 @@ def avg_pool3d(x,
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         output = _C_ops.pool3d(
             x, 'pooling_type', 'avg', 'ksize', kernel_size, 'strides', stride,
             'paddings', padding, 'global_pooling', False, 'padding_algorithm',
@@ -571,7 +569,7 @@ def max_pool1d(x,
     """
     """NCL to NCHW"""
     data_format = "NCHW"
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool1d')
     _check_input(x, 3)
     x = unsqueeze(x, [2])
@@ -587,7 +585,7 @@ def max_pool1d(x,
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if return_mask:
             pool_out = _C_ops.max_pool2d_with_index(
                 x, 'ksize', kernel_size, 'global_pooling', False, 'strides',
@@ -672,7 +670,7 @@ def max_unpool1d(x,
                  data_format="NCL",
                  output_size=None,
                  name=None):
-    """
+    r"""
     This API implements max unpooling 1d opereation.
     `max_unpool1d` accepts the output of `max_pool1d` as input, 
     including the indices of the maximum value and calculate the partial inverse. 
@@ -746,7 +744,7 @@ def max_unpool1d(x,
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
                                kernel_size, 'strides', stride, 'paddings',
                                padding, "output_size", output_size,
@@ -781,7 +779,7 @@ def max_unpool2d(x,
                  data_format="NCHW",
                  output_size=None,
                  name=None):
-    """
+    r"""
     This API implements max unpooling 2d opereation.
     See more details in :ref:`api_nn_pooling_MaxUnPool2D` .
 
@@ -861,7 +859,7 @@ def max_unpool2d(x,
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         output = _C_ops.unpool(x, indices, 'unpooling_type', 'max', 'ksize',
                                kernel_size, 'strides', stride, 'paddings',
                                padding, "output_size", output_size,
@@ -896,7 +894,7 @@ def max_unpool3d(x,
                  data_format="NCDHW",
                  output_size=None,
                  name=None):
-    """
+    r"""
     This API implements max unpooling 3d opereation.
     `max_unpool3d` accepts the output of `max_pool3d` as input, 
     including the indices of the maximum value and calculate the partial inverse. 
@@ -973,7 +971,7 @@ def max_unpool3d(x,
     output_size = _unpool_output_size(x, kernel_size, stride, padding,
                                       output_size)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         output = _C_ops.unpool3d(x, indices, 'unpooling_type', 'max', 'ksize',
                                  kernel_size, 'strides', stride, 'paddings',
                                  padding, "output_size", output_size,
@@ -1029,7 +1027,7 @@ def max_pool2d(x,
             "When setting return_mask to true, data_format must be set to NCHW in API:max_pool2d"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if return_mask:
             output = _C_ops.max_pool2d_with_index(
                 x, 'ksize', kernel_size, 'global_pooling', False, 'strides',
@@ -1160,7 +1158,7 @@ def max_pool3d(x,
             "When setting return_mask to true, data_format must be set to NCDHW in API:max_pool3d"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if return_mask:
             output = _C_ops.max_pool3d_with_index(
                 x, 'pooling_type', 'max', 'ksize', kernel_size, 'strides',
@@ -1250,7 +1248,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
               # pool_out shape: [1, 3, 16])
     """
     pool_type = 'avg'
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'adaptive_pool2d')
         check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
@@ -1258,7 +1256,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pool_out = _C_ops.pool2d(x, 'pooling_type', pool_type, 'ksize',
                                  pool_size, 'adaptive', True)
         return squeeze(pool_out, [2])
@@ -1333,7 +1331,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
                             output_size=[3, 3])
             # out.shape is [2, 3, 3, 3]
     """
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  'adaptive_avg_pool2d')
         check_type(data_format, 'data_format', str, 'adaptive_avg_pool2d')
@@ -1357,7 +1355,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         if output_size[1] == None:
             output_size[1] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         output = _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize', output_size,
                                'global_pooling', False, 'adaptive', True,
                                'data_format', data_format)
@@ -1437,7 +1435,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
                             output_size=[3, 3, 3])
             # out.shape is [2, 3, 3, 3, 3]
     """
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_avg_pool3d')
         check_type(data_format, 'data_format', str, 'adaptive_avg_pool3d')
@@ -1463,7 +1461,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         if output_size[2] == None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         output = _C_ops.pool3d(x, 'pooling_type', 'avg', 'ksize', output_size,
                                'global_pooling', False, 'adaptive', True,
                                'data_format', data_format)
@@ -1537,7 +1535,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
               # pool_out shape: [1, 3, 16] indices  shape: [1, 3, 16]
     """
     pool_type = 'max'
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_max_pool1d')
         check_type(output_size, 'pool_size', int, 'adaptive_max_pool1d')
@@ -1547,7 +1545,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, 'pooling_type', pool_type, 'ksize', pool_size, 'adaptive', True)
         return (squeeze(pool_out[0], [2]), squeeze(
@@ -1619,7 +1617,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
                             output_size=[3, 3])
               # out.shape is [2, 3, 3, 3]
     """
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_max_pool2d')
         check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool2d')
@@ -1636,7 +1634,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
         if output_size[1] == None:
             output_size[1] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pool_out = _C_ops.max_pool2d_with_index(
             x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
         return pool_out if return_mask else pool_out[0]
@@ -1710,7 +1708,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
               # out.shape is [2, 3, 3, 3, 3]
     """
 
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'adaptive_max_pool3d')
         check_type(return_mask, 'return_mask', bool, 'adaptive_max_pool3d')
@@ -1729,7 +1727,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         if output_size[2] == None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pool_out = _C_ops.max_pool3d_with_index(
             x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
         return pool_out if return_mask else pool_out[0]

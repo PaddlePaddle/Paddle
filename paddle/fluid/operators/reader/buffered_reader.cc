@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -115,7 +116,9 @@ void BufferedReader::ReadAsync(size_t i) {
         platform::CUDAPinnedPlace cuda_pinned_place;
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
-        platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+        platform::RecordEvent record_event(
+            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            1);
         // NODE(chenweihang): When we use CUDAPinned Memory, we need call
         // cudaHostAlloc, that is a CUDA API, calling CUDA API need load
         // cuda lib into device, it will cost hundreds of MB of GPU memory.
@@ -170,7 +173,9 @@ void BufferedReader::ReadAsync(size_t i) {
             cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
 #endif
 
-        platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+        platform::RecordEvent record_event(
+            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            1);
         for (size_t i = 0; i < cpu.size(); ++i) {
           auto cpu_place = cpu[i].place();
           auto cpu_ptr = cpu[i].data();
@@ -229,7 +234,9 @@ void BufferedReader::ReadAsync(size_t i) {
       platform::NPUEventRecord(events_[i].get(), compute_stream_);
       platform::NPUStreamWaitEvent(stream_.get(), events_[i].get());
 
-      platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                         platform::TracerEventType::UserDefined,
+                                         1);
       for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
         auto cpu_ptr = cpu[i].data();
