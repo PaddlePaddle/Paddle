@@ -3919,6 +3919,8 @@ All parameter, weight, gradient are variables in Paddle.
              }
              return res;
            })
+      .def("get_all_option_names",
+           &platform::ipu::IpuStrategy::GetAllOptionNames)
       .def("enable_pattern", &platform::ipu::IpuStrategy::EnablePattern)
       .def("disable_pattern", &platform::ipu::IpuStrategy::DisablePattern)
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);

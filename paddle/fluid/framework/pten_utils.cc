@@ -123,6 +123,15 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
                           kernel_key.dtype());
   }
 #endif
+#ifdef PADDLE_WITH_IPU
+  if (platform::is_ipu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "pten missing IPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
+                          kernel_key.dtype());
+  }
+#endif
   return phi::KernelKey();
 }
 
