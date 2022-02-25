@@ -30,6 +30,8 @@ Backend TransToPtenBackend(const phi::Place& place) {
     return Backend::CPU;
   } else if (place.GetType() == phi::AllocationType::GPU) {
     return Backend::GPU;
+  } else if (place.GetType() == phi::AllocationType::XPU) {
+    return Backend::XPU;
   } else if (place.GetType() == phi::AllocationType::CUSTOM) {
     return static_cast<Backend>(
         static_cast<size_t>(Backend::NUM_BACKENDS) +
@@ -56,7 +58,7 @@ phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
       return phi::CPUPlace();
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case phi::Backend::CUDNN:
+    case phi::Backend::GPUDNN:
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
