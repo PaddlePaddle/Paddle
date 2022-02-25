@@ -27,7 +27,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestCastNet(unittest.TestCase):
     def _test(self, run_ipu=True):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -36,7 +36,7 @@ class TestCastNet(unittest.TestCase):
 
         np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32')

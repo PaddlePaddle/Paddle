@@ -49,7 +49,7 @@ class TestBase(IPUOpTest):
         self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
     def _test_base(self, save_otherwise_load):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
@@ -57,7 +57,7 @@ class TestBase(IPUOpTest):
         generator = paddle.fluid.unique_name.UniqueNameGenerator()
 
         with paddle.fluid.unique_name.guard(generator):
-            with paddle.fluid.scope_guard(scope):
+            with paddle.static.scope_guard(scope):
                 with paddle.static.program_guard(main_prog, startup_prog):
                     x = paddle.static.data(
                         name=self.feed_list[0],
@@ -95,7 +95,7 @@ class TestBase(IPUOpTest):
                     is_training=self.attrs['is_training'])
                 ipu_strategy.set_precision_config(
                     enable_fp16=self.attrs['enable_fp16'])
-                ipu_strategy.set_option({
+                ipu_strategy.set_options({
                     'save_per_n_step': self.attrs['save_at_step']
                 })
                 program = paddle.static.IpuCompiledProgram(
