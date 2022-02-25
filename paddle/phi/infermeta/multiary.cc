@@ -81,6 +81,7 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
 
   out->set_dims({x_dims[0], weight_dims[0]});
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void ConcatInferMeta(const std::vector<MetaTensor>& x,

@@ -48,15 +48,19 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
 
   if (dx) {
     dx->set_dims(x_dims);
+    dx->set_dtype(x.dtype());
   }
   if (dy) {
     dy->set_dims(y_dims);
+    dy->set_dtype(y.dtype());
   }
   if (dweight) {
     dweight->set_dims(weight_dims);
+    dweight->set_dtype(weight.dtype());
   }
   if (dbias) {
     dbias->set_dims({1, out_dims[1]});
+    dbias->set_dtype(dout.dtype());
   }
 }
 
