@@ -49,21 +49,20 @@ class TestBase(IPUOpTest):
         self.attrs = {}
 
     def _test_base(self, exec_mode):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype="float32")
 
-                with paddle.static.amp.fp16_guard():
-                    out = paddle.fluid.layers.cumsum(x, **self.attrs)
+                out = paddle.fluid.layers.cumsum(x, **self.attrs)
 
                 fetch_list = [out.name]
 
@@ -79,7 +78,6 @@ class TestBase(IPUOpTest):
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=self.is_training)
-                ipu_strategy.save_init_onnx = True
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
                     ipu_strategy.set_precision_config(enable_fp16=True)
                 program = paddle.static.IpuCompiledProgram(

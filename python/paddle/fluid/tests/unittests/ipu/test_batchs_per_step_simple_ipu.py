@@ -27,7 +27,7 @@ SEED = 2021
                  "core is not compiled with IPU")
 class TestFunc(unittest.TestCase):
     def _test_func(self, run_ipu=True):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = SEED
@@ -39,7 +39,7 @@ class TestFunc(unittest.TestCase):
         c, h, w = 3, 10, 10
         np_image = np.random.uniform(size=[1 * bps, c, h, w]).astype(np.float32)
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 image = paddle.static.data(
                     name='image', shape=[n, c, h, w], dtype='float32')

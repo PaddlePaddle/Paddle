@@ -43,22 +43,21 @@ class TestBase(IPUOpTest):
         self.feed_list = list(self.feed_fp32.keys())
 
     def _test_base(self, exec_mode):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
 
-                with paddle.static.amp.fp16_guard():
-                    assign = paddle.assign(x)
-                    out = paddle.fluid.layers.elementwise_add(assign, assign)
+                assign = paddle.assign(x)
+                out = paddle.fluid.layers.elementwise_add(assign, assign)
 
                 fetch_list = [out.name]
 

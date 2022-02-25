@@ -49,28 +49,27 @@ class TestBase(IPUOpTest):
         self.feed_list = list(self.feed_fp32.keys())
 
     def _test_base(self, exec_mode):
-        scope = paddle.fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         main_prog.random_seed = self.SEED
         startup_prog.random_seed = self.SEED
 
-        with paddle.fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype='float32')
 
-                with paddle.static.amp.fp16_guard():
-                    x = paddle.static.nn.conv2d(
-                        x, num_filters=3, filter_size=3, bias_attr=False)
-                    x = paddle.static.nn.conv2d(
-                        x, num_filters=3, filter_size=3, bias_attr=False)
-                    x = paddle.static.nn.conv2d(
-                        x, num_filters=3, filter_size=3, bias_attr=False)
-                    x = paddle.static.nn.conv2d(
-                        x, num_filters=3, filter_size=3, bias_attr=False)
+                x = paddle.static.nn.conv2d(
+                    x, num_filters=3, filter_size=3, bias_attr=False)
+                x = paddle.static.nn.conv2d(
+                    x, num_filters=3, filter_size=3, bias_attr=False)
+                x = paddle.static.nn.conv2d(
+                    x, num_filters=3, filter_size=3, bias_attr=False)
+                x = paddle.static.nn.conv2d(
+                    x, num_filters=3, filter_size=3, bias_attr=False)
 
                 fetch_list = [x.name]
 
@@ -86,7 +85,7 @@ class TestBase(IPUOpTest):
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=self.is_training)
-                ipu_strategy.need_avg_shard = True
+                ipu_strategy.set_options({'need_avg_shard': True})
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
                     ipu_strategy.set_precision_config(enable_fp16=True)
                 program = paddle.static.IpuCompiledProgram(
