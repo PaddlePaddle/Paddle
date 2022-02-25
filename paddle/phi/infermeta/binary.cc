@@ -268,4 +268,49 @@ void BCELossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void BincountInferMeta(const MetaTensor& x,
+                       const paddle::optional<const MetaTensor&> weights,
+                       int minlength,
+                       MetaTensor* out) {
+  auto input_dim = x.dims();
+
+  PADDLE_ENFORCE_GE(minlength,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The minlength should be greater than or equal to 0."
+                        "But received minlength is %d",
+                        minlength));
+
+  PADDLE_ENFORCE_EQ(
+      input_dim.size(),
+      1,
+      phi::errors::InvalidArgument("The 'shape' of Input(X) must be 1-D tensor."
+                                   "But the dimension of Input(X) is [%d]",
+                                   input_dim.size()));
+
+  if (weights.is_initialized()) {
+    auto weights_dim = weights->dims();
+    PADDLE_ENFORCE_EQ(weights_dim.size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The 'shape' of Input(Weights) must be 1-D tensor."
+                          "But the dimension of Input(Weights) is [%d]",
+                          weights_dim.size()));
+
+    PADDLE_ENFORCE_EQ(
+        weights_dim[0],
+        input_dim[0],
+        phi::errors::InvalidArgument(
+            "The 'shape' of Input(Weights) must be equal to the 'shape' of "
+            "Input(X)."
+            "But received: the 'shape' of Input(Weights) is [%s],"
+            "the 'shape' of Input(X) is [%s]",
+            weights_dim,
+            input_dim));
+  }
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 }  // namespace phi

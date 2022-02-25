@@ -58,4 +58,10 @@ void BCELossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
+
+void BincountInferMeta(const MetaTensor& x,
+                       const paddle::optional<const MetaTensor&> weights,
+                       int minlength,
+                       MetaTensor* out);
+
 }  // namespace phi
