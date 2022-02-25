@@ -23,18 +23,18 @@ namespace infrt {
 enum class TargetType : uint8_t { CPU, GPU, UNK };
 enum class LayoutType : uint8_t { NCHW, NHWC, ANY, UNK };
 enum class PrecisionType : uint8_t {
-  U8,
-  I8,
-  I16,
-  I32,
-  I64,
+  UINT8,
+  INT8,
+  INT16,
+  INT32,
+  INT64,
   FLOAT16,
-  BF16,
+  BFLOAT16,
   FLOAT32,
   FLOAT64,
-  C64,
-  C128,
-  B,
+  COMPLEX64,
+  COMPLEX128,
+  BOOL,
   UNK
 };
 

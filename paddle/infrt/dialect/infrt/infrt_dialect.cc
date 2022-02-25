@@ -119,7 +119,7 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
     // parse ">"
     if (parser.parseGreater()) return mlir::Type();
     return DenseTensorType::get(
-        parser.getContext(), *targetType, *precisionType, *layoutType);
+        parser.getContext(), *targetType, *layoutType, *precisionType);
   }
   // Todo: parse other type
   return mlir::Type();

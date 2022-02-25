@@ -8,7 +8,7 @@ include "paddle/infrt/dialect/infrt_base.td"
 
 class DenseTensorType<string target, string layout, string precision> :
     Type<CPred<"$_self.isa<::infrt::DenseTensorType>()">, "!infrt.densetensor type", "::infrt::DenseTensorType">,
-    BuildableType<"_builder.getType<::infrt::DenseTensor,::infrt::TargetType,::infrt::LayoutType, ::infrt::PrecisionType >(" #"::infrt::TargetType::"#target#","#"::infrt::LayoutType::"#layout#","#"::infrt::PrecisionType::"#precision#")" >;
+    BuildableType<"$_builder.getType<::infrt::DenseTensorType,::infrt::TargetType,::infrt::LayoutType, ::infrt::PrecisionType >(" #"::infrt::TargetType::"#target#","#"::infrt::LayoutType::"#layout#","#"::infrt::PrecisionType::"#precision#")" >;
 
 def PHI_KernelDialect : Dialect {
   let name = "phi_kernel";

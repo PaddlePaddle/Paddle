@@ -16,7 +16,9 @@
 
 #include <mlir/IR/BuiltinTypes.h>
 
-#include "paddle/infrt/dialect/phi/phi_kernelsDialect.cpp.inc"
+#include "paddle/infrt/dialect/phi/phi_kernelsDialect.cpp.inc"  // NOLINT
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/phi/phi_kernels.cpp.inc"  // NOLINT
 
 namespace infrt {
 namespace phi {
@@ -24,7 +26,7 @@ namespace phi {
 void PHIKernelDialect::initialize() {
 #define GET_OP_LIST
   addOperations<
-#include "paddle/infrt/dialect/phi/phi_kernels.cpp.inc"
+#include "paddle/infrt/dialect/phi/phi_kernels.cpp.inc"  // NOLINT
       >();
 }
 

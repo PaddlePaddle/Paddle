@@ -35,13 +35,5 @@
 #include "paddle/infrt/dialect/phi/phi_base.h"
 
 #include "paddle/infrt/dialect/infrt/infrt_dialect.h"
-
-namespace infrt {
-namespace phi {
-class DenseTensor;
-}
-}
-
-// NOLINT
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/phi/phi_kernels.h.inc"

@@ -35,8 +35,8 @@ def DenseTensor : Infrt_Type<"DenseTensor"> {
   let description = [{dense_tensor<, 3>}];
   let parameters = (ins
     "TargetType":$target,
-    "PrecisionType":$precision,
-    "LayoutType":$layout
+    "LayoutType":$layout,
+    "PrecisionType":$precision
   );
 }
 
