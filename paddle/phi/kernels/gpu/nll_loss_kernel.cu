@@ -112,6 +112,5 @@ void NllLossRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-// TODO(add supported dtype.)
 PD_REGISTER_KERNEL(
     nll_loss, GPU, ALL_LAYOUT, phi::NllLossRawKernel, float, double) {}

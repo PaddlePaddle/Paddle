@@ -109,6 +109,5 @@ void NllLossGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-// TODO(add supported dtype.)
 PD_REGISTER_KERNEL(
     nll_loss_grad, GPU, ALL_LAYOUT, phi::NllLossGradKernel, float, double) {}
