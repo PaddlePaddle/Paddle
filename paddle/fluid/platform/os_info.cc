@@ -95,8 +95,6 @@ std::unordered_map<uint64_t, ThreadId> GetAllThreadIds() {
   return res;
 }
 
-static constexpr const char* kDefaultThreadName = "unset";
-
 std::string GetCurrentThreadName() {
   const auto& thread_name =
       internal::ThreadDataRegistry<std::string>::GetInstance()

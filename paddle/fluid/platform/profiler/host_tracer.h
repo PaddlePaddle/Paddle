@@ -45,9 +45,9 @@ struct HostTracerOptions {
 
 class HostTracer : public TracerBase {
  public:
-  explicit HostTracer(const HostTracerOptions& options) {
-    trace_level_ = options.trace_level;
-  }
+  explicit HostTracer(const HostTracerOptions& options) : options_(options) {}
+
+  void PrepareTracing() override;
 
   void StartTracing() override;
 
@@ -56,7 +56,7 @@ class HostTracer : public TracerBase {
   void CollectTraceData(TraceEventCollector* collector) override;
 
  private:
-  uint32_t trace_level_;
+  HostTracerOptions options_;
 };
 
 }  // namespace platform
