@@ -135,7 +135,7 @@ class TimeRangeSummary:
         return self.CPUTimeRangeSum[event_type]
 
 
-class OperatorSummary:
+class EventSummary:
     '''
     Analyse operator event in profiling data, correlate with its device event.
     '''
@@ -263,7 +263,7 @@ class OperatorSummary:
                             self.devices[devicenode.name].add_item(devicenode)
                         else:
                             self.devices[
-                                devicenode.name] = OperatorSummary.DeviceItem(
+                                devicenode.name] = EventSummary.DeviceItem(
                                     devicenode.name)
                             self.devices[devicenode.name].add_item(devicenode)
             for runtimenode in node.runtime_node:
@@ -274,14 +274,39 @@ class OperatorSummary:
                     if devicenode.name in self.devices:
                         self.devices[devicenode.name].add_item(devicenode)
                     else:
-                        self.devices[
-                            devicenode.name] = OperatorSummary.DeviceItem(
-                                devicenode.name)
+                        self.devices[devicenode.name] = EventSummary.DeviceItem(
+                            devicenode.name)
                         self.devices[devicenode.name].add_item(devicenode)
 
+    class UserDefinedItem:
+        def __init__(self, name):
+            self.name = name
+            self.call = 0
+            self.cpu_time = 0
+            self.max_cpu_time = 0
+            self.min_cpu_time = float('inf')
+
+        @property
+        def avg_cpu_time(self):
+            return self.cpu_time / self.call
+
+        def add_cpu_time(self, time):
+            if time > self.max_cpu_time:
+                self.max_cpu_time = time
+            if time < self.min_cpu_time:
+                self.min_cpu_time = time
+            self.cpu_time += time
+
+        def add_item(self, node):
+            self.call += 1
+            self.add_cpu_time(node.end_ns - node.start_ns)
+
     def __init__(self):
-        self.items = {}
-        self.thread_items = collections.defaultdict(dict)
+        self.items = {}  # for operator
+        self.thread_items = collections.defaultdict(dict)  # for operator
+        self.userdefined_items = {}  # for userdefined
+        self.userdefined_thread_items = collections.defaultdict(
+            dict)  # for userdefined
 
     def parse(self, nodetrees):
         '''
@@ -289,23 +314,41 @@ class OperatorSummary:
     '''
         thread2hostnodes = traverse_tree(nodetrees)
         for threadid, hostnodes in thread2hostnodes.items():
-            for hostnode in hostnodes:
+            for hostnode in hostnodes[1:]:  #skip root node
                 if hostnode.type == TracerEventType.Operator:
                     self.add_operator_item(hostnode)
+                if hostnode.type == TracerEventType.UserDefined:
+                    self.add_userdefined_item(hostnode)
 
     def add_operator_item(self, operator_node):
         if operator_node.name not in self.items:
-            self.items[operator_node.name] = OperatorSummary.OperatorItem(
+            self.items[operator_node.name] = EventSummary.OperatorItem(
                 operator_node.name)
 
         self.items[operator_node.name].add_item(operator_node)
 
         if operator_node.name not in self.thread_items[operator_node.thread_id]:
             self.thread_items[operator_node.thread_id][
-                operator_node.name] = OperatorSummary.OperatorItem(
+                operator_node.name] = EventSummary.OperatorItem(
                     operator_node.name)
         self.thread_items[operator_node.thread_id][operator_node.name].add_item(
             operator_node)
+
+    def add_userdefined_item(self, userdefined_node):
+        if userdefined_node.name not in self.userdefined_items:
+            self.userdefined_items[
+                userdefined_node.name] = EventSummary.UserDefinedItem(
+                    userdefined_node.name)
+
+        self.userdefined_items[userdefined_node.name].add_item(userdefined_node)
+
+        if userdefined_node.name not in self.userdefined_thread_items[
+                userdefined_node.thread_id]:
+            self.userdefined_thread_items[userdefined_node.thread_id][
+                userdefined_node.name] = EventSummary.UserDefinedItem(
+                    userdefined_node.name)
+        self.userdefined_thread_items[userdefined_node.thread_id][
+            userdefined_node.name].add_item(userdefined_node)
 
 
 class StatisticData:
@@ -317,9 +360,9 @@ class StatisticData:
         self.node_trees = node_trees
         self.extra_info = extra_info
         self.time_range_summary = TimeRangeSummary()
-        self.operator_summary = OperatorSummary()
+        self.event_summary = EventSummary()
         self.time_range_summary.parse(node_trees)
-        self.operator_summary.parse(node_trees)
+        self.event_summary.parse(node_trees)
 
 
 def _build_table(statistic_data,
@@ -724,7 +767,7 @@ def _build_table(statistic_data,
     row_format_list = [""]
     header_sep_list = [""]
     line_length_list = [-SPACING_SIZE]
-    name_column_width = 20
+    name_column_width = 40
     add_column(name_column_width)
     DEFAULT_COLUMN_WIDTH = 10
     for _ in headers[1:]:
@@ -741,10 +784,10 @@ def _build_table(statistic_data,
     append(row_format.format(*headers))
     append(header_sep)
     if thread_sep == True:
-        thread_items = statistic_data.operator_summary.thread_items
+        thread_items = statistic_data.event_summary.thread_items
     else:
         thread_items = {
-            'All threads merged': statistic_data.operator_summary.items
+            'All threads merged': statistic_data.event_summary.items
         }
     for thread_id, items in thread_items.items():
         append(add_title(line_length, "Thread: {}".format(thread_id)))
@@ -849,8 +892,13 @@ def _build_table(statistic_data,
             sorted_device_items = sorted(
                 item.devices.items(), key=lambda x: x[1].gpu_time, reverse=True)
             for device_activity_name, devicenode in sorted_device_items:
+                if len(device_activity_name) + 7 > name_column_width:
+                    device_activity_name = device_activity_name[:
+                                                                name_column_width
+                                                                - 10]
+                    device_activity_name += "..."
                 row_values = [
-                    '  {}...(Device)'.format(device_activity_name[:10]),
+                    '  {}(GPU)'.format(device_activity_name),
                     '  {}'.format(devicenode.call), format_time(
                         devicenode.gpu_time, unit=time_unit,
                         indent=2), format_time(
@@ -877,4 +925,73 @@ def _build_table(statistic_data,
         "Op::Kernel Ratio = (Op::Kernel Total Time) / (sum(All Op Kernel Total Time))."
     )
     append('-' * line_length)
+    append('')
+    append('')
+    ###### Print UserDefined Summary Report ######
+    headers = [
+        'Name',
+        'Calls',
+        'Total Time',
+        'Avg Time',
+        'MAX Time',
+        'Min Time',
+        'Ratio (%)',
+    ]
+    row_format_list = [""]
+    header_sep_list = [""]
+    line_length_list = [-SPACING_SIZE]
+    name_column_width = 40
+    add_column(name_column_width)
+    DEFAULT_COLUMN_WIDTH = 10
+    for _ in headers[1:]:
+        add_column(DEFAULT_COLUMN_WIDTH)
+
+    row_format = row_format_list[0]
+    header_sep = header_sep_list[0]
+    line_length = line_length_list[0]
+
+    # construct table string
+    append(add_title(line_length, "UserDefined Summary"))
+    append('Time unit: {}'.format(time_unit))
+    append(header_sep)
+    append(row_format.format(*headers))
+    append(header_sep)
+    if thread_sep == True:
+        userdefined_thread_items = statistic_data.event_summary.userdefined_thread_items
+    else:
+        userdefined_thread_items = {
+            'All threads merged': statistic_data.event_summary.userdefined_items
+        }
+    for thread_id, items in userdefined_thread_items.items():
+        append(add_title(line_length, "Thread: {}".format(thread_id)))
+        if sorted_by == SortedKeys.OpTotal:
+            sorted_items = sorted(
+                items.items(), key=lambda x: x[1].cpu_time, reverse=True)
+        elif sorted_by == SortedKeys.OpAvg:
+            sorted_items = sorted(
+                items.items(), key=lambda x: x[1].avg_cpu_time, reverse=True)
+        elif sorted_by == SortedKeys.OpMax:
+            sorted_items = sorted(
+                items.items(), key=lambda x: x[1].max_cpu_time, reverse=True)
+        elif sorted_by == SortedKeys.OpMin:
+            sorted_items = sorted(
+                items.items(), key=lambda x: x[1].min_cpu_time)
+        else:
+            sorted_items = sorted(
+                items.items(), key=lambda x: x[1].cpu_time, reverse=True)
+
+        total_time = 0
+        for name, item in sorted_items:
+            total_time += item.cpu_time
+        for name, item in sorted_items:
+            row_values = [
+                name, item.call, format_time(
+                    item.cpu_time, unit=time_unit), format_time(
+                        item.avg_cpu_time, unit=time_unit), format_time(
+                            item.max_cpu_time, unit=time_unit), format_time(
+                                item.min_cpu_time, unit=time_unit),
+                format_ratio(float(item.cpu_time) / total_time)
+            ]
+            append(row_format.format(*row_values))
+        append(header_sep)
     return ''.join(result)
