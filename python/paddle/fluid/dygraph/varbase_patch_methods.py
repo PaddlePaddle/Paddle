@@ -242,7 +242,7 @@ def monkey_patch_varbase():
 
         """
         if framework.in_dygraph_mode():
-            record_event = profiler.Record_Event(
+            record_event = profiler.RecordEvent(
                 "Gradient Backward", profiler.TracerEventType.Backward)
             record_event.begin()
             if grad_tensor is not None:

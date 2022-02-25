@@ -251,7 +251,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._exit_thread_expectedly()
 
     def __next__(self):
-        trace_event = profiler.Record_Event(
+        trace_event = profiler.RecordEvent(
             name="_DataLoaderIterSingleProcess",
             event_type=profiler.TracerEventType.Dataloader)
         trace_event.begin()
@@ -694,7 +694,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._try_shutdown_all(1)
 
     def __next__(self):
-        trace_event = profiler.Record_Event(
+        trace_event = profiler.RecordEvent(
             name="_DataLoaderIterMultiProcess",
             event_type=profiler.TracerEventType.Dataloader)
         trace_event.begin()

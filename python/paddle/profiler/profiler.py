@@ -22,7 +22,7 @@ from warnings import warn
 import paddle
 from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
                                TracerEventType)
-from .utils import Record_Event
+from .utils import RecordEvent, wrap_optimizers
 from .profiler_statistic import StatisticData, _build_table, SortedKeys
 
 
@@ -229,6 +229,7 @@ class Profiler:
             profileoption.trace_switch |= 1
         if ProfilerTarget.GPU in self.targets:
             profileoption.trace_switch |= (1 << 1)
+        wrap_optimizers()
         self.profiler = _Profiler.Create(profileoption)
         if callable(scheduler):
             self.scheduler = scheduler
@@ -278,7 +279,7 @@ class Profiler:
         elif self.current_state == ProfilerState.RECORD_AND_RETURN:
             self.profiler.Prepare()
             self.profiler.Start()
-        self.record_event = Record_Event(
+        self.record_event = RecordEvent(
             name="ProfileStep#{}".format(self.step_num),
             event_type=TracerEventType.ProfileStep)
         self.record_event.begin()
@@ -312,7 +313,7 @@ class Profiler:
         self.step_num += 1
         self.current_state = self.scheduler(self.step_num)
         self._trigger_action()
-        self.record_event = Record_Event(
+        self.record_event = RecordEvent(
             name="ProfileStep#{}".format(self.step_num),
             event_type=TracerEventType.ProfileStep)
         self.record_event.begin()

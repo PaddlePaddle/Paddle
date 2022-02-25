@@ -23,7 +23,7 @@ _AllTracerEventType = [
     TracerEventType.UserDefined, TracerEventType.OperatorInner,
     TracerEventType.Forward, TracerEventType.Backward,
     TracerEventType.Optimization, TracerEventType.Communication,
-    TracerEventType.PythonOp
+    TracerEventType.PythonOp, TracerEventType.PythonUserDefined
 ]
 
 _CommunicationOpName = ['reduce', 'broadcast', 'rpc']
@@ -317,7 +317,7 @@ class EventSummary:
             for hostnode in hostnodes[1:]:  #skip root node
                 if hostnode.type == TracerEventType.Operator:
                     self.add_operator_item(hostnode)
-                if hostnode.type == TracerEventType.UserDefined:
+                if hostnode.type == TracerEventType.UserDefined or hostnode.type == TracerEventType.PythonUserDefined:
                     self.add_userdefined_item(hostnode)
 
     def add_operator_item(self, operator_node):
@@ -393,10 +393,7 @@ def _build_table(statistic_data,
     total_time = statistic_data.time_range_summary.get_cpu_range_sum(
         TracerEventType.ProfileStep)
     ###### Print Device Summary ######
-    headers = [
-        'Device',
-        'Utilization (%)',
-    ]
+    headers = ['Device', 'Process Utilization (%)']
     device_names = ['CPU']
     device_names.extend([
         'GPU{}'.format(key)

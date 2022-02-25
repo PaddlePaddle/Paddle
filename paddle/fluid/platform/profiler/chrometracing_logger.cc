@@ -37,9 +37,10 @@ static std::string DefaultFileName() {
 }
 
 const char* ChromeTracingLogger::categary_name_[] = {
-    "Operator", "Dataloader",   "ProfileStep",   "CudaRuntime",   "Kernel",
-    "Memcpy",   "Memset",       "UserDefined",   "OperatorInner", "Forward",
-    "Backward", "Optimization", "Communication", "PythonOp"};
+    "Operator",      "Dataloader", "ProfileStep",      "CudaRuntime",
+    "Kernel",        "Memcpy",     "Memset",           "UserDefined",
+    "OperatorInner", "Forward",    "Backward",         "Optimization",
+    "Communication", "PythonOp",   "PythonUserDefined"};
 
 void ChromeTracingLogger::OpenFile() {
   output_file_stream_.open(filename_,
@@ -101,11 +102,19 @@ void ChromeTracingLogger::LogHostTraceEventNode(
   if (!output_file_stream_) {
     return;
   }
-  output_file_stream_ << string_format(
-      std::string(
-          R"JSON(
+  switch (host_node.Type()) {
+    case TracerEventType::ProfileStep:
+    case TracerEventType::Forward:
+    case TracerEventType::Backward:
+    case TracerEventType::Dataloader:
+    case TracerEventType::Optimization:
+    case TracerEventType::PythonOp:
+    case TracerEventType::PythonUserDefined:
+      output_file_stream_ << string_format(
+          std::string(
+              R"JSON(
   { 
-    "name": "%s", "pid": %lld, "tid": %lld,
+    "name": "%s", "pid": %lld, "tid": "%lld(Python)",
     "ts": %lld, "dur": %lld,
     "ph": "X", "cat": "%s", 
     "args": {
@@ -114,10 +123,32 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     }
   },
   )JSON"),
-      host_node.Name().c_str(), host_node.ProcessId(), host_node.ThreadId(),
-      nsToUs(host_node.StartNs()), nsToUs(host_node.Duration()),
-      categary_name_[static_cast<int>(host_node.Type())], host_node.StartNs(),
-      host_node.EndNs());
+          host_node.Name().c_str(), host_node.ProcessId(), host_node.ThreadId(),
+          nsToUs(host_node.StartNs()), nsToUs(host_node.Duration()),
+          categary_name_[static_cast<int>(host_node.Type())],
+          host_node.StartNs(), host_node.EndNs());
+      break;
+    default:
+      output_file_stream_ << string_format(
+          std::string(
+              R"JSON(
+  { 
+    "name": "%s", "pid": %lld, "tid": "%lld(C++)",
+    "ts": %lld, "dur": %lld,
+    "ph": "X", "cat": "%s", 
+    "args": {
+      "start_ns": %lld,
+      "end_ns": %lld
+    }
+  },
+  )JSON"),
+          host_node.Name().c_str(), host_node.ProcessId(), host_node.ThreadId(),
+          nsToUs(host_node.StartNs()), nsToUs(host_node.Duration()),
+          categary_name_[static_cast<int>(host_node.Type())],
+          host_node.StartNs(), host_node.EndNs());
+      break;
+  }
+
   pid_tid_set_.insert({host_node.ProcessId(), host_node.ThreadId()});
 }
 
@@ -130,7 +161,7 @@ void ChromeTracingLogger::LogRuntimeTraceEventNode(
       std::string(
           R"JSON(
   { 
-    "name": "%s", "pid": %lld, "tid": %lld,
+    "name": "%s", "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, "dur": %lld,
     "ph": "X", "cat": "%s", 
     "args": {
@@ -257,9 +288,9 @@ void ChromeTracingLogger::HandleTypeKernel(
     }
   },
   )JSON"),
-      device_node.Name().c_str(),
-      device_node.DeviceId(), device_node.StreamId(),
-      nsToUs(device_node.StartNs()), nsToUs(device_node.Duration()),
+      device_node.Name().c_str(), device_node.DeviceId(),
+      device_node.StreamId(), nsToUs(device_node.StartNs()),
+      nsToUs(device_node.Duration()),
       categary_name_[static_cast<int>(device_node.Type())],
       device_node.StartNs(), device_node.EndNs(), device_node.DeviceId(),
       device_node.ContextId(), device_node.StreamId(),
@@ -436,17 +467,31 @@ void ChromeTracingLogger::RefineDisplayName() {
         std::string(
             R"JSON(
   {
-    "name": "process_name", "pid": %lld, "tid": %lld,
+    "name": "process_name", "pid": %lld, "tid": "%lld(Python)",
+    "ph": "M", 
+    "args": {
+      "name": "Process %lld (CPU)"
+    }
+  },
+  {
+    "name": "process_name", "pid": %lld, "tid": "%lld(C++)",
     "ph": "M", 
     "args": {
       "name": "Process %lld (CPU)"
     }
   },
    {
-    "name": "thread_name", "pid": %lld, "tid": %lld,
+    "name": "thread_name", "pid": %lld, "tid": "%lld(Python)",
     "ph": "M", 
     "args": {
-      "name": "thread %lld"
+      "name": "thread %lld(Python)"
+    }
+  },
+  {
+    "name": "thread_name", "pid": %lld, "tid": "%lld(C++)",
+    "ph": "M", 
+    "args": {
+      "name": "thread %lld(C++)"
     }
   },
   {
@@ -456,9 +501,26 @@ void ChromeTracingLogger::RefineDisplayName() {
       "sort_index": %lld
     }
   },  
+  {
+    "name": "thread_sort_index", "pid": %lld, "tid": "%lld(Python)",
+    "ph": "M", 
+    "args": {
+      "sort_index": %lld
+    }
+  },
+  {
+    "name": "thread_sort_index", "pid": %lld, "tid": "%lld(C++)",
+    "ph": "M", 
+    "args": {
+      "sort_index": %lld
+    }
+  },
   )JSON"),
         (*it).first, (*it).second, (*it).first, (*it).first, (*it).second,
-        (*it).second, (*it).first, (*it).second, (*it).first);
+        (*it).first, (*it).first, (*it).second, (*it).second, (*it).first,
+        (*it).second, (*it).second, (*it).first, (*it).second, (*it).first,
+        (*it).first, (*it).second, (*it).second * 2, (*it).first, (*it).second,
+        (*it).second * 2 + 1);
   }
 
   for (auto it = deviceid_streamid_set_.begin();
@@ -502,7 +564,6 @@ void ChromeTracingLogger::RefineDisplayName() {
 }
 
 void ChromeTracingLogger::EndLog() {
-  
   output_file_stream_ << std::string(
       R"JSON(
   }
