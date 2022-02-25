@@ -18,40 +18,10 @@
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
-
-static inline int CanonicalAxis(const int axis, const int rank) {
-  if (axis < 0) {
-    return axis + rank;
-  }
-  return axis;
-}
-
-static inline int SizeToAxis(const int axis, DDim dims) {
-  int size = 1;
-  for (int i = 0; i < axis; i++) {
-    size *= dims[i];
-  }
-  return size;
-}
-
-static inline int SizeFromAxis(const int axis, DDim dims) {
-  int size = 1;
-  for (int i = axis; i < dims.size(); i++) {
-    size *= dims[i];
-  }
-  return size;
-}
-
-static inline int SizeOutAxis(const int axis, DDim dims) {
-  int size = 1;
-  for (int i = axis + 1; i < dims.size(); i++) {
-    size *= dims[i];
-  }
-  return size;
-}
 
 template <typename Context, typename T, int64_t Rank>
 struct ArgMaxFunctor {
@@ -79,7 +49,7 @@ void GumbelSoftmaxKernel(const Context& ctx,
                          int axis,
                          DenseTensor* out) {
   const int rank = x.dims().size();
-  axis = CanonicalAxis(axis, rank);
+  axis = funcs::CanonicalAxis(axis, rank);
   int axis_dim = x.dims()[axis];
 
   PADDLE_ENFORCE_GT(temperature,
@@ -95,8 +65,8 @@ void GumbelSoftmaxKernel(const Context& ctx,
     return;
   }
 
-  const int size_to_axis = SizeToAxis(axis, x.dims());
-  const int size_from_axis = SizeFromAxis(axis, x.dims());
+  const int size_to_axis = funcs::SizeToAxis(axis, x.dims());
+  const int size_from_axis = funcs::SizeFromAxis(axis, x.dims());
   DenseTensor x_noise_2d, out_2d(*out);
   x_noise_2d.Resize({size_to_axis, size_from_axis});
   out_2d.Resize({size_to_axis, size_from_axis});

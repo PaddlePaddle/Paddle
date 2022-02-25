@@ -37,7 +37,7 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
       dout.dims(),
       phi::errors::InvalidArgument(
           "Input(Out) and its gradients should have the same shape."));
-  UnchangedInferMeta(dout, dx);
+  dx->share_meta(dout);
 }
 
 }  // namespace phi

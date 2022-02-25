@@ -16,6 +16,7 @@
 #include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -94,9 +95,9 @@ struct OneHotGenerator<GPUContext, T> {
                         const DenseTensor& X,
                         DenseTensor* out,
                         int axis) {
-    const int size_to_axis = SizeToAxis(axis, X.dims());
-    const int size_from_axis = SizeFromAxis(axis, X.dims());
-    const int size_out_axis = SizeOutAxis(axis, X.dims());
+    const int size_to_axis = funcs::SizeToAxis(axis, X.dims());
+    const int size_from_axis = funcs::SizeFromAxis(axis, X.dims());
+    const int size_out_axis = funcs::SizeOutAxis(axis, X.dims());
     constexpr int thread_size = 512;
     int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
     int64_t height = size_to_axis * size_out_axis;

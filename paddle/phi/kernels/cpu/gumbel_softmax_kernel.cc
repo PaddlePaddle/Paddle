@@ -17,6 +17,7 @@
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -61,9 +62,9 @@ struct OneHotGenerator<CPUContext, T> {
     DenseTensor index;
     std::vector<int> index_dim;
     const auto rank = x.dims().size();
-    const int size_to_axis = SizeToAxis(axis, x.dims());
-    const int size_from_axis = SizeFromAxis(axis, x.dims());
-    const int size_out_axis = SizeOutAxis(axis, x.dims());
+    const int size_to_axis = funcs::SizeToAxis(axis, x.dims());
+    const int size_from_axis = funcs::SizeFromAxis(axis, x.dims());
+    const int size_out_axis = funcs::SizeOutAxis(axis, x.dims());
 
     for (int i = 0; i < x.dims().size(); i++) {
       if (i != axis) index_dim.push_back(x.dims().Get()[i]);

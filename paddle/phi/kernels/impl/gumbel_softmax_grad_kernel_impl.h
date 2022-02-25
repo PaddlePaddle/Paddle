@@ -17,7 +17,7 @@
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"  // import CanonicalAxis, SizeToAxis and SizeFromAxis
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace phi {
 
@@ -28,7 +28,7 @@ void GumbelSoftmaxGradKernel(const Context& ctx,
                              int axis,
                              DenseTensor* dx) {
   const int rank = dx->dims().size();
-  axis = CanonicalAxis(axis, rank);
+  axis = funcs::CanonicalAxis(axis, rank);
   int axis_dim = dx->dims()[axis];
   // allocate memory on device.
 
@@ -37,8 +37,8 @@ void GumbelSoftmaxGradKernel(const Context& ctx,
     return;
   }
 
-  const int size_to_axis = SizeToAxis(axis, dx->dims());
-  const int size_from_axis = SizeFromAxis(axis, dx->dims());
+  const int size_to_axis = funcs::SizeToAxis(axis, dx->dims());
+  const int size_from_axis = funcs::SizeFromAxis(axis, dx->dims());
   DenseTensor dx_2d(*dx), out_2d(out), dout_2d(dout);
   dx_2d.Resize({size_to_axis, size_from_axis});
   out_2d.Resize({size_to_axis, size_from_axis});
