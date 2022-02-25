@@ -342,7 +342,7 @@ void TRTEngine::DynamicRun(const phi::GPUContext& ctx) {
 void TRTEngine::FreshDeviceId() {
   int count;
   cudaGetDeviceCount(&count);
-  assert(device_id_ < count);
+  CHECK_LT(device_id_, count);
   phi::backends::gpu::SetDeviceId(device_id_);
 }
 
