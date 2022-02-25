@@ -17,12 +17,12 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
-#include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
 namespace operators {
@@ -236,7 +236,7 @@ __global__ void WarpSoftmaxForward(T* loss, T* softmax, const T* src,
       max_value[i] = (max_value[i] > valmax) ? max_value[i] : valmax;
     }
   }
-  WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
+  phi::WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
 
   // compute sum: s_{i} = sum_{j}{ exp(src_{i,j} - maxvalue_{i} }
   AccT sum[kBatchSize];
@@ -276,7 +276,7 @@ __global__ void WarpSoftmaxForward(T* loss, T* softmax, const T* src,
       }
     }
   }
-  WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
+  phi::WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
 // write data
 #pragma unroll
@@ -566,7 +566,7 @@ __global__ void CrossEntropySoftLabel(T* loss, T* softmaxwrt, const T* softmax,
       }
     }
   }
-  WarpReduceSum<T, kBatchSize, kWarpSize>(sum);
+  phi::WarpReduceSum<T, kBatchSize, kWarpSize>(sum);
   __syncthreads();
 
   __shared__ T sumshare[kWarpPerBatch][kBatchPerBlock][kBatchSize];
@@ -674,7 +674,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss, T* softmax, const T* src,
                          : static_cast<AccT>(valmax);
     }
   }
-  WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
+  phi::WarpReduceMax<AccT, kBatchSize, kWarpSize>(max_value);
 
   // compute sum
   AccT sum[kBatchSize]{0.0};
@@ -694,7 +694,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss, T* softmax, const T* src,
       }
     }
   }
-  WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
+  phi::WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
   // log_softmax and loss
   AccT sumloss[kBatchSize]{0.0};
@@ -737,7 +737,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss, T* softmax, const T* src,
   }
 
   // loss
-  WarpReduceSum<AccT, kBatchSize, kWarpSize>(sumloss);
+  phi::WarpReduceSum<AccT, kBatchSize, kWarpSize>(sumloss);
 
   for (int i = 0; i < kBatchSize; i++) {
     if (i >= local_batches) break;
@@ -950,11 +950,12 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
       Tensor* loss = context.Output<Tensor>("Loss");
 
       const int rank = softmax->dims().size();
-      const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+      const int axis =
+          phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
       const int axis_dim = softmax->dims()[axis];
 
-      const int n = SizeToAxis(axis, softmax->dims());
-      const int d = SizeFromAxis(axis, softmax->dims());
+      const int n = phi::funcs::SizeToAxis(axis, softmax->dims());
+      const int d = phi::funcs::SizeFromAxis(axis, softmax->dims());
 
       auto* softmax_out_data =
           softmax_out->template mutable_data<T>(context.GetPlace());
@@ -1035,11 +1036,11 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     Tensor* loss = context.Output<Tensor>("Loss");
 
     const int rank = logits->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
 
-    const int64_t n = SizeToAxis(axis, logits->dims());
-    const int64_t d = SizeFromAxis(axis, logits->dims());
+    const int64_t n = phi::funcs::SizeToAxis(axis, logits->dims());
+    const int64_t d = phi::funcs::SizeFromAxis(axis, logits->dims());
 
     auto* softmax_data = softmax->template mutable_data<T>(context.GetPlace());
     auto* loss_data = loss->template mutable_data<T>(context.GetPlace());
@@ -1118,11 +1119,11 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     T* logit_grad_data = logit_grad->template data<T>();
 
     const int rank = logit_grad->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
+    const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logit_grad->dims()[axis];
 
-    const int64_t n = SizeToAxis(axis, logit_grad->dims());
-    const int64_t d = SizeFromAxis(axis, logit_grad->dims());
+    const int64_t n = phi::funcs::SizeToAxis(axis, logit_grad->dims());
+    const int64_t d = phi::funcs::SizeFromAxis(axis, logit_grad->dims());
     const int64_t remain = d / axis_dim;
 
 #ifdef __HIPCC__

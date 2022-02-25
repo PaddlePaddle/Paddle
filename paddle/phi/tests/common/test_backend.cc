@@ -41,8 +41,8 @@ TEST(Backend, OStream) {
   oss << phi::Backend::MKLDNN;
   EXPECT_EQ(oss.str(), "MKLDNN");
   oss.str("");
-  oss << phi::Backend::CUDNN;
-  EXPECT_EQ(oss.str(), "CUDNN");
+  oss << phi::Backend::GPUDNN;
+  EXPECT_EQ(oss.str(), "GPUDNN");
   oss.str("");
   try {
     oss << phi::Backend::NUM_BACKENDS;
@@ -50,6 +50,20 @@ TEST(Backend, OStream) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Invalid enum backend type") != std::string::npos);
   }
+}
+
+TEST(Backend, StringToBackend) {
+  namespace pexp = paddle::experimental;
+  EXPECT_EQ(phi::Backend::UNDEFINED, pexp::StringToBackend("Undefined"));
+  EXPECT_EQ(phi::Backend::CPU, pexp::StringToBackend("CPU"));
+  EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("GPU"));
+  EXPECT_EQ(phi::Backend::XPU, pexp::StringToBackend("XPU"));
+  EXPECT_EQ(phi::Backend::NPU, pexp::StringToBackend("NPU"));
+  EXPECT_EQ(phi::Backend::MKLDNN, pexp::StringToBackend("MKLDNN"));
+  EXPECT_EQ(phi::Backend::GPUDNN, pexp::StringToBackend("GPUDNN"));
+  EXPECT_EQ(static_cast<phi::Backend>(
+                static_cast<size_t>(phi::Backend::NUM_BACKENDS) + 1),
+            pexp::StringToBackend("CustomBackend"));
 }
 
 }  // namespace tests

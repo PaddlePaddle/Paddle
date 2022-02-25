@@ -14,7 +14,7 @@
 
 import os
 import argparse
-from eager_gen import ReadFwdFile, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+from eager_gen import ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
 
 atype_to_parsing_function = {
     "bool": "CastPyArg2Boolean",
@@ -70,10 +70,12 @@ def FindParsingFunctionFromAttributeType(atype):
 
 
 def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
-                            forward_attrs_list, forward_outputs_position_map):
+                            forward_attrs_list, forward_outputs_position_map,
+                            optional_inputs):
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
     # forward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
+    # optional_inputs = [name0, ...]
 
     # Get EagerTensor from args
     # Get dygraph function call args
@@ -82,7 +84,14 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
     dygraph_function_call_list = ["" for i in range(num_args)]
     get_eager_tensor_str = ""
     for name, (ttype, pos) in forward_inputs_position_map.items():
-        get_eager_tensor_str += f"    auto& {name} = GetTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
+        is_optional = (name in optional_inputs)
+        if IsVectorTensorType(ttype):
+            get_eager_tensor_str += f"    auto {name} = GetTensorListFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
+        else:
+            if is_optional:
+                get_eager_tensor_str += f"    auto {name} = GetOptionalTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
+            else:
+                get_eager_tensor_str += f"    auto {name} = GetTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
         dygraph_function_call_list[pos] = f"{name}"
 
     parse_attributes_str = ""
@@ -134,7 +143,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
         fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,
         GetForwardFunctionName(fwd_api_name), dygraph_function_call_str)
 
-    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}},\n"
+    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}}\n"
 
     return python_c_function_str, python_c_function_reg_str
 
@@ -188,7 +197,7 @@ static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
     """
 
     core_ops_infos_registry = """
-    {\"get_final_state_core_ops_args_info\",
+    ,{\"get_final_state_core_ops_args_info\",
     (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_info, METH_NOARGS,
     \"C++ interface function for eager_get_final_state_core_ops_args_info.\"},
     {\"get_final_state_core_ops_args_type_info\",
@@ -267,6 +276,11 @@ if __name__ == "__main__":
         fwd_args_str = fwd_api['args']
         fwd_returns_str = fwd_api['output']
 
+        # Parse Dispensable Inputs
+        optional_inputs = []
+        if 'optional' in fwd_api.keys():
+            optional_inputs = ParseDispensable(fwd_api['optional'])
+
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         forward_inputs_list, forward_attrs_list, forward_returns_list = ParseYamlForward(
             fwd_args_str, fwd_returns_str)
@@ -283,7 +297,7 @@ if __name__ == "__main__":
 
         python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
             fwd_api_name, forward_inputs_position_map, forward_attrs_list,
-            forward_outputs_position_map)
+            forward_outputs_position_map, optional_inputs)
         python_c_function_list.append(python_c_function_str)
         python_c_function_reg_list.append(python_c_function_reg_str)
         print("Generated Python-C Function: ", python_c_function_str)

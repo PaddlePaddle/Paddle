@@ -50,7 +50,7 @@ enum class Backend : uint8_t {
 
   // the third library backend
   MKLDNN,
-  CUDNN,
+  GPUDNN,  // cuDNN and hipDNN
 
   // end of backend types
   NUM_BACKENDS,
@@ -71,17 +71,17 @@ enum class Backend : uint8_t {
    * Of course, we have also considered solving this problem through different
    * named macros, for example, if we define
    *
-   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND
+   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND
    *
    * Based on this design pattern, the dtype and layout also have the same
    * requirements, this cause we need to define a series of macros
    *
-   * PT_REGISTER_KERNEL_FOR_ALL_DTYPE
-   * PT_REGISTER_KERNEL_FOR_ALL_LAYOUT
-   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT
-   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_DTYPE
-   * PT_REGISTER_KERNEL_FOR_ALL_LAYOUT_AND_DTYPE
-   * PT_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT_AND_DTYPE
+   * PD_REGISTER_KERNEL_FOR_ALL_DTYPE
+   * PD_REGISTER_KERNEL_FOR_ALL_LAYOUT
+   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT
+   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_DTYPE
+   * PD_REGISTER_KERNEL_FOR_ALL_LAYOUT_AND_DTYPE
+   * PD_REGISTER_KERNEL_FOR_ALL_BACKEND_AND_LAYOUT_AND_DTYPE
    *
    * It makes the system of registering macros more complicated, we think
    * this is not a simple design, so we still adopt the design of providing
@@ -112,8 +112,8 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::MKLDNN:
       os << "MKLDNN";
       break;
-    case Backend::CUDNN:
-      os << "CUDNN";
+    case Backend::GPUDNN:
+      os << "GPUDNN";
       break;
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
@@ -128,6 +128,29 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     }
   }
   return os;
+}
+
+inline Backend StringToBackend(const char* backend_cstr) {
+  std::string s(backend_cstr);
+  if (s == std::string("Undefined")) {
+    return Backend::UNDEFINED;
+  }
+  if (s == std::string("CPU")) {
+    return Backend::CPU;
+  } else if (s == std::string("GPU")) {
+    return Backend::GPU;
+  } else if (s == std::string("XPU")) {
+    return Backend::XPU;
+  } else if (s == std::string("NPU")) {
+    return Backend::NPU;
+  } else if (s == std::string("MKLDNN")) {
+    return Backend::MKLDNN;
+  } else if (s == std::string("GPUDNN")) {
+    return Backend::GPUDNN;
+  } else {
+    return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
+                                phi::GetOrRegisterGlobalDeviceTypeId(s));
+  }
 }
 
 }  // namespace experimental
