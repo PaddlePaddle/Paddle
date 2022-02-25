@@ -31,7 +31,7 @@ USE_OP(elementwise_mul);
 USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
 USE_OP(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP(conv2d);
 USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);
