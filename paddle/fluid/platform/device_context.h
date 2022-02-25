@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -73,7 +74,10 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/device_ext.h"
 #include "paddle/fluid/platform/device/stream.h"
+
+#if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
 #include "unsupported/Eigen/CXX11/Tensor"
+#endif
 
 namespace Eigen {
 struct DefaultDevice;
@@ -819,17 +823,12 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-class CustomDeviceContext : public DeviceContext {
+class CustomDeviceContext : public phi::CustomContext {
  public:
   explicit CustomDeviceContext(CustomPlace place);
   virtual ~CustomDeviceContext();
 
-  const Place& GetPlace() const override;
-  void Wait() const override;
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  C_Stream stream() const {
-    return reinterpret_cast<C_Stream>(stream_->raw_stream());
-  }
 
   template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {
@@ -839,13 +838,7 @@ class CustomDeviceContext : public DeviceContext {
   void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
  private:
-  std::string device_type_;
-
-  CustomPlace place_;
-
   std::shared_ptr<platform::stream::Stream> stream_;
-
-  CustomDeviceContext();
 };
 template <>
 struct DefaultDeviceContextType<platform::CustomPlace> {

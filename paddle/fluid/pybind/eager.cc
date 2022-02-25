@@ -50,7 +50,6 @@ PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) paddle::experimental::Tensor();
-    Py_INCREF(obj);
   }
   return obj;
 }
@@ -58,23 +57,19 @@ PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
 // TODO(jiabin): Overload this once we need more constructor in Python
 void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                             const paddle::platform::Place& place,
-                            bool persistable = false, bool stop_gradient = true,
+                            bool persistable = false, int stop_gradient = -1,
                             framework::proto::VarType::Type dtype =
                                 paddle::framework::proto::VarType::FP32,
                             const std::vector<int>& dims = {},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
   auto ddims = phi::make_ddim(dims);
-  PADDLE_ENFORCE_GE(
-      phi::product(ddims), 0,
-      paddle::platform::errors::InvalidArgument(
-          "Create Eager Tensor with dims contain minus num is ilegal"
-          "Please check your code and make sure you new a "
-          "eager tensor with fixed shape instead of using -1."));
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
-  autograd_meta->SetStopGradient(stop_gradient);
+  if (stop_gradient != -1) {
+    autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
+  }
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
     std::shared_ptr<phi::DenseTensor> dense_tensor =
@@ -82,19 +77,17 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
             phi::make_intrusive<paddle::experimental::SharedStorage>(place),
             phi::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
                                  ddims));
-    dense_tensor->mutable_data(place);
+    if (phi::product(ddims) > 0) {
+      dense_tensor->mutable_data(place);
+    }
     self->tensor.set_impl(dense_tensor);
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "We only support LoDTensor to be constructed by this initializer, "
-        "please check your var type first and make sure you are going to "
-        "construct LoDTensor."));
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
     VLOG(3) << "Tensor(" << name
             << ") have not GradNode, add GradNodeAccumulation for it.";
-    autograd_meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+    autograd_meta->SetGradNode(
+        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
   }
 }
 
@@ -143,13 +136,12 @@ void InitTensorWithTensor(TensorObject* self,
         src.copy_to(phi::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
-  egr::EagerUtils::autograd_meta(&(self->tensor))->SetStopGradient(true);
   if (src.get_autograd_meta()) {
-    egr::EagerUtils::unsafe_autograd_meta(self->tensor)
+    egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::unsafe_autograd_meta(src)->Persistable());
   } else {
-    egr::EagerUtils::unsafe_autograd_meta(self->tensor)->SetPersistable(false);
+    egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
   }
 }
 
@@ -168,8 +160,7 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
         temp.copy_to(phi::TransToPtenBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
-  egr::EagerUtils::autograd_meta(&(self->tensor))->SetStopGradient(true);
-  egr::EagerUtils::unsafe_autograd_meta(self->tensor)->SetPersistable(false);
+  egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);
 }
 
 py::object ParsePyArray(
@@ -218,21 +209,18 @@ paddle::platform::Place ParsePlace(
 }
 
 // boolean arguments: zero_copy, stop_gradient, persistable
-bool ParseBooleanArgs(std::string key,
-                      std::unordered_map<std::string, PyObject*> kws_map,
-                      std::unordered_map<std::string, Py_ssize_t> kw_order_map,
-                      PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
-  bool res = false;
-  if (key == "stop_gradient") res = true;
+int ParseBooleanArgs(std::string key,
+                     std::unordered_map<std::string, PyObject*> kws_map,
+                     std::unordered_map<std::string, Py_ssize_t> kw_order_map,
+                     PyObject* args, bool flag_kwargs, Py_ssize_t args_num) {
+  int res = -1;
 
   if (kw_order_map[key] <= args_num) {
-    res = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, kw_order_map[key] - 1),
-                                kw_order_map[key] - 1);
+    res = static_cast<int>(CastPyArg2AttrBoolean(
+        PyTuple_GET_ITEM(args, kw_order_map[key] - 1), kw_order_map[key] - 1));
   } else {
     if (flag_kwargs && kws_map[key] != NULL) {
-      res = CastPyArg2AttrBoolean(kws_map[key], 0);
-    } else {
-      return res;
+      res = static_cast<int>(CastPyArg2AttrBoolean(kws_map[key], 0));
     }
   }
   return res;
@@ -288,15 +276,15 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   bool persistable = false;
   bool zero_copy = false;
   std::string act_name = "";
-  bool stop_gradient = true;
+  int stop_gradient = -1;
 
   numpy_value =
       ParsePyArray(kws_map, kw_order_map, args, flag_kwargs, args_num);
   place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
-  persistable = ParseBooleanArgs("persistable", kws_map, kw_order_map, args,
-                                 flag_kwargs, args_num);
-  zero_copy = ParseBooleanArgs("zero_copy", kws_map, kw_order_map, args,
-                               flag_kwargs, args_num);
+  persistable = (1 == ParseBooleanArgs("persistable", kws_map, kw_order_map,
+                                       args, flag_kwargs, args_num));
+  zero_copy = (1 == ParseBooleanArgs("zero_copy", kws_map, kw_order_map, args,
+                                     flag_kwargs, args_num));
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
   stop_gradient = ParseBooleanArgs("stop_gradient", kws_map, kw_order_map, args,
                                    flag_kwargs, args_num);
@@ -571,7 +559,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         EmptyTensorInitializer(py_tensor_ptr, act_name,
                                egr::Controller::Instance().GetExpectedPlace(),
                                persistable,
-                               /* stop_gradient */ true, dtype, dims, var_type);
+                               /* stop_gradient */ -1, dtype, dims, var_type);
 
         return 0;
       } else {
@@ -655,7 +643,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
         bool persistable = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
         EmptyTensorInitializer(py_tensor_ptr, act_name,
                                egr::Controller::Instance().GetExpectedPlace(),
-                               persistable, true, dtype, dims, var_type);
+                               persistable, -1, dtype, dims, var_type);
         return 0;
       } else if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
         VLOG(6) << "Calling case3's initializer.";
@@ -726,9 +714,8 @@ PyMappingMethods mapping_methods;
 void BindEager(pybind11::module* module) {
   auto m = module->def_submodule("eager");
 
-  auto& internals = pybind11::detail::get_internals();
   auto heap_type = reinterpret_cast<PyHeapTypeObject*>(
-      internals.default_metaclass->tp_alloc(internals.default_metaclass, 0));
+      PyType_Type.tp_alloc(&PyType_Type, 0));
   heap_type->ht_name = ToPyObject("Tensor");
   heap_type->ht_qualname = ToPyObject("Tensor");
   auto type = &heap_type->ht_type;
@@ -742,8 +729,8 @@ void BindEager(pybind11::module* module) {
   type->tp_getset = variable_properties;
   type->tp_init = TensorInit;
   type->tp_new = TensorNew;
-  Py_INCREF(internals.instance_base);
-  type->tp_base = reinterpret_cast<PyTypeObject*>(internals.instance_base);
+  Py_INCREF(&PyBaseObject_Type);
+  type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
 #if PY_VERSION_HEX >= 0x03050000
