@@ -95,11 +95,12 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
 
 class CpuSyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
-        logger.info("start building cpu-sync-ps program")
         super(CpuSyncPsProgramBuilder, self).__init__(pass_ctx)
+        if self.ps_mode == DistributedMode.SYNC:
+            logger.info("start building cpu-sync-ps program")
         if self.ps_mode != DistributedMode.SYNC and self.ps_mode != DistributedMode.ASYNC:
             raise ValueError("ps mode: {} not matched {}",
-                             format(self.ps_mode, "CpuSyncPsProgramBuilder"))
+                             format(self.ps_mode, "PsProgramBuilder"))
 
     def _build_trainer_programs(self):
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",

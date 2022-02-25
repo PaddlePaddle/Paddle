@@ -428,21 +428,46 @@ class DnnTrainer(object):
         self.role_maker._generate_role()  # 必要
         if self.config['debug_the_one_ps'] == 1:
             logger.info("entering run_the_one_ps -- new")
+
             from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
             ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
                                          user_defined_strategy)
             ps_optimizer.minimize_impl(loss)
-            # TODO
-            ps_runtime = TheOnePSRuntime()
-            ps_runtime._set_basic_info(context)
+
+            from paddle.distributed.ps.the_one_ps import TheOnePSRuntime
+            _runtime_handle = TheOnePSRuntime()  # ps 目录下重构版的 TheOnePSRuntime
+            _runtime_handle._set_basic_info(ps_optimizer.pass_ctx._attrs)
+            if fleet.is_worker():
+                worker_desc = _runtime_handle.ps_desc_builder.build_worker_desc(
+                )
+                with open(ps_log_root_dir + sync_mode + '_' +
+                          'new_worker_ps_desc', 'w') as f:
+                    f.write(worker_desc)
+            if fleet.is_server():
+                server_desc = _runtime_handle.ps_desc_builder.build_server_desc(
+                )
+                with open(ps_log_root_dir + sync_mode + '_' +
+                          'new_server_ps_desc', 'w') as f:
+                    f.write(server_desc)
 
         else:
+            pass
+        '''          
             logger.info("entering run_the_one_ps -- old")
             fleet_obj = fleet.distributed_optimizer(
-                inner_optimizer, user_defined_strategy)  ## Fleet 对象
-            fleet_obj.minimize(loss)
-
+                inner_optimizer, user_defined_strategy)  
+            fleet_obj.minimize(loss)  
+            if fleet.is_worker():
+                worker_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=False, is_sync=False)
+                server_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=True, is_sync=False)
+                with open(ps_log_root_dir + sync_mode + '_' + 'worker_ps_desc', 'w') as f:
+                    f.write(str(worker_desc) + str(server_desc))
+            if fleet.is_server():
+                server_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=True, is_sync=False)
+                with open(ps_log_root_dir + sync_mode + '_' + 'server_ps_desc', 'w') as f:
+                    f.write(str(server_desc) + str(fleet_obj._runtime_handle._get_fs_client_desc().to_string()))
+        '''
         if fleet.is_server():
             _main_file = ps_log_root_dir + sync_mode + '_run_the_one_ps' + '_debug:_' + str(
                 self.config['debug_the_one_ps']) + '_server_main.prototxt'

@@ -235,6 +235,7 @@ if(WITH_PYTHON)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
+  py_proto_compile(ps_py_proto SRCS ps.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
   add_custom_target(fleet_proto_init ALL  
@@ -248,6 +249,7 @@ if(WITH_PYTHON)
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
       COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+      COMMAND cp ps_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/ps
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     add_custom_target(fleet_executor_proto_init ALL DEPENDS fleet_proto_init fleet_executor_desc_py_proto
@@ -256,9 +258,11 @@ if(WITH_PYTHON)
   else(NOT WIN32)
     string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
     string(REPLACE "/" "\\" fleet_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
+    string(REPLACE "/" "\\" ps_proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/distributed/ps/")
     add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
           COMMAND copy /Y *.py ${proto_dstpath}
+      COMMAND copy /Y ps_*.py ${ps_proto_dstpath}
 	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
 	  COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto."
