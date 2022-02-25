@@ -31,7 +31,7 @@ class TestMul(IPUOpTest):
 
     @property
     def fp16_enabled(self):
-        if IPUOpTest.use_ipumodel:
+        if IPUOpTest.use_ipumodel():
             return False
         else:
             return True
