@@ -119,7 +119,7 @@
   args : (Tensor x, int64_t[] axis={}, bool keep_dim=false)
   output : Tensor
   infer_meta :
-    func : ReduceInferMeta
+    func : MeanInferMeta
   kernel :
     func : mean
 

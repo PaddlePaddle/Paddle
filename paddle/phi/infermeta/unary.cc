@@ -273,7 +273,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   ReshapeInferMeta(x, shape, out, config);
 }
 
-/*  Why not use ReduceInferMeta directly?
+/*  Why not use MeanInferMeta directly?
     Because we need make InferMetaFunction's args follow the design of api.yaml
 */
 void SumInferMeta(const MetaTensor& x,
@@ -370,10 +370,18 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void ReduceInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keep_dim,
-                     MetaTensor* out) {
+void MeanRawInferMeta(const MetaTensor& x,
+                      const std::vector<int64_t>& axis,
+                      bool keep_dim,
+                      bool reduce_all,
+                      MetaTensor* out) {
+  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
+}
+
+void MeanInferMeta(const MetaTensor& x,
+                   const std::vector<int64_t>& axis,
+                   bool keep_dim,
+                   MetaTensor* out) {
   bool reduce_all = false;
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
 }
