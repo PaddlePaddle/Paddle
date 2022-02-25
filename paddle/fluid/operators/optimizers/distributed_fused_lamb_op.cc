@@ -33,12 +33,7 @@ class DistributedFusedLambOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "ParamInfo") {
-      return expected_kernel_type;
-    } else {
-      return framework::OperatorWithKernel::GetKernelTypeForVar(
-          var_name, tensor, expected_kernel_type);
-    }
+    return expected_kernel_type;
   }
 };
 
