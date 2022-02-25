@@ -13,25 +13,18 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_sample_kernel.h"
-
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/diagonal.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-
 #include <cmath>
 #include <fstream>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/kernel_registry.h"
 namespace phi {
-using DataType = paddle::experimental::DataType;
 template <typename T, typename Context, typename IndexT = int>
 void IndexSampleInner(const Context &context,
                       const DenseTensor &input,

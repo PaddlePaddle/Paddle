@@ -18,11 +18,8 @@
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/complex_functors.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
 namespace phi {
 

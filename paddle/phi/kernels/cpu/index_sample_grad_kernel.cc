@@ -13,17 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
-#include "paddle/fluid/framework/convert_utils.h"
 namespace phi {
-using DataType = paddle::experimental::DataType;
 template <typename T, typename Context, typename IndexT = int>
 void IndexSampleGradInner(const Context& context,
                           const DenseTensor& out_grad,
