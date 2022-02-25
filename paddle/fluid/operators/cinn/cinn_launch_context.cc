@@ -115,9 +115,6 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       input_var_names.size(), internal_var_names_.size(),
       output_var_names.size(), outer_varinfo.size(), skip_eager_vars_.size(),
       initialized_beforehand_vars_.size());
-  runtime_graph_->SetNotOwned<Name2VarInfoMap>(
-      kMemOptVarInfoFromMainGraph,
-      &graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph));
 }
 
 void CinnLaunchContext::BuildVarNameMap(
