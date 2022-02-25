@@ -256,8 +256,8 @@ void IndexSampleInferMeta(const MetaTensor& x,
                           input_dims[0],
                           index_dims[0]));
   }
-  out->set_dims(index_dims);
   out->set_dtype(x.dtype());
+  out->set_dims(index_dims);
   out->share_lod(y);
 }
 void CrossInferMeta(const MetaTensor& x,
