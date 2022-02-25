@@ -21,7 +21,7 @@
 namespace infrt {
 namespace trt {
 // Implementation of the trtGraphSplitPass。
-void trtGraphSplitPass::runOnFunction() {
+void TRTGraphSplitPass::runOnFunction() {
   std::vector<mlir::pd::GraphOp> worklist;
   mlir::Block& block = getFunction().front();
   for (auto& op : block) {

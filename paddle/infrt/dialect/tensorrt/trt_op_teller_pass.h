@@ -52,8 +52,8 @@ namespace trt {
  * TODO(winter-wang): Supplementary how to judge the operators can be supported
  * by tensorrt.
  */
-class trtOpTellerPass
-    : public mlir::PassWrapper<trtOpTellerPass, mlir::FunctionPass> {
+class TRTOpTellerPass
+    : public mlir::PassWrapper<TRTOpTellerPass, mlir::FunctionPass> {
  public:
   ::llvm::StringRef getName() const override { return "trtOpTellerPass"; }
   void runOnFunction() override;

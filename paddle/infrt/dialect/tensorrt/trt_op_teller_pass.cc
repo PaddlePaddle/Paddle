@@ -20,7 +20,7 @@
 namespace infrt {
 namespace trt {
 // Implementation of the trtOpTellerPass。
-void trtOpTellerPass::runOnFunction() {
+void TRTOpTellerPass::runOnFunction() {
   mlir::Block &body = getFunction().front();
   std::vector<mlir::Operation *> worklist;
   worklist.reserve(body.getOperations().size());

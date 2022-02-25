@@ -26,7 +26,7 @@ namespace trt {
 
 using namespace mlir;
 
-void trtOpConverterPass::runOnOperation() {
+void TRTOpConverterPass::runOnOperation() {
   // The first thing to define is the conversion target. This will define the
   // final target for this lowering.
   ConversionTarget target(getContext());

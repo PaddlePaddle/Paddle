@@ -46,8 +46,8 @@ namespace trt {
  *   "pd.fetch" %d, %f
  * }
  */
-struct trtOpConverterPass
-    : public mlir::PassWrapper<trtOpConverterPass,
+struct TRTOpConverterPass
+    : public mlir::PassWrapper<TRTOpConverterPass,
                                mlir::OperationPass<mlir::FuncOp>> {
   void getDependentDialects(mlir::DialectRegistry &registry) const override {
     registry.insert<TensorRTDialect>();
