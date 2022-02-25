@@ -464,10 +464,10 @@ int main(int argc, char* argv[]) {
   ascend_ptr->InitGEForUT();
 #endif
 
-  std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\"",
-                                   "\"paddle/fluid/platform/profiler.h\"",
-                                   "\"pybind11/detail/common.h\"",
-                                   "<Python.h>"};
+  std::vector<std::string> headers{
+      "\"paddle/fluid/imperative/tracer.h\"",
+      "\"paddle/fluid/platform/profiler/event_tracing.h\"",
+      "\"pybind11/detail/common.h\"", "<Python.h>"};
 
   std::ofstream out(argv[1], std::ios::out);
 

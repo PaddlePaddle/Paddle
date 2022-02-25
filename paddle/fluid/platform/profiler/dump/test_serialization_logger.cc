@@ -172,3 +172,25 @@ TEST(DeserializationReaderTest, restore_case0) {
     }
   }
 }
+
+TEST(DeserializationReaderTest, restore_case1) {
+  DeserializationReader reader("test_serialization_logger_case1.pb");
+  std::unique_ptr<NodeTrees> tree = reader.Parse();
+  std::map<uint64_t, std::vector<HostTraceEventNode*>> nodes =
+      tree->Traverse(true);
+  EXPECT_EQ(nodes[10].size(), 1u);
+  EXPECT_EQ(nodes[11].size(), 1u);
+  std::vector<HostTraceEventNode*> thread1_nodes = nodes[10];
+  std::vector<HostTraceEventNode*> thread2_nodes = nodes[11];
+  for (auto it = thread1_nodes.begin(); it != thread1_nodes.end(); it++) {
+    if ((*it)->Name() == "root node") {
+      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 3u);
+    }
+  }
+  for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
+    if ((*it)->Name() == "root node") {
+      EXPECT_EQ((*it)->GetChildren().size(), 0u);
+      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+    }
+  }
+}

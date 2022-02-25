@@ -25,6 +25,7 @@ import numpy as np
 import multiprocessing
 from collections import namedtuple
 from paddle.fluid.framework import _set_expected_place, _current_expected_place, set_flags
+import paddle.profiler as profiler
 
 # NOTE: queue has a different name in python2 and python3
 import queue
@@ -250,6 +251,10 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._exit_thread_expectedly()
 
     def __next__(self):
+        trace_event = profiler.Record_Event(
+            name="_DataLoaderIterSingleProcess",
+            event_type=profiler.TracerEventType.Dataloader)
+        trace_event.begin()
         try:
             if in_dygraph_mode():
                 if _in_eager_mode():
@@ -264,9 +269,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                     for i in range(len(data)):
                         data[i] = data[i]._move_to_list()
                     data = [
-                        _restore_batch(d, s)
-                        for d, s in zip(data, self._structure_infos[:len(
-                            self._places)])
+                        _restore_batch(d, s) for d, s in
+                        zip(data, self._structure_infos[:len(self._places)])
                     ]
                     self._structure_infos = self._structure_infos[len(
                         self._places):]
@@ -283,6 +287,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._reader.shutdown()
             self._try_shutdown_all()
             six.reraise(*sys.exc_info())
+        finally:
+            trace_event.end()
 
     def _shutdown_thread(self):
         if self._thread:
@@ -688,6 +694,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._try_shutdown_all(1)
 
     def __next__(self):
+        trace_event = profiler.Record_Event(
+            name="_DataLoaderIterMultiProcess",
+            event_type=profiler.TracerEventType.Dataloader)
+        trace_event.begin()
         try:
             # _batches_outstanding here record the total batch data number
             # in 'from after _try_put_indices to beforeoutput data', this
@@ -716,9 +726,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     for i in range(len(data)):
                         data[i] = data[i]._move_to_list()
                     data = [
-                        _restore_batch(d, s)
-                        for d, s in zip(data, self._structure_infos[:len(
-                            self._places)])
+                        _restore_batch(d, s) for d, s in
+                        zip(data, self._structure_infos[:len(self._places)])
                     ]
                     self._structure_infos = self._structure_infos[len(
                         self._places):]
@@ -736,6 +745,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 self._reader.shutdown()
                 self._try_shutdown_all()
             six.reraise(*sys.exc_info())
+        finally:
+            trace_event.end()
 
     # python2 compatibility
     def next(self):

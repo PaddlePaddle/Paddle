@@ -12,7 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_DISTRIBUTED_PS_WRAPPER_PS_CPU_WRAPPER_H_
-#define PADDLE_FLUID_DISTRIBUTED_PS_WRAPPER_PS_CPU_WRAPPER_H_
+#include "gtest/gtest.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 
-#endif  // PADDLE_FLUID_DISTRIBUTED_PS_WRAPPER_PS_CPU_WRAPPER_H_
+using paddle::platform::ExtraInfo;
+
+TEST(ExtraInfoTest, case0) {
+  ExtraInfo& instance = ExtraInfo::GetInstance();
+  instance.AddMetaInfo(std::string("info1"), std::string("%d"), 20);
+  instance.AddMetaInfo(std::string("info2"), std::string("%s"), "helloworld");
+  std::unordered_map<std::string, std::string> map = instance.GetMetaInfo();
+  EXPECT_EQ(map["info1"], "20");
+  EXPECT_EQ(map["info2"], "helloworld");
+  EXPECT_EQ(map.size(), 2u);
+  instance.Clear();
+  EXPECT_EQ(map.size(), 0u);
+}

@@ -15,8 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
+#include <unordered_map>
 
 #include "paddle/fluid/platform/profiler/event_node.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 
 namespace paddle {
 namespace platform {
@@ -66,16 +69,21 @@ struct HostPythonNode {
 class ProfilerResult {
  public:
   ProfilerResult() : tree_(nullptr) {}
-  explicit ProfilerResult(NodeTrees* tree);
+  explicit ProfilerResult(std::unique_ptr<NodeTrees> tree);
   ~ProfilerResult();
   std::map<uint64_t, HostPythonNode*> GetData() {
-    return thread_event_trees_map;
+    return thread_event_trees_map_;
   }
-  void Save(const std::string& file_name);
+  std::unordered_map<std::string, std::string> GetExtraInfo() {
+    return extra_info_;
+  }
+  void Save(const std::string& file_name,
+            const std::string format = std::string("json"));
 
  private:
-  std::map<uint64_t, HostPythonNode*> thread_event_trees_map;
-  NodeTrees* tree_;
+  std::map<uint64_t, HostPythonNode*> thread_event_trees_map_;
+  std::unordered_map<std::string, std::string> extra_info_;
+  std::unique_ptr<NodeTrees> tree_;
   HostPythonNode* CopyTree(HostTraceEventNode* node);
 };
 

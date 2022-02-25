@@ -40,6 +40,7 @@ from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
+import paddle.profiler as profiler
 
 __all__ = ['Layer']
 
@@ -539,9 +540,8 @@ class Layer(object):
 
         """
         ret = [
-            param
-            for _, param in self.named_parameters(
-                include_sublayers=include_sublayers)
+            param for _, param in
+            self.named_parameters(include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -796,9 +796,8 @@ class Layer(object):
 
         """
         ret = [
-            buffer
-            for _, buffer in self.named_buffers(
-                include_sublayers=include_sublayers)
+            buffer for _, buffer in
+            self.named_buffers(include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -904,8 +903,9 @@ class Layer(object):
 
             self._built = True
 
-        outputs = self.forward(*inputs, **kwargs)
-
+        with profiler.Record_Event(self.full_name(),
+                                   profiler.TracerEventType.Forward):
+            outputs = self.forward(*inputs, **kwargs)
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
             if hook_result is not None:
