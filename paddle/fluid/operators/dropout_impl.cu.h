@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 
 namespace paddle {
 namespace operators {
@@ -270,32 +271,38 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                 const Tensor& mask, int64_t size,
                                 Tensor* grad_x, bool is_test = false) {
   using MT = typename details::MPTypeTrait<T>::Type;
-  auto dX = EigenVector<T>::Flatten(*grad_x);
-  auto dY = EigenVector<T>::Flatten(grad_y);
-
-  auto& place = *dev_ctx.eigen_device();
+  auto stream = dev_ctx.stream();
+  MT factor;
   if (is_test) {
     if (dropout_implementation == "upscale_in_train") {
-      dX.device(place) = static_cast<T>(1) * dY;
+      factor = static_cast<MT>(1.0f);
     } else {
-      dX.device(place) = dY * static_cast<T>(1.0f - dropout_prob);
+      factor = static_cast<MT>(1.0f - dropout_prob);
     }
+    std::vector<const framework::Tensor*> ins = {&grad_y};
+    std::vector<framework::Tensor*> outs = {grad_x};
+    auto functor = phi::funcs::ScaleFunctor<T>(factor);
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                              &outs, functor);
   } else {
-    auto M = EigenVector<uint8_t>::Flatten(mask);
+    std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
+    std::vector<framework::Tensor*> outs = {grad_x};
     if (dropout_implementation == "upscale_in_train") {
       if (dropout_prob == 1.0f) {
-        dX.device(place) = static_cast<T>(0) * dY;
+#ifdef PADDLE_WITH_HIP
+        hipMemset(grad_x->data<T>(), 0, size * sizeof(T));
+#else
+        cudaMemset(grad_x->data<T>(), 0, size * sizeof(T));
+#endif
       } else {
-        auto factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
-        auto stream = dev_ctx.stream();
-        std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
-        std::vector<framework::Tensor*> outs = {grad_x};
-        auto functor = CudaDropoutGradFunctor<T, uint8_t>(factor);
+        factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
         paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-            dev_ctx, ins, &outs, functor);
+            dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
       }
     } else {
-      dX.device(place) = dY * M.cast<T>();
+      factor = static_cast<MT>(1.0f);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+          dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
     }
   }
 }

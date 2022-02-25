@@ -38,12 +38,15 @@ struct AddGradFunctor {
 
 template <typename T>
 struct ScaleFunctor {
-  explicit ScaleFunctor(const T coeff) : coeff_(coeff) {}
+  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  explicit ScaleFunctor(const MT coeff) : coeff_(coeff) {}
 
-  inline HOSTDEVICE T operator()(T ele) { return ele * coeff_; }
+  inline HOSTDEVICE T operator()(T ele) {
+    return static_cast<T>(static_cast<MT>(ele) * coeff_);
+  }
 
  private:
-  T coeff_;
+  MT coeff_;
 };
 
 template <typename T>
