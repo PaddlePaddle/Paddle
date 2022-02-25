@@ -25,4 +25,11 @@ void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 MetaTensor* dx,
                                 MetaTensor* dy);
 
+void GeneralTernaryGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 const MetaTensor& z,
+                                 MetaTensor* dx,
+                                 MetaTensor* dy,
+                                 MetaTensor* dz);
+
 }  // namespace phi
