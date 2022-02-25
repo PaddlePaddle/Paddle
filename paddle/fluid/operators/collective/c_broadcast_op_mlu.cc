@@ -30,7 +30,8 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int numel = x->numel();
-    cnclDataType_t dtype = platform::ToCNCLDataType(x->type());
+    cnclDataType_t dtype =
+        platform::ToCNCLDataType(framework::TransToProtoVarType(x->type()));
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();

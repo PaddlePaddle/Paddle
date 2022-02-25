@@ -271,6 +271,7 @@ class PSGPUTrainer : public TrainerBase {
 
   template <typename T>
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void InitializeGPUServer(const TrainerDesc& trainer_desc);
 
  protected:
   Dataset* dataset_;

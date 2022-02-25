@@ -227,7 +227,10 @@ class RmspropOpKernel : public framework::OpKernel<T> {
       merge_func(dev_ctx, grad, merged_grad);
 
       platform::ForRange<DeviceContext> for_range(dev_ctx, limit);
-      const int64_t *rows = merged_grad->rows().Data(ctx.GetPlace());
+      auto &grad_merge_rows = merged_grad->rows();
+      paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(
+          &grad_merge_rows);
+      const int64_t *rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
 
       auto &merged_tensor = merged_grad->value();
       int64_t row_count = merged_grad->rows().size();

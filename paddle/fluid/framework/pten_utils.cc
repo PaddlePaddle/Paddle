@@ -67,7 +67,7 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == phi::Backend::MKLDNN) {
     library_type = LibraryType::kMKLDNN;
-  } else if (kernel_key.backend() == phi::Backend::CUDNN) {
+  } else if (kernel_key.backend() == phi::Backend::GPUDNN) {
     library_type = LibraryType::kCUDNN;
   } else {
     // do nothing
@@ -82,7 +82,7 @@ phi::KernelKey TransOpKernelTypeToPtenKernelKey(
   if (kernel_type.library_type_ == LibraryType::kMKLDNN) {
     backend = phi::Backend::MKLDNN;
   } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
-    backend = phi::Backend::CUDNN;
+    backend = phi::Backend::GPUDNN;
   } else {
     // do
   }
@@ -137,7 +137,7 @@ KernelArgsNameMakerByOpProto::GetInputArgsNames() {
       continue;
     }
     // If contains dispensable input, we should override the
-    // GetExpectedPtenKernelArgs method self
+    // OpArgumentMapping method self in phi/ops/compat dir
     if (in.has_dispensable() && in.dispensable()) {
       VLOG(6) << "Parse PtenKernel input: skip dispensable input - " << in_name;
       continue;
@@ -153,7 +153,11 @@ KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
   for (int i = 0; i < op_proto_->outputs_size(); ++i) {
     auto& out = op_proto_->outputs()[i];
     auto& out_name = out.name();
-    // TODO(chenweihang): outputs also need skip some cases
+    if ((out.has_extra() && out.extra()) || (out.has_quant() && out.quant())) {
+      VLOG(6) << "Parse PtenKernel output: skip extra & quant output - "
+              << out_name;
+      continue;
+    }
     VLOG(6) << "Parse PtenKernel output: " << out_name;
     output_names_.emplace_back(out_name);
   }
@@ -165,9 +169,10 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
   for (int i = 0; i < op_proto_->attrs_size(); ++i) {
     auto& attr = op_proto_->attrs()[i];
     auto& attr_name = attr.name();
-    if (attr_name == "use_mkldnn" || attr_name == "op_role" ||
-        attr_name == "op_role_var" || attr_name == "op_namescope" ||
-        attr_name == "op_callstack" || attr_name == "op_device") {
+    if (attr_name == "use_mkldnn" || attr_name == "use_cudnn" ||
+        attr_name == "op_role" || attr_name == "op_role_var" ||
+        attr_name == "op_namescope" || attr_name == "op_callstack" ||
+        attr_name == "op_device") {
       VLOG(6) << "Parse PtenKernel attribute: skip needless attr - "
               << attr_name;
       continue;

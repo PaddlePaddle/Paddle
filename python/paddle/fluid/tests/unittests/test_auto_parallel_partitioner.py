@@ -53,6 +53,7 @@ def get_programs(annotated_func):
     completer = Completer(dist_context)
     complete_train_program = completer.complete_forward_annotation(
         train_program)
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
 
     rank_id = 3
     dist_strategy = fleet.DistributedStrategy()

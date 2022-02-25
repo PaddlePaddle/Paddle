@@ -73,7 +73,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
                                 size_t requested_size) {
   PADDLE_ENFORCE_NOT_NULL(
       allocator,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Required allocator shall not be nullptr, but received nullptr."));
   if (this->dtype() != dtype) {
     VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
@@ -81,13 +81,13 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
   }
   PADDLE_ENFORCE(
       valid(),
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The meta data must be valid when call the mutable data function."));
   size_t bytes = numel() * SizeOf(this->dtype());
   if (requested_size) {
     PADDLE_ENFORCE_GE(requested_size,
                       bytes,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The reserved size %d should be enough to meet the "
                           "volume required by metadata %d.",
                           requested_size,
@@ -112,7 +112,7 @@ const T* DenseTensor::data() const {
   check_memory_size();
   PADDLE_ENFORCE(
       (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));
   return static_cast<const T*>(data());
@@ -123,7 +123,7 @@ T* DenseTensor::data() {
   check_memory_size();
   PADDLE_ENFORCE(
       (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve does not match the "
           "type of data currently contained in the container."));
   return static_cast<T*>(data());
@@ -133,7 +133,7 @@ void* DenseTensor::data() {
   check_memory_size();
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The storage must be valid when call the data function."));
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  meta_.offset);
@@ -143,7 +143,7 @@ const void* DenseTensor::data() const {
   check_memory_size();
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "The storage must be valid when call the data function."));
   return reinterpret_cast<const void*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
@@ -151,7 +151,7 @@ const void* DenseTensor::data() const {
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
   PADDLE_ENFORCE(!meta_.valid(),
-                 paddle::platform::errors::InvalidArgument(
+                 phi::errors::InvalidArgument(
                      "Only when the original attribute of Tensor is "
                      "incomplete, can it be reset."));
   meta_ = std::move(meta);
@@ -160,7 +160,7 @@ void DenseTensor::set_meta(DenseTensorMeta&& meta) {
 void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   PADDLE_ENFORCE(
       meta.valid(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;
   meta_.dtype = meta.dtype;

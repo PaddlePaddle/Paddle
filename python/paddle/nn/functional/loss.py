@@ -131,7 +131,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
     fluid.data_feeder.check_variable_and_dtype(
         label, 'label', ['float32', 'float64'], 'binary_cross_entropy')
 
-    sub_name = name if weight is None and reduction is 'none' else None
+    sub_name = name if weight is None and reduction == 'none' else None
     helper = LayerHelper("binary_cross_entropy", name=sub_name)
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -144,7 +144,7 @@ def binary_cross_entropy(input, label, weight=None, reduction='mean',
 
     if weight is not None:
         if isinstance(weight, paddle.static.Variable):
-            weight_name = name if reduction is 'none' else None
+            weight_name = name if reduction == 'none' else None
             out = paddle.multiply(out, weight, name=weight_name)
         else:
             raise ValueError(
@@ -1113,7 +1113,7 @@ def margin_cross_entropy(logits,
                          group=None,
                          return_softmax=False,
                          reduction='mean'):
-    """
+    r"""
     .. math::
 
         L=-\\frac{1}{N}\sum^N_{i=1}\log\\frac{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\\neq y_i} e^{scos\\theta_{y_i}}}

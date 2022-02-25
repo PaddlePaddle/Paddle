@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -347,16 +348,29 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           }
         } else {
           // If is not in runtime, we will set default value(-1) for ScalarArray
-          int64_t num_ele = 1;
+          int64_t num_ele = 0;
           std::vector<VarDesc*> vars;
           vars.reserve(infershape_inputs.size());
           for (size_t i = 0; i < infershape_inputs.size(); i++) {
             vars.push_back(BOOST_GET_CONST(VarDesc*, infershape_inputs[i]));
           }
-          for (auto& var : vars) {
-            const auto& tensor_dims = var->GetShape();
+
+          if (vars.size() == 1) {
+            num_ele = 1;
+            const auto& tensor_dims = vars[0]->GetShape();
             for (size_t i = 0; i < tensor_dims.size(); ++i) {
               num_ele *= tensor_dims[i];
+            }
+          } else {
+            for (auto& var : vars) {
+              const auto& tensor_dims = var->GetShape();
+              PADDLE_ENFORCE_EQ(tensor_dims.size(), 1,
+                                platform::errors::InvalidArgument(
+                                    "The shape is constructed by multi-tensor, "
+                                    "every tensor's dims should be 1. But your "
+                                    "shape has tensor that dims is %s.",
+                                    tensor_dims.size()));
+              num_ele += tensor_dims[0];
             }
           }
           phi::ScalarArray tensor_attr(std::vector<int32_t>(num_ele, -1));
@@ -376,47 +390,101 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               attr_name));
         }
       }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(phi::Scalar))) {
+      if (ctx->HasAttr(attr_name)) {
+        // TODO(chentianyu03): support other attrs later
+        auto& attr = attr_reader.GetAttr(attr_name);
+        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+          infer_meta_context.EmplaceBackAttr(
+              phi::Scalar(BOOST_GET_CONST(float, attr)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::string))) {
+          infer_meta_context.EmplaceBackAttr(
+              phi::Scalar(BOOST_GET_CONST(std::string, attr)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int))) {
+          infer_meta_context.EmplaceBackAttr(
+              phi::Scalar(BOOST_GET_CONST(int, attr)));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to Scalar when construct "
+              "InferMetaContext.",
+              attr_name));
+        }
+      } else if (ctx->HasInput(attr_name)) {
+        const auto& infershape_input = ctx->GetInputVarPtrs(attr_name);
 
+        if (infershape_input.size() == 1) {
+          if (ctx->IsRuntime()) {
+            Variable* var = BOOST_GET_CONST(Variable*, infershape_input[0]);
+            infer_meta_context.EmplaceBackAttr(
+                std::move(experimental::MakePtenScalarFromVar(*var)));
+          } else {
+            phi::Scalar tensor_scalar(-1);
+            tensor_scalar.SetFromTensor(true);
+            infer_meta_context.EmplaceBackAttr(std::move(tensor_scalar));
+          }
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Invalid input.size() when cast op attribute `%s` to Scalar, "
+              "expected 1, but actually is %d .",
+              attr_name, infershape_input.size()));
+        }
+      }
     } else if (ctx->HasAttr(attr_name)) {
       // Emplace Back Attr according to the type of attr.
       auto& attr = attr_reader.GetAttr(attr_name);
-      if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
+      if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
-      } else if (std::type_index(attr.type()) == std::type_index(typeid(int))) {
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int, attr));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(int64_t))) {
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(float))) {
+      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<bool>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<bool>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<int>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
-        infer_meta_context.EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<int64_t>, attr));
-      } else if (std::type_index(attr.type()) ==
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int>))) {
+          // Emplace Back Attr according to the type of Phi_Kernel args.
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                       vector_int_attr.end());
+          infer_meta_context.EmplaceBackAttr(vector_int64_attr);
+        } else {
+          infer_meta_context.EmplaceBackAttr(
+              BOOST_GET_CONST(std::vector<int64_t>, attr));
+        }
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<float>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<float>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<double>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<double>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<std::string>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(phi::DataType))) {
+        auto data_type = paddle::framework::TransToPtenDataType(
+            static_cast<framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        infer_meta_context.EmplaceBackAttr(data_type);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported attribute type is received when call "

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/unary.h"
 
+#include <algorithm>
 #include <set>
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
@@ -38,11 +39,11 @@ void FlattenInferMeta(const MetaTensor& x,
   if (stop_axis < 0) {
     stop_axis = stop_axis + in_dims_size;
   }
-  PADDLE_ENFORCE_GE(stop_axis,
-                    start_axis,
-                    paddle::platform::errors::InvalidArgument(
-                        "The stop_axis should be greater"
-                        "than or equal to start_axis."));
+  PADDLE_ENFORCE_GE(
+      stop_axis,
+      start_axis,
+      phi::errors::InvalidArgument("The stop_axis should be greater"
+                                   "than or equal to start_axis."));
 
   int64_t outer = 1;
   std::vector<int32_t> out_shape;
@@ -80,6 +81,28 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
+  auto dims = x.dims();
+  auto rank = dims.size();
+  PADDLE_ENFORCE_GE(rank,
+                    2,
+                    errors::InvalidArgument(
+                        "The Input(X) should have at least 2 dimensions. But "
+                        "received a %d dimension tensor.",
+                        rank));
+  PADDLE_ENFORCE_EQ(
+      dims[rank - 2],
+      dims[rank - 1],
+      errors::InvalidArgument(
+          "The inner-most 2 dimensions of Input(X) all should be symmetric "
+          "positive-definite matrices and have the same size. But received "
+          "X's shape[-2] = %d and shape[-1] = %d.",
+          dims[rank - 2],
+          dims[rank - 1]));
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void CopyToInferMeta(const MetaTensor& x,
                      Backend backend,
                      bool blocking,
@@ -91,6 +114,18 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
   out->set_layout(x.layout());
+}
+
+void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      product(x.dims()),
+      1UL,
+      errors::InvalidArgument("The number of elements in Input(X) should be 1."
+                              "Now the number is %d.",
+                              product(x.dims())));
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 static phi::DDim ValidateShape(const std::vector<int64_t> shape,
@@ -113,7 +148,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_EQ(
           unk_dim_idx,
           -1,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Only one dimension value of 'shape' in ReshapeOp can "
               "be -1. But received shape = [%s], shape[%d] is also -1.",
               phi::make_ddim(shape),
@@ -123,7 +158,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_LT(
           static_cast<int>(i),
           in_dims.size(),
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The index of 0 in `shape` must be less than "
               "the input tensor X's dimensions. "
               "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
@@ -136,7 +171,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_GT(
           shape[i],
           0,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Each dimension value of 'shape' in ReshapeOp must not "
               "be negative except one unknown dimension. "
               "But received  shape = [%s], shape[%d] = %d.",
@@ -161,7 +196,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_EQ(
           output_shape[unk_dim_idx] * capacity,
           -in_size,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The 'shape' attribute in ReshapeOp is invalid. "
               "The input tensor X'size must be divisible by known "
               "capacity of 'shape'. "
@@ -179,7 +214,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       PADDLE_ENFORCE_EQ(
           capacity,
           in_size,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The 'shape' in ReshapeOp is invalid. "
               "The input tensor X'size must be equal to the capacity of "
               "'shape'. "
@@ -199,7 +234,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
     PADDLE_ENFORCE_LE(
         capacity,
         in_size,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The 'shape' in ReshapeOp is invalid. "
             "The input tensor X's shape = [%s], X's capacity = %d."
             "But the target shape of Out is [%s],  the "
@@ -231,6 +266,41 @@ void InferMetaFromVecValue(const MetaTensor& x,
     // are the same.
     out->share_lod(x);
   }
+}
+
+void MultinomialInferMeta(const MetaTensor& x,
+                          int num_samples,
+                          bool replacement,
+                          MetaTensor* out) {
+  auto x_dim = x.dims();
+  int64_t x_rank = x_dim.size();
+  PADDLE_ENFORCE_GT(x_rank,
+                    0,
+                    errors::InvalidArgument(
+                        "The number of dimensions of the input probability "
+                        "distribution should be > 0, but got %d.",
+                        x_rank));
+  PADDLE_ENFORCE_LE(x_rank,
+                    2,
+                    errors::InvalidArgument(
+                        "The number of dimensions of the input probability "
+                        "distribution should be <= 2, but got %d.",
+                        x_rank));
+
+  std::vector<int64_t> out_dims(x_rank);
+  for (int64_t i = 0; i < x_rank - 1; i++) {
+    out_dims[i] = x_dim[i];
+  }
+
+  PADDLE_ENFORCE_GT(
+      num_samples,
+      0,
+      errors::InvalidArgument(
+          "The number of samples should be > 0, but got %d.", num_samples));
+  out_dims[x_rank - 1] = num_samples;
+
+  out->set_dims(make_ddim(out_dims));
+  out->set_dtype(DataType::INT64);
 }
 
 void ReshapeInferMeta(const MetaTensor& x,
@@ -364,7 +434,7 @@ void SplitInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       axis_value >= -rank && axis_value < rank,
       true,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The axis is expected to be in range of [%d, %d), but got %d",
           -rank,
           rank,
@@ -383,7 +453,7 @@ void SplitInferMeta(const MetaTensor& x,
 
     PADDLE_ENFORCE_EQ(input_axis_dim % num,
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input's size along the split dimension "
                           "must be evenly divisible by Attr(num_or_sections). "
                           "But received Attr(num_or_sections) "
@@ -416,7 +486,7 @@ void SplitInferMeta(const MetaTensor& x,
     if (config.is_runtime) {
       PADDLE_ENFORCE_LE(num_of_unknow,
                         1,
-                        paddle::platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Only one dimension value of Attr(num_or_sections) "
                             "in SplitOp can be -1. "
                             "But received Attr(num_or_sections) = [%s].",
@@ -430,7 +500,7 @@ void SplitInferMeta(const MetaTensor& x,
       PADDLE_ENFORCE_LT(
           sum_of_section,
           input_axis_dim,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Sum of Attr(num_or_sections) other than unknown section "
               "must be less than the input's "
               "size "
@@ -447,7 +517,7 @@ void SplitInferMeta(const MetaTensor& x,
       PADDLE_ENFORCE_EQ(
           sum_of_section,
           input_axis_dim,
-          paddle::platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Sum of Attr(num_or_sections) must be equal to the input's "
               "size "
               "along the split dimension. But received Attr(num_or_sections)"
@@ -482,6 +552,25 @@ void SplitInferMeta(const MetaTensor& x,
       (*out)[i].set_layout(x.layout());
       (*out)[i].share_lod(x);
     }
+  }
+}
+
+void UnbindInferMeta(const MetaTensor& x,
+                     int axis,
+                     std::vector<MetaTensor>* outs) {
+  auto in_dims = x.dims();
+  std::vector<int> out_dim;
+  axis = axis < 0 ? in_dims.size() + axis : axis;
+  for (int i = 0; i < in_dims.size(); ++i) {
+    if (i != axis) out_dim.push_back(in_dims[i]);
+  }
+  auto out_dims = phi::make_ddim(out_dim);
+
+  for (size_t i = 0; i < outs->size(); ++i) {
+    (*outs)[i].set_dtype(x.dtype());
+    (*outs)[i].set_dims(out_dims);
+    (*outs)[i].set_layout(x.layout());
+    (*outs)[i].share_lod(x);
   }
 }
 
@@ -694,6 +783,45 @@ void UnfoldInferMeta(const MetaTensor& x,
   int output_col_length = output_height * output_width;
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
+}
+
+void DiagInferMeta(const MetaTensor& x,
+                   int offset,
+                   float padding_value,
+                   MetaTensor* out) {
+  auto x_dims = x.dims();
+
+  if (x_dims.size() == 1UL) {
+    int64_t size_ = x_dims[0] + std::abs(offset);
+    out->set_dims({size_, size_});
+    out->set_dtype(x.dtype());
+  } else if (x_dims.size() == 2UL) {
+    int64_t size_ = 0;
+    if (offset >= 0) {
+      // Note(LutaoChu): Do not use std::min here, otherwise the calculation
+      // of `size_` will have unexpected result on Windows Python3.8
+      if (x_dims[0] < x_dims[1] - offset) {
+        size_ = x_dims[0];
+      } else {
+        size_ = x_dims[1] - offset;
+      }
+    } else {
+      // Note(LutaoChu): Do not use std::min here, otherwise the calculation
+      // of `size_` will have unexpected result on Windows Python3.8
+      if (x_dims[0] + offset < x_dims[1]) {
+        size_ = x_dims[0] + offset;
+      } else {
+        size_ = x_dims[1];
+      }
+    }
+    out->set_dims({size_});
+    out->set_dtype(x.dtype());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The input tensor X's dimensions of DiagV2Op should be either 1 or "
+        "2, but received %d.",
+        x_dims.size()));
+  }
 }
 
 }  // namespace phi
