@@ -16,11 +16,6 @@
 
 namespace phi {
 
-KernelSignature IndexSampleOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("index_sample", {"X", "Index"}, {}, {"Out"});
-}
-
 KernelSignature IndexSampleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("index_sample_grad",
@@ -31,6 +26,5 @@ KernelSignature IndexSampleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(index_sample, phi::IndexSampleOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(index_sample_grad,
                            phi::IndexSampleGradOpArgumentMapping);
