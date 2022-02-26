@@ -19,10 +19,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LinSpaceKernel(const Context& ctx,
+void LinspaceKernel(const Context& ctx,
                     const DenseTensor& start,
                     const DenseTensor& stop,
-                    const DenseTensor& num,
+                    const DenseTensor& number,
                     int dtype,
                     DenseTensor* out);
 
