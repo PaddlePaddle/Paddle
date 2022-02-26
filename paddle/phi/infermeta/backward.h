@@ -20,6 +20,15 @@ limitations under the License. */
 
 namespace phi {
 
+void BilinearTensorProductGradInferMeta(const MetaTensor& x,
+                                        const MetaTensor& y,
+                                        const MetaTensor& weight,
+                                        const MetaTensor& dout,
+                                        MetaTensor* dx,
+                                        MetaTensor* dy,
+                                        MetaTensor* dweight,
+                                        MetaTensor* dbias);
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
