@@ -9,8 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pixel_shuffle_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -176,16 +176,6 @@ REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
                   ops::PixelShuffleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(pixel_shuffle_grad, ops::PixelShuffleGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    pixel_shuffle,
-    ops::PixelShuffleOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PixelShuffleOpKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    pixel_shuffle_grad,
-    ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PixelShuffleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_VERSION(pixel_shuffle)
     .AddCheckpoint(
