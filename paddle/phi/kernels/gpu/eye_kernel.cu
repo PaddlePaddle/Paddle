@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/erfinv_op.h"
+#include "paddle/phi/kernels/eye_kernel.h"
+#include "paddle/phi/kernels/impl/eye_kernel_impl.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    erfinv,
-    paddle::operators::ErfinvKernel<paddle::platform::CUDADeviceContext, float>,
-    paddle::operators::ErfinvKernel<paddle::platform::CUDADeviceContext,
-                                    double>);
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    erfinv_grad,
-    paddle::operators::ErfinvGradKernel<paddle::platform::CUDADeviceContext,
-                                        float>,
-    paddle::operators::ErfinvGradKernel<paddle::platform::CUDADeviceContext,
-                                        double>);
+PD_REGISTER_KERNEL(eye,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::EyeKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   phi::dtype::float16) {}

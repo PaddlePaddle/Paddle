@@ -103,6 +103,7 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
+#include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/api_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
