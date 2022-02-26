@@ -90,7 +90,7 @@ RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \
 
 
 # Install Go and glide
-RUN wget -qO- https://paddle-ci.gz.bcebos.com/go1.17.2.linux-amd64.tar.gz | \
+RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.17.2.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
