@@ -70,4 +70,5 @@ PD_REGISTER_KERNEL(split,
                    int64_t,
                    int,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

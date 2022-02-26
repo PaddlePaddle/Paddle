@@ -1031,6 +1031,8 @@ static std::string GenerateGradNodeCreationContent(
     const std::string& output_name = output.name();
     const std::string& output_autograd_name = "p_autograd_" + output_name;
 
+    // Skip Intermediate Tensor
+
     if (output.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
           "  std::vector<egr::AutogradMeta*> %s = "
@@ -1144,6 +1146,8 @@ static std::string GenerateGradNodeCreationContent(
     const std::string& output_name = output.name();
     const std::string& output_autograd_name = "p_autograd_" + output_name;
     size_t output_position = fwd_outputs_name_pos_map.at(output_name);
+
+    // Intermediate Tensor does not require SetHistory, nor RetainGrad
 
     if (output.duplicable()) {
       pass_stop_gradient_args += ", &" + output_autograd_name;
@@ -2036,14 +2040,15 @@ static std::string GenerateGradNodeCCContents(
 
   const char* BWD_RETURN_TEMPLATE =
       "  std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads = "
-      "egr::GradNodeBase::ApplyGradientHooks(grads);\n"
+      "GradNode%s::ApplyGradientHooks(grads);\n"
       "  std::vector<std::vector<paddle::experimental::Tensor>> outputs(%d);\n"
       "  %s\n"
       "  if(NeedComplexToRealConversion()) "
       "HandleComplexGradToRealGrad(&outputs);\n"
       "  return outputs;\n";
-  generated_grad_function_body = paddle::string::Sprintf(
-      BWD_RETURN_TEMPLATE, in_vars.size(), generated_grad_function_body);
+  generated_grad_function_body =
+      paddle::string::Sprintf(BWD_RETURN_TEMPLATE, fwd_op_type, in_vars.size(),
+                              generated_grad_function_body);
 
   // [Generation] Get Full Grad Function
   const char* GRAD_FUNCTION_TEMPLATE =
