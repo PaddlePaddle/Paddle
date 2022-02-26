@@ -15,8 +15,8 @@
 #pragma once
 
 #include <unsupported/Eigen/SpecialFunctions>
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
@@ -41,7 +41,7 @@ void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   auto* x_data = x.data<T>();
   auto* out_data = out->data<T>();
   auto numel = x.numel();
-  paddle::platform::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(ctx, numel);
   DigammaFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }

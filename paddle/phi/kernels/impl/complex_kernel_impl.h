@@ -15,8 +15,8 @@
 #pragma once
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
@@ -28,7 +28,7 @@ void ConjKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
-  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::ConjFunctor<T> functor(x_data, numel, out_data);
   for_range(functor);
 }
@@ -42,7 +42,7 @@ void RealKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<phi::funcs::Real<T>>(
       out, static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
 
-  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::RealFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
@@ -56,7 +56,7 @@ void ImagKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<phi::funcs::Real<T>>(
       out, static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
 
-  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::ImagFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
