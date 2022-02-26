@@ -25,8 +25,7 @@ void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
                  DataType dtype,
                  DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
-  dev_ctx.template Alloc<T>(out);
+  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
 }
 
 template <typename T, typename Context>
