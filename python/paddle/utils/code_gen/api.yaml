@@ -34,6 +34,11 @@
   kernel :
     func : conj
 
+- api : copy_to
+  args : (Tensor x, Backend backend, bool blocking)
+  output : Tensor
+  invoke : copy_to_impl(x, backend, blocking)
+
 - api : divide
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -162,6 +167,11 @@
   kernel :
     func : sign
 
+- api : split
+  args : (Tensor x, ScalarArray num_or_sections, Scalar axis)
+  output : Tensor[]
+  invoke : split_impl(x, num_or_sections, axis)
+
 - api : subtract
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -177,7 +187,6 @@
     func : SumInferMeta
   kernel :
     func : sum
-    param : [x, axis, dtype, keep_dim]
     data_type : x
 
 - api : zeros_like
