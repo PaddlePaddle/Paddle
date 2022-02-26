@@ -28,11 +28,11 @@ namespace phi {
 template <typename Context>
 void Copy(const Context& dev_ctx,
           const DenseTensor& src,
+          Place dst_place,
           bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
-  auto dst_place = dst->place();
 
   if (src_place == dst_place && paddle::platform::is_cpu_place(src_place)) {
     PADDLE_THROW(phi::errors::InvalidArgument(
@@ -43,8 +43,14 @@ void Copy(const Context& dev_ctx,
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
 
-  dst->ResizeAndAllocate(src.dims());
-  auto* dst_ptr = dst->mutable_data(dst_place);
+  dst->Resize(src.dims());
+
+  void* dst_ptr = nullptr;
+  if (paddle::platform::is_cpu_place(dst_place)) {
+    dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
+  } else {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+  }
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
     VLOG(3) << "Skip copy the same data async from " << src_place << " to "
@@ -57,17 +63,8 @@ void Copy(const Context& dev_ctx,
 
   auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
 
-  if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
-      paddle::platform::is_cuda_pinned_place(dst_place)) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
-             paddle::platform::is_cpu_place(dst_place)) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
-             paddle::platform::is_cuda_pinned_place(dst_place)) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
-             paddle::platform::is_cpu_place(dst_place)) {
+  if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
+      paddle::platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = src_place;
     auto dst_cpu_place = dst_place;
     auto ctx_place = dev_ctx.GetPlace();
@@ -114,56 +111,6 @@ void Copy(const Context& dev_ctx,
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     paddle::memory::Copy(
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
-  } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
-             paddle::platform::is_cuda_pinned_place(dst_place)) {
-    auto src_gpu_place = src_place;
-    auto dst_cuda_pinned_place = dst_place;
-    auto ctx_place = dev_ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(ctx_place),
-                      true,
-                      phi::errors::PreconditionNotMet(
-                          "Device context place mismatch. When copying Tensor "
-                          "data from GPU memory to CUDA Pinned memory, current "
-                          "device context place should be GPU."));
-    auto ctx_gpu_place = ctx_place;
-    PADDLE_ENFORCE_EQ(src_gpu_place,
-                      ctx_gpu_place,
-                      phi::errors::PreconditionNotMet(
-                          "The source GPU device and current device context do "
-                          "not match. The source GPU device number is %d, but "
-                          "device context GPU number is %d.",
-                          src_gpu_place.device,
-                          ctx_gpu_place.device));
-    auto stream =
-        blocking ? nullptr
-                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
-    paddle::memory::Copy(
-        dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
-  } else if (paddle::platform::is_cuda_pinned_place(src_place) &&  // NOLINT
-             paddle::platform::is_gpu_place(dst_place)) {
-    auto src_cuda_pinned_place = src_place;
-    auto dst_gpu_place = dst_place;
-    auto ctx_place = dev_ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(ctx_place),
-                      true,
-                      phi::errors::PreconditionNotMet(
-                          "Device context place mismatch. When copying Tensor "
-                          "data from CUDA Pinned memory to GPU memory, current "
-                          "device context place should be GPU."));
-    auto ctx_gpu_place = ctx_place;
-    PADDLE_ENFORCE_EQ(dst_gpu_place,
-                      ctx_gpu_place,
-                      phi::errors::PreconditionNotMet(
-                          "The target GPU device and current device context do "
-                          "not match. The target GPU device number is %d, but "
-                          "device context GPU number is %d.",
-                          dst_gpu_place.device,
-                          ctx_gpu_place.device));
-    auto stream =
-        blocking ? nullptr
-                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
-    paddle::memory::Copy(
-        dst_gpu_place, dst_ptr, src_cuda_pinned_place, src_ptr, size, stream);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT
              paddle::platform::is_gpu_place(dst_place)) {
     auto src_gpu_place = src_place;
