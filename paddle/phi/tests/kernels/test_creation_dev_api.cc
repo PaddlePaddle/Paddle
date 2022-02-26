@@ -39,7 +39,7 @@ TEST(DEV_API, empty) {
   dev_ctx.Init();
 
   // 2. test API
-  auto out = phi::Empty<float>(dev_ctx, {3, 2}, phi::DataType::INT32);
+  auto out = phi::Empty<int>(dev_ctx, {3, 2}, phi::DataType::INT32);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 2);
