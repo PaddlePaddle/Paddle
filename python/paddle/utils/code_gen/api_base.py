@@ -90,6 +90,7 @@ class BaseAPI(object):
             'int': 'int',
             'int32_t': 'int32_t',
             'int64_t': 'int64_t',
+            'long': 'long',
             'size_t': 'size_t',
             'float': 'float',
             'double': 'double',
@@ -98,7 +99,8 @@ class BaseAPI(object):
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
             'int64_t[]': 'const std::vector<int64_t>&',
-            'int[]': 'const std::vector<int>&'
+            'int[]': 'const std::vector<int>&',
+            'long[]': 'const std::vector<int64_t>&'
         }
         optional_types_trans = {
             'Tensor': 'const paddle::optional<Tensor>&',
@@ -449,8 +451,17 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
         param_code = ""
         for param in infer_meta_params:
             if param in input_names:
-                pointer_str = '' if param in self.optional_vars else '*'
-                param_code = param_code + "MakeMetaTensor(" + pointer_str + PREFIX_TENSOR_NAME + param + "), "
+                if param in self.optional_vars:
+                    meta_tensor_code = meta_tensor_code + f"""
+{code_indent}  paddle::optional<const phi::MetaTensor&> {PREFIX_TENSOR_NAME}meta_ref_{param}(paddle::none);
+{code_indent}  auto {PREFIX_TENSOR_NAME}meta_{param} = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
+{code_indent}  if ({PREFIX_TENSOR_NAME}meta_{param}) {{
+{code_indent}    {PREFIX_TENSOR_NAME}meta_ref_{param} = paddle::make_optional<const phi::MetaTensor&>(*{PREFIX_TENSOR_NAME}meta_{param});
+{code_indent}  }}"""
+
+                    param_code = param_code + f"{PREFIX_TENSOR_NAME}meta_ref_{param}, "
+                else:
+                    param_code = param_code + "MakeMetaTensor(*" + PREFIX_TENSOR_NAME + param + "), "
             elif param in kernel_output_names:
                 meta_tensor_code = meta_tensor_code + code_indent + "  phi::MetaTensor " + param.replace(
                     'kernel_', PREFIX_META_TENSOR_NAME) + "(" + param + ");\n"
@@ -507,7 +518,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
                     trans_flag = "{false, true}"
                 if input_name in self.optional_vars:
                     input_tensor_code = input_tensor_code + f"""
-{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}{{paddle::none}};
+{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}(paddle::none);
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_ptr) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::DenseTensor&>(*{PREFIX_TENSOR_NAME}{input_name}_ptr);
@@ -518,7 +529,16 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});"""
 
             else:
-                input_tensor_code = input_tensor_code + f"""
+                if input_name in self.optional_vars:
+                    input_tensor_code = input_tensor_code + f"""
+{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}(paddle::none);
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = TensorToDenseTensor({input_name});
+{code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_ptr) {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::DenseTensor&>(*{PREFIX_TENSOR_NAME}{input_name}_ptr);
+{code_indent}  }}"""
+
+                else:
+                    input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToDenseTensor({input_name});"""
 
         kernel_args = "*dev_ctx, "
@@ -566,14 +586,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
         input_infos = self.inputs['input_info']
         kernel_args_type_list = ['const platform::DeviceContext&']
 
-        input_tensor_code = ""
-        for input_name in input_names:
-            # set input code
-            input_tensor_code = input_tensor_code + f"""
-      auto {PREFIX_TENSOR_NAME}{input_name} = TensorToSelectedRows({input_name});"""
-
         attr_names = self.attrs['names']
-
         kernel_param = self.kernel['param']
         if kernel_param is None:
             kernel_param = input_names + attr_names
@@ -584,8 +597,8 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
             if input_name in self.optional_vars:
                 input_tensor_code = input_tensor_code + f"""
 
-{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}{{paddle::none}};
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
+{code_indent}  {input_trans_map[input_infos[input_name]]} {PREFIX_TENSOR_NAME}{input_name}(paddle::none);
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_ptr = TensorToSelectedRows({input_name});
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_ptr) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::make_optional<const phi::SelectedRows&>(*{PREFIX_TENSOR_NAME}{input_name}_ptr);
 {code_indent}  }}"""

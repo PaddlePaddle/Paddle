@@ -31,12 +31,12 @@ inline std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
   return std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
 }
 
-inline paddle::optional<const phi::DenseTensor&> TensorToDenseTensor(
+inline std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
     const paddle::optional<Tensor>& tensor) {
   if (tensor) {
-    return {*std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl())};
+    return std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl());
   }
-  return {paddle::none};
+  return nullptr;
 }
 
 inline std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
@@ -57,12 +57,12 @@ inline std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
   return std::dynamic_pointer_cast<phi::SelectedRows>(tensor.impl());
 }
 
-inline paddle::optional<const phi::SelectedRows&> TensorToSelectedRows(
+inline std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
     const paddle::optional<Tensor>& tensor) {
   if (tensor) {
-    return {*std::dynamic_pointer_cast<phi::SelectedRows>(tensor->impl())};
+    return std::dynamic_pointer_cast<phi::SelectedRows>(tensor->impl());
   }
-  return {paddle::none};
+  return nullptr;
 }
 
 /* ----------------- for infer_meta --------------------- */
@@ -74,7 +74,7 @@ inline phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor) {
 inline paddle::optional<phi::MetaTensor> MakeMetaTensor(
     const paddle::optional<const phi::DenseTensor&>& tensor) {
   if (tensor) {
-    return phi::MetaTensor(*tensor);
+    return {phi::MetaTensor(*tensor)};
   }
   return {paddle::none};
 }
@@ -96,7 +96,7 @@ inline phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor) {
 inline paddle::optional<phi::MetaTensor> MakeMetaTensor(
     const paddle::optional<const phi::SelectedRows&>& tensor) {
   if (tensor) {
-    return phi::MetaTensor(*tensor);
+    return {phi::MetaTensor(*tensor)};
   }
   return {paddle::none};
 }
