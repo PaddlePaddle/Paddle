@@ -30,20 +30,13 @@ void GaussianRandomKernel(const Context& dev_ctx,
                           int seed,
                           DataType dtype,
                           DenseTensor* out) {
-  // float mean = context.Attr<float>("mean");
-  // float std = context.Attr<float>("std");
-  // auto* tensor = context.Output<framework::Tensor>("Out");
-
   auto tensor = out;
 
   std::normal_distribution<T> dist(mean, std);
 
-  // Paddle/paddle/fluid/operators/utils.h
-  // auto shape = GetShape(context);
   tensor->Resize(phi::make_ddim(shape.GetData()));
   int64_t size = tensor->numel();
   T* data = dev_ctx.template Alloc<T>(tensor);
-  // unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
   auto engine = paddle::framework::GetCPURandomEngine(seed);
 
   for (int64_t i = 0; i < size; ++i) {

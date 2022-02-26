@@ -19,21 +19,16 @@
 #include <thrust/random.h>
 #include <thrust/transform.h>
 
-#include "gflags/gflags.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/generator.h"
 // #include "paddle/phi/core/generator.h"
-// #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 
 // #include "paddle/fluid/operators/distribution_helper.h"
 // #include "paddle/fluid/operators/index_impl.cu.h"
-
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
@@ -73,9 +68,6 @@ void GaussianRandomKernel(const Context& dev_ctx,
                           int seed,
                           DataType dtype,
                           DenseTensor* out) {
-  // auto* tensor = context.Output<framework::Tensor>("Out");
-  // unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-
   auto tensor = out;
 
   bool seed_flag = false;
@@ -84,18 +76,13 @@ void GaussianRandomKernel(const Context& dev_ctx,
     seed = rd();
     seed_flag = true;
   }
-  // T mean = static_cast<T>(context.Attr<float>("mean"));
-  // T std = static_cast<T>(context.Attr<float>("std"));
-  // auto shape = GetShape(context);
+
   tensor->Resize(phi::make_ddim(shape.GetData()));
 
-  // auto& dev_ctx =
-  //     context.template device_context<platform::CUDADeviceContext>();
   T* data = dev_ctx.template Alloc<T>(tensor);
 
   int64_t size = tensor->numel();
 
-  // int device_id = context.GetPlace().GetDeviceId();
   int device_id = dev_ctx.GetPlace().GetDeviceId();
   auto gen_cuda = paddle::framework::GetDefaultCUDAGenerator(device_id);
 
