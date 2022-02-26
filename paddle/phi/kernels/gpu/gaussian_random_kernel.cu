@@ -19,17 +19,23 @@
 #include <thrust/random.h>
 #include <thrust/transform.h>
 
+#include "gflags/gflags.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 // See Note [ Why still include the fluid headers? ]
-// #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/generator.h"
 // #include "paddle/phi/core/generator.h"
 // #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/distribution_helper.h"
-#include "paddle/fluid/operators/index_impl.cu.h"
+
+// #include "paddle/fluid/operators/distribution_helper.h"
+// #include "paddle/fluid/operators/index_impl.cu.h"
+
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 DECLARE_bool(use_curand);
 
@@ -95,23 +101,20 @@ void GaussianRandomKernel(const Context& dev_ctx,
 
   if (gen_cuda->GetIsInitPy() && seed_flag) {
     if (FLAGS_use_curand) {
-      // using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-      // paddle::distribution::normal_distribution<MT> dist;
-      // paddle::distribution::normal_transform<MT> trans(mean, std);
-      // paddle::distribution::distribution_and_transform<T>(
-      //    dev_ctx, tensor, dist, trans);
+      using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+      distribution::normal_distribution<MT> dist;
+      distribution::normal_transform<MT> trans(mean, std);
+      distribution::distribution_and_transform<T>(dev_ctx, tensor, dist, trans);
     } else {
       auto seed_offset = gen_cuda->IncrementOffset(1);
       int64_t gen_offset = size * seed_offset.second;
       auto func =
           GaussianGenerator<T>(mean, std, seed_offset.first, gen_offset);
-      paddle::operators::IndexKernel<T, GaussianGenerator<T>>(
-          dev_ctx, tensor, func);
+      IndexKernel<T, GaussianGenerator<T>>(dev_ctx, tensor, func);
     }
   } else {
     auto func = GaussianGenerator<T>(mean, std, seed);
-    paddle::operators::IndexKernel<T, GaussianGenerator<T>>(
-        dev_ctx, tensor, func);
+    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, tensor, func);
   }
 }
 
