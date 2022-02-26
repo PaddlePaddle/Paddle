@@ -95,11 +95,11 @@ void GaussianRandomKernel(const Context& dev_ctx,
 
   if (gen_cuda->GetIsInitPy() && seed_flag) {
     if (FLAGS_use_curand) {
-      using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-      paddle::distribution::normal_distribution<MT> dist;
-      paddle::distribution::normal_transform<MT> trans(mean, std);
-      paddle::distribution::distribution_and_transform<T>(
-          dev_ctx, tensor, dist, trans);
+      // using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+      // paddle::distribution::normal_distribution<MT> dist;
+      // paddle::distribution::normal_transform<MT> trans(mean, std);
+      // paddle::distribution::distribution_and_transform<T>(
+      //    dev_ctx, tensor, dist, trans);
     } else {
       auto seed_offset = gen_cuda->IncrementOffset(1);
       int64_t gen_offset = size * seed_offset.second;
@@ -116,3 +116,10 @@ void GaussianRandomKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(gaussian_random,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GaussianRandomKernel,
+                   float,
+                   double) {}

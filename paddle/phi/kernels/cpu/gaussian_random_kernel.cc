@@ -52,3 +52,10 @@ void GaussianRandomKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(gaussian_random,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::GaussianRandomKernel,
+                   float,
+                   double) {}

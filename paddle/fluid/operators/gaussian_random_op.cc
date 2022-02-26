@@ -194,8 +194,6 @@ Used to initialize tensors with gaussian random generator.
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(gaussian_random, ops::GaussianRandomOp,
                              ops::GaussianRandomOpMaker);
-REGISTER_OP_CPU_KERNEL(gaussian_random, ops::CPUGaussianRandomKernel<float>,
-                       ops::CPUGaussianRandomKernel<double>);
 REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<float>,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<double>);

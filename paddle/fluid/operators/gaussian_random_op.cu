@@ -137,11 +137,6 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_CUDA_KERNEL(
-    gaussian_random,
-    paddle::operators::GPUGaussianRandomKernel<paddle::platform::float16>,
-    paddle::operators::GPUGaussianRandomKernel<float>,
-    paddle::operators::GPUGaussianRandomKernel<double>);
-REGISTER_OP_CUDA_KERNEL(
     gaussian_random_batch_size_like,
     paddle::operators::GPUGaussianRandomBatchSizeLikeKernel<
         paddle::platform::float16>,
