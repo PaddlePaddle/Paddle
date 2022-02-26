@@ -443,4 +443,38 @@ void GatherTreeMeta(const MetaTensor& ids,
   out->set_dims(ids_dims);
 }
 
+void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
+  // OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "mv");
+  // OP_INOUT_CHECK(context->HasInput("Vec"), "Input", "Vec", "mv");
+  // OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "mv");
+
+  auto dim_x = x.dims();
+  auto dim_vec = vec.dims();
+  PADDLE_ENFORCE_EQ(
+      dim_x.size(),
+      2,
+      phi::errors::InvalidArgument("The rank of input X should be 2, but is %d",
+                                   dim_x.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_vec.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The rank of input Vec should be 1, but is %d", dim_vec.size()));
+  PADDLE_ENFORCE_EQ(dim_x[1],
+                    dim_vec[0],
+                    phi::errors::InvalidArgument(
+                        "X's second dimension is expected to be equal to "
+                        "Vec's first dimension"
+                        "but recieved X'shape = [%s], Vec's shape = [%s]",
+                        dim_x,
+                        dim_vec));
+
+  auto dim_out = phi::make_ddim({dim_x[0]});
+
+  out->set_dims(dim_out);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 }  // namespace phi
