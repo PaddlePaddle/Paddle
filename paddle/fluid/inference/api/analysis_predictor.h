@@ -99,6 +99,7 @@ class AnalysisPredictor : public PaddlePredictor {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
     if (UNLIKELY(config_.dist_config().use_dist_model())) {
+      VLOG(3) << "Using DistModel to inf.";
       distributed::DistModelConfig dist_model_config;
       dist_model_config.trainer_endpoints =
           config_.dist_config().trainer_endpoints();
@@ -464,8 +465,12 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
   int clone_num_{1};
 
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+
  private:
   std::unique_ptr<distributed::DistModel> dist_model_{nullptr};
+#endif
 };
 
 }  // namespace paddle
