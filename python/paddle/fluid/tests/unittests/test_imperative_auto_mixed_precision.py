@@ -1171,7 +1171,6 @@ class TestPyLayerWithAmp(unittest.TestCase):
             res = MyMM.apply(x, y)
             loss = paddle.mean(res)
         loss.backward()
-        # self.assertRaises(loss.backward, )
 
 
 if __name__ == '__main__':
