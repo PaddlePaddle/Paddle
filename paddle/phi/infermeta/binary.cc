@@ -444,10 +444,6 @@ void GatherTreeMeta(const MetaTensor& ids,
 }
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
-  // OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "mv");
-  // OP_INOUT_CHECK(context->HasInput("Vec"), "Input", "Vec", "mv");
-  // OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "mv");
-
   auto dim_x = x.dims();
   auto dim_vec = vec.dims();
   PADDLE_ENFORCE_EQ(
