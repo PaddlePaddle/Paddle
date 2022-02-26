@@ -54,22 +54,20 @@ DenseTensor Empty(const Context& dev_ctx) {
 }
 
 template <typename T, typename Context>
-DenseTensor Empty(const Context& dev_ctx,
-                  const ScalarArray& shape,
-                  DataType dtype = DataType::FLOAT32) {
+DenseTensor Empty(const Context& dev_ctx, const ScalarArray& shape) {
   auto dense_out = Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
+  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
   CreateInferMeta(shape, dtype, &meta_out);
   EmptyKernel<T, Context>(dev_ctx, shape, dtype, &dense_out);
   return dense_out;
 }
 
 template <typename T, typename Context>
-DenseTensor EmptyLike(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      DataType dtype = DataType::UNDEFINED) {
+DenseTensor EmptyLike(const Context& dev_ctx, const DenseTensor& x) {
   auto dense_out = Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
+  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
   CreateLikeInferMeta(x, dtype, &meta_out);
   EmptyLikeKernel<T, Context>(dev_ctx, x, dtype, &dense_out);
   return dense_out;

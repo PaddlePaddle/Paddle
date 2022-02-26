@@ -48,10 +48,10 @@ void FullLikeKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
                  const ScalarArray& shape,
-                 const Scalar& val,
-                 DataType dtype = DataType::FLOAT32) {
+                 const Scalar& val) {
   auto dense_out = Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
+  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
   CreateInferMeta(shape, dtype, &meta_out);
   FullKernel<T, Context>(dev_ctx, shape, val, dtype, &dense_out);
   return dense_out;
@@ -60,10 +60,10 @@ DenseTensor Full(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor FullLike(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const Scalar& val,
-                     DataType dtype = DataType::UNDEFINED) {
+                     const Scalar& val) {
   auto dense_out = Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
+  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
   CreateLikeInferMeta(x, dtype, &meta_out);
   FullLikeKernel<T, Context>(dev_ctx, x, val, dtype, &dense_out);
   return dense_out;

@@ -35,7 +35,8 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
+  out->Resize(phi::make_ddim(shape.GetData()));
+  dev_ctx.template Alloc<T>(out);
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 
