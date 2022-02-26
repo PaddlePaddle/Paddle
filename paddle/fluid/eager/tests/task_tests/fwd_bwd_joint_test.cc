@@ -27,6 +27,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
 
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 
 namespace egr {
@@ -221,10 +222,6 @@ TEST(FwdBwdJoint, GradientHook) {
       phi::DataLayout::NCHW, 5.0 /*value*/, true /*is_leaf*/);
   egr_utils_api::RetainGradForTensor(tensor);
 
-  std::function<paddle::experimental::Tensor(
-      const paddle::experimental::Tensor&)>
-      hook = &hook_function;
-
   // 3. Run Forward
   // Run Forward Node 0
   float scale0 = 2.0;
@@ -232,24 +229,27 @@ TEST(FwdBwdJoint, GradientHook) {
   paddle::experimental::Tensor out0 =
       egr::scale(tensor, scale0, bias0, true /*bias_after_scale*/,
                  true /*trace_backward*/);
-  egr_utils_api::RetainGradForTensor(out0);                  // hook: +5
-  egr_utils_api::RegisterGradientHookForTensor(out0, hook);  // hook: +5
+  egr_utils_api::RetainGradForTensor(out0);  // hook: +5
+  egr_utils_api::RegisterGradientHookForTensor(
+      out0, std::make_shared<egr::CppTensorHook>(hook_function));  // hook: +5
 
   // Run Forward Node 1
   float scale1 = 5.0;
   float bias1 = 10.0;
   paddle::experimental::Tensor out1 = egr::scale(
       out0, scale1, bias1, true /*bias_after_scale*/, true /*trace_backward*/);
-  egr_utils_api::RetainGradForTensor(out1);                  // hook: +5
-  egr_utils_api::RegisterGradientHookForTensor(out1, hook);  // hook: +5
+  egr_utils_api::RetainGradForTensor(out1);  // hook: +5
+  egr_utils_api::RegisterGradientHookForTensor(
+      out1, std::make_shared<egr::CppTensorHook>(hook_function));  // hook: +5
 
   // Run Forward Node 2
   float scale2 = 10.0;
   float bias2 = 20.0;
   paddle::experimental::Tensor out2 = egr::scale(
       out0, scale2, bias2, true /*bias_after_scale*/, true /*trace_backward*/);
-  egr_utils_api::RetainGradForTensor(out2);                  // hook: +5
-  egr_utils_api::RegisterGradientHookForTensor(out2, hook);  // hook: +5
+  egr_utils_api::RetainGradForTensor(out2);  // hook: +5
+  egr_utils_api::RegisterGradientHookForTensor(
+      out2, std::make_shared<egr::CppTensorHook>(hook_function));  // hook: +5
 
   // 4. Run Backward
   std::vector<paddle::experimental::Tensor> outs = {out1, out2};
