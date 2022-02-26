@@ -302,10 +302,11 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename T>
-__global__ void ComputeBackwardFusedParamsCUDAKernel(
-    int64_t C, int64_t imsize, int64_t group, T epsilon, const T* mean,
-    const T* var, const T* gamma, const T* ds, const T* db, T* c1, T* c2,
-    T* c3) {
+__global__ void GetBackwardParamsCUDAKernel(int64_t C, int64_t imsize,
+                                            int64_t group, T epsilon,
+                                            const T* mean, const T* var,
+                                            const T* gamma, const T* ds,
+                                            const T* db, T* c1, T* c2, T* c3) {
   const int64_t G = group;
   const int64_t D = C / G;
   const int64_t n = blockIdx.x;
@@ -356,20 +357,19 @@ __global__ void GetBackwardCUDAKernel(int imsize, int C, int group_size,
 }
 
 template <typename T>
-__global__ void GammaBetaBackwardCUDAKernel1(int64_t N, int64_t C,
-                                             int64_t group, T epsilon,
-                                             const T* mean, const T* var,
-                                             const T* ds, const T* db,
-                                             T* dgamma, T* dbeta) {
-  const int64_t c = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void GammaBetaBackwardCUDAKernel(int N, int C, int group, T epsilon,
+                                            const T* mean, const T* var,
+                                            const T* ds, const T* db, T* dgamma,
+                                            T* dbeta) {
+  const int c = blockIdx.x * blockDim.x + threadIdx.x;
   if (c < C) {
-    const int64_t G = group;
-    const int64_t D = C / G;
+    const int G = group;
+    const int D = C / G;
     T sum1 = 0;
     T sum2 = 0;
-    for (int64_t n = 0; n < N; ++n) {
-      const int64_t nc = n * C + c;
-      const int64_t ng = n * G + c / D;
+    for (int n = 0; n < N; ++n) {
+      const int nc = n * C + c;
+      const int ng = n * G + c / D;
       sum1 += (dgamma == nullptr)
                   ? T(0)
                   : ((ds[nc] - db[nc] * static_cast<T>(mean[ng])) *
@@ -385,8 +385,81 @@ __global__ void GammaBetaBackwardCUDAKernel1(int64_t N, int64_t C,
   }
 }
 
+template <typename T, typename AccT, int VecSize>
+__device__ __forceinline__ void DThreadReduce(const T* x, const T* dy, int size,
+                                              const int offset, AccT* ds_sum,
+                                              AccT* db_sum) {
+  using VecT = kps::details::VectorType<T, VecSize>;
+  int tid = threadIdx.x;
+
+  if (offset > 0) {
+    x -= offset;
+    dy -= offset;
+    size += offset;
+    if (tid >= offset) {
+      AccT x_temp = x[tid];
+      AccT dy_temp = dy[tid];
+      *ds_sum += dy_temp * x_temp;
+      *db_sum += dy_temp;
+    }
+    size -= blockDim.x;
+    x += blockDim.x;
+    dy += blockDim.x;
+  }
+  int remain = size % (VecSize * blockDim.x);
+
+  T ins[VecSize];
+  T dy_ins[VecSize];
+  VecT* ins_vec = reinterpret_cast<VecT*>(&ins);
+  VecT* dy_vec = reinterpret_cast<VecT*>(&dy_ins);
+
+  // vector part
+  for (; VecSize * tid < (size - remain); tid += blockDim.x) {
+    *ins_vec = reinterpret_cast<const VecT*>(x)[tid];
+    *dy_vec = reinterpret_cast<const VecT*>(dy)[tid];
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      AccT temp = ins[i];
+      AccT dy_temp = dy[i];
+      *ds_sum += dy_temp * temp;
+      *db_sum += dy_temp;
+    }
+  }
+
+  // scalar part
+  tid = size - remain + threadIdx.x;
+  for (; tid < size; tid += blockDim.x) {
+    AccT temp = x[tid];
+    AccT dy_temp = dy[tid];
+    *ds_sum += dy_temp * temp;
+    *db_sum += dy_temp;
+  }
+}
+
+template <typename T, typename AccT, int VecSize>
+__global__ void VectorizedGetDSDBCUDAKernel(int imsize, const T* x,
+                                            const T* d_y, T* ds, T* db) {
+  int i = blockIdx.x;
+  AccT ds_sum = static_cast<AccT>(0);
+  AccT db_sum = static_cast<AccT>(0);
+  const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
+  x += i * imsize;
+  DThreadReduce<T, AccT, VecSize>(x, d_y, imsize, input_offset, &ds_sum,
+                                  &db_sum);
+  ds_sum = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
+      ds_sum, kps::AddFunctor<AccT>());
+  db_sum = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
+      db_sum, kps::AddFunctor<AccT>());
+  __syncthreads();
+  if (threadIdx.x == 0) {
+    ds[i] = ds_sum;
+    db[i] = db_sum;
+  }
+}
+
 template <typename T>
-__global__ void GetDSDBCUDAKernel(int imsize, const T* x, const T* d_y, T* ds,
+__global__ void GetDSDBCUDAKernel(int imsize, const T* x, const T* dy, T* ds,
                                   T* db) {
   typedef cub::BlockReduce<T, 1024> BlockReduce;
   __shared__ typename BlockReduce::TempStorage ds_storage;
@@ -396,8 +469,8 @@ __global__ void GetDSDBCUDAKernel(int imsize, const T* x, const T* d_y, T* ds,
   T db_sum = 0;
   for (int i = threadIdx.x; i < imsize; i += blockDim.x) {
     const int index = nc * imsize + i;
-    ds_sum += d_y[index] * x[index];
-    db_sum += d_y[index];
+    ds_sum += dy[index] * x[index];
+    db_sum += dy[index];
   }
   ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
   db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
@@ -586,12 +659,29 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     int flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
     if (data_layout == DataLayout::kNCHW) {
-      GetDSDBCUDAKernel<T><<<x_dims[0] * C, 1024, 0, dev_ctx.stream()>>>(
-          imsize, y_data, dy_data, ds_data, db_data);
+      using AccT = typename details::MPTypeTrait<T>::Type;
+      constexpr int vec_size = sizeof(float4) / sizeof(T);
+      // int size = group_size * imsize;
+      const int max_num_threads = 1024;
+      int max_block_size = std::min(imsize / vec_size, max_num_threads);
+      int block_size_nchw = 1;
+      while (block_size_nchw < max_block_size) {
+        block_size_nchw *= 2;
+      }
+      block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
+      dim3 blocks(block_size_nchw);
+      if (imsize < vec_size) {
+        GetDSDBCUDAKernel<T><<<x_dims[0] * C, 1024, 0, dev_ctx.stream()>>>(
+            imsize, y_data, dy_data, ds_data, db_data);
+      } else {
+        VectorizedGetDSDBCUDAKernel<
+            T, AccT, vec_size><<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
+            imsize, y_data, dy_data, ds_data, db_data);
+      }
 
-      if (d_bias || d_scale) {
-        // const int64_t B = (C + kCUDANumThreads - 1) / kCUDANumThreads;
-        GammaBetaBackwardCUDAKernel1<T><<<C, 1024, 0, dev_ctx.stream()>>>(
+      if (d_scale || d_bias) {
+        GammaBetaBackwardCUDAKernel<
+            T><<<(C + 256 - 1) / 256, 256, 0, dev_ctx.stream()>>>(
             x_dims[0], C, groups, epsilon, mean_data, var_data, ds_data,
             db_data, d_scale_data, d_bias_data);
       }
@@ -605,11 +695,10 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
         T* c2_data = c2.data<T>();
         T* c3_data = c3.data<T>();
 
-        ComputeBackwardFusedParamsCUDAKernel<
+        GetBackwardParamsCUDAKernel<
             T><<<dim3(x_dims[0], groups), 1024, 0, dev_ctx.stream()>>>(
             C, imsize, groups, epsilon, mean_data, var_data, scale_data,
             ds_data, db_data, c1_data, c2_data, c3_data);
-        // const int64_t B = (C + kCUDANumThreads - 1) / kCUDANumThreads;
         int size = x_dims[0] * C * imsize;
         GetBackwardCUDAKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
             imsize, C, group_size, groups, c1_data, c2_data, c3_data, y_data,
