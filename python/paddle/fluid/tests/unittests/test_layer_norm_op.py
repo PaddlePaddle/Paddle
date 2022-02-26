@@ -402,7 +402,7 @@ class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
         return y_np, x_g_np, w_g_np, b_g_np
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if (not core.is_compiled_with_cuda()) or (core.cudnn_version() < 8100):
             return
         x_np = np.random.random([10, 20]).astype('float32')
         weight_np = np.random.random([20]).astype('float32')
