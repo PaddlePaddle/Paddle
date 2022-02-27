@@ -59,8 +59,16 @@ void CrossInferMeta(const MetaTensor& x,
                     MetaTensor* out);
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void BCELossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
+
+void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
+                                            const MetaTensor& label,
+                                            bool normalize,
+                                            int ignore_index,
+                                            MetaTensor* out,
+                                            MetaConfig config);
 }  // namespace phi

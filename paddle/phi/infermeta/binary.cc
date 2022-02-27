@@ -314,4 +314,46 @@ void BCELossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
+                                            const MetaTensor& label,
+                                            bool normalize,
+                                            int ignore_index,
+                                            MetaTensor* out,
+                                            MetaConfig config) {
+  auto x_dims = x.dims();
+  auto labels_dims = label.dims();
+
+  int rank = x_dims.size();
+  PADDLE_ENFORCE_EQ(rank,
+                    labels_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        rank,
+                        labels_dims.size()));
+
+  bool check = true;
+  if ((!config.is_runtime) &&
+      (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        phi::slice_ddim(x_dims, 0, rank),
+        phi::slice_ddim(labels_dims, 0, rank),
+        phi::errors::InvalidArgument(
+            "Input(X) and Input(Label) shall have the same shape "
+            "except the last dimension. But received: the shape of "
+            "Input(X) is [%s], the shape of Input(Label) is [%s].",
+            x_dims,
+            labels_dims));
+  }
+
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 }  // namespace phi
