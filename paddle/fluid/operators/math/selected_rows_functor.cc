@@ -607,7 +607,8 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
                    merge_rows.data(), ym * sizeof(int64_t));
       memory::Copy(context.GetPlace(), x_rows_data, platform::CPUPlace(),
                    input_rows.data(), xm * sizeof(int64_t));
-      r = xpu::merge_dup_rows<T, int64_t>(context.x_context(), x_data, y_data,
+      int r =
+          xpu::merge_dup_rows<T, int64_t>(context.x_context(), x_data, y_data,
                                           x_rows_data, y_rows_data, xm, n, ym);
       PADDLE_ENFORCE_EQ(
           r, XPU_SUCCESS,
