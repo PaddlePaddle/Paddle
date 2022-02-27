@@ -120,8 +120,9 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
 
   // 2. calculate out dims
   std::vector<phi::DDim> x_dims;
+  x_dims.reserve(x.size());
   for (const auto* x_t : x) {
-    x_dims.push_back(x_t->dims());
+    x_dims.emplace_back(x_t->dims());
   }
   phi::DDim out_dim =
       phi::funcs::ComputeAndCheckShape(config.is_runtime, x_dims, axis);

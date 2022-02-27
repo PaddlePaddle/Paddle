@@ -27,18 +27,6 @@ void SplitKernel(const Context& dev_ctx,
                  const ScalarArray& num_or_sections,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
-  // need to infershape output
-  if (num_or_sections.FromTensor() || axis_scalar.FromTensor()) {
-    std::vector<MetaTensor> out_metas;
-    out_metas.reserve(outs.size());
-    std::vector<MetaTensor*> out_metas_ptr;
-    for (size_t i = 0; i < outs.size(); ++i) {
-      out_metas.emplace_back(outs[i]);
-      out_metas_ptr.push_back(&out_metas.back());
-    }
-    phi::SplitInferMeta(x, num_or_sections, axis_scalar, out_metas_ptr, true);
-  }
-
   std::vector<const DenseTensor*> shape_refer;
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);

@@ -486,10 +486,10 @@ void SplitInferMeta(const MetaTensor& x,
     axis_value = axis_value + rank;
   }
 
+  std::vector<phi::DDim> out_dims(out.size(), x.dims());
+
   auto input_axis_dim = x.dims().at(axis_value);
   auto num_or_sections_data = num_or_sections.GetData();
-  // step1: get formated sections
-  std::vector<int64_t> sections;
   // num_or_sections is a number
   if (num_or_sections_data.size() == 1) {
     if (config.is_runtime || input_axis_dim > 0) {
@@ -506,8 +506,13 @@ void SplitInferMeta(const MetaTensor& x,
               x.dims(),
               axis_value));
 
-      for (int i = 0; i < num; ++i) {
-        sections.push_back(input_axis_dim / num);
+      size_t out_axis_dim = input_axis_dim / num;
+      for (auto& out_dim : out_dims) {
+        out_dim[axis_value] = out_axis_dim;
+      }
+    } else {
+      for (auto& out_dim : out_dims) {
+        out_dim[axis_value] = -1;
       }
     }
   } else {
@@ -516,10 +521,9 @@ void SplitInferMeta(const MetaTensor& x,
     int unknow_dim_idx = -1;
     int num_of_unknow = 0;
     int sum_of_section = 0;
+    std::vector<int64_t> sections = num_or_sections_data;
 
     for (size_t i = 0; i < num_or_sections_data.size(); ++i) {
-      sections.push_back(num_or_sections_data[i]);
-
       if (num_or_sections_data[i] == unknow_dim_val) {
         num_of_unknow++;
         unknow_dim_idx = i;
@@ -571,21 +575,12 @@ void SplitInferMeta(const MetaTensor& x,
               x.dims(),
               axis_value));
     }
-  }
-
-  // setp2: fill out dims
-  std::vector<phi::DDim> out_dims(sections.size(), x.dims());
-  if (config.is_runtime || input_axis_dim > 0) {
-    for (size_t i = 0; i < sections.size(); ++i) {
+    for (size_t i = 0; i < out_dims.size(); ++i) {
       out_dims[i][axis_value] = sections[i];
     }
-  } else {
-    for (size_t i = 0; i < sections.size(); ++i) {
-      out_dims[i][axis_value] = -1;
-    }
   }
 
-  for (size_t i = 0; i < sections.size(); ++i) {
+  for (size_t i = 0; i < out.size(); ++i) {
     if (axis_value != 0) {
       // Only pass LoD when not spliting along the first dim.
       out.at(i)->set_dtype(x.dtype());
