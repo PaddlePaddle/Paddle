@@ -32,7 +32,7 @@ void SizeKernel(const Context& ctx,
     cpu_tensor.Resize(out->dims());
     auto cpu_data = ctx.template HostAlloc<int64_t>(&cpu_tensor);
     cpu_data[0] = input.numel();
-    phi::Copy(ctx, cpu_tensor, false, out);
+    phi::Copy(ctx, cpu_tensor, place, false, out);
   }
 }
 
