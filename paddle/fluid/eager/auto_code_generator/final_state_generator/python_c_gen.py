@@ -143,7 +143,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
         fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,
         GetForwardFunctionName(fwd_api_name), dygraph_function_call_str)
 
-    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}},\n"
+    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}}\n"
 
     return python_c_function_str, python_c_function_reg_str
 
@@ -197,7 +197,7 @@ static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
     """
 
     core_ops_infos_registry = """
-    {\"get_final_state_core_ops_args_info\",
+    ,{\"get_final_state_core_ops_args_info\",
     (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_info, METH_NOARGS,
     \"C++ interface function for eager_get_final_state_core_ops_args_info.\"},
     {\"get_final_state_core_ops_args_type_info\",

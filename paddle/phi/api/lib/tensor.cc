@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/phi/api/include/manual_api.h"
 #include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/api/lib/utils/storage.h"
@@ -299,72 +298,7 @@ gpuStream_t Tensor::stream() const {
 }
 #endif
 
-/* Part 5: Data Transform methods */
-
-template <typename T>
-Tensor Tensor::copy_to(const PlaceType &target_place) const {
-  LOG(WARNING) << "The Tensor's `copy_to` method is deprecated since version "
-                  "2.3, and will be removed in version 2.4, please use "
-                  "`copy_to` method without template argument instead. "
-                  "reason: copying a Tensor to another device does not need "
-                  "to specify the data type template argument.";
-  return copy_to(ConvertExtPlaceToBackend(target_place), /*blocking=*/false);
-}
-
-template PADDLE_API Tensor
-Tensor::copy_to<float>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<double>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int64_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int32_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<uint8_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int8_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<int16_t>(const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<bool>(const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<float>>(
-    const PlaceType &target_place) const;
-template PADDLE_API Tensor Tensor::copy_to<phi::dtype::complex<double>>(
-    const PlaceType &target_place) const;
-template PADDLE_API Tensor
-Tensor::copy_to<phi::dtype::float16>(const PlaceType &target_place) const;
-
-Tensor Tensor::copy_to(Backend backend, bool blocking) const {
-  return experimental::copy_to(*this, backend, blocking);
-}
-
-void Tensor::copy_(const Tensor &src, bool blocking) {
-  if (!src.is_initialized()) {
-    return;
-  }
-  VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
-  if (defined()) {
-    PADDLE_ENFORCE_EQ(dtype(),
-                      src.dtype(),
-                      platform::errors::PreconditionNotMet(
-                          "Tensor %s has different data type with Tensor %s, "
-                          "Tensor Copy cannot be performed!",
-                          name(),
-                          src.name()));
-    PADDLE_ENFORCE_EQ(impl()->type_info().id(),
-                      src.impl()->type_info().id(),
-                      platform::errors::PreconditionNotMet(
-                          "Tensor %s has different type with Tensor %s, Tensor "
-                          "Copy cannot be performed!",
-                          name(),
-                          src.name()));
-  }
-  auto copy_tensor =
-      src.copy_to(phi::TransToPtenBackend(src.inner_place()), blocking);
-  set_impl(copy_tensor.impl());
-}
-
-/* Part 6: Status utils methods */
+/* Part 5: Status utils methods */
 
 bool Tensor::defined() const { return impl_ != nullptr; }
 
@@ -376,7 +310,7 @@ bool Tensor::is_initialized() const {
 
 void Tensor::reset() { impl_.reset(); }
 
-/* Part 7: Operator overloading */
+/* Part 6: Operator overloading */
 
 Tensor &Tensor::operator=(const Tensor &x) & {
   impl_ = x.impl_;
