@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/empty_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -129,3 +130,10 @@ REGISTER_OPERATOR(
     empty, ops::EmptyOp, ops::EmptyOpMaker, ops::EmptyOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OP_CPU_KERNEL(empty, ops::EmptyKernel<plat::CPUDeviceContext, bool>,
+                       ops::EmptyKernel<plat::CPUDeviceContext, int>,
+                       ops::EmptyKernel<plat::CPUDeviceContext, int64_t>,
+                       ops::EmptyKernel<plat::CPUDeviceContext, float>,
+                       ops::EmptyKernel<plat::CPUDeviceContext, double>,
+                       ops::EmptyKernel<plat::CPUDeviceContext, plat::float16>);
