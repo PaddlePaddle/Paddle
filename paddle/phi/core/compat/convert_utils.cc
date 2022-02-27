@@ -67,6 +67,14 @@ phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
       return phi::XPUPlace(
           set_device_id ? phi::backends::xpu::GetXPUCurrentDeviceId() : 0);
 #endif
+    case phi::Backend::KPS:
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      return phi::GPUPlace(
+          set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
+#elif defined(PADDLE_WITH_XPU_KP)
+      return phi::XPUPlace(
+          set_device_id ? phi::backends::xpu::GetXPUCurrentDeviceId() : 0);
+#endif
     default: {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       size_t device_type_id_ = static_cast<size_t>(backend) -
