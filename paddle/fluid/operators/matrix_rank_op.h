@@ -15,7 +15,6 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/controlflow/compare_op.h"
 #include "paddle/phi/core/ddim.h"
 
 namespace paddle {

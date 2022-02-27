@@ -14,13 +14,15 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/controlflow/compare_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
+#include "paddle/phi/kernels/funcs/compare_functors.h"
+
 #ifdef PADDLE_WITH_MKLML
 #include <omp.h>
 #endif
@@ -336,8 +338,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     BinaryOperation<DeviceContext, SubFunctor, int64_t> SubInt;
     if (include_bos_eos_tag) {
       AddFloat(dev_ctx, logit0, start_trans, &alpha);
-      GetMask<DeviceContext, EqualFunctor, T>()(ctx, left_length, one,
-                                                &float_mask);
+      GetMask<DeviceContext, phi::funcs::EqualFunctor, T>()(ctx, left_length,
+                                                            one, &float_mask);
       MulFloat(dev_ctx, stop_trans, float_mask, &alpha_nxt);
       AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
     } else {
@@ -358,8 +360,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       alpha.Resize({batch_size, n_labels});
       // mask = paddle.cast((left_length > 0), dtype='float32')
       // alpha = mask * alpha_nxt + (1 - mask) * alpha
-      GetMask<DeviceContext, GreaterThanFunctor, T>()(ctx, left_length, zero,
-                                                      &float_mask);
+      GetMask<DeviceContext, phi::funcs::GreaterThanFunctor, T>()(
+          ctx, left_length, zero, &float_mask);
       // alpha_nxt = mask * alpha_nxt
       MulFloat(dev_ctx, alpha_nxt, float_mask, &alpha_nxt);
       // inv_mask = 1 - mask
@@ -369,8 +371,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       // alpha += alpha_nxt
       AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
       if (include_bos_eos_tag) {
-        GetMask<DeviceContext, EqualFunctor, T>()(ctx, left_length, one,
-                                                  &float_mask);
+        GetMask<DeviceContext, phi::funcs::EqualFunctor, T>()(ctx, left_length,
+                                                              one, &float_mask);
         // alpha += mask * trans_exp[:, self.stop_idx]
         MulFloat(dev_ctx, stop_trans, float_mask, &alpha_nxt);
         AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
@@ -379,8 +381,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     }
     argmax(ctx, alpha, &last_ids, scores, 1);
     left_length.Resize({batch_size});
-    GetMask<DeviceContext, GreaterEqualFunctor, int64_t>()(ctx, left_length,
-                                                           zero, &int_mask);
+    GetMask<DeviceContext, phi::funcs::GreaterEqualFunctor, int64_t>()(
+        ctx, left_length, zero, &int_mask);
     // last_ids_update = last_ids * tag_mask
     int last_ids_index = 1;
     int actual_len = (std::min)(seq_len, static_cast<int>(max_seq_len));
@@ -398,17 +400,17 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
       hist->Resize({batch_size * n_labels});
       gather(dev_ctx, *hist, gather_idx, &last_ids_update);
-      GetMask<DeviceContext, GreaterThanFunctor, int64_t>()(ctx, left_length,
-                                                            zero, &int_mask);
+      GetMask<DeviceContext, phi::funcs::GreaterThanFunctor, int64_t>()(
+          ctx, left_length, zero, &int_mask);
       MulInt(dev_ctx, last_ids_update, int_mask, &last_ids_update);
-      GetMask<DeviceContext, EqualFunctor, int64_t>()(ctx, left_length, zero,
-                                                      &zero_len_mask);
+      GetMask<DeviceContext, phi::funcs::EqualFunctor, int64_t>()(
+          ctx, left_length, zero, &zero_len_mask);
       MulInt(dev_ctx, last_ids, zero_len_mask, &last_ids_tmp);
       SubInt(dev_ctx, one, zero_len_mask, &zero_len_mask);
       MulInt(dev_ctx, last_ids_update, zero_len_mask, &last_ids_update);
       AddInt(dev_ctx, last_ids_update, last_ids_tmp, &last_ids_update);
-      GetMask<DeviceContext, LessThanFunctor, int64_t>()(ctx, left_length, zero,
-                                                         &int_mask);
+      GetMask<DeviceContext, phi::funcs::LessThanFunctor, int64_t>()(
+          ctx, left_length, zero, &int_mask);
       MulInt(dev_ctx, last_ids, int_mask, &last_ids);
       AddInt(dev_ctx, last_ids_update, last_ids, &last_ids);
     }
