@@ -17,6 +17,8 @@ import re
 import argparse
 import os
 
+ops_to_fill_zero_for_empty_grads = set()
+
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
 core_ops_returns_info = {}
@@ -513,7 +515,7 @@ class {} : public egr::GradNodeBase {{
   ~{}() override = default;
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads) override;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads) override;
   
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
@@ -558,10 +560,11 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     for _, (ttype, fwd_position,
             grad_api_position) in backward_grad_input_map.items():
         if IsPlainTensorType(ttype):
-            grad_api_args[grad_api_position] = f"grads[{fwd_position}][0]"
+            grad_api_args[
+                grad_api_position] = f"hooked_grads[{fwd_position}][0]"
         else:
             assert IsVectorTensorType(ttype)
-            grad_api_args[grad_api_position] = f"grads[{fwd_position}]"
+            grad_api_args[grad_api_position] = f"hooked_grads[{fwd_position}]"
 
     for name, _, _, grad_api_position in backward_attrs_list:
         saved_attribute_name = GetSavedName(name)
@@ -588,8 +591,15 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     returns_str += f"return returns;\n"
 
     grad_node_name = GetGradNodeName(fwd_api_name)
+    fill_zero_str = ""
+    if fwd_api_name in ops_to_fill_zero_for_empty_grads:
+        fill_zero_str = "egr::EagerUtils::FillZeroForEmptyGradInputs(&grads);\n"
+
     FUNCTION_TEMPLATE = """
-std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {{
+std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(std::vector<std::vector<paddle::experimental::Tensor>>& grads) {{
+    {}
+    auto hooked_grads = ApplyGradientHooks(grads);
+    
     // Call grad_api function
     auto grad_api_returns = paddle::experimental::{}({});
     {}
@@ -597,7 +607,8 @@ std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std:
   """
 
     node_definition_str = FUNCTION_TEMPLATE.format(
-        grad_node_name, bwd_api_name, grad_api_args_str, returns_str)
+        grad_node_name, fill_zero_str, bwd_api_name, grad_api_args_str,
+        returns_str)
 
     return node_definition_str
 

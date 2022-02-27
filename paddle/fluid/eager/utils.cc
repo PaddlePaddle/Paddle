@@ -361,4 +361,16 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
   }
 }
 
+void EagerUtils::FillZeroForEmptyGradInputs(
+    std::vector<std::vector<paddle::experimental::Tensor>>* in_grads) {
+  for (size_t i = 0; i < in_grads->size(); i++) {
+    for (size_t j = 0; j < (*in_grads)[0].size(); j++) {
+      paddle::experimental::Tensor& grad = (*in_grads)[i][j];
+      if (!grad.is_initialized()) {
+        grad = paddle::experimental::ones_like(grad);
+      }
+    }
+  }
+}
+
 }  // namespace egr

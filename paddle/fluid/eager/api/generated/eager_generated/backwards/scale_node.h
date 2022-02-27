@@ -39,8 +39,7 @@ class GradNodeScale : public GradNodeBase {
 
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
-      override;
+      std::vector<std::vector<paddle::experimental::Tensor>>& grads) override;
 
   void SetTensorWrappers_X(
       const std::vector<paddle::experimental::Tensor>& tensors);
