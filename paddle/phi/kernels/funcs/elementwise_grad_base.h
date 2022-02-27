@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 // See Note [ Why still include the fluid headers? ]
@@ -387,7 +387,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     DX_OP dx_op,
                                     DY_OP dy_op) {
   size_t N = static_cast<size_t>(phi::product(x_dim));
-  paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, N);
+  phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, N);
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
       y.data<T>(),

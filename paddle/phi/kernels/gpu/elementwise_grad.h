@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace phi {
+
 /*
 ******************************
     Add Grad
@@ -28,8 +29,8 @@ namespace phi {
 template <typename T>
 static __global__ void SimpleElemwiseAddGradCUDAKernel(
     const T *__restrict__ dout, int size, int vec_size, T *dx, T *dy) {
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = gridDim.x * blockDim.x;
+  int tid = BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X;
+  int stride = GRID_NUM_X * BLOCK_NUM_X;
   int loop = size / vec_size;
   int remainder = size % vec_size;
   const float4 *dout_vec = reinterpret_cast<const float4 *>(dout);
@@ -71,7 +72,7 @@ void default_elementwise_add_grad(const GPUContext &ctx,
     auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
-        phi::Copy(ctx, dout, false, dx);
+        phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dout, which makes
@@ -92,7 +93,7 @@ void default_elementwise_add_grad(const GPUContext &ctx,
     auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
     if (dy->dims() == dout.dims()) {
       if (dy_data != dout_data) {
-        phi::Copy(ctx, dout, false, dy);
+        phi::Copy(ctx, dout, ctx.GetPlace(), false, dy);
       }
     } else {
       std::vector<int> reduce_dims =
@@ -118,11 +119,11 @@ void elementwise_add_grad(const GPUContext &ctx,
   if (dx_data == dout_data && dy_data != dout_data) {
     VLOG(4) << "Special case when dx_data is the same as dout_data, "
                "only need copy dout to dy";
-    phi::Copy(ctx, dout, false, dy);
+    phi::Copy(ctx, dout, ctx.GetPlace(), false, dy);
   } else if (dx_data != dout_data && dy_data == dout_data) {
     VLOG(4) << "Special case when dy_data is the same as dout_data, "
                "only need copy dout to dx";
-    phi::Copy(ctx, dout, false, dx);
+    phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
   } else if (dx_data != dout_data && dy_data != dout_data) {
     auto size = x.numel();
     int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
@@ -156,14 +157,14 @@ static __global__ void SimpleElemwiseSubGradCUDAKernel(const T *dout,
                                                        int64_t size,
                                                        T *dx,
                                                        T *dy) {
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
+  int col = BLOCK_ID_X * BLOCK_NUM_X + THREAD_ID_X;
 
   while (col < size) {
     if (dx != nullptr) {
       dx[col] = dout[col];
     }
     dy[col] = -dout[col];
-    col += blockDim.x * gridDim.x;
+    col += BLOCK_NUM_X * GRID_NUM_X;
   }
 }
 
@@ -182,7 +183,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
     auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
     if (dx->dims() == dout.dims()) {
       if (dx_data != dout_data) {
-        phi::Copy(ctx, dout, false, dx);
+        phi::Copy(ctx, dout, ctx.GetPlace(), false, dx);
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dout, which makes
@@ -240,5 +241,4 @@ void elementwise_sub_grad(const GPUContext &ctx,
       dx->mutable_data<T>(ctx.GetPlace()),
       dy->mutable_data<T>(ctx.GetPlace()));
 }
-
 }  // namespace phi
