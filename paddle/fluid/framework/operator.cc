@@ -263,11 +263,11 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
       platform::RecordEvent op_type_record_event(
-          Type().c_str(), platform::TracerEventType::Operator, 1);
-      auto op_name = platform::OpName(outputs_, Type());
-      platform::RecordEvent op_name_record_event(
-          op_name, platform::TracerEventType::Operator, 1,
-          platform::EventRole::kUniqueOp);
+          Type(), platform::TracerEventType::Operator, 1);
+      // auto op_name = platform::OpName(outputs_, Type());
+      // platform::RecordEvent op_name_record_event(
+      //     op_name, platform::TracerEventType::Operator, 1,
+      //     platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
 
@@ -1211,17 +1211,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 << "` not found.";
       }
     }
-#ifdef PADDLE_WITH_XPU
-    bool is_xpu_unsupport =
-        paddle::platform::is_xpu_place(kernel_type_->place_) &&
-            !paddle::platform::is_xpu_support_op(type_, *kernel_type_.get()) ||
-        paddle::platform::is_in_xpu_black_list(type_);
-#endif
-    if (pt_kernel_->IsValid()
-#ifdef PADDLE_WITH_XPU
-        && !is_xpu_unsupport
-#endif
-        ) {
+    if (pt_kernel_->IsValid()) {
       run_pten_kernel_ = true;
     } else {
       auto& all_op_kernels = AllOpKernels();
@@ -1230,9 +1220,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           kernels_iter->second.find(*kernel_type_.get()) ==
               kernels_iter->second.end()
 #ifdef PADDLE_WITH_XPU
-          || is_xpu_unsupport
+          ||
+          paddle::platform::is_xpu_place(kernel_type_->place_) &&  // NOLINT
+              !paddle::platform::is_xpu_support_op(
+                  type_, *kernel_type_.get())  // NOLINT
+          || paddle::platform::is_in_xpu_black_list(type_)
 #endif
-          ) {
+              ) {
         auto pt_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), pt_kernel_key, *this);
         pt_kernel_.reset(
@@ -2046,7 +2040,7 @@ void OperatorWithKernel::BuildPtenKernelContext(
         (i == 0 ? 0 : pt_kernel_context->InputRangeAt(i - 1).second);
 
     // deal with optional here
-    if ((it == ctx.inputs.end() || it->second.size() == 0) &&
+    if ((it == ctx.inputs.end()) &&
         (input_defs[i].type_index ==
          std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
