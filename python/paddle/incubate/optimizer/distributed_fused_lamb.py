@@ -195,11 +195,11 @@ class DistributedFusedLamb(Optimizer):
 
         params = [p for p, _ in params_grads]
         grads = [g for _, g in params_grads]
-        weight_decay_values = [self._weight_decay] * len(params)
+        apply_weight_decay = [1] * len(params)
         if self._exclude_from_weight_decay_fn is not None:
             for i, p in enumerate(params):
                 if self._exclude_from_weight_decay_fn(p):
-                    weight_decay_values[i] = 0.0
+                    apply_weight_decay[i] = 0
 
         startup_block = self.helper.startup_program.global_block()
         for g in grads:
@@ -240,7 +240,7 @@ class DistributedFusedLamb(Optimizer):
                 'alignment': self._alignment,
                 'rank': rank,
                 'nranks': nranks,
-                'weight_decay': weight_decay_values,
+                'apply_weight_decay': apply_weight_decay,
                 'moment1': 0.0,
                 'moment2': 0.0,
                 'beta1': self._beta1,
@@ -294,6 +294,7 @@ class DistributedFusedLamb(Optimizer):
                 'FoundInf': [self._found_inf],
             },
             attrs={
+                'weight_decay': self._weight_decay,
                 'beta1': self._beta1,
                 'beta2': self._beta2,
                 'epsilon': self._epsilon,

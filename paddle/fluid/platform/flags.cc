@@ -773,3 +773,6 @@ DEFINE_bool(enable_ins_parser_file, false,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
+
+PADDLE_DEFINE_EXPORTED_bool(use_multi_tensor_apply, false,
+                            "Whether to use multi_tensor_apply.");

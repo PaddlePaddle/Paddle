@@ -80,14 +80,14 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("FP16ShardFusedParamOffsets",
              "The sharded numel offset of each parameter in the local rank. "
              "Its shape is [fp16_local_param_num + 1].");
-    AddInput("WeightDecay",
-             "The sharded fp32 weight decay tensor. Its shape is [(M1+M2)/N].");
     AddInput("ParamInfo",
              "The param info. It should be in CPUPlace, and its shape is [6]"
-             "CPUPlace, and its shape is [6]. It is "
+             "CPUPlace, and its shape is [8]. It is "
              "[fp32_shard_param_start_idx, fp32_local_param_num, "
-             "fp32_global_param_num, fp16_shard_param_start_idx, "
-             "fp16_local_param_num, fp16_global_param_num].");
+             "fp32_global_param_num, fp32_weight_decay_end_idx, "
+             "fp16_shard_param_start_idx, "
+             "fp16_local_param_num, fp16_global_param_num, "
+             "fp16_weight_decay_end_idx].");
 
     AddInput("LearningRate",
              "The fp32 learning rate tensor. Its shape is [1].");
@@ -116,6 +116,7 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         "max_global_grad_norm",
         "The maximum global gradient l2-norm value for clipping. If "
         "max_global_grad_norm <= 0, no clipping would be performed.");
+    AddAttr<float>("weight_decay", "The weight decay value.");
     AddAttr<bool>("clip_after_allreduce",
                   "Whether to clip before allreduce, only valid when the "
                   "world size is larger than 1.");

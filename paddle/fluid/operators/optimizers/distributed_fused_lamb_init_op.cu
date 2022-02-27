@@ -294,6 +294,35 @@ static void CopyVectorToCPUTensor(const std::vector<T> &src,
   std::memcpy(dst_ptr, src_ptr, nbytes);
 }
 
+static size_t ReorderParamGradInfoList(const std::vector<int> &flags,
+                                       std::vector<ParamGradInfo> *infos) {
+  size_t n = infos->size();
+  std::vector<int> cur_flags;
+  cur_flags.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    auto idx = (*infos)[i].idx;
+    cur_flags.push_back(flags[idx]);
+  }
+
+  auto origin_infos = *infos;
+  size_t j = 0;
+  for (size_t i = 0; i < n; ++i) {
+    if (cur_flags[i]) {
+      (*infos)[j] = origin_infos[i];
+      ++j;
+    }
+  }
+  size_t ret_idx = j;
+
+  for (size_t i = 0; i < n; ++i) {
+    if (!cur_flags[i]) {
+      (*infos)[j] = origin_infos[i];
+      ++j;
+    }
+  }
+  return ret_idx;
+}
+
 template <typename T>
 class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -404,6 +433,13 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         info->numel_offset = 0;        // not determined yet
       }
     }
+    const auto &apply_weight_decay =
+        ctx.Attr<std::vector<int>>("apply_weight_decay");
+    size_t fp32_wd_end_idx =
+        ReorderParamGradInfoList(apply_weight_decay, &fp32_infos);
+    size_t fp16_wd_end_idx =
+        ReorderParamGradInfoList(apply_weight_decay, &fp16_infos);
+
     VLOG(10) << "Fill ParamGradInfo ends";
 
     // Step 2: determine the numel_with_padding and numel_offset
@@ -568,40 +604,24 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     VLOG(10) << "Found the sharding arguments";
 
     auto *param_info_t = ctx.Output<framework::Tensor>("ParamInfo");
-    param_info_t->Resize({6});
+    param_info_t->Resize({8});
     auto *param_info = param_info_t->mutable_data<int>(platform::CPUPlace());
     param_info[0] = static_cast<int>(fp32_start_idx);
     param_info[1] = static_cast<int>(fp32_local_param_num);
     param_info[2] = static_cast<int>(fp32_infos.size());
-    param_info[3] = static_cast<int>(fp16_start_idx + fp32_infos.size());
-    param_info[4] = static_cast<int>(fp16_local_param_num);
-    param_info[5] = static_cast<int>(fp16_infos.size());
+    param_info[3] = 0;  // not determined yet
+    param_info[4] = static_cast<int>(fp16_start_idx + fp32_infos.size());
+    param_info[5] = static_cast<int>(fp16_local_param_num);
+    param_info[6] = static_cast<int>(fp16_infos.size());
+    param_info[7] = 0;  // not determined yet
 
     VLOG(10) << "Start FP32 idx: " << param_info[0];
     VLOG(10) << "Local FP32 param num: " << param_info[1];
     VLOG(10) << "Global FP32 param num: " << param_info[2];
 
-    VLOG(10) << "Start FP16 idx: " << param_info[3];
-    VLOG(10) << "Local FP16 param num: " << param_info[4];
-    VLOG(10) << "Global FP16 param num: " << param_info[5];
-
-    // For WeightDecay, shard and perform H2D copy
-    const auto &origin_weight_decay =
-        ctx.Attr<std::vector<float>>("weight_decay");
-    PADDLE_ENFORCE_EQ(params.size(), origin_weight_decay.size(),
-                      platform::errors::InvalidArgument(
-                          "The attr(weight_decay) should have the "
-                          "same length with Input(Param)."));
-    std::vector<float> shard_weight_decay;
-    shard_weight_decay.reserve(total_local_param_num);
-    for (size_t i = 0; i < fp32_local_param_num; ++i) {
-      shard_weight_decay.push_back(
-          origin_weight_decay[fp32_infos[i + fp32_start_idx].idx]);
-    }
-    for (size_t i = 0; i < fp16_local_param_num; ++i) {
-      shard_weight_decay.push_back(
-          origin_weight_decay[fp16_infos[i + fp16_start_idx].idx]);
-    }
+    VLOG(10) << "Start FP16 idx: " << param_info[4];
+    VLOG(10) << "Local FP16 param num: " << param_info[5];
+    VLOG(10) << "Global FP16 param num: " << param_info[6];
 
     // For FusedIndices, launch CUDA kernel to do binary search
     auto *fused_indices_t = ctx.Output<framework::Tensor>("FusedIndices");
@@ -696,22 +716,21 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
         fp16_partial_numel_offsets,
         ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsets"));
 
-    // Fill the weight decay tensor
-    PADDLE_ENFORCE_EQ(lengths.size(), shard_weight_decay.size(),
-                      platform::errors::InvalidArgument(
-                          "Invalid weight decay sharding. This may be a bug."));
-    std::vector<float> wd_cpu;
-    for (size_t i = 0; i < shard_weight_decay.size(); ++i) {
-      int len = lengths[i];
-      for (int j = 0; j < len; ++j) {
-        wd_cpu.push_back(shard_weight_decay[i]);
-      }
-    }
-    PADDLE_ENFORCE_EQ(wd_cpu.size() * nranks, fp32_numel + fp16_numel,
-                      platform::errors::InvalidArgument(
-                          "Invalid weight decay sharding. This may be a bug."));
-    CopyVectorToTensor(wd_cpu, ctx.Output<framework::Tensor>("WeightDecay"),
-                       place, stream);
+    // Fill the weight decay info
+    auto clamp_func = [](size_t x, size_t low_value, size_t high_value) {
+      if (x < low_value) return low_value;
+      if (x > high_value) return high_value;
+      return x;
+    };
+
+    fp32_wd_end_idx = clamp_func(fp32_wd_end_idx, fp32_start_idx,
+                                 fp32_start_idx + fp32_local_param_num) -
+                      fp32_start_idx;
+    param_info[3] = fp32_wd_end_idx;
+    fp16_wd_end_idx = clamp_func(fp16_wd_end_idx, fp16_start_idx,
+                                 fp16_start_idx + fp16_local_param_num) -
+                      fp16_start_idx;
+    param_info[7] = fp16_wd_end_idx;
 
     auto *global_scale = ctx.Output<framework::Tensor>("GlobalScale");
     if (!global_scale->IsInitialized()) {

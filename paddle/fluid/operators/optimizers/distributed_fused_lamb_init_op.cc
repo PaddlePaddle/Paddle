@@ -96,10 +96,8 @@ class DistributedFusedLambInitOpMaker
 
     AddAttr<float>("beta1", "The initial value of Beta1Pow.");
     AddAttr<float>("beta2", "The initial value of Beta2Pow.");
-    AddAttr<std::vector<float>>(
-        "weight_decay",
-        "The weight decay for each parameter. Its "
-        "shape is equal to the global parameter number.");
+    AddAttr<std::vector<int>>("apply_weight_decay",
+                              "Whether to apply weight decay.");
     AddAttr<int>("alignment", "The alignment in bytes for the fused tensors.");
     AddAttr<int>("rank", "The global rank of the current process.");
     AddAttr<int>("nranks", "The global world size.");
