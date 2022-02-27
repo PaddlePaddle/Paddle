@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,17 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename Context>
-void Copy(const Context& dev_ctx,
-          const DenseTensor& src,
-          Place dst_place,
-          bool blocking,
-          DenseTensor* dst);
+KernelSignature GumbelSoftmaxGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("gumbel_softmax_grad",
+                         {"Out", GradVarName("Out")},
+                         {"axis"},
+                         {GradVarName("X")});
+}
+
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(gumbel_softmax_grad,
+                           phi::GumbelSoftmaxGradOpArgumentMapping);
