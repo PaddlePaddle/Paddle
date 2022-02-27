@@ -57,7 +57,8 @@ ThreadId GetCurrentThreadId();
 // create/destory when using it.
 std::unordered_map<uint64_t, ThreadId> GetAllThreadIds();
 
-// Returns 'unset' if SetCurrentThreadName is never called.
+static constexpr const char* kDefaultThreadName = "unset";
+// Returns kDefaultThreadName if SetCurrentThreadName is never called.
 std::string GetCurrentThreadName();
 
 // Return the map from StdTid to ThreadName
