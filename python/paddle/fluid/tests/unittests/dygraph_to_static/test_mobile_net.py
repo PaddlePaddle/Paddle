@@ -617,7 +617,6 @@ class TestMobileNet(unittest.TestCase):
         self.assert_same_loss("MobileNetV1")
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
-        print("assert mobile fin")
 
         self.verify_predict()
 

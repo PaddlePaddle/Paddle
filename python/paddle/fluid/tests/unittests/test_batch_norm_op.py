@@ -496,7 +496,6 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
                 program._sync_with_cpp()
 
-                #print( program )
                 exe = fluid.Executor(place)
                 out = exe.run(program,
                               feed={

@@ -920,6 +920,63 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                      bias_grad);
 }
 
+template <typename T, typename Context>
+void BatchNormDoubleGradKernel(const Context &ctx,
+                               const DenseTensor &x_grad_grad,
+                               const DenseTensor &scale_grad_grad,
+                               const DenseTensor &bias_grad_grad,
+                               const DenseTensor &y_grad,
+                               const DenseTensor &x,
+                               const DenseTensor &scale,
+                               const DenseTensor &saved_mean,
+                               const DenseTensor &saved_variance,
+                               paddle::optional<const DenseTensor &> mean,
+                               paddle::optional<const DenseTensor &> variance,
+                               float momentum,
+                               float epsilon,
+                               const std::string &data_layout_str,
+                               bool is_test,
+                               bool use_global_stats,
+                               bool trainable_statistics,
+                               bool fuse_with_relu,
+                               DenseTensor *x_grad,
+                               DenseTensor *scale_grad,
+                               DenseTensor *y_grad_grad) {
+  PADDLE_ENFORCE_EQ(is_test,
+                    false,
+                    phi::errors::InvalidArgument(
+                        "`is_test = True` CANNOT be used in train program. If "
+                        "you want to use global status in pre_train model, "
+                        "please set `use_global_stats = True`"));
+
+  const DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+
+  const DenseTensor *running_mean = nullptr;
+  const DenseTensor *running_variance = nullptr;
+  if (use_global_stats) {
+    running_mean = mean.get_ptr();
+    running_variance = variance.get_ptr();
+  }
+  paddle::operators::NormDoubleGradFunctor<Context, T>(ctx,
+                                                       data_layout,
+                                                       &x,
+                                                       &scale,
+                                                       &y_grad,
+                                                       &saved_mean,
+                                                       &saved_variance,
+                                                       running_mean,
+                                                       running_variance,
+                                                       epsilon,
+                                                       use_global_stats,
+                                                       &x_grad_grad,
+                                                       &scale_grad_grad,
+                                                       &bias_grad_grad,
+                                                       x_grad,
+                                                       scale_grad,
+                                                       y_grad_grad);
+}
+
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
@@ -967,4 +1024,21 @@ PD_REGISTER_KERNEL(batch_norm_grad_raw,
   }
 }
 
+#endif
+
+#ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(batch_norm_grad_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormDoubleGradKernel,
+                   float,
+                   double) {}
+
+#else
+PD_REGISTER_KERNEL(batch_norm_grad_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormDoubleGradKernel,
+                   float,
+                   double) {}
 #endif
