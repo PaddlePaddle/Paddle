@@ -93,21 +93,17 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    int seed,
                                    DataType dtype,
                                    DenseTensor* out) {
-  // auto* tensor = context.Output<framework::Tensor>("Out");
-
   auto tensor = out;
 
   T* data = dev_ctx.template Alloc<T>(tensor);
 
-  // unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
   bool seed_flag = false;
   if (seed == 0) {
     std::random_device rd;
     seed = rd();
     seed_flag = true;
   }
-  // T mean = static_cast<T>(context.Attr<float>("mean"));
-  // T std = static_cast<T>(context.Attr<float>("std"));
+
   thrust::counting_iterator<int64_t> index_sequence_begin(0);
   int64_t size = tensor->numel();
 
