@@ -25,7 +25,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/fluid/framework/generator.h"
-// #include "paddle/phi/core/generator.h"
 
 namespace phi {
 

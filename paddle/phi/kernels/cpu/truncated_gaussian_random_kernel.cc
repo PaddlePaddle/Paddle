@@ -39,7 +39,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
                                          1.0);
-  TruncatedNormal<T> truncated_normal(mean, std);
+  funcs::TruncatedNormal<T> truncated_normal(mean, std);
   int64_t size = tensor->numel();
 
   auto engine = paddle::framework::GetCPURandomEngine(seed);

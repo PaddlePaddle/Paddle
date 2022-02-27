@@ -20,12 +20,11 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/generator.h"
-
-// #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
-#include "paddle/phi/kernels/truncated_gaussian_random_kernel.h"
+#include "paddle/phi/kernels/funcs/random.h"
 
 namespace paddle {
 namespace distributed {
@@ -126,13 +125,13 @@ class TruncatedGaussianInitializer : public Initializer {
   }
 
   float GetValue() override {
-    phi::TruncatedNormal<float> truncated_normal(mean_, std_);
+    phi::funcs::TruncatedNormal<float> truncated_normal(mean_, std_);
     float value = truncated_normal(dist_(*random_engine_));
     return value;
   }
 
   void GetValue(float *value, int numel) {
-    phi::TruncatedNormal<float> truncated_normal(mean_, std_);
+    phi::funcs::TruncatedNormal<float> truncated_normal(mean_, std_);
     for (int x = 0; x < numel; ++x) {
       value[x] = truncated_normal(dist_(*random_engine_));
     }

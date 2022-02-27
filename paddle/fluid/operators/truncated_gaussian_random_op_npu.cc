@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-// #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#include "paddle/phi/kernels/truncated_gaussian_random_kernel.h"
+#include "paddle/phi/kernels/funcs/random.h"
 
 namespace paddle {
 namespace operators {
@@ -87,7 +88,7 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
     std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
                                            1.0);
-    TruncatedNormal<T> truncated_normal(mean, std);
+    phi::funcs::TruncatedNormal<T> truncated_normal(mean, std);
     int64_t size = tensor->numel();
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));

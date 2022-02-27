@@ -14,12 +14,12 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-// #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <limits>
 #include <random>
+
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/kernels/truncated_gaussian_random_kernel.h"
+#include "paddle/phi/kernels/funcs/random.h"
 
 namespace paddle {
 namespace operators {
@@ -35,7 +35,7 @@ class XPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
 
     std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
                                            1.0);
-    TruncatedNormal<T> truncated_normal(mean, std);
+    phi::funcs::TruncatedNormal<T> truncated_normal(mean, std);
     int64_t size = tensor->numel();
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
