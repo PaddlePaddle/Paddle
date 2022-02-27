@@ -14,11 +14,12 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
+// #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <limits>
 #include <random>
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/truncated_gaussian_random_kernel.h"
 
 namespace paddle {
 namespace operators {
