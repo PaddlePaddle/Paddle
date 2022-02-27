@@ -200,7 +200,7 @@ class Completer:
         op_dist_attr = dist_op.dist_attr
         if fwd:
             for tensor_node in op_node.inputs:
-                if tensor_node.var() is not None:
+                if tensor_node.is_var() and tensor_node.var() is not None:
                     if tensor_node.var().type() == core.VarDesc.VarType.READER:
                         continue
                     tensor_desc = tensor_node.var()
@@ -239,7 +239,7 @@ class Completer:
             #     print("fwd ", dist_op.serial_op.type, changed, op_dist_impl.type, op_dist_impl.idx, op_dist_attr)
         else:
             for tensor_node in op_node.outputs:
-                if tensor_node.var() is not None:
+                if tensor_node.is_var() and tensor_node.var() is not None:
                     if tensor_node.var().type() == core.VarDesc.VarType.READER:
                         continue
                     tensor_desc = tensor_node.var()
@@ -278,81 +278,26 @@ class Completer:
             #     print("bwd ", dist_op.serial_op.type, changed, op_dist_impl.type, op_dist_impl.idx, op_dist_attr)
         return changed
 
-    def _update_process_mesh(self):
-        def _find_nearset_node_before(nodes, idx):
-            # Lookup the nearest node before idx
-            nearest_node = None
-            for node in reversed(nodes[:idx]):
-                node_dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    node)
-                if node_dist_attr.process_mesh is not None:
-                    nearest_node = node
-                    break
-            return nearest_node
-
-        def _find_nearset_node_after(nodes, idx):
-            # Lookup the nearest node after idx
-            nearest_node = None
-            for node in nodes[idx + 1:]:
-                node_dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    node)
-                if node_dist_attr.process_mesh is not None:
-                    nearest_node = node
-                    break
-            return nearest_node
-
-        # print("before $$$$$$$$$$$$$$$$")
-        # for node in self._dist_context._serial_ordered_nodes:
-        #     if node.is_var() and node.var() is not None:
-        #         print(_node_id(node), node.node.original_desc_id(), node.var().name())
-        #     if node.is_op() and node.op() is not None:
-        #         print(_node_id(node), node.node.original_desc_id(), node.op().type())
-
-        # Fill the process mesh with the nearest node in the forward direction
-        all_nodes = self._dist_context.serial_ordered_nodes
-        for idx, node in enumerate(all_nodes):
-            nearest_node = _find_nearset_node_before(
-                self._dist_context.serial_ordered_nodes, idx)
-            if nearest_node is None:
-                continue
-            # if node.is_var() and node.var() is not None:
-            #     print("before process mesh node var", _node_id(node), node.node.original_desc_id(), node.var().name(), flush=True)
-            # if node.is_op() and node.op() is not None:
-            #     print("before process mesh node op", _node_id(node), node.node.original_desc_id(), node.op().type(), flush=True)
-            # if nearest_node.is_var() and nearest_node.var() is not None:
-            #     print("before process mesh nearest_node var", _node_id(nearest_node), nearest_node.node.original_desc_id(), nearest_node.var().name(), flush=True)
-            # if nearest_node.is_op() and nearest_node.op() is not None:
-            #     print("before process mesh nearest_node op", _node_id(nearest_node), nearest_node.node.original_desc_id(), nearest_node.op().type(), flush=True)
-            nearest_node_dis_attr = self._dist_context.get_dist_attr_for_graph(
-                nearest_node)
-            nearest_process_mesh = nearest_node_dis_attr.process_mesh
-            cur_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
-                node)
-            cur_process_mesh = cur_node_dist_attr.process_mesh
-            compatible_process_mesh = compute_compatible_process_mesh(
-                [cur_process_mesh, nearest_process_mesh])
-            if compatible_process_mesh is not None \
-                and cur_process_mesh != compatible_process_mesh:
-                cur_node_dist_attr.process_mesh = compatible_process_mesh
-
-        # Fill the process mesh with the nearest node in the backward direction
-        all_nodes = self._dist_context.serial_ordered_nodes
-        for idx, node in enumerate(all_nodes):
-            nearest_node = _find_nearset_node_after(
-                self._dist_context.serial_ordered_nodes, idx)
-            if nearest_node is None:
-                continue
-            nearest_node_dis_attr = self._dist_context.get_dist_attr_for_graph(
-                nearest_node)
-            nearest_process_mesh = nearest_node_dis_attr.process_mesh
-            cur_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
-                node)
-            cur_process_mesh = cur_node_dist_attr.process_mesh
-            compatible_process_mesh = compute_compatible_process_mesh(
-                [cur_process_mesh, nearest_process_mesh])
-            if compatible_process_mesh is not None \
-                and cur_process_mesh != compatible_process_mesh:
-                cur_node_dist_attr.process_mesh = compatible_process_mesh
+    def _update_dims_mapping_between_graphs(self):
+        changed = False
+        for parent_node, child_node in self._node_pairs_between_graphs:
+            parent_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
+                parent_node)
+            child_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
+                child_node)
+            parent_node_dims_mapping = parent_node_dist_attr.dims_mapping
+            child_node_dims_mapping = child_node_dist_attr.dims_mapping
+            compatible_dims_mapping = compute_compatible_dims_mapping(
+                [parent_node_dims_mapping, child_node_dims_mapping])
+            if (compatible_dims_mapping is not None) \
+                and (compatible_dims_mapping != parent_node_dims_mapping):
+                parent_node_dist_attr.dims_mapping = compatible_dims_mapping
+                changed = True
+            if (compatible_dims_mapping is not None) \
+                and (compatible_dims_mapping != child_node_dims_mapping):
+                parent_node_dist_attr.dims_mapping = compatible_dims_mapping
+                changed = True
+        return changed
 
     def _update_dims_mapping(self):
         # Complete dims_mapping for each node
@@ -373,7 +318,7 @@ class Completer:
                             node, fwd=is_fwd)
                         if op_changed:
                             changed = True
-                graph_changed = self._sync_between_graphs()
+                graph_changed = self._update_dims_mapping_between_graphs()
                 if graph_changed:
                     changed = True
             if changed:
@@ -381,26 +326,333 @@ class Completer:
             else:
                 reach_fix_point = True
 
-    def _sync_between_graphs(self):
-        changed = False
-        for parent_node, child_node in self._node_pairs_between_graphs:
-            parent_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
-                parent_node)
-            child_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
-                child_node)
-            parent_node_dims_mapping = parent_node_dist_attr.dims_mapping
-            child_node_dims_mapping = child_node_dist_attr.dims_mapping
-            compatible_dims_mapping = compute_compatible_dims_mapping(
-                [parent_node_dims_mapping, child_node_dims_mapping])
-            if (compatible_dims_mapping is not None) \
-                and (compatible_dims_mapping != parent_node_dims_mapping):
-                parent_node_dist_attr.dims_mapping = compatible_dims_mapping
-                changed = True
-            if (compatible_dims_mapping is not None) \
-                and (compatible_dims_mapping != child_node_dims_mapping):
-                parent_node_dist_attr.dims_mapping = compatible_dims_mapping
-                changed = True
-        return changed
+    def _update_process_mesh_by_nearest(self, op_node, nearest_op_node):
+        op_dist_attr = self._dist_context.get_dist_attr_for_graph(op_node)
+        # Set the process mesh of the op node by its nearest op node
+        if not op_dist_attr.is_annotated("process_mesh"):
+            process_mesh = op_dist_attr.process_mesh
+            nearest_op_dis_attr = self._dist_context.get_dist_attr_for_graph(
+                nearest_op_node)
+            nearest_process_mesh = nearest_op_dis_attr.process_mesh
+            compatible_process_mesh = compute_compatible_process_mesh(
+                [process_mesh, nearest_process_mesh])
+            if compatible_process_mesh is not None \
+                and process_mesh != compatible_process_mesh:
+                op_dist_attr.process_mesh = compatible_process_mesh
+        # Skip the process_mesh setting of inputs and outputs of while_op
+        if op_dist_attr.op_type == "while":
+            return
+        # Set the process mesh of the op node's leaf-inputs
+        for tensor_node in op_node.inputs:
+            if tensor_node.is_var() and tensor_node.var() is not None:
+                tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                    tensor_node)
+                if tensor_dist_attr.is_annotated("process_mesh"):
+                    continue
+                # Skip the non-leaf var node
+                if len(tensor_node.inputs) != 0:
+                    continue
+                compatible_process_mesh = compute_compatible_process_mesh(
+                    [tensor_dist_attr.process_mesh, op_dist_attr.process_mesh])
+                if compatible_process_mesh is not None \
+                    and tensor_dist_attr.process_mesh != compatible_process_mesh:
+                    tensor_dist_attr.process_mesh = compatible_process_mesh
+        # Set the process mesh of the op node's outputs
+        for tensor_node in op_node.outputs:
+            if tensor_node.is_var() and tensor_node.var() is not None:
+                tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                    tensor_node)
+                if tensor_dist_attr.is_annotated("process_mesh"):
+                    continue
+                compatible_process_mesh = compute_compatible_process_mesh(
+                    [tensor_dist_attr.process_mesh, op_dist_attr.process_mesh])
+                if compatible_process_mesh is not None \
+                    and tensor_dist_attr.process_mesh != compatible_process_mesh:
+                    tensor_dist_attr.process_mesh = compatible_process_mesh
+
+    def _update_process_mesh_for_specials(self):
+        def _find_nearest_tensor_node_before(nodes, idx, var_name):
+            for node in reversed(nodes[:idx]):
+                if node.is_var() and node.var() is not None \
+                    and node.var().name() == var_name:
+                    return node
+
+        def _find_nearest_tensor_node_after(nodes, idx, var_name):
+            for node in nodes[idx + 1:]:
+                if node.is_var() and node.var() is not None \
+                    and node.var().name() == var_name:
+                    return node
+
+        def _find_related_nodes(source_node):
+            related_nodes = []
+            visited = set()
+            frontier = list()
+            frontier.append(source_node)
+            # BFS
+            while len(frontier) != 0:
+                # print("frontier before: ", len(frontier), flush=True)
+                cur = frontier[0]
+                frontier = frontier[1:]
+                # print("frontier after: ", len(frontier), visited, flush=True)
+                # if cur.is_var() and cur.var() is not None:
+                #     print("cur var node", _node_id(cur), cur.node.original_desc_id(), cur.var().name(), len(cur.inputs), flush=True)
+                # if cur.is_op() and cur.op() is not None:
+                #     print("cur var op", _node_id(cur), cur.node.original_desc_id(), cur.op().type(), len(cur.inputs), flush=True)
+                if _node_id(cur) in visited:
+                    continue
+                # TODO: need more restrictions
+                for node in cur.inputs:
+                    if (node.is_var() and node.var() is not None) \
+                        or (node.is_op() and node.op() is not None):
+                        # if node.is_var() and node.var() is not None:
+                        #     print("find var node", _node_id(cur), _node_id(node), node.node.original_desc_id(), node.var().name(),flush=True)
+                        # if node.is_op() and node.op() is not None:
+                        #     print("find var op", _node_id(cur), _node_id(node), node.node.original_desc_id(), node.op().type(), flush=True)
+                        frontier.append(node)
+                        related_nodes.append(node)
+                visited.add(_node_id(cur))
+            return related_nodes
+
+        # Amend the process meshes related to while_op
+        for while_op_node, while_op_node_idx in self._while_op_nodes.values():
+            sub_graph_id = while_op_node.op()._block_attr_id("sub_block")
+            # print("sub_graph_id", sub_graph_id, flush=True)
+            sub_graph = self._dist_context._serial_graph.get_sub_graph(
+                sub_graph_id)
+            # sub_graph.draw("/root/workspace/results", "sub_graph")
+            sub_graph_nodes = list(sub_graph.all_nodes())
+            while_dist_op = self._dist_context.get_dist_op_for_graph(
+                while_op_node)
+            while_op_dist_attr = while_dist_op.dist_attr
+
+            # Step 1: set the process mesh of while_op to the merged process mesh of its subblock
+            merged_process_mesh = while_op_dist_attr.process_mesh
+            for node in sub_graph_nodes:
+                if (node.is_var() and node.var() is not None) \
+                    or (node.is_op() and node.op() is not None):
+                    dist_attr = self._dist_context.get_dist_attr_for_graph(node)
+                    merged_process_mesh = merge_process_mesh_two(
+                        merged_process_mesh, dist_attr.process_mesh)
+            while_op_dist_attr.process_mesh = merged_process_mesh
+
+            # Step 2: set the related nodes of while_op to the process mesh of while_op
+            # Step 2.1: Find related nodes of cond var the graph of while_op
+            cond_tensor_related_nodes = []
+            cond_tensor_name = while_op_node.op().input("Condition")[0]
+            cond_tensor_node = None
+            for input_node in while_op_node.inputs:
+                if input_node.is_var() and input_node.var() is not None \
+                    and input_node.var().name() == cond_tensor_name:
+                    cond_tensor_node = input_node
+            cond_tensor_related_nodes.extend(
+                _find_related_nodes(cond_tensor_node))
+            # Step 2.2: Find related nodes of cond var in the subgraph of while_op
+            cond_tensor_node = None
+            for node in reversed(sub_graph_nodes):
+                if node.is_var() and node.var() is not None \
+                    and node.var().name() == cond_tensor_name \
+                        and len(node.outputs) == 0:
+                    cond_tensor_node = node
+                    # print("inner_conditional var", _node_id(cond_tensor_node))
+                    break
+            cond_tensor_related_nodes.extend(
+                _find_related_nodes(cond_tensor_node))
+            # Step 2.3: Add the StepScops output of while_op
+            stepscopes_tensor_name = while_op_node.op().output("StepScopes")[0]
+            stepscopes_tensor_node = None
+            for output_node in while_op_node.outputs:
+                if output_node.is_var() and output_node.var() is not None \
+                    and output_node.var().name() == stepscopes_tensor_name:
+                    stepscopes_tensor_node = output_node
+            cond_tensor_related_nodes.append(stepscopes_tensor_node)
+            # Step 2.4: Set the process meshes of all nodes related to cond var to the process mesh of while op
+            for node in cond_tensor_related_nodes:
+                # if node.is_var() and node.var() is not None:
+                #     print("cond var node", _node_id(node), node.node.original_desc_id(), node.var().name())
+                # if node.is_op() and node.op() is not None:
+                #     print("cond var op", _node_id(node), node.node.original_desc_id(), node.op().type())
+                tensor_dist_attr = self._dist_context.get_dist_attr_for_graph(
+                    node)
+                tensor_dist_attr.process_mesh = merged_process_mesh
+
+            # Step 3: set the process meshes of the inputs in while_op to the process meshes of the outside input nodes
+            while_op_inputs_dist_attrs = while_op_dist_attr.inputs_dist_attrs
+            for tensor_name, tensor_dist_attr in while_op_inputs_dist_attrs.items(
+            ):
+                nearest_tensor_node = _find_nearest_tensor_node_before(
+                    self._dist_context.serial_ordered_nodes, while_op_node_idx,
+                    tensor_name)
+                nearest_tensor_dist_attr = self._dist_context.get_dist_attr_for_graph(
+                    nearest_tensor_node)
+                tensor_dist_attr.process_mesh = nearest_tensor_dist_attr.process_mesh
+
+            # Step 4: set the process meshes of the outputs in while_op to the process meshes of the outside output nodes
+            while_op_outputs_dist_attrs = while_op_dist_attr.outputs_dist_attrs
+            for tensor_name, tensor_dist_attr in while_op_outputs_dist_attrs.items(
+            ):
+                nearest_tensor_node = _find_nearest_tensor_node_before(
+                    self._dist_context.serial_ordered_nodes, while_op_node_idx,
+                    tensor_name)
+                # if nearest_tensor_node is None:
+                #     print("None output", tensor_name)
+                if nearest_tensor_node is None:
+                    nearest_tensor_node = _find_nearest_tensor_node_after(
+                        self._dist_context.serial_ordered_nodes,
+                        while_op_node_idx, tensor_name)
+                # if nearest_tensor_node is not None:
+                #     print("Not none output", tensor_name)
+                nearest_tensor_dist_attr = self._dist_context.get_dist_attr_for_graph(
+                    nearest_tensor_node)
+                tensor_dist_attr.process_mesh = nearest_tensor_dist_attr.process_mesh
+            # print("while op process_mesh", while_op_dist_attr.process_mesh)
+
+            # Amend the process meshes related to array
+        for array_node_list in self._array_nodes.values():
+            merged_process_mesh = None
+            for array_node in array_node_list:
+                dist_attr = self._dist_context.get_dist_attr_for_graph(
+                    array_node)
+                merged_process_mesh = merge_process_mesh_two(
+                    merged_process_mesh, dist_attr.process_mesh)
+                # if array_node.is_op():
+                #     print("merged proecss mesh array_op....", _node_id(array_node), array_node.op().type(), dist_attr.process_mesh, merged_process_mesh)
+                # if array_node.is_var():
+                #     print("merged process mesh array_var....", _node_id(array_node), array_node.var().name(), dist_attr.process_mesh, merged_process_mesh)
+            for array_node in array_node_list:
+                dist_attr = self._dist_context.get_dist_attr_for_graph(
+                    array_node)
+                dist_attr.process_mesh = merged_process_mesh
+
+    def _update_process_mesh(self):
+        ordered_op_nodes = self._dist_context._serial_ordered_op_nodes
+
+        # Step 1: Set the annotated process meshes from tensors to the first ops using them
+        ordered_tensor_nodes = self._dist_context._serial_ordered_tensor_nodes
+        for tensor_node in ordered_tensor_nodes:
+            tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                tensor_node)
+            if not tensor_dist_attr.is_annotated("process_mesh"):
+                continue
+            first_op_node = None
+            for op_node in ordered_op_nodes:
+                # TODO: Need a better rule for the control flow ops.
+                # For now, do not set the process mesh of while_op from its inputs
+                if op_node.op().type() == "while":
+                    break
+                for input_tensor_node in op_node.inputs:
+                    if _node_id(tensor_node) == _node_id(input_tensor_node):
+                        first_op_node = op_node
+                        break
+                if first_op_node is not None:
+                    break
+            if first_op_node is None:
+                continue
+            # if tensor_node.is_var() and tensor_node.var() is not None:
+            #     print("tensor_node var", _node_id(tensor_node), tensor_node.node.original_desc_id(), tensor_node.var().name(), flush=True)
+            # if first_op_node.is_op() and first_op_node.op() is not None:
+            #     print("first_op_node op", _node_id(first_op_node), first_op_node.node.original_desc_id(), first_op_node.op().type(), flush=True)
+            op_dist_attr = self._dist_context.get_dist_attr_for_graph(
+                first_op_node)
+            if op_dist_attr is not None and not op_dist_attr.is_annotated(
+                    "process_mesh"):
+                compatible_process_mesh = compute_compatible_process_mesh(
+                    [tensor_dist_attr.process_mesh, op_dist_attr.process_mesh])
+                if compatible_process_mesh is not None \
+                    and op_dist_attr.process_mesh != compatible_process_mesh:
+                    op_dist_attr.process_mesh = compatible_process_mesh
+
+        # Step 2: set the process meshes of ops with the nearest op before them
+        # Step 2.1: find the first op node which has the process mesh        
+        idx_of_first_op_node_has_process_mesh = -1
+        for idx, op_node in enumerate(ordered_op_nodes):
+            op_dist_attr = self._dist_context.get_dist_attr_for_graph(op_node)
+            if op_dist_attr.process_mesh is not None \
+                and idx_of_first_op_node_has_process_mesh == -1:
+                idx_of_first_op_node_has_process_mesh = idx
+                # Reuse the following method to set the related tensors for same op node
+                self._update_process_mesh_by_nearest(op_node, op_node)
+        # Step 2.2: set the process meshes of ops by the nearest op node after the first op node 
+        # print("idx_of_first_op_node_has_process_mesh", idx_of_first_op_node_has_process_mesh)
+        if idx_of_first_op_node_has_process_mesh + 1 > len(ordered_op_nodes):
+            return None
+        for idx, op_node in enumerate(ordered_op_nodes[
+                idx_of_first_op_node_has_process_mesh + 1:]):
+            original_idx = idx_of_first_op_node_has_process_mesh + +idx + 1
+            nearest_op_node = ordered_op_nodes[original_idx - 1]
+            nearest_op_dist_attr = self._dist_context.get_dist_attr_for_graph(
+                nearest_op_node)
+            # if op_node.is_op() and op_node.op() is not None:
+            #     print("op_node op", original_idx, _node_id(op_node), op_node.node.original_desc_id(), op_node.op().type(), flush=True)
+            # if nearest_op_node.is_op() and nearest_op_node.op() is not None:
+            #     print("nearest op node", original_idx - 1, _node_id(nearest_op_node), nearest_op_node.node.original_desc_id(), nearest_op_node.op().type(), flush=True)
+            op_dist_attr = self._dist_context.get_dist_attr_for_graph(op_node)
+            # print("before update op node process_mesh", op_dist_attr.process_mesh, "nearest op node", nearest_op_dist_attr.process_mesh)
+            assert nearest_op_dist_attr.process_mesh is not None
+            self._update_process_mesh_by_nearest(op_node, nearest_op_node)
+            # print("after update op node process_mesh", op_dist_attr.process_mesh, "nearest op node", nearest_op_dist_attr.process_mesh)
+        # print("\n\n")
+        # Step 2.3: set the process meshes of ops by the nearest op node before the first op node 
+        nearest_op_node = ordered_op_nodes[
+            idx_of_first_op_node_has_process_mesh]
+        for op_node in ordered_op_nodes[:idx_of_first_op_node_has_process_mesh]:
+            self._update_process_mesh_by_nearest(op_node, nearest_op_node)
+
+        # Step 3: adjust the process meshes for special ops
+        self._update_process_mesh_for_specials()
+
+        # # Fill the process mesh with the nearest node in the forward direction
+        # all_nodes = self._dist_context.serial_ordered_nodes
+        # for idx, node in enumerate(all_nodes):
+        #     nearest_node = _find_nearest_node_before(
+        #         self._dist_context.serial_ordered_nodes, idx)
+        #     if nearest_node is None:
+        #         continue
+        #     nearest_node_dis_attr = self._dist_context.get_dist_attr_for_graph(
+        #         nearest_node)
+        #     nearest_process_mesh = nearest_node_dis_attr.process_mesh
+        #     cur_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
+        #         node)
+        #     cur_process_mesh = cur_node_dist_attr.process_mesh
+        #     compatible_process_mesh = compute_compatible_process_mesh(
+        #         [cur_process_mesh, nearest_process_mesh])
+        #     if node.is_var() and node.var() is not None:
+        #         print("before process mesh node var", _node_id(node), node.node.original_desc_id(), node.var().name(), compatible_process_mesh, flush=True)
+        #     if node.is_op() and node.op() is not None:
+        #         print("before process mesh node op", _node_id(node), node.node.original_desc_id(), node.op().type(), compatible_process_mesh, flush=True)
+        #     if nearest_node.is_var() and nearest_node.var() is not None:
+        #         print("before process mesh nearest_node var", _node_id(nearest_node), nearest_node.node.original_desc_id(), nearest_node.var().name(), compatible_process_mesh, flush=True)
+        #     if nearest_node.is_op() and nearest_node.op() is not None:
+        #         print("before process mesh nearest_node op", _node_id(nearest_node), nearest_node.node.original_desc_id(), nearest_node.op().type(), compatible_process_mesh, flush=True)
+        #     if compatible_process_mesh is not None \
+        #         and cur_process_mesh != compatible_process_mesh:
+        #         cur_node_dist_attr.process_mesh = compatible_process_mesh
+
+        # # Fill the process mesh with the nearest node in the backward direction
+        # all_nodes = self._dist_context.serial_ordered_nodes
+        # for idx, node in enumerate(all_nodes):
+        #     nearest_node = _find_nearest_node_after(
+        #         self._dist_context.serial_ordered_nodes, idx)
+        #     if nearest_node is None:
+        #         continue
+        #     nearest_node_dis_attr = self._dist_context.get_dist_attr_for_graph(
+        #         nearest_node)
+        #     nearest_process_mesh = nearest_node_dis_attr.process_mesh
+        #     cur_node_dist_attr = self._dist_context.get_dist_attr_for_graph(
+        #         node)
+        #     cur_process_mesh = cur_node_dist_attr.process_mesh
+        #     compatible_process_mesh = compute_compatible_process_mesh(
+        #         [cur_process_mesh, nearest_process_mesh])
+        #     if node.is_var() and node.var() is not None:
+        #         print("after process mesh node var", _node_id(node), node.node.original_desc_id(), node.var().name(), compatible_process_mesh, flush=True)
+        #     if node.is_op() and node.op() is not None:
+        #         print("after process mesh node op", _node_id(node), node.node.original_desc_id(), node.op().type(), compatible_process_mesh, flush=True)
+        #     if nearest_node.is_var() and nearest_node.var() is not None:
+        #         print("after process mesh nearest_node var", _node_id(nearest_node), nearest_node.node.original_desc_id(), nearest_node.var().name(), compatible_process_mesh, flush=True)
+        #     if nearest_node.is_op() and nearest_node.op() is not None:
+        #         print("after process mesh nearest_node op", _node_id(nearest_node), nearest_node.node.original_desc_id(), nearest_node.op().type(), compatible_process_mesh, flush=True)
+        #     if compatible_process_mesh is not None \
+        #         and cur_process_mesh != compatible_process_mesh:
+        #         cur_node_dist_attr.process_mesh = compatible_process_mesh
 
     def _prepare(self):
         self._while_op_nodes = {}
@@ -455,158 +707,6 @@ class Completer:
                         # print("inputs_from_parent", self._inputs_from_parent)
                         # print("outputs_from_parent", self._outputs_to_parent)
 
-    def _amend_process_mesh(self):
-        def _find_nearset_tensor_node_before(nodes, idx, var_name):
-            for node in reversed(nodes[:idx]):
-                if node.is_var() and node.var() is not None \
-                    and node.var().name() == var_name:
-                    return node
-
-        def _find_nearset_tensor_node_after(nodes, idx, var_name):
-            for node in nodes[idx + 1:]:
-                if node.is_var() and node.var() is not None \
-                    and node.var().name() == var_name:
-                    return node
-
-        def _find_related_nodes(source_node):
-            related_nodes = []
-            visited = set()
-            frontier = list()
-            frontier.append(source_node)
-            # BFS
-            while len(frontier) != 0:
-                # print("frontier before: ", len(frontier), flush=True)
-                cur = frontier[0]
-                frontier = frontier[1:]
-                # print("frontier after: ", len(frontier), visited, flush=True)
-                # if cur.is_var() and cur.var() is not None:
-                #     print("cur var node", _node_id(cur), cur.node.original_desc_id(), cur.var().name(), len(cur.inputs), flush=True)
-                # if cur.is_op() and cur.op() is not None:
-                #     print("cur var op", _node_id(cur), cur.node.original_desc_id(), cur.op().type(), len(cur.inputs), flush=True)
-                if _node_id(cur) in visited:
-                    continue
-                # TODO: need more restrictions
-                for node in cur.inputs:
-                    if (node.is_var() and node.var() is not None) \
-                        or (node.is_op() and node.op() is not None):
-                        # if node.is_var() and node.var() is not None:
-                        #     print("find var node", _node_id(cur), _node_id(node), node.node.original_desc_id(), node.var().name(),flush=True)
-                        # if node.is_op() and node.op() is not None:
-                        #     print("find var op", _node_id(cur), _node_id(node), node.node.original_desc_id(), node.op().type(), flush=True)
-                        frontier.append(node)
-                        related_nodes.append(node)
-                visited.add(_node_id(cur))
-            return related_nodes
-
-        # Amend the process meshes related to while_op
-        for while_op_node, while_op_node_idx in self._while_op_nodes.values():
-            sub_graph_id = while_op_node.op()._block_attr_id("sub_block")
-            # print("sub_graph_id", sub_graph_id, flush=True)
-            sub_graph = self._dist_context._serial_graph.get_sub_graph(
-                sub_graph_id)
-            # sub_graph.draw("/root/workspace/results", "sub_graph")
-            sub_graph_nodes = list(sub_graph.all_nodes())
-            while_dist_op = self._dist_context.get_dist_op_for_graph(
-                while_op_node)
-            while_op_dist_attr = while_dist_op.dist_attr
-
-            # Set the process meshes of while_op to the merged process mesh of its subblock
-            merged_process_mesh = while_op_dist_attr.process_mesh
-            print(self._dist_context._dist_ops_for_graph.keys())
-            for node in sub_graph_nodes:
-                if (node.is_var() and node.var() is not None) \
-                    or (node.is_op() and node.op() is not None):
-                    dist_attr = self._dist_context.get_dist_attr_for_graph(node)
-                    merged_process_mesh = merge_process_mesh_two(
-                        merged_process_mesh, dist_attr.process_mesh)
-            while_op_dist_attr.process_mesh = merged_process_mesh
-
-            # Set the process meshes of the outputs of while_op
-            while_op_inputs_dist_attrs = while_op_dist_attr.inputs_dist_attrs
-            for tensor_name, tensor_dist_attr in while_op_inputs_dist_attrs.items(
-            ):
-                nearest_tensor_node = _find_nearset_tensor_node_before(
-                    self._dist_context.serial_ordered_nodes, while_op_node_idx,
-                    tensor_name)
-                nearest_tensor_dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    nearest_tensor_node)
-                tensor_dist_attr.process_mesh = nearest_tensor_dist_attr.process_mesh
-
-            # Set the process meshes of the outputs of while_op
-            while_op_outputs_dist_attrs = while_op_dist_attr.outputs_dist_attrs
-            for tensor_name, tensor_dist_attr in while_op_outputs_dist_attrs.items(
-            ):
-                nearest_tensor_node = _find_nearset_tensor_node_before(
-                    self._dist_context.serial_ordered_nodes, while_op_node_idx,
-                    tensor_name)
-                # if nearest_tensor_node is None:
-                #     print("None output", tensor_name)
-                if nearest_tensor_node is None:
-                    nearest_tensor_node = _find_nearset_tensor_node_after(
-                        self._dist_context.serial_ordered_nodes,
-                        while_op_node_idx, tensor_name)
-                # if nearest_tensor_node is not None:
-                #     print("Not none output", tensor_name)
-                nearest_tensor_dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    nearest_tensor_node)
-                tensor_dist_attr.process_mesh = nearest_tensor_dist_attr.process_mesh
-            # print("while op process_mesh", while_op_dist_attr.process_mesh)
-
-            # Find related nodes of cond var in the graph of while_op
-            cond_tensor_related_nodes = []
-            cond_tensor_name = while_op_node.op().input("Condition")[0]
-            cond_tensor_node = None
-            for input_node in while_op_node.inputs:
-                if input_node.is_var() and input_node.var() is not None \
-                    and input_node.var().name() == cond_tensor_name:
-                    cond_tensor_node = input_node
-            cond_tensor_related_nodes.extend(
-                _find_related_nodes(cond_tensor_node))
-
-            # Find related nodes of cond var in the subgraph of while_op
-            cond_tensor_node = None
-            for node in reversed(sub_graph_nodes):
-                if node.is_var() and node.var() is not None \
-                    and node.var().name() == cond_tensor_name \
-                        and len(node.outputs) == 0:
-                    cond_tensor_node = node
-                    # print("inner_conditional var", _node_id(cond_tensor_node))
-                    break
-            cond_tensor_related_nodes.extend(
-                _find_related_nodes(cond_tensor_node))
-
-            # Add the StepScops output of while_op
-            stepscopes_tensor_name = while_op_node.op().output("StepScopes")[0]
-            stepscopes_tensor_node = None
-            for output_node in while_op_node.outputs:
-                if output_node.is_var() and output_node.var() is not None \
-                    and output_node.var().name() == stepscopes_tensor_name:
-                    stepscopes_tensor_node = output_node
-            cond_tensor_related_nodes.append(stepscopes_tensor_node)
-
-            # Set the process meshes of all nodes related to cond var to the while_op merged process mesh
-            for node in cond_tensor_related_nodes:
-                # if node.is_var() and node.var() is not None:
-                #     print("cond var node", _node_id(node), node.node.original_desc_id(), node.var().name())
-                # if node.is_op() and node.op() is not None:
-                #     print("cond var op", _node_id(node), node.node.original_desc_id(), node.op().type())
-                tensor_dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    node)
-                tensor_dist_attr.process_mesh = merged_process_mesh
-
-        # Amend the process meshes related to array
-        for array_var_name, array_node_list in self._array_nodes.items():
-            merged_process_mesh = None
-            for array_node in array_node_list:
-                dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    array_node)
-                merged_process_mesh = merge_process_mesh_two(
-                    merged_process_mesh, dist_attr.process_mesh)
-            for array_node in array_node_list:
-                dist_attr = self._dist_context.get_dist_attr_for_graph(
-                    array_node)
-                dist_attr.process_mesh = merged_process_mesh
-
     def complete_forward_annotation(self, serial_main_program):
         """ Complete annotation for the partial annotated serial_main_program.
         Arguments:
@@ -631,8 +731,6 @@ class Completer:
 
         self._update_process_mesh()
 
-        self._amend_process_mesh()
-
         self._update_dims_mapping()
 
         # Copy the corresponding distributed attribute from graph to serial_main_program
@@ -641,12 +739,12 @@ class Completer:
         # print_program_with_dist_attr(serial_main_program, self._dist_context)
         self._dist_context.clear_dist_info_for_graph()
 
-        # print_serial_main_program_with_dist_attr(serial_main_program, self._dist_context)
+        # print_with_dist_attr(serial_main_program, self._dist_context)
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()
 
-        # print_serial_main_program_with_dist_attr(serial_main_program, self._dist_context)
         self._dist_context.validate_dist_attr_for_program()
+        # print_program_with_dist_attr(serial_main_program, self._dist_context)
 
         return serial_main_program
 

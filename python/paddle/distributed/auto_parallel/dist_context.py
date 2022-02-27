@@ -321,8 +321,8 @@ class DistributedContext:
                     return True
             return False
 
-        ordered_tensor_nodes = []
-        ordered_op_nodes = []
+        serial_ordered_tensor_nodes = []
+        serial_ordered_op_nodes = []
         # all_nodes = self._serial_graph.all_nodes()
         all_nodes = []
         # for idx, graph in enumerate(self._serial_graph.all_sub_graphs()):
@@ -330,26 +330,29 @@ class DistributedContext:
             # all_nodes.extend(list(graph.all_nodes()))
             for node in graph.all_nodes():
                 all_nodes.append(node)
-
         for node in all_nodes:
             if node.is_var() and node.var() is not None:
-                ordered_tensor_nodes.append(node)
+                serial_ordered_tensor_nodes.append(node)
             if node.is_op() and node.op() is not None:
-                ordered_op_nodes.append(node)
-        ordered_tensor_nodes.sort(key=lambda node: node.node.original_desc_id())
-        ordered_op_nodes.sort(key=lambda node: node.node.original_desc_id())
-        num_nodes_before = len(ordered_tensor_nodes) + len(ordered_op_nodes)
-        # print("tensor nodes", len(ordered_tensor_nodes))
-        # for idx, node in enumerate(ordered_tensor_nodes):
+                serial_ordered_op_nodes.append(node)
+        serial_ordered_tensor_nodes.sort(
+            key=lambda node: node.node.original_desc_id())
+        serial_ordered_op_nodes.sort(
+            key=lambda node: node.node.original_desc_id())
+        num_nodes_before = len(serial_ordered_tensor_nodes) + len(
+            serial_ordered_op_nodes)
+
+        # print("$$$$$$$$$$$ tensor nodes", len(serial_ordered_tensor_nodes))
+        # for idx, node in enumerate(serial_ordered_tensor_nodes):
         #     if node.is_var() and node.var() is not None:
-        #         print(idx, node.id(), node.node.graph_id(), node.node.original_desc_id(), node.var().name())
-        # print("op nodes", len(ordered_op_nodes))
-        # for idx, node in enumerate(ordered_op_nodes):
+        #         print(idx, _node_id(node), node.node.original_desc_id(), node.var().name())
+        # print("$$$$$$$$$$$ op nodes", len(serial_ordered_op_nodes))
+        # for idx, node in enumerate(serial_ordered_op_nodes):
         #     if node.is_op() and node.op() is not None:
-        #         print(idx, node.id(), node.node.graph_id(), node.node.original_desc_id(), node.op().type())
-        new_ordered_tensor_nodes = []
-        new_ordered_op_nodes = []
-        for op_node in ordered_op_nodes:
+        #         print(idx, _node_id(node), node.node.original_desc_id(), node.op().type())
+        new_serial_ordered_tensor_nodes = []
+        new_serial_ordered_op_nodes = []
+        for op_node in serial_ordered_op_nodes:
             tensor_nodes = []
             for tensor_node in op_node.inputs:
                 if tensor_node.is_var() \
@@ -357,15 +360,15 @@ class DistributedContext:
                     and not _contains(self._serial_ordered_nodes, tensor_node):
                     # print("True input tensor", _node_id(tensor_node), tensor_node.node.original_desc_id(), tensor_node.var().name())
                     tensor_nodes.append(tensor_node)
-                    new_ordered_tensor_nodes.append(tensor_node)
-                else:
-                    if tensor_node.var() is not None:
-                        # print("False input tensor", _node_id(tensor_node), tensor_node.node.original_desc_id(), tensor_node.var().name())
-                        pass
+                    new_serial_ordered_tensor_nodes.append(tensor_node)
+                # else:
+                #     if tensor_node.var() is not None:
+                #         # print("False input tensor", _node_id(tensor_node), tensor_node.node.original_desc_id(), tensor_node.var().name())
+                #         pass
             tensor_nodes.sort(key=lambda node: node.node.original_desc_id())
             self._serial_ordered_nodes.extend(tensor_nodes)
             self._serial_ordered_nodes.append(op_node)
-            new_ordered_op_nodes.append(op_node)
+            new_serial_ordered_op_nodes.append(op_node)
             # print("True op ", op_node.op().type())
             tensor_nodes = []
             for tensor_node in op_node.outputs:
@@ -374,29 +377,45 @@ class DistributedContext:
                     and not _contains(self._serial_ordered_nodes, tensor_node):
                     # print("True output tensor", tensor_node.id(), tensor_node.node.graph_id(), tensor_node.node.original_desc_id(), tensor_node.var().name())
                     tensor_nodes.append(tensor_node)
-                    new_ordered_tensor_nodes.append(tensor_node)
-                else:
-                    if tensor_node.var() is not None:
-                        # print("False output tensor", tensor_node.id(), tensor_node.node.graph_id(), tensor_node.node.original_desc_id(), tensor_node.var().name())
-                        pass
+                    new_serial_ordered_tensor_nodes.append(tensor_node)
+                # else:
+                #     if tensor_node.var() is not None:
+                #         # print("False output tensor", tensor_node.id(), tensor_node.node.graph_id(), tensor_node.node.original_desc_id(), tensor_node.var().name())
+                #         pass
+            tensor_nodes.sort(key=lambda node: node.node.original_desc_id())
             self._serial_ordered_nodes.extend(tensor_nodes)
         # print(num_nodes_before, len(self._serial_ordered_nodes))
-        # print("after tensor nodes", len(new_ordered_tensor_nodes))
-        # for idx, node in enumerate(new_ordered_tensor_nodes):
+        new_serial_ordered_tensor_nodes.sort(
+            key=lambda node: node.node.original_desc_id())
+        new_serial_ordered_op_nodes.sort(
+            key=lambda node: node.node.original_desc_id())
+        self._serial_ordered_tensor_nodes = new_serial_ordered_tensor_nodes
+        self._serial_ordered_op_nodes = new_serial_ordered_op_nodes
+        # print("after tensor nodes", len(new_serial_ordered_tensor_nodes))
+        # for idx, node in enumerate(new_serial_ordered_tensor_nodes):
         #     if node.is_var() and node.var() is not None:
         #         print(idx, _node_id(node), node.node.original_desc_id(), node.var().name())
-        # print("after op nodes", len(new_ordered_op_nodes))
-        # for idx, node in enumerate(new_ordered_op_nodes):
+        # print("after op nodes", len(new_serial_ordered_op_nodes))
+        # for idx, node in enumerate(new_serial_ordered_op_nodes):
         #     if node.is_op() and node.op() is not None:
         #         print(idx, _node_id(node), node.node.original_desc_id(), node.op().type())
-        assert len(self._serial_ordered_nodes) == num_nodes_before, \
-            "The number of nodes before ordering is not the same after ordering."
-        # print("Final results")
+        # print("$$$$$$$$$ All nodes", len(self._serial_ordered_nodes))
         # for node in self._serial_ordered_nodes:
         #     if node.is_var() and node.var() is not None:
         #         print(_node_id(node), node.node.original_desc_id(), node.var().name())
         #     if node.is_op() and node.op() is not None:
         #         print(_node_id(node), node.node.original_desc_id(), node.op().type())
+        assert len(self._serial_ordered_nodes) == len(
+            self._serial_ordered_tensor_nodes) + len(
+                self._serial_ordered_op_nodes)
+        self._serial_orphan_tensor_nodes = []
+        for tensor_node in serial_ordered_tensor_nodes:
+            if not _contains(self._serial_ordered_tensor_nodes, tensor_node):
+                self._serial_orphan_tensor_nodes.append(tensor_node)
+        if len(self._serial_ordered_nodes) != num_nodes_before:
+            print(
+                "WARNING: there are some orphan tensors or ops which are not used in the execution."
+            )
 
     def init_dist_attr_for_graph(self):
         assert self._is_initialized_for_program, \
@@ -474,6 +493,19 @@ class DistributedContext:
                 op_dist_attr_for_graph = self.get_op_dist_attr_for_graph(node)
                 dist_op_for_program = self._dist_ops_for_program[op_id]
                 dist_op_for_program.dist_attr = op_dist_attr_for_graph
+        # TODO: the completion algorithm will skip orphan tensors, 
+        # here we just set there process_mesh to the first one.
+        for orphan_node in self._serial_orphan_tensor_nodes:
+            serial_tensor_id = orphan_node.var().id()
+            dist_tensor = self._dist_tensors_for_program.get(serial_tensor_id,
+                                                             None)
+            if dist_tensor:
+                dist_tensor.dist_attr.process_mesh = self._process_meshes[0]
+            else:
+                serial_tensor_id = orphan_node.var().original_id()
+                dist_tensor = self._dist_tensors_for_program.get(
+                    serial_tensor_id, None)
+                dist_tensor.dist_attr.process_mesh = self._process_meshes[0]
 
     def amend_dist_attr_for_program(self):
         for dist_tensor in self._dist_tensors_for_program.values():

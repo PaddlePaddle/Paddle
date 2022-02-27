@@ -90,8 +90,6 @@ class DistributedOperator:
                 tensor_shape = []
             else:
                 tensor_shape = tensor.shape
-            # if tensor_name == "array_write_0.out":
-            #     print(tensor_name, tensor_shape)
             self._serial_outputs[tensor_name] = tensor
             if self._dist_attr.get_output_dims_mapping(tensor_name) is None:
                 tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
@@ -263,17 +261,30 @@ class DistributedModule:
 
     def __call__(self, *args, **kwargs):
         from .dist_context import get_default_distributed_context
-        main_prog = paddle.fluid.default_main_program()
-        main_block = main_prog.global_block()
-        op_size = len(main_block.ops)
+        default_prog = paddle.fluid.default_main_program()
+        cur_block = default_prog.current_block()
+        op_size = len(cur_block.ops)
         output = self._serial_module(*args, **kwargs)
-        new_op_size = len(main_block.ops)
+        new_op_size = len(cur_block.ops)
         default_dist_ctx = get_default_distributed_context()
         for idx in range(op_size, new_op_size):
-            op = main_block.ops[idx]
+            op = cur_block.ops[idx]
             dist_op = DistributedOperator(op, self._dist_attr)
             dist_op.dist_attr.mark_annotated_as(self._dist_attr)
             default_dist_ctx.add_dist_op_for_program(dist_op)
         if isinstance(output, Variable):
             output = [output]
+        # main_prog = paddle.fluid.default_main_program()
+        # main_block = main_prog.global_block()
+        # op_size = len(main_block.ops)
+        # output = self._serial_module(*args, **kwargs)
+        # new_op_size = len(main_block.ops)
+        # default_dist_ctx = get_default_distributed_context()
+        # for idx in range(op_size, new_op_size):
+        #     op = main_block.ops[idx]
+        #     dist_op = DistributedOperator(op, self._dist_attr)
+        #     dist_op.dist_attr.mark_annotated_as(self._dist_attr)
+        #     default_dist_ctx.add_dist_op_for_program(dist_op)
+        # if isinstance(output, Variable):
+        #    output = [output]
         return list(output)
