@@ -44,8 +44,6 @@ void BindPSGPUWrapper(py::module* m) {
       .def("set_slot_offset_vector",
            &framework::PSGPUWrapper::SetSlotOffsetVector,
            py::call_guard<py::gil_scoped_release>())
-      .def("init_GPU_server", &framework::PSGPUWrapper::InitializeGPUServer,
-           py::call_guard<py::gil_scoped_release>())
       .def("set_date", &framework::PSGPUWrapper::SetDate,
            py::call_guard<py::gil_scoped_release>())
       .def("set_dataset", &framework::PSGPUWrapper::SetDataset,
