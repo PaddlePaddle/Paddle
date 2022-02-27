@@ -169,11 +169,6 @@ void BindDistributed(py::module *m) {
          py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
          py::arg("tensor_indices") = std::vector<int64_t>{},
          py::call_guard<py::gil_scoped_release>());
-
-  py::class_<distributed::EagerReducer,
-             std::shared_ptr<distributed::EagerReducer>>(*m, "EagerReducer",
-                                                         R"DOC()DOC")
-      .def(py::init(&CreateEagerReducer));
 }
 
 }  // end namespace pybind
