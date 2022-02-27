@@ -154,7 +154,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         // Here, we use the type of the corresponding forward datatype.
 
         tensor->mutable_data(
-            op.place(), framework::TransToPtenDataType(var->ForwardDataType()));
+            op.place(), framework::TransToPhiDataType(var->ForwardDataType()));
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
                 << " as zero with dtype "
                 << framework::DataTypeToString(var->ForwardDataType());

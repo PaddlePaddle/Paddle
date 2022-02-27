@@ -779,13 +779,13 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
           for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
             auto dtype = ctx->GetInputDataType(in_name, i);
             vec_custom_dtype.emplace_back(
-                paddle::framework::TransToPtenDataType(dtype));
+                paddle::framework::TransToPhiDataType(dtype));
           }
           vec_input_dtypes.emplace_back(vec_custom_dtype);
         } else {
           auto dtype = ctx->GetInputDataType(in_name);
           input_dtypes.emplace_back(
-              paddle::framework::TransToPtenDataType(dtype));
+              paddle::framework::TransToPhiDataType(dtype));
         }
       }
 

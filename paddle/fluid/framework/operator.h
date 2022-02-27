@@ -423,7 +423,7 @@ class ExecutionContext {
             "size(%d).",
             allocation_ptr->size(), phi::product(dim) * sizeof(T)));
 
-    paddle::framework::Tensor temp_tensor(framework::TransToPtenDataType(
+    paddle::framework::Tensor temp_tensor(framework::TransToPhiDataType(
         framework::ToDataType(std::type_index(typeid(T)))));
     temp_tensor.Resize(dim);
     temp_tensor.ResetHolder(std::move(shared_allocation));
@@ -539,7 +539,7 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportGPU() const override {
     auto pten_kernels = phi::KernelFactory::Instance().SelectKernelMap(
-        phi::TransToPtenKernelName(type_));
+        phi::TransToPhiKernelName(type_));
     auto has_pten_kernel =
         std::any_of(pten_kernels.begin(), pten_kernels.end(),
                     [](phi::KernelKeyMap::const_reference kern_pair) {
@@ -609,33 +609,33 @@ class OperatorWithKernel : public OperatorBase {
     * output arguments registered in the original OpMaker do not match in some
     * cases, so we use map to record the arguments required by the kernel.
     * When selecting Kernel during Op execution, select the arguments of the
-    * original Op according to the GetExpectedPtenKernelArgs returned arguments.
+    * original Op according to the GetExpectedPhiKernelArgs returned arguments.
     */
-  phi::KernelSignature GetExpectedPtenKernelArgs(
+  phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to pten lib */
-  phi::KernelKey ChoosePtenKernel(const ExecutionContext& ctx) const;
+  phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
 
   /**
    * Transfer data place for pten kernel
    * Is this really needed?
    */
-  Scope* PreparePtenData(const Scope& scope, const phi::Kernel& pt_kernel,
-                         const phi::KernelSignature& pt_kernel_signature,
-                         RuntimeContext* ctx) const;
+  Scope* PreparePhiData(const Scope& scope, const phi::Kernel& pt_kernel,
+                        const phi::KernelSignature& pt_kernel_signature,
+                        RuntimeContext* ctx) const;
 
-  void BuildPtenKernelContext(const RuntimeContext& ctx,
-                              platform::DeviceContext* dev_ctx,
-                              phi::KernelContext* pt_kernel_context) const;
+  void BuildPhiKernelContext(const RuntimeContext& ctx,
+                             platform::DeviceContext* dev_ctx,
+                             phi::KernelContext* pt_kernel_context) const;
 
-  phi::KernelSignature* PtenKernelSignature() const {
+  phi::KernelSignature* PhiKernelSignature() const {
     return pt_kernel_signature_.get();
   }
 
-  phi::Kernel* PtenKernel() const { return pt_kernel_.get(); }
+  phi::Kernel* PhiKernel() const { return pt_kernel_.get(); }
 
-  void ResetPtenKernel(phi::Kernel* kernel) const {
+  void ResetPhiKernel(phi::Kernel* kernel) const {
     return pt_kernel_.reset(kernel);
   }
 

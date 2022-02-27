@@ -464,7 +464,7 @@ static void inline CreateVariableIfNotExit(
         tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
-            framework::TransToPtenDataType(var_desc.GetDataType()));
+            framework::TransToPhiDataType(var_desc.GetDataType()));
       }
     }
   } else {
@@ -671,56 +671,56 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
 
-  m.def(
-      "_get_all_register_op_kernels",
-      [](const std::string &lib) {
-        std::unordered_map<std::string, std::vector<std::string>>
-            all_kernels_info;
-        if (lib == "fluid" || lib == "all") {
-          auto &all_kernels =
-              paddle::framework::OperatorWithKernel::AllOpKernels();
+  m.def("_get_all_register_op_kernels",
+        [](const std::string &lib) {
+          std::unordered_map<std::string, std::vector<std::string>>
+              all_kernels_info;
+          if (lib == "fluid" || lib == "all") {
+            auto &all_kernels =
+                paddle::framework::OperatorWithKernel::AllOpKernels();
 
-          for (auto &kernel_pair : all_kernels) {
-            auto op_type = kernel_pair.first;
-            std::vector<std::string> kernel_types;
-            for (auto &info_pair : kernel_pair.second) {
-              paddle::framework::OpKernelType kernel_type = info_pair.first;
-              kernel_types.emplace_back(
-                  paddle::framework::KernelTypeToString(kernel_type));
-            }
-            all_kernels_info.emplace(op_type, kernel_types);
-          }
-        }
-        if (lib == "pten" || lib == "all") {
-          auto pten_kernels = phi::KernelFactory::Instance().kernels();
-          for (auto &kernel_pair : pten_kernels) {
-            auto op_type = phi::TransToFluidOpName(kernel_pair.first);
-            std::vector<std::string> kernel_types;
-            for (auto &info_pair : kernel_pair.second) {
-              framework::OpKernelType kernel_type =
-                  framework::TransPtenKernelKeyToOpKernelType(info_pair.first);
-              auto kernel_type_str = framework::KernelTypeToString(kernel_type);
-              if (all_kernels_info.count(op_type)) {
-                if (std::find(all_kernels_info[op_type].begin(),
-                              all_kernels_info[op_type].end(),
-                              kernel_type_str) ==
-                    all_kernels_info[op_type].end()) {
-                  all_kernels_info[op_type].emplace_back(kernel_type_str);
-                }
-              } else {
-                kernel_types.emplace_back(kernel_type_str);
+            for (auto &kernel_pair : all_kernels) {
+              auto op_type = kernel_pair.first;
+              std::vector<std::string> kernel_types;
+              for (auto &info_pair : kernel_pair.second) {
+                paddle::framework::OpKernelType kernel_type = info_pair.first;
+                kernel_types.emplace_back(
+                    paddle::framework::KernelTypeToString(kernel_type));
               }
-            }
-            if (!kernel_types.empty()) {
               all_kernels_info.emplace(op_type, kernel_types);
             }
           }
-        }
+          if (lib == "pten" || lib == "all") {
+            auto pten_kernels = phi::KernelFactory::Instance().kernels();
+            for (auto &kernel_pair : pten_kernels) {
+              auto op_type = phi::TransToFluidOpName(kernel_pair.first);
+              std::vector<std::string> kernel_types;
+              for (auto &info_pair : kernel_pair.second) {
+                framework::OpKernelType kernel_type =
+                    framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
+                auto kernel_type_str =
+                    framework::KernelTypeToString(kernel_type);
+                if (all_kernels_info.count(op_type)) {
+                  if (std::find(all_kernels_info[op_type].begin(),
+                                all_kernels_info[op_type].end(),
+                                kernel_type_str) ==
+                      all_kernels_info[op_type].end()) {
+                    all_kernels_info[op_type].emplace_back(kernel_type_str);
+                  }
+                } else {
+                  kernel_types.emplace_back(kernel_type_str);
+                }
+              }
+              if (!kernel_types.empty()) {
+                all_kernels_info.emplace(op_type, kernel_types);
+              }
+            }
+          }
 
-        return all_kernels_info;
-      },
-      py::arg("lib") = "all",
-      R"DOC(
+          return all_kernels_info;
+        },
+        py::arg("lib") = "all",
+        R"DOC(
            Return the registered kernels in paddle.
 
            Args:
@@ -823,39 +823,39 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::MLUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_clear", &framework::Tensor::clear)
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::NPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)

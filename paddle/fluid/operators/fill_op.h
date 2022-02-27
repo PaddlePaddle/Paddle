@@ -49,7 +49,7 @@ class FillKernel : public framework::OpKernel<T> {
     out.Resize(phi::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    auto pten_dtype = framework::TransToPtenDataType(dtype);
+    auto pten_dtype = framework::TransToPhiDataType(dtype);
     platform::CPUPlace cpu;
     auto force_cpu = ctx.Attr<bool>("force_cpu");
     out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), pten_dtype);

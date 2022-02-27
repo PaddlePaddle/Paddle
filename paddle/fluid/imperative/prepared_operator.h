@@ -225,7 +225,7 @@ const inline framework::Attribute& GetAttr(
 }
 
 template <typename VarType>
-void BuildDygraphPtenKernelContext(
+void BuildDygraphPhiKernelContext(
     const framework::KernelSignature& pt_kernel_signature,
     const phi::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
@@ -327,7 +327,7 @@ void BuildDygraphPtenKernelContext(
       experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
                                                       output_defs.at(i));
       framework::SetAllocationForOutputTenosr(
-          tensor_out, phi::TransToPtenPlace(output_defs.at(i).backend));
+          tensor_out, phi::TransToPhiPlace(output_defs.at(i).backend));
 
       kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
@@ -369,7 +369,7 @@ void BuildDygraphPtenKernelContext(
         auto& ins_vector = ins.at(attr_names[i]);
         if (ins_vector.size() == 1) {  // ShapeTensor
           kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePtenScalarArrayFromVar(ins_vector[0]->Var())));
+              experimental::MakePhiScalarArrayFromVar(ins_vector[0]->Var())));
         } else {  // ShapeTensorList
           std::vector<framework::Variable*> variables;
           variables.reserve(ins_vector.size());
@@ -377,7 +377,7 @@ void BuildDygraphPtenKernelContext(
             variables.push_back(var_base->MutableVar());
           }
           kernel_ctx->EmplaceBackAttr(std::move(
-              experimental::MakePtenScalarArrayFromVarList(variables)));
+              experimental::MakePhiScalarArrayFromVarList(variables)));
         }
       }
     } else if (attr_defs[i].type_index ==
@@ -409,7 +409,7 @@ void BuildDygraphPtenKernelContext(
       } else {  // scalar is in the input
         auto& ins_vector = ins.at(attr_names[i]);
         kernel_ctx->EmplaceBackAttr(std::move(
-            experimental::MakePtenScalarFromVar(ins_vector[0]->Var())));
+            experimental::MakePhiScalarFromVar(ins_vector[0]->Var())));
       }
 
     } else {
@@ -428,7 +428,7 @@ void BuildDygraphPtenKernelContext(
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(phi::DataType))) {
-        auto data_type = framework::TransToPtenDataType(
+        auto data_type = framework::TransToPhiDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         kernel_ctx->EmplaceBackAttr(data_type);
@@ -436,7 +436,7 @@ void BuildDygraphPtenKernelContext(
                  std::type_index(typeid(std::vector<int64_t>))) {
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int>))) {
-          // Emplace Back Attr according to the type of Pten_Kernel args.
+          // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
                                                        vector_int_attr.end());
@@ -456,9 +456,9 @@ void BuildDygraphPtenKernelContext(
 }
 
 template <typename VarType>
-void PreparePtenData(const phi::Kernel& pt_kernel,
-                     const framework::KernelSignature& pt_kernel_signature,
-                     const NameVarMap<VarType>& ins) {
+void PreparePhiData(const phi::Kernel& pt_kernel,
+                    const framework::KernelSignature& pt_kernel_signature,
+                    const NameVarMap<VarType>& ins) {
   auto& input_names = std::get<0>(pt_kernel_signature.args);
   auto& input_defs = pt_kernel.args_def().input_defs();
 
@@ -482,12 +482,12 @@ void PreparePtenData(const phi::Kernel& pt_kernel,
         if (in_def.backend == phi::Backend::ALL_BACKEND) {
           continue;
         }
-        auto expected_place = phi::TransToPtenPlace(in_def.backend);
+        auto expected_place = phi::TransToPhiPlace(in_def.backend);
         if (platform::is_same_place(tensor_in->place(), expected_place)) {
           continue;
         }
 
-        VLOG(3) << "Pten Transform Variable " << input_names[i] << " from "
+        VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;
 
         framework::Tensor tmp_tensor;

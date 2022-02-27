@@ -113,7 +113,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
     auto fetch_dtype = fetch_info.dataType();
     auto paddle_type = PopartType2VarType(fetch_dtype);
     tensor->mutable_data(ctx.GetPlace(),
-                         framework::TransToPtenDataType(paddle_type));
+                         framework::TransToPhiDataType(paddle_type));
     anchor_wrappers.emplace(tensor_id, PaddleIArray(tensor));
     popart_anchors.emplace(tensor_id, anchor_wrappers.at(tensor_id));
   }

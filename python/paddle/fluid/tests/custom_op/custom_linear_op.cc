@@ -17,9 +17,9 @@ limitations under the License. */
 #include "paddle/extension.h"
 
 // The linear implemented here must be passed in bias
-std::vector<paddle::Tensor> PtenLinearForward(const paddle::Tensor& x,
-                                              const paddle::Tensor& weight,
-                                              const paddle::Tensor& bias) {
+std::vector<paddle::Tensor> PhiLinearForward(const paddle::Tensor& x,
+                                             const paddle::Tensor& weight,
+                                             const paddle::Tensor& bias) {
   return {
       paddle::experimental::add(paddle::experimental::matmul(x, weight), bias)};
 }
@@ -90,6 +90,6 @@ std::vector<paddle::DataType> LinearInferDtype(
 PD_BUILD_OP(pten_linear)
     .Inputs({"X", "Weight", "Bias"})
     .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(PtenLinearForward))
+    .SetKernelFn(PD_KERNEL(PhiLinearForward))
     .SetInferShapeFn(PD_INFER_SHAPE(LinearInferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(LinearInferDtype));

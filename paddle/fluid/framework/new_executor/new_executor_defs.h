@@ -321,7 +321,7 @@ class Instruction {
 
   OpKernelComputeFunc KernelFunc() const;
 
-  phi::Kernel* PtenKernel() const;
+  phi::Kernel* PhiKernel() const;
 
   OpFuncType KernelType() const;
 

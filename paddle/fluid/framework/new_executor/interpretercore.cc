@@ -417,17 +417,17 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
       // fit for pten
-      if (instr_node.PtenKernel() && instr_node.PtenKernel()->IsValid()) {
+      if (instr_node.PhiKernel() && instr_node.PhiKernel()->IsValid()) {
         VLOG(4) << "Run pten kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
         phi::KernelContext pt_kernel_context;
-        op_with_kernel->BuildPtenKernelContext(
+        op_with_kernel->BuildPhiKernelContext(
             *instr_node.InnerRuntimeContext().get(),
             const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
             &pt_kernel_context);
 
-        (*instr_node.PtenKernel())(&pt_kernel_context);
+        (*instr_node.PhiKernel())(&pt_kernel_context);
 
       } else {
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());

@@ -44,7 +44,7 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     // call pten kernel
     phi::ScaleKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
+        static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *in, scale, bias, bias_after_scale, out);
   }

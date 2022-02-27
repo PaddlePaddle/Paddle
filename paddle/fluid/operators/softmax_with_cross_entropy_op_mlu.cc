@@ -87,7 +87,7 @@ class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "If soft_label=False, axis must be -1 or"
                             " can be regard as last dimention in mlu kernel."));
-      framework::Tensor labels_int32(framework::TransToPtenDataType(VT::INT32));
+      framework::Tensor labels_int32(framework::TransToPhiDataType(VT::INT32));
       labels_int32.Resize(labels->dims());
       labels_int32.mutable_data<int32_t>(ctx.GetPlace());
 

@@ -37,7 +37,7 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.device_context<DeviceContext>();
     int axis = ctx.Attr<int>("axis");
     phi::AddRawKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
+        static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE &>(dev_ctx),
         *x, *y, axis, z);
   }

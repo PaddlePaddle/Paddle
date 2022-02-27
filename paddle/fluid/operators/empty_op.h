@@ -39,7 +39,7 @@ class EmptyKernel : public framework::OpKernel<T> {
     out_tensor->Resize(shape);
 
     out_tensor->mutable_data(context.GetPlace(),
-                             framework::TransToPtenDataType(dtype));
+                             framework::TransToPhiDataType(dtype));
   }
 };
 

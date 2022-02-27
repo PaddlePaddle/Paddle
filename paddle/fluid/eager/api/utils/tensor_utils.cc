@@ -43,7 +43,7 @@ paddle::experimental::Tensor CreateTensorWithValue(
     bool is_leaf) {
   paddle::experimental::Tensor out = paddle::experimental::full(
       phi::vectorize(ddim), paddle::experimental::Scalar(value), dtype,
-      phi::TransToPtenBackend(place));
+      phi::TransToPhiBackend(place));
 
   auto meta = EagerUtils::autograd_meta(&out);
   if (is_leaf) {

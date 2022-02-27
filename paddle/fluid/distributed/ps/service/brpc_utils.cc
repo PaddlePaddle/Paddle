@@ -238,7 +238,7 @@ void DeserializeLodTensor(framework::Variable* var, const VarMsg& msg,
 
   void* tensor_data = tensor->mutable_data(
       place,
-      framework::TransToPtenDataType(VarMessageToVarType(msg.data_type())));
+      framework::TransToPhiDataType(VarMessageToVarType(msg.data_type())));
 
   // IO Buffer
   if (platform::is_cpu_place(place)) {
@@ -281,7 +281,7 @@ void DeserializeSelectedRows(
   tensor->Resize(phi::make_ddim(vec_dim));
   void* tensor_data = tensor->mutable_data(
       place,
-      framework::TransToPtenDataType(VarMessageToVarType(msg.data_type())));
+      framework::TransToPhiDataType(VarMessageToVarType(msg.data_type())));
   // IO Buffer
   if (platform::is_cpu_place(place)) {
     unsigned long data_len;                                 // NOLINT

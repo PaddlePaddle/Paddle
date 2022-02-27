@@ -85,7 +85,7 @@ inline cnnlDataType_t ToCnnlDataType(
 
 inline cnnlDataType_t ToCnnlDataType(
     const paddle::framework::proto::VarType::Type& type) {
-  return ToCnnlDataType(framework::TransToPtenDataType(type));
+  return ToCnnlDataType(framework::TransToPhiDataType(type));
 }
 
 template <typename T>

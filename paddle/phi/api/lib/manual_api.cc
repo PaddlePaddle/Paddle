@@ -64,11 +64,11 @@ PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking) {
   // 4. Prepare outputs & InferMeta
   auto dense_out = std::make_shared<phi::DenseTensor>(
       phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPtenPlace(backend)),
+          phi::TransToPhiPlace(backend)),
       phi::DenseTensorMeta());
   phi::MetaTensor meta_out(dense_out.get());
   phi::UnchangedInferMeta(*dense_x, &meta_out);
-  dense_out->mutable_data(phi::TransToPtenPlace(backend));
+  dense_out->mutable_data(phi::TransToPhiPlace(backend));
   kernel_context.EmplaceBackOutput(dense_out.get());
   Tensor out;
   out.set_impl(dense_out);

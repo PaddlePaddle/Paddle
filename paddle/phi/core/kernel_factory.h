@@ -225,8 +225,8 @@ class KernelFactory {
 
   KernelNameMap& kernels() { return kernels_; }
 
-  bool HasCompatiblePtenKernel(const std::string& op_type) const {
-    return kernels_.find(TransToPtenKernelName(op_type)) != kernels_.end();
+  bool HasCompatiblePhiKernel(const std::string& op_type) const {
+    return kernels_.find(TransToPhiKernelName(op_type)) != kernels_.end();
   }
 
   const Kernel& SelectKernelOrThrowError(const std::string& kernel_name,

@@ -144,7 +144,7 @@ class CompatMetaTensor : public phi::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return paddle::framework::TransToPtenDataType(var->GetDataType());
+      return paddle::framework::TransToPhiDataType(var->GetDataType());
     }
   }
 
@@ -341,10 +341,10 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           }
           if (infershape_inputs.size() != 1) {
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePtenScalarArrayFromVarList(vars)));
+                std::move(experimental::MakePhiScalarArrayFromVarList(vars)));
           } else {
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePtenScalarArrayFromVar(*vars[0])));
+                std::move(experimental::MakePhiScalarArrayFromVar(*vars[0])));
           }
         } else {
           // If is not in runtime, we will set default value(-1) for ScalarArray
@@ -419,7 +419,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           if (ctx->IsRuntime()) {
             Variable* var = BOOST_GET_CONST(Variable*, infershape_input[0]);
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePtenScalarFromVar(*var)));
+                std::move(experimental::MakePhiScalarFromVar(*var)));
           } else {
             phi::Scalar tensor_scalar(-1);
             tensor_scalar.SetFromTensor(true);
@@ -481,7 +481,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             BOOST_GET_CONST(std::vector<std::string>, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(phi::DataType))) {
-        auto data_type = paddle::framework::TransToPtenDataType(
+        auto data_type = paddle::framework::TransToPhiDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         infer_meta_context.EmplaceBackAttr(data_type);

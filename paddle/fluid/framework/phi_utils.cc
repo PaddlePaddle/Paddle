@@ -57,12 +57,11 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
   paddle::SmallVector<std::string> attr_names_;
 };
 
-OpKernelType TransPtenKernelKeyToOpKernelType(
-    const phi::KernelKey& kernel_key) {
+OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
   proto::VarType::Type data_type =
       paddle::framework::TransToProtoVarType(kernel_key.dtype());
   // no need to set current device id here
-  platform::Place place = phi::TransToPtenPlace(kernel_key.backend(), false);
+  platform::Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
   if (kernel_key.backend() == phi::Backend::MKLDNN) {
@@ -76,9 +75,9 @@ OpKernelType TransPtenKernelKeyToOpKernelType(
   return OpKernelType(data_type, place, data_layout, library_type);
 }
 
-phi::KernelKey TransOpKernelTypeToPtenKernelKey(
+phi::KernelKey TransOpKernelTypeToPhiKernelKey(
     const OpKernelType& kernel_type) {
-  phi::Backend backend = phi::TransToPtenBackend(kernel_type.place_);
+  phi::Backend backend = phi::TransToPhiBackend(kernel_type.place_);
   if (kernel_type.library_type_ == LibraryType::kMKLDNN) {
     backend = phi::Backend::MKLDNN;
   } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
@@ -88,7 +87,7 @@ phi::KernelKey TransOpKernelTypeToPtenKernelKey(
   }
   paddle::experimental::DataLayout layout = kernel_type.data_layout_;
   paddle::experimental::DataType dtype =
-      paddle::framework::TransToPtenDataType(kernel_type.data_type_);
+      paddle::framework::TransToPhiDataType(kernel_type.data_type_);
   return phi::KernelKey(backend, layout, dtype);
 }
 
@@ -132,17 +131,17 @@ KernelArgsNameMakerByOpProto::GetInputArgsNames() {
     auto& in = op_proto_->inputs()[i];
     auto& in_name = in.name();
     if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
-      VLOG(6) << "Parse PtenKernel input: skip extra & quant input - "
+      VLOG(6) << "Parse PhiKernel input: skip extra & quant input - "
               << in_name;
       continue;
     }
     // If contains dispensable input, we should override the
     // OpArgumentMapping method self in phi/ops/compat dir
     if (in.has_dispensable() && in.dispensable()) {
-      VLOG(6) << "Parse PtenKernel input: skip dispensable input - " << in_name;
+      VLOG(6) << "Parse PhiKernel input: skip dispensable input - " << in_name;
       continue;
     }
-    VLOG(6) << "Parse PtenKernel input: " << in_name;
+    VLOG(6) << "Parse PhiKernel input: " << in_name;
     input_names_.emplace_back(in_name);
   }
   return input_names_;
@@ -154,11 +153,11 @@ KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
     auto& out = op_proto_->outputs()[i];
     auto& out_name = out.name();
     if ((out.has_extra() && out.extra()) || (out.has_quant() && out.quant())) {
-      VLOG(6) << "Parse PtenKernel output: skip extra & quant output - "
+      VLOG(6) << "Parse PhiKernel output: skip extra & quant output - "
               << out_name;
       continue;
     }
-    VLOG(6) << "Parse PtenKernel output: " << out_name;
+    VLOG(6) << "Parse PhiKernel output: " << out_name;
     output_names_.emplace_back(out_name);
   }
   return output_names_;
@@ -173,17 +172,17 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
         attr_name == "op_role" || attr_name == "op_role_var" ||
         attr_name == "op_namescope" || attr_name == "op_callstack" ||
         attr_name == "op_device") {
-      VLOG(6) << "Parse PtenKernel attribute: skip needless attr - "
+      VLOG(6) << "Parse PhiKernel attribute: skip needless attr - "
               << attr_name;
       continue;
     }
     if ((attr.has_extra() && attr.extra()) ||
         (attr.has_quant() && attr.quant())) {
-      VLOG(6) << "Parse PtenKernel attribute: skip extra & quant attr - "
+      VLOG(6) << "Parse PhiKernel attribute: skip extra & quant attr - "
               << attr_name;
       continue;
     }
-    VLOG(6) << "Parse PtenKernel attribute: " << attr_name;
+    VLOG(6) << "Parse PhiKernel attribute: " << attr_name;
     attr_names_.emplace_back(attr_name);
   }
 
@@ -191,7 +190,7 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
 }
 
 KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(phi::TransToPtenKernelName(op_proto_->type()),
+  return KernelSignature(phi::TransToPhiKernelName(op_proto_->type()),
                          GetInputArgsNames(), GetAttrsArgsNames(),
                          GetOutputArgsNames());
 }
@@ -203,7 +202,7 @@ void InitDefaultKernelSignatureMap() {
     for (const auto& pair : paddle::framework::OpInfoMap::Instance().map()) {
       const auto& op_type = pair.first;
       const auto* op_proto = pair.second.proto_;
-      if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op_type) &&
+      if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type) &&
           op_proto) {
         paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register kernel signature for " << op_type;

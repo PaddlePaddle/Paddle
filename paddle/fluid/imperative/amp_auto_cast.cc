@@ -75,7 +75,7 @@ OpSupportedInfos(const std::string& place,
     auto op_type = phi::TransToFluidOpName(kernel_pair.first);
     for (auto& info_pair : kernel_pair.second) {
       framework::OpKernelType kernel_type =
-          framework::TransPtenKernelKeyToOpKernelType(info_pair.first);
+          framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
       if (is_target_place[query_place](kernel_type.place_) &&
           kernel_type.data_type_ == dtype && all_ops.count(op_type)) {
         VLOG(4) << op_type << " " << supported_ops.size();

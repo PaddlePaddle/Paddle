@@ -360,7 +360,7 @@ void Tensor::copy_(const Tensor &src, bool blocking) {
                           src.name()));
   }
   auto copy_tensor =
-      src.copy_to(phi::TransToPtenBackend(src.inner_place()), blocking);
+      src.copy_to(phi::TransToPhiBackend(src.inner_place()), blocking);
   set_impl(copy_tensor.impl());
 }
 

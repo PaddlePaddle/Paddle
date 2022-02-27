@@ -34,7 +34,7 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
     int axis = ctx.Attr<int>("axis");
     phi::SubtractRawKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
+        static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *x, *y, axis, z);
   }
@@ -56,7 +56,7 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     phi::SubtractGradKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
+        static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *x, *y, *dout, axis, dx, dy);
   }
@@ -86,7 +86,7 @@ class ElementwiseSubDoubleGradKernel : public framework::OpKernel<T> {
       ddy_optional = *ddy;
     }
     phi::SubtractDoubleGradKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
+        static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *y, ddx_optional, ddy_optional, *dout, axis, ddout);
   }

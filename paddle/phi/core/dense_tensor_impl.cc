@@ -161,7 +161,7 @@ void* DenseTensor::mutable_data(const Place& place,
 /* @jim19930609: The following "mutable_data" only supports specific dtypes
    defined in OpProto. This part need another clean up once the data type across
    Fluid
-   and Pten get unified.
+   and Phi get unified.
    */
 template <typename T>
 inline T* DenseTensor::mutable_data(const DDim& dims,

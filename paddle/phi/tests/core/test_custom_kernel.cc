@@ -148,9 +148,9 @@ TEST(CustomKernel, custom_kernel_dot) {
   // 3.before register
   auto& kernel_factory_instance = phi::KernelFactory::Instance();
   auto& kernels = phi::KernelFactory::Instance().kernels();
-  EXPECT_TRUE(!kernel_factory_instance.HasCompatiblePtenKernel(op_name));
+  EXPECT_TRUE(!kernel_factory_instance.HasCompatiblePhiKernel(op_name));
 
-  // mock fake_dot is supported by phi for HasCompatiblePtenKernel check while
+  // mock fake_dot is supported by phi for HasCompatiblePhiKernel check while
   // registering
   auto& fake_dot_kernels = kernels[op_name];
 
@@ -251,7 +251,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   phi::dtype::float16 fake_attr_f16 = phi::dtype::float16(5);
   phi::DataType fake_attr_dtype = phi::DataType::UINT32;
   paddle::framework::LoDTensor tmp_tensor;
-  tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPtenPlace(backend));
+  tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPhiPlace(backend));
   phi::Scalar fake_attr_scalar{tmp_tensor};
   phi::ScalarArray fake_attr_scalar_array;
   std::vector<int64_t> fake_attr_int64_vec;
@@ -271,7 +271,7 @@ TEST(CustomKernel, custom_kernel_dot) {
 
   auto dense_out = std::make_shared<phi::DenseTensor>(
       phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPtenPlace(backend)),
+          phi::TransToPhiPlace(backend)),
       phi::DenseTensorMeta());
 
   phi::MetaTensor meta_out(dense_out.get());

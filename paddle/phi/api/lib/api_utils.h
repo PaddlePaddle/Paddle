@@ -74,7 +74,7 @@ inline phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor) {
 inline phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
   if (!out->initialized()) {
     auto dense_tensor = std::make_shared<phi::DenseTensor>(
-        phi::make_intrusive<SharedStorage>(phi::TransToPtenPlace(backend)),
+        phi::make_intrusive<SharedStorage>(phi::TransToPhiPlace(backend)),
         phi::DenseTensorMeta());
     out->set_impl(dense_tensor);
     return dense_tensor.get();
@@ -88,7 +88,7 @@ inline std::vector<phi::DenseTensor*> SetKernelOutput(
   std::vector<phi::DenseTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {
     auto tensor_ptr = std::make_shared<phi::DenseTensor>(
-        phi::make_intrusive<SharedStorage>(phi::TransToPtenPlace(backend)),
+        phi::make_intrusive<SharedStorage>(phi::TransToPhiPlace(backend)),
         phi::DenseTensorMeta());
     results[i] = tensor_ptr.get();
     out->emplace_back();
