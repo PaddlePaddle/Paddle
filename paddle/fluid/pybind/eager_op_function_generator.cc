@@ -32,7 +32,7 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
-// pten
+// phi
 #include "paddle/phi/kernels/declarations.h"
 
 // clang-format off
@@ -365,7 +365,7 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    // if the pten lib contains op kernel, we still generate ops method
+    // if the phi lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
         !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;

@@ -49,7 +49,7 @@ limitations under the License. */
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"
 
-// TODO(pten): remove fluid header.
+// TODO(phi): remove fluid header.
 #include "paddle/fluid/platform/enforce.h"
 
 namespace phi {

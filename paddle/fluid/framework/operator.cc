@@ -1222,7 +1222,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         && !is_xpu_unsupport
 #endif
         ) {
-      run_pten_kernel_ = true;
+      run_phi_kernel_ = true;
     } else {
       auto& all_op_kernels = AllOpKernels();
       auto kernels_iter = all_op_kernels.find(type_);
@@ -1244,12 +1244,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
                   << " | kernel key: " << pt_cpu_kernel_key
                   << " | kernel: " << *pt_kernel_;
-          run_pten_kernel_ = true;
+          run_phi_kernel_ = true;
         }
       }
     }
   }
-  if (!run_pten_kernel_) {
+  if (!run_phi_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
       dev_ctx = pool.Get(kernel_type_->place_);
@@ -1290,7 +1290,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
-    if (run_pten_kernel_) {
+    if (run_phi_kernel_) {
       phi::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
       // TODO(zhiqiu): support TransferInplaceVarsBack
@@ -1986,7 +1986,7 @@ Scope* OperatorWithKernel::PreparePhiData(
         continue;
       }
 
-      VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
+      VLOG(3) << "phi Transform Variable " << input_names[i] << " from "
               << tensor_in->place() << " to " << expected_place;
 
       if (!new_scope) {

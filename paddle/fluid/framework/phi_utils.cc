@@ -97,8 +97,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(expected_kernel_key.place_) ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {
-    VLOG(3) << "pten missing XPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
+    VLOG(3) << "phi missing XPU kernel: " << op.Type()
+            << "phipected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());
@@ -106,8 +106,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "pten missing NPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
+    VLOG(3) << "phi missing NPU kernel: " << op.Type()
+            << "phipected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());
@@ -115,8 +115,8 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #endif
 #ifdef PADDLE_WITH_MLU
   if (platform::is_mlu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "pten missing MLU kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
+    VLOG(3) << "phi missing MLU kernel: " << op.Type()
+            << "phipected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());

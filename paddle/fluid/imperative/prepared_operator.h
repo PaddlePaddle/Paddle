@@ -201,9 +201,9 @@ class PreparedOp {
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
   // NOTE(chenweihang): Similar op members are used to adapt to
-  // new pten kernel, if there is a better design in the future,
+  // new phi kernel, if there is a better design in the future,
   // we may polish the implementation here
-  bool run_pten_kernel_{false};
+  bool run_phi_kernel_{false};
   bool run_kp_kernel_{false};
   framework::KernelSignature pt_kernel_signature_;
   phi::Kernel pt_kernel_;

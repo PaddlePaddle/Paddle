@@ -91,17 +91,17 @@ std::string TransToPhiKernelName(const std::string& fluid_op_name) {
   return OpUtilsMap::Instance().GetBaseKernelName(fluid_op_name);
 }
 
-const std::string& TransToFluidOpName(const std::string& pten_kernel_name) {
+const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
   auto& base_kernel_name_map = OpUtilsMap::Instance().base_kernel_name_map();
   auto it = std::find_if(base_kernel_name_map.begin(),
                          base_kernel_name_map.end(),
-                         [&pten_kernel_name](const auto& pair) {
-                           return pair.second == pten_kernel_name;
+                         [&phi_kernel_name](const auto& pair) {
+                           return pair.second == phi_kernel_name;
                          });
   if (it != base_kernel_name_map.end()) {
     return it->first;
   }
-  return pten_kernel_name;
+  return phi_kernel_name;
 }
 
 }  // namespace phi

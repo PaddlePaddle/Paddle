@@ -538,14 +538,14 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   bool SupportGPU() const override {
-    auto pten_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+    auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
         phi::TransToPhiKernelName(type_));
-    auto has_pten_kernel =
-        std::any_of(pten_kernels.begin(), pten_kernels.end(),
+    auto has_phi_kernel =
+        std::any_of(phi_kernels.begin(), phi_kernels.end(),
                     [](phi::KernelKeyMap::const_reference kern_pair) {
                       return kern_pair.first.backend() == phi::Backend::GPU;
                     });
-    if (has_pten_kernel) {
+    if (has_phi_kernel) {
       return true;
     } else {
       auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
@@ -558,7 +558,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   bool SupportNPU() const override {
-    // TODO(zhiqiu): support pten if needed?
+    // TODO(zhiqiu): support phi if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
@@ -566,7 +566,7 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
   bool SupportMLU() const override {
-    // TODO(zhiqiu): support pten if needed?
+    // TODO(zhiqiu): support phi if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
@@ -603,7 +603,7 @@ class OperatorWithKernel : public OperatorBase {
     return kernel_type_->place_;
   }
 
-  /* member functions for adapting to pten lib */
+  /* member functions for adapting to phi lib */
   /** In the Tensor calculation library, the new Kernel adopts a clearer and
     * more streamlined design. The arguments of the Kernel and the input and
     * output arguments registered in the original OpMaker do not match in some
@@ -614,11 +614,11 @@ class OperatorWithKernel : public OperatorBase {
   phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
 
-  /* member functions for adapting to pten lib */
+  /* member functions for adapting to phi lib */
   phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
 
   /**
-   * Transfer data place for pten kernel
+   * Transfer data place for phi kernel
    * Is this really needed?
    */
   Scope* PreparePhiData(const Scope& scope, const phi::Kernel& pt_kernel,
@@ -692,9 +692,9 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
   // NOTE(chenweihang): Similar op members are used to adapt to
-  // new pten kernel, if there is a better design in the future,
+  // new phi kernel, if there is a better design in the future,
   // we may polish the implementation here
-  mutable bool run_pten_kernel_ = false;
+  mutable bool run_phi_kernel_ = false;
   mutable bool run_kp_kernel = false;
   mutable std::unique_ptr<phi::KernelSignature> pt_kernel_signature_;
   mutable std::unique_ptr<phi::Kernel> pt_kernel_;

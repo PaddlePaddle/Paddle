@@ -42,7 +42,7 @@ class ScaleXPUKernel : public framework::OpKernel<T> {
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
     out->mutable_data<T>(in->place());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    // call pten kernel
+    // call phi kernel
     phi::ScaleKernel<T>(
         static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),

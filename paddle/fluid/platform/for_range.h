@@ -29,7 +29,7 @@ struct ForRange {
   void operator()(Function func) const;
 };
 
-// NOTE: After the pten kernel is migrated, it needs to be deleted.
+// NOTE: After the phi kernel is migrated, it needs to be deleted.
 template <>
 struct ForRange<CPUDeviceContext> {
   ForRange(const CPUDeviceContext& dev_ctx, size_t limit) : limit_(limit) {}
@@ -73,7 +73,7 @@ __global__ static void ForRangeElemwiseOp(Function func, size_t limit) {
   }
 }
 
-// NOTE: After the pten kernel is migrated, it needs to be deleted.
+// NOTE: After the phi kernel is migrated, it needs to be deleted.
 template <>
 struct ForRange<CUDADeviceContext> {
   ForRange(const CUDADeviceContext& dev_ctx, size_t limit)

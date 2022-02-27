@@ -26,4 +26,4 @@ void ExpandKernel(const Context& ctx,
                   const ScalarArray& shape,
                   DenseTensor* out);
 
-}  // namepsace pten
+}  // namepsace phi

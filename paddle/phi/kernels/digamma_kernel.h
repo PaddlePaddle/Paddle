@@ -21,4 +21,4 @@ namespace phi {
 template <typename T, typename Context>
 void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
 
-}  // namepsace pten
+}  // namepsace phi

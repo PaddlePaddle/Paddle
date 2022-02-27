@@ -690,9 +690,9 @@ PYBIND11_MODULE(core_noavx, m) {
               all_kernels_info.emplace(op_type, kernel_types);
             }
           }
-          if (lib == "pten" || lib == "all") {
-            auto pten_kernels = phi::KernelFactory::Instance().kernels();
-            for (auto &kernel_pair : pten_kernels) {
+          if (lib == "phi" || lib == "all") {
+            auto phi_kernels = phi::KernelFactory::Instance().kernels();
+            for (auto &kernel_pair : phi_kernels) {
               auto op_type = phi::TransToFluidOpName(kernel_pair.first);
               std::vector<std::string> kernel_types;
               for (auto &info_pair : kernel_pair.second) {
@@ -724,7 +724,7 @@ PYBIND11_MODULE(core_noavx, m) {
            Return the registered kernels in paddle.
 
            Args:
-               lib[string]: the libarary, could be 'pten', 'fluid' and 'all'.
+               lib[string]: the libarary, could be 'phi', 'fluid' and 'all'.
            )DOC");
 
   // NOTE(zjl): ctest would load environment variables at the beginning even

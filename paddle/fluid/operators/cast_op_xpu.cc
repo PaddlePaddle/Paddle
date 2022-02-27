@@ -48,7 +48,7 @@ class CastXPUKernel : public framework::OpKernel<InT> {
 
     auto pt_out_dtype = framework::TransToPhiDataType(
         static_cast<framework::proto::VarType::Type>(out_dtype));
-    // call pten kernel
+    // call phi kernel
     phi::CastKernel<InT>(
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),

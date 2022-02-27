@@ -407,14 +407,14 @@ void build_op_func_list(const platform::Place& place,
       auto exec_ctx =
           ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
-      auto run_pten_kernel = false;
+      auto run_phi_kernel = false;
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
               op_with_kernel->Type())) {
         auto pt_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
         auto pt_kernel_name = op_with_kernel->PhiKernelSignature()->name;
 
         if (op_with_kernel->PhiKernel()->IsValid()) {
-          run_pten_kernel = true;
+          run_phi_kernel = true;
         } else {
           auto kernels_iter = all_op_kernels.find(op_with_kernel->Type());
           if (kernels_iter == all_op_kernels.end() ||
@@ -430,14 +430,14 @@ void build_op_func_list(const platform::Place& place,
                       << pt_kernel_name
                       << " | kernel key: " << pt_cpu_kernel_key
                       << " | kernel: " << *(op_with_kernel->PhiKernel());
-              run_pten_kernel = true;
+              run_phi_kernel = true;
             }
           }
         }
       }
       VLOG(3) << op_with_kernel->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
-      if (run_pten_kernel) {
+      if (run_phi_kernel) {
         phi::KernelContext pt_kernel_context;
         op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
                                               &pt_kernel_context);

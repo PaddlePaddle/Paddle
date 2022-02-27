@@ -23,7 +23,7 @@ limitations under the License. */
 namespace phi {
 
 std::string TransToPhiKernelName(const std::string& fluid_op_name);
-const std::string& TransToFluidOpName(const std::string& pten_kernel_name);
+const std::string& TransToFluidOpName(const std::string& phi_kernel_name);
 
 Backend TransToPhiBackend(const phi::Place& place);
 phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id = true);

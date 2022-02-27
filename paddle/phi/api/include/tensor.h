@@ -49,8 +49,6 @@ namespace paddle {
 
 namespace experimental {
 
-class CompatiblePTenTensorUtils;
-
 class AbstractAutogradMeta {
  public:
   // No AbstractAutogradMeta should be created
@@ -59,7 +57,7 @@ class AbstractAutogradMeta {
 
 /**
  * Tensor is the API description of the basic data structure in the
- * [ "Paddle Tensor Operation (pten)" Library ].
+ * [ "Paddle Tensor Operation (phi)" Library ].
  *
  * It is not limited to a simple n-dimensional array.
  * It contains a smart pointer to `TensorImpl`. The data description contained
@@ -366,7 +364,7 @@ class PADDLE_API Tensor final {
   /* Part 5: Data Transform methods */
   /* Alert!!!!: All copy method can only deep copy impl, autograd info only be
    * copied */
-  /* out of pten */
+  /* out of phi */
   /**
    * @brief Copy the current Tensor data to the specified device
    * and return the new Tensor. It's usually used to set the input tensor data.
@@ -475,9 +473,6 @@ class PADDLE_API Tensor final {
   void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta);
 
   /* Part 9: Auto generated Tensor methods */
-
- private:
-  friend class CompatiblePTenTensorUtils;
 
  private:
   /**

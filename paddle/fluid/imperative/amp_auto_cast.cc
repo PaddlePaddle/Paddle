@@ -70,8 +70,8 @@ OpSupportedInfos(const std::string& place,
     }
   }
 
-  auto pten_kernels = phi::KernelFactory::Instance().kernels();
-  for (auto& kernel_pair : pten_kernels) {
+  auto phi_kernels = phi::KernelFactory::Instance().kernels();
+  for (auto& kernel_pair : phi_kernels) {
     auto op_type = phi::TransToFluidOpName(kernel_pair.first);
     for (auto& info_pair : kernel_pair.second) {
       framework::OpKernelType kernel_type =

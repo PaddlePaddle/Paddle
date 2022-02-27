@@ -121,7 +121,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       kernel_type_(kernel_type),
       func_(nullptr),
       dev_ctx_(dev_ctx),
-      run_pten_kernel_(true),
+      run_phi_kernel_(true),
       pt_kernel_signature_(kernel_signature),
       pt_kernel_(pt_kernel) {}
 
@@ -151,7 +151,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
   // NOTE(zhiqiu): for kernels on given device, for example NPU, the order to
   // choose is:
-  // pten npu kernel > fluid npu kernel > pten cpu kernel > fluid cpu kernel
+  // phi npu kernel > fluid npu kernel > phi cpu kernel > fluid cpu kernel
 
   // 1. get expected kernel key
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
@@ -451,7 +451,7 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const NameVarMap<VarBase>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<VarBase>(op_, kernel_type_, pt_kernel_signature_,
                                  pt_kernel_, dev_ctx_, ins, outs, attrs,
                                  default_attrs);
@@ -465,7 +465,7 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const NameVarMap<VariableWrapper>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<VariableWrapper>(
         op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
         outs, attrs, default_attrs);
@@ -479,7 +479,7 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
                      const NameVarMap<egr::EagerVariable>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<egr::EagerVariable>(
         op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
         outs, attrs, default_attrs);

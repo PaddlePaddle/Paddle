@@ -34,7 +34,7 @@ limitations under the License. */
  *
  * We hope to organize the basic implementation of Tensor and the logic related
  * to Tensor computation into an independent library, which we call
- * [Tensor Operation Library, pten], so we extract or rewrite the original
+ * [Tensor Operation Library, phi], so we extract or rewrite the original
  * Kernels.
  *
  * In the future, the training library, inference library and custom operators
