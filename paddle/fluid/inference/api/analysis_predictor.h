@@ -98,7 +98,7 @@ class AnalysisPredictor : public PaddlePredictor {
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-    if (UNLIKELY(config_.dist_config().use_dist_model())) {
+    if (config_.dist_config().use_dist_model()) {
       VLOG(3) << "Using DistModel to inf.";
       distributed::DistModelConfig dist_model_config;
       dist_model_config.trainer_endpoints =

@@ -166,7 +166,7 @@ bool AnalysisPredictor::Init(
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+  if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "use_dist_model is enabled, will init DistModel.";
     PADDLE_ENFORCE_NE(
         dist_model_.get(), nullptr,
@@ -939,7 +939,7 @@ std::vector<std::string> AnalysisPredictor::GetInputNames() {
   std::vector<std::string> input_names;
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+  if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "GetInputNames will use the implementation in DistModel.";
     input_names = dist_model_->GetInputNames();
     return input_names;
@@ -968,7 +968,7 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   std::vector<std::string> output_names;
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+  if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "GetOutputNames will use the implementation in DistModel.";
     output_names = dist_model_->GetOutputNames();
     return output_names;
@@ -985,7 +985,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   framework::Scope *scope;
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+  if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "GetInputTensor will use the scope from DistModel.";
     scope = dist_model_->GetScope();
   } else {
@@ -1036,7 +1036,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   framework::Scope *scope;
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+  if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "GetOutputTensor will use the scope from DistModel.";
     scope = dist_model_->GetScope();
   } else {
@@ -1085,7 +1085,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 bool AnalysisPredictor::ZeroCopyRun() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)
-  if (UNLIKELY(config_.dist_config().use_dist_model())) {
+  if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "ZeroCopyRun will use the implementation in DistModel.";
     return dist_model_->ZeroCopyRun();
   }
