@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/conv_grad_kernel.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -630,18 +632,39 @@ void Conv3DCudnnGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_cudnn_grad,
-                   GPU,
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(conv2d_grad,
+                   GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradKernel,
                    float,
                    double,
-                   paddle::platform::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(conv3d_cudnn_grad,
-                   GPU,
+PD_REGISTER_KERNEL(conv3d_grad,
+                   GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnGradKernel,
                    float,
                    double,
-                   paddle::platform::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#else
+PD_REGISTER_KERNEL(conv2d_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::ConvCudnnGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(conv3d_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv3DCudnnGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
+#endif

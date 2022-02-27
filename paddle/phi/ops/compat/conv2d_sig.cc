@@ -17,53 +17,21 @@
 namespace phi {
 
 KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (paddle::any_cast<bool>(ctx.Attr("use_cudnn")) &&
-      (ctx.GetPlace().GetType() == phi::AllocationType::GPU)) {
-    return KernelSignature("conv2d_cudnn",
-                           {"Input", "Filter"},
-                           {"strides",
-                            "paddings",
-                            "padding_algorithm",
-                            "groups",
-                            "dilations",
-                            "data_format",
-                            "use_addto",
-                            "workspace_size_MB",
-                            "exhaustive_search"},
-                           {"Output"});
-  } else {
-    return KernelSignature("conv2d",
-                           {"Input", "Filter"},
-                           {"strides",
-                            "paddings",
-                            "padding_algorithm",
-                            "groups",
-                            "dilations",
-                            "data_format",
-                            "use_addto",
-                            "workspace_size_MB",
-                            "exhaustive_search"},
-                           {"Output"});
-  }
+  return KernelSignature("conv2d",
+                         {"Input", "Filter"},
+                         {"strides",
+                          "paddings",
+                          "padding_algorithm",
+                          "groups",
+                          "dilations",
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search"},
+                         {"Output"});
 }
 
 KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (paddle::any_cast<bool>(ctx.Attr("use_cudnn")) &&
-      (ctx.GetPlace().GetType() == phi::AllocationType::GPU)) {
-    return KernelSignature("conv2d_cudnn_grad",
-                           {GradVarName("Output"), "Input", "Filter"},
-                           {"strides",
-                            "paddings",
-                            "padding_algorithm",
-                            "groups",
-                            "dilations",
-                            "data_format",
-                            "use_addto",
-                            "workspace_size_MB",
-                            "exhaustive_search"},
-                           {GradVarName("Input"), GradVarName("Filter")});
-  }
-
   return KernelSignature("conv2d_grad",
                          {GradVarName("Output"), "Input", "Filter"},
                          {"strides",
@@ -80,36 +48,18 @@ KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature Conv2dDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (paddle::any_cast<bool>(ctx.Attr("use_cudnn")) &&
-      (ctx.GetPlace().GetType() == phi::AllocationType::GPU)) {
-    return KernelSignature(
-        "conv2d_cudnn_grad_grad",
-        {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
-        {"strides",
-         "paddings",
-         "padding_algorithm",
-         "groups",
-         "dilations",
-         "data_format",
-         "use_addto",
-         "workspace_size_MB",
-         "exhaustive_search"},
-        {"DDOutput", "DInput", "DFilter"});
-  } else {
-    return KernelSignature(
-        "conv2d_grad_grad",
-        {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
-        {"strides",
-         "paddings",
-         "padding_algorithm",
-         "groups",
-         "dilations",
-         "data_format",
-         "use_addto",
-         "workspace_size_MB",
-         "exhaustive_search"},
-        {"DDOutput", "DInput", "DFilter"});
-  }
+  return KernelSignature("conv2d_grad_grad",
+                         {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
+                         {"strides",
+                          "paddings",
+                          "padding_algorithm",
+                          "groups",
+                          "dilations",
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search"},
+                         {"DDOutput", "DInput", "DFilter"});
 }
 
 }  // namespace phi

@@ -83,7 +83,6 @@ class ArgumentMappingContext {
   // now we can't use Attribute here, it will cause pten relay on
   // boost::variant and BlockDesc
   virtual paddle::any Attr(const std::string& name) const = 0;
-  virtual phi::Place GetPlace() const = 0;
 
   virtual size_t InputSize(const std::string& name) const = 0;
   virtual size_t OutputSize(const std::string& name) const = 0;

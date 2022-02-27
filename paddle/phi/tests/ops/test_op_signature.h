@@ -55,7 +55,6 @@ class TestArgumentMappingContext : public phi::ArgumentMappingContext {
   paddle::any Attr(const std::string& name) const override {
     return attrs.at(name);
   }
-  phi::Place GetPlace() const override { return phi::CPUPlace(); }
 
   size_t InputSize(const std::string& name) const override {
     return dense_tensor_inputs.size() + selected_rows_inputs.size();

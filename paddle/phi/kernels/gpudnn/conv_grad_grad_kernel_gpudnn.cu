@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/conv_grad_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -758,21 +759,24 @@ void Conv3DCudnnGradGradKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_cudnn_grad_grad,
-                   GPU,
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(conv2d_grad_grad,
+                   GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,
                    float,
                    double,
-                   paddle::platform::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(conv3d_cudnn_grad_grad,
-                   GPU,
+PD_REGISTER_KERNEL(conv3d_grad_grad,
+                   GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnGradGradKernel,
                    float,
                    double,
-                   paddle::platform::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
                    GPU,
@@ -780,4 +784,33 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
                    phi::DepthwiseConvCudnnGradGradKernel,
                    float,
                    double,
-                   paddle::platform::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+#else
+
+PD_REGISTER_KERNEL(conv2d_grad_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::ConvCudnnGradGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(conv3d_grad_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv3DCudnnGradGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::DepthwiseConvCudnnGradGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
+#endif

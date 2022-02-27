@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/conv_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -424,20 +425,40 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_cudnn,
-                   GPU,
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(conv2d,
+                   GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnKernel,
                    float,
                    double,
-                   paddle::platform::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(conv3d_cudnn,
-                   GPU,
+PD_REGISTER_KERNEL(conv3d,
+                   GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnKernel,
                    float,
                    double,
-                   paddle::platform::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#else
+PD_REGISTER_KERNEL(conv2d,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::ConvCudnnKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(conv3d,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv3DCudnnKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+#endif
 
 // todo register bfloat16

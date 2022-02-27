@@ -173,11 +173,11 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       "AnyLayout";  // todo enable data layout when it's ready
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
 
-// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-//   if (platform::CanCUDNNBeUsed(ctx)) {
-//     library = framework::LibraryType::kCUDNN;
-//   }
-// #endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kCUDNN;
+  }
+#endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
       this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -638,11 +638,11 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-//   if (platform::CanCUDNNBeUsed(ctx)) {
-//     library_ = framework::LibraryType::kCUDNN;
-//   }
-// #endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  }
+#endif
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       this->CanMKLDNNBeUsed(ctx, data_type)) {
@@ -826,11 +826,11 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
   std::string data_format = "AnyLayout";
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 
-  // #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  //   if (platform::CanCUDNNBeUsed(ctx)) {
-  //     library_ = framework::LibraryType::kCUDNN;
-  //   }
-  // #endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  }
+#endif
   auto type = framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
       layout_, library_, customized_type_value);

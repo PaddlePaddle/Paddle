@@ -456,8 +456,6 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     return ctx_.HasOutput(name);
   }
 
-  phi::Place GetPlace() const override { return ctx_.GetPlace(); }
-
   bool HasAttr(const std::string& name) const override {
     return ctx_.HasAttr(name);
   }

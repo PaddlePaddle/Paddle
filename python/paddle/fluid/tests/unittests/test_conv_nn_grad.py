@@ -45,7 +45,6 @@ class TestConvDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
-        places = []
 
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
