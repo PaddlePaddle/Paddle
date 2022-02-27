@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -34,6 +36,82 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 namespace paddle {
 namespace pybind {
+
+namespace py = ::pybind11;
+
+class PyTensorHook : public egr::TensorHook {
+ public:
+  explicit PyTensorHook(PyObject* func) : py_func_(func) {
+    Py_INCREF(py_func_);
+  }
+
+  ~PyTensorHook() {
+    py::gil_scoped_acquire gil;
+    Py_DECREF(py_func_);
+  }
+
+  paddle::experimental::Tensor operator()(
+      const paddle::experimental::Tensor& var) override {
+    py::gil_scoped_acquire gil;
+    VLOG(3) << "Call PyTensorHook for var " << var.name();
+
+    PyObject* res = nullptr;
+    try {
+      res = PyObject_CallFunctionObjArgs(py_func_, ToPyObject(var), nullptr);
+    } catch (platform::EnforceNotMet& e) {
+      throw std::move(e);
+    } catch (std::exception& e) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Hook function of Tensor raises an exception: %s.", e.what()));
+    } catch (...) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Hook function of Tensor raises an unknown exception."));
+    }
+
+    PADDLE_ENFORCE_NOT_NULL(res,
+                            platform::errors::Unavailable(
+                                "Hook function of Tensor return a nullptr."));
+    if (res == Py_None) {
+      return var;
+    }
+    return reinterpret_cast<TensorObject*>(res)->tensor;
+  }
+
+ private:
+  PyObject* py_func_;
+};
+
+class PyTensorVoidHook : public egr::TensorVoidHook {
+ public:
+  explicit PyTensorVoidHook(PyObject* func) : py_func_(func) {
+    Py_INCREF(py_func_);
+  }
+
+  ~PyTensorVoidHook() {
+    py::gil_scoped_acquire gil;
+    Py_DECREF(py_func_);
+  }
+
+  void operator()() override {
+    py::gil_scoped_acquire gil;
+    VLOG(3) << "Call PyTensorVoidHook";
+
+    try {
+      PyObject_CallFunctionObjArgs(py_func_, nullptr);
+    } catch (platform::EnforceNotMet& e) {
+      throw std::move(e);
+    } catch (std::exception& e) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Hook function of Tensor raises an exception: %s.", e.what()));
+    } catch (...) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Hook function of Tensor raises an unknown exception."));
+    }
+  }
+
+ private:
+  PyObject* py_func_;
+};
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
@@ -403,6 +481,92 @@ static PyObject* tensor_method_set_value(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_register_grad_hook(TensorObject* self, PyObject* args,
+                                           PyObject* kwargs) {
+  EAGER_TRY
+  int64_t hook_id;
+  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+    VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
+    std::shared_ptr<egr::GradNodeBase> grad_node =
+        egr::EagerUtils::grad_node(self->tensor);
+    PADDLE_ENFORCE(
+        grad_node.get() != nullptr,
+        paddle::platform::errors::Fatal("Detected NULL grad_node,"
+                                        "Leaf tensor should have had grad_node "
+                                        "with type: GradNodeAccumulation."));
+    auto rank_info =
+        egr::EagerUtils::unsafe_autograd_meta(self->tensor)->OutRankInfo();
+
+    PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
+
+    auto accumulation_grad_node =
+        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+    hook_id = accumulation_grad_node->RegisterGradientHook(
+        rank_info.first, rank_info.second,
+        std::make_shared<PyTensorHook>(hook_func));
+
+  } else {
+    VLOG(6) << "Register hook for non leaf tensor: " << self->tensor.name();
+    std::shared_ptr<egr::GradNodeBase> grad_node =
+        egr::EagerUtils::grad_node(self->tensor);
+    auto rank_info =
+        egr::EagerUtils::unsafe_autograd_meta(self->tensor)->OutRankInfo();
+
+    PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
+
+    hook_id = grad_node->RegisterGradientHook(
+        rank_info.first, rank_info.second,
+        std::make_shared<PyTensorHook>(hook_func));
+  }
+  return ToPyObject(hook_id);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_remove_grad_hook(TensorObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(6) << "Remove the registered hook for tensor: " << self->tensor.name();
+  std::shared_ptr<egr::GradNodeBase> grad_node =
+      egr::EagerUtils::grad_node(self->tensor);
+
+  int64_t hook_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
+
+  return ToPyObject(grad_node->RemoveGradientHook(hook_id));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_register_reduce_hook(TensorObject* self, PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Register reduce hook for tensor: " << self->tensor.name();
+
+  std::shared_ptr<egr::GradNodeBase> grad_node =
+      egr::EagerUtils::grad_node(self->tensor);
+  PADDLE_ENFORCE_EQ(egr::egr_utils_api::IsLeafTensor(self->tensor), true,
+                    platform::errors::InvalidArgument(
+                        "Only can register backward hook for leaf Tensor."));
+  PADDLE_ENFORCE_EQ(
+      !egr::EagerUtils::unsafe_autograd_meta(self->tensor)->StopGradient(),
+      true, platform::errors::InvalidArgument(
+                "Cannot register backward hook on a Tensor that stop "
+                "gradient."));
+  PADDLE_ENFORCE(
+      grad_node.get() != nullptr,
+      paddle::platform::errors::Fatal("Detected NULL grad_node,"
+                                      "Leaf tensor should have had grad_node "
+                                      "with type: GradNodeAccumulation."));
+  PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
+
+  auto accumulation_grad_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+  accumulation_grad_node->RegisterReduceHook(
+      std::make_shared<PyTensorVoidHook>(hook_func));
+
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -439,6 +603,14 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_get_underline_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_set_value", (PyCFunction)(void (*)(void))tensor_method_set_value,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_register_grad_hook",
+     (PyCFunction)(void (*)(void))tensor_register_grad_hook,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_remove_grad_hook", (PyCFunction)(void (*)(void))tensor_remove_grad_hook,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_register_backward_hook",
+     (PyCFunction)(void (*)(void))tensor_register_reduce_hook,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
