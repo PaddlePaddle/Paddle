@@ -124,5 +124,3 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(truncated_gaussian_random,
                              ops::TruncatedGaussianRandomOp,
                              ops::TruncatedGaussianRandomOpMaker);
-REGISTER_OP_CPU_KERNEL(truncated_gaussian_random,
-                       ops::CPUTruncatedGaussianRandomKernel<float>);

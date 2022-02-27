@@ -135,3 +135,9 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(truncated_gaussian_random,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TruncatedGaussianRandomKernel,
+                   float) {}

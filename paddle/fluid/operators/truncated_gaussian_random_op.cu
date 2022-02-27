@@ -122,7 +122,3 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
-REGISTER_OP_CUDA_KERNEL(
-    truncated_gaussian_random,
-    paddle::operators::GPUTruncatedGaussianRandomKernel<float>);
