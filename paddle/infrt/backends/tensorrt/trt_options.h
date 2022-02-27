@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "NvInfer.h"
+#include <NvInfer.h>
 
 namespace infrt {
 namespace backends {

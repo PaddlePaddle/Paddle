@@ -15,8 +15,8 @@
 
 #pragma once
 
-#include "NvInfer.h"
-#include "NvInferRuntime.h"
+#include <NvInfer.h>
+#include <NvInferRuntime.h>
 #include "paddle/infrt/backends/tensorrt/trt_options.h"
 #include "paddle/infrt/backends/tensorrt/trt_utils.h"
 #include "paddle/phi/backends/dynload/tensorrt.h"

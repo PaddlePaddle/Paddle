@@ -14,9 +14,9 @@
 
 #include <math.h>
 
-#include "NvInfer.h"
-#include "NvInferRuntime.h"
-#include "NvInferRuntimeCommon.h"
+#include <NvInfer.h>
+#include <NvInferRuntime.h>
+#include <NvInferRuntimeCommon.h>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"

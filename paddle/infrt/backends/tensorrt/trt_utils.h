@@ -21,9 +21,9 @@
 #include <memory>
 #include <unordered_map>
 
-#include "NvInfer.h"
-#include "NvInferRuntime.h"
-#include "NvInferRuntimeCommon.h"
+#include <NvInfer.h>
+#include <NvInferRuntime.h>
+#include <NvInferRuntimeCommon.h>
 #include "glog/logging.h"
 #include "paddle/phi/core/dense_tensor.h"
 
