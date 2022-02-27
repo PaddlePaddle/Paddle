@@ -23,7 +23,7 @@ __all__ = []
 
 
 class Dirac(Initializer):
-    """Initialize the 3D/4D/5D Tensor with Dirac delta function.
+    r"""Initialize the 3D/4D/5D Tensor with Dirac delta function.
     
     It can reserve the feature of convolution layer input, which means that
     as many channels are reserved as possible.

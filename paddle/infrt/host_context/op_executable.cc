@@ -133,7 +133,8 @@ void OpExecutable::Execute() {
   VLOG(3) << "execute " << name()
           << " --- frame args: " << impl_->frame.GetNumArgs() << " results "
           << impl_->frame.GetNumResults() << " attributes "
-          << impl_->frame.GetNumAttributes();
+          << impl_->frame.GetNumAttributes() << "\n"
+          << frame().DumpArgTypes();
   for (int i = 0; i < impl_->frame.GetNumArgs(); i++) {
     VLOG(3) << "function arg: " << impl_->frame.GetArgAt(i);
   }

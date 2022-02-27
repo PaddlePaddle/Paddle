@@ -14,19 +14,20 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
+#define HOSTDEVICE __host__ __device__
 namespace kps = phi::kps;
 
 #endif
@@ -417,7 +418,7 @@ void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     DX_OP dx_op,
                                     DY_OP dy_op) {
   size_t N = static_cast<size_t>(phi::product(x_dim));
-  paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, N);
+  phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, N);
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
       y.data<T>(),
@@ -436,7 +437,7 @@ inline void ElementwiseGradPreProcess(const DenseTensor &dout,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 // static unroller
 template <template <int Index, int VecSize> typename Func,
@@ -469,10 +470,14 @@ struct Loader {
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
     if (is_boundary) {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
-          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     } else {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
-          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     }
   }
 };
@@ -482,8 +487,7 @@ struct InputSetter {
   template <typename Array>
   static HOSTDEVICE void Apply(
       const std::vector<const DenseTensor *> &ins_tensor, Array *ins_data) {
-    (*ins_data)[Index] =
-        reinterpret_cast<const _ptr_ char *>(ins_tensor[Index]->data());
+    (*ins_data)[Index] = (const _ptr_ char *)(ins_tensor[Index]->data());
   }
 };
 
@@ -718,9 +722,9 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
 
   Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
+    outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
   int block_size = 64;
   int grid_size = 8;
   auto stream = ctx.x_context()->xpu_stream;

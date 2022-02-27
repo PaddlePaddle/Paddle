@@ -25,6 +25,8 @@
 
 #include "glog/logging.h"
 
+namespace egr {
+
 static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
                             const paddle::experimental::Tensor& t) {
   if (!tensor->defined() || !tensor->initialized()) {
@@ -34,14 +36,6 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
     // Accumulation
     paddle::imperative::TensorAdd<paddle::experimental::Tensor>(t, tensor);
   }
-}
-
-namespace egr {
-
-void GradNodeAccumulation::RetainGrad(
-    const std::function<paddle::experimental::Tensor(
-        const paddle::experimental::Tensor&)>& hook) {
-  retain_grad_hook_ = hook;
 }
 
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
@@ -59,17 +53,18 @@ operator()(
                      "However received: %d in slot %d .",
                      grads[0].size(), 0));
   // Apply Gradient Hooks
+  paddle::experimental::Tensor grad_out;
   if (GradientHooksRegistered()) {
     std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
         ApplyGradientHooks(grads);
-    // TODO(jiabin): It's little weird
-    CopyOrAddTensor(&accumulated_grad, hooked_grads[0][0]);
+    grad_out = hooked_grads[0][0];
   } else {
-    CopyOrAddTensor(&accumulated_grad, grads[0][0]);
+    grad_out = grads[0][0];
   }
 
-  if (retain_grad_hook_ != nullptr) {
-    retain_grad_hook_(accumulated_grad);
+  if (!weak_grad_.expired()) {
+    auto grad = weak_grad_.lock();
+    CopyOrAddTensor(grad.get(), grad_out);
   }
 
   // Apply Reduce Hooks
@@ -77,17 +72,17 @@ operator()(
     ApplyReduceHooks();
   }
 
-  return {{accumulated_grad}};
+  return {{grad_out}};
 }
 
 void GradNodeAccumulation::RegisterReduceHook(
-    const std::function<void(void)>& hook) {
-  reduce_hooks_.emplace_back(hook);
+    std::shared_ptr<TensorVoidHook>&& hook) {
+  reduce_hooks_.emplace_back(std::move(hook));
 }
 
 void GradNodeAccumulation::ApplyReduceHooks() {
   for (auto& hook : reduce_hooks_) {
-    hook();
+    (*hook)();
   }
 }
 }  // namespace egr

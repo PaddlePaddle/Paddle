@@ -28,8 +28,8 @@ void FlattenKernel(const Context& dev_ctx,
                    int stop_axis,
                    DenseTensor* out) {
   auto out_dims = out->dims();
-  phi::Copy(dev_ctx, x, false, out);
-  out->ResizeAndAllocate(out_dims);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  out->Resize(out_dims);
 }
 
 // TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
