@@ -28,10 +28,10 @@ __all__ = []
 
 model_urls = {
     "mobilenet_v3_small_x1.0":
-    ("https://bj.bcebos.com/v1/ai-studio-online/1552a31af0504d5da16291204f2964309ca1f02ff66c485488da507c6117576d",
+    ("https://paddle-hapi.bj.bcebos.com/models/mobilenet_v3_small_x1.0.pdparams",
      "34fe0e7c1f8b00b2b056ad6788d0590c"),
     "mobilenet_v3_large_x1.0":
-    ("https://bj.bcebos.com/v1/ai-studio-online/7a74ecf7e5d54811a11e10789568c1845ec1b77b9e34424c82378babe6ffbdc0",
+    ("https://paddle-hapi.bj.bcebos.com/models/mobilenet_v3_large_x1.0.pdparams",
      "118db5792b4e183b925d8e8e334db3df"),
 }
 
