@@ -18,6 +18,72 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
 
+void BilinearTensorProductInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& weight,
+                                    paddle::optional<const MetaTensor&> bias,
+                                    MetaTensor* out,
+                                    MetaConfig config) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto weight_dims = weight.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(X) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(Y) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      weight_dims.size(),
+      3UL,
+      errors::InvalidArgument(
+          "Expected the input(Weight) is a 3D tensor. But received %dD tensor.",
+          weight_dims.size()));
+  if (config.is_runtime || (x_dims[0] > 0 && y_dims[0] > 0)) {
+    PADDLE_ENFORCE_EQ(x_dims[0],
+                      y_dims[0],
+                      errors::InvalidArgument(
+                          "The first dimension(batch_size) of input(X) must be "
+                          "equal to the first dimension of the input(Y)."));
+  }
+  PADDLE_ENFORCE_EQ(x_dims[1],
+                    weight_dims[1],
+                    errors::InvalidArgument(
+                        "The second dimension of input(X) must be equal to "
+                        "the second dimension of the input(Weight)."));
+  PADDLE_ENFORCE_EQ(y_dims[1],
+                    weight_dims[2],
+                    errors::InvalidArgument(
+                        "The second dimension of input(Y) must be equal to "
+                        "the third dimension of the input(Weight)."));
+
+  if (bias.get_ptr()) {
+    auto bias_dims = bias->dims();
+    PADDLE_ENFORCE_EQ(bias_dims.size(),
+                      2UL,
+                      errors::InvalidArgument(
+                          "The Input(Bias) must be a 2-D tensor with "
+                          "the 2nd dimension fixed to 1 (a row vector)."));
+    PADDLE_ENFORCE_EQ(bias_dims[0],
+                      1UL,
+                      errors::InvalidArgument(
+                          "The Input(Bias) must be a 2-D tensor with "
+                          "the 2nd dimension fixed to 1 (a row vector)."));
+    PADDLE_ENFORCE_EQ(bias_dims[1],
+                      weight_dims[0],
+                      errors::InvalidArgument(
+                          "The second dimension of input(Bias) must be equal "
+                          "to the first dimension of the input(Weight)."));
+  }
+
+  out->set_dims({x_dims[0], weight_dims[0]});
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void ConcatInferMeta(const std::vector<MetaTensor>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,

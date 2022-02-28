@@ -2,7 +2,7 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
-  cost_model cuda_graph_with_memory_pool fleet_executor global_utils pten_utils tcp_store)
+  cost_model cuda_graph_with_memory_pool fleet_executor global_utils phi_utils tcp_store)
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -299,7 +299,7 @@ if(WITH_PYTHON)
   if(NOT ON_INFER)
     cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
-    DEPS eager_api autograd_meta backward grad_node_info pten op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
+    DEPS eager_api autograd_meta backward grad_node_info phi op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
     add_dependencies(paddle_eager eager_codegen)
     add_dependencies(paddle_eager eager_op_function_generator_cmd)
     list(APPEND PYBIND_DEPS paddle_eager)
