@@ -16,7 +16,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+
+// NOTE(xiongkun): for the use of ExeuctionContext
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
