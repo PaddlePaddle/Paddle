@@ -193,9 +193,9 @@ cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_va
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 
 IF(WITH_XPU)
-cc_library(phi_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info xpu_op_list)
+cc_library(phi_utils SRCS phi_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info xpu_op_list)
 ELSE()
-cc_library(phi_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info)
+cc_library(phi_utils SRCS phi_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info)
 ENDIF()
 
 IF(WITH_XPU)
@@ -450,7 +450,7 @@ if(WITH_TESTING AND TEST selected_rows_utils_test)
 endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
-cc_test(phi_utils_test SRCS pten_utils_test.cc DEPS phi_utils)
+cc_test(phi_utils_test SRCS phi_utils_test.cc DEPS phi_utils)
 
 if(WITH_GPU OR WITH_ROCM)
   cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)

@@ -76,4 +76,33 @@ void GeneralBinaryGradInferMeta(const MetaTensor& x,
   }
 }
 
+void GeneralTernaryGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 const MetaTensor& z,
+                                 MetaTensor* dx,
+                                 MetaTensor* dy,
+                                 MetaTensor* dz) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
+  if (dz) {
+    dz->share_meta(z);
+  }
+}
+
+void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
+                                const MetaTensor& dout,
+                                int axis,
+                                MetaTensor* dx) {
+  PADDLE_ENFORCE_EQ(
+      out.dims(),
+      dout.dims(),
+      errors::InvalidArgument(
+          "Input(Out) and its gradients should have the same shape."));
+  dx->share_meta(dout);
+}
+
 }  // namespace phi
