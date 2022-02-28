@@ -14,11 +14,10 @@
 
 #pragma once
 
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
-#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace distributed {

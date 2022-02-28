@@ -40,6 +40,7 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
     }
     return true;
   };
+
   PADDLE_ENFORCE_EQ(true, check_perm(tensor_indices),
                     platform::errors::PreconditionNotMet(
                         "tensor_indices must be a permutation from 0 to %lu",
@@ -49,12 +50,11 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 
   // Key: the var type
   // Value: should use which index in group_size_limits for group size limit
-  std::unordered_map<experimental::DataType, size_t> group_limit_index;
+  std::map<experimental::DataType, size_t> group_limit_index;
 
   // Key: the var type
   // Value: <the var index in input tensors, total numel in this group>
-  std::unordered_map<experimental::DataType,
-                     std::pair<std::vector<size_t>, size_t>>
+  std::map<experimental::DataType, std::pair<std::vector<size_t>, size_t>>
       next_group;
 
   for (size_t i = 0; i < tensors.size(); ++i) {
