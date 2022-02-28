@@ -43,7 +43,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(masked_select_grad,
+PD_REGISTER_KERNEL(masked_select_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::MaskedSelectGradKernel,

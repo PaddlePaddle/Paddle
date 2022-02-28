@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-PT_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 
 namespace phi {
 namespace tests {
@@ -76,7 +76,7 @@ TEST(KernelRegistry, SetFP32Input) {
 }  // namespace tests
 }  // namespace phi
 
-PT_REGISTER_KERNEL(test,
+PD_REGISTER_KERNEL(test,
                    CPU,
                    ALL_LAYOUT,
                    phi::tests::TestKernel,

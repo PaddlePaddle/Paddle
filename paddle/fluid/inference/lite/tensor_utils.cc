@@ -38,8 +38,6 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
     dst->emplace_back(v);
   }
 }
-template void SetLoD<paddle::lite::LoD, framework::LoD>(
-    paddle::lite::LoD* dst, const framework::LoD& src);
 template void SetLoD<framework::LoD, paddle::lite::LoD>(
     framework::LoD* dst, const paddle::lite::LoD& src);
 
@@ -200,7 +198,7 @@ void InitDstTensor(framework::LoDTensor* dst,
                    const paddle::lite_api::Tensor& src) {
   dst->mutable_data(
       inference::lite::utils::GetNativePlace(src.target()),
-      framework::TransToPtenDataType(GetNativePrecisionType(src.precision())));
+      framework::TransToPhiDataType(GetNativePrecisionType(src.precision())));
   SetLoD(dst->mutable_lod(), src.lod());
 }
 
@@ -271,7 +269,7 @@ void TensorDataShare(framework::LoDTensor* dst, paddle::lite_api::Tensor* src) {
   SetLoD(dst->mutable_lod(), src->lod());
   dst->ResetHolderWithType(
       holder,
-      framework::TransToPtenDataType(GetNativePrecisionType(src->precision())));
+      framework::TransToPhiDataType(GetNativePrecisionType(src->precision())));
 }
 
 }  // namespace utils

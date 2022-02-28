@@ -24,9 +24,40 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/place.h"
+#include "pybind11/pybind11.h"
 
 namespace py = pybind11;
+
+namespace pybind11 {
+namespace detail {
+
+// Note: use same enum number of float16 in numpy.
+// import numpy as np
+// print np.dtype(np.float16).num  # 23
+constexpr int NPY_FLOAT16_ = 23;
+
+// Note: Since float16 is not a builtin type in C++, we register
+// paddle::platform::float16 as numpy.float16.
+// Ref: https://github.com/pybind/pybind11/issues/1776
+template <>
+struct npy_format_descriptor<paddle::platform::float16> {
+  static py::dtype dtype() {
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT16_);
+    return reinterpret_borrow<py::dtype>(ptr);
+  }
+  static std::string format() {
+    // Note: "e" represents float16.
+    // Details at:
+    // https://docs.python.org/3/library/struct.html#format-characters.
+    return "e";
+  }
+  static constexpr auto name = _("float16");
+};
+
+}  // namespace detail
+}  // namespace pybind11
 
 namespace paddle {
 namespace pybind {
@@ -175,6 +206,7 @@ void BindFleetExecutor(py::module* m) {
       .def(py::init(&DistModelDataBufCreate<int32_t>))
       .def(py::init(&DistModelDataBufCreate<int64_t>))
       .def(py::init(&DistModelDataBufCreate<float>))
+      .def(py::init(&DistModelDataBufCreate<paddle::platform::float16>))
       .def("reset",
            [](DistModelDataBuf& self, std::vector<float>& data) {
              self.Resize(data.size() * sizeof(float));
@@ -183,29 +215,35 @@ void BindFleetExecutor(py::module* m) {
       .def("reset", &DistModelDataBufReset<int32_t>)
       .def("reset", &DistModelDataBufReset<int64_t>)
       .def("reset", &DistModelDataBufReset<float>)
+      .def("reset", &DistModelDataBufReset<paddle::platform::float16>)
       .def("length", &DistModelDataBuf::length)
-      .def("tolist",
-           [](DistModelDataBuf& self, const std::string& dtype) -> py::list {
-             py::list l;
-             if (dtype == "int32") {
-               auto* data = static_cast<int32_t*>(self.data());
-               auto size = self.length() / sizeof(int32_t);
-               l = py::cast(std::vector<int32_t>(data, data + size));
-             } else if (dtype == "int64") {
-               auto* data = static_cast<int64_t*>(self.data());
-               auto size = self.length() / sizeof(int64_t);
-               l = py::cast(std::vector<int64_t>(data, data + size));
-             } else if (dtype == "float32") {
-               auto* data = static_cast<float*>(self.data());
-               auto size = self.length() / sizeof(float);
-               l = py::cast(std::vector<float>(data, data + size));
-             } else {
-               PADDLE_THROW(platform::errors::Unimplemented(
-                   "Unsupported data type. Now only supports INT32, INT64 and "
-                   "FLOAT32."));
-             }
-             return l;
-           });
+      .def("tolist", [](DistModelDataBuf& self,
+                        const std::string& dtype) -> py::list {
+        py::list l;
+        if (dtype == "int32") {
+          auto* data = static_cast<int32_t*>(self.data());
+          auto size = self.length() / sizeof(int32_t);
+          l = py::cast(std::vector<int32_t>(data, data + size));
+        } else if (dtype == "int64") {
+          auto* data = static_cast<int64_t*>(self.data());
+          auto size = self.length() / sizeof(int64_t);
+          l = py::cast(std::vector<int64_t>(data, data + size));
+        } else if (dtype == "float32") {
+          auto* data = static_cast<float*>(self.data());
+          auto size = self.length() / sizeof(float);
+          l = py::cast(std::vector<float>(data, data + size));
+        } else if (dtype == "float16") {
+          auto* data = static_cast<paddle::platform::float16*>(self.data());
+          auto size = self.length() / sizeof(paddle::platform::float16);
+          l = py::cast(
+              std::vector<paddle::platform::float16>(data, data + size));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported data type. Now only supports INT32, INT64, "
+              "FLOAT16 and FLOAT32."));
+        }
+        return l;
+      });
 
   py::class_<DistModelTensor>(*m, "DistModelTensor")
       .def(py::init<>())
@@ -221,6 +259,10 @@ void BindFleetExecutor(py::module* m) {
            py::arg("name") = "",
            py::arg("lod") = std::vector<std::vector<size_t>>(),
            py::arg("copy") = true)
+      .def(py::init(&DistModelTensorCreate<paddle::platform::float16>),
+           py::arg("data"), py::arg("name") = "",
+           py::arg("lod") = std::vector<std::vector<size_t>>(),
+           py::arg("copy") = true)
       .def_readwrite("name", &DistModelTensor::name)
       .def_readwrite("shape", &DistModelTensor::shape)
       .def_readwrite("data", &DistModelTensor::data)
@@ -231,7 +273,8 @@ void BindFleetExecutor(py::module* m) {
   py::enum_<DistModelDataType>(*m, "DistModelDataType")
       .value("FLOAT32", DistModelDataType::FLOAT32)
       .value("INT64", DistModelDataType::INT64)
-      .value("INT32", DistModelDataType::INT32);
+      .value("INT32", DistModelDataType::INT32)
+      .value("FLOAT16", DistModelDataType::FLOAT16);
 }
 }  // namespace pybind
 }  // namespace paddle

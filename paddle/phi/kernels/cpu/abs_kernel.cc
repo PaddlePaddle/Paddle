@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/abs_kernel.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
@@ -29,14 +29,14 @@ void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
       out, size_t(x.numel() * sizeof(phi::funcs::Real<T>)));
   auto* out_data = out->data<phi::funcs::Real<T>>();
 
-  paddle::platform::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(ctx, numel);
   phi::funcs::AbsFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(abs,
+PD_REGISTER_KERNEL(abs,
                    CPU,
                    ALL_LAYOUT,
                    phi::AbsKernel,

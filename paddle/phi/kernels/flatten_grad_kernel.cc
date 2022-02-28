@@ -26,13 +26,13 @@ void FlattenGradKernel(const Context& dev_ctx,
                        DenseTensor* x_grad) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-  phi::Copy(dev_ctx, out_grad, false, x_grad);
-  x_grad->ResizeAndAllocate(x_dims);
+  phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  x_grad->Resize(x_dims);
 }
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(flatten_grad,
+PD_REGISTER_KERNEL(flatten_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::FlattenGradKernel,
@@ -44,7 +44,7 @@ PT_REGISTER_KERNEL(flatten_grad,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(flatten_grad,
+PD_REGISTER_KERNEL(flatten_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlattenGradKernel,
@@ -59,7 +59,7 @@ PT_REGISTER_KERNEL(flatten_grad,
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PT_REGISTER_KERNEL(flatten_grad,
+PD_REGISTER_KERNEL(flatten_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlattenGradKernel,

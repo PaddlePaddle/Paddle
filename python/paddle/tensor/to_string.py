@@ -14,7 +14,7 @@
 
 import paddle
 import numpy as np
-from paddle.fluid.layers import core
+from ..framework import core
 from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = []

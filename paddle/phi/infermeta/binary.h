@@ -45,4 +45,22 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
                              MetaTensor* out);
+
+void HuberLossInferMeta(const MetaTensor& input_meta,
+                        const MetaTensor& label_meta,
+                        float delta,
+                        MetaTensor* out,
+                        MetaTensor* residual,
+                        MetaConfig config = MetaConfig());
+
+void CrossInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    int axis,
+                    MetaTensor* out);
+
+void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+void BCELossInferMeta(const MetaTensor& input,
+                      const MetaTensor& label,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
 }  // namespace phi

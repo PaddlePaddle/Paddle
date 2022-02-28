@@ -285,6 +285,16 @@ static void CopyVectorToTensor(const std::vector<T> &src,
 }
 
 template <typename T>
+static void CopyVectorToCPUTensor(const std::vector<T> &src,
+                                  framework::Tensor *dst) {
+  dst->Resize({static_cast<int64_t>(src.size())});
+  T *dst_ptr = dst->mutable_data<T>(platform::CPUPlace());
+  const T *src_ptr = src.data();
+  auto nbytes = src.size() * sizeof(T);
+  std::memcpy(dst_ptr, src_ptr, nbytes);
+}
+
+template <typename T>
 class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
@@ -677,14 +687,14 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
                                            lengths.back());
     }
 
-    CopyVectorToTensor(
+    CopyVectorToCPUTensor(numel_offsets,
+                          ctx.Output<framework::Tensor>("FusedParamOffsets"));
+    CopyVectorToCPUTensor(
         fp32_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP32ShardFusedParamOffsets"), place,
-        stream);
-    CopyVectorToTensor(
+        ctx.Output<framework::Tensor>("FP32ShardFusedParamOffsets"));
+    CopyVectorToCPUTensor(
         fp16_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsets"), place,
-        stream);
+        ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsets"));
 
     // Fill the weight decay tensor
     PADDLE_ENFORCE_EQ(lengths.size(), shard_weight_decay.size(),

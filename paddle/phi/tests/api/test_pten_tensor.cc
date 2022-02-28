@@ -211,7 +211,7 @@ void TestJudgeTensorType() {
   CHECK(test_tensor.is_dense_tensor() == true);
 }
 
-TEST(PtenTensor, All) {
+TEST(PhiTensor, All) {
   VLOG(2) << "TestCopy";
   GroupTestCopy();
   VLOG(2) << "TestDtype";

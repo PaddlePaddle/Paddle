@@ -296,7 +296,9 @@ class TestXPUBatchNormOpUseGlobalStats(unittest.TestCase):
                     net2.training = False
                 y1 = net1(x)
                 y2 = net2(x)
-                self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                self.assertEqual(
+                    np.allclose(
+                        y1.numpy(), y2.numpy(), atol=1e-4), True)
 
 
 class TestXPUBatchNormUseGlobalStatsCase1(TestXPUBatchNormOpUseGlobalStats):
@@ -318,6 +320,13 @@ class TestXPUBatchNormUseGlobalStatsCase3(TestXPUBatchNormOpUseGlobalStats):
     def init_test(self):
         self.use_global_stats = True
         self.trainable_statistics = True
+
+
+class TestXPUBatchNormUseGlobalStatsCase4(TestXPUBatchNormOpUseGlobalStats):
+    ### train mode
+    def init_test(self):
+        self.use_global_stats = True
+        self.trainable_statistics = False
 
 
 if __name__ == "__main__":

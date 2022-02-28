@@ -124,7 +124,7 @@ void NormKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(norm,
+PD_REGISTER_KERNEL(norm,
                    GPU,
                    ALL_LAYOUT,
                    phi::NormKernel,

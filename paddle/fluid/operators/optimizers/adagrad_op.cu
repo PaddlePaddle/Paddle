@@ -96,12 +96,14 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid2(1, merge_rows.size());
+    paddle::framework::MixVector<int64_t> mixv_merge_rows(&merge_rows);
     SparseAdagradFunctorKernel<
         T, 256><<<grid2, threads, 0,
                   reinterpret_cast<const platform::CUDADeviceContext&>(context)
                       .stream()>>>(
-        grad_merge_data, merge_rows.CUDAMutableData(context.GetPlace()), lr,
-        param_data, moment_data, grad_width, epsilon);
+        grad_merge_data, mixv_merge_rows.CUDAMutableData(context.GetPlace()),
+        lr, param_data, moment_data, grad_width, epsilon);
+    mixv_merge_rows.CopyToCPU();
   }
 };
 
