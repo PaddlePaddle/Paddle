@@ -596,7 +596,6 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
         ddout_flag = true;
       }
     }
-
     if (ddy) {
       auto ddy_mat = ddy.get();
       if (ddy_mat.dims() != y_help.dims()) {

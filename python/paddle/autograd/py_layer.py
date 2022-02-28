@@ -14,6 +14,8 @@
 
 import paddle
 from paddle.fluid.framework import dygraph_only
+from paddle.fluid.dygraph.amp.auto_cast import amp_state
+from paddle.amp.auto_cast import auto_cast
 from paddle.fluid import core
 __all__ = []
 
@@ -46,6 +48,7 @@ class PyLayerContext(object):
 
     def __init__(self):
         self.container = None
+        self._amp_state = amp_state()
 
     def save_for_backward(self, *tensors):
         """
@@ -178,6 +181,13 @@ class PyLayerBackward(PyLayerContext):
     def backward(self, *args, **kwargs):
         with paddle.fluid.dygraph.guard():
             with paddle.fluid.dygraph.no_grad():
+                if self._amp_state and 'enable' in self._amp_state and self._amp_state[
+                        'enable']:
+                    with auto_cast(**args[0]._amp_state):
+                        return self._forward_cls.backward(*args, **kwargs)
+                else:
+
+                    return self._forward_cls.backward(*args, **kwargs)
                 return self._forward_cls.backward(*args, **kwargs)
 
 

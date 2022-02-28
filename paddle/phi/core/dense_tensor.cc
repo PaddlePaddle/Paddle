@@ -94,9 +94,9 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
                           bytes));
     bytes = requested_size;
   }
-  // TODO(paddle-dev): In case of the allocator of storage_ is different with
-  // the incoming allocator, we should re-alloc data using the incoming
-  // allocator.
+  // NOTE(paddle-dev): In case of the allocator of storage_ is different with
+  // the incoming allocator, we will re-alloc data using the incoming
+  // allocator. See DeviceContext.Alloc in core/device_context.cc.
   if (!holder_ || holder_->size() < bytes + meta_.offset) {
     meta_.offset = 0;
     VLOG(10) << "Allocate data with bytes: " << bytes;
