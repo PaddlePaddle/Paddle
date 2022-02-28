@@ -26,7 +26,6 @@ limitations under the License. */
 
 // new pten apis
 #include "paddle/phi/api/include/api.h"
-#include "paddle/phi/api/include/manual_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/include/tensor.h"
 

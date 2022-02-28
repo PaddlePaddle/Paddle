@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -21,7 +22,6 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/variable.h"
@@ -104,6 +104,16 @@ std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
   auto* meta = nullable_autograd_meta(target);
   if (meta) {
     return meta->GetMutableGradNode();
+  } else {
+    return nullptr;
+  }
+}
+
+paddle::experimental::Tensor* EagerUtils::mutable_grad(
+    const paddle::experimental::Tensor& target) {
+  auto* meta = nullable_autograd_meta(target);
+  if (meta) {
+    return meta->MutableGrad();
   } else {
     return nullptr;
   }
@@ -342,7 +352,8 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
   } else {
     if (!autograd_ptr->StopGradient()) {
       VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
-      autograd_ptr->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      autograd_ptr->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(autograd_ptr));
       return autograd_ptr->GetMutableGradNode();
     } else {
       return nullptr;
