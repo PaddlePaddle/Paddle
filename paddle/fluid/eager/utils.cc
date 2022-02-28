@@ -123,12 +123,8 @@ void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
   for (const auto& autograd_meta : *autograd_metas) {
     if (dynamic_cast<GradNodeAccumulation*>(autograd_meta->GradNode())) {
-      VLOG(6)
-          << "Warning: Reseting GradNodeAccumulation for leaf tensor is not "
-             "allowed."
-             "You're not expected to hit this error, likely an internal issue "
-             "with Paddle."
-             "Please contact Paddle developers for more details.";
+      VLOG(6) << "Warning: Reseting GradNodeAccumulation for leaf tensor is "
+                 "detected";
     }
     autograd_meta->SetGradNode(grad_node);
   }
@@ -138,11 +134,7 @@ void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
   if (dynamic_cast<GradNodeAccumulation*>(autograd_meta->GradNode())) {
     VLOG(6)
-        << "Warning: Reseting GradNodeAccumulation for leaf tensor is not "
-           "allowed."
-           "You're not expected to hit this error, likely an internal issue "
-           "with Paddle."
-           "Please contact Paddle developers for more details.";
+        << "Warning: Reseting GradNodeAccumulation for leaf tensor is detected";
   }
 
   autograd_meta->SetGradNode(grad_node);
