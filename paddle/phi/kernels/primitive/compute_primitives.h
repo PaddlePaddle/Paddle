@@ -610,9 +610,9 @@ __device__ __forceinline__ void Cumsum(OutT* out,
 }
 #undef SHARED_SIZE_LIMIT
 
-#define SHARED_SIZE_LIMIT \
-  1024  // each thread load 2 data from global memory so SHARED_SIZE_LIMIT must
-        // larger than blockDim.x * 2
+#define SHARED_SIZE_LIMIT 1024
+// each thread load 2 data from global memory so SHARED_SIZE_LIMIT must
+// larger than blockDim.x * 2
 
 /*
 * @brief Sort data in this block, each thread calculates 2 data, the size of out
