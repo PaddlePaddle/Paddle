@@ -30,8 +30,8 @@ from copy import copy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-#from paddle.fluid.framework import _in_eager_mode
-#from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _in_eager_mode
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
