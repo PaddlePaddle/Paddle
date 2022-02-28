@@ -119,7 +119,7 @@ void BatchNormGradRawKernel(const Context& ctx,
 
   // init output
   if (d_x) {
-    d_x->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(d_x);
   }
 
   const T* mean_data = saved_mean.data<T>();
@@ -130,7 +130,7 @@ void BatchNormGradRawKernel(const Context& ctx,
     const auto* running_variance = variance.get_ptr();
     mean_data = running_mean->data<T>();
     inv_var_tensor.Resize({C});
-    T* running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
+    T* running_inv_var_data = ctx.template Alloc<T>(&inv_var_tensor);
     EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, C);
     ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);
 
@@ -146,10 +146,8 @@ void BatchNormGradRawKernel(const Context& ctx,
   T* d_bias_data = nullptr;
   T* d_scale_data = nullptr;
   if (d_scale && d_bias) {
-    d_scale->mutable_data<T>(ctx.GetPlace());
-    d_bias->mutable_data<T>(ctx.GetPlace());
-    d_bias_data = d_bias->mutable_data<T>(ctx.GetPlace());
-    d_scale_data = d_scale->mutable_data<T>(ctx.GetPlace());
+    d_bias_data = ctx.template Alloc<T>(d_bias);
+    d_scale_data = ctx.template Alloc<T>(d_scale);
   }
 
   // d_bias = np.sum(d_y, axis=0)
@@ -174,14 +172,15 @@ void BatchNormGradRawKernel(const Context& ctx,
 
   DenseTensor dy_sum;
   dy_sum.Resize({C});
-  dy_sum.mutable_data<T>(ctx.GetPlace());
-  EigenVectorArrayMap<T> dy_sum_arr(dy_sum.mutable_data<T>(ctx.GetPlace()), C);
+  auto dy_sum_data = ctx.template Alloc<T>(&dy_sum);
+  EigenVectorArrayMap<T> dy_sum_arr(dy_sum_data, C);
 
   DenseTensor dy_mul_x_sub_mean_mul_invstd_sum;
   dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
-  dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
+  auto dy_mul_x_sub_mean_mul_invstd_sum_data =
+      ctx.template Alloc<T>(&dy_mul_x_sub_mean_mul_invstd_sum);
   EigenVectorArrayMap<T> dy_mul_x_sub_mean_mul_invstd_sum_arr(
-      dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace()), C);
+      dy_mul_x_sub_mean_mul_invstd_sum_data, C);
 
   dy_sum_arr.setZero();
   dy_mul_x_sub_mean_mul_invstd_sum_arr.setZero();
@@ -197,8 +196,7 @@ void BatchNormGradRawKernel(const Context& ctx,
     case DataLayout::kNCHW: {
       if (is_inplace) {
         auto px = x;
-        EigenArrayMap<T> x_data(
-            px.mutable_data<T>(ctx.GetPlace()), sample_size, N * C);
+        EigenArrayMap<T> x_data(ctx.template Alloc<T>(&px), sample_size, N * C);
         ConstEigenArrayMap<T> y_data(x.data<T>(), sample_size, N * C);
         for (int nc = 0; nc < N * C; ++nc) {
           x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
@@ -224,7 +222,7 @@ void BatchNormGradRawKernel(const Context& ctx,
 
       if (d_x) {
         EigenArrayMap<T> d_x_arr(
-            d_x->mutable_data<T>(ctx.GetPlace()), sample_size, N * C);
+            ctx.template Alloc<T>(d_x), sample_size, N * C);
         if (!use_global_stats) {
           for (int nc = 0; nc < N * C; ++nc) {
             int c = nc % C;
@@ -246,8 +244,7 @@ void BatchNormGradRawKernel(const Context& ctx,
     case DataLayout::kNHWC: {
       if (is_inplace) {
         auto px = x;
-        EigenArrayMap<T> x_data(
-            px.mutable_data<T>(ctx.GetPlace()), C, N * sample_size);
+        EigenArrayMap<T> x_data(ctx.template Alloc<T>(&px), C, N * sample_size);
         ConstEigenArrayMap<T> y_data(x.data<T>(), C, N * sample_size);
         for (int nhw = 0; nhw < N * sample_size; nhw++) {
           x_data.col(nhw) =
@@ -271,7 +268,7 @@ void BatchNormGradRawKernel(const Context& ctx,
 
       if (d_x) {
         EigenArrayMap<T> d_x_arr(
-            d_x->mutable_data<T>(ctx.GetPlace()), C, N * sample_size);
+            ctx.template Alloc<T>(d_x), C, N * sample_size);
         if (!use_global_stats) {
           for (int nhw = 0; nhw < N * sample_size; ++nhw) {
             d_x_arr.col(nhw) =
@@ -383,8 +380,8 @@ void BatchNormDoubleGradKernel(const Context& ctx,
   auto* dX = x_grad;
   auto* dScale = scale_grad;
   auto* ddY = y_grad_grad;
-  dX->mutable_data<T>(ctx.GetPlace());
-  ddY->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(dX);
+  ctx.template Alloc<T>(ddY);
 
   const auto& x_dims = X->dims();
   const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -402,7 +399,7 @@ void BatchNormDoubleGradKernel(const Context& ctx,
     mean_data = running_mean->data<T>();
     inv_var_tensor.Resize({C});
 
-    T* running_inv_var_data = inv_var_tensor.mutable_data<T>(ctx.GetPlace());
+    T* running_inv_var_data = ctx.template Alloc<T>(&inv_var_tensor);
     EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, C);
     ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);
 
@@ -444,22 +441,21 @@ void BatchNormDoubleGradKernel(const Context& ctx,
 
   Tensor mean_tile;
   mean_tile.Resize({C, sample_size});
-  mean_tile.mutable_data<T>(ctx.GetPlace());
   EigenArrayMap<T> mean_tile_data(
-      mean_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+      ctx.template Alloc<T>(&mean_tile), C, sample_size);
 
   DenseTensor inv_var_tile;
   inv_var_tile.Resize({C, sample_size});
-  inv_var_tile.mutable_data<T>(ctx.GetPlace());
   EigenArrayMap<T> inv_var_tile_data(
-      inv_var_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+      ctx.template Alloc<T>(&inv_var_tile), C, sample_size);
 
   mean_tile_data = mean_arr.replicate(1, sample_size);
   inv_var_tile_data = inv_var_arr.replicate(1, sample_size);
 
   DenseTensor Scale_data;
   if (!Scale) {
-    Scale_data.mutable_data<T>({C}, ctx.GetPlace());
+    Scale_data.Resize({C});
+    ctx.template Alloc<T>(&Scale_data);
     set_constant(ctx, &Scale_data, static_cast<T>(1));
   }
   ConstEigenVectorArrayMap<T> scale_arr(
@@ -467,9 +463,8 @@ void BatchNormDoubleGradKernel(const Context& ctx,
 
   Tensor scale_tile;
   scale_tile.Resize({C, sample_size});
-  scale_tile.mutable_data<T>(ctx.GetPlace());
   EigenArrayMap<T> scale_tile_data(
-      scale_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+      ctx.template Alloc<T>(&scale_tile), C, sample_size);
   scale_tile_data = scale_arr.replicate(1, sample_size);
 
   ConstEigenArrayMap<T> dy_arr(transformed_dy.data<T>(), C, sample_size);
@@ -477,15 +472,15 @@ void BatchNormDoubleGradKernel(const Context& ctx,
 
   DenseTensor x_sub_mean_mul_invstd;
   x_sub_mean_mul_invstd.Resize({C, sample_size});
-  x_sub_mean_mul_invstd.mutable_data<T>(ctx.GetPlace());
+
   EigenArrayMap<T> x_sub_mean_mul_invstd_arr(
-      x_sub_mean_mul_invstd.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+      ctx.template Alloc<T>(&x_sub_mean_mul_invstd), C, sample_size);
   x_sub_mean_mul_invstd_arr = (x_arr - mean_tile_data) * inv_var_tile_data;
 
   if (dX) {
-    dX->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(dX);
     EigenArrayMap<T> dx_arr(
-        transformed_dx.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+        ctx.template Alloc<T>(&transformed_dx), C, sample_size);
     dx_arr.setZero();
     if (use_global_stats) {
       // math: dx = (ddscale * dy) * inv_var
@@ -494,7 +489,7 @@ void BatchNormDoubleGradKernel(const Context& ctx,
         Tensor ddscale_tile;
         ddscale_tile.Resize({C, sample_size});
         EigenArrayMap<T> ddscale_tile_data(
-            ddscale_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+            ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
         ddscale_tile_data = ddscale_arr.replicate(1, sample_size);
 
         dx_arr = dy_arr * ddscale_tile_data * inv_var_tile_data;
@@ -546,7 +541,7 @@ void BatchNormDoubleGradKernel(const Context& ctx,
         Tensor ddscale_tile;
         ddscale_tile.Resize({C, sample_size});
         EigenArrayMap<T> ddscale_tile_data(
-            ddscale_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+            ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
         ddscale_tile_data = ddscale_arr.replicate(1, sample_size);
 
         dx_arr +=
@@ -568,9 +563,7 @@ void BatchNormDoubleGradKernel(const Context& ctx,
     }
   }
   if (dScale) {
-    dScale->mutable_data<T>(ctx.GetPlace());
-    EigenVectorArrayMap<T> dscale_arr(dScale->mutable_data<T>(ctx.GetPlace()),
-                                      C);
+    EigenVectorArrayMap<T> dscale_arr(ctx.template Alloc<T>(dScale), C);
     dscale_arr.setZero();
     if (use_global_stats) {
       // math: dscale = np.sum(ddx * dy, axis=(n,h,w)) * inv_var
@@ -585,7 +578,7 @@ void BatchNormDoubleGradKernel(const Context& ctx,
         Tensor first_grad;
         first_grad.Resize({C, sample_size});
         EigenArrayMap<T> first_grad_arr(
-            first_grad.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+            ctx.template Alloc<T>(&first_grad), C, sample_size);
         first_grad_arr.setZero();
 
         first_grad_arr +=
@@ -604,9 +597,9 @@ void BatchNormDoubleGradKernel(const Context& ctx,
   }
 
   if (ddY) {
-    ddY->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(ddY);
     EigenArrayMap<T> ddy_arr(
-        transformed_ddy.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+        ctx.template Alloc<T>(&transformed_ddy), C, sample_size);
     ddy_arr.setZero();
     if (use_global_stats) {
       // math: ddy = r * ddx * inv_var + ddbias +
@@ -636,7 +629,7 @@ void BatchNormDoubleGradKernel(const Context& ctx,
       Tensor ddscale_tile;
       ddscale_tile.Resize({C, sample_size});
       EigenArrayMap<T> ddscale_tile_data(
-          ddscale_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+          ctx.template Alloc<T>(&ddscale_tile), C, sample_size);
       ddscale_tile_data = ddscale_arr.replicate(1, sample_size);
 
       ddy_arr += x_sub_mean_mul_invstd_arr * ddscale_tile_data;
@@ -647,7 +640,7 @@ void BatchNormDoubleGradKernel(const Context& ctx,
       Tensor ddbias_tile;
       ddbias_tile.Resize({C, sample_size});
       EigenArrayMap<T> ddbias_tile_data(
-          ddbias_tile.mutable_data<T>(ctx.GetPlace()), C, sample_size);
+          ctx.template Alloc<T>(&ddbias_tile), C, sample_size);
       ddbias_tile_data = ddbias_arr.replicate(1, sample_size);
 
       ddy_arr += ddbias_tile_data;

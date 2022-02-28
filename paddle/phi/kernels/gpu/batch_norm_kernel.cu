@@ -177,7 +177,7 @@ void BatchNormKernel(const Context &ctx,
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
 
-  y->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(y);
   int N, C, H, W, D;
   paddle::operators::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
@@ -415,7 +415,7 @@ void BatchNormKernel(const Context &ctx,
             data_desc_,
             transformed_x.template data<T>(),
             data_desc_,
-            transformed_y.template mutable_data<T>(ctx.GetPlace()),
+            ctx.template Alloc<T>(&transformed_y),
             bn_param_desc_,
             scale.template data<BatchNormParamType<T>>(),
             bias.template data<BatchNormParamType<T>>(),
@@ -612,7 +612,7 @@ void BatchNormKernel(const Context &ctx,
                 data_desc_,
                 transformed_x.template data<T>(),
                 data_desc_,
-                transformed_y.template mutable_data<T>(ctx.GetPlace()),
+                ctx.template Alloc<T>(&transformed_y),
                 bn_param_desc_,
                 scale.template data<BatchNormParamType<T>>(),
                 bias.template data<BatchNormParamType<T>>(),

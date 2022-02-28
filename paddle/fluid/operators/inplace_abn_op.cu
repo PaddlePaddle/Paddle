@@ -59,7 +59,7 @@ class InplaceABNKernel
 
       auto& dev_ctx = ctx.device_context<DeviceContext>();
       phi::BatchNormKernel<T>(
-          static_cast<const typename framework::ConvertToPtenContext<
+          static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *x, *scale, *bias, *mean, *variance, momentum, epsilon, data_layout,
           is_test, use_global_stats, trainable_statistics, fuse_with_relu, y,
@@ -138,7 +138,7 @@ class InplaceABNGradKernel
 
       auto& dev_ctx = ctx.device_context<DeviceContext>();
       phi::BatchNormGradRawKernel<T>(
-          static_cast<const typename framework::ConvertToPtenContext<
+          static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *d_y, *y, *scale, *bias, *saved_mean, *saved_variance, space_opt,
           mean_opt, variance_opt, momentum, epsilon, data_layout, is_test,

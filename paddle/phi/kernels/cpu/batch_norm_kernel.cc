@@ -80,11 +80,11 @@ void BatchNormKernel(const Context& ctx,
   const int sample_size = x.numel() / N / C;
 
   // alloc memory
-  y->mutable_data<T>(ctx.GetPlace());
-  mean_out->mutable_data<T>(ctx.GetPlace());
-  variance_out->mutable_data<T>(ctx.GetPlace());
-  saved_mean->mutable_data<T>(ctx.GetPlace());
-  saved_variance->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(y);
+  ctx.template Alloc<T>(mean_out);
+  ctx.template Alloc<T>(variance_out);
+  ctx.template Alloc<T>(saved_mean);
+  ctx.template Alloc<T>(saved_variance);
 
   // input dimension is 2 and the format is NCHW. The input can be regarded
   // as NHWC format
@@ -94,17 +94,15 @@ void BatchNormKernel(const Context& ctx,
 
   if (!global_stats) {
     // saved_xx is use just in this batch of data
-    EigenVectorArrayMap<T> saved_mean_e(
-        saved_mean->mutable_data<T>(ctx.GetPlace()), C);
+    EigenVectorArrayMap<T> saved_mean_e(ctx.template Alloc<T>(saved_mean), C);
     EigenVectorArrayMap<T> saved_variance_e(
-        saved_variance->mutable_data<T>(ctx.GetPlace()), C);
+        ctx.template Alloc<T>(saved_variance), C);
     saved_mean_e.setZero();
     saved_variance_e.setZero();
 
-    EigenVectorArrayMap<T> running_mean_arr(
-        mean_out->mutable_data<T>(ctx.GetPlace()), C);
-    EigenVectorArrayMap<T> running_var_arr(
-        variance_out->mutable_data<T>(ctx.GetPlace()), C);
+    EigenVectorArrayMap<T> running_mean_arr(ctx.template Alloc<T>(mean_out), C);
+    EigenVectorArrayMap<T> running_var_arr(ctx.template Alloc<T>(variance_out),
+                                           C);
 
     if ((N * sample_size) == 1) {
       // Only 1 element in normalization dimension,
@@ -179,8 +177,7 @@ void BatchNormKernel(const Context& ctx,
 
   switch (data_layout) {
     case DataLayout::kNCHW: {
-      EigenArrayMap<T> y_arr(
-          y->mutable_data<T>(ctx.GetPlace()), sample_size, N * C);
+      EigenArrayMap<T> y_arr(ctx.template Alloc<T>(y), sample_size, N * C);
       ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
       for (int nc = 0; nc < N * C; ++nc) {
         y_arr.col(nc) = x_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
@@ -188,7 +185,7 @@ void BatchNormKernel(const Context& ctx,
       break;
     }
     case DataLayout::kNHWC: {
-      EigenArrayMap<T>(y->mutable_data<T>(ctx.GetPlace()), C, N * sample_size) =
+      EigenArrayMap<T>(ctx.template Alloc<T>(y), C, N * sample_size) =
           (ConstEigenArrayMap<T>(x.data<T>(), C, N * sample_size).colwise() *
            new_scale)
               .colwise() +
@@ -201,7 +198,7 @@ void BatchNormKernel(const Context& ctx,
   }
 }
 
-}  // namespace  pten
+}  // namespace phi
 
 PD_REGISTER_KERNEL(
     batch_norm, CPU, ALL_LAYOUT, phi::BatchNormKernel, float, double) {}

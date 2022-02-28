@@ -35,7 +35,7 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
     transformed_input->Resize(phi::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
 
   } else if (dim == 2) {
     // input
@@ -46,7 +46,7 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     transformed_input->Resize(phi::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
@@ -54,7 +54,7 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
     transformed_input->Resize(phi::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
   }
 }
 
@@ -73,7 +73,7 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     in_dims_vec[3] = input->dims()[4];
     in_dims_vec[4] = input->dims()[1];
     transformed_input->Resize(phi::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
 
   } else if (dim == 2) {
     // input
@@ -84,7 +84,7 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
     transformed_input->Resize(phi::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
@@ -92,7 +92,7 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
     transformed_input->Resize(phi::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(transformed_input);
   }
 }
 

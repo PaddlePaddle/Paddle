@@ -355,7 +355,7 @@ void BatchNormGradRawKernel(const Context &ctx,
 
   // init output
   if (d_x) {
-    d_x->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(d_x);
   }
 
   if (d_scale && d_bias) {
@@ -590,8 +590,7 @@ void BatchNormGradRawKernel(const Context &ctx,
               /*dzDesc=*/nullptr,
               /*dzData=*/nullptr,
               /*dxDesc=*/data_desc_,
-              /*dxData=*/transformed_d_x.template mutable_data<T>(
-                  ctx.GetPlace()),
+              /*dxData=*/ctx.template Alloc<T>(&transformed_d_x),
               /*dBnScaleBiasDesc=*/bn_param_desc_,
               /*bnScaleData=*/scale.template data<BatchNormParamType<T>>(),
               /*bnBiasData=*/nullptr,
@@ -680,7 +679,7 @@ void BatchNormGradRawKernel(const Context &ctx,
                 data_desc_,
                 transformed_d_y.template data<T>(),
                 data_desc_,
-                transformed_d_x.template mutable_data<T>(ctx.GetPlace()),
+                ctx.template Alloc<T>(&transformed_d_x),
                 bn_param_desc_,
                 scale.template data<BatchNormParamType<T>>(),
                 d_scale->template mutable_data<BatchNormParamType<T>>(
@@ -794,7 +793,7 @@ void BatchNormGradRawKernel(const Context &ctx,
     if (is_inplace) {
       auto px = x;
       inplace_functor(data_layout,
-                      px.mutable_data<T>(ctx.GetPlace()),
+                      ctx.template Alloc<T>(&px),
                       scale.template data<BatchNormParamType<T>>(),
                       bias.template data<BatchNormParamType<T>>(),
                       running_mean_data,
