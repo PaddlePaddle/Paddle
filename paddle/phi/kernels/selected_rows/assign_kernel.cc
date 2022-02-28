@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/assign_kernel.h"
 
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
@@ -24,7 +24,21 @@ void AssignSRKernel(const Context& dev_ctx,
                     SelectedRows* out) {
   out->set_rows(x.rows());
   out->set_height(x.height());
-  AssignKernel<T, Context>(dev_ctx, x.value(), out->mutable_value());
+  AssignKernel<Context>(dev_ctx, x.value(), out->mutable_value());
 }
 
 }  // namespace phi
+
+PD_REGISTER_GENERAL_KERNEL(assign_sr,
+                           CPU,
+                           ALL_LAYOUT,
+                           phi::AssignSRKernel<phi::CPUContext>,
+                           ALL_DTYPE) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_GENERAL_KERNEL(assign_sr,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::AssignSRKernel<phi::GPUContext>,
+                           ALL_DTYPE) {}
+#endif

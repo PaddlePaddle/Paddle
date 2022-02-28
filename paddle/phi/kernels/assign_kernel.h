@@ -26,7 +26,7 @@ void AssignKernel(const Context& dev_ctx,
 
 template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
-                       const std::vector<DenseTensor*>& x,
+                       const std::vector<const DenseTensor*>& x,
                        std::vector<DenseTensor*> out);
 
 template <typename Context>

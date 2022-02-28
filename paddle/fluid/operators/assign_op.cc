@@ -91,24 +91,6 @@ class AssignInferVarType : public framework::VarTypeInference {
   }
 };
 
-class AssignKernel {
- public:
-  void operator()(const framework::ExecutionContext &ctx) const {
-    auto *x = ctx.InputVar("X");
-    if (x == nullptr) {
-      return;
-    }
-    PADDLE_ENFORCE_EQ(
-        ctx.HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of assign_op is not found."));
-    auto *out = ctx.OutputVar("Out");
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(ctx.GetPlace());
-
-    framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
-  }
-};
-
 class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -152,18 +134,3 @@ REGISTER_OPERATOR(assign, ops::AssignOp,
                   ops::AssignGradMaker<paddle::imperative::OpBase>,
                   ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer,
                   ops::AssignInferVarType);
-
-REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
-                               ops::AssignKernel, int, ops::AssignKernel,
-                               int64_t, ops::AssignKernel, uint8_t,
-                               ops::AssignKernel, bool, ops::AssignKernel,
-                               plat::float16, ops::AssignKernel, plat::bfloat16,
-                               ops::AssignKernel);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
-                                ops::AssignKernel, int, ops::AssignKernel,
-                                int64_t, ops::AssignKernel, uint8_t,
-                                ops::AssignKernel, bool, ops::AssignKernel,
-                                plat::float16, ops::AssignKernel);
-#endif

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/assign_kernel.h"
 
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 
 namespace phi {
@@ -26,12 +27,12 @@ void AssignKernel(const Context& dev_ctx,
     return;
   }
   dev_ctx.Alloc(out, x.dtype());
-  Copy<Context>(dev_ctx, src, false, out);
+  Copy<Context>(dev_ctx, x, x.place(), false, out);
 }
 
 template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
-                       const std::vector<DenseTensor*>& x,
+                       const std::vector<const DenseTensor*>& x,
                        std::vector<DenseTensor*> out) {
   for (size_t i = 0; i < x.size(); ++i) {
     AssignKernel<Context>(dev_ctx, *x[i], out.at(i));
@@ -39,3 +40,21 @@ void AssignArrayKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_GENERAL_KERNEL(
+    assign, CPU, ALL_LAYOUT, phi::AssignKernel<phi::CPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(assign_array,
+                           CPU,
+                           ALL_LAYOUT,
+                           phi::AssignArrayKernel<phi::CPUContext>,
+                           ALL_DTYPE) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_GENERAL_KERNEL(
+    assign, GPU, ALL_LAYOUT, phi::AssignKernel<phi::GPUContext>, ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(assign_array,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::AssignArrayKernel<phi::GPUContext>,
+                           ALL_DTYPE) {}
+#endif

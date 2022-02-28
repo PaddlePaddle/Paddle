@@ -43,7 +43,7 @@ template <typename T, typename Context>
 void FakeDot(const Context& dev_ctx,
              const phi::DenseTensor& x,
              const phi::DenseTensor& y,
-             const std::vector<phi::DenseTensor>& fake_input_vec,
+             const std::vector<const phi::DenseTensor*>& fake_input_vec,
              bool fake_attr_bool,
              int fake_attr_int,
              float fake_attr_float,
