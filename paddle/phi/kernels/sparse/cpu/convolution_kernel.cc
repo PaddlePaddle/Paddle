@@ -36,12 +36,12 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
-                  SparseCooTensor* out) {
+                  SparseCooTensor* out,
+                  DenseTensor* rulebook) {
   // update padding and dilation
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
 
-  const auto& place = dev_ctx.GetPlace();
   const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
@@ -55,7 +55,7 @@ void Conv3dKernel(const Context& dev_ctx,
   // 1. product rulebook
   DenseTensorMeta counter_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensor rulebook = phi::Empty<int, Context>(dev_ctx);
+  // DenseTensor rulebook = phi::Empty<int, Context>(dev_ctx);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
 
   ProductRuleBook<T, Context>(dev_ctx,
@@ -65,29 +65,31 @@ void Conv3dKernel(const Context& dev_ctx,
                               dilations,
                               strides,
                               out_dims,
-                              &rulebook,
+                              rulebook,
                               &counter_per_kernel);
 
   UpdateRulebookAndOutIndex<T>(
-      dev_ctx, x, kernel_size, out_channels, out_dims, &rulebook, out);
+      dev_ctx, x, kernel_size, out_channels, out_dims, rulebook, out);
 
-  int n = rulebook.dims()[1];
+  int n = rulebook->dims()[1];
   const int* counter_ptr = counter_per_kernel.data<int>();
 
   // 2. gather
   DenseTensorMeta in_features_meta(
-      x.dtype(), {n, in_channels}, DataLayout::NCHW);
+      x.dtype(), {n, in_channels}, DataLayout::NHWC);
   DenseTensorMeta out_features_meta(
-      x.dtype(), {n, out_channels}, DataLayout::NCHW);
+      x.dtype(), {n, out_channels}, DataLayout::NHWC);
   phi::DenseTensor in_features =
       phi::Empty(dev_ctx, std::move(in_features_meta));
   phi::DenseTensor out_features =
       phi::Empty(dev_ctx, std::move(out_features_meta));
-  T* in_features_ptr = in_features.mutable_data<T>(place);
-  T* out_features_ptr = out_features.mutable_data<T>(place);
+  dev_ctx.Alloc(&in_features, x.dtype(), sizeof(T) * in_features.numel());
+  dev_ctx.Alloc(&out_features, x.dtype(), sizeof(T) * out_features.numel());
+  T* in_features_ptr = in_features.data<T>();
+  T* out_features_ptr = out_features.data<T>();
 
   Gather<T>(x.non_zero_elements().data<T>(),
-            rulebook.data<int>() + n,
+            rulebook->data<int>() + n,
             n,
             in_channels,
             in_features_ptr);
@@ -128,10 +130,13 @@ void Conv3dKernel(const Context& dev_ctx,
   }
 
   // 4. scatter
-  T* out_values_ptr = out->mutable_non_zero_elements()->mutable_data<T>(place);
+  dev_ctx.Alloc(out->mutable_non_zero_elements(),
+                out->mutable_non_zero_elements()->dtype(),
+                sizeof(T) * in_features.numel());
+  T* out_values_ptr = out->mutable_non_zero_elements()->data<T>();
   memset(out_values_ptr, 0, sizeof(T) * out->nnz() * out_channels);
   Scatter<T>(out_features_ptr,
-             rulebook.data<int>() + n * 2,
+             rulebook->data<int>() + n * 2,
              n,
              out_channels,
              out_values_ptr);
@@ -141,4 +146,6 @@ void Conv3dKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    conv, CPU, ALL_LAYOUT, phi::sparse::Conv3dKernel, float, double) {}
+    sparse_conv3d, CPU, ALL_LAYOUT, phi::sparse::Conv3dKernel, float, double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}

@@ -24,5 +24,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::bfloat16>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<float>>,
     ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<double>>);
