@@ -30,7 +30,7 @@ void TruncGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(trunc_grad,
+PD_REGISTER_KERNEL(trunc_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::TruncGradKernel,

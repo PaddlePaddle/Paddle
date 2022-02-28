@@ -36,10 +36,10 @@ namespace experimental {
  */
 
 // use to declare symbol
-#define PT_REGISTER_API(name) \
+#define PD_REGISTER_API(name) \
   PADDLE_API int RegisterSymbolsFor##name() { return 0; }
 
-#define PT_DECLARE_API(name)                        \
+#define PD_DECLARE_API(name)                        \
   extern PADDLE_API int RegisterSymbolsFor##name(); \
   UNUSED static int use_pten_api_##name = RegisterSymbolsFor##name()
 

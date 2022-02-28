@@ -28,6 +28,7 @@ namespace phi {
 template <typename Context>
 void Copy(const Context& dev_ctx,
           const DenseTensor& src,
+          Place dst_place,
           bool blocking,
           DenseTensor* dst) {
   auto* src_ptr = src.data();
@@ -56,5 +57,5 @@ void Copy(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_GENERAL_KERNEL(
     copy, CPU, ALL_LAYOUT, phi::Copy<phi::CPUContext>, ALL_DTYPE) {}

@@ -118,7 +118,7 @@ REGISTER_OPERATOR(infer_shape_utils_test,
                   paddle::framework::InferShapeUtilsTestOpMaker,
                   InferShapeUtilsTestInferShapeFunctor);
 
-PT_REGISTER_KERNEL(infer_shape_utils_test, CPU, ALL_LAYOUT,
+PD_REGISTER_KERNEL(infer_shape_utils_test, CPU, ALL_LAYOUT,
                    paddle::framework::InferShapeUtilsTestKernel, int) {}
 
 TEST(InferShapeUtilsTest, ALL) {

@@ -69,7 +69,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_GENERAL_KERNEL(pten_transfer_layout,
+PD_REGISTER_GENERAL_KERNEL(pten_transfer_layout,
                            CPU,
                            ALL_LAYOUT,
                            phi::TransferLayoutKernel<phi::CPUContext>,

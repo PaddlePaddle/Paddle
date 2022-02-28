@@ -100,7 +100,7 @@ void SetXPUDeviceId(int id) {
   PADDLE_ENFORCE_LT(
       id,
       GetXPUDeviceCount(),
-      paddle::platform::errors::InvalidArgument("id must less than XPU count"));
+      phi::errors::InvalidArgument("id must less than XPU count"));
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
 }
 
