@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
@@ -144,7 +144,7 @@ class CompatMetaTensor : public phi::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return paddle::framework::TransToPtenDataType(var->GetDataType());
+      return paddle::framework::TransToPhiDataType(var->GetDataType());
     }
   }
 
@@ -341,23 +341,36 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           }
           if (infershape_inputs.size() != 1) {
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePtenScalarArrayFromVarList(vars)));
+                std::move(experimental::MakePhiScalarArrayFromVarList(vars)));
           } else {
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePtenScalarArrayFromVar(*vars[0])));
+                std::move(experimental::MakePhiScalarArrayFromVar(*vars[0])));
           }
         } else {
           // If is not in runtime, we will set default value(-1) for ScalarArray
-          int64_t num_ele = 1;
+          int64_t num_ele = 0;
           std::vector<VarDesc*> vars;
           vars.reserve(infershape_inputs.size());
           for (size_t i = 0; i < infershape_inputs.size(); i++) {
             vars.push_back(BOOST_GET_CONST(VarDesc*, infershape_inputs[i]));
           }
-          for (auto& var : vars) {
-            const auto& tensor_dims = var->GetShape();
+
+          if (vars.size() == 1) {
+            num_ele = 1;
+            const auto& tensor_dims = vars[0]->GetShape();
             for (size_t i = 0; i < tensor_dims.size(); ++i) {
               num_ele *= tensor_dims[i];
+            }
+          } else {
+            for (auto& var : vars) {
+              const auto& tensor_dims = var->GetShape();
+              PADDLE_ENFORCE_EQ(tensor_dims.size(), 1,
+                                platform::errors::InvalidArgument(
+                                    "The shape is constructed by multi-tensor, "
+                                    "every tensor's dims should be 1. But your "
+                                    "shape has tensor that dims is %s.",
+                                    tensor_dims.size()));
+              num_ele += tensor_dims[0];
             }
           }
           phi::ScalarArray tensor_attr(std::vector<int32_t>(num_ele, -1));
@@ -406,7 +419,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           if (ctx->IsRuntime()) {
             Variable* var = BOOST_GET_CONST(Variable*, infershape_input[0]);
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePtenScalarFromVar(*var)));
+                std::move(experimental::MakePhiScalarFromVar(*var)));
           } else {
             phi::Scalar tensor_scalar(-1);
             tensor_scalar.SetFromTensor(true);
@@ -468,7 +481,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             BOOST_GET_CONST(std::vector<std::string>, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(phi::DataType))) {
-        auto data_type = paddle::framework::TransToPtenDataType(
+        auto data_type = paddle::framework::TransToPhiDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         infer_meta_context.EmplaceBackAttr(data_type);

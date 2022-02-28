@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
@@ -53,7 +53,7 @@ void AbsGradKernel(const Context& ctx,
   ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
   auto* dx_data = dx->data<T>();
 
-  paddle::platform::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(ctx, numel);
   phi::funcs::AbsGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }
@@ -70,7 +70,7 @@ void AbsDoubleGradKernel(const Context& ctx,
   ctx.template Alloc<T>(ddout, static_cast<size_t>(numel * sizeof(T)));
   auto* ddout_data = ddout->data<T>();
 
-  paddle::platform::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(ctx, numel);
   phi::funcs::AbsGradGradFunctor<T> functor(
       ddx_data, x_data, ddout_data, numel);
   for_range(functor);

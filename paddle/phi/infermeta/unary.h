@@ -34,12 +34,25 @@ class MetaConfig;
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
+// meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
+void UnchangedInferMetaCheckAxis(const MetaTensor& x,
+                                 int axis,
+                                 MetaTensor* out);
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
                       MetaTensor* out);
 
+void GumbelSoftmaxInferMeta(const MetaTensor& x,
+                            float temperature,
+                            bool hard,
+                            int axis,
+                            MetaTensor* out);
+
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
+
+void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
 void CopyToInferMeta(const MetaTensor& x,
                      Backend backend,
@@ -48,9 +61,16 @@ void CopyToInferMeta(const MetaTensor& x,
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
+void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
+
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
                            MetaTensor* out);
+
+void MultinomialInferMeta(const MetaTensor& x,
+                          int num_samples,
+                          bool replacement,
+                          MetaTensor* out);
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
@@ -109,5 +129,16 @@ void OneHotInferMeta(const MetaTensor& x,
                      int dtype,
                      bool allow_out_of_range,
                      MetaTensor* out);
+void DiagInferMeta(const MetaTensor& x,
+                   int offset,
+                   float padding_value,
+                   MetaTensor* out);
+
+void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
+
+void PixelShuffleInferMeta(const MetaTensor& x,
+                           int upscale_factor,
+                           const std::string& data_format,
+                           MetaTensor* out);
 
 }  // namespace phi
