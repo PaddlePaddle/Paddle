@@ -36,7 +36,7 @@ void TensorReduceImpl(const platform::CUDADeviceContext& dev_ctx,
                       gpuStream_t stream) {
   y->mutable_data<Ty>(x.place());
 
-  phk::funcs::TensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
+  phi::funcs::TensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
       static_cast<const phi::GPUContext&>(dev_ctx), x, y, transform,
       origin_reduce_dims, stream);
 }
