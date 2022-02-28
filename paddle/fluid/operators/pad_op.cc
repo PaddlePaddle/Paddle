@@ -168,15 +168,6 @@ REGISTER_OPERATOR(pad_grad, ops::PadOpGrad,
                   ops::PadOpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex<float>>,
-    ops::PadKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
     pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::PadGradKernel<paddle::platform::CPUDeviceContext,
@@ -184,17 +175,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::PadGradKernel<paddle::platform::CPUDeviceContext,
                        paddle::platform::complex<double>>);
 
-REGISTER_OP_CUDA_KERNEL(
-    pad, ops::PadKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::float16>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::complex<float>>,
-    ops::PadKernel<paddle::platform::CUDADeviceContext,
-                   paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     pad_grad, ops::PadGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::PadGradKernel<paddle::platform::CUDADeviceContext, float>,
