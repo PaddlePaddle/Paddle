@@ -290,8 +290,6 @@ __global__ void filter_copy_fuse_kernel(
       }
     }
 
-    // =========== to be optimized =====================================
-
     // fill loss_weight_data
     if (sum_out_lods4 > 1) {
       int out_data_num = sum_out_lods4 - 1;
