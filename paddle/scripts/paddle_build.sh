@@ -2748,7 +2748,9 @@ function main() {
         test_fluid_lib
         ;;
       build_inference_lib)
-        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        if [ "${WITH_PYTHON}" == "OFF" ] ; then
+            python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        fi
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_lib ${parallel_number}
         ;;
@@ -2799,7 +2801,9 @@ function main() {
         ;;
       test_inference)
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
-        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        if [ "${WITH_PYTHON}" == "OFF" ] ; then
+            python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        fi
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         #test_fluid_lib_train
@@ -2809,7 +2813,9 @@ function main() {
         ;;
       build_inference)
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
-        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        if [ "${WITH_PYTHON}" == "OFF" ] ; then
+            python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        fi
         gen_fluid_lib ${parallel_number}
         ;;
       gpu_inference)
