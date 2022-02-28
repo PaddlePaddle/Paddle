@@ -171,10 +171,7 @@ class DistributedFusedLamb(Optimizer):
         moment2.is_distributed = True
         beta1pow = self._create_persistable_var('beta1pow')
         beta2pow = self._create_persistable_var('beta2pow')
-        fused_indices = self._create_persistable_var(
-            'fused_indices', dtype='int32')
-        weight_decay = self._create_persistable_var('weight_decay')
-        weight_decay.is_distributed = True
+
         param_info = self._create_persistable_var('param_info', dtype='int32')
         param_info.is_distributed = True
 
@@ -225,8 +222,6 @@ class DistributedFusedLamb(Optimizer):
                 'Moment2': [moment2],
                 'Beta1Pow': [beta1pow],
                 'Beta2Pow': [beta2pow],
-                'FusedIndices': [fused_indices],
-                'WeightDecay': [weight_decay],
                 'GlobalScale': [scale],
                 'ParamInfo': [param_info],
                 'ParamOut': params,
@@ -272,8 +267,6 @@ class DistributedFusedLamb(Optimizer):
                 'Moment2': [moment2],
                 'Beta1Pow': [beta1pow],
                 'Beta2Pow': [beta2pow],
-                'FusedIndices': [fused_indices],
-                'WeightDecay': [weight_decay],
                 'GlobalScale': [scale],
                 'ParamInfo': [param_info],
                 'Param': params,

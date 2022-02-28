@@ -61,29 +61,27 @@ class DistributedFusedLambInitOpMaker
               "The fp32 beta1 power accumulator tensor. Its shape is [1].");
     AddOutput("Beta2Pow",
               "The fp32 beta2 power accumulator tensor. Its shape is [1].");
-    AddOutput("FusedIndices",
-              "The param index of each element in FP32FusedParam. Its shape is "
-              "[M1+M2]. It is like [0,0,0,1,1,1,1,2,2,...].");
     AddOutput(
         "FusedParamOffsets",
         "The numel offset of each parameter inside the FP32FusedParam. Its "
         "shape is [param_num + 1]. It is like [0, n_0, n_0 + n_1, n_0 + n_1 "
-        "+ n_2, ...].");
-    AddOutput("FP32ShardFusedParamOffsets",
-              "The sharded numel offset of each parameter in the local rank. "
-              "Its shape is [fp32_local_param_num + 1].");
-    AddOutput("FP16ShardFusedParamOffsets",
-              "The sharded numel offset of each parameter in the local rank. "
-              "Its shape is [fp16_local_param_num + 1].");
+        "+ n_2, ...]. It should be in CPUPlace.");
     AddOutput(
-        "WeightDecay",
-        "The sharded fp32 weight decay tensor. Its shape is [(M1+M2)/N].");
+        "FP32ShardFusedParamOffsets",
+        "The sharded numel offset of each parameter in the local rank. "
+        "Its shape is [fp32_local_param_num + 1]. It should be in CPUPlace.");
+    AddOutput(
+        "FP16ShardFusedParamOffsets",
+        "The sharded numel offset of each parameter in the local rank. "
+        "Its shape is [fp16_local_param_num + 1]. It should be in CPUPlace.");
     AddOutput("ParamInfo",
               "The param info. It should be in CPUPlace, and its shape is [6]"
-              "CPUPlace, and its shape is [6]. It is "
+              "CPUPlace, and its shape is [8]. It is "
               "[fp32_shard_param_start_idx, fp32_local_param_num, "
-              "fp32_global_param_num, fp16_shard_param_start_idx, "
-              "fp16_local_param_num, fp16_global_param_num].");
+              "fp32_global_param_num, fp32_weight_decay_end_idx, "
+              "fp16_shard_param_start_idx, "
+              "fp16_local_param_num, fp16_global_param_num, "
+              "fp16_weight_decay_end_idx].");
 
     AddOutput("ParamOut", "The output parameter list.").AsDuplicable();
     AddOutput("MasterParamOut",

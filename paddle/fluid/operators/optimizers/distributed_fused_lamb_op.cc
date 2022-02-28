@@ -66,20 +66,19 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
              "The fp32 beta1 power accumulator tensor. Its shape is [1].");
     AddInput("Beta2Pow",
              "The fp32 beta2 power accumulator tensor. Its shape is [1].");
-    AddInput("FusedIndices",
-             "The param index of each element in FP32FusedParam. Its shape is "
-             "[M1+M2]. It is like [0,0,0,1,1,1,1,2,2,...].");
     AddInput(
         "FusedParamOffsets",
         "The numel offset of each parameter inside the FP32FusedParam. Its "
         "shape is [param_num + 1]. It is like [0, n_0, n_0 + n_1, n_0 + n_1 "
-        "+ n_2, ...].");
-    AddInput("FP32ShardFusedParamOffsets",
-             "The sharded numel offset of each parameter in the local rank. "
-             "Its shape is [fp32_local_param_num + 1].");
-    AddInput("FP16ShardFusedParamOffsets",
-             "The sharded numel offset of each parameter in the local rank. "
-             "Its shape is [fp16_local_param_num + 1].");
+        "+ n_2, ...]. It should be in CPUPlace.");
+    AddInput(
+        "FP32ShardFusedParamOffsets",
+        "The sharded numel offset of each parameter in the local rank. "
+        "Its shape is [fp32_local_param_num + 1]. It should be in CPUPlace.");
+    AddInput(
+        "FP16ShardFusedParamOffsets",
+        "The sharded numel offset of each parameter in the local rank. "
+        "Its shape is [fp16_local_param_num + 1]. It should be in CPUPlace.");
     AddInput("ParamInfo",
              "The param info. It should be in CPUPlace, and its shape is [6]"
              "CPUPlace, and its shape is [8]. It is "

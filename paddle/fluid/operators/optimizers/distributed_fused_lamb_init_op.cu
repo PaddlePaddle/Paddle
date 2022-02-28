@@ -258,32 +258,6 @@ static void ShareBufferForNonInitedTensor(framework::Tensor *origin,
            << ") , dtype = " << fused_out->dtype();
 }
 
-template <typename OffsetT, typename IndexT>
-static __global__ void LambFillFusedIndicesCUDAKernel(const OffsetT *offsets,
-                                                      IndexT *out,
-                                                      int offset_num,
-                                                      int out_num) {
-  CUDA_KERNEL_LOOP_TYPE(i, out_num, int) {
-    auto idx = phi::funcs::LowerBound(offsets, offset_num, i);
-    if (idx == offset_num || offsets[idx] != i) {
-      --idx;
-    }
-    out[i] = idx;
-  }
-}
-
-template <typename T>
-static void CopyVectorToTensor(const std::vector<T> &src,
-                               framework::Tensor *dst,
-                               const platform::Place &place,
-                               gpuStream_t stream) {
-  dst->Resize({static_cast<int64_t>(src.size())});
-  T *dst_ptr = dst->mutable_data<T>(place);
-  const T *src_ptr = src.data();
-  auto nbytes = src.size() * sizeof(T);
-  memory::Copy(place, dst_ptr, platform::CPUPlace(), src_ptr, nbytes, stream);
-}
-
 template <typename T>
 static void CopyVectorToCPUTensor(const std::vector<T> &src,
                                   framework::Tensor *dst) {
@@ -321,6 +295,13 @@ static size_t ReorderParamGradInfoList(const std::vector<int> &flags,
     }
   }
   return ret_idx;
+}
+
+template <typename T>
+static T ClipByBound(T x, T low_value, T high_value) {
+  if (x < low_value) return low_value;
+  if (x > high_value) return high_value;
+  return x;
 }
 
 template <typename T>
@@ -609,11 +590,15 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     param_info[0] = static_cast<int>(fp32_start_idx);
     param_info[1] = static_cast<int>(fp32_local_param_num);
     param_info[2] = static_cast<int>(fp32_infos.size());
-    param_info[3] = 0;  // not determined yet
+    param_info[3] = ClipByBound<int>(fp32_wd_end_idx, fp32_start_idx,
+                                     fp32_start_idx + fp32_local_param_num) -
+                    static_cast<int>(fp32_start_idx);
     param_info[4] = static_cast<int>(fp16_start_idx + fp32_infos.size());
     param_info[5] = static_cast<int>(fp16_local_param_num);
     param_info[6] = static_cast<int>(fp16_infos.size());
-    param_info[7] = 0;  // not determined yet
+    param_info[7] = ClipByBound<int>(fp16_wd_end_idx, fp16_start_idx,
+                                     fp16_start_idx + fp16_local_param_num) -
+                    static_cast<int>(fp16_start_idx);
 
     VLOG(10) << "Start FP32 idx: " << param_info[0];
     VLOG(10) << "Local FP32 param num: " << param_info[1];
@@ -623,10 +608,6 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     VLOG(10) << "Local FP16 param num: " << param_info[5];
     VLOG(10) << "Global FP16 param num: " << param_info[6];
 
-    // For FusedIndices, launch CUDA kernel to do binary search
-    auto *fused_indices_t = ctx.Output<framework::Tensor>("FusedIndices");
-    fused_indices_t->Resize({static_cast<int64_t>(total_numel)});
-    auto *fused_indices = fused_indices_t->mutable_data<int>(place);
     std::vector<int> numel_offsets;
     numel_offsets.reserve(params.size() + 1);
     for (const auto &info : fp32_infos) {
@@ -641,21 +622,6 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
                           "The numel_offsets number must be one larger than "
                           "the parameter number."));
     VLOG(10) << "Total numel offset: " << FlattenToString(numel_offsets);
-    auto *fused_param_offset_t =
-        ctx.Output<framework::Tensor>("FusedParamOffsets");
-    fused_param_offset_t->Resize({static_cast<int64_t>(numel_offsets.size())});
-    auto *fused_param_offset = fused_param_offset_t->mutable_data<int>(place);
-    memory::Copy(place, fused_param_offset, platform::CPUPlace(),
-                 numel_offsets.data(),
-                 numel_offsets.size() * sizeof(numel_offsets[0]), stream);
-    auto config = platform::GetGpuLaunchConfig1D(dev_ctx, total_numel);
-    LambFillFusedIndicesCUDAKernel<<<config.block_per_grid,
-                                     config.thread_per_block, 0, stream>>>(
-        fused_param_offset, fused_indices, numel_offsets.size() - 1,
-        total_numel);
-
-    std::vector<int> lengths;
-    lengths.reserve(fp32_local_param_num + fp16_local_param_num);
 
     std::vector<int> fp32_partial_numel_offsets;
     fp32_partial_numel_offsets.reserve(fp32_local_param_num + 1);
@@ -679,9 +645,9 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
       VLOG(10) << "FP32 Partial numel = ["
                << valid_start_n + fp32_infos[i].numel << ","
                << end_n + fp32_infos[i].numel;
-      lengths.push_back(end_n - valid_start_n);
+      auto len = end_n - valid_start_n;
       fp32_partial_numel_offsets.push_back(fp32_partial_numel_offsets.back() +
-                                           lengths.back());
+                                           len);
     }
 
     std::vector<int> fp16_partial_numel_offsets;
@@ -702,9 +668,9 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
       PADDLE_ENFORCE_NE(valid_start_n, end_n,
                         platform::errors::InvalidArgument(
                             "Indices sharding error. This may be a bug."));
-      lengths.push_back(end_n - valid_start_n);
+      auto len = end_n - valid_start_n;
       fp16_partial_numel_offsets.push_back(fp16_partial_numel_offsets.back() +
-                                           lengths.back());
+                                           len);
     }
 
     CopyVectorToCPUTensor(numel_offsets,
@@ -715,22 +681,6 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     CopyVectorToCPUTensor(
         fp16_partial_numel_offsets,
         ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsets"));
-
-    // Fill the weight decay info
-    auto clamp_func = [](size_t x, size_t low_value, size_t high_value) {
-      if (x < low_value) return low_value;
-      if (x > high_value) return high_value;
-      return x;
-    };
-
-    fp32_wd_end_idx = clamp_func(fp32_wd_end_idx, fp32_start_idx,
-                                 fp32_start_idx + fp32_local_param_num) -
-                      fp32_start_idx;
-    param_info[3] = fp32_wd_end_idx;
-    fp16_wd_end_idx = clamp_func(fp16_wd_end_idx, fp16_start_idx,
-                                 fp16_start_idx + fp16_local_param_num) -
-                      fp16_start_idx;
-    param_info[7] = fp16_wd_end_idx;
 
     auto *global_scale = ctx.Output<framework::Tensor>("GlobalScale");
     if (!global_scale->IsInitialized()) {

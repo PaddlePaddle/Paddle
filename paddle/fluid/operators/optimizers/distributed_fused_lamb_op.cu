@@ -168,10 +168,9 @@ static void MultiTensorL2Norm(const platform::CUDAPlace &place,
     total_chunk_num += tmp_chunk_num;
   }
 
-  LOG_FIRST_N(WARNING, 2) << "MultiTensorL2Norm max_chunk_num = "
-                          << max_chunk_num
-                          << " , total_chunk_num = " << total_chunk_num
-                          << " , tensor_num = " << n;
+  VLOG(1) << "MultiTensorL2Norm max_chunk_num = " << max_chunk_num
+          << " , total_chunk_num = " << total_chunk_num
+          << " , tensor_num = " << n;
 
   using MT = MasterT<InT>;
   memory::Buffer tmp_out(place);
@@ -1073,8 +1072,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                           "Too many parameter number. Only <= %d is supported.",
                           std::numeric_limits<int>::max()));
 
-    // Step 3: Get FusedIndices, ParamInfo
-    const auto *indices = GetInputTensorPtr<int>(ctx, "FusedIndices");
+    // Step 3: Get ParamInfo
     const auto *param_info_tensor = GetInputTensorPtr<int>(ctx, "ParamInfo");
     auto fp32_local_start_idx = param_info_tensor[0];
     auto fp32_local_param_num = param_info_tensor[1];
