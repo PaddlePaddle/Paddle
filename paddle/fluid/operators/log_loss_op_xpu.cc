@@ -10,8 +10,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/log_loss_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
 namespace paddle {
 namespace operators {
 

@@ -19,6 +19,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+const int kIgnoreIndex = -100;
 
 void CheckAttrs(const framework::ExecutionContext& ctx) {
   // Add this check is is due to Ascend SigmoidCrossEntropyWithLogits

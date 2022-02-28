@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 
 #ifdef __NVCC__
