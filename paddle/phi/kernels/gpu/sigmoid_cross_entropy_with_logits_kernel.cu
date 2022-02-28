@@ -49,7 +49,6 @@ __global__ void GPUSigmoidForward(const T *x_data,
   }
 }
 
-// Out = max(x, 0) - x * label + log(1 + exp(-abs(x)))
 template <typename T, typename Context>
 void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
                                          const DenseTensor &x,

@@ -50,7 +50,6 @@ __global__ void GPUSigmoidBackward(const T *x_data,
   }
 }
 
-// dx = sigmoid(x) - label
 template <typename T, typename Context>
 void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
                                              const DenseTensor &x,
