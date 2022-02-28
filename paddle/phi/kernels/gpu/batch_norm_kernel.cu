@@ -51,7 +51,7 @@ using CudnnDataType = paddle::platform::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
-template <typename T, paddle::framework::DataLayout layout>
+template <typename T, phi::DataLayout layout>
 static __global__ void BNForwardInference(const T *x,
                                           const BatchNormParamType<T> *mean,
                                           const BatchNormParamType<T> *variance,
@@ -66,8 +66,7 @@ static __global__ void BNForwardInference(const T *x,
   int stride = blockDim.x * gridDim.x;
   int num = N * C * HxW;
   for (int i = gid; i < num; i += stride) {
-    const int c =
-        layout == paddle::framework::DataLayout::kNCHW ? i / HxW % C : i % C;
+    const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
     BatchNormParamType<T> x_sub_mean =
         static_cast<BatchNormParamType<T>>(x[i]) - mean[c];
     BatchNormParamType<T> inv_var = 1 / sqrt(variance[c] + epsilon);
@@ -75,7 +74,7 @@ static __global__ void BNForwardInference(const T *x,
   }
 }
 
-template <typename T, int BlockDim, paddle::framework::DataLayout layout>
+template <typename T, int BlockDim, phi::DataLayout layout>
 static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
     const T *x,
     const BatchNormParamType<T> *scale,
@@ -104,7 +103,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
     BatchNormParamType<T> x_square_sum = static_cast<BatchNormParamType<T>>(0);
 
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == paddle::framework::DataLayout::kNCHW
+      const int index = layout == phi::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
       BatchNormParamType<T> x_i = static_cast<BatchNormParamType<T>>(x[index]);
@@ -131,7 +130,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
     __syncthreads();
 
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == paddle::framework::DataLayout::kNCHW
+      const int index = layout == phi::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
       BatchNormParamType<T> x_sub_mean =

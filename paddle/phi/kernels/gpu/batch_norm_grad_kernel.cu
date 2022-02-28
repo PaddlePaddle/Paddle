@@ -43,7 +43,7 @@ using CudnnDataType = paddle::platform::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
-template <typename T, int BlockDim, paddle::framework::DataLayout layout>
+template <typename T, int BlockDim, phi::DataLayout layout>
 static __global__ LAUNCH_BOUNDS(BlockDim) void KeBNBackwardScaleBias(
     const T *dy,
     const T *x,
@@ -68,7 +68,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void KeBNBackwardScaleBias(
     BatchNormParamType<T> inv_var_i = 1.0 / sqrt(variance[i] + epsilon);
     BatchNormParamType<T> mean_i = mean[i];
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == paddle::framework::DataLayout::kNCHW
+      const int index = layout == phi::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
       ds_sum += static_cast<BatchNormParamType<T>>(dy[index]) *
@@ -85,7 +85,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void KeBNBackwardScaleBias(
   }
 }
 
-template <typename T, paddle::framework::DataLayout layout>
+template <typename T, phi::DataLayout layout>
 static __global__ void KeBNBackwardData(const T *dy,
                                         const BatchNormParamType<T> *scale,
                                         const BatchNormParamType<T> *variance,
@@ -97,8 +97,7 @@ static __global__ void KeBNBackwardData(const T *dy,
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
-    const int c =
-        layout == paddle::framework::DataLayout::kNCHW ? i / HxW % C : i % C;
+    const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
     BatchNormParamType<T> inv_var = 1.0 / sqrt(variance[c] + epsilon);
     dx[i] = static_cast<T>(static_cast<BatchNormParamType<T>>(dy[i]) *
                            scale[c] * inv_var);
@@ -106,23 +105,21 @@ static __global__ void KeBNBackwardData(const T *dy,
 }
 
 template <typename T>
-static __global__ void KeBNRestoreData(
-    const paddle::framework::DataLayout layout,
-    T *x,
-    const BatchNormParamType<T> *scale,
-    const BatchNormParamType<T> *bias,
-    const BatchNormParamType<T> *mean,
-    const BatchNormParamType<T> *variance,
-    double epsilon,
-    int C,
-    int M,
-    const int num,
-    const T *y) {
+static __global__ void KeBNRestoreData(const phi::DataLayout layout,
+                                       T *x,
+                                       const BatchNormParamType<T> *scale,
+                                       const BatchNormParamType<T> *bias,
+                                       const BatchNormParamType<T> *mean,
+                                       const BatchNormParamType<T> *variance,
+                                       double epsilon,
+                                       int C,
+                                       int M,
+                                       const int num,
+                                       const T *y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
-    const int c =
-        layout == paddle::framework::DataLayout::kNCHW ? (i / M) % C : i % C;
+    const int c = layout == phi::DataLayout::kNCHW ? (i / M) % C : i % C;
     auto y_i = static_cast<BatchNormParamType<T>>(y[i]);
     auto x_i = (y_i - bias[c]) / scale[c] / variance[c] + mean[c];
     x[i] = static_cast<T>(x_i);
@@ -132,7 +129,7 @@ static __global__ void KeBNRestoreData(
 template <typename T>
 class InplaceHelper {
  public:
-  void operator()(const paddle::framework::DataLayout layout,
+  void operator()(const phi::DataLayout layout,
                   T *x,
                   const BatchNormParamType<T> *scale,
                   const BatchNormParamType<T> *bias,
@@ -155,7 +152,7 @@ class InplaceHelper {
   }
 };
 
-template <typename T, int BlockDim, paddle::framework::DataLayout layout>
+template <typename T, int BlockDim, phi::DataLayout layout>
 static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
     const T *dy,
     const T *x,
@@ -196,7 +193,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
           static_cast<BatchNormParamType<T>>(0);
 
       for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-        const int index = layout == paddle::framework::DataLayout::kNCHW
+        const int index = layout == phi::DataLayout::kNCHW
                               ? (j / HxW * C + i) * HxW + j % HxW
                               : j * outer_size + i;
         BatchNormParamType<T> x_i =
@@ -216,7 +213,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
     __syncthreads();
 
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == paddle::framework::DataLayout::kNCHW
+      const int index = layout == phi::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
       BatchNormParamType<T> dy_i =
@@ -236,7 +233,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
     __syncthreads();
 
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == paddle::framework::DataLayout::kNCHW
+      const int index = layout == phi::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
       dx[index] = scale[i] * inv_var_val *
@@ -248,7 +245,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
   }
 }
 
-template <typename T, int BlockDim, paddle::framework::DataLayout layout>
+template <typename T, int BlockDim, phi::DataLayout layout>
 static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
     const T *dy,
     const BatchNormParamType<T> *scale,
@@ -274,7 +271,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
     BatchNormParamType<T> dy_x_sub_mean_sum =
         static_cast<BatchNormParamType<T>>(0);
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == paddle::framework::DataLayout::kNCHW
+      const int index = layout == phi::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
       BatchNormParamType<T> dy_i =
@@ -294,7 +291,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
     }
     __syncthreads();
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == paddle::framework::DataLayout::kNCHW
+      const int index = layout == phi::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
       dx[index] =
@@ -705,10 +702,10 @@ void BatchNormGradRawKernel(const Context &ctx,
       // This branch call CUDA kernels
       if (compute_format == DataLayout::kNCHW) {
         if (d_x) {
-          BNBackwardData<T,
-                         block,
-                         paddle::framework::DataLayout::
-                             kNCHW><<<grid2, block, 0, ctx.stream()>>>(
+          BNBackwardData<
+              T,
+              block,
+              phi::DataLayout::kNCHW><<<grid2, block, 0, ctx.stream()>>>(
               d_y->data<T>(),
               scale.data<BatchNormParamType<T>>(),
               saved_mean_data,
@@ -720,10 +717,10 @@ void BatchNormGradRawKernel(const Context &ctx,
               d_x->data<T>());
         }
         if (d_scale && d_bias) {
-          KeBNBackwardScaleBias<T,
-                                block,
-                                paddle::framework::DataLayout::
-                                    kNCHW><<<grid2, block, 0, stream>>>(
+          KeBNBackwardScaleBias<
+              T,
+              block,
+              phi::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
               d_y->data<T>(),
               x.data<T>(),
               saved_mean_data,
@@ -737,10 +734,10 @@ void BatchNormGradRawKernel(const Context &ctx,
         }
       } else {
         if (d_x) {
-          BNBackwardData<T,
-                         block,
-                         paddle::framework::DataLayout::
-                             kNHWC><<<grid2, block, 0, ctx.stream()>>>(
+          BNBackwardData<
+              T,
+              block,
+              phi::DataLayout::kNHWC><<<grid2, block, 0, ctx.stream()>>>(
               d_y->data<T>(),
               scale.data<BatchNormParamType<T>>(),
               saved_mean_data,
@@ -752,10 +749,10 @@ void BatchNormGradRawKernel(const Context &ctx,
               d_x->data<T>());
         }
         if (d_scale && d_bias) {
-          KeBNBackwardScaleBias<T,
-                                block,
-                                paddle::framework::DataLayout::
-                                    kNHWC><<<grid2, block, 0, stream>>>(
+          KeBNBackwardScaleBias<
+              T,
+              block,
+              phi::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
               d_y->data<T>(),
               x.data<T>(),
               saved_mean_data,
@@ -814,9 +811,8 @@ void BatchNormGradRawKernel(const Context &ctx,
 
     if (compute_format == DataLayout::kNCHW) {
       if (d_x) {
-        KeBNBackwardData<
-            T,
-            paddle::framework::DataLayout::kNCHW><<<grid1, block, 0, stream>>>(
+        KeBNBackwardData<T,
+                         phi::DataLayout::kNCHW><<<grid1, block, 0, stream>>>(
             d_y->data<T>(),
             scale.data<BatchNormParamType<T>>(),
             running_var_data,
@@ -830,7 +826,7 @@ void BatchNormGradRawKernel(const Context &ctx,
         KeBNBackwardScaleBias<
             T,
             block,
-            paddle::framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
+            phi::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
             d_y->data<T>(),
             x.data<T>(),
             running_mean_data,
@@ -844,9 +840,8 @@ void BatchNormGradRawKernel(const Context &ctx,
       }
     } else {
       if (d_x) {
-        KeBNBackwardData<
-            T,
-            paddle::framework::DataLayout::kNHWC><<<grid1, block, 0, stream>>>(
+        KeBNBackwardData<T,
+                         phi::DataLayout::kNHWC><<<grid1, block, 0, stream>>>(
             d_y->data<T>(),
             scale.data<BatchNormParamType<T>>(),
             running_var_data,
@@ -860,7 +855,7 @@ void BatchNormGradRawKernel(const Context &ctx,
         KeBNBackwardScaleBias<
             T,
             block,
-            paddle::framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
+            phi::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
             d_y->data<T>(),
             x.data<T>(),
             running_mean_data,
