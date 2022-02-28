@@ -13,20 +13,23 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/randperm_kernel.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void RandpermKernel(const Context& ctx,
-                    int n,
-                    DataType dtype,
-                    DenseTensor* out) {
-  T* out_data = ctx.template Alloc<T>(out);
-  auto gen_ptr = ctx.GetHostGenerator();
-  auto engine = gen_ptr->GetCPUEngine();
+void RandpermRawKernel(
+    const Context& dev_ctx, int n, DataType dtype, int seed, DenseTensor* out) {
+  T* out_data = dev_ctx.template Alloc<T>(out);
+
+  std::shared_ptr<std::mt19937_64> engine;
+  if (seed) {
+    engine = std::make_shared<std::mt19937_64>();
+    engine->seed(seed);
+  } else {
+    engine = dev_ctx.GetGenerator()->GetCPUEngine();
+  }
 
   for (int i = 0; i < n; ++i) {
     out_data[i] = static_cast<T>(i);
@@ -34,7 +37,24 @@ void RandpermKernel(const Context& ctx,
   std::shuffle(out_data, out_data + n, *engine);
 }
 
+template <typename T, typename Context>
+void RandpermKernel(const Context& dev_ctx,
+                    int n,
+                    DataType dtype,
+                    DenseTensor* out) {
+  RandpermRawKernel<T>(dev_ctx, n, dtype, 0, out);
+}
+
 }  // namespace phi
+
+PD_REGISTER_KERNEL(randperm_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::RandpermRawKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(randperm,
                    CPU,

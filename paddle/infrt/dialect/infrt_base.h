@@ -54,6 +54,20 @@ static mlir::IntegerAttr createI32Attr(mlir::OpBuilder &b,  // NOLINT
   return b.getIntegerAttr(b.getI32Type(), constant);
 }
 
+template <typename T>
+static mlir::IntegerAttr createSI32Attr(mlir::OpBuilder &b,  // NOLINT
+                                        mlir::Location loc,
+                                        T constant) {
+  return b.getSI32IntegerAttr(constant);
+}
+
+template <typename T>
+static mlir::FloatAttr createF32Attr(mlir::OpBuilder &b,  // NOLINT
+                                     mlir::Location loc,
+                                     T constant) {
+  return b.getF32FloatAttr(constant);
+}
+
 static mlir::SmallVector<mlir::Value, 4> cvtValueToValueRange(
     const mlir::Value &operand) {
   return mlir::SmallVector<mlir::Value, 4>(1, operand);
