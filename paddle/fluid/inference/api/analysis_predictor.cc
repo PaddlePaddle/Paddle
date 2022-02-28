@@ -93,6 +93,8 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     input_ptr = t->mutable_data<float>(ddim, place);
   } else if (pt.dtype == PaddleDType::INT32) {
     input_ptr = t->mutable_data<int32_t>(ddim, place);
+  } else if (pt.dtype == PaddleDType::FLOAT16) {
+    input_ptr = t->mutable_data<float16>(ddim, place);
   } else {
     LOG(ERROR) << "unsupported feed type " << pt.dtype;
     return false;
@@ -563,8 +565,12 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     } else if (type == framework::proto::VarType::INT32) {
       GetFetchOne<int32_t>(fetch, output);
       output->dtype = PaddleDType::INT32;
+    } else if (type == framework::proto::VarType::FP16) {
+      GetFetchOne<float16>(fetch, output);
+      output->dtype = PaddleDType::FLOAT16;
     } else {
-      LOG(ERROR) << "unknown type, only support float32, int64 and int32 now.";
+      LOG(ERROR) << "unknown type, only support float32, float16, int64 and "
+                    "int32 now.";
     }
   }
   return true;
@@ -662,12 +668,18 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
+#ifdef PADDLE_WITH_IPU
   argument_.SetUseIpu(config_.use_ipu_);
   argument_.SetIpuDeviceNum(config_.ipu_device_num());
+  argument_.SetIpuMicroBatchSize(config_.ipu_micro_batch_size_);
   argument_.SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
   argument_.SetIpuBatchesPerStep(config_.ipu_batches_per_step_);
-  argument_.SetIpuBatchSize(config_.ipu_batch_size_);
-  argument_.SetIpuNeedAvgShard(config_.ipu_need_avg_shard_);
+  argument_.SetIpuEnableFp16(config_.ipu_enable_fp16_);
+  argument_.SetIpuReplicaNum(config_.ipu_replica_num_);
+  argument_.SetIpuAvailableMemoryProportion(
+      config_.ipu_available_memory_proportion_);
+  argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+#endif
 
   argument_.SetUseNpu(config_.use_npu_);
   argument_.SetNPUDeviceId(config_.npu_device_id());

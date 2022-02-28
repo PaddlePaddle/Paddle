@@ -668,7 +668,7 @@ class _BatchNormBase(Layer):
     def extra_repr(self):
         main_str = 'num_features={}, momentum={}, epsilon={}'.format(
             self._num_features, self._momentum, self._epsilon)
-        if self._data_format is not 'NCHW':
+        if self._data_format != 'NCHW':
             main_str += ', data_format={}'.format(self._data_format)
         if self._name is not None:
             main_str += ', name={}'.format(self._name)
@@ -1252,7 +1252,7 @@ class LocalResponseNorm(Layer):
     def extra_repr(self):
         main_str = 'size={}, alpha={}, beta={}, k={}'.format(
             self.size, self.alpha, self.beta, self.k)
-        if self.data_format is not 'NCHW':
+        if self.data_format != 'NCHW':
             main_str += ', data_format={}'.format(self.data_format)
         if self.name is not None:
             main_str += ', name={}'.format(self.name)

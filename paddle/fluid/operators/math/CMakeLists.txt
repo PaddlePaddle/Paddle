@@ -6,9 +6,9 @@ endif()
 
 # please add new math_library in alphabetical order
 if (WITH_ASCEND_CL)
-math_library(concat_and_split DEPS npu_op_runner)
+math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
 else()
-math_library(concat_and_split)
+math_library(concat_and_split DEPS concat_and_split_functor)
 endif()
 math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)

@@ -2792,7 +2792,7 @@ def eigvalsh(x, UPLO='L', name=None):
             raise ValueError(
                 "The input matrix must be batches of square matrices. But received x's dimention: {}".
                 format(x_shape))
-        if UPLO is not 'L' and UPLO is not 'U':
+        if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
                 "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
 

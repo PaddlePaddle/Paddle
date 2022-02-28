@@ -92,6 +92,7 @@ DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 }  // namespace phi
 
 using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
@@ -128,6 +129,7 @@ PD_REGISTER_KERNEL(divide_raw,
                    int,
                    int64_t,
                    float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 PD_REGISTER_KERNEL(multiply_raw,

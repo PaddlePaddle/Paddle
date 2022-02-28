@@ -780,13 +780,6 @@ def monkey_patch_varbase():
                 "_set_grad_ivar is only supported for Parameter Tensor")
 
     @framework.dygraph_only
-    def clear_gradient(self, set_to_zero=True):
-        if set_to_zero:
-            self._zero_grads()
-        else:
-            self._clear_gradient()
-
-    @framework.dygraph_only
     def clone(self):
         return _C_ops_.assign(self)
 
@@ -815,7 +808,6 @@ def monkey_patch_varbase():
     if core._in_eager_mode():
         setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
-        setattr(core.eager.Tensor, "clear_gradient", clear_gradient)
         setattr(core.eager.Tensor, "clone", clone)
         setattr(core.eager.Tensor, "value", value)
     else:

@@ -21,7 +21,7 @@ namespace phi {
 using DataType = paddle::experimental::DataType;
 
 struct DeviceContext::Impl {
-  explicit Impl(DeviceContext* dev_ctx) : dev_ctx_(dev_ctx) {}
+  Impl() = default;
   ~Impl() = default;
 
   void SetAllocator(const Allocator* allocator) {
@@ -73,6 +73,7 @@ struct DeviceContext::Impl {
   }
 
   void* Alloc(TensorBase* tensor,
+              const Place& place,
               DataType dtype = DataType::UNDEFINED,
               size_t requested_size = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -85,7 +86,7 @@ struct DeviceContext::Impl {
     // NOTE(paddle-dev): In case of tensor has already hold allocation and
     // is going to allocate allocation on new place, we will clear its holder
     // firstly and then re-alloc it.
-    if (tensor->initialized() && tensor->place() != dev_ctx_->GetPlace()) {
+    if (tensor->initialized() && tensor->place() != place) {
       ClearHolder(tensor);
     }
     auto* allocator =
@@ -95,9 +96,11 @@ struct DeviceContext::Impl {
   }
 
   template <typename T>
-  T* Alloc(TensorBase* tensor, size_t requested_size = 0) const {
+  T* Alloc(TensorBase* tensor,
+           const Place& place,
+           size_t requested_size = 0) const {
     DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
-    return static_cast<T*>(Alloc(tensor, dtype, requested_size));
+    return static_cast<T*>(Alloc(tensor, place, dtype, requested_size));
   }
 
   void* HostAlloc(TensorBase* tensor,
@@ -129,15 +132,31 @@ struct DeviceContext::Impl {
         gen,
         phi::errors::InvalidArgument(
             "Required generator shall not be nullptr, but received nullptr."));
-    generator_ = gen;
+    device_generator_ = gen;
   }
 
   Generator* GetGenerator() const {
     PADDLE_ENFORCE_NOT_NULL(
-        generator_,
+        device_generator_,
         phi::errors::InvalidArgument("Required generator_ shall not be "
                                      "nullptr, but received nullptr."));
-    return generator_;
+    return device_generator_;
+  }
+
+  void SetHostGenerator(Generator* gen) {
+    PADDLE_ENFORCE_NOT_NULL(
+        gen,
+        phi::errors::InvalidArgument(
+            "Required generator shall not be nullptr, but received nullptr."));
+    host_generator_ = gen;
+  }
+
+  Generator* GetHostGenerator() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        host_generator_,
+        phi::errors::InvalidArgument("Required generator_ shall not be "
+                                     "nullptr, but received nullptr."));
+    return host_generator_;
   }
 
  private:
@@ -157,23 +176,25 @@ struct DeviceContext::Impl {
   const Allocator* device_allocator_{nullptr};
   const Allocator* host_allocator_{nullptr};
   const Allocator* zero_allocator_{nullptr};
-  Generator* generator_{nullptr};
-  DeviceContext* dev_ctx_{nullptr};
+  Generator* device_generator_{nullptr};
+  Generator* host_generator_{nullptr};
 };
 
-DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(this); }
+DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetHostAllocator(&other.GetHostAllocator());
   impl_->SetAllocator(&other.GetAllocator());
   impl_->SetZeroAllocator(&other.GetZeroAllocator());
+  impl_->SetHostGenerator(other.GetHostGenerator());
+  impl_->SetGenerator(other.GetGenerator());
 }
 
 DeviceContext::DeviceContext(DeviceContext&& other) {
   impl_ = std::move(other.impl_);
 }
 
-DeviceContext& DeviceContext::operator=(DeviceContext&&) = default;
+DeviceContext& DeviceContext::operator=(DeviceContext&& other) = default;
 
 DeviceContext::~DeviceContext() = default;
 
@@ -204,12 +225,12 @@ const Allocator& DeviceContext::GetZeroAllocator() const {
 void* DeviceContext::Alloc(TensorBase* tensor,
                            DataType dtype,
                            size_t requested_size) const {
-  return impl_->Alloc(tensor, dtype, requested_size);
+  return impl_->Alloc(tensor, GetPlace(), dtype, requested_size);
 }
 
 template <typename T>
 T* DeviceContext::Alloc(TensorBase* tensor, size_t requested_size) const {
-  return impl_->Alloc<T>(tensor, requested_size);
+  return impl_->Alloc<T>(tensor, GetPlace(), requested_size);
 }
 
 void* DeviceContext::HostAlloc(TensorBase* tensor,
@@ -247,5 +268,13 @@ DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
 void DeviceContext::SetGenerator(Generator* gen) { impl_->SetGenerator(gen); }
 
 Generator* DeviceContext::GetGenerator() const { return impl_->GetGenerator(); }
+
+void DeviceContext::SetHostGenerator(Generator* gen) {
+  impl_->SetHostGenerator(gen);
+}
+
+Generator* DeviceContext::GetHostGenerator() const {
+  return impl_->GetHostGenerator();
+}
 
 }  // namespace phi

@@ -225,4 +225,9 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto in_dims = x.dims();
+  out->set_dims(in_dims);
+}
+
 }  // namespace phi

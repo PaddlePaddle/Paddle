@@ -70,12 +70,8 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
             grad_tensor->set_impl(t.impl());
             return *grad_tensor.get();
           } else {
-            PADDLE_THROW(paddle::platform::errors::Fatal(
-                "Detected uninitialized variable, causing segmentation "
-                "fault "
-                "inside the hook."
-                "Tensor has to be initialized while we need to set it."
-                "please check tensor initialization status."));
+            VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+            return paddle::experimental::Tensor();
           }
         } else {
           VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";

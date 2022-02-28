@@ -45,10 +45,13 @@
 namespace infrt {
 namespace host_context {
 
+struct None {};
+
 struct MlirFunctionExecutable;
 
 using ValueVariantType =
-    Variant<int16_t,
+    Variant<None,
+            int16_t,
             int32_t,
             int64_t,
             float,
@@ -118,13 +121,15 @@ class Value : public common::Object {
 
   template <typename T>
   const T& get() const {
-    CHECK(data.template is<T>());
+    CHECK(data.template is<T>()) << "typeid: " << data.index()
+                                 << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
 
   template <typename T>
   T& get() {
-    CHECK(data.template is<T>());
+    CHECK(data.template is<T>()) << "typeid: " << data.index()
+                                 << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
 
@@ -152,6 +157,8 @@ class Value : public common::Object {
   }
 
   const char* type_info() const override;
+
+  ValueVariantType::IndexT index() const { return data.index(); }
 
   friend void CopyTo(const Value& from, Value* to);
 

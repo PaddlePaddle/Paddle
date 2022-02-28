@@ -328,7 +328,7 @@ __device__ __forceinline__ void Reduce(T* out,
                                        const T* in,
                                        ReduceFunctor reducer,
                                        bool reduce_last_dim) {
-  if (Mode == kGlobalMode) {
+  if (Mode == details::kGlobalMode) {
 #pragma unroll
     for (int i = 0; i < NY; ++i) {
 #pragma unroll
@@ -336,7 +336,7 @@ __device__ __forceinline__ void Reduce(T* out,
         out[i] = reducer(out[i], in[i * NX + j]);
       }
     }
-    BlockXReduce<T, OpFunc, NY>(out, reducer);
+    BlockXReduce<T, ReduceFunctor, NY>(out, reducer);
   } else {  // else  kLocalMode
 #pragma unroll
     for (int i = 0; i < NY; ++i) {
