@@ -274,6 +274,7 @@ void distribution_and_transform(const GPUContext &ctx,
                                 TransformOp trans) {
   T *out_data = ctx.template Alloc<T>(out);
   auto size = out->numel();
+  if (size == 0) return;
   auto gen_cuda = ctx.GetGenerator();
 
   size_t block_size = 256;

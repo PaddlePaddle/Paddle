@@ -22,6 +22,8 @@ from paddle.fluid import core
 from paddle.static import program_guard, Program
 import os
 
+paddle.enable_static()
+
 
 def output_hist(out):
     hist, _ = np.histogram(out, range=(-10, 10))

@@ -35,6 +35,8 @@ void RandintRawKernel(const Context& dev_ctx,
                       DataType dtype,
                       int seed,
                       DenseTensor* out) {
+  out->Resize(phi::make_ddim(shape.GetData()));
+  T* data = dev_ctx.template Alloc<T>(out);
   if (FLAGS_use_curand) {
     uint64_t range = static_cast<uint64_t>(high) - static_cast<uint64_t>(low);
     if (UNLIKELY(range >= (1ULL << 32))) {
@@ -51,9 +53,6 @@ void RandintRawKernel(const Context& dev_ctx,
     DenseTensor tmp;
     tmp.Resize(phi::make_ddim(shape.GetData()));
     T* tmp_data = dev_ctx.template HostAlloc<T>(&tmp);
-
-    out->Resize(tmp.dims());
-    T* data = dev_ctx.template Alloc<T>(out);
 
     std::shared_ptr<std::mt19937_64> engine;
     if (seed) {
