@@ -18,7 +18,7 @@ import sys
 import unittest
 import time
 import paddle
-import paddle.multiprocessing as mp
+import paddle.incubate.multiprocessing as mp
 
 REPEAT = 20
 HAS_SHM_FILES = os.path.isdir('/dev/shm')
