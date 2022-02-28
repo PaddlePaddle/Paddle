@@ -95,7 +95,8 @@ def generate_inputs_info(input_info):
 def generate_arguments_info(op_name, input_info, attr_info):
     input_args = generate_inputs_info(input_info)
     attr_args = generate_attrs_info(op_name, attr_info)
-    argument_ = "{},{}".format(input_args, attr_args)
+    context_args = "CPU_Context:$dev_ctx"
+    argument_ = "{},{},{}".format(context_args, input_args, attr_args)
     return (("let arguments = (ins {});".format(argument_.strip(","))))
 
 
@@ -156,9 +157,14 @@ def generate_cpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 
     alias = generate_kernel_name(op_name, kernel_alias_)
     summary = 'let summary = "{name}";'.format(name=alias)
+    dialect_name = alias.split(".")
+    dialect_name = dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[
+        3]
 
-    header = 'def {name}Kernel : PDTCPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
-        name=alias.replace(".", ""), left_brace="{")
+    header = 'def {kernel_name} : PDTCPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
+        kernel_name=alias.replace(".", ""),
+        name=dialect_name.lower(),
+        left_brace="{")
 
     inputs_ = kernel_info["input"]
     attributes = kernel_info["attribute"]
@@ -180,10 +186,15 @@ def generate_gpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 
     alias = generate_kernel_name(op_name, kernel_alias_)
     summary = 'let summary = "{name}";'.format(name=alias)
+    dialect_name = alias.split(".")
+    dialect_name = dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[
+        3]
+    print(dialect_name)
 
-    header = 'def {name}Kernel : PDTGPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
-        name=alias.replace(".", ""), left_brace="{")
-
+    header = 'def {kernel_name} : PDTGPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
+        kernel_name=alias.replace(".", ""),
+        name=dialect_name.lower(),
+        left_brace="{")
     inputs_ = kernel_info["input"]
     attributes = kernel_info["attribute"]
     arguments = generate_arguments_info(op_name, inputs_, attributes)
@@ -216,10 +227,6 @@ include \"mlir/Interfaces/InferTypeOpInterface.td\"\n\
 include \"mlir/Interfaces/LoopLikeInterface.td\"\n\
 include \"mlir/IR/OpBase.td\"\n\
 include \"paddle/infrt/dialect/phi/infrt_phi_kernel.td\""
-
-    #include \"paddle/infrt/dialect/phi/infrt_phi_base.td\"\n\
-    #include \"paddle/infrt/dialect/phi/infrt_phi_kernel.td\"\n\
-    #include \"paddle/infrt/dialect/phi/infrt_phi_tensor.td\""
 
     return (comment_ + includes_)
 
