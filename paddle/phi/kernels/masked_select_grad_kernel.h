@@ -24,4 +24,4 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             const DenseTensor& mask,
                             DenseTensor* x_grad);
 
-}  // namspace pten
+}  // namspace phi

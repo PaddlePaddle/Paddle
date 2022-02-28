@@ -44,9 +44,8 @@ using KernelSignature = phi::KernelSignature;
 
 /* Kernel Key translate */
 
-OpKernelType TransPtenKernelKeyToOpKernelType(const phi::KernelKey& kernel_key);
-phi::KernelKey TransOpKernelTypeToPtenKernelKey(
-    const OpKernelType& kernel_type);
+OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key);
+phi::KernelKey TransOpKernelTypeToPhiKernelKey(const OpKernelType& kernel_type);
 phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
                              const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op);
@@ -68,25 +67,25 @@ void SetAllocationForOutputTenosr(phi::TensorBase* tensor,
 
 // TODO(Wilber): support others device context.
 template <typename T>
-struct ConvertToPtenContext {
+struct ConvertToPhiContext {
   using TYPE = T;
 };
 
 template <>
-struct ConvertToPtenContext<platform::CPUDeviceContext> {
+struct ConvertToPhiContext<platform::CPUDeviceContext> {
   using TYPE = phi::CPUContext;
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-struct ConvertToPtenContext<platform::CUDADeviceContext> {
+struct ConvertToPhiContext<platform::CUDADeviceContext> {
   using TYPE = phi::GPUContext;
 };
 #endif
 
 #ifdef PADDLE_WITH_XPU
 template <>
-struct ConvertToPtenContext<platform::XPUDeviceContext> {
+struct ConvertToPhiContext<platform::XPUDeviceContext> {
   using TYPE = phi::XPUContext;
 };
 #endif

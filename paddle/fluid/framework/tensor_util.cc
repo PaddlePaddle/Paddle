@@ -1457,7 +1457,7 @@ std::ostream& print_tensor<paddle::platform::complex<double>>(
 std::ostream& operator<<(std::ostream& os, const LoD& lod) {
   // NOTE(xiongkun):
   // https://stackoverflow.com/questions/5195512/namespaces-and-operator-resolution
-  // if we don't redefine, the operator << of pten / framework LoD is not found.
+  // if we don't redefine, the operator << of phi / framework LoD is not found.
   paddle::string::operator<<(os, lod);
   return os;
 }

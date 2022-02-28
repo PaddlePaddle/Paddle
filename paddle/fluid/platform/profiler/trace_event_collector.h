@@ -48,7 +48,7 @@ class TraceEventCollector {
     return device_events_;
   }
 
-  std::unordered_map<uint64_t, std::string> ThreadNames() const {
+  const std::unordered_map<uint64_t, std::string>& ThreadNames() const {
     return thread_names_;
   }
 

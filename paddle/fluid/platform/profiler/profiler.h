@@ -15,16 +15,18 @@
 #pragma once
 
 #include <atomic>
+#include <bitset>
 #include <cstdint>
 #include <functional>
 #include <list>
-#include <bitset>
 #include <memory>
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/profiler/event_node.h"
-#include "paddle/fluid/platform/profiler/tracer_base.h"
 #include "paddle/fluid/platform/profiler/cpu_utilization.h"
+#include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
+#include "paddle/fluid/platform/profiler/tracer_base.h"
+
+DECLARE_int64(host_trace_level);
 
 DECLARE_int64(host_trace_level);
 

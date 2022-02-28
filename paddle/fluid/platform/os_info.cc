@@ -110,7 +110,7 @@ std::unordered_map<uint64_t, std::string> GetAllThreadNames() {
 bool SetCurrentThreadName(const std::string& name) {
   auto& instance = internal::ThreadDataRegistry<std::string>::GetInstance();
   const auto& cur_name = instance.GetCurrentThreadData();
-  if (!cur_name.empty() || cur_name == kDefaultThreadName) {
+  if (!cur_name.empty() || name.empty() || name == kDefaultThreadName) {
     return false;
   }
   instance.SetCurrentThreadData(name);
