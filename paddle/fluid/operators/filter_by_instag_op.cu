@@ -436,8 +436,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     size_t* x1_lods_data = mixv_x1_lods.CUDAMutableData(gpu_place);
     auto* x1_data = x1->data<T>();
 
-    // ============= need to be further optimized ===================
-
     // set output value
     // for those whose ins been dropout, set 0 for whole lines.
     // otherwise, copy whole line
