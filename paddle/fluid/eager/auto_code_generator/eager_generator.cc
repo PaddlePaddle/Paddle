@@ -27,7 +27,7 @@
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
-// pten
+// phi
 #include "paddle/phi/kernels/declarations.h"
 
 #define NUM_CREATED_DUP_INPUTS 4
@@ -544,7 +544,7 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   // since only OperatorWithKernel can run in dygraph mode.
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
   if (!all_kernels.count(op_type) &&
-      !phi::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+      !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
     return false;
   }
 
