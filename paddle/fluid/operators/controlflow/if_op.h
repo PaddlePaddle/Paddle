@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -61,7 +62,7 @@ class IfBaseOp : public framework::OperatorBase {
         platform::errors::InvalidArgument(
             "condition should have one initialized input as condition"));
 
-    PADDLE_ENFORCE_EQ(ips[0]->type() == framework::proto::VarType::BOOL &&
+    PADDLE_ENFORCE_EQ(ips[0]->type() == paddle::experimental::DataType::BOOL &&
                           ips[0]->numel() == 1,
                       true, platform::errors::InvalidArgument(
                                 "condition input's data type should be bool, "
@@ -151,11 +152,16 @@ class IfBaseOp : public framework::OperatorBase {
       framework::Scope *outer_scope) const {
     std::vector<std::string> zero_grad_names;
     for (size_t i = 0; i < out_var_names.size(); ++i) {
-      if (out_var_names[i] == framework::kEmptyVarName) continue ;
-      auto *out_var = outer_scope->FindVar(out_var_names[i]); 
-      PADDLE_ENFORCE_NOT_NULL(out_var, platform::errors::InvalidArgument(
-          "out_var : %s is null, which is not expected. we should ensure @GRAD is created in the most_outer_scope", out_var_names[i]));
-      // Don't use tensor->IsInitialized, use tensor->numel() != 0 instead. because initialized don't mean data is valid, if the numel()==0, the grad is still invalid.
+      if (out_var_names[i] == framework::kEmptyVarName) continue;
+      auto *out_var = outer_scope->FindVar(out_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(
+          out_var, platform::errors::InvalidArgument(
+                       "out_var : %s is null, which is not expected. we should "
+                       "ensure @GRAD is created in the most_outer_scope",
+                       out_var_names[i]));
+      // Don't use tensor->IsInitialized, use tensor->numel() != 0 instead.
+      // because initialized don't mean data is valid, if the numel()==0, the
+      // grad is still invalid.
       if (!(out_var->IsInitialized() &&
             out_var->Get<framework::LoDTensor>().numel() != 0)) {
         zero_grad_names.push_back(out_var_names[i]);

@@ -18,7 +18,7 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/operators/assign_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -101,10 +101,10 @@ class IfOp : public IfBaseOp {
               ->Get<framework::LoDTensor>()
               .dims();
       outside_tensor->Resize(ddim);
-      outside_tensor->mutable_data(place, outside_tensor->saved_type());
+      outside_tensor->mutable_data(place, outside_tensor->type());
       const platform::DeviceContext *dev_ctx =
           platform::DeviceContextPool::Instance().Get(place);
-      math::set_constant(*dev_ctx, outside_tensor, 0.0f);
+      phi::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
       VLOG(4) << "the number of " << var_name
               << "is: " << outside_tensor->numel();
     }
@@ -168,7 +168,7 @@ class IfGradMaker : public framework::SingleGradOpMaker<T> {
                     false_out_grad_names.emplace_back(name + "@GRAD");
                   });
     std::vector<std::string> true_out_grad_names = false_out_grad_names;
-    grad_op->SetAttr(IfBaseOp::kTrueOutVars, false_out_grad_names); // the same
+    grad_op->SetAttr(IfBaseOp::kTrueOutVars, false_out_grad_names);  // the same
     grad_op->SetAttr(IfBaseOp::kFalseOutVars, true_out_grad_names);
     grad_op->SetAttr(IfBaseOp::kSkipEagerDeletionVars,
                      this->InputGrad(IfBaseOp::kInputs, false));
