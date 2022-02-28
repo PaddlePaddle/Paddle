@@ -47,16 +47,5 @@ static DDim RemoveLastDim(const DDim& dim) {
 }
 }  // namespace detail
 
-template <typename T>
-struct GreaterElementFunctor {
-  HOSTDEVICE T operator()(const T a, const T b) const {
-    if (a > b) {
-      return a;
-    } else {
-      return b;
-    }
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle

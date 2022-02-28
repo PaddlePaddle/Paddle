@@ -310,6 +310,5 @@ void MatrixRankGPUKernel<double>::SyevjBatched(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(matrix_rank, ops::MatrixRankGPUKernel<float>,
-                        ops::MatrixRankGPUKernel<double>);
+
 #endif  // not PADDLE_WITH_HIP
