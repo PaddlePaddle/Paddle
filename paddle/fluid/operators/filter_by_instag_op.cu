@@ -446,7 +446,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     int out_first = x1->dims()[0];
     if (x1_lods_filled) {
-      out_first = x1_lods.back();
+      out_first = mixv_x1_lods.back();
     }
 
     out->Resize(phi::make_ddim({(int64_t)out_first, (int64_t)x1_embed_size}));
@@ -487,14 +487,15 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     platform::GpuStreamSync(current_stream);
 
-    mixv_out_lods.resize(out_idx[0]);
+    mixv_out_lods.resize(mixv_out_idx[0]);
 
     if (mixv_out_lods.size() - 1 > 0) {
-      out->Resize(
-          phi::make_ddim({(int64_t)out_lods.back(), (int64_t)x1_embed_size}));
+      out->Resize(phi::make_ddim(
+          {(int64_t)mixv_out_lods.back(), (int64_t)x1_embed_size}));
 
-      map->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 3}));
-      loss_weight->Resize(phi::make_ddim({(int64_t)out_lods.size() - 1, 1}));
+      map->Resize(phi::make_ddim({(int64_t)mixv_out_lods.size() - 1, 3}));
+      loss_weight->Resize(
+          phi::make_ddim({(int64_t)mixv_out_lods.size() - 1, 1}));
 
     } else {
       out->Resize(phi::make_ddim({1, (int64_t)x1_embed_size}));
