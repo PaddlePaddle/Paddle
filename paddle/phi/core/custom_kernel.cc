@@ -22,7 +22,7 @@ void RegisterCustomKernels(const CustomKernelMap& custom_kernel_map) {
 
   for (auto& pair : kernel_info_map) {
     PADDLE_ENFORCE_EQ(
-        KernelFactory::Instance().HasCompatiblePtenKernel(pair.first),
+        KernelFactory::Instance().HasCompatiblePhiKernel(pair.first),
         true,
         phi::errors::InvalidArgument(
             "The kernel %s is not ready for custom kernel registering.",

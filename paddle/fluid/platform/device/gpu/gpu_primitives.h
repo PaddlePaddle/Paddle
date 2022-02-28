@@ -210,6 +210,12 @@ template <typename T, typename std::enable_if<std::is_same<
                           platform::float16, T>::value>::type * = nullptr>
 __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
     const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
+#if ((CUDA_VERSION < 10000) || \
+     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
+  for (int i = tid; i < len; i += threads_per_block) {
+    CudaAtomicAdd(&out[i], in[i]);
+  }
+#else
   int i = 0;
   int loops = len / 2 * 2;
 
@@ -233,6 +239,7 @@ __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
       fastAtomicAdd(out, i, len, in[i]);
     }
   }
+#endif
 }
 #endif
 #endif

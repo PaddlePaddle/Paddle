@@ -25,7 +25,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RandintRawKernel(const Context& ctx,
+void RandintRawKernel(const Context& dev_ctx,
                       int low,
                       int high,
                       const ScalarArray& shape,
@@ -34,21 +34,22 @@ void RandintRawKernel(const Context& ctx,
                       DenseTensor* out) {
   DenseTensor tmp;
   tmp.Resize(phi::make_ddim(shape.GetData()));
-  T* tmp_data = ctx.template HostAlloc<T>(&tmp);
+  T* tmp_data = dev_ctx.template HostAlloc<T>(&tmp);
 
-  out->ResizeAndAllocate(tmp.dims());
-  auto size = out->numel();
+  out->Resize(tmp.dims());
+  T* data = dev_ctx.template Alloc<T>(out);
 
   std::shared_ptr<std::mt19937_64> engine;
   if (seed) {
     engine = std::make_shared<std::mt19937_64>();
     engine->seed(seed);
   } else {
-    engine = ctx.GetHostGenerator()->GetCPUEngine();
+    engine = dev_ctx.GetHostGenerator()->GetCPUEngine();
   }
+
   std::uniform_int_distribution<T> dist(low, high - 1);
-  auto data = out->data<T>();
-  for (int64_t i = 0; i < size; ++i) {
+  auto numel = out->numel();
+  for (int64_t i = 0; i < numel; ++i) {
     tmp_data[i] = dist(*engine);
   }
 
@@ -57,18 +58,18 @@ void RandintRawKernel(const Context& ctx,
       data,
       tmp.place(),
       tmp_data,
-      size * paddle::experimental::SizeOf(out->dtype()),
+      numel * paddle::experimental::SizeOf(out->dtype()),
       0);
 }
 
 template <typename T, typename Context>
-void RandintKernel(const Context& ctx,
+void RandintKernel(const Context& dev_ctx,
                    int low,
                    int high,
                    const ScalarArray& shape,
                    DataType dtype,
                    DenseTensor* out) {
-  RandintRawKernel<T>(ctx, low, high, shape, dtype, 0, out);
+  RandintRawKernel<T>(dev_ctx, low, high, shape, dtype, 0, out);
 }
 
 }  // namespace phi

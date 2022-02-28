@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/atan2_kernel.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 template <typename T>
@@ -80,7 +80,7 @@ void Atan2Kernel(const Context& ctx,
   auto* out_data = ctx.template Alloc<typename Atan2Out<T>::type>(
       out, size_t(x.numel() * sizeof(typename Atan2Out<T>::type)));
 
-  paddle::platform::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(ctx, numel);
   phi::Atan2Functor<T> functor(x_data, y_data, out_data, numel);
   for_range(functor);
 }
