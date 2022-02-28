@@ -533,12 +533,8 @@ class TestTensorRegisterHook(unittest.TestCase):
             size=[self.batch_size, self.in_size]).astype('float32')
         data_t = paddle.to_tensor(data)
 
-        if _in_eager_mode():
-            with self.assertRaises(TypeError):
-                out = jit_net(data_t)
-        else:
-            with self.assertRaises(AssertionError):
-                out = jit_net(data_t)
+        with self.assertRaises(AssertionError):
+            out = jit_net(data_t)
 
     def test_register_hook_in_dy2static_mode(self):
         with _test_eager_guard():
