@@ -17,8 +17,8 @@ limitations under the License. */
 #include <cstdint>
 #include <limits>
 
-#include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/enforce.h"
 namespace paddle {
 namespace experimental {
 
@@ -104,11 +104,12 @@ class ScalarBase {
   // The Tensor must have one dim
   ScalarBase(const T& tensor) : dtype_(tensor.dtype()) {  // NOLINT
     is_from_tensor_ = true;
-    PD_CHECK(
-        tensor.numel() == 1,
-        "The Scalar only supports Tensor with 1 element, but now Tensor has `",
+    PADDLE_ENFORCE_EQ(
         tensor.numel(),
-        "` element.");
+        1,
+        phi::errors::InvalidArgument("The Scalar only supports Tensor with 1 "
+                                     "element, but now Tensor has %d element.",
+                                     tensor.numel()));
     switch (dtype_) {
       case DataType::FLOAT32:
         data_.f32 = tensor.template data<float>()[0];
@@ -147,7 +148,8 @@ class ScalarBase {
         data_.c128 = tensor.template data<complex128>()[0];
         break;
       default:
-        PD_THROW("Invalid tensor data type `", dtype_, "`.");
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Invalid tensor data type : %s.", dtype_));
     }
   }
 
@@ -190,7 +192,8 @@ class ScalarBase {
       case DataType::COMPLEX128:
         return static_cast<RT>(data_.c128);
       default:
-        PD_THROW("Invalid enum scalar data type `", dtype_, "`.");
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Invalid enum scalar data type : %s.", dtype_));
     }
   }
 

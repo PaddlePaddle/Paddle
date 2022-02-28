@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace experimental {
@@ -60,12 +60,10 @@ class ScalarArrayBase {
         AssignData(tensor.template data<int64_t>(), n);
         break;
       default:
-        PD_THROW(
-            "Data type error. Currently, The data type of ScalarArrayBase "
-            "only supports Tensor with int32 and int64, "
-            "but now received `",
-            tensor.dtype(),
-            "`.");
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Data type error. Currently, The data type of ScalarArrayBase only "
+            "supports Tensor with int32 and int64, but now received %s.",
+            tensor.dtype()));
     }
   }
 
@@ -83,12 +81,10 @@ class ScalarArrayBase {
           array_.push_back(*tensor_list[i].template data<int64_t>());
           break;
         default:
-          PD_THROW(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "Data type error. Currently, The data type of ScalarArrayBase "
-              "only supports Tensor with int32 and int64, "
-              "but now received `",
-              data_type,
-              "`.");
+              "only supports Tensor with int32 and int64, but now received %s.",
+              data_type));
       }
     }
   }
@@ -109,7 +105,8 @@ class ScalarArrayBase {
         array_.push_back(static_cast<int64_t>(value_data[i]));
       }
     } else {
-      PD_THROW("The input data pointer is null.");
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("The input data pointer is null."));
     }
   }
 
