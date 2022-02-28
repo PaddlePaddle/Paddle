@@ -38,7 +38,8 @@ PD_REGISTER_KERNEL(softmax_grad,
                    ALL_LAYOUT,
                    phi::SoftmaxGradGPUDNNKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(softmax_grad,
                    GPUDNN,
@@ -46,5 +47,6 @@ PD_REGISTER_KERNEL(softmax_grad,
                    phi::SoftmaxGradGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif
