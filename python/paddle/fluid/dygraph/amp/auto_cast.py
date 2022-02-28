@@ -75,8 +75,15 @@ PURE_FP16_BLACK_LIST = {
     'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
 }
 
-BF16_WHITE_LIST = {'conv2d'}
+BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
 BF16_BLACK_LIST = {' '}
+
+_g_amp_state_ = None
+
+
+def amp_state():
+    global _g_amp_state_
+    return _g_amp_state_
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
@@ -240,6 +247,11 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
+    amp_state = locals()
+    global _g_amp_state_
+    original_state = _g_amp_state_
+    _g_amp_state_ = amp_state
+
     # check amp_level: O0-O2
     level = level.upper()
     if not (level in ['O0', 'O1', 'O2']):
@@ -349,6 +361,7 @@ def amp_guard(enable=True,
         yield
     finally:
         if tracer:
+            _g_amp_state_ = original_state
             tracer._amp_level = original_amp_level
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)

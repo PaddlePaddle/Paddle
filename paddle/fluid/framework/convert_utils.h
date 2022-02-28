@@ -32,7 +32,7 @@ namespace framework {
 using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
-DataType TransToPtenDataType(
+DataType TransToPhiDataType(
     const paddle::framework::proto::VarType::Type& dtype);
 
 paddle::framework::proto::VarType::Type TransToProtoVarType(
