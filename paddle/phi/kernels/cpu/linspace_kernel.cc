@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 // #include "paddle/phi/kernels/funcs/trans_data_type.h"
+// #include "paddle/fluid/framework/data_type_transform.h"
 
 namespace phi {
 
@@ -38,8 +39,10 @@ void LinspaceKernel(const Context& ctx,
   auto stop_dtype = paddle::framework::OpKernelType(
       paddle::framework::TransToProtoVarType(stop.dtype()), ctx.GetPlace());
   auto out_dtype = paddle::framework::OpKernelType(dtype_var, ctx.GetPlace());
-  // phi::funcs::TransDataType(start_dtype, out_dtype, start, &start_t);
-  // phi::funcs::TransDataType(stop_dtype, out_dtype, stop, &stop_t);
+  // phi::funcs::TransformDataType(start_dtype, out_dtype, start, &start_t);
+  // paddle::framework::TransDataType(start_dtype, out_dtype, start, &start_t);
+  // phi::funcs::TransformDataType(stop_dtype, out_dtype, stop, &stop_t);
+  // paddle::framework::TransDataType(stop_dtype, out_dtype, stop, &stop_t);
 
   T start_data = start_t.data<T>()[0];
   T stop_data = stop_t.data<T>()[0];

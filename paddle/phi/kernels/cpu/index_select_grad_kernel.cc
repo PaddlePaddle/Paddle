@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename Context, typename T, class Enable = void>
 struct IndexSelectAdd {
-  void operator()(const framework::ExecutionContext& ctx,
+  void operator()(const Context& ctx,
                   int slice_size,
                   const T* src_pointer,
                   const T* p_pointer,
@@ -112,18 +112,11 @@ void IndexSelectGradKernel(const Context& ctx,
                            const DenseTensor& out_grad,
                            int dim,
                            DenseTensor* x_grad) {
-  //  auto* x_grad =
-  //      context.Output<framework::LoDTensor>(framework::GradVarName("X"));
-  //  auto* index = context.Input<framework::LoDTensor>("Index");
-  //  auto* out_grad =
-  //      context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-
-  //  int dim = context.Attr<int>("dim");
   if (dim < 0) {
     dim += out_grad.dims().size();
   }
   const auto& index_type =
-      paddle::framework::TransToProtoVarType(index->dtype());
+      paddle::framework::TransToProtoVarType(index.dtype());
 
   bool index_type_match =
       index_type == paddle::framework::proto::VarType::INT32 ||
@@ -140,10 +133,10 @@ void IndexSelectGradKernel(const Context& ctx,
                             paddle::framework::proto::VarType::INT64)));
 
   if (index_type == paddle::framework::proto::VarType::INT32) {
-    IndexSelectGradInner<Context, T, int>(ctx, *out_grad, *index, x_grad, dim);
+    IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
   } else if (index_type == paddle::framework::proto::VarType::INT64) {
     IndexSelectGradInner<Context, T, int64_t>(
-        ctx, *out_grad, *index, x_grad, dim);
+        ctx, out_grad, index, x_grad, dim);
   }
 }
 

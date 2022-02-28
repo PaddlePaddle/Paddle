@@ -98,6 +98,7 @@ void IndexSelectKernel(const Context& ctx,
                        const DenseTensor& index,
                        int dim,
                        DenseTensor* output) {
+  auto inputs = x;
   if (dim < 0) {
     dim += x.dims().size();
   }
