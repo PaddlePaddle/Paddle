@@ -427,8 +427,8 @@ class TestMoveAxis(unittest.TestCase):
         paddle.disable_static()
         x = paddle.to_tensor(
             [[1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j]])
-        x.moveaxis(0, 1)
-        self.assertEqual(x.shape, [2, 3])
+        out = x.moveaxis(0, 1)
+        self.assertEqual(out.shape, [2, 3])
         paddle.enable_static()
 
     def test_error(self):
