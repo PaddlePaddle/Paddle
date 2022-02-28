@@ -125,7 +125,7 @@ __device__ __forceinline__ void ThreadReduce(const T* input, int size,
 }
 
 template <typename T>
-__global__ void ScalarGetMeanAndVarNCHW(const T* x, int size, T* mean, T* var) {
+__global__ void ScalarGetMeanAndVarNCHW(const T* x, T* mean, T* var, int size) {
   int i = blockIdx.x;
   T x_mean = 0, x_var = 0;
   for (int j = threadIdx.x; j < size; j += blockDim.x) {
@@ -141,8 +141,8 @@ __global__ void ScalarGetMeanAndVarNCHW(const T* x, int size, T* mean, T* var) {
 }
 
 template <typename T, typename AccT, int VecSize>
-__global__ void VectorizedGetMeanAndVarNCHW(const T* x, int size, T* mean,
-                                            T* var) {
+__global__ void VectorizedGetMeanAndVarNCHW(const T* x, T* mean, T* var,
+                                            int size) {
   int i = blockIdx.x;
   AccT x_mean = static_cast<AccT>(0);
   AccT x_var = static_cast<AccT>(0);
@@ -290,11 +290,11 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
       dim3 blocks(block_size_nchw);
       if (size < vec_size) {
         ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
-            x_data, size, mean_data, temp_var_data);
+            x_data, mean_data, temp_var_data, size);
       } else {
         VectorizedGetMeanAndVarNCHW<
             T, AccT, vec_size><<<grids, blocks, 0, dev_ctx.stream()>>>(
-            x_data, size, mean_data, temp_var_data);
+            x_data, mean_data, temp_var_data, size);
       }
     } else {
       GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
