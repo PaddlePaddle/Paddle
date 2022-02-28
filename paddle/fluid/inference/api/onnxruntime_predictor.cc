@@ -313,7 +313,7 @@ bool ONNXRuntimePredictor::ZeroCopyRun() {
       binding.BindInput(desc.name.c_str(), inputs.back());
     }
 
-    // TODO(heliqi): Optimizatio —— move to  Init()
+    // TODO(heliqi): Optimization —— move to  Init()
     for (auto desc : output_desc_) {
       Ort::MemoryInfo memory_info(device_name, OrtDeviceAllocator,
                                   place_.GetDeviceId(), OrtMemTypeDefault);

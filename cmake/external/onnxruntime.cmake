@@ -16,8 +16,14 @@ if (NOT WITH_ONNXRUNTIME)
   return()
 endif ()
 
+if (WITH_GPU)
+  message(SEND_ERROR "onnxruntime no support GPU")
+  return()
+endif()
+
 if (WITH_ARM)
-  message(SEND_ERROR "onnxruntmie no support arm")
+  message(SEND_ERROR "onnxruntime no support arm")
+  return()
 endif ()
 
 INCLUDE(ExternalProject)

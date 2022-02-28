@@ -331,7 +331,6 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-
 if(WITH_GPU)
     include(cuda)
     # lite subgraph compilation depends on CUDNN_ROOT,

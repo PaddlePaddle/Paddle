@@ -16,6 +16,11 @@ if(NOT WITH_ONNXRUNTIME)
   return()
 endif()
 
+if (WITH_GPU)
+  message(SEND_ERROR "onnxruntime no support GPU")
+  return()
+endif()
+
 INCLUDE(ExternalProject)
 
 SET(PADDLE2ONNX_PROJECT        "extern_paddle2onnx")
