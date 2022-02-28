@@ -22,7 +22,7 @@
 #include "paddle/phi/api/all.h"
 
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
 namespace egr {
@@ -43,7 +43,7 @@ paddle::experimental::Tensor CreateTensorWithValue(
     bool is_leaf) {
   paddle::experimental::Tensor out = paddle::experimental::full(
       phi::vectorize(ddim), paddle::experimental::Scalar(value), dtype,
-      phi::TransToPtenBackend(place));
+      phi::TransToPhiBackend(place));
 
   auto meta = EagerUtils::autograd_meta(&out);
   if (is_leaf) {
