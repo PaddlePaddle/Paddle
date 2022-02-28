@@ -485,15 +485,11 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     float fill_value = 1.0;
 
-    Vector<int> debug_value(4, 0);
-    paddle::framework::MixVector<int> mixv_debug_value(&debug_value);
-    int* debug_value_data = mixv_debug_value.CUDAMutableData(gpu_place);
-
     filter_copy_fuse_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
         x2_lods_size, ins_per_thread, x1_lods_data, x2_lods_data, x2_data,
         x3_data, x3->numel(), out_data, map_data, map_lods_data, out_lods_data,
         out_idx_data, x1_data, x1_embed_size, x1_lods_filled, x2_lods_filled,
-        loss_weight_data, fill_value, debug_value_data);
+        loss_weight_data, fill_value);
 
     platform::GpuStreamSync(current_stream);
 
