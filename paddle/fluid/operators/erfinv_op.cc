@@ -74,7 +74,7 @@ DECLARE_INPLACE_OP_INFERER(ErfinvInplaceInferer, {"X", "Out"});
 }  // namespace paddle
 
 DELCARE_INFER_SHAPE_FUNCTOR(erfinv, ErfinvInferShapeFunctor,
-                            PT_INFER_META(phi::ErfinvInferMeta));
+                            PT_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(
     erfinv, paddle::operators::ErfinvOp, paddle::operators::ErfinvOpMaker,

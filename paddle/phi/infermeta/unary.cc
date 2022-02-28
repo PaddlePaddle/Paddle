@@ -829,12 +829,6 @@ void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dims({1});
 }
 
-void ErfinvInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dtype(x.dtype());
-  out->set_dims(x.dims());
-  out->share_lod(x);
-}
-
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
