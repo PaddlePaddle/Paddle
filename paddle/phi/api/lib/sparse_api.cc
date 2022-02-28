@@ -51,7 +51,7 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
-  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   std::string kernel_name = "dense_to_sparse_coo";
   if (x.layout() == phi::DataLayout::SPARSE_CSR) {
     kernel_name = "sparse_csr_to_coo";
@@ -112,7 +112,7 @@ PADDLE_API Tensor to_sparse_csr(const Tensor& x, Backend backend) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
-  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   std::string kernel_name = "dense_to_sparse_csr";
   if (x.layout() == phi::DataLayout::SPARSE_COO) {
     kernel_name = "sparse_coo_to_csr";
@@ -179,7 +179,7 @@ PADDLE_API Tensor to_dense(const Tensor& x, Backend backend) {
   // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
-  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   std::string kernel_name = "sparse_coo_to_dense";
   if (x.layout() == phi::DataLayout::SPARSE_CSR) {
     kernel_name = "sparse_csr_to_dense";
