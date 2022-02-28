@@ -57,12 +57,9 @@ class Carrier final {
       const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
       const framework::ProgramDesc& program, framework::Scope* scope,
-      int64_t num_micro_batches, const platform::Place& place,
-      const std::vector<std::string>& force_root_scope_var_names = {});
+      int64_t num_micro_batches, const platform::Place& place);
 
-  void CopyParameters(
-      int microbatch_id, const framework::ProgramDesc& program,
-      const std::vector<std::string>& force_root_scope_var_names);
+  void CopyParameters(int microbatch_id, const framework::ProgramDesc& program);
 
   void Release();
   void Wait();
