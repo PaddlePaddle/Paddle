@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/erfinv_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -85,16 +85,3 @@ REGISTER_OPERATOR(
     paddle::operators::ErfinvInplaceInferer);
 
 REGISTER_OPERATOR(erfinv_grad, paddle::operators::ErfinvGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    erfinv,
-    paddle::operators::ErfinvKernel<paddle::platform::CPUDeviceContext, float>,
-    paddle::operators::ErfinvKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
-
-REGISTER_OP_CPU_KERNEL(
-    erfinv_grad,
-    paddle::operators::ErfinvGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    paddle::operators::ErfinvGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>);
