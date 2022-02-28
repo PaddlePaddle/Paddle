@@ -314,10 +314,10 @@ static void FillConstantLike(const VariableWrapper &ref_var,
   // default data_type for now.
   if (ref_var.ForwardDataType() != -1) {
     dst_tensor->mutable_data(
-        place, framework::TransToPtenDataType(ref_var.ForwardDataType()));
+        place, framework::TransToPhiDataType(ref_var.ForwardDataType()));
   } else {
-    dst_tensor->mutable_data(
-        place, framework::TransToPtenDataType(ref_var.DataType()));
+    dst_tensor->mutable_data(place,
+                             framework::TransToPhiDataType(ref_var.DataType()));
   }
   phi::funcs::set_constant(*dev_ctx, dst_tensor, value);
 }
