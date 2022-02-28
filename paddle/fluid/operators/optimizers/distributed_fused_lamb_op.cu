@@ -36,8 +36,6 @@
 namespace cub = hipcub;
 #endif
 
-DECLARE_bool(use_multi_tensor_apply);
-
 namespace paddle {
 namespace operators {
 
@@ -421,7 +419,15 @@ static __global__ void UpdateLambMomentAndTrustRatioDivCUDAKernel(
     platform::AlignedVector<T, VecSize> mom2_vec;
     platform::AlignedVector<T, VecSize> trust_ratio_div_vec;
 
-    platform::Load(param_p + i, &param_vec);
+    T cur_weight_decay = (i < weight_decay_end_numel) * weight_decay;
+    if (cur_weight_decay != static_cast<T>(0.0)) {
+      platform::Load(param_p + i, &param_vec);
+    } else {
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        param_vec[j] = static_cast<T>(0);
+      }
+    }
     platform::Load(grad_p + i, &grad_vec);
     platform::Load(mom1_p + i, &mom1_vec);
     platform::Load(mom2_p + i, &mom2_vec);
@@ -443,7 +449,6 @@ static __global__ void UpdateLambMomentAndTrustRatioDivCUDAKernel(
 
 #pragma unroll
     for (int j = 0; j < VecSize; ++j) {
-      T cur_weight_decay = (i + j < weight_decay_end_numel) * weight_decay;
       PD_LAMB_MOM_TRUST_RATIO_DIV_UPDATE(param_vec, grad_vec, mom1_vec,
                                          mom2_vec, trust_ratio_div_vec, j);
     }
@@ -483,6 +488,12 @@ static void MultiTensorUpdateLambMomentAndTrustRatioDiv(
   vec_size = std::min(vec_size, GetChunkedVecSize(mom1_p, 0));
   vec_size = std::min(vec_size, GetChunkedVecSize(mom2_p, 0));
   vec_size = std::min(vec_size, GetChunkedVecSize(trust_ratio_div_p, 0));
+  for (int i = 0; i < n; ++i) {
+    auto length = offsets[i + 1] - offsets[i];
+    while (length % vec_size != 0) {
+      vec_size /= 2;
+    }
+  }
 
   VLOG(1) << __func__ << " VecSize = " << vec_size;
 
@@ -499,7 +510,6 @@ static void MultiTensorUpdateLambMomentAndTrustRatioDiv(
         max_global_grad_norm, numel, rescale_grad);                    \
   } while (0)
 
-  PADDLE_ENFORCE_EQ(vec_size, 4);
   PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL);
 #undef PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL
 }
@@ -559,13 +569,6 @@ struct LambParamHelper {
     master_param_ = master_param;
   }
 
-  HOSTDEVICE void SetParam(int i, MasterT<T> updated_p) {
-    param_[i] = static_cast<T>(updated_p);
-    master_param_[i] = updated_p;
-  }
-
-  HOSTDEVICE MasterT<T> GetParam(int i) { return master_param_[i]; }
-
   HOSTDEVICE T *__restrict__ ParamPtr() { return param_; }
 
   HOSTDEVICE MasterT<T> *__restrict__ MasterParamPtr() { return master_param_; }
@@ -592,14 +595,6 @@ struct LambParamHelper<T, false> {
     param_ = param;
   }
 
-  HOSTDEVICE void SetParam(int i, MasterT<T> updated_p) {
-    param_[i] = static_cast<T>(updated_p);
-  }
-
-  HOSTDEVICE MasterT<T> GetParam(int i) {
-    return static_cast<MasterT<T>>(param_[i]);
-  }
-
   HOSTDEVICE T *__restrict__ ParamPtr() { return param_; }
 
   HOSTDEVICE constexpr MasterT<T> *MasterParamPtr() { return nullptr; }
@@ -607,74 +602,6 @@ struct LambParamHelper<T, false> {
  private:
   T *__restrict__ param_;
 };
-
-template <typename ParamT, typename IndexT, bool HasMasterParam,
-          bool NeedUpdateBetaPow>
-struct LambParamAndBetaPowsUpdateHelper
-    : public LambParamHelper<ParamT, HasMasterParam>,
-      public LambBetaPowUpdateOnceHelper<MasterT<ParamT>, NeedUpdateBetaPow> {
-  LambParamAndBetaPowsUpdateHelper(
-      ParamT *param, MasterT<ParamT> *master_param, MasterT<ParamT> *beta1pow,
-      MasterT<ParamT> *beta2pow, MasterT<ParamT> beta1, MasterT<ParamT> beta2,
-      const MasterT<ParamT> *trust_ratio_div, const MasterT<ParamT> *lr,
-      const IndexT *index, const MasterT<ParamT> *param_square_norm,
-      const MasterT<ParamT> *trust_ratio_div_square_norm,
-      const MasterT<ParamT> *update_flag)
-      : LambParamHelper<ParamT, HasMasterParam>(param, master_param),
-        LambBetaPowUpdateOnceHelper<MasterT<ParamT>, NeedUpdateBetaPow>(
-            beta1pow, beta2pow, beta1, beta2),
-        trust_ratio_div(trust_ratio_div),
-        lr(lr),
-        index(index),
-        param_square_norm(param_square_norm),
-        trust_ratio_div_square_norm(trust_ratio_div_square_norm),
-        update_flag(update_flag) {}
-
-  const MasterT<ParamT> *__restrict__ trust_ratio_div;
-  const MasterT<ParamT> *__restrict__ lr;
-  const IndexT *__restrict__ index;
-  const MasterT<ParamT> *__restrict__ param_square_norm;
-  const MasterT<ParamT> *__restrict__ trust_ratio_div_square_norm;
-  const MasterT<ParamT> *__restrict__ update_flag;
-};
-
-template <typename ParamT, typename IndexT, bool HasMasterParam,
-          bool NeedUpdateBetaPow>
-static __global__ void LambUpdateParamAndBetaPowsCUDAKernel(
-    LambParamAndBetaPowsUpdateHelper<ParamT, IndexT, HasMasterParam,
-                                     NeedUpdateBetaPow>
-        args,
-    int num) {
-  auto should_update = *args.update_flag;
-  if (!isfinite(should_update)) {
-    return;
-  }
-
-  if (NeedUpdateBetaPow && threadIdx.x == 0 && blockIdx.x == 0) {
-    args.UpdateBetaPows();
-  }
-
-  using MT = MasterT<ParamT>;
-
-  MT lr_value = *args.lr;
-  CUDA_KERNEL_LOOP(i, num) {
-    MT p = args.GetParam(i);
-    MT t = args.trust_ratio_div[i];
-    auto norm_idx = args.index[i];
-    MT p_square_norm = args.param_square_norm[norm_idx];
-    MT t_square_norm = args.trust_ratio_div_square_norm[norm_idx];
-
-    MT p_norm = static_cast<MT>(sqrtf(p_square_norm));
-    MT t_norm = static_cast<MT>(sqrtf(t_square_norm));
-
-    auto update = (p_norm != static_cast<MT>(0) && t_norm != static_cast<MT>(0))
-                      ? p_norm / t_norm
-                      : static_cast<MT>(1);
-
-    MT updated_p = p - lr_value * update * t;
-    args.SetParam(i, updated_p);
-  }
-}
 
 template <typename ParamT, bool HasMasterParam, bool NeedUpdateBetaPow,
           int VecSize>
@@ -751,15 +678,17 @@ struct LambUpdateParamAndBetaPowsFunctor {
   }
 };
 
-template <typename ParamT, int MaxTensorNumPerLaunch = 50,
-          int MaxChunkNumPerLaunch = 680>
+// TODO(zengjinle): which block_dim and chunk_size would be better?
+template <typename ParamT, int MaxTensorNumPerLaunch = 160,
+          int MaxChunkNumPerLaunch = 780>
 static void MultiTensorUpdateLambParamAndBetaPows(
     const platform::CUDADeviceContext &dev_ctx, const int *offsets, int n,
     const MasterT<ParamT> *trust_ratio_div, const MasterT<ParamT> *lr,
     const MasterT<ParamT> *param_square_norm,
     const MasterT<ParamT> *trust_ratio_div_square_norm, const bool *found_inf,
     ParamT *param, MasterT<ParamT> *master_param, MasterT<ParamT> *beta1pow,
-    MasterT<ParamT> *beta2pow, MasterT<ParamT> beta1, MasterT<ParamT> beta2) {
+    MasterT<ParamT> *beta2pow, MasterT<ParamT> beta1, MasterT<ParamT> beta2,
+    int chunk_size = 65536) {
   constexpr bool kHasMasterParam =
       !(std::is_same<ParamT, MasterT<ParamT>>::value);
 
@@ -772,9 +701,7 @@ static void MultiTensorUpdateLambParamAndBetaPows(
                                              "Beta2Pow should be nullptr."));
   }
 
-  // TODO(zengjinle): which block_dim and chunk_size would be better?
   const int block_dim = 512;
-  const int chunk_size = 65536;
 
   int vec_size = 8;
   for (int i = 0; i < n; ++i) {
@@ -831,45 +758,6 @@ static void MultiTensorUpdateLambParamAndBetaPows(
 
 #undef PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW
 #undef PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE
-}
-
-template <typename ParamT, typename IndexT>
-static void LambUpdateParamAndBetaPows(
-    const platform::CUDADeviceContext &dev_ctx,
-    const MasterT<ParamT> *trust_ratio_div, const MasterT<ParamT> *lr,
-    const IndexT *index, const MasterT<ParamT> *param_square_norm,
-    const MasterT<ParamT> *trust_ratio_div_square_norm,
-    const MasterT<ParamT> *update_flag, MasterT<ParamT> **beta1pow,
-    MasterT<ParamT> **beta2pow, MasterT<ParamT> beta1, MasterT<ParamT> beta2,
-    int num, ParamT *param, MasterT<ParamT> *master_param, gpuStream_t stream) {
-  if (num == 0) return;
-
-  constexpr bool kHasMasterParam =
-      !(std::is_same<ParamT, MasterT<ParamT>>::value);
-  auto has_beta_pow = (*beta1pow) != nullptr && (*beta2pow) != nullptr;
-
-#define PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(__has_beta_pow)               \
-  do {                                                                       \
-    LambParamAndBetaPowsUpdateHelper<ParamT, IndexT, kHasMasterParam,        \
-                                     __has_beta_pow>                         \
-        helper(param, master_param, *beta1pow, *beta2pow, beta1, beta2,      \
-               trust_ratio_div, lr, index, param_square_norm,                \
-               trust_ratio_div_square_norm, update_flag);                    \
-    auto config = platform::GetGpuLaunchConfig1D(dev_ctx, num);              \
-    LambUpdateParamAndBetaPowsCUDAKernel<<<                                  \
-        config.block_per_grid, config.thread_per_block, 0, stream>>>(helper, \
-                                                                     num);   \
-  } while (0)
-
-  if (has_beta_pow) {
-    PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(true);
-  } else {
-    PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL(false);
-  }
-
-  *beta1pow = nullptr;
-  *beta2pow = nullptr;
-#undef PADDLE_LAUNCH_LAMB_UPDATE_PARAM_KERNEL
 }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -1517,20 +1405,11 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
 
     // Step 9: update parameter, beta1pow, beta2pow. All gather parameters.
     if (has_fp32_param) {
-      if (FLAGS_use_multi_tensor_apply) {
-        MultiTensorUpdateLambParamAndBetaPows<float>(
-            dev_ctx, fp32_partial_fused_offsets, fp32_local_param_num,
-            trust_ratio_div, lr, param_square_norm + fp32_local_start_idx,
-            trust_ratio_div_square_norm + fp32_local_start_idx, found_inf,
-            fp32_param + fp32_offset, nullptr, beta1pow, beta2pow, beta1,
-            beta2);
-      } else {
-        LambUpdateParamAndBetaPows<float>(
-            dev_ctx, trust_ratio_div, lr, indices + fp32_offset,
-            param_square_norm, trust_ratio_div_square_norm,
-            fp32_square_grad_norm, &beta1pow, &beta2pow, beta1, beta2,
-            fp32_numel_each_device, fp32_param + fp32_offset, nullptr, stream);
-      }
+      MultiTensorUpdateLambParamAndBetaPows<float>(
+          dev_ctx, fp32_partial_fused_offsets, fp32_local_param_num,
+          trust_ratio_div, lr, param_square_norm + fp32_local_start_idx,
+          trust_ratio_div_square_norm + fp32_local_start_idx, found_inf,
+          fp32_param + fp32_offset, nullptr, beta1pow, beta2pow, beta1, beta2);
       if (num_devices > 1) {
         // ncclAllGather
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
@@ -1542,23 +1421,13 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       beta2pow = nullptr;
     }
     if (has_fp16_param) {
-      if (FLAGS_use_multi_tensor_apply) {
-        MultiTensorUpdateLambParamAndBetaPows<platform::float16>(
-            dev_ctx, fp16_partial_fused_offsets, fp16_local_param_num,
-            trust_ratio_div + fp32_numel_each_device, lr,
-            param_square_norm + fp16_local_start_idx,
-            trust_ratio_div_square_norm + fp16_local_start_idx, found_inf,
-            fp16_param + fp16_offset, master_param + fp16_offset, beta1pow,
-            beta2pow, beta1, beta2);
-      } else {
-        LambUpdateParamAndBetaPows<platform::float16>(
-            dev_ctx, trust_ratio_div + fp32_numel_each_device, lr,
-            indices + fp32_numel + fp16_offset, param_square_norm,
-            trust_ratio_div_square_norm, fp32_square_grad_norm, &beta1pow,
-            &beta2pow, beta1, beta2, fp16_numel_each_device,
-            fp16_param + fp16_offset, master_param + fp16_offset, stream);
-      }
-
+      MultiTensorUpdateLambParamAndBetaPows<platform::float16>(
+          dev_ctx, fp16_partial_fused_offsets, fp16_local_param_num,
+          trust_ratio_div + fp32_numel_each_device, lr,
+          param_square_norm + fp16_local_start_idx,
+          trust_ratio_div_square_norm + fp16_local_start_idx, found_inf,
+          fp16_param + fp16_offset, master_param + fp16_offset, beta1pow,
+          beta2pow, beta1, beta2);
       if (num_devices > 1) {
         // ncclAllGather
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
