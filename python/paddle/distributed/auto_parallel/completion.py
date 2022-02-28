@@ -134,7 +134,9 @@ class Completer:
             return False
         tensor_desc = tensor_node.var()
         # Skip reader tensor
-        if tensor_desc.type() == core.VarDesc.VarType.READER:
+        if tensor_desc.type() == core.VarDesc.VarType.READER \
+            or tensor_desc.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+            or tensor_desc.type == core.VarDesc.VarType.STEP_SCOPES:
             return False
         tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
             tensor_node)
