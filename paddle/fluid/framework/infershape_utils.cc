@@ -129,7 +129,9 @@ class CompatMetaTensor : public phi::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return phi::make_ddim(var->GetShape());
+
+      return var->GetShape().empty() ? phi::make_ddim({0UL})
+                                     : phi::make_ddim(var->GetShape());
     }
   }
 
