@@ -68,7 +68,7 @@ class TestSumOp_bf16(OpTest):
         np.random.seed(100)
         self.op_type = "reduce_sum"
         self.dtype = np.uint16
-        self.x = np.random.uniform(0, 1, (2, 5, 10)).astype(np.float32)
+        self.x = np.random.uniform(0, 0.1, (2, 5, 10)).astype(np.float32)
         self.attrs = {'dim': [0, 1, 2]}
         self.out = self.x.sum(axis=tuple(self.attrs['dim']))
         self.gradient = self.calc_gradient()
