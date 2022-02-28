@@ -17,10 +17,9 @@
 
 #include <thrust/fill.h>
 #include <vector>
-#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpu/elementwise.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
@@ -49,9 +48,7 @@ inline void CompareKernelImpl(const Context& ctx,
   ctx.template Alloc<bool>(out);
   std::vector<const DenseTensor*> ins{&x, &y};
   std::vector<DenseTensor*> outs{out};
-  paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                 T,
-                                                 bool>(
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, bool>(
       ctx, ins, &outs, axis, Functor());
 }
 
@@ -74,8 +71,7 @@ inline void CompareAllKernelImpl(const Context& ctx,
 
   std::vector<const DenseTensor*> ins{&x, &y};
   std::vector<DenseTensor*> outs{&tmp};
-  paddle::operators::LaunchSameDimsElementwiseCudaKernel<bool>(
-      ctx, ins, &outs, Functor());
+  funcs::ElementwiseKernel<bool>(ctx, ins, &outs, Functor());
 
   // Reduce by 'bitwise and' operator
   std::vector<int> reduce_dims;
