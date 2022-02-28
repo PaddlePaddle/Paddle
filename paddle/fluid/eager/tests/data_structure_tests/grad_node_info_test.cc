@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 
@@ -32,7 +33,7 @@ TEST(GradNodeInfo, GradSlotMeta) {
   CHECK_EQ(grad_slot.Size(), 2);
 }
 
-TEST(GradNodeInfo, GradNodeBase) {
+void TestGradNodeBase(bool is_remove_gradient_hook) {
   VLOG(6) << "Construct Grad Node";
   auto grad_test_node0 = std::make_shared<eager_test::GradTestNode>(
       /* val */ 5.0, /* in_num */ 2, /* out_num */ 2);
@@ -112,13 +113,25 @@ TEST(GradNodeInfo, GradNodeBase) {
     VLOG(6) << "Running Gradient Hook";
     return res;
   };
-  grad_test_node0->RegisterGradientHook(0, 0, gradient_hook);
-  // 5 + 6
+  int64_t hook_id = grad_test_node0->RegisterGradientHook(
+      0, 0, std::make_shared<egr::CppTensorHook>(gradient_hook));
+
+  if (is_remove_gradient_hook) {
+    // Remove GradientHook
+    grad_test_node0->RemoveGradientHook(hook_id);
+  }
+
+  // Check results
   auto grad_hook_res = grad_test_node0->ApplyGradientHooks(grads);
   CHECK_EQ(
       std::dynamic_pointer_cast<phi::DenseTensor>(grad_hook_res[0][0].impl())
           ->data<float>()[0],
-      11.0);
+      is_remove_gradient_hook ? 5.0 : 11.0);
+}
+
+TEST(GradNodeInfo, GradNodeBase) {
+  TestGradNodeBase(true);
+  TestGradNodeBase(false);
 }
 
 TEST(GradNodeInfo, Edge) {

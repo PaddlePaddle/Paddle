@@ -3,11 +3,11 @@ add_subdirectory(utils)
 cc_library(ext_compat_utils SRCS ext_compat_utils.cc DEPS place)
 
 if (WITH_GPU)
-  nv_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce manual_api)
+  nv_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce)
 elseif (WITH_ROCM)
-  hip_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce manual_api)
+  hip_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce)
 else()
-  cc_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce manual_api)
+  cc_library(phi_tensor_raw SRCS tensor.cc DEPS tensor_base dense_tensor phi_api_utils ext_compat_utils phi_enforce)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api_base.py)
@@ -83,17 +83,16 @@ add_custom_command(
   DEPENDS ${api_yaml_file} ${wrapped_infermeta_gen_file} ${api_gen_base}
   VERBATIM)
 
-cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS phi_tensor_raw phi_context kernel_factory)
-cc_library(phi_data_transform SRCS data_transform.cc DEPS phi_tensor_raw transfer_layout_kernel cast_kernel data_device_transform)
-cc_library(manual_api SRCS manual_api.cc DEPS phi_tensor_raw phi kernel_dispatch phi_data_transform)
-
-cc_library(phi_tensor SRCS tensor_method.cc DEPS phi_tensor_raw phi_function_api)
-
-cc_library(op_meta_info SRCS op_meta_info.cc DEPS phi_tensor)
-
+cc_library(op_meta_info SRCS op_meta_info.cc DEPS phi_tensor_raw)
 cc_library(wrapped_infermeta SRCS ${wrapped_infermeta_source_file} DEPS phi)
 
-cc_library(sparse_api SRCS sparse_api.cc DEPS phi_tensor phi kernel_dispatch phi_data_transform)
-cc_library(phi_function_api SRCS ${api_source_file} DEPS phi_tensor phi kernel_dispatch phi_data_transform wrapped_infermeta)
-cc_library(phi_dygraph_api SRCS ${dygraph_api_source_file} DEPS phi_tensor phi kernel_dispatch phi_data_transform)
-cc_library(phi_bw_function_api SRCS ${bw_api_source_file} DEPS phi_tensor phi kernel_dispatch backward_infermeta phi_data_transform phi_function_api)
+cc_library(kernel_dispatch SRCS kernel_dispatch.cc DEPS phi_tensor_raw phi_context kernel_factory)
+cc_library(phi_data_transform SRCS data_transform.cc DEPS phi_tensor_raw transfer_layout_kernel cast_kernel data_device_transform)
+cc_library(api_custom_impl SRCS api_custom_impl.cc DEPS phi_tensor_raw phi kernel_dispatch phi_data_transform)
+
+cc_library(sparse_api SRCS sparse_api.cc DEPS phi_tensor_raw phi kernel_dispatch phi_data_transform)
+cc_library(phi_function_api SRCS ${api_source_file} DEPS phi_tensor_raw phi kernel_dispatch phi_data_transform api_custom_impl)
+cc_library(phi_dygraph_api SRCS ${dygraph_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch phi_data_transform)
+cc_library(phi_bw_function_api SRCS ${bw_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch backward_infermeta phi_data_transform phi_function_api api_custom_impl)
+
+cc_library(phi_tensor SRCS tensor_method.cc DEPS phi_tensor_raw phi_function_api)
