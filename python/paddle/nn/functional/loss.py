@@ -1297,24 +1297,29 @@ def margin_cross_entropy(logits,
     """
 
     assert reduction in ['mean', 'sum', 'none', None]
-    if group is not None and not group.is_member():
+    if group != False and group is not None and not group.is_member():
+        raise ValueError(
+            'Expected group is False, None or instance of paddle.distributed.collective.Group \
+             (got group: {})'.format(group))
         return
 
-    ring_id = 0 if group is None else group.id
+    ring_id = 0
     rank = 0
     nranks = 1
-    if core.is_compiled_with_dist():
-        parallel_env = paddle.distributed.ParallelEnv()
-        global_rank = parallel_env.rank
-        rank = global_rank if group is None else group.get_group_rank(
-            global_rank)
-        nranks = parallel_env.world_size if group is None else group.nranks
+    if group != False:
+        ring_id = 0 if group is None else group.id
+        if core.is_compiled_with_dist():
+            parallel_env = paddle.distributed.ParallelEnv()
+            global_rank = parallel_env.rank
+            rank = global_rank if group is None else group.get_group_rank(
+                global_rank)
+            nranks = parallel_env.world_size if group is None else group.nranks
 
     input_dims = len(list(logits.shape))
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
+            'Expected input_dims - 1 = label_dims or input_dims == label_dims\
              (got nput_dims{}, label_dims{})'.format(input_dims, label_dims))
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)

@@ -1731,18 +1731,22 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
         #       [0, 1, 2, 3, 5, 7, 8])
     """
-    if group is not None and not group.is_member():
+    if group != False and group is not None and not group.is_member():
+        raise ValueError(
+            'Expected group is True, None or instance of paddle.distributed.collective.Group \
+             (got group: {})'.format(group))
         return
 
-    ring_id = 0 if group is None else group.id
+    ring_id = 0
     rank = 0
     nranks = 1
-    if core.is_compiled_with_dist():
-        parallel_env = paddle.distributed.ParallelEnv()
-        global_rank = parallel_env.rank
-        rank = global_rank if group is None else group.get_group_rank(
-            global_rank)
-        nranks = parallel_env.world_size if group is None else group.nranks
+    if group != False:
+        if core.is_compiled_with_dist():
+            parallel_env = paddle.distributed.ParallelEnv()
+            global_rank = parallel_env.rank
+            rank = global_rank if group is None else group.get_group_rank(
+                global_rank)
+            nranks = parallel_env.world_size if group is None else group.nranks
 
     if num_samples > num_classes:
         raise ValueError(
