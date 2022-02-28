@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/gpu/elementwise_grad.h"
+#include "paddle/phi/kernels/gpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
 namespace phi {

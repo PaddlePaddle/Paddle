@@ -31,7 +31,6 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
-#include "paddle/phi/kernels/cpu/elementwise_grad.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
