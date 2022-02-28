@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/operators/mkldnn/axpy_handler.h"
@@ -524,10 +525,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
     int r =
         xpu::merge_dup_rows<T, int64_t>(context.x_context(), x_data, y_data,
                                         x_rows_data, y_rows_data, xm, n, ym);
-    PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
-                      platform::errors::External(
-                          "XPU merge_dup_rows API return wrong value[%d %s], ",
-                          r, XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "merge_dup_rows");
   }
 
   void operator()(const platform::XPUDeviceContext& context,
@@ -610,11 +608,7 @@ struct MergeAdd<platform::XPUDeviceContext, T> {
       int r =
           xpu::merge_dup_rows<T, int64_t>(context.x_context(), x_data, y_data,
                                           x_rows_data, y_rows_data, xm, n, ym);
-      PADDLE_ENFORCE_EQ(
-          r, XPU_SUCCESS,
-          platform::errors::External(
-              "XPU merge_dup_rows API return wrong value[%d %s], ", r,
-              XPUAPIErrorMsg[r]));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "merge_dup_rows");
     }
   }
 };
