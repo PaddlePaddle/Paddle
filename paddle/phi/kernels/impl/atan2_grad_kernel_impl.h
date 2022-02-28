@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/atan2_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
@@ -85,7 +85,7 @@ void Atan2GradKernel(const Context& ctx,
   auto* y_grad_data =
       ctx.template Alloc<T>(y_grad, size_t(y.numel() * sizeof(T)));
 
-  paddle::platform::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(ctx, numel);
   phi::Atan2GradFunctor<T> functor(
       x_data, y_data, out_grad_data, x_grad_data, y_grad_data, numel);
   for_range(functor);
