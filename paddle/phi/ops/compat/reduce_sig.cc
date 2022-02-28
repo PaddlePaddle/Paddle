@@ -43,6 +43,11 @@ KernelSignature ReduceMeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("unregistered", {}, {}, {});
 }
 
+KernelSignature ReduceProdOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "reduce_prod", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
@@ -50,3 +55,4 @@ PD_REGISTER_BASE_KERNEL_NAME(reduce_mean, mean);
 
 PD_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reduce_prod, phi::ReduceProdOpArgumentMapping);
