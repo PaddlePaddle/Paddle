@@ -59,7 +59,7 @@ DEFINE_COMPARE_KERNEL(GreaterThanKernel,
                       funcs::LessThanFunctor)
 DEFINE_COMPARE_KERNEL(GreaterEqualKernel,
                       funcs::GreaterEqualFunctor,
-                      funcs::GreaterEqualFunctor)
+                      funcs::LessEqualFunctor)
 DEFINE_COMPARE_KERNEL(EqualKernel, funcs::EqualFunctor, funcs::EqualFunctor)
 DEFINE_COMPARE_KERNEL(NotEqualKernel,
                       funcs::NotEqualFunctor,
