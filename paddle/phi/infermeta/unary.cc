@@ -994,6 +994,63 @@ void PixelShuffleInferMeta(const MetaTensor& x,
   out->set_dims(output_dims);
 }
 
+void PNormInferMeta(const MetaTensor& x,
+                    float porder,
+                    int axis,
+                    float epsilon,
+                    bool keepdim,
+                    bool asvector,
+                    MetaTensor* out) {
+  auto x_dim = x.dims();
+  auto x_rank = x_dim.size();
+
+  PADDLE_ENFORCE_GE(axis,
+                    -x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis,
+                        x_rank,
+                        x_dim));
+  PADDLE_ENFORCE_LT(axis,
+                    x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis,
+                        x_rank,
+                        x_dim));
+
+  std::vector<int> reduce_dims;
+  if (asvector) {
+    reduce_dims.emplace_back(1);
+    if (keepdim) {
+      for (int i = 1; i < x_dim.size(); ++i) {
+        reduce_dims.emplace_back(1);
+      }
+      x_dim = phi::make_ddim(reduce_dims);
+    }
+  } else {
+    if (axis < 0) axis = x_dim.size() + axis;
+    for (int i = 0; i < x_dim.size(); ++i) {
+      if (i != axis) reduce_dims.emplace_back(x_dim[i]);
+    }
+    if (reduce_dims.size() == 0) {
+      reduce_dims.emplace_back(1);
+    }
+  }
+  x_dim[axis] = 1;
+
+  if (keepdim) {
+    out->set_dims(x_dim);
+  } else {
+    out->set_dims(phi::make_ddim(reduce_dims));
+  }
+  out->set_dtype(x.dtype());
+}
+
 void PoolInferMeta(const MetaTensor& x,
                    const std::vector<int>& kernel_size,
                    const std::vector<int>& strides,
