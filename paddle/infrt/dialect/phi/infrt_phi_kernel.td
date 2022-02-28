@@ -11,7 +11,7 @@ class DenseTensorType<string target, string layout, string precision> :
     BuildableType<"$_builder.getType<::infrt::DenseTensorType,::infrt::TargetType,::infrt::LayoutType, ::infrt::PrecisionType >(" #"::infrt::TargetType::"#target#","#"::infrt::LayoutType::"#layout#","#"::infrt::PrecisionType::"#precision#")" >;
 
 def PHI_CPUKernelDialect : Dialect {
-  let name = "phi_cpu_kernel";
+  let name = "phi_cpu";
 
   let description = [{
     The PHI CPU Kernel dialect.
@@ -21,7 +21,7 @@ def PHI_CPUKernelDialect : Dialect {
 }
 
 def PHI_GPUKernelDialect : Dialect {
-  let name = "phi_gpu_kernel";
+  let name = "phi_gpu";
 
   let description = [{
     The PHI GPU Kernel dialect.
