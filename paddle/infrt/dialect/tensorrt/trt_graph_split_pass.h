@@ -45,12 +45,12 @@ namespace trt {
  *  "pd.fetch" (%d, %f)
  * }
  */
-class trtGraphSplitPass
-    : public mlir::PassWrapper<trtGraphSplitPass, mlir::FunctionPass> {
+class TRTGraphSplitPass
+    : public mlir::PassWrapper<TRTGraphSplitPass, mlir::FunctionPass> {
  public:
   ::llvm::StringRef getName() const override { return "trtGraphSplitPass"; }
   void runOnFunction() override;
-  explicit trtGraphSplitPass(size_t min_subgraph_size = 3)
+  explicit TRTGraphSplitPass(size_t min_subgraph_size = 3)
       : min_subgraph_size_(min_subgraph_size) {}
 
  private:
