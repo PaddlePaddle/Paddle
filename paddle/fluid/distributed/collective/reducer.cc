@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/reducer.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace distributed {
