@@ -217,10 +217,6 @@ include \"mlir/Interfaces/LoopLikeInterface.td\"\n\
 include \"mlir/IR/OpBase.td\"\n\
 include \"paddle/infrt/dialect/phi/infrt_phi_kernel.td\""
 
-    #include \"paddle/infrt/dialect/phi/infrt_phi_base.td\"\n\
-    #include \"paddle/infrt/dialect/phi/infrt_phi_kernel.td\"\n\
-    #include \"paddle/infrt/dialect/phi/infrt_phi_tensor.td\""
-
     return (comment_ + includes_)
 
 
