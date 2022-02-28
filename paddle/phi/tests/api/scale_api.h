@@ -42,7 +42,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
       kernel_layout == DataLayout::UNDEFINED ||
       kernel_data_type == DataType::UNDEFINED) {
     auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-    auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
     if (kernel_backend == Backend::UNDEFINED) {
       kernel_backend = kernel_key.backend();
     }
@@ -215,7 +215,7 @@ Tensor scale_switch_case(const Tensor& x,
       kernel_layout == DataLayout::UNDEFINED ||
       kernel_data_type == DataType::UNDEFINED) {
     auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-    auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
     if (kernel_backend == Backend::UNDEFINED) {
       kernel_backend = kernel_key.backend();
     }
