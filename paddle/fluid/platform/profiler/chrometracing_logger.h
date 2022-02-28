@@ -36,6 +36,7 @@ class ChromeTracingLogger : public BaseLogger {
   void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) override;
   void LogNodeTrees(const NodeTrees&) override;
   void LogMetaInfo(const std::unordered_map<std::string, std::string>);
+
  private:
   void OpenFile();
   void HandleTypeKernel(const DeviceTraceEventNode&);
@@ -43,7 +44,7 @@ class ChromeTracingLogger : public BaseLogger {
   void HandleTypeMemcpy(const DeviceTraceEventNode&);
   void StartLog();
   void EndLog();
-  void RefineDisplayName();
+  void RefineDisplayName(std::unordered_map<std::string, std::string>);
   std::string filename_;
   std::ofstream output_file_stream_;
   static const char* categary_name_[];

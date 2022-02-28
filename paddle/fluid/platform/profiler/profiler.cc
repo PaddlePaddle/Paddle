@@ -29,7 +29,7 @@
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
-
+#include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
 namespace platform {
@@ -87,13 +87,19 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
   cpu_utilization_.RecordEndTimeInfo();
   ExtraInfo extrainfo;
   extrainfo.AddExtraInfo(std::string("System Cpu Utilization"),
-                                       std::string("%f"),
-                                       cpu_utilization_.GetCpuUtilization());
-  extrainfo.AddExtraInfo(
-      std::string("Process Cpu Utilization"), std::string("%f"),
-      cpu_utilization_.GetCpuCurProcessUtilization());
-  
-  return std::unique_ptr<ProfilerResult>(new platform::ProfilerResult(std::move(tree), extrainfo));
+                         std::string("%f"),
+                         cpu_utilization_.GetCpuUtilization());
+  extrainfo.AddExtraInfo(std::string("Process Cpu Utilization"),
+                         std::string("%f"),
+                         cpu_utilization_.GetCpuCurProcessUtilization());
+  const std::unordered_map<uint64_t, std::string> thread_names =
+      collector.ThreadNames();
+  for (const auto& kv : thread_names) {
+    extrainfo.AddExtraInfo(string_format(std::string("%llu"), kv.first),
+                           kv.second);
+  }
+  return std::unique_ptr<ProfilerResult>(
+      new platform::ProfilerResult(std::move(tree), extrainfo));
 }
 
 }  // namespace platform

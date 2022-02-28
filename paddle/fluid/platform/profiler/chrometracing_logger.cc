@@ -434,7 +434,7 @@ void ChromeTracingLogger::StartLog() {
 
 void ChromeTracingLogger::LogMetaInfo(
     const std::unordered_map<std::string, std::string> extra_info) {
-  RefineDisplayName();
+  RefineDisplayName(extra_info);
   output_file_stream_ << std::string(
       R"JSON(
   {}
@@ -461,7 +461,8 @@ void ChromeTracingLogger::LogMetaInfo(
   })JSON");
 }
 
-void ChromeTracingLogger::RefineDisplayName() {
+void ChromeTracingLogger::RefineDisplayName(
+    std::unordered_map<std::string, std::string> extra_info) {
   for (auto it = pid_tid_set_.begin(); it != pid_tid_set_.end(); ++it) {
     output_file_stream_ << string_format(
         std::string(
@@ -484,14 +485,14 @@ void ChromeTracingLogger::RefineDisplayName() {
     "name": "thread_name", "pid": %lld, "tid": "%lld(Python)",
     "ph": "M", 
     "args": {
-      "name": "thread %lld(Python)"
+      "name": "thread %lld:%s(Python)"
     }
   },
   {
     "name": "thread_name", "pid": %lld, "tid": "%lld(C++)",
     "ph": "M", 
     "args": {
-      "name": "thread %lld(C++)"
+      "name": "thread %lld:%s(C++)"
     }
   },
   {
@@ -517,10 +518,12 @@ void ChromeTracingLogger::RefineDisplayName() {
   },
   )JSON"),
         (*it).first, (*it).second, (*it).first, (*it).first, (*it).second,
-        (*it).first, (*it).first, (*it).second, (*it).second, (*it).first,
-        (*it).second, (*it).second, (*it).first, (*it).second, (*it).first,
-        (*it).first, (*it).second, (*it).second * 2, (*it).first, (*it).second,
-        (*it).second * 2 + 1);
+        (*it).first, (*it).first, (*it).second, (*it).second,
+        extra_info[string_format(std::string("%lld"), (*it).second)].c_str(),
+        (*it).first, (*it).second, (*it).second,
+        extra_info[string_format(std::string("%lld"), (*it).second)].c_str(),
+        (*it).first, (*it).second, (*it).first, (*it).first, (*it).second,
+        (*it).second * 2, (*it).first, (*it).second, (*it).second * 2 + 1);
   }
 
   for (auto it = deviceid_streamid_set_.begin();
