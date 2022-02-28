@@ -46,34 +46,26 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
   paddle::experimental::Tensor& target_tensor = target_tensors[0];
 
   paddle::experimental::Tensor leaf_tensor = paddle::experimental::Tensor();
-  {
-    auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
-    scale_node_ptr->SetAttributes_scale(5.0 /*scale*/);
 
-    scale_node_ptr->SetDefaultGradInOutMeta();
+  auto scale_node_ptr = std::make_shared<GradNodeScale>(1, 1);
+  scale_node_ptr->SetAttributes_scale(5.0 /*scale*/);
 
-    auto acc_node_ptr = std::make_shared<GradNodeAccumulation>();
+  scale_node_ptr->SetDefaultGradInOutMeta();
 
-    AutogradMeta* auto_grad_meta = EagerUtils::autograd_meta(&target_tensor);
-    auto_grad_meta->SetGradNode(
-        std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
-    auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-    auto_grad_meta->SetStopGradient(false);
-    egr_utils_api::RetainGradForTensor(target_tensor);  // result: 1.0
+  AutogradMeta* auto_grad_meta = EagerUtils::autograd_meta(&target_tensor);
+  auto_grad_meta->SetGradNode(
+      std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
+  auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
+  auto_grad_meta->SetStopGradient(false);
+  egr_utils_api::RetainGradForTensor(target_tensor);  // result: 1.0
 
-    auto meta = AutogradMeta();
-    meta.SetSingleOutRankWithSlot(0, 0);
-    meta.SetStopGradient(false);
-    meta.SetGradNode(acc_node_ptr);
-    std::vector<egr::AutogradMeta*> res = {&meta};
-    scale_node_ptr->AddEdges(&res, 0);
-
-    AutogradMeta* auto_grad_meta1 = EagerUtils::autograd_meta(&leaf_tensor);
-    auto_grad_meta1->SetGradNode(
-        std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
-    auto_grad_meta1->SetSingleOutRankWithSlot(0, 0);
-    egr_utils_api::RetainGradForTensor(leaf_tensor);
-  }
+  AutogradMeta* meta = EagerUtils::autograd_meta(&leaf_tensor);
+  auto acc_node_ptr = std::make_shared<GradNodeAccumulation>(meta);
+  meta->SetStopGradient(false);
+  meta->SetSingleOutRankWithSlot(0, 0);
+  meta->SetGradNode(acc_node_ptr);
+  std::vector<egr::AutogradMeta*> res = {meta};
+  scale_node_ptr->AddEdges(&res, 0);
 
   RunBackward(target_tensors, {});
 

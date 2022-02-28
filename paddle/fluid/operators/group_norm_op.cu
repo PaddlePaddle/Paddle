@@ -1,8 +1,11 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,7 +57,8 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
 template <typename T>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
                                               int imsize, int groups,
-                                              int group_size, T* mean, T* var) {
+                                              int group_size, T* mean, T* var,
+                                              const DataLayout data_layout) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
@@ -65,10 +69,13 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
   T x_mean = 0, x_var = 0;
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     T val;
-    int hid = imid / W;
-    int wid = imid % W;
-    val = x[(bid * H + hid) * W * C + wid * C + ccid];
-
+    if (data_layout == DataLayout::kNCHW) {
+      val = x[(bid * C + ccid) * imsize + imid];
+    } else {
+      int hid = imid / W;
+      int wid = imid % W;
+      val = x[(bid * H + hid) * W * C + wid * C + ccid];
+    }
     x_mean += val;
     x_var += val * val;
   }
@@ -76,86 +83,6 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
   x_var /= number * imsize;
   CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
   CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
-}
-
-template <typename T, typename AccT, int VecSize>
-__device__ __forceinline__ void ThreadReduce(const T* input, int size,
-                                             const int offset, AccT* mean,
-                                             AccT* var) {
-  using VecT = kps::details::VectorType<T, VecSize>;
-  int tid = threadIdx.x;
-
-  if (offset > 0) {
-    input -= offset;
-    size += offset;
-    if (tid >= offset) {
-      AccT temp = input[tid];
-      *mean += temp;
-      *var += temp * temp;
-    }
-    size -= blockDim.x;
-    input += blockDim.x;
-  }
-  int remain = size % (VecSize * blockDim.x);
-
-  T ins[VecSize];
-  VecT* ins_vec = reinterpret_cast<VecT*>(&ins);
-
-  // vector part
-  for (; VecSize * tid < (size - remain); tid += blockDim.x) {
-    *ins_vec = reinterpret_cast<const VecT*>(input)[tid];
-
-#pragma unroll
-    for (int i = 0; i < VecSize; ++i) {
-      AccT temp = ins[i];
-      *mean += temp;
-      *var += temp * temp;
-    }
-  }
-
-  // scalar part
-  tid = size - remain + threadIdx.x;
-  for (; tid < size; tid += blockDim.x) {
-    AccT temp = input[tid];
-    *mean += temp;
-    *var += temp * temp;
-  }
-}
-
-template <typename T>
-__global__ void ScalarGetMeanAndVarNCHW(const T* x, int size, T* mean, T* var) {
-  int i = blockIdx.x;
-  T x_mean = 0, x_var = 0;
-  for (int j = threadIdx.x; j < size; j += blockDim.x) {
-    T val;
-    val = x[i * size + j];
-    x_mean += val;
-    x_var += val * val;
-  }
-  x_mean /= size;
-  x_var /= size;
-  CudaAtomicAddWithWarp(&mean[i], x_mean);
-  CudaAtomicAddWithWarp(&var[i], x_var);
-}
-
-template <typename T, typename AccT, int VecSize>
-__global__ void VectorizedGetMeanAndVarNCHW(const T* x, int size, T* mean,
-                                            T* var) {
-  int i = blockIdx.x;
-  AccT x_mean = static_cast<AccT>(0);
-  AccT x_var = static_cast<AccT>(0);
-  const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
-  x += i * size;
-  ThreadReduce<T, AccT, VecSize>(x, size, input_offset, &x_mean, &x_var);
-  x_mean = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
-      x_mean, kps::AddFunctor<AccT>());
-  x_var = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
-      x_var, kps::AddFunctor<AccT>());
-  __syncthreads();
-  if (threadIdx.x == 0) {
-    mean[i] = static_cast<T>(x_mean / size);
-    var[i] = static_cast<T>(x_var / size);
-  }
 }
 
 template <typename T, int flags>
@@ -170,18 +97,16 @@ __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
   int H = imsize / W;
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
-  auto ng = bid * groups + gid;
-  T x_mean = mean[ng];
-  T x_var = var[ng];
+  T x_mean = mean[bid * groups + gid];
+  T x_var = var[bid * groups + gid];
   x_var = x_var - x_mean * x_mean;
-  T var_inv = rsqrt(x_var + epsilon);
-  if (cid == 0 && threadIdx.x == 0) real_var[ng] = x_var;
+  T var_inv = 1.0 / sqrt(x_var + epsilon);
+  if (cid == 0 && threadIdx.x == 0) real_var[bid * groups + gid] = x_var;
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     T val;
     int hid, wid;
-    int index = (bid * C + ccid) * imsize + imid;
     if (data_layout == DataLayout::kNCHW) {
-      val = x[index];
+      val = x[(bid * C + ccid) * imsize + imid];
     } else {
       hid = imid / W;
       wid = imid % W;
@@ -191,7 +116,7 @@ __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
     if (flags & kHasScale) val *= scale[gid * group_size + cid];
     if (flags & kHasBias) val += bias[gid * group_size + cid];
     if (data_layout == DataLayout::kNCHW) {
-      y[index] = val;
+      y[(bid * C + ccid) * imsize + imid] = val;
     } else {
       y[(bid * H + hid) * W * C + wid * C + ccid] = val;
     }
@@ -258,41 +183,16 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
         imsize *= x_dims[i];
       }
     }
-
 #ifdef __HIPCC__
     int block_size = std::max(std::min(256, imsize), 64);
 #else
     int block_size = std::min(1024, imsize);
 #endif
-
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
-    if (data_layout == DataLayout::kNCHW) {
-      using AccT = typename details::MPTypeTrait<T>::Type;
-      constexpr int vec_size = sizeof(float4) / sizeof(T);
-      int size = group_size * imsize;
-      const int max_num_threads = 1024;
-      int max_block_size = std::min(size / vec_size, max_num_threads);
-      int block_size_nchw = 1;
-      while (block_size_nchw < max_block_size) {
-        block_size_nchw *= 2;
-      }
-      block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
-      dim3 grids(x_dims[0] * groups);
-      dim3 blocks(block_size_nchw);
-      if (size < vec_size) {
-        ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
-            x_data, size, mean_data, temp_var_data);
-      } else {
-        VectorizedGetMeanAndVarNCHW<
-            T, AccT, vec_size><<<grids, blocks, 0, dev_ctx.stream()>>>(
-            x_data, size, mean_data, temp_var_data);
-      }
-    } else {
-      GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-          x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
-          temp_var_data);
-    }
+    GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
+        x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
+        temp_var_data, data_layout);
     int flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
     UNROLL_ALL_CASES(flags, GroupNormForward, x_data, mean_data, temp_var_data,
@@ -300,186 +200,6 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
                      group_size, epsilon, y_data, var_data, data_layout);
   }
 };
-
-template <typename T>
-__global__ void GetBackwardParamsCUDAKernel(int64_t C, int64_t imsize,
-                                            int64_t group, T epsilon,
-                                            const T* mean, const T* var,
-                                            const T* gamma, const T* ds,
-                                            const T* db, T* c1, T* c2, T* c3) {
-  const int64_t G = group;
-  const int64_t D = C / G;
-  const int64_t n = blockIdx.x;
-  const int64_t g = blockIdx.y;
-  const int64_t ng = n * G + g;
-  T sum1 = 0;
-  T sum2 = 0;
-  T rstd = rsqrt(var[ng] + epsilon);
-  for (int64_t i = threadIdx.x; i < D; i += blockDim.x) {
-    const int64_t index = ng * D + i;
-    const int64_t c = g * D + i;
-    const T gamma_v = gamma == nullptr ? T(1) : static_cast<T>(gamma[c]);
-    sum1 += ds[index] * gamma_v;
-    sum2 += db[index] * gamma_v;
-    c1[index] = gamma[c] * rstd;
-  }
-
-  typedef cub::BlockReduce<T, 1024> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage ds_storage;
-  __shared__ typename BlockReduce::TempStorage db_storage;
-  sum1 = BlockReduce(ds_storage).Reduce(sum1, cub::Sum());
-  sum2 = BlockReduce(db_storage).Reduce(sum2, cub::Sum());
-
-  if (threadIdx.x == 0) {
-    const T s = T(1) / static_cast<T>(D * imsize);
-    const T x = (sum2 * static_cast<T>(mean[ng]) - sum1) *
-                static_cast<T>(rstd) * static_cast<T>(rstd) *
-                static_cast<T>(rstd) * s;
-    c2[ng] = x;
-    c3[ng] = -x * static_cast<T>(mean[ng]) - sum2 * static_cast<T>(rstd) * s;
-  }
-}
-
-template <typename T>
-__global__ void GetBackwardCUDAKernel(int imsize, int C, int group_size,
-                                      int groups, T* c1, T* c2, T* c3,
-                                      const T* x, const T* dy, T* dx) {
-  int cid = blockIdx.x;
-  int gid = blockIdx.y;
-  int bid = blockIdx.z;
-  int ccid = bid * C + gid * group_size + cid;
-  int ng = bid * groups + gid;
-  int nc = gid * group_size + cid;
-  for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-    int index = (bid * C + nc) * imsize + imid;
-    dx[index] = c1[ccid] * dy[index] + c2[ng] * x[index] + c3[ng];
-  }
-}
-
-template <typename T>
-__global__ void GammaBetaBackwardCUDAKernel(int N, int C, int group, T epsilon,
-                                            const T* mean, const T* var,
-                                            const T* ds, const T* db, T* dgamma,
-                                            T* dbeta) {
-  const int c = blockIdx.x * blockDim.x + threadIdx.x;
-  if (c < C) {
-    const int G = group;
-    const int D = C / G;
-    T sum1 = 0;
-    T sum2 = 0;
-    for (int n = 0; n < N; ++n) {
-      const int nc = n * C + c;
-      const int ng = n * G + c / D;
-      sum1 += (dgamma == nullptr)
-                  ? T(0)
-                  : ((ds[nc] - db[nc] * static_cast<T>(mean[ng])) *
-                     static_cast<T>(rsqrt(var[ng] + epsilon)));
-      sum2 += (dbeta == nullptr) ? T(0) : db[nc];
-    }
-    if (dgamma != nullptr) {
-      dgamma[c] = sum1;
-    }
-    if (dbeta != nullptr) {
-      dbeta[c] = sum2;
-    }
-  }
-}
-
-template <typename T, typename AccT, int VecSize>
-__device__ __forceinline__ void DThreadReduce(const T* x, const T* dy, int size,
-                                              const int offset, AccT* ds_sum,
-                                              AccT* db_sum) {
-  using VecT = kps::details::VectorType<T, VecSize>;
-  int tid = threadIdx.x;
-
-  if (offset > 0) {
-    x -= offset;
-    dy -= offset;
-    size += offset;
-    if (tid >= offset) {
-      AccT x_temp = x[tid];
-      AccT dy_temp = dy[tid];
-      *ds_sum += dy_temp * x_temp;
-      *db_sum += dy_temp;
-    }
-    size -= blockDim.x;
-    x += blockDim.x;
-    dy += blockDim.x;
-  }
-  int remain = size % (VecSize * blockDim.x);
-
-  T ins[VecSize];
-  T dy_ins[VecSize];
-  VecT* ins_vec = reinterpret_cast<VecT*>(&ins);
-  VecT* dy_vec = reinterpret_cast<VecT*>(&dy_ins);
-
-  // vector part
-  for (; VecSize * tid < (size - remain); tid += blockDim.x) {
-    *ins_vec = reinterpret_cast<const VecT*>(x)[tid];
-    *dy_vec = reinterpret_cast<const VecT*>(dy)[tid];
-
-#pragma unroll
-    for (int i = 0; i < VecSize; ++i) {
-      AccT temp = ins[i];
-      AccT dy_temp = dy[i];
-      *ds_sum += dy_temp * temp;
-      *db_sum += dy_temp;
-    }
-  }
-
-  // scalar part
-  tid = size - remain + threadIdx.x;
-  for (; tid < size; tid += blockDim.x) {
-    AccT temp = x[tid];
-    AccT dy_temp = dy[tid];
-    *ds_sum += dy_temp * temp;
-    *db_sum += dy_temp;
-  }
-}
-
-template <typename T, typename AccT, int VecSize>
-__global__ void VectorizedGetDSDBCUDAKernel(int imsize, const T* x,
-                                            const T* d_y, T* ds, T* db) {
-  int i = blockIdx.x;
-  AccT ds_sum = static_cast<AccT>(0);
-  AccT db_sum = static_cast<AccT>(0);
-  const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
-  x += i * imsize;
-  DThreadReduce<T, AccT, VecSize>(x, d_y, imsize, input_offset, &ds_sum,
-                                  &db_sum);
-  ds_sum = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
-      ds_sum, kps::AddFunctor<AccT>());
-  db_sum = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
-      db_sum, kps::AddFunctor<AccT>());
-  __syncthreads();
-  if (threadIdx.x == 0) {
-    ds[i] = ds_sum;
-    db[i] = db_sum;
-  }
-}
-
-template <typename T>
-__global__ void GetDSDBCUDAKernel(int imsize, const T* x, const T* dy, T* ds,
-                                  T* db) {
-  typedef cub::BlockReduce<T, 1024> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage ds_storage;
-  __shared__ typename BlockReduce::TempStorage db_storage;
-  const int nc = blockIdx.x;
-  T ds_sum = 0;
-  T db_sum = 0;
-  for (int i = threadIdx.x; i < imsize; i += blockDim.x) {
-    const int index = nc * imsize + i;
-    ds_sum += dy[index] * x[index];
-    db_sum += dy[index];
-  }
-  ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
-  db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
-  __syncthreads();
-  if (threadIdx.x == 0) {
-    ds[nc] = ds_sum;
-    db[nc] = db_sum;
-  }
-}
 
 template <typename T, int flags>
 __global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
@@ -559,6 +279,171 @@ __global__ void GroupNormBackward(const T* x, const T* d_y, const T* scale,
   }
 }
 
+template <typename T, typename AccT, int VecSize>
+__device__ __forceinline__ void DThreadReduce(const T* x, const T* dy, int size,
+                                              const int offset, AccT* ds_sum,
+                                              AccT* db_sum) {
+  using VecT = kps::details::VectorType<T, VecSize>;
+  int tid = threadIdx.x;
+
+  if (offset > 0) {
+    x -= offset;
+    dy -= offset;
+    size += offset;
+    if (tid >= offset) {
+      *ds_sum += dy[tid] * x[tid];
+      *db_sum += dy[tid];
+    }
+    size -= blockDim.x;
+    x += blockDim.x;
+    dy += blockDim.x;
+  }
+  int remain = size % (VecSize * blockDim.x);
+
+  T ins[VecSize];
+  T dy_ins[VecSize];
+  VecT* ins_vec = reinterpret_cast<VecT*>(&ins);
+  VecT* dy_vec = reinterpret_cast<VecT*>(&dy_ins);
+
+  // vector part
+  for (; VecSize * tid < (size - remain); tid += blockDim.x) {
+    *ins_vec = reinterpret_cast<const VecT*>(x)[tid];
+    *dy_vec = reinterpret_cast<const VecT*>(dy)[tid];
+
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      *ds_sum += dy[i] * ins[i];
+      *db_sum += dy[i];
+    }
+  }
+
+  // scalar part
+  tid = size - remain + threadIdx.x;
+  for (; tid < size; tid += blockDim.x) {
+    *ds_sum += dy[tid] * x[tid];
+    *db_sum += dy[tid];
+  }
+}
+
+template <typename T, typename AccT, int VecSize>
+__global__ void VectorizedGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
+                                            T* ds, T* db) {
+  int i = blockIdx.x;
+  AccT ds_sum = static_cast<AccT>(0);
+  AccT db_sum = static_cast<AccT>(0);
+  const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
+  x += i * imsize;
+  DThreadReduce<T, AccT, VecSize>(x, dy, imsize, input_offset, &ds_sum,
+                                  &db_sum);
+  ds_sum = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
+      ds_sum, kps::AddFunctor<AccT>());
+  db_sum = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
+      db_sum, kps::AddFunctor<AccT>());
+  __syncthreads();
+  if (threadIdx.x == 0) {
+    ds[i] = ds_sum;
+    db[i] = db_sum;
+  }
+}
+
+template <typename T>
+__global__ void ScalarGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
+                                        T* ds, T* db) {
+  const int nc = blockIdx.x;
+  T ds_sum = 0;
+  T db_sum = 0;
+  for (int i = threadIdx.x; i < imsize; i += blockDim.x) {
+    const int index = nc * imsize + i;
+    ds_sum += dy[index] * x[index];
+    db_sum += dy[index];
+  }
+  CudaAtomicAddWithWarp(&ds[nc], ds_sum);
+  CudaAtomicAddWithWarp(&db[nc], db_sum);
+}
+
+template <typename T>
+__global__ void GetScaleBiasGradientCUDAKernel(int N, int C, int group,
+                                               T epsilon, const T* mean,
+                                               const T* var, const T* ds,
+                                               const T* db, T* d_scale,
+                                               T* d_bias) {
+  const int c = blockIdx.x * blockDim.x + threadIdx.x;
+  if (c < C) {
+    const int G = group;
+    const int D = C / G;
+    T sum1 = 0;
+    T sum2 = 0;
+    for (int n = 0; n < N; ++n) {
+      const int nc = n * C + c;
+      const int ng = n * G + c / D;
+      sum1 += (d_scale == nullptr)
+                  ? T(0)
+                  : ((ds[nc] - db[nc] * static_cast<T>(mean[ng])) *
+                     static_cast<T>(rsqrt(var[ng] + epsilon)));
+      sum2 += (d_bias == nullptr) ? T(0) : db[nc];
+    }
+    if (d_scale != nullptr) {
+      d_scale[c] = sum1;
+    }
+    if (d_bias != nullptr) {
+      d_bias[c] = sum2;
+    }
+  }
+}
+
+template <typename T>
+__global__ void GetBackwardParamsCUDAKernel(int imsize, int groups,
+                                            int group_size, T epsilon,
+                                            const T* mean, const T* var,
+                                            const T* scale, const T* ds,
+                                            const T* db, T* p1, T* p2, T* p3) {
+  const int n = blockIdx.x;
+  const int g = blockIdx.y;
+  const int ng = n * groups + g;
+  T sum1 = 0;
+  T sum2 = 0;
+  T var_inv = rsqrt(var[ng] + epsilon);
+  for (int64_t i = threadIdx.x; i < group_size; i += blockDim.x) {
+    const int64_t index = ng * group_size + i;
+    const int64_t c = g * group_size + i;
+    const T scale_v = scale == nullptr ? T(1) : static_cast<T>(scale[c]);
+    sum1 += ds[index] * scale_v;
+    sum2 += db[index] * scale_v;
+    p1[index] = scale[c] * var_inv;
+  }
+
+  typedef cub::BlockReduce<T, 1024> BlockReduce;
+  __shared__ typename BlockReduce::TempStorage ds_storage;
+  __shared__ typename BlockReduce::TempStorage db_storage;
+  sum1 = BlockReduce(ds_storage).Reduce(sum1, cub::Sum());
+  sum2 = BlockReduce(db_storage).Reduce(sum2, cub::Sum());
+
+  if (threadIdx.x == 0) {
+    const T s = T(1) / static_cast<T>(group_size * imsize);
+    const T x = (sum2 * static_cast<T>(mean[ng]) - sum1) *
+                static_cast<T>(var_inv) * static_cast<T>(var_inv) *
+                static_cast<T>(var_inv) * s;
+    p2[ng] = x;
+    p3[ng] = -x * static_cast<T>(mean[ng]) - sum2 * static_cast<T>(var_inv) * s;
+  }
+}
+
+template <typename T>
+__global__ void GetDxGradientCUDAKernel(int imsize, int C, int group_size,
+                                        int groups, T* p1, T* p2, T* p3,
+                                        const T* x, const T* dy, T* dx) {
+  int cid = blockIdx.x;
+  int gid = blockIdx.y;
+  int bid = blockIdx.z;
+  int ccid = bid * C + gid * group_size + cid;
+  int ng = bid * groups + gid;
+  int nc = gid * group_size + cid;
+  for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
+    int index = (bid * C + nc) * imsize + imid;
+    dx[index] = p1[ccid] * dy[index] + p2[ng] * x[index] + p3[ng];
+  }
+}
+
 template <typename T>
 class GroupNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -568,8 +453,8 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* x = ctx.Input<Tensor>("Y");
-    auto* y = ctx.Input<Tensor>("X");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
     auto* mean = ctx.Input<Tensor>("Mean");
     auto* var = ctx.Input<Tensor>("Variance");
     auto* scale = ctx.Input<Tensor>("Scale");
@@ -613,8 +498,8 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     T* ds_data = ds.data<T>();
     T* db_data = db.data<T>();
 
-    auto* x_data = x->data<T>();
     auto* y_data = y->data<T>();
+    auto* x_data = x->data<T>();
     T* d_x_data = nullptr;
     if (d_x) d_x_data = d_x->data<T>();
     auto* dy_data = d_y->data<T>();
@@ -661,7 +546,6 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     if (data_layout == DataLayout::kNCHW) {
       using AccT = typename details::MPTypeTrait<T>::Type;
       constexpr int vec_size = sizeof(float4) / sizeof(T);
-      // int size = group_size * imsize;
       const int max_num_threads = 1024;
       int max_block_size = std::min(imsize / vec_size, max_num_threads);
       int block_size_nchw = 1;
@@ -671,49 +555,50 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
       block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
       dim3 blocks(block_size_nchw);
       if (imsize < vec_size) {
-        GetDSDBCUDAKernel<T><<<x_dims[0] * C, 1024, 0, dev_ctx.stream()>>>(
-            imsize, y_data, dy_data, ds_data, db_data);
+        ScalarGetDsDbCUDAKernel<
+            T><<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
+            imsize, x_data, dy_data, ds_data, db_data);
       } else {
-        VectorizedGetDSDBCUDAKernel<
+        VectorizedGetDsDbCUDAKernel<
             T, AccT, vec_size><<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
-            imsize, y_data, dy_data, ds_data, db_data);
+            imsize, x_data, dy_data, ds_data, db_data);
       }
 
       if (d_scale || d_bias) {
-        GammaBetaBackwardCUDAKernel<
-            T><<<(C + 256 - 1) / 256, 256, 0, dev_ctx.stream()>>>(
+        const int block = 256;
+        GetScaleBiasGradientCUDAKernel<
+            T><<<(C + block - 1) / block, block, 0, dev_ctx.stream()>>>(
             x_dims[0], C, groups, epsilon, mean_data, var_data, ds_data,
             db_data, d_scale_data, d_bias_data);
       }
 
       if (d_x_data != nullptr) {
-        Tensor c1, c2, c3;
-        c1.mutable_data<T>({x_dims[0] * C}, ctx.GetPlace());
-        c2.mutable_data<T>({x_dims[0], groups}, ctx.GetPlace());
-        c3.mutable_data<T>({x_dims[0], groups}, ctx.GetPlace());
-        T* c1_data = c1.data<T>();
-        T* c2_data = c2.data<T>();
-        T* c3_data = c3.data<T>();
+        Tensor p1, p2, p3;
+        p1.mutable_data<T>({x_dims[0] * C}, ctx.GetPlace());
+        p2.mutable_data<T>({x_dims[0], groups}, ctx.GetPlace());
+        p3.mutable_data<T>({x_dims[0], groups}, ctx.GetPlace());
+        T* p1_data = p1.data<T>();
+        T* p2_data = p2.data<T>();
+        T* p3_data = p3.data<T>();
 
         GetBackwardParamsCUDAKernel<
             T><<<dim3(x_dims[0], groups), 1024, 0, dev_ctx.stream()>>>(
-            C, imsize, groups, epsilon, mean_data, var_data, scale_data,
-            ds_data, db_data, c1_data, c2_data, c3_data);
-        int size = x_dims[0] * C * imsize;
-        GetBackwardCUDAKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-            imsize, C, group_size, groups, c1_data, c2_data, c3_data, y_data,
+            imsize, groups, group_size, epsilon, mean_data, var_data,
+            scale_data, ds_data, db_data, p1_data, p2_data, p3_data);
+        GetDxGradientCUDAKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
+            imsize, C, group_size, groups, p1_data, p2_data, p3_data, x_data,
             dy_data, d_x_data);
       }
 
     } else {
       int flags = (scale_data != nullptr) * kHasScale +
                   (bias_data != nullptr) * kHasBias;
-      UNROLL_ALL_CASES(flags, GroupNormBackwardGetMeanAndVar, x_data,
+      UNROLL_ALL_CASES(flags, GroupNormBackwardGetMeanAndVar, y_data,
                        scale_data, bias_data, dy_data, x_dims[0], C, W, imsize,
                        groups, group_size, epsilon, temp_mean_data,
                        temp_var_data, d_scale_data, d_bias_data);
       if (d_x_data != nullptr) {
-        UNROLL_ALL_CASES(flags, GroupNormBackward, x_data, dy_data, scale_data,
+        UNROLL_ALL_CASES(flags, GroupNormBackward, y_data, dy_data, scale_data,
                          bias_data, var_data, temp_mean_data, temp_var_data,
                          x_dims[0], C, W, imsize, groups, group_size, epsilon,
                          d_x_data);

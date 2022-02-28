@@ -1,7 +1,10 @@
 #ifndef PHI_KERNEL
 #define PHI_KERNEL
 
-include "paddle/infrt/dialect/phi/infrt_phi_tensor.td"
+include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/IR/OpBase.td"
+include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/phi/infrt_phi_base.td"
 
 def PHI_KernelDialect : Dialect {
   let name = "phi_kernel";
@@ -14,12 +17,7 @@ def PHI_KernelDialect : Dialect {
 }
 
 // PHI Kernel related ops.
-class PDT_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PHI_KernelDialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
-}
-
-def FakeKernelOp : PDT_Kernel<"phi.matmul.host.fp32"> {
-  let arguments = (ins CPU_Context:$dev_ctx, DenseTensor:$x, DenseTensor:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
-  let results = (outs DenseTensor:$output);
+class PDT_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PHI_KernelDialect, mnemonic, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove])> {
 }
 
 def PDCK_AbsOp : PDT_Kernel<"phi.abs.host.fp32"> {

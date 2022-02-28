@@ -14,8 +14,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
 namespace operators {
@@ -123,11 +123,11 @@ class FMHARef {
                                                      T, T>(
           dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
 
-      SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
-                                        softmax_axis, softmax_out_tensor);
+      phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
+                                             softmax_axis, softmax_out_tensor);
     } else {
-      SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out_tensor, softmax_axis,
-                                        softmax_out_tensor);
+      phi::SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *qk_out_tensor,
+                                             softmax_axis, softmax_out_tensor);
     }
 
     transB = CblasNoTrans;
@@ -251,9 +251,9 @@ class FMHARef {
     }
 
     if (src_mask_tensor != nullptr) {
-      SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
-                                         *softmax_out_grad_tensor, softmax_axis,
-                                         src_mask_out_grad_tensor);
+      phi::SoftmaxBackwardCUDAKernelDriver<T>(
+          dev_ctx_, softmax_out_tensor, *softmax_out_grad_tensor, softmax_axis,
+          src_mask_out_grad_tensor);
 
       // recall LaunchElementwiseCudaKernel fw:  src_mask_out = qk_out +
       // src_mask
@@ -272,9 +272,9 @@ class FMHARef {
       }
 
     } else {
-      SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
-                                         *softmax_out_grad_tensor, softmax_axis,
-                                         qk_out_grad_tensor);
+      phi::SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
+                                              *softmax_out_grad_tensor,
+                                              softmax_axis, qk_out_grad_tensor);
     }
 
     T* qk_out_grad_data = qk_out_grad_tensor->data<T>();

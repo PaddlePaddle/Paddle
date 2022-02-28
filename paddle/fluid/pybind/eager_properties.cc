@@ -70,26 +70,13 @@ PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
 
 PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
-    std::shared_ptr<egr::GradNodeBase> grad_node =
-        egr::EagerUtils::grad_node(self->tensor);
-    PADDLE_ENFORCE(
-        grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation"));
-    auto accumulation_grad_node =
-        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    return ToPyObject(*accumulation_grad_node->Grad());
+  VLOG(6) << "Get grad for tensor: " << self->tensor.name();
+  auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
+  if (meta) {
+    return ToPyObject(meta->Grad());
   } else {
-    VLOG(6) << "Get grad for tensor: " << self->tensor.name();
-    auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-    if (meta) {
-      return ToPyObject(meta->Grad());
-    } else {
-      Py_INCREF(Py_None);
-      return Py_None;
-    }
+    Py_INCREF(Py_None);
+    return Py_None;
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -101,16 +88,15 @@ int tensor_properties_set_grad(TensorObject* self, PyObject* value,
   PADDLE_ENFORCE(
       egr::egr_utils_api::IsLeafTensor(self->tensor),
       paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
-  std::shared_ptr<egr::GradNodeBase> grad_node =
-      egr::EagerUtils::grad_node(self->tensor);
-  PADDLE_ENFORCE(
-      grad_node.get() != nullptr,
-      paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                      "Leaf tensor should have had grad_node "
-                                      "with type: GradNodeAccumulation"));
-  auto accumulation_grad_node =
-      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-  accumulation_grad_node->Grad()->copy_(src, true);
+
+  paddle::experimental::Tensor* grad =
+      egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE(grad != nullptr,
+                 paddle::platform::errors::Fatal(
+                     "Detected NULL grad"
+                     "Please check if you have manually cleared"
+                     "the grad inside autograd_meta"));
+  grad->copy_(src, true);
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_ZERO
 }
