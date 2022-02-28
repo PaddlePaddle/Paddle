@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/tensor_base.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 using DataType = paddle::experimental::DataType;
@@ -72,6 +73,7 @@ struct DeviceContext::Impl {
   }
 
   void* Alloc(TensorBase* tensor,
+              const Place& place,
               DataType dtype = DataType::UNDEFINED,
               size_t requested_size = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -81,6 +83,12 @@ struct DeviceContext::Impl {
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
     }
+    // NOTE(paddle-dev): In case of tensor has already hold allocation and
+    // is going to allocate allocation on new place, we will clear its holder
+    // firstly and then re-alloc it.
+    if (tensor->initialized() && tensor->place() != place) {
+      ClearHolder(tensor);
+    }
     auto* allocator =
         tensor->numel() == 0 ? zero_allocator_ : device_allocator_;
     return tensor->AllocateFrom(
@@ -88,9 +96,11 @@ struct DeviceContext::Impl {
   }
 
   template <typename T>
-  T* Alloc(TensorBase* tensor, size_t requested_size = 0) const {
+  T* Alloc(TensorBase* tensor,
+           const Place& place,
+           size_t requested_size = 0) const {
     DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
-    return static_cast<T*>(Alloc(tensor, dtype, requested_size));
+    return static_cast<T*>(Alloc(tensor, place, dtype, requested_size));
   }
 
   void* HostAlloc(TensorBase* tensor,
@@ -102,6 +112,9 @@ struct DeviceContext::Impl {
             "Required tensor shall not be nullptr, but received nullptr."));
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
+    }
+    if (tensor->initialized() && tensor->place() != CPUPlace()) {
+      ClearHolder(tensor);
     }
     auto* allocator = tensor->numel() == 0 ? zero_allocator_ : host_allocator_;
     return tensor->AllocateFrom(
@@ -147,6 +160,19 @@ struct DeviceContext::Impl {
   }
 
  private:
+  void ClearHolder(TensorBase* tensor) const {
+    if (!tensor->initialized()) return;
+
+    if (DenseTensor::classof(tensor)) {
+      static_cast<DenseTensor*>(tensor)->clear();
+    } else if (SelectedRows::classof(tensor)) {
+      static_cast<SelectedRows*>(tensor)->mutable_value()->clear();
+    } else {
+      PADDLE_THROW(errors::Unimplemented(
+          "Only support DenseTensor and SelectedRows now."));
+    }
+  }
+
   const Allocator* device_allocator_{nullptr};
   const Allocator* host_allocator_{nullptr};
   const Allocator* zero_allocator_{nullptr};
@@ -168,7 +194,7 @@ DeviceContext::DeviceContext(DeviceContext&& other) {
   impl_ = std::move(other.impl_);
 }
 
-DeviceContext& DeviceContext::operator=(DeviceContext&&) = default;
+DeviceContext& DeviceContext::operator=(DeviceContext&& other) = default;
 
 DeviceContext::~DeviceContext() = default;
 
@@ -199,12 +225,12 @@ const Allocator& DeviceContext::GetZeroAllocator() const {
 void* DeviceContext::Alloc(TensorBase* tensor,
                            DataType dtype,
                            size_t requested_size) const {
-  return impl_->Alloc(tensor, dtype, requested_size);
+  return impl_->Alloc(tensor, GetPlace(), dtype, requested_size);
 }
 
 template <typename T>
 T* DeviceContext::Alloc(TensorBase* tensor, size_t requested_size) const {
-  return impl_->Alloc<T>(tensor, requested_size);
+  return impl_->Alloc<T>(tensor, GetPlace(), requested_size);
 }
 
 void* DeviceContext::HostAlloc(TensorBase* tensor,
