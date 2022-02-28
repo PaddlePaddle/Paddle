@@ -242,7 +242,9 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
     using search = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
     workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
-    algo = search::Find<T>(args, false, deterministic, workspace_size, ctx);
+    algo = search::Find<T>(
+        args, false, deterministic, workspace_size,
+        ctx.template device_context<platform::CUDADeviceContext>());
 #else
     using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     algo = search::Find<T>(
@@ -501,8 +503,9 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       using search1 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search1::GetWorkspaceSize(args1));
-      data_algo =
-          search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
+      data_algo = search1::Find<T>(
+          args1, false, deterministic, workspace_size,
+          ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
       data_algo = search1::Find<T>(
@@ -525,8 +528,9 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search2::GetWorkspaceSize(args2));
-      filter_algo =
-          search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
+      filter_algo = search2::Find<T>(
+          args2, false, deterministic, workspace_size,
+          ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
       filter_algo = search2::Find<T>(
@@ -946,8 +950,9 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
         using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
         workspace_size = search1::GetWorkspaceSize(args1);
-        bwd_algo1 =
-            search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
+        bwd_algo1 = search1::Find<T>(
+            args1, false, deterministic, workspace_size,
+            ctx.template device_context<platform::CUDADeviceContext>());
 #else
         using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
         bwd_algo1 = search1::Find<T>(
@@ -969,8 +974,9 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
         using search2 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
         workspace_size =
             std::max(workspace_size, search2::GetWorkspaceSize(args2));
-        bwd_algo2 =
-            search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
+        bwd_algo2 = search2::Find<T>(
+            args2, false, deterministic, workspace_size,
+            ctx.template device_context<platform::CUDADeviceContext>());
 #else
         using search2 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
         bwd_algo2 = search2::Find<T>(
@@ -996,8 +1002,9 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       using search3 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search3::GetWorkspaceSize(args3));
-      filter_algo =
-          search3::Find<T>(args3, false, deterministic, workspace_size, ctx);
+      filter_algo = search3::Find<T>(
+          args3, false, deterministic, workspace_size,
+          ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
       filter_algo = search3::Find<T>(
@@ -1021,8 +1028,9 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       using search4 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search4::GetWorkspaceSize(args4));
-      data_algo =
-          search4::Find<T>(args4, false, deterministic, workspace_size, ctx);
+      data_algo = search4::Find<T>(
+          args4, false, deterministic, workspace_size,
+          ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search4 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
       data_algo = search4::Find<T>(

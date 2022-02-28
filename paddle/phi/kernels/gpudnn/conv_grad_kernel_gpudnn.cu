@@ -31,7 +31,6 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 
@@ -39,8 +38,6 @@
 
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
-
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 
 namespace phi {
 
@@ -370,7 +367,8 @@ void ConvCudnnGradKernel(const Context& ctx,
                     c_groups);
 
 #ifdef PADDLE_WITH_HIP
-    using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
+    using search1 =
+        paddle::operators::SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
     workspace_size_d =
         std::max(workspace_size_d, search1::GetWorkspaceSize(args1));
     data_algo = search1::Find<T>(
@@ -398,7 +396,8 @@ void ConvCudnnGradKernel(const Context& ctx,
                     paddle::platform::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
-    using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
+    using search2 =
+        paddle::operators::SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
     workspace_size_w =
         std::max(workspace_size_w, search2::GetWorkspaceSize(args2));
     filter_algo = search2::Find<T>(
@@ -435,7 +434,7 @@ void ConvCudnnGradKernel(const Context& ctx,
       workspace_handle.RunFunc(
           [&](void* cudnn_workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
-                padddle::platform::dynload::miopenConvolutionBackwardData(
+                paddle::platform::dynload::miopenConvolutionBackwardData(
                     handle,
                     &alpha,
                     args1.odesc.desc(),
@@ -632,6 +631,21 @@ void Conv3DCudnnGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(conv2d_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::ConvCudnnGradKernel,
+                   float,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(conv3d_grad,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv3DCudnnGradKernel,
+                   float,
+                   phi::dtype::float16) {}
+#else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d_grad,
                    GPUDNN,
@@ -666,5 +680,7 @@ PD_REGISTER_KERNEL(conv3d_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
+
+#endif
 
 #endif

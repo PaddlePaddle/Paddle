@@ -14,12 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/conv_kernel.h"
-
-#include "paddle/fluid/operators/conv_op.h"
-#include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/vol2col.h"
+#include "paddle/phi/kernels/conv_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"

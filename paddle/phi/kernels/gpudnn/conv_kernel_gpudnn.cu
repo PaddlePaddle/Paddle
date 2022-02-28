@@ -30,13 +30,11 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
@@ -425,6 +423,21 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(conv2d,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::ConvCudnnKernel,
+                   float,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(conv3d,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv3DCudnnKernel,
+                   float,
+                   phi::dtype::float16) {}
+#else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d,
                    GPUDNN,
@@ -459,6 +472,8 @@ PD_REGISTER_KERNEL(conv3d,
                    float,
                    double,
                    phi::dtype::float16) {}
+#endif
+
 #endif
 
 // todo register bfloat16

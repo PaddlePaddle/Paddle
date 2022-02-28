@@ -17,7 +17,7 @@
 
 #include "paddle/fluid/operators/conv_op.h"
 
-#include "paddle/fluid/operators/math/depthwise_conv.h"
+#include "paddle/phi/kernels/gpu/depthwise_conv.h"
 
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
