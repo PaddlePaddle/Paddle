@@ -24,9 +24,12 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler/cpu_utilization.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
+#include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
+#include "paddle/fluid/platform/profiler/utils.h"
 
 namespace paddle {
 namespace platform {
@@ -45,9 +48,14 @@ std::unique_ptr<Profiler> Profiler::Create(const ProfilerOptions& options) {
 Profiler::Profiler(const ProfilerOptions& options) {
   options_ = options;
   HostTracerOptions host_tracer_options;
-  host_tracer_options.trace_level = options.trace_level;
-  tracers_.emplace_back(new HostTracer(host_tracer_options), true);
-  tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+  host_tracer_options.trace_level = options_.trace_level;
+  std::bitset<32> trace_switch(options_.trace_switch);
+  if (trace_switch.test(kProfileCPUOptionBit)) {
+    tracers_.emplace_back(new HostTracer(host_tracer_options), true);
+  }
+  if (trace_switch.test(kProfileGPUOptionBit)) {
+    tracers_.emplace_back(&CudaTracer::GetInstance(), false);
+  }
 }
 
 Profiler::~Profiler() { alive_.store(false); }
@@ -63,9 +71,10 @@ void Profiler::Start() {
   for (auto& tracer : tracers_) {
     tracer.Get().StartTracing();
   }
+  cpu_utilization_.RecordBeginTimeInfo();
 }
 
-std::unique_ptr<NodeTrees> Profiler::Stop() {
+std::unique_ptr<ProfilerResult> Profiler::Stop() {
   SynchronizeAllDevice();
   TraceEventCollector collector;
   for (auto& tracer : tracers_) {
@@ -75,7 +84,22 @@ std::unique_ptr<NodeTrees> Profiler::Stop() {
   std::unique_ptr<NodeTrees> tree(new NodeTrees(collector.HostEvents(),
                                                 collector.RuntimeEvents(),
                                                 collector.DeviceEvents()));
-  return tree;
+  cpu_utilization_.RecordEndTimeInfo();
+  ExtraInfo extrainfo;
+  extrainfo.AddExtraInfo(std::string("System Cpu Utilization"),
+                         std::string("%f"),
+                         cpu_utilization_.GetCpuUtilization());
+  extrainfo.AddExtraInfo(std::string("Process Cpu Utilization"),
+                         std::string("%f"),
+                         cpu_utilization_.GetCpuCurProcessUtilization());
+  const std::unordered_map<uint64_t, std::string> thread_names =
+      collector.ThreadNames();
+  for (const auto& kv : thread_names) {
+    extrainfo.AddExtraInfo(string_format(std::string("%llu"), kv.first),
+                           kv.second);
+  }
+  return std::unique_ptr<ProfilerResult>(
+      new platform::ProfilerResult(std::move(tree), extrainfo));
 }
 
 }  // namespace platform
