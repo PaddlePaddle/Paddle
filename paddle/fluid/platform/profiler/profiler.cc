@@ -24,7 +24,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/cpu_utilization.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
@@ -47,10 +46,10 @@ std::unique_ptr<Profiler> Profiler::Create(const ProfilerOptions& options) {
 
 Profiler::Profiler(const ProfilerOptions& options) {
   options_ = options;
-  HostTracerOptions host_tracer_options;
-  host_tracer_options.trace_level = options_.trace_level;
   std::bitset<32> trace_switch(options_.trace_switch);
   if (trace_switch.test(kProfileCPUOptionBit)) {
+    HostTracerOptions host_tracer_options;
+    host_tracer_options.trace_level = options_.trace_level;
     tracers_.emplace_back(new HostTracer(host_tracer_options), true);
   }
   if (trace_switch.test(kProfileGPUOptionBit)) {
