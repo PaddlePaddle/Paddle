@@ -51,8 +51,12 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
  public:
   explicit GroupNormPlugin(const float epsilon, const int groups,
                            const std::vector<float> scale,
-                           const std::vector<float> bias)
-      : epsilon_(epsilon), groups_(groups), scale_v_(scale), bias_v_(bias) {
+                           const std::vector<float> bias, const bool with_fp16)
+      : epsilon_(epsilon),
+        groups_(groups),
+        scale_v_(scale),
+        bias_v_(bias),
+        with_fp16_(with_fp16) {
     platform::dynload::cudnnCreate(&handle_);
     platform::dynload::cudnnCreateTensorDescriptor(&desc_);
     platform::dynload::cudnnCreateTensorDescriptor(&bn_desc_);
@@ -109,10 +113,9 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
 
   GroupNormPlugin* clone() const TRT_NOEXCEPT override {
     GroupNormPlugin* ptr =
-        new GroupNormPlugin(epsilon_, groups_, scale_v_, bias_v_);
+        new GroupNormPlugin(epsilon_, groups_, scale_v_, bias_v_, with_fp16_);
     ptr->setPluginNamespace(this->getPluginNamespace());
     ptr->input_dims_.assign(this->input_dims_.begin(), this->input_dims_.end());
-    ptr->with_fp16_ = this->with_fp16_;
     ptr->scale_ = this->scale_;
     ptr->bias_ = this->bias_;
     ptr->bn_scale_ = this->bn_scale_;
@@ -192,10 +195,6 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
                        int max_batch_size) TRT_NOEXCEPT override {
     for (int i = 0; i < input_dims->nbDims; i++) {
       input_dims_.push_back(input_dims->d[i]);
-    }
-
-    if (input_types[0] == nvinfer1::DataType::kHALF) {
-      with_fp16_ = true;
     }
 
     const int c = input_dims->d[0];

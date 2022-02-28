@@ -30,7 +30,7 @@ class GroupNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid group_norm op to tensorrt plugin";
+    VLOG(3) << "convert a fluid group_norm op to tensorrt static shape plugin";
 
     framework::OpDesc op_desc(op, nullptr);
     auto* x = engine_->GetITensor(op_desc.Input("X").front());
@@ -65,8 +65,9 @@ class GroupNormOpConverter : public OpConverter {
       bias_v.push_back(bias_t[i]);
     }
 
-    plugin::GroupNormPlugin* plugin =
-        new plugin::GroupNormPlugin(epsilon, groups, scale_v, bias_v);
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    plugin::GroupNormPlugin* plugin = new plugin::GroupNormPlugin(
+        epsilon, groups, scale_v, bias_v, with_fp16);
     auto* layer = engine_->AddPluginV2Ext(&x, 1, plugin);
 
     auto output_name = op_desc.Output("Y")[0];

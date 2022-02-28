@@ -421,17 +421,28 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "group_norm") {
-      if (with_dynamic_shape) return false;
+      if (with_dynamic_shape) {
+        VLOG(3) << "The group_norm op do not supported dynamic shape mode in "
+                   "tensorrt.";
+        return false;
+      }
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
-      if (has_attrs == false) return false;
+      if (has_attrs == false) {
+        VLOG(3) << "The required attribute of group_norm op was not found.";
+        return false;
+      }
 
       auto registry = GetPluginRegistry();
-      if (registry == nullptr) return false;
+      if (registry == nullptr) {
+        VLOG(3) << "The group_norm plugin registration failed.";
+        return false;
+      }
 
       std::string layout =
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout"));
       if (layout == "NHWC") {
-        VLOG(3) << "group_norm do not supported NHWC layout in tensorrt";
+        VLOG(3)
+            << "The group_norm op do not supported NHWC layout in tensorrt.";
         return false;
       }
     }
