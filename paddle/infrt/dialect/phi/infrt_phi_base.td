@@ -23,6 +23,8 @@ class ContextTypeOf<string place, list<Trait> traits=[]>:
     let summary = !strconcat("!phi.context_", place, " type");
 }
 
+def PhiOpTrait : NativeOpTrait<"PhiOpTrait">;
+
 def CPU_Allocator : AllocatorTypeOf<"CPU">;
 def GPU_Allocator : AllocatorTypeOf<"GPU">;
 

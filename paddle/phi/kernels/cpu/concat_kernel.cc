@@ -22,7 +22,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/lod_utils.h"
-#include "paddle/phi/kernels/cpu/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
 namespace phi {
@@ -104,7 +104,8 @@ void ConcatKernel(const Context& dev_ctx,
         continue;
       }
     }
-    ConcatImpl<T, Context>(dev_ctx, inputs, axis, out);
+    phi::funcs::ConcatFunctor<Context, T> functor;
+    functor(dev_ctx, inputs, axis, out);
   }
 }
 

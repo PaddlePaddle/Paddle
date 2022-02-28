@@ -25,6 +25,20 @@
 #define GET_TYPEDEF_CLASSES
 #include "paddle/infrt/dialect/phi/infrt_phi_baseTypes.h.inc"
 
+namespace mlir {
+namespace OpTrait {
+
+template <typename ConcreteType>
+class PhiOpTrait : public OpTrait::TraitBase<ConcreteType, PhiOpTrait> {
+ public:
+  static LogicalResult verifyTrait(Operation *op) {
+    return LogicalResult::success();
+  }
+};
+
+}  // namespace OpTrait
+}  // namespace mlir
+
 namespace infrt {
 namespace phi {}  // namespace phi
 }  // namespace infrt

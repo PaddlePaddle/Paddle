@@ -66,14 +66,13 @@ class TensorWrapper {
     }
 
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
-    PADDLE_ENFORCE_NOT_NULL(
-        EagerUtils::unsafe_autograd_meta(tensor),
-        paddle::platform::errors::Fatal(
-            "Full reserved Tensor should not have null autograd meta, since "
-            "tensor_wrapper is used to build backward info. There is no way "
-            "for us to build it with null autograd_meta."));
-    // copy output_rank
-    out_rank_info_ = EagerUtils::OutRankInfo(tensor);
+
+    // If an output is marked "intermedaite", we won't create
+    // autograd_meta for it.
+    // In that case, simply skip OutRankInfo Copy
+    if (EagerUtils::nullable_autograd_meta(tensor)) {
+      out_rank_info_ = EagerUtils::OutRankInfo(tensor);
+    }
   }
 
   paddle::experimental::Tensor recover(

@@ -161,6 +161,13 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   framework::KernelSignature pt_kernel_signature;
   phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
+#ifdef PADDLE_WITH_XPU
+  bool is_xpu_unsupport =
+      paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
+          !paddle::platform::is_xpu_support_op(op.Type(),
+                                               expected_kernel_key) ||
+      paddle::platform::is_in_xpu_black_list(op.Type());
+#endif
   if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
     pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
     VLOG(6) << pt_kernel_signature;
@@ -170,7 +177,11 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     auto pt_kernel = phi::KernelFactory::Instance().SelectKernel(pt_kernel_name,
                                                                  pt_kernel_key);
 
-    if (pt_kernel.IsValid()) {
+    if (pt_kernel.IsValid()
+#ifdef PADDLE_WITH_XPU
+        && !is_xpu_unsupport
+#endif
+        ) {
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
@@ -197,13 +208,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
        kernels_iter->second.find(expected_kernel_key) ==
            kernels_iter->second.end())
 #ifdef PADDLE_WITH_XPU
-      ||
-      paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-          !paddle::platform::is_xpu_support_op(op.Type(),
-                                               expected_kernel_key) ||
-      paddle::platform::is_in_xpu_black_list(op.Type())
+      || is_xpu_unsupport
 #endif
-          ) {
+      ) {
     if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
@@ -230,9 +237,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
 #ifdef PADDLE_WITH_XPU
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-      (kernel_iter == kernels.end() ||
-       !paddle::platform::is_xpu_support_op(op.Type(), expected_kernel_key) ||
-       paddle::platform::is_in_xpu_black_list(op.Type()))) {
+      (kernel_iter == kernels.end() || is_xpu_unsupport)) {
     VLOG(3) << "missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";

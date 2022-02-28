@@ -97,6 +97,7 @@ class AutogradMeta : public AbstractAutogradMeta {
             "Should Not set NULL as GradNode pointer, since "
             "our default Edge and autogradMeta has nullptr for "
             "grad node. Set Nullptr will lead error."));
+
     grad_node_ = grad_node;
   }
 

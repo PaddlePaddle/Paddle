@@ -13,7 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#ifdef __xpu__
+#include <memory>
+#include <string>
+#include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_xpu.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#else
 #include <algorithm>
 #include <utility>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
@@ -21,6 +28,7 @@ limitations under the License. */
 // only can include the headers in paddle/phi/include dirs
 #include "paddle/phi/kernels/elementwise_grad_kernel.h"
 #include "paddle/phi/kernels/math_kernel.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -28,7 +36,17 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#ifdef __xpu__
+    std::vector<const framework::Tensor*> ins;
+    std::vector<framework::Tensor*> outs;
+    int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
+    const auto& xpu_ctx =
+        ctx.template device_context<paddle::platform::XPUDeviceContext>();
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T, kps::AddFunctor<T>, 1>(
+        xpu_ctx, ins, &outs, axis, kps::AddFunctor<T>());
+#else
     auto *x = ctx.Input<framework::LoDTensor>("X");
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
@@ -40,6 +58,7 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
         static_cast<const typename framework::ConvertToPtenContext<
             DeviceContext>::TYPE &>(dev_ctx),
         *x, *y, axis, z);
+#endif
   }
 };
 

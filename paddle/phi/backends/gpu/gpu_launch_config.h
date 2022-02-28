@@ -29,6 +29,7 @@
 #include <string>
 #include <vector>
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/enforce.h"
 
 #ifdef __HIPCC__
 // HIP results in error or nan if > 256

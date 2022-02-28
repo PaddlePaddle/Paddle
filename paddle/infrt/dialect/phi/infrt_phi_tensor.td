@@ -18,7 +18,7 @@ def PHI_DenseTensorDialect : Dialect {
 }
 
 // PHI DenseTensor related Op.
-class PDT_Op<string mnemonic, list<OpTrait> traits = []> : Op<PHI_DenseTensorDialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
+class PDT_Op<string mnemonic, list<OpTrait> traits = []> : Op<PHI_DenseTensorDialect, mnemonic, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove])> {
 }
 
 class CreateDenseTensorOp<string place, string dtype, string layout> 
@@ -52,5 +52,10 @@ def PDT_CreateDenseTensorOp_cpu_f32_nchw : CreateDenseTensorOp<"cpu", "f32", "nc
 def PDT_FillDenseTensorOp_f32 : FillDenseTensorOp<F32ArrayAttr, "f32">;
 def PDT_CreateAllocatorOp_cpu : CreateCPUAllocatorOp;
 def PDT_CreateContextOp_cpu : CreateCPUContextOp;
+
+def FakeKernelOp : PDT_Op<"fake_phi_kernel"> {
+  let arguments = (ins CPU_Context:$dev_ctx, DenseTensor:$x, DenseTensor:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
+  let results = (outs DenseTensor:$output);
+}
 
 #endif

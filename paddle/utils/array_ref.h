@@ -12,8 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef PADDLE_UTILS_ARRAY_REF_H_
-#define PADDLE_UTILS_ARRAY_REF_H_
+#pragma once
 
 #include <algorithm>
 #include <array>
@@ -332,6 +331,4 @@ inline bool operator!=(SmallVectorImpl<T> &LHS, ArrayRef<T> RHS) {
   return !(LHS == RHS);
 }
 
-}  // end namespace paddle
-
-#endif  // PADDLE_UTILS_ARRAY_REF_H_
+}  // namespace paddle
