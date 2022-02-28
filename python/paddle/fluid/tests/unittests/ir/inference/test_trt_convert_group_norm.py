@@ -98,11 +98,10 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if len(attrs[0]) == 3:
-                if dynamic_shape:
-                    return 1, 2
-                else:
-                    return 0, 3
+            if dynamic_shape:
+                return 0, 3
+            if attrs[0]["data_layout"] == "NCHW":
+                return 1, 2
             else:
                 return 0, 3
 
@@ -120,28 +119,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), (1e-5, 1e-5)
 
-        # for dynamic_shape
-        generate_dynamic_shape(attrs)
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-5, 1e-5)
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-5, 1e-5)
-
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if len(self.dynamic_shape.min_input_shape) != 0:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The goup_norm plugin will check dim not -1 failed when dynamic fp16 mode."
-        )
-
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 

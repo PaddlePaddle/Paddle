@@ -76,7 +76,7 @@ int GroupNormPlugin::enqueue(int batch_size, const void* const* inputs,
                                                    CUDNN_BATCHNORM_SPATIAL);
   platform::dynload::cudnnSetStream(handle_, stream);
 
-  int ans;
+  int ans = 1;
   if (with_fp16_) {
     ans = enqueueImpl<__half>(inputs, outputs, handle_, desc_, bn_desc_,
                               bn_scale_, bn_bias_, epsilon_, channel_volume,

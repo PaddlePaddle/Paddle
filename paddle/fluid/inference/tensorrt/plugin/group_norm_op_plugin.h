@@ -78,19 +78,23 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
 
   void deserializeToDevice() {
     const int size = static_cast<int>(ones_for_serialize_.size());
-    cudaMalloc(&bn_scale_, sizeof(float) * size);
-    cudaMalloc(&bn_bias_, sizeof(float) * size);
-    cudaMemcpy(bn_scale_, ones_for_serialize_.data(), sizeof(float) * size,
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(bn_bias_, zeroes_for_serialize_.data(), sizeof(float) * size,
-               cudaMemcpyHostToDevice);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&bn_scale_, sizeof(float) * size));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&bn_bias_, sizeof(float) * size));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(bn_scale_, ones_for_serialize_.data(),
+                                          sizeof(float) * size,
+                                          cudaMemcpyHostToDevice));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemcpy(bn_bias_, zeroes_for_serialize_.data(), sizeof(float) * size,
+                   cudaMemcpyHostToDevice));
 
-    cudaMalloc(&scale_, sizeof(float) * size);
-    cudaMalloc(&bias_, sizeof(float) * size);
-    cudaMemcpy(scale_, scale_for_serialize_.data(), sizeof(float) * size,
-               cudaMemcpyHostToDevice);
-    cudaMemcpy(bias_, bias_for_serialize_.data(), sizeof(float) * size,
-               cudaMemcpyHostToDevice);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&scale_, sizeof(float) * size));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&bias_, sizeof(float) * size));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(scale_, scale_for_serialize_.data(),
+                                          sizeof(float) * size,
+                                          cudaMemcpyHostToDevice));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(bias_, bias_for_serialize_.data(),
+                                          sizeof(float) * size,
+                                          cudaMemcpyHostToDevice));
   }
 
   ~GroupNormPlugin() {
@@ -195,10 +199,14 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
     }
 
     const int c = input_dims->d[0];
-    cudaMalloc(&bn_scale_, max_batch_size * c * sizeof(float));
-    cudaMalloc(&bn_bias_, max_batch_size * c * sizeof(float));
-    cudaMalloc(&scale_, max_batch_size * c * sizeof(float));
-    cudaMalloc(&bias_, max_batch_size * c * sizeof(float));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMalloc(&bn_scale_, max_batch_size * c * sizeof(float)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMalloc(&bn_bias_, max_batch_size * c * sizeof(float)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMalloc(&scale_, max_batch_size * c * sizeof(float)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMalloc(&bias_, max_batch_size * c * sizeof(float)));
 
     std::vector<float> ones(c, 1.F);
     std::vector<float> zeroes(c, 0.F);
@@ -211,14 +219,18 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
                                   scale_v_.end());
       bias_for_serialize_.insert(bias_for_serialize_.end(), bias_v_.begin(),
                                  bias_v_.end());
-      cudaMemcpy(bn_scale_ + i * c, ones.data(), sizeof(float) * c,
-                 cudaMemcpyHostToDevice);
-      cudaMemcpy(bn_bias_ + i * c, zeroes.data(), sizeof(float) * c,
-                 cudaMemcpyHostToDevice);
-      cudaMemcpy(scale_ + i * c, scale_v_.data(), sizeof(float) * c,
-                 cudaMemcpyHostToDevice);
-      cudaMemcpy(bias_ + i * c, bias_v_.data(), sizeof(float) * c,
-                 cudaMemcpyHostToDevice);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(bn_scale_ + i * c, ones.data(),
+                                            sizeof(float) * c,
+                                            cudaMemcpyHostToDevice));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(bn_bias_ + i * c, zeroes.data(),
+                                            sizeof(float) * c,
+                                            cudaMemcpyHostToDevice));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(scale_ + i * c, scale_v_.data(),
+                                            sizeof(float) * c,
+                                            cudaMemcpyHostToDevice));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(bias_ + i * c, bias_v_.data(),
+                                            sizeof(float) * c,
+                                            cudaMemcpyHostToDevice));
     }
   }
 

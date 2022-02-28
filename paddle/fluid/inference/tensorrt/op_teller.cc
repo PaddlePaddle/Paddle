@@ -30,8 +30,6 @@ namespace tensorrt {
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
-// TODO(baoachun) The group_norm trt plugin will check input's dim
-// not -1 failed when dynamic shape mode.
 #if IS_TRT_VERSION_GE(7130)
     teller_set.insert("group_norm");
 #endif
