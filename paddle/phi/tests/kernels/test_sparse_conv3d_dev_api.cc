@@ -20,10 +20,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 namespace phi {
 namespace tests {
@@ -31,77 +30,87 @@ namespace tests {
 std::vector<int> flatten(const std::vector<std::vector<int>>& in) {
   std::vector<int> out;
   if (in.size() == 0) return out;
-  const int rows = in.size();
   const int cols = in[0].size();
-  const int n = rows * cols;
-  out.resize(n);
-  for (int i = 0; i < rows; i++) {
+  out.resize(in.size() * cols);
+  for (uint64_t i = 0; i < in.size(); i++) {
     memcpy(&out[i * cols], in[i].data(), cols * sizeof(int));
   }
   return out;
 }
 
 template <typename T1, typename T2>
-void cast(const std::vector<T1>& in, std::vector<T2>* out) {
+std::vector<T2> cast(const std::vector<T1>& in) {
+  std::vector<T2> out(in.size());
   for (uint64_t i = 0; i < in.size(); i++) {
-    (*out)[i] = static_cast<T2>(in[i]);
+    out[i] = static_cast<T2>(in[i]);
   }
+  return out;
 }
 
 template <typename T>
-void TestConv3d(const std::vector<int>& indices,
-                const std::vector<T>& features,
-                const DDim& x_dims,
-                const std::vector<T>& kernel,
-                const DDim& kernel_dims,
-                const std::vector<int>& correct_out_indices,
-                const std::vector<T>& correct_out_features,
-                const DDim& correct_out_dims,
-                const int non_zero_num,
-                const std::vector<int>& paddings,
-                const std::vector<int>& strides,
-                const std::vector<int>& dilations) {
-  const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
-      paddle::platform::CPUPlace());
-
+void TestConv3dBase(const std::vector<int>& indices,
+                    const std::vector<T>& features,
+                    const DDim& x_dims,
+                    const std::vector<T>& kernel,
+                    const DDim& kernel_dims,
+                    const std::vector<int>& correct_out_indices,
+                    const std::vector<T>& correct_out_features,
+                    const DDim& correct_out_dims,
+                    const int non_zero_num,
+                    const std::vector<int>& paddings,
+                    const std::vector<int>& strides,
+                    const std::vector<int>& dilations,
+                    const float diff = 1e-3) {
   phi::CPUContext dev_ctx_cpu;
+  dev_ctx_cpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
   dev_ctx_cpu.Init();
-  phi::CPUPlace cpu;
 
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
 
-  DenseTensor indices_tensor(
-      alloc.get(),
+  DenseTensor indices_tensor = phi::Empty(
+      dev_ctx_cpu,
       DenseTensorMeta(DataType::INT32, {4, non_zero_num}, DataLayout::NCHW));
-  memcpy(indices_tensor.mutable_data<int>(cpu),
-         indices.data(),
-         indices.size() * sizeof(int));
-  DenseTensor features_tensor(
-      alloc.get(),
+  dev_ctx_cpu.Alloc(&indices_tensor,
+                    indices_tensor.dtype(),
+                    sizeof(int) * indices_tensor.numel());
+  memcpy(
+      indices_tensor.data<int>(), indices.data(), indices.size() * sizeof(int));
+  DenseTensor features_tensor = phi::Empty(
+      dev_ctx_cpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       {non_zero_num, in_channels},
                       DataLayout::NHWC));
-  memcpy(features_tensor.mutable_data<T>(cpu),
-         features.data(),
-         features.size() * sizeof(T));
+  dev_ctx_cpu.Alloc(&features_tensor,
+                    features_tensor.dtype(),
+                    features_tensor.numel() * sizeof(T));
+  memcpy(
+      features_tensor.data<T>(), features.data(), features.size() * sizeof(T));
 
   SparseCooTensor x_tensor(indices_tensor, features_tensor, x_dims);
 
-  // TODO(zhangkaihuo) change layout to DHWCOC
-  DenseTensor kernel_tensor(
-      alloc.get(),
+  DenseTensor kernel_tensor = phi::Empty(
+      dev_ctx_cpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       kernel_dims,
                       DataLayout::NHWC));
-  memcpy(kernel_tensor.mutable_data<T>(cpu),
-         kernel.data(),
-         kernel.size() * sizeof(T));
+  dev_ctx_cpu.Alloc(
+      &kernel_tensor, kernel_tensor.dtype(), kernel_tensor.numel() * sizeof(T));
+  memcpy(kernel_tensor.data<T>(), kernel.data(), kernel.size() * sizeof(T));
 
-  const float diff = 1e-3;
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    SparseCooTensor out = sparse::Conv3d<T>(
-        dev_ctx_cpu, x_tensor, kernel_tensor, paddings, dilations, strides, 1);
+    DenseTensor rulebook = phi::Empty<int, phi::CPUContext>(dev_ctx_cpu);
+    SparseCooTensor out = sparse::Conv3d<T>(dev_ctx_cpu,
+                                            x_tensor,
+                                            kernel_tensor,
+                                            paddings,
+                                            dilations,
+                                            strides,
+                                            1,
+                                            &rulebook);
 
     ASSERT_EQ(correct_out_dims.size(), out.dims().size());
     for (int i = 0; i < correct_out_dims.size(); i++) {
@@ -138,34 +147,49 @@ void TestConv3d(const std::vector<int>& indices,
   const auto cuda_alloc =
       std::make_shared<paddle::experimental::DefaultAllocator>(
           paddle::platform::CUDAPlace());
-  DenseTensor d_indices_tensor(
-      cuda_alloc.get(),
+  DenseTensor d_indices_tensor = phi::Empty(
+      dev_ctx_gpu,
       DenseTensorMeta(DataType::INT32, {4, non_zero_num}, DataLayout::NCHW));
-  phi::Copy(dev_ctx_gpu, indices_tensor, true, &d_indices_tensor);
-  DenseTensor d_features_tensor(
-      cuda_alloc.get(),
+  dev_ctx_gpu.Alloc(&d_indices_tensor,
+                    d_indices_tensor.dtype(),
+                    sizeof(int) * d_indices_tensor.numel());
+  phi::Copy(
+      dev_ctx_gpu, indices_tensor, phi::GPUPlace(), true, &d_indices_tensor);
+
+  DenseTensor d_features_tensor = phi::Empty(
+      dev_ctx_gpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       {non_zero_num, in_channels},
                       DataLayout::NHWC));
-  phi::Copy(dev_ctx_gpu, features_tensor, true, &d_features_tensor);
+  dev_ctx_gpu.Alloc(&d_features_tensor,
+                    d_features_tensor.dtype(),
+                    sizeof(T) * d_features_tensor.numel());
+  phi::Copy(
+      dev_ctx_gpu, features_tensor, phi::GPUPlace(), true, &d_features_tensor);
 
   SparseCooTensor d_x_tensor(d_indices_tensor, d_features_tensor, x_dims);
 
   // TODO(zhangkaihuo) change layout to DHWCOC
-  DenseTensor d_kernel_tensor(
-      cuda_alloc.get(),
+  DenseTensor d_kernel_tensor = phi::Empty(
+      dev_ctx_gpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       kernel_dims,
                       DataLayout::NHWC));
-  phi::Copy(dev_ctx_gpu, kernel_tensor, true, &d_kernel_tensor);
+  dev_ctx_gpu.Alloc(&d_kernel_tensor,
+                    d_kernel_tensor.dtype(),
+                    sizeof(T) * d_kernel_tensor.numel());
+  phi::Copy(
+      dev_ctx_gpu, kernel_tensor, phi::GPUPlace(), true, &d_kernel_tensor);
 
+  DenseTensor d_rulebook = phi::Empty<int, phi::GPUContext>(dev_ctx_gpu);
   SparseCooTensor d_out = sparse::Conv3d<T>(dev_ctx_gpu,
                                             d_x_tensor,
                                             d_kernel_tensor,
                                             paddings,
                                             dilations,
                                             strides,
-                                            1);
+                                            1,
+                                            &d_rulebook);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
   ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, d_out.nnz());
@@ -173,28 +197,83 @@ void TestConv3d(const std::vector<int>& indices,
     ASSERT_EQ(correct_out_dims[i], d_out.dims()[i]);
   }
 
-  DenseTensor h_indices_tensor(
-      alloc.get(),
+  DenseTensor h_indices_tensor = phi::Empty(
+      dev_ctx_cpu,
       DenseTensorMeta(DataType::INT32, {4, d_out.nnz()}, DataLayout::NCHW));
-  phi::Copy(dev_ctx_gpu, d_out.non_zero_indices(), true, &h_indices_tensor);
+  dev_ctx_cpu.Alloc(&h_indices_tensor,
+                    h_indices_tensor.dtype(),
+                    sizeof(int) * h_indices_tensor.numel());
+  phi::Copy(dev_ctx_gpu,
+            d_out.non_zero_indices(),
+            phi::GPUPlace(),
+            true,
+            &h_indices_tensor);
 
   int cmp_indices2 = memcmp(correct_out_indices.data(),
                             h_indices_tensor.data<int>(),
                             correct_out_indices.size() * sizeof(int));
   ASSERT_EQ(cmp_indices2, 0);
 
-  DenseTensor h_features_tensor(
-      alloc.get(),
+  DenseTensor h_features_tensor = phi::Empty(
+      dev_ctx_cpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       {d_out.nnz()},
                       d_out.layout()));
-  phi::Copy(dev_ctx_gpu, d_out.non_zero_elements(), true, &h_features_tensor);
+
+  dev_ctx_cpu.Alloc(&h_features_tensor,
+                    h_features_tensor.dtype(),
+                    sizeof(T) * h_features_tensor.numel());
+  phi::Copy(dev_ctx_gpu,
+            d_out.non_zero_elements(),
+            phi::GPUPlace(),
+            true,
+            &h_features_tensor);
   for (uint64_t i = 0; i < correct_out_features.size(); i++) {
     float tmp = std::fabs(static_cast<float>(correct_out_features[i] -
                                              h_features_tensor.data<T>()[i]));
     ASSERT_LT(tmp, diff);
   }
 #endif
+}
+
+void TestConv3d(const std::vector<int>& indices,
+                const std::vector<float>& features,
+                const DDim& x_dims,
+                const std::vector<float>& kernel,
+                const DDim& kernel_dims,
+                const std::vector<int>& correct_out_indices,
+                const std::vector<float>& correct_out_features,
+                const DDim& correct_out_dims,
+                const int non_zero_num,
+                const std::vector<int>& paddings,
+                const std::vector<int>& strides,
+                const std::vector<int>& dilations) {
+  // test float
+  TestConv3dBase<float>(indices,
+                        features,
+                        x_dims,
+                        kernel,
+                        kernel_dims,
+                        correct_out_indices,
+                        correct_out_features,
+                        correct_out_dims,
+                        non_zero_num,
+                        paddings,
+                        strides,
+                        dilations);
+  // test double
+  TestConv3dBase<double>(indices,
+                         cast<float, double>(features),
+                         x_dims,
+                         cast<float, double>(kernel),
+                         kernel_dims,
+                         correct_out_indices,
+                         cast<float, double>(correct_out_features),
+                         correct_out_dims,
+                         non_zero_num,
+                         paddings,
+                         strides,
+                         dilations);
 }
 
 TEST(DEV_API, sparse_conv3d) {
@@ -230,39 +309,18 @@ TEST(DEV_API, sparse_conv3d) {
   std::vector<float> out_features = {
       0.0254, 0.1455, -0.0615, 0.0862, 0.0077, 0.0200, -0.0160, -0.0433};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  // test fp16
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 TEST(DEV_API, sparse_conv3d_batch) {
@@ -316,38 +374,18 @@ TEST(DEV_API, sparse_conv3d_batch) {
                                      -0.0160,
                                      -0.0433};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 TEST(DEV_API, sparse_conv3d_stride) {
@@ -379,39 +417,18 @@ TEST(DEV_API, sparse_conv3d_stride) {
 
   std::vector<float> out_features = {0.01791};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  // test fp16
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 TEST(DEV_API, sparse_conv3d_dilation) {
@@ -443,39 +460,18 @@ TEST(DEV_API, sparse_conv3d_dilation) {
 
   std::vector<float> out_features = {-0.64014, -0.37402};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
-
-  // test fp16
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
-
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 TEST(DEV_API, sparse_conv3d_padding) {
@@ -518,39 +514,63 @@ TEST(DEV_API, sparse_conv3d_padding) {
                                      -0.17847,
                                      -0.27295};
 
-  TestConv3d<float>(indices_flatten,
-                    features,
-                    x_dims,
-                    kernel,
-                    kernel_dims,
-                    out_indices_flatten,
-                    out_features,
-                    out_dims,
-                    non_zero_num,
-                    paddings,
-                    strides,
-                    dilations);
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
+}
 
-  // test fp16
-  using phi::dtype::float16;
-  std::vector<float16> features_fp16(features.size()),
-      out_features_fp16(out_features.size()), kernel_fp16(kernel.size());
-  cast<float, float16>(features, &features_fp16);
-  cast<float, float16>(out_features, &out_features_fp16);
-  cast<float, float16>(kernel, &kernel_fp16);
+TEST(DEV_API, sparse_conv2d) {
+  const int in_channels = 1;
+  const int out_channels = 1;
+  DDim x_dims = {1, 1, 5, 5, in_channels};
+  DDim kernel_dims = {1, 3, 3, in_channels, out_channels};
+  DDim out_dims = {1, 1, 3, 3, out_channels};
+  std::vector<int> paddings = {0, 0, 0};
+  std::vector<int> strides = {1, 1, 1};
+  std::vector<int> dilations = {1, 1, 1};
 
-  TestConv3d<float16>(indices_flatten,
-                      features_fp16,
-                      x_dims,
-                      kernel_fp16,
-                      kernel_dims,
-                      out_indices_flatten,
-                      out_features_fp16,
-                      out_dims,
-                      non_zero_num,
-                      paddings,
-                      strides,
-                      dilations);
+  const int non_zero_num = 3;
+  std::vector<int> indices_flatten = {0, 0, 0, 0, 0, 0, 0, 4, 0, 3, 2, 4};
+
+  std::vector<float> features = {-0.79394531, -0.3125, -0.55029297};
+  // 3*3*3=27
+  std::vector<float> kernel = {0.65820312,
+                               0.75048828,
+                               0.21411133,
+                               0.17370605,
+                               0.85546875,
+                               0.53076172,
+                               0.28833008,
+                               0.71044922,
+                               0.00659943};
+
+  std::vector<int> out_indices_flatten = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                          0, 0, 2, 2, 2, 1, 2, 0, 1, 2};
+
+  std::vector<float> out_features = {
+      -0.17004, -0.71338, -0.00206, -0.22205, -0.09009};
+
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
 }
 
 }  // namespace tests

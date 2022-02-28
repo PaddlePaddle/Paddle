@@ -53,7 +53,7 @@ TEST(sparse_coo_tensor, construct) {
   CHECK(sparse.dims() == dense_dims);
   CHECK(sparse.dtype() == DataType::FLOAT32);
   CHECK(sparse.layout() == DataLayout::SPARSE_COO);
-  CHECK(sparse.place() == paddle::platform::CPUPlace());
+  CHECK(sparse.place() == phi::CPUPlace());
 }
 
 TEST(sparse_coo_tensor, other_function) {

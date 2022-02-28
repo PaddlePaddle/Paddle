@@ -42,12 +42,12 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
   PADDLE_ENFORCE_LT(axis,
                     max_dim,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim,
                         axis));
@@ -72,7 +72,7 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
         x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
             y_dims_array[i] <= 1,
         true,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Broadcast dimension mismatch. Operands could "
             "not be broadcast together with the shape of X = [%s] and "
             "the shape of Y = [%s]. Received [%d] in X is not equal to "
@@ -126,6 +126,18 @@ static void GetBroadcastDims(const DDim &in_dims,
       (*bcast_dims)[i] = std::max(in_dims[i], out_dims[i]);
     }
   }
+}
+
+inline bool CheckDims(const DDim &dims_x, const DDim &dims_y) {
+  if (dims_x.size() != dims_y.size()) {
+    return false;
+  }
+  for (int i = 0; i < dims_x.size(); i++) {
+    if (dims_x[i] != dims_y[i]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace funcs

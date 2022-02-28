@@ -148,11 +148,11 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
       int thread_x = kThreadsPerBlock;
       int max_threads = ctx.cuda_device_context().GetMaxPhysicalThreadCount();
       int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-
+      paddle::framework::MixVector<int64_t> mixv_in_rows(&in_rows);
       SparseSGDFunctorKernel<<<max_blocks, thread_x, 0,
                                ctx.cuda_device_context().stream()>>>(
-          in_data, in_rows.CUDAData(ctx.GetPlace()), learning_rate->data<T>(),
-          out_data, in_row_numel, in_rows.size());
+          in_data, mixv_in_rows.CUDAData(ctx.GetPlace()),
+          learning_rate->data<T>(), out_data, in_row_numel, in_rows.size());
 
     } else {
       PADDLE_ENFORCE_EQ(false, true,

@@ -22,6 +22,7 @@
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
+#include "paddle/utils/optional.h"
 #include "paddle/utils/small_vector.h"
 
 namespace phi {

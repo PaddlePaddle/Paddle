@@ -17,6 +17,7 @@ limitations under the License. */
 #include <popart/patterns/patterns.hpp>
 #include <popart/sessionoptions.hpp>
 #include <popart/tensorlocation.hpp>
+#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -71,6 +72,9 @@ struct IpuStrategy {
   // popart pattern manager
   popart::Patterns popart_patterns;
 
+  // custom ops
+  std::vector<IpuCustomOpIdentifier> custom_ops;
+
  private:
   std::map<std::string, std::function<void(bool)>> bool_options;
   std::map<std::string, std::function<void(std::uint64_t)>> uint64_options;
@@ -123,6 +127,8 @@ struct IpuStrategy {
                               const std::string &value);
   void SetTensorLocation(const std::string &tensor, const std::string &option,
                          std::uint64_t value);
+  void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
+                   const std::string &domain, int version);
 
   std::string GetOption(const std::string &);
   std::vector<std::string> GetVectorOption(const std::string &);

@@ -170,7 +170,8 @@ struct SelectedRowsAddTo<platform::CPUDeviceContext, T> {
     auto* in2_value = input2->mutable_value();
 
     // concat rows
-    in2_rows.Extend(in1_rows.begin(), in1_rows.end());
+    paddle::framework::MixVector<int64_t> mixv_in2_rows(&in2_rows);
+    mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place), true,
