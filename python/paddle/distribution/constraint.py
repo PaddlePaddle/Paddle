@@ -13,47 +13,46 @@
 # limitations under the License.
 
 
-class _Constraint(object):
+class Constraint(object):
     def __call__(self, value):
         raise NotImplementedError
 
 
-class _Real(_Constraint):
+class Real(Constraint):
     def __call__(self, v):
         return v == v
 
 
-class _Interval(_Constraint):
+class Range(Constraint):
     def __init__(self, lower, upper):
         self._lower = lower
         self._upper = upper
-        super(_Interval, self).__init__()
+        super(Range, self).__init__()
 
     def __call__(self, v):
         return self._lower <= v <= self.upper
 
 
-class _Positive(_Constraint):
+class Positive(Constraint):
     def __call__(self, v):
         return v >= 0.
 
 
-class _Simplex(_Constraint):
+class Simplex(Constraint):
     def __call__(self, v):
         return paddle.all(v >= 0, dim=-1) and ((v.sum(-1) - 1).abs() < 1e-6)
 
 
-class _LowerCholesky(_Constraint):
+class LowerCholesky(Constraint):
     def __call__(self, v):
         pass
 
 
-class _CorrelationCholesky(_Constraint):
-    event_dim = 2
-
-    def validate(self, v):
+class CorrelationCholesky(Constraint):
+    def __call__(self, v):
         pass
 
 
-real = _Real()
-positive = _Positive()
+real = Real()
+positive = Positive()
+simplex = Simplex()

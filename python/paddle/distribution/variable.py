@@ -64,46 +64,47 @@ class Independent(Variable):
 
     def __init__(self, base, reinterpreted_batch_rank):
         self._base = base
-        self._reinterpreted_batch_ndims
-        super(Variable, self).__init__(
+        self._reinterpreted_batch_rank = reinterpreted_batch_rank
+        super(Independent, self).__init__(
             base.is_discrete, base.event_rank + reinterpreted_batch_rank)
 
     def constraint(self, value):
         ret = self.base.constraint(value)
-        if ret.dim() < self.reinterpreted_batch_ndims:
+        if ret.dim() < self.reinterpreted_batch_rank:
             raise ValueError(
                 "Input dimensions must be equal or grater than  {}".format(
-                    self.reinterpreted_batch_ndims))
-        return ret.reshape(ret.shape[:ret.dim(
-        ) - self.reinterpreted_batch_ndims] + (-1, )).all(-1)
+                    self.reinterpreted_batch_rank))
+        return ret.reshape(ret.shape[:ret.dim() - self.reinterpreted_batch_rank]
+                           + (-1, )).all(-1)
 
 
-# class _Stack(_Variable):
-#     def __init__(self, constraints, axis=0):
-#         self._constraints = constraints
-#         self._axis = axis
+class Stack(Variable):
+    def __init__(self, vars, axis=0):
+        self._vars = vars
+        self._axis = axis
 
-#     @property
-#     def is_discrete(self):
-#         return any(c.is_discrete for c in self._constraints)
+    @property
+    def is_discrete(self):
+        return any(var.is_discrete for var in self._vars)
 
-#     @property
-#     def event_dim(self):
-#         dim = max(c.event_dim for c in self._constraints)
-#         if self.dim + dim < 0:
-#             dim += 1
-#         return dim
+    @property
+    def event_rank(self):
+        rank = max(var.event_rank for var in self._vars)
+        if self._axis + rank < 0:
+            rank += 1
+        return rank
 
-#     def validate(self, v):
-#         if not (-v.dim() <= self.dim < v.dim()):
-#             raise ValueError(
-#                 f'Input dimensions {v.dim()} should be grater than stack '
-#                 f'constraint axis {self._axis}.')
+    def constraint(self, value):
+        if not (-value.dim() <= self.rank < value.dim()):
+            raise ValueError(
+                f'Input dimensions {v.dim()} should be grater than stack '
+                f'constraint axis {self._axis}.')
 
-#         return paddle.stack(
-#             [c.check(v) for c, v in zip(
-#                 self._constraints, paddle.unstack(v, self._axis))],
-#             self._axis)
+        return paddle.stack([
+            var.check(value)
+            for var, value in zip(self._vars, paddle.unstack(value, self._axis))
+        ], self._axis)
+
 
 real = Real()
 positive = Positive()

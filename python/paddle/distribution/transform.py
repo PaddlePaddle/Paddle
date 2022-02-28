@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -191,7 +191,7 @@ class Transform(object):
         Returns:
             Tensor: Outcome of forward transform.
         """
-        if not isinstance(x, paddle.Tensor):
+        if not isinstance(x, paddle.fluid.core.VarBase):
             raise TypeError(
                 f"Expected 'x' is a Tensor or Real, but got {type(x)}.")
         if x.dim() < self._domain.event_rank:
@@ -210,7 +210,7 @@ class Transform(object):
         Returns:
             Tensor: Outcome of inverse transform.
         """
-        if not isinstance(y, paddle.Tensor):
+        if not isinstance(y, paddle.fluid.core.VarBase):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(y)}.")
         if y.dim() < self._codomain.event_rank:
@@ -230,10 +230,11 @@ class Transform(object):
         Returns:
             Tensor: The log of the absolute value of Jacobian determinant. 
         """
-        if not isinstance(x, paddle.Tensor):
+        if not isinstance(x, paddle.fluid.core.VarBase):
             raise TypeError(
                 f"Expected 'y' is a Tensor or Real, but got {type(x)}.")
-        if isinstance(x, paddle.Tensor) and x.dim() < self._domain.event_rank:
+        if isinstance(x, paddle.fluid.core.VarBase) and x.dim(
+        ) < self._domain.event_rank:
             raise ValueError(
                 f'The dimensions of x({x.dim()}) should be '
                 f'grater than or equal to {self._domain.event_rank}')
@@ -256,7 +257,7 @@ class Transform(object):
         Returns:
             Tensor: The value of :math:`log|det J_{f^{-1}}(y)|`.
         """
-        if not isinstance(y, paddle.Tensor):
+        if not isinstance(y, paddle.fluid.core.VarBase):
             raise TypeError(f"Expected 'y' is a Tensor, but got {type(y)}.")
         if y.dim() < self._codomain.event_rank:
             raise ValueError(
@@ -432,9 +433,9 @@ class AffineTransform(Transform):
     _type = Type.BIJECTION
 
     def __init__(self, loc, scale):
-        if not isinstance(loc, paddle.Tensor):
+        if not isinstance(loc, paddle.fluid.core.VarBase):
             raise TypeError(f"Expected 'loc' is a Tensor, but got {type(loc)}")
-        if not isinstance(scale, paddle.Tensor):
+        if not isinstance(scale, paddle.fluid.core.VarBase):
             raise TypeError(
                 f"Expected scale is a Tensor, but got {type(scale)}")
         self._loc = loc
@@ -459,12 +460,16 @@ class AffineTransform(Transform):
         return paddle.abs(self._scale).log()
 
     def _forward_shape(self, shape):
-        return paddle.broadcast_shape(
-            paddle.broadcast_shape(shape, self._loc.shape), self._scale.shape)
+        return tuple(
+            paddle.broadcast_shape(
+                paddle.broadcast_shape(shape, self._loc.shape),
+                self._scale.shape))
 
     def _inverse_shape(self, shape):
-        return paddle.broadcast_shape(
-            paddle.broadcast_shape(shape, self._loc.shape), self._scale.shape)
+        return tuple(
+            paddle.broadcast_shape(
+                paddle.broadcast_shape(shape, self._loc.shape),
+                self._scale.shape))
 
     @property
     def _domain(self):
@@ -480,11 +485,46 @@ class ChainTransform(Transform):
 
     Args:
         transforms (Sequence[int]): A sequence of transformations.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+
+            x = paddle.to_tensor([0., 1., 2., 3.])
+
+            chain = paddle.distribution.ChainTransform((
+                paddle.distribution.AffineTransform(
+                    paddle.to_tensor(0.), paddle.to_tensor(1.)),
+                paddle.distribution.ExpTransform()
+            ))
+            print(chain.forward(x))
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.         , 2.71828175 , 7.38905621 , 20.08553696])
+            print(chain.inverse(chain.forward(x)))
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0., 1., 2., 3.])
+            print(chain.forward_log_det_jacobian(x))
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0., 1., 2., 3.])
+            print(chain.inverse_log_det_jacobian(chain.forward(x)))
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [ 0., -1., -2., -3.])
     """
 
     def __init__(self, transforms):
+        if not isinstance(transforms, typing.Sequence):
+            raise TypeError(
+                f"Expected type of 'transforms' is Sequence, but got {type(transforms)}"
+            )
+        if not all(isinstance(t, Transform) for t in transforms):
+            raise TypeError(
+                "All elements of transforms should be Transform type.")
+
         self.transforms = transforms
-        super(Chain, self).__init__()
+        super(ChainTransform, self).__init__()
 
     def _is_injective(self):
         return all(t._is_injective() for t in self.transforms)
@@ -497,15 +537,17 @@ class ChainTransform(Transform):
     def _inverse(self, y):
         for transform in reversed(self.transforms):
             y = transform.inverse(y)
+        return y
 
     def _forward_log_det_jacobian(self, x):
-        value = 0
+        value = 0.
         event_rank = self._domain.event_rank
         for t in self.transforms:
-            value += tool._sum_rightmost(
-                t.forward_log_det_jacobian(x), event_rank - t.domain.event_rank)
+            value += self._sum_rightmost(
+                t.forward_log_det_jacobian(x),
+                event_rank - t._domain.event_rank)
             x = t.forward(x)
-            event_rank += t.codomain.event_rank - t.domain.event_rank
+            event_rank += t._codomain.event_rank - t._domain.event_rank
         return value
 
     def _forward_shape(self, shape):
@@ -518,8 +560,13 @@ class ChainTransform(Transform):
             shape = transform.inverse_shape(shape)
         return shape
 
+    def _sum_rightmost(self, value, n):
+        """sum value along rightmost n dim"""
+        return value.sum(list(range(-n, 0))) if n > 0 else value
+
+    @property
     def _domain(self):
-        domain = self.transforms[0].domain
+        domain = self.transforms[0]._domain
 
         # Compute the lower bound of input dimensions for chain transform.
         #
@@ -538,23 +585,23 @@ class ChainTransform(Transform):
         # Let N(i) denotes lower bound of transform ti, than the state
         # transition equation is:
         #   N(i) = max{N(i+1)-delta(ti), ti(in)}
-        event_rank = self.transforms[-1].codomain.event_rank
+        event_rank = self.transforms[-1]._codomain.event_rank
         for t in reversed(self.transforms):
-            event_rank -= t.codomain.event_rank - t.domain.event_rank
-            event_rank = max(event_rank, t.domain.event_rank)
+            event_rank -= t._codomain.event_rank - t._domain.event_rank
+            event_rank = max(event_rank, t._domain.event_rank)
 
-        return constraint.independent(domain, event_rank - domain.event_rank)
+        return variable.Independent(domain, event_rank - domain.event_rank)
 
+    @property
     def _codomain(self):
-        codomain = self.transforms[-1].codomain
+        codomain = self.transforms[-1]._codomain
 
-        event_rank = self.transforms[0].domain.event_rank
+        event_rank = self.transforms[0]._domain.event_rank
         for t in self.transforms:
-            event_rank += t.codomain.event_rank - t.domain.event_rank
-            event_rank = max(event_rank, t.codomain.event_rank)
+            event_rank += t._codomain.event_rank - t._domain.event_rank
+            event_rank = max(event_rank, t._codomain.event_rank)
 
-        return constraint.independent(codomain,
-                                      event_rank - codomain.event_rank)
+        return variable.Independent(codomain, event_rank - codomain.event_rank)
 
 
 class CorrelationCholeskyTransform(Transform):
@@ -600,7 +647,7 @@ class ExpTransform(Transform):
     Exapmles:
 
         .. code-block:: python
-    
+
             import paddle
 
             exp = paddle.distribution.ExpTransform()
@@ -654,16 +701,53 @@ class IndependentTransform(Transform):
 
     To see this, consider the ``ExpTransform`` applied to a Tensor which has 
     sample, batch, and event ``(S,B,E)`` shape semantics. Suppose the Tensor's 
-    paritioned-shape is ``(S=[4], B=[2], E=[3,3])`` .
+    paritioned-shape is ``(S=[4], B=[2, 2], E=[3])`` , reinterpreted_batch_rank
+    is 1. Then the reinterpreted Tensor's shape  is ``(S=[4], B=[2], E=[2, 3])`` .
+    The shape returned by ``forward`` and ``inverse`` is unchanged, ie, 
+    ``[4,2,2,3]`` . However the shape returned by ``inverse_log_det_jacobian`` 
+    is ``[4,2]``, because the Jacobian determinant is a reduction over the 
+    event dimensions.
 
     Args:
-        base (Transform): 
+        base (Transform): The base transformation.
+        reinterpreted_batch_rank (int): The num of rightmost batch rank that 
+            will be reinterpreted as event rank.
+    
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[1., 2., 3.], [4., 5., 6.]])
+
+            # Exponential transform with event_rank = 1
+            multi_exp = paddle.distribution.IndependentTransform(
+                paddle.distribution.ExpTransform(), 1)
+            print(multi_exp.forward(x))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2.71828175  , 7.38905621  , 20.08553696 ],
+            #         [54.59814835 , 148.41316223, 403.42880249]])
+            print(multi_exp.forward_log_det_jacobian(x))
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [6. , 15.])
     """
 
     def __init__(self, base, reinterpreted_batch_rank):
+        if not isinstance(base, Transform):
+            raise TypeError(
+                f"Expected 'base' is Transform type, but get {type(base)}")
+        if reinterpreted_batch_rank <= 0:
+            raise ValueError(
+                f"Expected 'reinterpreted_batch_rank' is grater than zero, but got {reinterpreted_batch_rank}"
+            )
+
         self._base = base
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
         super(IndependentTransform, self).__init__()
+
+    def _is_injective(self):
+        return self._base._is_injective()
 
     def _forward(self, x):
         if x.dim() < self._domain.event_rank:
@@ -673,39 +757,44 @@ class IndependentTransform(Transform):
     def _inverse(self, y):
         if y.dim() < self._codomain.event_rank:
             raise ValueError("Input dimensions is less than event dimensions.")
-        return self._base.inverse(x)
+        return self._base.inverse(y)
 
     def _forward_log_det_jacobian(self, x):
-        return self.base.forward_log_det_jacobian(x).sum(
-            list(range(-self.reinterpreted_batch_ndims, 0)))
+        return self._base.forward_log_det_jacobian(x).sum(
+            list(range(-self._reinterpreted_batch_rank, 0)))
 
     def _forward_shape(self, shape):
-        return self.base.forward_shape(shape)
+        return self._base.forward_shape(shape)
 
     def _inverse_shape(self, shape):
-        return self.base.inverse_shape(shape)
+        return self._base.inverse_shape(shape)
 
+    @property
     def _domain(self):
-        return constraint.independent(self.base.domain,
-                                      self.reinterpreted_batch_ndims)
+        return variable.Independent(self._base._domain,
+                                    self._reinterpreted_batch_rank)
 
+    @property
     def _codomain(self):
-        return constraint.indenpendent(self.base.codomain,
-                                       self.reinterpreted_batch_ndims)
+        return variable.Independent(self._base._codomain,
+                                    self._reinterpreted_batch_rank)
 
 
 class PowerTransform(Transform):
-    """Power transformation with mapping :math:`y = x^{\text{exponent}}`
+    """Power transformation with mapping :math:`y = x^{\text{exponent}}`.
 
     Args:
         power (Tensor): The power parameter.
+    
+    Examples:
+
     """
-    _type = Type.BIJECTIVE
+    _type = Type.BIJECTION
 
     def __init__(self, power):
-        if not isinstance(power, paddle.Tensor):
+        if not isinstance(power, paddle.fluid.core.VarBase):
             raise TypeError(
-                f"Expected 'power' is a tensor, but got {type(pwoer)}")
+                f"Expected 'power' is a tensor, but got {type(power)}")
         self._power = power
         super(PowerTransform, self).__init__()
 
@@ -715,24 +804,33 @@ class PowerTransform(Transform):
 
     @property
     def _domain(self):
-        return variable.positive
+        return variable.real
 
     @property
     def _codomain(self):
         return variable.positive
 
     def _forward(self, x):
-        return x.exp(self.power)
+        return x.pow(self._power)
 
     def _inverse(self, y):
-        return y.pow(1 / self.power)
+        return y.pow(1 / self._power)
 
     def _forward_log_det_jacobian(self, x):
-        return (self.power * x.power(self.power - 1)).abs().log()
+        return (self._power * x.pow(self._power - 1)).abs().log()
+
+    def _forward_shape(self, shape):
+        return tuple(paddle.broadcast_shape(shape, self._power.shape))
+
+    def _inverse_shape(self, shape):
+        return tuple(paddle.broadcast_shape(shape, self._power.shape))
 
 
 class ReshapeTransform(Transform):
-    """Reshape event shape of a tensor.
+    """Reshape the event shape of a tensor.
+
+    Note that ``in_event_shape`` and ``out_event_shape`` must have the same 
+    number of elements.
 
     Args:
         in_event_shape(Sequence[int]): The input event shape.
@@ -756,13 +854,19 @@ class ReshapeTransform(Transform):
         self._out_event_shape = tuple(out_event_shape)
         super(ReshapeTransform, self).__init__()
 
+    @property
+    def in_event_shape(self):
+        return self._in_event_shape
+
+    @property
+    def out_event_shape(self):
+        return self._out_event_shape
+
     def _domain(self):
-        return constraint.independent(constraint.real,
-                                      len(self._in_event_shape))
+        return variable.Independent(variable.real, len(self._in_event_shape))
 
     def _codomain(self):
-        return constraint.independent(constraint.real,
-                                      len(self._out_event_shape))
+        return variable.Independent(variable.real, len(self._out_event_shape))
 
     def _forward(self, x):
         return x.reshape(
@@ -802,8 +906,16 @@ class ReshapeTransform(Transform):
 
 
 class SigmoidTransform(Transform):
-    # _domain = constrain.real
-    # _codomian = constraint.unit_interval
+    """Sigmoid transformation with mapping :math:`y = \frac{1}{1 + \exp(-x)}` and :math:`x = \text{logit}(y)`.
+    """
+
+    @property
+    def _domain(self):
+        return variable.real
+
+    @property
+    def _codomain(self):
+        return variable.Variable(False, 0, constraint.Range(0., 1.))
 
     def _forward(self, x):
         return paddle.sigmoid(x)
@@ -812,16 +924,25 @@ class SigmoidTransform(Transform):
         return y.log() - (-y).log1p()
 
     def _forward_log_det_jacobian(self, x):
-        return paddle.nn.functional.softplus(
-            -x) - paddle.nn.functional.softplus(x)
+        return F.softplus(-x) - F.softplus(x)
 
 
 class SoftmaxTransform(Transform):
-    def _domain(self):
-        return constraint.real_vector
+    """Softmax transformation with mapping :math:`y=\exp(x)` then normalizing.
 
+    It's generally used to convert unconstrained space to simplex. This mapping 
+    is not injective, so ``forward_log_det_jacobian`` and 
+    ``inverse_log_det_jacobian`` are not implemented.
+    """
+    _type = Type.OTHER
+
+    @property
+    def _domain(self):
+        return variable.Independent(variable.real, 1)
+
+    @property
     def _codomain(self):
-        return constraint.simplex
+        return variable.Variable(False, 1, constraint.simplex)
 
     def _forward(self, x):
         x = (x - x.max(-1, True)[0]).exp()
@@ -830,16 +951,51 @@ class SoftmaxTransform(Transform):
     def _inverse(self, y):
         return y.log()
 
+    def _forward_shape(self, shape):
+        if len(shape) < 1:
+            raise ValueError(
+                f"Expected length of shape is grater than 1, but got {len(shape)}"
+            )
+        return shape
+
+    def _inverse_shape(self, shape):
+        if len(shape) < 1:
+            raise ValueError(
+                f"Expected length of shape is grater than 1, but got {len(shape)}"
+            )
+        return shape
+
 
 class StackTransform(Transform):
+    """ ``StackTransform`` applies a sequence of transformations along the 
+    specific axis.
+    """
+
     def __init__(self, transforms, axis=0):
-        if not transforms or not isinstance(transforms, typing.Iterable):
-            raise TypeError('transforms must be Iterable')
+        if not transforms or not isinstance(transforms, typing.Sequence):
+            raise TypeError(
+                f"Expected 'transforms' is Sequence[Transform], but got {type(transforms)}."
+            )
         if not all(isinstance(t, tansform.Transform) for t in transforms):
-            raise TypeError('All element in transforms must be Transform Type.')
+            raise TypeError(
+                'Expected all element in transforms is Transform Type.')
+        if not isinstance(axis, int):
+            raise TypeError(f"Expected 'axis' is int, but got{type(axis)}.")
 
         self._transforms = transforms
         self._axis = axis
+
+    @classmethod
+    def _is_injective(cls):
+        return all(t._is_injective() for t in self._transforms)
+
+    @property
+    def transforms(self):
+        return self._transforms
+
+    @property
+    def axis(self):
+        return self._axis
 
     def _forward(self, x):
         self._check_size(x)
@@ -873,12 +1029,11 @@ class StackTransform(Transform):
                 f'length of transforms.')
 
     def _domain(self):
-        return constraint.stack([t.domain for t in self._transforms],
-                                self._axis)
+        return variable.Stack([t._domain for t in self._transforms], self._axis)
 
     def _codomain(self):
-        return constraint.stack([t.codomain for t in self._transforms],
-                                self.axis)
+        return variable.Stack([t._codomain for t in self._transforms],
+                              self._axis)
 
 
 class StickBreakingTransform(Transform):
@@ -921,8 +1076,44 @@ class StickBreakingTransform(Transform):
 
 
 class TanhTransform(Transform):
-    # _domain = constraint.real
-    # _codomain = constraint.interval(-1.0, 1.0)
+    """Tanh transformation with mapping :math:`y = \tanh(x)`.
+
+    Examples
+
+        .. code-block:: python
+
+            import paddle
+
+            tanh = paddle.distribution.TanhTransform()
+
+            x = paddle.to_tensor([[1., 2., 3.], [4., 5., 6.]])
+
+            print(tanh.forward(x))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.76159418, 0.96402758, 0.99505478],
+            #         [0.99932933, 0.99990922, 0.99998772]])
+            print(tanh.inverse(tanh.forward(x)))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1.00000012, 2.        , 3.00000286],
+            #         [4.00002146, 5.00009823, 6.00039864]])
+            print(tanh.forward_log_det_jacobian(x))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[-0.86756170 , -2.65000558 , -4.61865711 ],
+            #         [-6.61437654 , -8.61379623 , -10.61371803]])
+            print(tanh.inverse_log_det_jacobian(tanh.forward(x)))
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.86756176 , 2.65000558 , 4.61866283 ],
+            #         [6.61441946 , 8.61399269 , 10.61451530]])
+    """
+    _type = Type.BIJECTION
+
+    @property
+    def _domain(self):
+        return variable.real
+
+    @property
+    def _codomain(self):
+        return variable.Variable(False, 0, constraint.Range(-1.0, 1.0))
 
     def _forward(self, x):
         return x.tanh()
@@ -931,4 +1122,10 @@ class TanhTransform(Transform):
         return y.atanh()
 
     def _forward_log_det_jacobian(self, x):
-        return 2. * (math.log(2.)) - x - paddle.nn.functional.softplus(-2. * x)
+        """We implicitly rely on _forward_log_det_jacobian rather than 
+        explicitly implement ``_inverse_log_det_jacobian`` since directly using 
+        ``-tf.math.log1p(-tf.square(y))`` has lower numerical precision.
+
+        See details: https://github.com/tensorflow/probability/blob/master/tensorflow_probability/python/bijectors/tanh.py#L69-L80
+        """
+        return 2. * (math.log(2.) - x - F.softplus(-2. * x))
