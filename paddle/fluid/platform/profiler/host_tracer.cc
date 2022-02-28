@@ -26,6 +26,9 @@ void ProcessHostEvents(const HostEventSection& host_events,
                        TraceEventCollector* collector) {
   for (const auto& thr_sec : host_events.thr_sections) {
     uint64_t tid = thr_sec.thread_id;
+    if (thr_sec.thread_name != kDefaultThreadName) {
+      collector->AddThreadName(tid, thr_sec.thread_name);
+    }
     for (const auto& evt : thr_sec.events) {
       HostTraceEvent event;
       event.name = evt.name;
@@ -41,12 +44,18 @@ void ProcessHostEvents(const HostEventSection& host_events,
 
 }  // namespace
 
+void HostTracer::PrepareTracing() {
+  // warm up
+  HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
+  state_ = TracerState::READY;
+}
+
 void HostTracer::StartTracing() {
   PADDLE_ENFORCE_EQ(
       state_ == TracerState::READY || state_ == TracerState::STOPED, true,
       platform::errors::PreconditionNotMet("TracerState must be READY"));
   HostEventRecorder::GetInstance().GatherEvents();
-  HostTraceLevel::GetInstance().SetLevel(trace_level_);
+  HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
   state_ = TracerState::STARTED;
 }
 
