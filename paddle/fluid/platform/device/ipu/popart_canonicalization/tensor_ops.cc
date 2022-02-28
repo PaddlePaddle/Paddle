@@ -23,7 +23,7 @@ namespace {
 
 Node *fill_constant_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  if (op->HasInput("ShapeTensor") && !op->Input("ShapeTensor").empty()) {
+  if (!op->Input("ShapeTensor").empty()) {
     PADDLE_THROW(
         platform::errors::Unimplemented("op fill_constant with ShapeTensor"));
   }
@@ -328,7 +328,7 @@ Node *shape_handler(Graph *graph, Node *node) {
 Node *slice_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   Node *starts = nullptr;
-  if (op->HasInput("StartsTensor") && !op->Input("StartsTensor").empty()) {
+  if (!op->Input("StartsTensor").empty()) {
     starts = GetInputVarNode("StartsTensor", node);
   } else {
     auto starts_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("starts"));
@@ -338,7 +338,7 @@ Node *slice_handler(Graph *graph, Node *node) {
     starts = starts->outputs[0];
   }
   Node *ends = nullptr;
-  if (op->HasInput("EndsTensor") && !op->Input("EndsTensor").empty()) {
+  if (!op->Input("EndsTensor").empty()) {
     ends = GetInputVarNode("EndsTensor", node);
   } else {
     auto ends_ = BOOST_GET_CONST(std::vector<int>, op->GetAttr("ends"));
@@ -384,14 +384,13 @@ Node *slice_handler(Graph *graph, Node *node) {
 
 Node *expand_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  if (op->HasInput("expand_times_tensor") &&
-      !op->Input("expand_times_tensor").empty()) {
+  if (!op->Input("expand_times_tensor").empty()) {
     PADDLE_THROW(
         platform::errors::Unimplemented("Expand op with expand_times_tensor"));
   }
 
   Node *expand_times = nullptr;
-  if (op->HasInput("ExpandTimes") && !op->Input("ExpandTimes").empty()) {
+  if (!op->Input("ExpandTimes").empty()) {
     // cast to int64
     expand_times =
         CreateCast(graph, node, {GetInputVarNode("ExpandTimes", node)}, {},

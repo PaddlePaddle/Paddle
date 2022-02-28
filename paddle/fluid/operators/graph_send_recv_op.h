@@ -249,7 +249,7 @@ class GraphSendRecvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Src_index");
-    auto index_type = src_index->type();
+    auto index_type = framework::TransToProtoVarType(src_index->dtype());
 
     if (index_type == framework::proto::VarType::INT32) {
       GraphSendRecvOpKernelLaunchHelper<DeviceContext, T, int>(ctx, *src_index);
@@ -270,7 +270,7 @@ class GraphSendRecvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Dst_index");
-    auto index_type = src_index->type();
+    auto index_type = framework::TransToProtoVarType(src_index->dtype());
 
     if (index_type == framework::proto::VarType::INT32) {
       GraphSendRecvGradOpKernelLaunchHelper<DeviceContext, T, int>(ctx,

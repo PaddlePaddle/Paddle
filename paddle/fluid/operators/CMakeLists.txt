@@ -1,5 +1,9 @@
 include(operators)
 
+# solve "math constants not defined" problems caused by the order of inclusion 
+# of <cmath> and the definition of macro _USE_MATH_DEFINES
+add_definitions(-D_USE_MATH_DEFINES)
+
 # clean cache and pybind_file content first when rebuild
 unset(GLOB_OP_LIB CACHE)
 unset(OP_LIBRARY CACHE)
@@ -59,6 +63,10 @@ if(WITH_CINN)
     add_subdirectory(cinn)
 endif()
 
+if(WITH_IPU)
+    add_subdirectory(ipu)
+endif()
+
 SET(OP_HEADER_DEPS xxhash executor)
 
 if (WITH_GPU)
@@ -92,7 +100,7 @@ else()
     cc_library(gather_scatter_kernel SRCS gather_scatter_kernel.cc gather_scatter_kernel.cu DEPS tensor)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} pten pten_api_utils gather_scatter_kernel)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils gather_scatter_kernel)
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
@@ -111,10 +119,8 @@ if (WITH_GPU OR WITH_ROCM)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
     op_library(sync_batch_norm_op)
-    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
     if ((NOT WIN32) AND (NOT WITH_ROCM) AND (NOT PADDLE_WITH_ARM) AND (NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.3) )
         op_library(sparse_attention_op)
-        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sparse_attention);\n")
     endif()
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
@@ -138,7 +144,6 @@ endif()
 
 if (WITH_ASCEND_CL)
   op_library(sync_batch_norm_op)
-  file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(sync_batch_norm);\n")
 endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
@@ -149,7 +154,6 @@ set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
 if (WITH_DGC)
     op_library(dgc_op DEPS dgc)
-    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
 endif()
 

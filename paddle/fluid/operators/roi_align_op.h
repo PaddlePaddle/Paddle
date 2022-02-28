@@ -15,7 +15,7 @@ limitations under the License. */
 #include <numeric>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -23,7 +23,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-namespace {
+namespace {  // NOLINT
 constexpr size_t get_offset(size_t x, size_t y, size_t width) {
   return y * width + x;
 }
@@ -41,7 +41,7 @@ struct offsets_and_ratios {
         xy_ratio(xy_ratio),
         xY_ratio(xY_ratio),
         Xy_ratio(Xy_ratio),
-        XY_ratio(XY_ratio){};
+        XY_ratio(XY_ratio) {}
 
   std::size_t xy = 0;
   std::size_t xY = 0;
@@ -128,10 +128,10 @@ std::vector<offsets_and_ratios<T>> get_indexes_and_ratios(
     }
   }
   return interpolation_cords;
-}
+}  // namespace
 
 template <typename T>
-void interpolate(std::vector<T>& interpolated_values,
+void interpolate(std::vector<T>& interpolated_values,  // NOLINT
                  const std::vector<offsets_and_ratios<T>>& interpolation_cords,
                  const T* data) {
   for (auto& ic : interpolation_cords) {
@@ -167,7 +167,7 @@ void avg_pool(const std::vector<T>& interpolated_values, T* output_data,
     output_data[i] = sum * count;
   }
 }
-}
+}  // NOLINT
 
 template <class T>
 void bilinear_interpolate_gradient(const int height, const int width, T y, T x,
@@ -233,9 +233,9 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
 
-    auto in_stride = framework::stride(in_dims);
-    auto roi_stride = framework::stride(rois->dims());
-    auto out_stride = framework::stride(out->dims());
+    auto in_stride = phi::stride(in_dims);
+    auto roi_stride = phi::stride(rois->dims());
+    auto out_stride = phi::stride(out->dims());
 
     const T* input_data = in->data<T>();
     framework::Tensor roi_batch_id_list;
@@ -389,7 +389,7 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     }
     in_grad->mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, in_grad, static_cast<T>(0));
 
     int output_grad_size = out_grad->numel();
@@ -402,9 +402,9 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     const T* out_grad_data = out_grad->data<T>();
     T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
 
-    auto in_stride = framework::stride(in->dims());
-    auto roi_stride = framework::stride(rois->dims());
-    auto out_stride = framework::stride(out_grad->dims());
+    auto in_stride = phi::stride(in->dims());
+    auto roi_stride = phi::stride(rois->dims());
+    auto out_stride = phi::stride(out_grad->dims());
 
     T roi_offset = aligned ? T(0.5) : 0;
     for (int n = 0; n < rois_num; ++n) {

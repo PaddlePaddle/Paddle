@@ -28,6 +28,9 @@
 #include "paddle/infrt/kernel/tensor_kernels.h"
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
 #include "paddle/infrt/kernel/test_kernels.h"
+#ifdef INFRT_WITH_PHI
+#include "paddle/infrt/kernel/phi/registry.h"
+#endif
 
 static llvm::cl::list<std::string> cl_shared_libs(  // NOLINT
     "shared_libs",
@@ -53,6 +56,9 @@ int main(int argc, char** argv) {
   kernel::RegisterTensorShapeKernels(&registry);
   kernel::RegisterTensorKernels(&registry);
   kernel::RegisterControlFlowKernels(&registry);
+#ifdef INFRT_WITH_PHI
+  kernel::RegisterPhiKernels(&registry);
+#endif
 
   // load extra shared library
   for (const auto& lib_path : cl_shared_libs) {

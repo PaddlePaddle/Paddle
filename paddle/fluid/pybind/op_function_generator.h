@@ -83,6 +83,10 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"sparse_attention",
      {"Q", "K", "V", "Offset", "Columns", "KeyPaddingMask", "AttnMask"}},
     {"sgd", {"Param", "LearningRate", "Grad", "MasterParam"}},
+    {"graph_khop_sampler", {"Row", "Eids", "Col_Ptr", "X"}},
+    {"nce",
+     {"Input", "Label", "Weight", "Bias", "SampleWeight", "CustomDistProbs",
+      "CustomDistAlias", "CustomDistAliasProbs"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.

@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle
@@ -482,6 +482,35 @@ class TestFP16_2(OpTest):
                 'Out',
                 max_relative_error=0.006,
                 numeric_grad_delta=0.5)
+
+
+class TestBF16(OpTest):
+    def setUp(self):
+        self.op_type = "slice"
+        self.config()
+        self.inputs = {'Input': convert_float_to_uint16(self.input)}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': self.starts,
+            'ends': self.ends,
+            'infer_flags': self.infer_flags
+        }
+
+    def config(self):
+        self.dtype = np.uint16
+        self.input = np.random.random([3, 4, 5, 6]).astype(np.float32)
+        self.starts = [-3, 0, 2]
+        self.ends = [3, 100, -1]
+        self.axes = [0, 1, 3]
+        self.out = self.input[-3:3, 0:100, :, 2:-1]
+        self.infer_flags = [1, 1, 1]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out')
 
 
 # Test python API

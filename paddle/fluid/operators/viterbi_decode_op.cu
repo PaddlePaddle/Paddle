@@ -80,9 +80,8 @@ struct GetMask<platform::CUDADeviceContext, CompareFunctor, T> {
     std::vector<const Tensor*> ins = {&lhs, &rhs};
     std::vector<Tensor*> outs = {mask};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-        ElementwiseType::kBinary, int64_t, T>(dev_ctx, ins, &outs,
-                                              CompareFunctor<int64_t, T>());
+    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+        dev_ctx, ins, &outs, CompareFunctor<int64_t, T>());
   }
 };
 
@@ -148,7 +147,7 @@ struct Argmax<platform::CUDADeviceContext, T, IndType> {
     }
     const auto& dev_ctx = ctx.cuda_device_context();
     auto cu_stream = dev_ctx.stream();
-    int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
+    int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int64_t height = pre * post;
     int64_t width = n;
     int64_t grid_size = height < max_grid_dimx ? height : max_grid_dimx;
@@ -169,7 +168,7 @@ struct GetMaxValue<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const Tensor& input, T* max_value) {
     Tensor out_data;
-    out_data.Resize(framework::make_ddim({1}));
+    out_data.Resize(phi::make_ddim({1}));
     out_data.mutable_data<T>(platform::CUDAPlace());
     switch (ComputeBlockSize(input.numel())) {
       FIXED_BLOCK_DIM_CASE(

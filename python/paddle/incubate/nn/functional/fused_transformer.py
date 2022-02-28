@@ -46,7 +46,7 @@ def fused_feedforward(x,
                       training=True,
                       mode='upscale_in_train',
                       name=None):
-    """
+    r"""
     This is a fusion operator to compute feed forward layer in transformer model architecture.
     This operator only supports running on GPU. The function of the operator is consistent with
     the following pseudo code:
@@ -230,7 +230,7 @@ def fused_multi_head_attention(x,
                                training=True,
                                mode='upscale_in_train',
                                name=None):
-    """
+    r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
     to information from different representation subspaces. This API only

@@ -29,15 +29,15 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/distributed/common/sparse_sharding_merge.h"
-#include "paddle/fluid/distributed/communicator_common.h"
-#include "paddle/fluid/distributed/fleet.h"
 #include "paddle/fluid/distributed/index_dataset/index_sampler.h"
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
-#include "paddle/fluid/distributed/service/communicator.h"
-#include "paddle/fluid/distributed/service/env.h"
-#include "paddle/fluid/distributed/service/graph_brpc_client.h"
-#include "paddle/fluid/distributed/service/graph_py_service.h"
-#include "paddle/fluid/distributed/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/fluid/distributed/ps/service/env.h"
+#include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 
 namespace py = pybind11;
 using paddle::distributed::CommContext;
@@ -103,11 +103,13 @@ void BindCommunicatorContext(py::module* m) {
           py::init<const std::string&, const std::vector<std::string>&,
                    const std::vector<std::string>&, const std::vector<int64_t>&,
                    const std::vector<std::string>&, int, bool, bool, bool, int,
-                   bool>())
+                   bool, bool, int64_t>())
       .def("var_name", [](const CommContext& self) { return self.var_name; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
       .def("table_id", [](const CommContext& self) { return self.table_id; })
+      .def("program_id",
+           [](const CommContext& self) { return self.program_id; })
       .def("split_varnames",
            [](const CommContext& self) { return self.splited_varnames; })
       .def("split_endpoints",
@@ -122,6 +124,8 @@ void BindCommunicatorContext(py::module* m) {
            [](const CommContext& self) { return self.origin_varnames; })
       .def("is_tensor_table",
            [](const CommContext& self) { return self.is_tensor_table; })
+      .def("is_datanorm_table",
+           [](const CommContext& self) { return self.is_datanorm_table; })
       .def("__str__", [](const CommContext& self) { return self.print(); });
 }
 

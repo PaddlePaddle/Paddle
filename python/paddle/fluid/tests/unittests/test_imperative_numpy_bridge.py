@@ -41,7 +41,7 @@ class TestImperativeNumpyBridge(unittest.TestCase):
             data_np[0][0] = -1
             self.assertEqual(data_np[0][0], -1)
             if _in_eager_mode():
-                # eager_mode, var2 is EagerTensor, is not subscriptable
+                # eager_mode, var2 is Tensor, is not subscriptable
                 # TODO(wuweilong): to support slice in eager mode later
                 self.assertNotEqual(var2.numpy()[0][0], -1)
             else:

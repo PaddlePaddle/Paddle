@@ -151,3 +151,63 @@ PD_BUILD_GRAD_OP(custom_relu_no_x_in_backward)
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ReluBackwardWithoutX))
     .SetInferShapeFn(PD_INFER_SHAPE(ReluBackwardWithoutXInferShape));
+
+void relu_cpu_forward_out(const paddle::Tensor& x, paddle::Tensor* out) {
+  PD_DISPATCH_FLOATING_TYPES(
+      x.type(), "relu_cpu_forward", ([&] {
+        relu_cpu_forward_kernel<data_t>(
+            x.data<data_t>(), out->mutable_data<data_t>(x.place()), x.size());
+      }));
+}
+
+void relu_cpu_backward_out(const paddle::Tensor& x,
+                           const paddle::Tensor& out,
+                           const paddle::Tensor& grad_out,
+                           paddle::Tensor* grad_x) {
+  PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
+                               relu_cpu_backward_kernel<data_t>(
+                                   grad_out.data<data_t>(),
+                                   out.data<data_t>(),
+                                   grad_x->mutable_data<data_t>(x.place()),
+                                   out.size());
+                             }));
+}
+
+void relu_cuda_forward_out(const paddle::Tensor& x, paddle::Tensor* out);
+void relu_cuda_backward_out(const paddle::Tensor& x,
+                            const paddle::Tensor& out,
+                            const paddle::Tensor& grad_out,
+                            paddle::Tensor* grad_x);
+
+void ReluForwardOut(const paddle::Tensor& x, paddle::Tensor* out) {
+  if (x.place() == paddle::PlaceType::kCPU) {
+    return relu_cpu_forward_out(x, out);
+  } else if (x.place() == paddle::PlaceType::kGPU) {
+    return relu_cuda_forward_out(x, out);
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+void ReluBackwardOut(const paddle::Tensor& x,
+                     const paddle::Tensor& out,
+                     const paddle::Tensor& grad_out,
+                     paddle::Tensor* grad_x) {
+  if (x.place() == paddle::PlaceType::kCPU) {
+    return relu_cpu_backward_out(x, out, grad_out, grad_x);
+  } else if (x.place() == paddle::PlaceType::kGPU) {
+    return relu_cuda_backward_out(x, out, grad_out, grad_x);
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_relu_out)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(ReluForwardOut));
+
+PD_BUILD_GRAD_OP(custom_relu_out)
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(ReluBackwardOut));

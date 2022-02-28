@@ -25,6 +25,7 @@
 
 namespace infrt {
 namespace dialect {
+
 class INFRTDialect : public mlir::Dialect {
   explicit INFRTDialect(mlir::MLIRContext *context)
       : mlir::Dialect(
@@ -42,7 +43,7 @@ class INFRTDialect : public mlir::Dialect {
   friend class mlir::MLIRContext;
 
  public:
-  static ::llvm::StringRef getDialectNamespace() { return "infrt"; }
+  static ::llvm::StringRef getDialectNamespace() { return "Infrt"; }
 };
 }  // namespace dialect
 
@@ -51,6 +52,20 @@ static mlir::IntegerAttr createI32Attr(mlir::OpBuilder &b,  // NOLINT
                                        mlir::Location loc,
                                        T constant) {
   return b.getIntegerAttr(b.getI32Type(), constant);
+}
+
+template <typename T>
+static mlir::IntegerAttr createSI32Attr(mlir::OpBuilder &b,  // NOLINT
+                                        mlir::Location loc,
+                                        T constant) {
+  return b.getSI32IntegerAttr(constant);
+}
+
+template <typename T>
+static mlir::FloatAttr createF32Attr(mlir::OpBuilder &b,  // NOLINT
+                                     mlir::Location loc,
+                                     T constant) {
+  return b.getF32FloatAttr(constant);
 }
 
 static mlir::SmallVector<mlir::Value, 4> cvtValueToValueRange(

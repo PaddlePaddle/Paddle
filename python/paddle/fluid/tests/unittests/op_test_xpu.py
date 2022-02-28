@@ -193,11 +193,6 @@ class XPUOpTest(OpTest):
 
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
-            tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
-            tensor_size = six.moves.reduce(lambda a, b: a * b,
-                                           tensor_to_check.shape(), 1)
-            if tensor_size < 100:
-                self.__class__.input_shape_is_large = False
 
         if not type(output_names) is list:
             output_names = [output_names]

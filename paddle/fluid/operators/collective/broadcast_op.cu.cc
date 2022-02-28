@@ -17,6 +17,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -56,7 +57,8 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
         send_recv_buffer, static_cast<size_t>(in->numel()),
-        platform::ToNCCLDataType(in->type()), root_dev_id, comm, stream));
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype())),
+        root_dev_id, comm, stream));
 
     VLOG(3) << "Bcast " << ctx.InputNames("X")[0] << ", (" << in->numel() << ")"
             << " From " << root_dev_id << " to " << dev_id;

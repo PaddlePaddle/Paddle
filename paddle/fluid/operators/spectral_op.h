@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/eigen.h"
@@ -243,10 +244,10 @@ template <typename DeviceContext, typename C>
 void fill_conj(const DeviceContext& ctx, const Tensor* src, Tensor* dst,
                const std::vector<int64_t>& axes) {
   std::vector<int64_t> src_strides_v =
-      framework::vectorize<int64_t>(framework::stride(src->dims()));
+      phi::vectorize<int64_t>(phi::stride(src->dims()));
   std::vector<int64_t> dst_strides_v =
-      framework::vectorize<int64_t>(framework::stride(dst->dims()));
-  std::vector<int64_t> dst_shape_v = framework::vectorize<int64_t>(dst->dims());
+      phi::vectorize<int64_t>(phi::stride(dst->dims()));
+  std::vector<int64_t> dst_shape_v = phi::vectorize<int64_t>(dst->dims());
   const auto src_data = src->data<C>();
   auto dst_data = dst->data<C>();
   const auto last_axis = axes.back();
@@ -393,8 +394,9 @@ class FFTR2CGradKernel : public framework::OpKernel<T> {
       fft_c2c_func(dev_ctx, &full_dy, &complex_dx, axes, normalization,
                    !forward);
     }
-    framework::TransComplexToReal(dx->type(), complex_dx.type(), complex_dx,
-                                  dx);
+    framework::TransComplexToReal(
+        framework::TransToProtoVarType(dx->dtype()),
+        framework::TransToProtoVarType(complex_dx.dtype()), complex_dx, dx);
   }
 };
 
@@ -440,11 +442,10 @@ class FFTC2RGradKernel : public framework::OpKernel<T> {
 
     const int64_t double_length =
         dy->dims()[axes.back()] - dx->dims()[axes.back()];
-    const framework::DDim strides = framework::stride(dx->dims());
+    const framework::DDim strides = phi::stride(dx->dims());
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-    const thrust::device_vector<int64_t> strides_g(
-        framework::vectorize(strides));
+    const thrust::device_vector<int64_t> strides_g(phi::vectorize(strides));
     const int64_t* pstrides = thrust::raw_pointer_cast(strides_g.data());
 #else
     const int64_t* pstrides = strides.Get();

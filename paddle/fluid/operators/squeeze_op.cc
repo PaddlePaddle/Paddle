@@ -77,7 +77,7 @@ framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
       output_shape.push_back(in_dims[i]);
     }
   }
-  return framework::make_ddim(output_shape);
+  return phi::make_ddim(output_shape);
 }
 
 class SqueezeOp : public framework::OperatorWithKernel {
@@ -232,7 +232,7 @@ class Squeeze2Op : public framework::OperatorWithKernel {
     for (int i = 0; i < x_dims.size(); ++i) {
       xshape_dims[i + 1] = x_dims[i];
     }
-    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
     ctx->ShareLoD("X", /*->*/ "XShape");
   }
 
@@ -276,7 +276,7 @@ class Squeeze2GradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "Squeeze2Grad");
     auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }
@@ -393,7 +393,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
                        paddle::platform::complex<float>>,
     ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<double>>);
+                       paddle::platform::complex<double>>,
+    ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
+                       paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     squeeze_grad,
     ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -406,7 +408,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
                            paddle::platform::complex<float>>,
     ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::complex<double>>);
+                           paddle::platform::complex<double>>,
+    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
+                           paddle::platform::bfloat16>);
 
 REGISTER_OP_CPU_KERNEL(
     squeeze2, ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, float>,
@@ -419,7 +423,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext,
                         paddle::platform::complex<float>>,
     ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<double>>);
+                        paddle::platform::complex<double>>,
+    ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::bfloat16>);
 
 REGISTER_OP_CPU_KERNEL(
     squeeze2_grad,
@@ -433,4 +439,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext,
                             paddle::platform::complex<float>>,
     ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext,
-                            paddle::platform::complex<double>>);
+                            paddle::platform::complex<double>>,
+    ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::bfloat16>);
