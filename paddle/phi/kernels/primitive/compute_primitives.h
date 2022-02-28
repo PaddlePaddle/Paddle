@@ -573,6 +573,7 @@ __device__ __forceinline__ void ElementwiseRandom(OutT* out,
 * in: The register pointer of input, the size is 2;
 * compute: Compute function which was declared like OpFunc<T>().
 */
+
 #define SHARED_SIZE_LIMIT 512
 template <typename InT, typename OutT, int BlockSize, class OpFunc>
 __device__ __forceinline__ void Cumsum(OutT* out,
@@ -610,10 +611,6 @@ __device__ __forceinline__ void Cumsum(OutT* out,
 }
 #undef SHARED_SIZE_LIMIT
 
-#define SHARED_SIZE_LIMIT 1024
-// each thread load 2 data from global memory so SHARED_SIZE_LIMIT must
-// larger than blockDim.x * 2
-
 /*
 * @brief Sort data in this block, each thread calculates 2 data, the size of out
 * and in is 2, and BlockDim.x must be less then 512.
@@ -631,6 +628,9 @@ __device__ __forceinline__ void Cumsum(OutT* out,
 * monotonic_type: if monotonic_type = 1 then sorted in ascending order, eles
 * sorted in escending.
 */
+#define SHARED_SIZE_LIMIT 1024
+// each thread load 2 data from global memory so SHARED_SIZE_LIMIT must
+// larger than blockDim.x * 2
 template <typename InT, typename OutT, int BlockSize>
 __device__ __forceinline__ void Sort(OutT* out,
                                      const InT* in,
