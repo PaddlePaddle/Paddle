@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/conv_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
