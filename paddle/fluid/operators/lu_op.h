@@ -88,8 +88,8 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   // set_value is what we want.
   paddle::framework::TensorCopy(*in, place, out);
 
-  Tensor slice_tensor(framework::TransToPtenDataType(dtype)),
-      pad_tensor(framework::TransToPtenDataType(dtype));
+  Tensor slice_tensor(framework::TransToPhiDataType(dtype)),
+      pad_tensor(framework::TransToPhiDataType(dtype));
   slice_tensor.mutable_data<T>(slice_dims, place);
   pad_tensor.mutable_data<T>(in_dims, place);
 
@@ -147,7 +147,7 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
     ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
         ctx, &slice_tensor, value_tensor, -1, SubFunctor<T>(), &slice_tensor);
   } else {
-    Tensor value_t(framework::TransToPtenDataType(dtype));
+    Tensor value_t(framework::TransToPhiDataType(dtype));
     auto value_dims = phi::make_ddim(shape);
     CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
@@ -224,8 +224,8 @@ void Tensor_Add(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   out->mutable_data<T>(dev_ctx.GetPlace());
 
   phi::AddRawKernel<
-      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
-      static_cast<const typename paddle::framework::ConvertToPtenContext<
+      T, typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPhiContext<
           DeviceContext>::TYPE&>(dev_ctx),
       src1, src2, -1, out);
 }
@@ -237,8 +237,8 @@ void Tensor_Sub(const DeviceContext& dev_ctx, const framework::Tensor& src1,
   out->mutable_data<T>(dev_ctx.GetPlace());
 
   phi::SubtractRawKernel<
-      T, typename paddle::framework::ConvertToPtenContext<DeviceContext>::TYPE>(
-      static_cast<const typename paddle::framework::ConvertToPtenContext<
+      T, typename paddle::framework::ConvertToPhiContext<DeviceContext>::TYPE>(
+      static_cast<const typename paddle::framework::ConvertToPhiContext<
           DeviceContext>::TYPE&>(dev_ctx),
       src1, src2, -1, out);
 }

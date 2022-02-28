@@ -42,6 +42,7 @@ endif()
 math_library(fc DEPS blas jit_kernel_helper)
 math_library(matrix_bit_code)
 
+
 math_library(unpooling)
 math_library(vol2col)
 math_library(prelu)

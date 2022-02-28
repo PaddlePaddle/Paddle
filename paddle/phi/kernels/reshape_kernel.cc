@@ -36,7 +36,7 @@ void ReshapeKernel(const Context& dev_ctx,
   // TODO(chenweihang): the output dims are overwrite after copying,
   // here we need to use copy method that only copy data
   auto dims = out->dims();
-  phi::Copy(dev_ctx, x, false, out);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(dims);
   out->ResetLoD(x.lod());
 }

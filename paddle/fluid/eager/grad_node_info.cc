@@ -210,22 +210,22 @@ const std::vector<std::vector<Edge>>& GradNodeBase::GetEdges() const {
   return adj_edges_;
 }
 
-void GradNodeBase::RegisterGradientHook(
-    size_t slot_id, size_t rank,
-    const std::function<paddle::experimental::Tensor(
-        const paddle::experimental::Tensor&)>& hook) {
-  gradient_hooks_.emplace_back(std::make_tuple(slot_id, rank, hook));
+int64_t GradNodeBase::RegisterGradientHook(
+    size_t slot_id, size_t rank, std::shared_ptr<egr::TensorHook>&& hook) {
+  gradient_hooks_.emplace(next_hook_id_,
+                          std::make_tuple(slot_id, rank, std::move(hook)));
+  return next_hook_id_++;
 }
 
 std::vector<std::vector<paddle::experimental::Tensor>>
 GradNodeBase::ApplyGradientHooks(
     const std::vector<std::vector<paddle::experimental::Tensor>>& tensors) {
   std::vector<std::vector<paddle::experimental::Tensor>> outs(tensors.size());
-  for (auto& tuple : gradient_hooks_) {
-    size_t slot_id = std::get<0>(tuple);
-    size_t rank = std::get<1>(tuple);
-    std::function<paddle::experimental::Tensor(
-        const paddle::experimental::Tensor&)>& hook = std::get<2>(tuple);
+  for (auto& hook_pair : gradient_hooks_) {
+    size_t slot_id = std::get<0>(hook_pair.second);
+    size_t rank = std::get<1>(hook_pair.second);
+
+    auto hook = std::get<2>(hook_pair.second);
 
     PADDLE_ENFORCE(slot_id < tensors.size(),
                    paddle::platform::errors::Fatal(
@@ -242,12 +242,11 @@ GradNodeBase::ApplyGradientHooks(
     slot_out.resize(tensors[slot_id].size());
     paddle::experimental::Tensor& out = slot_out[rank];
     if (!out.defined() || !out.initialized()) {
-      VLOG(8) << "Run Hook for tensor: " << tensors[slot_id][rank].name();
-      out = hook(tensors[slot_id][rank]);
+      out = (*hook)(tensors[slot_id][rank]);
     } else {
       // If more than one hook is registered, the input to the next hook func
       // should be the output of the previous hook
-      out = hook(out);
+      out = (*hook)(out);
     }
   }
 
