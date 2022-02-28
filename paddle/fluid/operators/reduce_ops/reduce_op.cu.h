@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/tensor.h"
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/pten/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 namespace paddle {
 namespace operators {
 
