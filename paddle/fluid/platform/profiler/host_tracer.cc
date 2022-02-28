@@ -14,8 +14,15 @@
 
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "glog/logging.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
+
+// Used to filter events, works like glog VLOG(level).
+// RecordEvent will works if host_trace_level >= level.
+PADDLE_DEFINE_EXPORTED_int64(host_trace_level, 2,
+                             "RecordEvent will works "
+                             "if host_trace_level >= level.");
 
 namespace paddle {
 namespace platform {
