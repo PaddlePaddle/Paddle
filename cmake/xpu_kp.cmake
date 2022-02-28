@@ -128,9 +128,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
-      [[ -e ${kernel_path}/${kernel_name}.kps ]] && cp ${kernel_path}/${kernel_name}.kps kernel_build/${kernel_name}.xpu
-    COMMAND
-      [[ -e ${kernel_path}/${kernel_name}.cu ]] && cp ${kernel_path}/${kernel_name}.cu kernel_build/${kernel_name}.xpu
+      cp ${kernel_path}/${kernel_name}.kps kernel_build/${kernel_name}.xpu
     COMMAND
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS}  ${XPU_CXX_INCLUDES} 
        -I.  -o kernel_build/${kernel_name}.bin.o.sec kernel_build/${kernel_name}.xpu
@@ -153,9 +151,7 @@ macro(compile_kernel COMPILE_ARGS)
     COMMAND
       ${CMAKE_COMMAND} -E make_directory kernel_build
     COMMAND
-      [[ -e ${kernel_path}/${kernel_name}.kps ]] && cp ${kernel_path}/${kernel_name}.kps kernel_build/${kernel_name}.xpu
-    COMMAND
-      [[ -e ${kernel_path}/${kernel_name}.cu ]] && cp ${kernel_path}/${kernel_name}.cu kernel_build/${kernel_name}.xpu
+      cp ${kernel_path}/${kernel_name}.kps kernel_build/${kernel_name}.xpu
     COMMAND
     ${XPU_CLANG} --sysroot=${CXX_DIR}  -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=1 ${OPT_LEVEL} -fno-builtin -mcpu=xpu2  -fPIC ${XPU_CXX_DEFINES}  ${XPU_CXX_FLAGS} ${XPU_CXX_INCLUDES} 
         -I.  -o kernel_build/${kernel_name}.host.o kernel_build/${kernel_name}.xpu
@@ -195,10 +191,6 @@ macro(xpu_add_library TARGET_NAME)
       get_filename_component(language_type_name ${cur_xpu_src} EXT)
       if(${language_type_name} STREQUAL ".kps")
         list(APPEND xpu_kernel_lists ${cur_xpu_src})
-      elseif(${language_type_name} STREQUAL ".cu")
-        if (${cur_xpu_src} MATCHES ".\/kps\/")
-          list(APPEND xpu_kernel_lists ${cur_xpu_src})\
-        endif()
       else()
         list(APPEND cc_kernel_lists ${cur_xpu_src})
       endif()

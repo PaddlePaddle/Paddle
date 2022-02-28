@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/dummy_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -27,4 +27,4 @@ void DummyKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    dummy, KPS, ALL_LAYOUT, phi::DummyKernel, float, double, int, int64_t) {}
+    dummy, CPU, ALL_LAYOUT, phi::DummyKernel, float, double, int, int64_t) {}
