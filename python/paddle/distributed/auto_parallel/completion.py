@@ -440,10 +440,13 @@ class Completer:
             cond_tensor_related_nodes = []
             cond_tensor_name = while_op_node.op().input("Condition")[0]
             cond_tensor_node = None
-            for input_node in while_op_node.inputs:
-                if input_node.is_var() and input_node.var() is not None \
-                    and input_node.var().name() == cond_tensor_name:
-                    cond_tensor_node = input_node
+            for node in while_op_node.inputs:
+                if node.is_var() and node.var() is not None \
+                    and node.var().name() == cond_tensor_name:
+                    cond_tensor_node = node
+                    cond_tensor_related_nodes.append(cond_tensor_node)
+                    # print("first cond tensor node", _node_id(node), node.node.original_desc_id(), node.var().name())
+                    break
             cond_tensor_related_nodes.extend(
                 _find_related_nodes(cond_tensor_node))
             # Step 2.2: Find related nodes of cond var in the subgraph of while_op
