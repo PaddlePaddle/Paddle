@@ -14,11 +14,11 @@
 
 #include "paddle/phi/kernels/linspace_kernel.h"
 
-#include "paddle/fluid/framework/data_type_transform.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+// #include "paddle/phi/kernels/funcs/trans_data_type.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace phi {
 
@@ -50,19 +50,19 @@ void LinspaceKernel(const Context& ctx,
                     DenseTensor* out) {
   auto dtype_var = static_cast<paddle::framework::proto::VarType::Type>(dtype);
 
-  paddle::framework::Tensor start_t;
-  paddle::framework::Tensor stop_t;
+  DenseTensor start_t;
+  DenseTensor stop_t;
   auto start_dtype = paddle::framework::OpKernelType(
       paddle::framework::TransToProtoVarType(start.dtype()), ctx.GetPlace());
   auto stop_dtype = paddle::framework::OpKernelType(
       paddle::framework::TransToProtoVarType(stop.dtype()), ctx.GetPlace());
   auto out_dtype = paddle::framework::OpKernelType(dtype_var, ctx.GetPlace());
-  paddle::framework::TransDataType(start_dtype, out_dtype, start, &start_t);
-  paddle::framework::TransDataType(stop_dtype, out_dtype, stop, &stop_t);
+  // phi::funcs::TransDataType(start_dtype, out_dtype, start, &start_t);
+  // phi::funcs::TransDataType(stop_dtype, out_dtype, stop, &stop_t);
 
-  paddle::framework::Tensor n_start;
-  paddle::framework::Tensor n_stop;
-  paddle::framework::Tensor n_num;
+  DenseTensor n_start;
+  DenseTensor n_stop;
+  DenseTensor n_num;
   paddle::framework::TensorCopy(start_t, phi::CPUPlace(), &n_start);
   T start_data = n_start.data<T>()[0];
   paddle::framework::TensorCopy(stop_t, phi::CPUPlace(), &n_stop);
