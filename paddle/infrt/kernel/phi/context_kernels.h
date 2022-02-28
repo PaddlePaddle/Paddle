@@ -15,13 +15,14 @@
 #pragma once
 
 #include "paddle/infrt/backends/host/phi_context.h"
+#include "paddle/infrt/backends/host/phi_allocator.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
 namespace kernel {
 namespace phi {
 
-::phi::CPUContext CreateCpuContext();
+::phi::CPUContext CreateCpuContext(::infrt::backends::CpuPhiAllocator*);
 
 }  // namespace phi
 }  // namespace kernel

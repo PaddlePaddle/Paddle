@@ -44,7 +44,7 @@ class CreateCPUAllocatorOp
 
 class CreateCPUContextOp
       : PDT_Op<"create_context." # "cpu", [NoSideEffect]> {
-  let arguments = (ins);
+  let arguments = (ins CPU_Allocator:$input);
   let results = (outs CPU_Context:$output);
 }
 
