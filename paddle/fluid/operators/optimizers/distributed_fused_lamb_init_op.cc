@@ -82,7 +82,10 @@ class DistributedFusedLambInitOpMaker
               "fp16_shard_param_start_idx, "
               "fp16_local_param_num, fp16_global_param_num, "
               "fp16_weight_decay_end_idx].");
-
+    AddOutput("ParamOrder",
+              "The reordered parameter order. Inside this op, "
+              "the parameter would be reordered by data type and weight decay "
+              "value.");
     AddOutput("ParamOut", "The output parameter list.").AsDuplicable();
     AddOutput("MasterParamOut",
               "The output master parameter list. It would share the memory of "

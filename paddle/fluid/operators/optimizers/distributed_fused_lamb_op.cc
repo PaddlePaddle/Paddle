@@ -87,6 +87,10 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
              "fp16_shard_param_start_idx, "
              "fp16_local_param_num, fp16_global_param_num, "
              "fp16_weight_decay_end_idx].");
+    AddInput("ParamOrder",
+             "The reordered parameter order. Inside this op, "
+             "the parameter would be reordered by data type and weight decay "
+             "value.");
 
     AddInput("LearningRate",
              "The fp32 learning rate tensor. Its shape is [1].");

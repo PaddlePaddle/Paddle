@@ -421,6 +421,17 @@ class DistributedFusedLambInitOpKernel<platform::CUDADeviceContext, T>
     size_t fp16_wd_end_idx =
         ReorderParamGradInfoList(apply_weight_decay, &fp16_infos);
 
+    auto *param_order_t = ctx.Output<framework::Tensor>("ParamOrder");
+    auto param_num = fp32_infos.size() + fp16_infos.size();
+    param_order_t->Resize({static_cast<int16_t>(param_num)});
+    auto *param_order = param_order_t->mutable_data<int>(platform::CPUPlace());
+    for (size_t i = 0; i < fp32_infos.size(); ++i) {
+      param_order[i] = static_cast<int>(fp32_infos[i].idx);
+    }
+    for (size_t i = 0; i < fp16_infos.size(); ++i) {
+      param_order[i + fp32_infos.size()] = static_cast<int>(fp16_infos[i].idx);
+    }
+
     VLOG(10) << "Fill ParamGradInfo ends";
 
     // Step 2: determine the numel_with_padding and numel_offset

@@ -186,6 +186,9 @@ class DistributedFusedLamb(Optimizer):
             'fp16_partial_fused_offsets', dtype='int32')
         fp16_partial_fused_offsets.is_distributed = True
 
+        param_order = self._create_persistable_var('param_order', dtype='int32')
+        param_order.is_distributed = True
+
         rank = get_rank()
         nranks = get_world_size()
         scale = self._get_or_create_scale()
@@ -230,6 +233,7 @@ class DistributedFusedLamb(Optimizer):
                 'FP32ShardFusedParamOffsets': [fp32_partial_fused_offsets],
                 'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
                 'FusedParamOffsets': [fused_offsets],
+                'ParamOrder': [param_order],
             },
             attrs={
                 'alignment': self._alignment,
@@ -274,6 +278,7 @@ class DistributedFusedLamb(Optimizer):
                 'FusedParamOffsets': [fused_offsets],
                 'FP32ShardFusedParamOffsets': [fp32_partial_fused_offsets],
                 'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
+                'ParamOrder': [param_order],
             },
             outputs={
                 'FP32FusedParamOut': [fp32_fused_param],

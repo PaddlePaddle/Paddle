@@ -204,34 +204,17 @@ static void LogParamAndTrustRatioDivSquareNorm(
   auto tensors = ctx.MultiInput<framework::Tensor>("Param");
   if (tensors.empty()) return;
 
+  const auto *order = ctx.Input<framework::Tensor>("ParamOrder")->data<int>();
+
   size_t n = tensors.size();
   auto place = tensors[0]->place();
 
   auto pn_vec = ToVector(param_square_norm, n, place);
   auto tn_vec = ToVector(trust_ratio_div_square_norm, n, place);
 
-  std::vector<size_t> fp32_indices, fp16_indices;
-  fp32_indices.reserve(n);
-  fp16_indices.reserve(n);
-  for (size_t i = 0; i < n; ++i) {
-    const auto *t = tensors[i];
-    if (t->dtype() == phi::DataType::FLOAT32) {
-      fp32_indices.push_back(i);
-    } else if (t->dtype() == phi::DataType::FLOAT16) {
-      fp16_indices.push_back(i);
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unsupported data type %s.", t->dtype()));
-    }
-  }
-
-  for (auto idx : fp16_indices) {
-    fp32_indices.push_back(idx);
-  }
-
   const auto &names = ctx.GetOp().Inputs("Param");
-  for (size_t i = 0; i < fp32_indices.size(); ++i) {
-    auto idx = fp32_indices[i];
+  for (size_t i = 0; i < n; ++i) {
+    auto idx = order[i];
     VLOG(LogLevel) << "Param " << tensors[idx]->dtype() << " " << names[idx]
                    << " pn = " << pn_vec[i] << " , tn = " << tn_vec[i];
   }
@@ -1366,11 +1349,11 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                         fp16_partial_fused_offsets, fp16_local_param_num,
                         param_square_norm + fp16_local_start_idx);
     } else {
-      // NOTE: extra computation is performed. We can improve this performance
-      // if needed in the future.
       MultiTensorL2Norm(
-          place, stream, fp16_param, fused_offsets + fp32_global_param_num,
-          fp16_global_param_num, param_square_norm + fp32_global_param_num);
+          place, stream, fp16_param + fused_offsets[fp16_local_start_idx] -
+                             fused_offsets[fp32_global_param_num],
+          fused_offsets + fp16_local_start_idx, fp16_local_param_num,
+          param_square_norm + fp16_local_start_idx);
     }
 
     MultiTensorL2Norm(place, stream, trust_ratio_div,
