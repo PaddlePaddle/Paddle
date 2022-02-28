@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/selu_kernel.h"
+#include "paddle/phi/kernels/impl/selu_kernel_impl.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/selu_kernel_impl.h"
 
 PD_REGISTER_KERNEL(selu, CPU, ALL_LAYOUT, phi::SeluKernel, float, double) {}
