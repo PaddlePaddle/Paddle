@@ -57,7 +57,7 @@ void BincountInner(const Context& dev_ctx,
 
   if (has_weights) {
     const T* weights_data = weights->data<T>();
-    if (weights->dtype() == DataType::INT32) {
+    if (weights->dtype() == DataType::FLOAT32) {
       float* output_data = dev_ctx.template Alloc<float>(output);
       phi::funcs::SetConstant<Context, float>()(
           dev_ctx, output, static_cast<float>(0));
