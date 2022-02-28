@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/where_index_kernel.h"
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -77,7 +77,7 @@ void WhereIndexKernel(const Context& dev_ctx,
 
   WhereIndexFunctor<int64_t> functor(
       true_index.data(), true_num, stride.data(), rank, out_ptr);
-  paddle::platform::ForRange<phi::CPUContext> for_range(dev_ctx, true_num);
+  phi::func::ForRange<phi::CPUContext> for_range(dev_ctx, true_num);
   for_range(functor);
 }
 
