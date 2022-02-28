@@ -92,6 +92,7 @@ bool MapRunner::ShareInputsIntoScope(Scope* scope) {
 
       // share input tensor to dst variable
       auto& dst_tensor_arr = *(var->GetMutable<LoDTensorArray>());
+      for (auto &tensor: dst_tensor_arr) tensor.clear();
       dst_tensor_arr.clear();
       dst_tensor_arr.reserve(tensor_arr.size());
       for (size_t i = 0; i < tensor_arr.size(); i++) {

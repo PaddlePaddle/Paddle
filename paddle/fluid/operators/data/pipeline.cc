@@ -103,6 +103,8 @@ void Pipeline::ReadNext(std::vector<Variable *> &out_vars) {
     
     // CheckOutputVarStatus(*(out_vars[i]), output_var_names_[i]);
     copy_tensor(outputs.at(0), out_vars[i]->GetMutable<LoDTensor>());
+    for (auto &output: outputs) output.clear();
+    outputs.clear();
   }
 }
 

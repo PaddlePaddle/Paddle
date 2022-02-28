@@ -1018,16 +1018,19 @@ def random_flip(x, prob=0.5, name=None):
     if prob < 0. or prob > 1.:
         raise ValueError("prob should in (0, 1) in random_flip")
 
-    helper = LayerHelper("random_flip", **locals())
-    out = helper.create_variable(
-        name=unique_name.generate("random_flip"),
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        dtype=core.VarDesc.VarType.BOOL)
-    helper.append_op(
-        type="random_flip",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={"probability": prob})
+    rand_vec = layers.uniform_random_batch_size_like(
+                                    x, [1, 1], min=0., max=1.)
+    return rand_vec < prob
+    # helper = LayerHelper("random_flip", **locals())
+    # out = helper.create_variable(
+    #     name=unique_name.generate("random_flip"),
+    #     type=core.VarDesc.VarType.LOD_TENSOR,
+    #     dtype=core.VarDesc.VarType.BOOL)
+    # helper.append_op(
+    #     type="random_flip",
+    #     inputs={"X": x},
+    #     outputs={"Out": out},
+    #     attrs={"probability": prob})
     return out
 
 
