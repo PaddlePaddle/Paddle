@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +13,15 @@
 // limitations under the License.
 
 #pragma once
-#include <vector>
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 
-namespace paddle {
-namespace operators {}  // namespace operators
-}  // namespace paddle
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void ReverseKernel(const Context& ctx,
+                   const DenseTensor& x,
+                   std::vector<int> axis,
+                   DenseTensor* out);
+
+}  // namespace phi
