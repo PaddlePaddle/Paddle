@@ -510,6 +510,15 @@ void BroadcastKernelForDifferentVecSize(
   int vec_size = std::min(out_vec_size, in_vec_size);
 
   switch (vec_size) {
+    case 8: {
+      BroadcastKernelForDifferentDimSize<InT,
+                                         OutT,
+                                         Functor,
+                                         kArity,
+                                         NumOuts,
+                                         8>(ctx, ins, outs, axis, func);
+      break;
+    }
     case 4: {
       BroadcastKernelForDifferentDimSize<InT,
                                          OutT,

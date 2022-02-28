@@ -787,6 +787,10 @@ void ElementwiseKernel(const KPDevice &ctx,
   // calculate the max vec_size for all ins and outs
   int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
   switch (vec_size) {
+    case 8:
+      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 8>(
+          ctx, ins, outs, func);
+      break;
     case 4:
       ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
           ctx, ins, outs, func);

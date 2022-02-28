@@ -63,7 +63,7 @@ int GetVectorizedSize(const T* pointer) {
     * 8 data once in vectorization load/store does get optimized, return code
     * below can be changed into " return std::min(8, valid_vec_size); " .
     */
-    return std::min(4, valid_vec_size);
+    return std::min(8, valid_vec_size);
   } else if (address % vec4 == 0) {
     return std::min(4, valid_vec_size);
   } else if (address % vec2 == 0) {
