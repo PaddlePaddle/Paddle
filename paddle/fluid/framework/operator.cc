@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
-#include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -264,10 +264,10 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       // and different op name cost time,we set two event.
       platform::RecordEvent op_type_record_event(
           Type(), platform::TracerEventType::Operator, 1);
-      // auto op_name = platform::OpName(outputs_, Type());
-      // platform::RecordEvent op_name_record_event(
-      //     op_name, platform::TracerEventType::Operator, 1,
-      //     platform::EventRole::kUniqueOp);
+      auto op_name = platform::OpName(outputs_, Type());
+      platform::RecordEvent op_name_record_event(
+          op_name, platform::TracerEventType::Operator, 10,
+          platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
 
@@ -616,9 +616,9 @@ bool OpSupportGPU(const std::string& op_type) {
   // check in new Function kernel first
   auto& kernel_factory = phi::KernelFactory::Instance();
   auto kernel_key_map =
-      kernel_factory.SelectKernelMap(phi::TransToPhiKernelName(op_type));
+      kernel_factory.SelectKernelMap(phi::TransToPtenKernelName(op_type));
   for (auto& kernel : kernel_key_map) {
-    if (platform::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
+    if (platform::is_gpu_place(phi::TransToPtenPlace(kernel.first.backend()))) {
       return true;
     }
   }
@@ -1186,10 +1186,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // phase
   phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
-  if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
+  if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(type_)) {
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
       pt_kernel_signature_.reset(
-          new KernelSignature(std::move(GetExpectedPhiKernelArgs(exe_ctx))));
+          new KernelSignature(std::move(GetExpectedPtenKernelArgs(exe_ctx))));
       VLOG(6) << *pt_kernel_signature_.get();
 
       kernel_type_.reset(
@@ -1197,17 +1197,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       dev_ctx = pool.Get(kernel_type_->place_);
 
       pt_kernel_name = pt_kernel_signature_->name;
-      pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
+      pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
       pt_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
               pt_kernel_name, pt_kernel_key)));
 
       if (pt_kernel_->IsValid()) {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel name: "
+        VLOG(6) << "Static mode ChoosePtenKernel - kernel name: "
                 << pt_kernel_name << " | kernel key: " << pt_kernel_key
                 << " | kernel: " << *pt_kernel_;
       } else {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
+        VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
                 << "` not found.";
       }
     }
@@ -1222,7 +1222,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         && !is_xpu_unsupport
 #endif
         ) {
-      run_phi_kernel_ = true;
+      run_pten_kernel_ = true;
     } else {
       auto& all_op_kernels = AllOpKernels();
       auto kernels_iter = all_op_kernels.find(type_);
@@ -1244,12 +1244,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           VLOG(6) << "Static mode PrepareImpl - kernel name: " << pt_kernel_name
                   << " | kernel key: " << pt_cpu_kernel_key
                   << " | kernel: " << *pt_kernel_;
-          run_phi_kernel_ = true;
+          run_pten_kernel_ = true;
         }
       }
     }
   }
-  if (!run_phi_kernel_) {
+  if (!run_pten_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(exe_ctx);
       dev_ctx = pool.Get(kernel_type_->place_);
@@ -1290,13 +1290,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute",
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
-    if (run_phi_kernel_) {
+    if (run_pten_kernel_) {
       phi::KernelContext pt_kernel_context;
       // Do data transform before building KernelContext
       // TODO(zhiqiu): support TransferInplaceVarsBack
-      PreparePhiData(exec_scope, *pt_kernel_, *pt_kernel_signature_,
-                     runtime_ctx);
-      BuildPhiKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
+      PreparePtenData(exec_scope, *pt_kernel_, *pt_kernel_signature_,
+                      runtime_ctx);
+      BuildPtenKernelContext(*runtime_ctx, dev_ctx, &pt_kernel_context);
       (*pt_kernel_)(&pt_kernel_context);
     } else {
       (*kernel_func_)(
@@ -1388,26 +1388,26 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   return expected_kernel_key;
 }
 
-phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
+phi::KernelKey OperatorWithKernel::ChoosePtenKernel(
     const ExecutionContext& ctx) const {
   pt_kernel_signature_.reset(
-      new KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
+      new KernelSignature(std::move(GetExpectedPtenKernelArgs(ctx))));
   VLOG(6) << *pt_kernel_signature_.get();
 
   kernel_type_.reset(
       new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
   auto pt_kernel_name = pt_kernel_signature_->name;
-  auto pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
+  auto pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
   pt_kernel_.reset(new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
       pt_kernel_name, pt_kernel_key)));
 
   if (pt_kernel_->IsValid()) {
-    VLOG(6) << "Static mode ChoosePhiKernel - kernel name: " << pt_kernel_name
+    VLOG(6) << "Static mode ChoosePtenKernel - kernel name: " << pt_kernel_name
             << " | kernel key: " << pt_kernel_key
             << " | kernel: " << *pt_kernel_;
   } else {
-    VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
+    VLOG(6) << "Static mode ChoosePtenKernel - kernel `" << pt_kernel_name
             << "` not found.";
   }
   return pt_kernel_key;
@@ -1918,7 +1918,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
                       tensor.layout());
 }
 
-KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
+KernelSignature OperatorWithKernel::GetExpectedPtenKernelArgs(
     const ExecutionContext& ctx) const {
   InitDefaultKernelSignatureMap();
   ExecutionArgumentMappingContext arg_mapping_ctx(ctx);
@@ -1926,7 +1926,7 @@ KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
       arg_mapping_ctx);
 }
 
-Scope* OperatorWithKernel::PreparePhiData(
+Scope* OperatorWithKernel::PreparePtenData(
     const Scope& scope, const phi::Kernel& pt_kernel,
     const KernelSignature& pt_kernel_signature, RuntimeContext* ctx) const {
   auto& input_names = std::get<0>(pt_kernel_signature.args);
@@ -1981,12 +1981,12 @@ Scope* OperatorWithKernel::PreparePhiData(
       if (in_def.backend == phi::Backend::ALL_BACKEND) {
         continue;
       }
-      auto expected_place = phi::TransToPhiPlace(in_def.backend);
+      auto expected_place = phi::TransToPtenPlace(in_def.backend);
       if (platform::is_same_place(tensor_in->place(), expected_place)) {
         continue;
       }
 
-      VLOG(3) << "phi Transform Variable " << input_names[i] << " from "
+      VLOG(3) << "PTen Transform Variable " << input_names[i] << " from "
               << tensor_in->place() << " to " << expected_place;
 
       if (!new_scope) {
@@ -2007,7 +2007,7 @@ Scope* OperatorWithKernel::PreparePhiData(
   return new_scope;
 }
 
-void OperatorWithKernel::BuildPhiKernelContext(
+void OperatorWithKernel::BuildPtenKernelContext(
     const RuntimeContext& ctx, platform::DeviceContext* dev_ctx,
     phi::KernelContext* pt_kernel_context) const {
   pt_kernel_context->SetDeviceContext(dev_ctx);
@@ -2111,7 +2111,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
                                                       output_defs.at(i));
       SetAllocationForOutputTenosr(
-          tensor_out, phi::TransToPhiPlace(output_defs.at(i).backend));
+          tensor_out, phi::TransToPtenPlace(output_defs.at(i).backend));
 
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
@@ -2145,10 +2145,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
         auto& ins_vector = ctx.inputs.at(attr_names[i]);
         if (ins_vector.size() == 1) {  // ShapeTensor
           pt_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVar(*ins_vector.front())));
+              experimental::MakePtenScalarArrayFromVar(*ins_vector.front())));
         } else {  // ShapeTensorList
           pt_kernel_context->EmplaceBackAttr(std::move(
-              experimental::MakePhiScalarArrayFromVarList(ins_vector)));
+              experimental::MakePtenScalarArrayFromVarList(ins_vector)));
         }
       }
     } else if (attr_defs[i].type_index ==
@@ -2178,8 +2178,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         }
       } else {
         auto& ins_vector = ctx.inputs.at(attr_names[i]);
-        pt_kernel_context->EmplaceBackAttr(
-            std::move(experimental::MakePhiScalarFromVar(*ins_vector.front())));
+        pt_kernel_context->EmplaceBackAttr(std::move(
+            experimental::MakePtenScalarFromVar(*ins_vector.front())));
       }
 
     } else {
@@ -2198,7 +2198,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
         pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(phi::DataType))) {
-        auto data_type = paddle::framework::TransToPhiDataType(
+        auto data_type = paddle::framework::TransToPtenDataType(
             static_cast<framework::proto::VarType::Type>(
                 BOOST_GET_CONST(int, attr)));
         pt_kernel_context->EmplaceBackAttr(data_type);
@@ -2206,7 +2206,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
                  std::type_index(typeid(std::vector<int64_t>))) {
         if (std::type_index(attr.type()) ==
             std::type_index(typeid(std::vector<int>))) {
-          // Emplace Back Attr according to the type of Phi_Kernel args.
+          // Emplace Back Attr according to the type of Pten_Kernel args.
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
                                                        vector_int_attr.end());
