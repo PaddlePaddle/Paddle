@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnbindKernel(const Context& ctx,
+void UnbindKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   std::vector<DenseTensor*> outs) {
@@ -29,12 +29,12 @@ void UnbindKernel(const Context& ctx,
 
   std::vector<const DenseTensor*> shape_refer;
   for (size_t j = 0; j < outs.size(); ++j) {
-    ctx.template Alloc<T>(outs[j]);
+    dev_ctx.template Alloc<T>(outs[j]);
     shape_refer.emplace_back(outs[j]);
   }
 
   phi::funcs::SplitFunctor<Context, T> functor;
-  functor(ctx, x, shape_refer, axis, &outs);
+  functor(dev_ctx, x, shape_refer, axis, &outs);
 }
 
 }  // namespace phi

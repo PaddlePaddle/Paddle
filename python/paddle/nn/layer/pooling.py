@@ -1257,9 +1257,8 @@ class MaxUnPool2D(Layer):
         
         import paddle
         import paddle.nn.functional as F
-        import numpy as np
 
-        data = paddle.rand(shape=[1,1,7,7])
+        data = paddle.rand(shape=[1,1,6,6])
         pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
         # pool_out shape: [1, 1, 3, 3],  indices shape: [1, 1, 3, 3]
         Unpool2D = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)
