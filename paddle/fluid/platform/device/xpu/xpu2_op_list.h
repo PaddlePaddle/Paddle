@@ -215,6 +215,7 @@ XPUOpMap& get_kl2_ops() {
       {"leaky_relu_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"leaky_relu", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"relu", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"less_equal", XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                                    pOpKernelType(vartype::INT32, XPUPlace()),
                                    pOpKernelType(vartype::FP32, XPUPlace())})},
