@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
