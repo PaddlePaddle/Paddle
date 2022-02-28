@@ -34,10 +34,21 @@ class MetaConfig;
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
+// meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
+void UnchangedInferMetaCheckAxis(const MetaTensor& x,
+                                 int axis,
+                                 MetaTensor* out);
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
                       MetaTensor* out);
+
+void GumbelSoftmaxInferMeta(const MetaTensor& x,
+                            float temperature,
+                            bool hard,
+                            int axis,
+                            MetaTensor* out);
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
@@ -117,5 +128,12 @@ void DiagInferMeta(const MetaTensor& x,
                    int offset,
                    float padding_value,
                    MetaTensor* out);
+
+void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
+
+void PixelShuffleInferMeta(const MetaTensor& x,
+                           int upscale_factor,
+                           const std::string& data_format,
+                           MetaTensor* out);
 
 }  // namespace phi

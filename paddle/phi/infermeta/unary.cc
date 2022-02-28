@@ -27,6 +27,30 @@ void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
 
+// meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
+void UnchangedInferMetaCheckAxis(const MetaTensor& x,
+                                 int axis,
+                                 MetaTensor* out) {
+  auto rank = x.dims().size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -rank,
+      errors::InvalidArgument(
+          "Attr(axis) value should be in range [-R, R-1], "
+          "R is the rank of Input(X). But received axis: %d, R: %d.",
+          axis,
+          rank));
+  PADDLE_ENFORCE_LT(
+      axis,
+      rank,
+      phi::errors::InvalidArgument(
+          "Attr(axis) value should be in range [-R, R-1], "
+          "R is the rank of Input(X). But received axis: %d, R: %d.",
+          axis,
+          rank));
+  out->share_meta(x);
+}
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
@@ -73,6 +97,14 @@ void FlattenInferMeta(const MetaTensor& x,
     // are the same.
     out->share_lod(x);
   }
+}
+
+void GumbelSoftmaxInferMeta(const MetaTensor& x,
+                            float temperature,
+                            bool hard,
+                            int axis,
+                            MetaTensor* out) {
+  UnchangedInferMetaCheckAxis(x, axis, out);
 }
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
@@ -822,6 +854,57 @@ void DiagInferMeta(const MetaTensor& x,
         "2, but received %d.",
         x_dims.size()));
   }
+}
+
+void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
+  out->set_dtype(DataType::INT64);
+  out->set_dims({1});
+}
+
+void PixelShuffleInferMeta(const MetaTensor& x,
+                           int upscale_factor,
+                           const std::string& data_format,
+                           MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  if (!channel_last) {
+    PADDLE_ENFORCE_EQ(input_dims[1] % (upscale_factor * upscale_factor),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The square of upscale_factor[%u] should divide the "
+                          "number of channel[%u]",
+                          upscale_factor * upscale_factor,
+                          input_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(input_dims[3] % (upscale_factor * upscale_factor),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The square of upscale_factor[%u] should divide the "
+                          "number of channel[%u]",
+                          upscale_factor * upscale_factor,
+                          input_dims[3]));
+  }
+  auto output_dims = input_dims;
+  output_dims[0] = input_dims[0];
+  if (!channel_last) {
+    output_dims[1] = input_dims[1] / (upscale_factor * upscale_factor);
+    output_dims[2] = input_dims[2] * upscale_factor;
+    output_dims[3] = input_dims[3] * upscale_factor;
+  } else {
+    output_dims[1] = input_dims[1] * upscale_factor;
+    output_dims[2] = input_dims[2] * upscale_factor;
+    output_dims[3] = input_dims[3] / (upscale_factor * upscale_factor);
+  }
+  out->set_dtype(x.dtype());
+  out->set_dims(output_dims);
 }
 
 }  // namespace phi
