@@ -7,6 +7,8 @@ endif()
 # please add new math_library in alphabetical order
 if (WITH_ASCEND_CL)
 math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
+elseif (WITH_MLU)
+math_library(concat_and_split DEPS concat_and_split_functor mlu_baseop)
 else()
 math_library(concat_and_split DEPS concat_and_split_functor)
 endif()
