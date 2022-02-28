@@ -33,8 +33,9 @@ namespace egr {
 class TensorWrapper {
  public:
   TensorWrapper() = default;
-  explicit TensorWrapper(const egr::EagerTensor& tensor,
-                         bool full_reserved = false) {
+  explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
+                         bool full_reserved = false,
+                         bool no_need_buffer = false) {
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
@@ -48,25 +49,39 @@ class TensorWrapper {
     }
 
     // shallow copy tensor_impl here
-    intermidiate_tensor_.set_impl(tensor.impl());
-    intermidiate_tensor_.ResetVar(tensor.Var());
+    if (no_need_buffer) {
+      if (phi::DenseTensor::classof(tensor.impl().get())) {
+        // Only Copy Meta
+        phi::DenseTensor* dense_tensor =
+            static_cast<phi::DenseTensor*>(tensor.impl().get());
+        auto tw_dense_tensor = std::make_shared<phi::DenseTensor>();
+        tw_dense_tensor->set_meta(dense_tensor->meta());
+        intermidiate_tensor_.set_impl(tw_dense_tensor);
+      } else {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "Unrecognized tensor type for no_need_buffer feature"));
+      }
+    } else {
+      intermidiate_tensor_.set_impl(tensor.impl());
+    }
+
     intermidiate_tensor_.set_name(tensor.name() + "@Saved");
-    PADDLE_ENFORCE_NOT_NULL(
-        EagerUtils::unsafe_autograd_meta(tensor),
-        paddle::platform::errors::Fatal(
-            "Full reserved Tensor should not have null autograd meta, since "
-            "tensor_wrapper is used to build backward info. There is no way "
-            "for us to build it with null autograd_meta."));
-    // copy output_rank
-    out_rank_info_ = EagerUtils::OutRankInfo(tensor);
+
+    // If an output is marked "intermedaite", we won't create
+    // autograd_meta for it.
+    // In that case, simply skip OutRankInfo Copy
+    if (EagerUtils::nullable_autograd_meta(tensor)) {
+      out_rank_info_ = EagerUtils::OutRankInfo(tensor);
+    }
   }
 
-  egr::EagerTensor recover(const std::shared_ptr<GradNodeBase>& grad_node) {
-    VLOG(6) << "Recover tensor for wrapper";
-    if ((!intermidiate_tensor_.defined()) &&
-        (!intermidiate_tensor_.Var().IsInitialized())) {
+  paddle::experimental::Tensor recover(
+      const std::shared_ptr<GradNodeBase>& grad_node) {
+    VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
+            << " for wrapper";
+    if (!intermidiate_tensor_.defined()) {
       VLOG(6) << "Return NULL tensor Here. ";
-      return egr::EagerTensor();
+      return paddle::experimental::Tensor();
     }
 
     // if it's full_reserved just return the full copy of tensor
@@ -86,6 +101,6 @@ class TensorWrapper {
  private:
   bool full_reserved_ = false;
   std::pair<size_t, size_t> out_rank_info_;
-  egr::EagerTensor intermidiate_tensor_;
+  paddle::experimental::Tensor intermidiate_tensor_;
 };
 }  // namespace egr

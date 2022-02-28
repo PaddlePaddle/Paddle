@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
-
 #include <functional>
 #include <vector>
-
+#include "cinn/hlir/framework/graph_compiler.h"
+#include "cinn/runtime/cinn_runtime.h"
+#include "cinn/runtime/flags.h"
 #include "paddle/fluid/string/string_helper.h"
 
 DECLARE_bool(cudnn_deterministic);
@@ -86,7 +87,9 @@ class CinnLaunchOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs(kX), "Input", kX, "CinnLaunchOp");
+    OP_INOUT_CHECK(ctx->HasInputs(kX) || ctx->HasInputs(kNoNeedBufferX),
+                   "Input", string::format_string("%s|%s", kX, kNoNeedBufferX),
+                   "CinnLaunchOp");
     OP_INOUT_CHECK(ctx->HasOutputs(kOutputs), "Output", kOutputs,
                    "CinnLaunchOp");
   }
@@ -117,8 +120,15 @@ class CinnLaunchOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(kX,
              "(vector<LoDTensor>)"
-             "which are the input of graph inside the CinnLaunchOp.")
+             "which are the input of graph inside the CinnLaunchOp"
+             "excluding kNoNeedBufferX.")
         .AsDuplicable();
+    AddInput(kNoNeedBufferX,
+             "(vector<LoDTensor>)"
+             "which are the input of graph inside the CinnLaunchOp but"
+             "their buffer are not needed.")
+        .AsDuplicable()
+        .AsDispensable();
     AddOutput(kOutputs,
               "(vector<LoDTensor>)"
               "which are the output of graph inside the CinnLaunchOp.")
@@ -155,12 +165,16 @@ It accomplishes the computation of graph following several steps:
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CinnLaunchOpNoBufVarsInferer,
+                                    kNoNeedBufferX);
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     cinn_launch, ops::CinnLaunchOp, ops::CinnLaunchOpMaker,
+    ops::CinnLaunchOpNoBufVarsInferer,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 /* see [Why use single type kernel] */

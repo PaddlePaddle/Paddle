@@ -25,9 +25,9 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
@@ -382,7 +382,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       if (ctx.HasInput("MomentumTensor")) {
         const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
         Tensor mom_cpu;
-        TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
+        paddle::framework::TensorCopySync(*mom_tensor, platform::CPUPlace(),
+                                          &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
       }
 
@@ -966,7 +967,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         if (d_x) {
           framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
         }
-        math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+        phi::funcs::SetConstant<platform::CUDADeviceContext,
+                                BatchNormParamType<T>>
             functor;
         functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
         functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));

@@ -37,7 +37,6 @@
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/include/core.h"
 namespace paddle {
 namespace framework {
 class Variable;
@@ -286,6 +285,12 @@ class VarBase {
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map);
+
+std::shared_ptr<GradOpNode> CreateGradOpNode(
+    const framework::OperatorBase& op, const NameTensorMap& ins,
+    const NameTensorMap& outs, const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs, const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 

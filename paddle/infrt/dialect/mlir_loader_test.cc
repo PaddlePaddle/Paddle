@@ -17,33 +17,33 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <llvm/Support/SourceMgr.h>
-#include <mlir/IR/Function.h>
+#include <mlir/IR/BuiltinTypes.h>
 #include <mlir/Parser.h>
 
 #include <string>
 
 #include "paddle/infrt/dialect/init_infrt_dialects.h"
 
-namespace infrt::dialect {
+namespace infrt {
+namespace dialect {
 
 TEST(MlirLoader, basic) {
   mlir::MLIRContext context;
 
   auto source = R"ROC(
 func @main() -> f32 {
-  %v0 = infrt.constant.f32 1.0
-  %v1 = infrt.constant.f32 2.0
-  %value = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v0 = Infrt.constant.f32 1.0
+  %v1 = Infrt.constant.f32 2.0
+  %value = "Infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
 
-  "infrt.print.f32"(%v0) : (f32) -> ()
+  "Infrt.print.f32"(%v0) : (f32) -> ()
 
-  infrt.return %value : f32
+  Infrt.return %value : f32
 }
 )ROC";
 
   auto module = LoadMlirSource(&context, source);
-  module->verify();
-
+  EXPECT_TRUE(mlir::succeeded(module->verify()));
   LOG(INFO) << "module name: " << module->getOperationName().data();
   for (auto func : module->getOps<mlir::FuncOp>()) {
     LOG(INFO) << "get func " << func.getName().str();
@@ -54,4 +54,5 @@ func @main() -> f32 {
   }
 }
 
-}  // namespace infrt::dialect
+}  // namespace dialect
+}  // namespace infrt

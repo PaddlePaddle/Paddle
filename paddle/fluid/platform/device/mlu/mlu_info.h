@@ -18,6 +18,9 @@ limitations under the License. */
 #include <cn_api.h>
 #include <cnnl.h>
 #include <cnrt.h>
+#ifdef PADDLE_WITH_CNCL
+#include <cncl.h>
+#endif
 #include <vector>
 
 namespace paddle {
@@ -25,6 +28,9 @@ namespace paddle {
 using cnStatus = CNresult;
 using cnrtStatus = cnrtRet_t;
 using cnnlStatus = cnnlStatus_t;
+#ifdef PADDLE_WITH_CNCL
+using cnclStatus = cnclResult_t;
+#endif
 using mluStream = cnrtQueue_t;
 using mluCnnlHandle = cnnlHandle_t;
 using mluEventHandle = CNnotifier;

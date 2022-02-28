@@ -61,7 +61,7 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
 
     out_var->mutable_data<T>(shape, ctx.GetPlace());
     if (data_type != framework::proto::VarType::BOOL) {
-      Tensor tensor_value(data_type);
+      Tensor tensor_value(framework::TransToPtenDataType(data_type));
       tensor_value.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_value, value);
       NpuOpRunner runner;
@@ -71,11 +71,11 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
           .AddOutput(*out_var)
           .AddAttrs(
               {{ "dims",
-                 framework::vectorize(shape) }})
+                 phi::vectorize(shape) }})
           .Run(stream);
 #else
       runner.SetType("Fill")
-          .AddInput(framework::vectorize(shape))
+          .AddInput(phi::vectorize(shape))
           .AddInput(tensor_value)
           .AddOutput(*out_var)
           .Run(stream);
@@ -94,7 +94,7 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
 
         NpuOpRunner runner;
         runner.SetType("Fill")
-            .AddInput(framework::vectorize(shape))
+            .AddInput(phi::vectorize(shape))
             .AddInput(tensor_value)
             .AddOutput(outputs[0])
             .Run(dev_ctx.stream());

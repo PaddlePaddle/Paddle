@@ -35,7 +35,7 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     framework::TensorCopy(*X, ctx.GetPlace(), Out);
     // use template class to support int32_t and int64_t
-    const auto &index_type = Ids->type();
+    const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
@@ -68,7 +68,7 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *Ids = ctx.Input<Tensor>("Ids");
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
-    const auto &index_type = Ids->type();
+    const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(

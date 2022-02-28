@@ -19,41 +19,10 @@
 
 #include <string>
 
-using namespace mlir;  // NOLINT
-namespace infrt::dt {
+#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
 
-namespace detail {
-struct TensorTypeStorage;
-}  // namespace detail
-
-enum class TargetType : uint8_t { X86, CUDA };
-enum class LayoutType : uint8_t { NCHW, NHWC };
-enum class PrecisionType : uint8_t { I32, F32 };
-
-llvm::Optional<TargetType> GetTargetType(mlir::StringRef key);
-llvm::Optional<LayoutType> GetLayoutType(mlir::StringRef key);
-llvm::Optional<PrecisionType> GetPrecisionType(mlir::StringRef key);
-
-raw_ostream &operator<<(raw_ostream &os, TargetType type);
-raw_ostream &operator<<(raw_ostream &os, LayoutType type);
-raw_ostream &operator<<(raw_ostream &os, PrecisionType type);
-
-class TensorType : public mlir::Type::TypeBase<TensorType,
-                                               mlir::Type,
-                                               detail::TensorTypeStorage> {
- public:
-  using Base::Base;
-  static TensorType get(TargetType target,
-                        LayoutType layout,
-                        PrecisionType precision);
-
-  TargetType target();
-  LayoutType layout();
-  PrecisionType precision();
-};
-
-raw_ostream &operator<<(raw_ostream &os, TensorType tensorType);
-
+namespace infrt {
+namespace dt {
 class TensorMapType : public mlir::Type::TypeBase<TensorMapType,
                                                   mlir::Type,
                                                   mlir::TypeStorage> {
@@ -70,10 +39,10 @@ class StringType
   static StringType get();
   static StringType get(mlir::MLIRContext *context);
 };
+}  // namespace dt
+}  // namespace infrt
 
 #include "paddle/infrt/dialect/dense_tensor_dialect.hpp.inc"
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/dense_tensor.hpp.inc"
-
-}  // namespace infrt::dt

@@ -86,7 +86,7 @@ class DistributedOperator:
                                                        tensor_dims_mapping)
         for tensor_name in self._serial_op.output_arg_names:
             tensor = self._serial_op.block._var_recursive(tensor_name)
-            if tensor.type == core.VarDesc.VarType.READER:
+            if tensor.type == core.VarDesc.VarType.READER or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
                 tensor_shape = []
             else:
                 tensor_shape = tensor.shape
@@ -98,7 +98,9 @@ class DistributedOperator:
         if self._dist_attr.impl_type is None:
             self._dist_attr.impl_type = "default"
         if self._dist_attr.impl_idx is None:
-            self._dist_attr.impl_idx = -2
+            self._dist_attr.impl_idx = 0
+        if self._dist_attr.is_recompute is None:
+            self._dist_attr.is_recompute = False
 
     def _filter_dist_attr(self, dist_attr):
         if dist_attr is None:
@@ -215,7 +217,8 @@ class DistributedOperator:
 
         str += ", pipeline stage: {}".format(None)
 
-        str += ", dist_impl idx: {} }}".format(self.dist_attr._impl_idx)
+        str += ", dist_impl idx: {} , dist_impl type {} }}".format(
+            self.dist_attr._impl_idx, self.dist_attr._impl_type)
 
         return str
 

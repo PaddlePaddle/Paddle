@@ -127,7 +127,7 @@ class AllcloseOp : public framework::OperatorWithKernel {
       }
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim({1}));
+    ctx->SetOutputDim("Out", phi::make_ddim({1}));
   }
 
  protected:

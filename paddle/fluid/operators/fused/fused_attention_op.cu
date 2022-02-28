@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/fluid/operators/fused/attn_gemm.h"
@@ -494,7 +494,8 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     ins.emplace_back(d_x);
     outs.emplace_back(d_x);
     int elewise_add_axis = -1;
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
+                                                   T>(
         ctx.cuda_device_context(), ins, &outs, elewise_add_axis,
         AddFunctor<T>());
   }

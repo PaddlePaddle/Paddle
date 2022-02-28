@@ -33,7 +33,7 @@ class CategoricalNumpy(DistributionNumpy):
         e_logits = np.exp(logits)
         z = np.sum(e_logits, axis=-1, keepdims=True)
         prob = e_logits / z
-        return -1. * np.sum(prob * (logits - np.log(z)), axis=-1, keepdims=True)
+        return -1. * np.sum(prob * (logits - np.log(z)), axis=-1)
 
     def kl_divergence(self, other):
         logits = self.logits - np.max(self.logits, axis=-1, keepdims=True)

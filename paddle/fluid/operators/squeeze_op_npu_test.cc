@@ -25,12 +25,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(squeeze);
 USE_OP_DEVICE_KERNEL(squeeze, NPU);
@@ -50,7 +49,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
     init.push_back(static_cast<T>(0.1));
   }
 
-  TensorFromVector(init, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init, ctx, tensor_x);
   tensor_x->Resize({dim0, dim1, dim2});
 
   ctx.Wait();
@@ -75,7 +74,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   EXPECT_EQ((uint32_t)tensor_out->dims()[1], uint32_t(dim1));
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
   for (uint32_t i = 0; i < out_vec.size(); i++) {
     EXPECT_EQ(out_vec[i], static_cast<T>(0.1));
   }

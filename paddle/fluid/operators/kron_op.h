@@ -78,9 +78,9 @@ struct KronOpFunctor {
     const framework::DDim& dim_x = x.dims();
     const framework::DDim& dim_y = y.dims();
     const framework::DDim& dim_out = out->dims();
-    const framework::DDim stride_x = framework::stride(dim_x);
-    const framework::DDim stride_y = framework::stride(dim_y);
-    const framework::DDim stride_out = framework::stride(dim_out);
+    const framework::DDim stride_x = phi::stride(dim_x);
+    const framework::DDim stride_y = phi::stride(dim_y);
+    const framework::DDim stride_out = phi::stride(dim_out);
 
     const int64_t *p_stride_x = nullptr, *p_stride_y = nullptr,
                   *p_stride_out = nullptr, *p_shape_y = nullptr;
@@ -251,9 +251,9 @@ struct KronGradOpFunctor {
     const framework::DDim& dim_y = y.dims();
     const framework::DDim& dim_dout = dout.dims();
 
-    const framework::DDim stride_x = framework::stride(dim_x);
-    const framework::DDim stride_y = framework::stride(dim_y);
-    const framework::DDim stride_dout = framework::stride(dim_dout);
+    const framework::DDim stride_x = phi::stride(dim_x);
+    const framework::DDim stride_y = phi::stride(dim_y);
+    const framework::DDim stride_dout = phi::stride(dim_dout);
 
     const int64_t* p_stride_x = nullptr;
     const int64_t* p_stride_y = nullptr;
@@ -305,12 +305,12 @@ struct KronGradOpFunctor {
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
+      TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx, dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
     }
     if (dy) {
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dout_y, dy, kps::IdentityFunctor<T>(), {1}, stream);
+      TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx, dout_y, dy, kps::IdentityFunctor<T>(), {1}, stream);
     }
 #else
     auto* place = dev_ctx.eigen_device();
@@ -345,7 +345,7 @@ inline framework::Tensor UnsqueezeTo(const framework::Tensor& src, int ndims) {
     for (int i = ndims - rank; i < ndims; i++) {
       new_dim[i] = shape[i - ndims + rank];
     }
-    res.Resize(framework::make_ddim(new_dim));
+    res.Resize(phi::make_ddim(new_dim));
   }
   return res;
 }

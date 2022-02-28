@@ -57,7 +57,6 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   } else {
 #if IS_TRT_VERSION_GE(6000)
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
-    GetEngineInfo();
 #endif
   }
   SetRuntimeBatch(batch_size);
@@ -244,8 +243,10 @@ void TensorRTEngine::FreezeNetwork() {
 #endif
   }
 #if IS_TRT_VERSION_GE(8200)
-  infer_builder_config_->setProfilingVerbosity(
-      nvinfer1::ProfilingVerbosity::kDETAILED);
+  if (use_inspector_) {
+    infer_builder_config_->setProfilingVerbosity(
+        nvinfer1::ProfilingVerbosity::kDETAILED);
+  }
 #endif
 
 #if IS_TRT_VERSION_LT(8000)
@@ -370,7 +371,8 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
                         name_with_suffix));
   weight_map[name_with_suffix].reset(new framework::Tensor());
   weight_map[name_with_suffix]->Resize(weight_tensor->dims());
-  TensorCopySync(*weight_tensor, cpu_place, weight_map[name_with_suffix].get());
+  paddle::framework::TensorCopySync(*weight_tensor, cpu_place,
+                                    weight_map[name_with_suffix].get());
   float *weight_data =
       weight_map[name_with_suffix]->mutable_data<float>(cpu_place);
   name_suffix_counter += 1;
@@ -408,6 +410,21 @@ void TensorRTEngine::freshDeviceId() {
                         "Device id %d exceeds the current device count: %d.",
                         device_id_, count));
   platform::SetDeviceId(device_id_);
+}
+
+void TensorRTEngine::GetEngineInfo() {
+#if IS_TRT_VERSION_GE(8200)
+  LOG(INFO) << "====== engine info ======";
+  std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
+      infer_engine_->createEngineInspector());
+  auto infer_context = context();
+  infer_inspector->setExecutionContext(infer_context);
+  LOG(INFO) << infer_inspector->getEngineInformation(
+      nvinfer1::LayerInformationFormat::kONELINE);
+  LOG(INFO) << "====== engine info end ======";
+#else
+  LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";
+#endif
 }
 
 }  // namespace tensorrt

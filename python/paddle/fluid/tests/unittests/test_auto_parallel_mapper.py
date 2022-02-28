@@ -36,6 +36,7 @@ from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.distributed import fleet
 
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
@@ -433,6 +434,12 @@ class MLPLayer(nn.Layer):
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
 
+        auto.shard_tensor(
+            out,
+            dist_attr={
+                "process_mesh": _global_process_mesh[1],
+                "dims_mapping": [0, -1]
+            })
         out = self.linear2(out)
         out = F.gelu(out, approximate=True)
         out = self.linear3(out)
@@ -476,10 +483,10 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     parallelizer._dist_context = dist_context
 
     # auto completion
-    complete_train_program = auto.complete_annotation(train_program,
-                                                      dist_context)
-    parallelizer._apply_serial_forward_pass(complete_train_program,
-                                            startup_program)
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program)
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
     params_grads = parallelizer._generate_backward(
         complete_train_program,
         startup_program,
@@ -495,7 +502,8 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     partitioned_optimize_ops = parallelizer._apply_optimize(
         dist_train_program, dist_startup_prog, dist_params_grads)
 
-    reshard(dist_train_program, dist_startup_prog, rank_id, dist_context)
+    reshard(dist_train_program, dist_startup_prog, rank_id, dist_context,
+            dist_params_grads)
     return dist_train_program, dist_startup_prog
 
 

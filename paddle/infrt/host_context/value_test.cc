@@ -30,5 +30,15 @@ TEST(ValueRef, test) {
   ASSERT_EQ(z.get<bool>(), true);
 }
 
+// If the value is not assign, the get_or_default should return a default value.
+TEST(Value, init) {
+  Value x;
+  ASSERT_EQ(x.get_or_default<int>(), 0);
+
+  Value tensor;
+  auto& t = tensor.get_or_default<tensor::DenseHostTensor>();
+  ASSERT_EQ(t.shape().GetRank(), 0);
+}
+
 }  // namespace host_context
 }  // namespace infrt

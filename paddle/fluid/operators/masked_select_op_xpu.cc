@@ -11,7 +11,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/masked_select_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
 namespace paddle {
@@ -42,22 +42,24 @@ class MaskedSelectXPUKernel : public framework::OpKernel<T> {
     int* out_size = RAII_GUARD.alloc_l3_or_gm<int32_t>(1);
     int out_size_cpu;
 
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu::nonzero_count(
-        dev_ctx.x_context(), mask_data, out_size, mask->numel()));
+    PADDLE_ENFORCE_XDNN_SUCCESS(
+        xpu::nonzero_count(dev_ctx.x_context(), mask_data, out_size,
+                           mask->numel()),
+        "nonzero_count ");
     memory::Copy(platform::CPUPlace(), static_cast<void*>(&out_size_cpu),
-                 BOOST_GET_CONST(platform::XPUPlace, mask->place()),
-                 static_cast<void*>(out_size), sizeof(int32_t));
+                 mask->place(), static_cast<void*>(out_size), sizeof(int32_t));
 
     framework::DDim out_dim{out_size_cpu};
     out->Resize(out_dim);
     auto out_data = out->mutable_data<T>(context.GetPlace());
 
-    auto input_shape = framework::vectorize<int>(input_dim);
-    auto mask_shape = framework::vectorize<int>(mask_dim);
+    auto input_shape = phi::vectorize<int>(input_dim);
+    auto mask_shape = phi::vectorize<int>(mask_dim);
 
-    PADDLE_ENFORCE_XPU_SUCCESS(
+    PADDLE_ENFORCE_XDNN_SUCCESS(
         xpu::masked_select(dev_ctx.x_context(), input_data, mask_data, out_data,
-                           input_shape, mask_shape));
+                           input_shape, mask_shape, out_size_cpu),
+        "masked_select");
   }
 };
 

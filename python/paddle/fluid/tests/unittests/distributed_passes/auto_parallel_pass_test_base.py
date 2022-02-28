@@ -110,14 +110,8 @@ class AutoPallelPassTestBase(DistPassTestBase):
         elif strategy == "mp":
             modeling._global_parallel_strategy = "mp"
             modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-        elif strategy == "pp":
-            modeling._global_parallel_strategy = "pp"
-            modeling._global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
-            modeling.PP_MESH_LIST = [
-                auto.ProcessMesh(mesh=[0]), auto.ProcessMesh(mesh=[1])
-            ]
         else:
-            raise ValueError("'get_gpt_model' only support dp, mp and pp.")
+            raise ValueError("'get_gpt_model' only support dp and mp.")
 
         tokens = paddle.static.data(
             name="tokens", shape=[batch_size, sequence_len], dtype='int64')
@@ -178,13 +172,13 @@ class AutoPallelPassTestBase(DistPassTestBase):
         preds = model(tokens, position_ids, attention_mask)
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
-
+        clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
         optimizer = paddle.fluid.optimizer.AdamOptimizer(
             learning_rate=0.00001,
             beta1=0.9,
             beta2=0.999,
             epsilon=1e-08,
-            grad_clip=None)
+            grad_clip=clip)
         optimizer = fleet.distributed_optimizer(optimizer)
         startup_program = paddle.static.default_startup_program()
         _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(

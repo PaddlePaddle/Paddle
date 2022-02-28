@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/masked_select_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -60,7 +60,7 @@ class MaskedSelectedNPUKernel : public framework::OpKernel<T> {
       sum_runner.AddOutput(out_size);
       sum_runner.AddAttr("keep_dims", false);
       sum_runner.Run(stream);
-      TensorToVector(out_size, dev_ctx, &out_size_vec);
+      paddle::framework::TensorToVector(out_size, dev_ctx, &out_size_vec);
     }
 
     out->Resize({out_size_vec[0]});
@@ -135,7 +135,7 @@ class MaskedSelectedGradNPUKernel : public framework::OpKernel<T> {
       sum_runner.AddOutput(out_size);
       sum_runner.AddAttr("keep_dims", false);
       sum_runner.Run(stream);
-      TensorToVector(out_size, dev_ctx, &out_size_vec);
+      paddle::framework::TensorToVector(out_size, dev_ctx, &out_size_vec);
     }
 
     Tensor topkv2_out, indices;
