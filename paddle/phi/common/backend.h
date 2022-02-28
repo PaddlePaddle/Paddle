@@ -50,7 +50,7 @@ enum class Backend : uint8_t {
 
   // the third library backend
   MKLDNN,
-  CUDNN,
+  GPUDNN,  // cuDNN and hipDNN
 
   // end of backend types
   NUM_BACKENDS,
@@ -112,8 +112,8 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::MKLDNN:
       os << "MKLDNN";
       break;
-    case Backend::CUDNN:
-      os << "CUDNN";
+    case Backend::GPUDNN:
+      os << "GPUDNN";
       break;
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
@@ -145,8 +145,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::NPU;
   } else if (s == std::string("MKLDNN")) {
     return Backend::MKLDNN;
-  } else if (s == std::string("CUDNN")) {
-    return Backend::CUDNN;
+  } else if (s == std::string("GPUDNN")) {
+    return Backend::GPUDNN;
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
                                 phi::GetOrRegisterGlobalDeviceTypeId(s));

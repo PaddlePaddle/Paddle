@@ -27,7 +27,7 @@
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
-// pten
+// phi
 #include "paddle/phi/kernels/declarations.h"
 
 #define NUM_CREATED_DUP_INPUTS 4
@@ -544,7 +544,7 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   // since only OperatorWithKernel can run in dygraph mode.
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
   if (!all_kernels.count(op_type) &&
-      !phi::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+      !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
     return false;
   }
 
@@ -2045,12 +2045,13 @@ static std::string GenerateGradNodeCCContents(
 
   const char* BWD_RETURN_TEMPLATE =
       "  std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads = "
-      "egr::GradNodeBase::ApplyGradientHooks(grads);\n"
+      "GradNode%s::ApplyGradientHooks(grads);\n"
       "  std::vector<std::vector<paddle::experimental::Tensor>> outputs(%d);\n"
       "  %s\n"
       "  return outputs;\n";
-  generated_grad_function_body = paddle::string::Sprintf(
-      BWD_RETURN_TEMPLATE, in_vars.size(), generated_grad_function_body);
+  generated_grad_function_body =
+      paddle::string::Sprintf(BWD_RETURN_TEMPLATE, fwd_op_type, in_vars.size(),
+                              generated_grad_function_body);
 
   // [Generation] Get Full Grad Function
   const char* GRAD_FUNCTION_TEMPLATE =
