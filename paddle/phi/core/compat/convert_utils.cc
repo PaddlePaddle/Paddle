@@ -25,7 +25,7 @@ limitations under the License. */
 
 namespace phi {
 
-Backend TransToPtenBackend(const phi::Place& place) {
+Backend TransToPhiBackend(const phi::Place& place) {
   if (place.GetType() == phi::AllocationType::CPU) {
     return Backend::CPU;
   } else if (place.GetType() == phi::AllocationType::GPU) {
@@ -41,7 +41,7 @@ Backend TransToPtenBackend(const phi::Place& place) {
   }
 }
 
-phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
+phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
   // NOTE(zhiqiu): GetCurrentDeviceId not always success, and device id is not
   // always needed.
   // So, add set_device_id parameter here.
@@ -87,21 +87,21 @@ phi::Place TransToPtenPlace(const Backend& backend, bool set_device_id) {
   }
 }
 
-std::string TransToPtenKernelName(const std::string& fluid_op_name) {
+std::string TransToPhiKernelName(const std::string& fluid_op_name) {
   return OpUtilsMap::Instance().GetBaseKernelName(fluid_op_name);
 }
 
-const std::string& TransToFluidOpName(const std::string& pten_kernel_name) {
+const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
   auto& base_kernel_name_map = OpUtilsMap::Instance().base_kernel_name_map();
   auto it = std::find_if(base_kernel_name_map.begin(),
                          base_kernel_name_map.end(),
-                         [&pten_kernel_name](const auto& pair) {
-                           return pair.second == pten_kernel_name;
+                         [&phi_kernel_name](const auto& pair) {
+                           return pair.second == phi_kernel_name;
                          });
   if (it != base_kernel_name_map.end()) {
     return it->first;
   }
-  return pten_kernel_name;
+  return phi_kernel_name;
 }
 
 }  // namespace phi

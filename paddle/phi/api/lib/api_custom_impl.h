@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,22 +19,15 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
 
-/**
- * This file stores some special APIs that are implemented manually
- * or difficult to automatically generated.
- */
-
 namespace paddle {
 namespace experimental {
 
 // TODO(chenweihang): Replace backend by place when place is ready
-PADDLE_API Tensor copy_to(const Tensor& x, Backend backend, bool blocking);
+Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking);
 
-// TODO(chentianyu03): Split API has extra logic to calculate the outputs size,
-// api_gen do not support
-PADDLE_API std::vector<Tensor> split(const Tensor& x,
-                                     const ScalarArray& num_or_sections,
-                                     const Scalar& axis);
+std::vector<Tensor> split_impl(const Tensor& x,
+                               const ScalarArray& num_or_sections,
+                               const Scalar& axis);
 
 }  // namespace experimental
 }  // namespace paddle
