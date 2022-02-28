@@ -34,9 +34,9 @@ struct alignas(sizeof(T) * VecSize) VectorType {
 #pragma pack(4)
 template <int kDims>
 struct BroadcastConfig {
-  int strides_in[DDim::kMaxRank];
-  int strides_out[DDim::kMaxRank];
-  int in_dim[DDim::kMaxRank];
+  int strides_in[phi::DDim::kMaxRank];
+  int strides_out[phi::DDim::kMaxRank];
+  int in_dim[phi::DDim::kMaxRank];
 
   HOSTDEVICE BroadcastConfig() {}
 
@@ -222,7 +222,7 @@ __device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
  * src: The data pointer of the current block.
  * size: The current block needs to load size data continuously.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
 __device__ __inline__ void ReadData(T* dst,
                                     const T _global_ptr_* src,
                                     int num) {
@@ -251,9 +251,9 @@ template <typename T,
           int BlockSize,
           typename ArgsT,
           int Index,
-          bool IsBoundary = false>
+          bool IsBoundary>
 __device__ __forceinline__ void ReadData(ArgsT* dst,
-                                         const T* __restrict__ src,
+                                         const T _global_ptr_* src,
                                          int num) {
   int thread_offset = core_id() * NX;
   __local__ T in_temp[1];
@@ -366,22 +366,25 @@ __device__ __inline__ void ReadDataBc(T* dst,
  * reduce_last_dim: Used to indicate whether the dimension of reduce contains
  * the lowest dimension.
  */
-template <typename T,
+template <typename Tx,
+          typename Ty,
           int NX,
           int NY,
           int BlockSize,
           int Rank,
           typename IndexCal,
+          typename Functor,
           bool IsBoundary = false>
-__device__ __inline__ void ReadDataReduce(T* dst,
-                                          const T _global_ptr_* src,
-                                          int block_offset,
-                                          const IndexCal& index_cal,
-                                          int size_nx,
-                                          int size_ny,
-                                          int stride_nx,
-                                          int stride_ny,
-                                          bool reduce_last_dim) {
+__device__ __forceinline__ void ReadDataReduce(Ty* dst,
+                                               const Tx* __restrict__ src,
+                                               int block_offset,
+                                               const IndexCal& index_cal,
+                                               int size_nx,
+                                               int size_ny,
+                                               int stride_nx,
+                                               int stride_ny,
+                                               Functor func,
+                                               bool reduce_last_dim) {
   __local__ Tx in_temp[1];
   int thread_offset = 0;
   int left_idx = 0;
@@ -618,11 +621,12 @@ template <typename T,
           int BlockSize,
           int Rank,
           bool IsBoundary = false>
-__device__ __inline__ void ReadDataBc(T* dst,
-                                      const T _global_ptr_* src,
-                                      uint32_t block_offset,
-                                      details::BroadcastConfig<Rank> config,
-                                      int total_num_output) {
+__device__ __inline__ void ReadDataBc(
+    T* dst,
+    const T _global_ptr_* src,
+    uint32_t block_offset,
+    const details::BroadcastConfig<Rank>& config,
+    int total_num_output) {
   int thread_offset = block_offset + core_id() * NX;
   int index_src = 0;
 

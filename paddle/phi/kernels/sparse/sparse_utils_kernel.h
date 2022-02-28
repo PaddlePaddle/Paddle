@@ -97,7 +97,7 @@ void DenseToSparseCsrKernel(const Context& dev_ctx,
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D Tensor."));
   const int64_t sparse_dim = x_dims.size() == 2 ? 2 : 3;
   DenseTensor indices = phi::Empty<T, Context>(dev_ctx);

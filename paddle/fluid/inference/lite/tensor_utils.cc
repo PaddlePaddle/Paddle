@@ -38,8 +38,6 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
     dst->emplace_back(v);
   }
 }
-template void SetLoD<paddle::lite::LoD, framework::LoD>(
-    paddle::lite::LoD* dst, const framework::LoD& src);
 template void SetLoD<framework::LoD, paddle::lite::LoD>(
     framework::LoD* dst, const paddle::lite::LoD& src);
 

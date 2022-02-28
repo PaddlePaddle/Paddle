@@ -90,7 +90,7 @@ function infrt_gen_and_build() {
         exit 7;
     fi
 
-    make -j ${parallel_number} infrt infrtopt infrtexec test_infrt_exec trt-exec infrt_lib_dist paddle-mlir-convert;build_error=$?
+    make -j ${parallel_number} infrt infrtopt infrtexec test_infrt_exec trt-exec phi-exec infrt_lib_dist paddle-mlir-convert;build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
     fi

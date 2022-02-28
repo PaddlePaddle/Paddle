@@ -47,7 +47,7 @@ paddle::experimental::Tensor CreateTensorWithValue(
 
   auto meta = EagerUtils::autograd_meta(&out);
   if (is_leaf) {
-    auto accumulation_node = std::make_shared<GradNodeAccumulation>();
+    auto accumulation_node = std::make_shared<GradNodeAccumulation>(meta);
     meta->SetGradNode(accumulation_node);
     meta->SetStopGradient(false);
   }

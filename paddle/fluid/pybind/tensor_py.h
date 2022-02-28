@@ -350,8 +350,14 @@ void SetTensorFromPyArrayT(
       auto type = framework::ToDataType(std::type_index(typeid(T)));
       self->ResetHolderWithType(holder, framework::TransToPtenDataType(type));
     } else {
-      auto dst = self->mutable_data<T>(place);
-      std::memcpy(dst, array.data(), array.nbytes());
+      // IPU does not store Tensor data, Tensor will be created on CPU
+      if (!self->initialized()) {
+        auto dst = self->mutable_data<T>(place);
+        std::memcpy(dst, array.data(), array.nbytes());
+      } else {
+        auto dst = self->mutable_data<T>(self->place());
+        std::memcpy(dst, array.data(), array.nbytes());
+      }
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(

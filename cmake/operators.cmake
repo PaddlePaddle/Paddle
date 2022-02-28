@@ -73,26 +73,12 @@ function(op_library TARGET)
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu)
                 list(APPEND cu_srcs ${TARGET}.cu)
             endif()
-<<<<<<< Updated upstream
-=======
             # rename in KP: .kps -> .cu
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
-                message(STATUS "lxd_debug: find kps file " ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
-                # add_custom_command(OUTPUT kp_rename 
-                #     COMMAND 
-                #         ${CMAKE_COMMAND} -E cp ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu
-                #     VERBATIM
-                # )
-                # add_custom_target(KP_RENAME_FINISH ALL 
-                #     DEPENDS kp_rename
-                # )
-                #list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
-                #file(RENAME ${TARGET}.kps ${TARGET}.cu)
                 file(COPY ${TARGET}.kps DESTINATION  ${CMAKE_CURRENT_BINARY_DIR})
                 file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
                 list(APPEND cu_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
             endif()
->>>>>>> Stashed changes
             if (WITH_NV_JETSON)
                 list(REMOVE_ITEM cu_srcs "decode_jpeg_op.cu")
             endif()
@@ -116,18 +102,12 @@ function(op_library TARGET)
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.cu)
                 list(APPEND hip_srcs ${TARGET}.cu)
             endif()
-<<<<<<< Updated upstream
-=======
             # rename in KP: .kps -> .cu
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
-                add_custom_command(OUTPUT kp_rename 
-                    COMMAND ${CMAKE_COMMAND} cp ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu
-                    VERBATIM
-                )
-                add_custom_target(KP_RENAME_FINISH ALL DEPENDS kp_rename)
+                file(COPY ${TARGET}.kps DESTINATION  ${CMAKE_CURRENT_BINARY_DIR})
+                file(RENAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.kps ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
                 list(APPEND hip_srcs ${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.cu)
             endif()
->>>>>>> Stashed changes
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu)
                 set(PART_CUDA_KERNEL_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.part.cu
                         ${PART_CUDA_KERNEL_FILES} PARENT_SCOPE)
@@ -156,6 +136,9 @@ function(op_library TARGET)
         if(WITH_XPU_KP)
             if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.xpu)
                 list(APPEND xpu_kp_cc_srcs ${TARGET}.xpu)
+            endif()
+            if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
+                list(APPEND xpu_kp_cc_srcs ${TARGET}.kps)
             endif()
         endif()
         if(WITH_ASCEND_CL)
@@ -193,6 +176,8 @@ function(op_library TARGET)
             elseif(WITH_XPU AND ${src} MATCHES ".*_op_xpu.cc$")
                 list(APPEND xpu_cc_srcs ${src})
             elseif(WITH_XPU_KP AND ${src} MATCHES ".*\\.xpu$")
+                list(APPEND xpu_kp_cc_srcs ${src})
+            elseif(WITH_XPU_KP AND ${src} MATCHES ".*\\.kps$")
                 list(APPEND xpu_kp_cc_srcs ${src})
             elseif(WITH_ASCEND_CL AND ${src} MATCHES ".*_op_npu.cc$")
                 list(APPEND npu_cc_srcs ${src})
@@ -416,7 +401,15 @@ function(op_library TARGET)
 
     # pybind USE_OP_DEVICE_KERNEL for XPU KP
     if (WITH_XPU_KP AND ${xpu_kp_cc_srcs_len} GREATER 0)
-        file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, KP);\n")
+        foreach(xpu_kp_src ${xpu_kp_cc_srcs})
+        set(op_name "")
+        find_register(${xpu_kp_src} "REGISTER_OP_KERNEL" op_name)
+        if(NOT ${op_name} EQUAL "")
+            file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, KP);\n")
+            message(STATUS "Building KP Target: ${op_name}")
+            set(pybind_flag 1)
+        endif()
+        endforeach()
     endif()
 
     # pybind USE_OP_DEVICE_KERNEL for NPU
