@@ -833,6 +833,8 @@ void OneHotInferMeta(const MetaTensor& x,
   auto out_dims = phi::make_ddim(out_dims_vec);
   out->set_dims(out_dims);
   out->share_lod(x);
+}
+
 void DiagInferMeta(const MetaTensor& x,
                    int offset,
                    float padding_value,
