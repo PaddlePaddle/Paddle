@@ -24,12 +24,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-struct LookupTableV2CPUFunctor {
-  LookupTableV2CPUFunctor(const Context& dev_ctx,
-                          const DenseTensor& input,
-                          const SelectedRows& weight,
-                          int64_t padding_idx,
-                          DenseTensor* out)
+struct LookupTableV2CPUSparseFunctor {
+  LookupTableV2CPUSparseFunctor(const Context& dev_ctx,
+                                const DenseTensor& input,
+                                const SelectedRows& weight,
+                                int64_t padding_idx,
+                                DenseTensor* out)
       : dev_ctx_(dev_ctx),
         input_(input),
         weight_(weight),
@@ -94,7 +94,7 @@ void SparseWeightEmbeddingKernel(const Context& ctx,
                                  const SelectedRows& weight,
                                  int64_t padding_idx,
                                  DenseTensor* out) {
-  LookupTableV2CPUFunctor<T, Context> functor(
+  LookupTableV2CPUSparseFunctor<T, Context> functor(
       ctx, input, weight, padding_idx, out);
   paddle::framework::VisitIntDataType(
       paddle::framework::TransToProtoVarType(input.dtype()), functor);
@@ -102,7 +102,7 @@ void SparseWeightEmbeddingKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(sparse_weight_embedding,
+PD_REGISTER_KERNEL(sparse_weight_embedding,
                    CPU,
                    ALL_LAYOUT,
                    phi::SparseWeightEmbeddingKernel,

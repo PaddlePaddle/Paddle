@@ -18,10 +18,8 @@ namespace phi {
 
 KernelSignature EmbeddingOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("W")) {
-    LOG(ERROR) << "is dense here";
     return KernelSignature("embedding", {"Ids", "W"}, {"padding_idx"}, {"Out"});
   } else {
-    LOG(ERROR) << "is selcted rows";
     return KernelSignature(
         "sparse_weight_embedding", {"Ids", "W"}, {"padding_idx"}, {"Out"});
   }
@@ -30,23 +28,37 @@ KernelSignature EmbeddingOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature EmbeddingGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("W")) {
-    return KernelSignature("embedding_grad",
-                           {"Ids", "W", GradVarName("Out")},
-                           {"padding_idx"},
-                           {GradVarName("W")});
+    if ((paddle::any_cast<bool>(ctx.Attr("is_sparse"))) == true) {
+      return KernelSignature("embedding_sparse_grad",
+                             {"Ids", "W", GradVarName("Out")},
+                             {"padding_idx"},
+                             {GradVarName("W")});
+    } else {
+      return KernelSignature("embedding_grad",
+                             {"Ids", "W", GradVarName("Out")},
+                             {"padding_idx"},
+                             {GradVarName("W")});
+    }
   } else {
-    return KernelSignature("sparse_weight_embedding_grad",
-                           {"Ids", "W", GradVarName("Out")},
-                           {"padding_idx"},
-                           {GradVarName("W")});
+    if ((paddle::any_cast<bool>(ctx.Attr("is_sparse"))) == true) {
+      return KernelSignature("sparse_weight_embedding_sparse_grad",
+                             {"Ids", "W", GradVarName("Out")},
+                             {"padding_idx"},
+                             {GradVarName("W")});
+    } else {
+      return KernelSignature("sparse_weight_embedding_grad",
+                             {"Ids", "W", GradVarName("Out")},
+                             {"padding_idx"},
+                             {GradVarName("W")});
+    }
   }
 }
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(lookup_table_v2, embedding);
-PT_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad, embedding_grad);
+PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2, embedding);
+PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad, embedding_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(lookup_table_v2, phi::EmbeddingOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(lookup_table_v2_grad,
+PD_REGISTER_ARG_MAPPING_FN(lookup_table_v2, phi::EmbeddingOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(lookup_table_v2_grad,
                            phi::EmbeddingGradOpArgumentMapping);

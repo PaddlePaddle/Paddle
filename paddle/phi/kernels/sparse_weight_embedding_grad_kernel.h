@@ -27,4 +27,12 @@ void SparseWeightEmbeddingGradKernel(const Context& ctx,
                                      int64_t padding_idx,
                                      DenseTensor* weight_grad);
 
+template <typename T, typename Context>
+void SparseWeightEmbeddingSparseGradKernel(const Context& ctx,
+                                           const DenseTensor& input,
+                                           const SelectedRows& weight,
+                                           const DenseTensor& out_grad,
+                                           int64_t padding_idx,
+                                           SelectedRows* weight_grad);
+
 }  // namespace phi

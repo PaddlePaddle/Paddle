@@ -99,7 +99,7 @@ void EmbeddingKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(embedding,
+PD_REGISTER_KERNEL(embedding,
                    CPU,
                    ALL_LAYOUT,
                    phi::EmbeddingKernel,

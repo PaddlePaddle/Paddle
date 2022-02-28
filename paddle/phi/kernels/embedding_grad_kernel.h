@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 
@@ -25,5 +26,13 @@ void EmbeddingGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
                          int64_t padding_idx,
                          DenseTensor* weight_grad);
+
+template <typename T, typename Context>
+void EmbeddingSparseGradKernel(const Context& ctx,
+                               const DenseTensor& input,
+                               const DenseTensor& weight,
+                               const DenseTensor& out_grad,
+                               int64_t padding_idx,
+                               SelectedRows* weight_grad);
 
 }  // namespace phi

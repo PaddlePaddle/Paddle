@@ -114,12 +114,95 @@ void EmbeddingGradKernel(const Context& ctx,
       paddle::framework::TransToProtoVarType(input.dtype()), functor);
 }
 
+template <typename T, typename Context>
+struct LookupTableV2SparseGradCPUFunctor {
+  LookupTableV2SparseGradCPUFunctor(const Context& dev_ctx,
+                                    const DenseTensor& input,
+                                    const DenseTensor& weight,
+                                    const DenseTensor& out_grad,
+                                    int64_t padding_idx,
+                                    SelectedRows* weight_grad)
+      : dev_ctx_(dev_ctx),
+        input_(input),
+        weight_(weight),
+        out_grad_(out_grad),
+        weight_grad_(weight_grad),
+        padding_idx_(padding_idx) {}
+
+  template <typename IdT>
+  void apply() {
+    DDim table_dim = weight_.dims();
+
+    auto ids = CopyIdsToVector<IdT, int64_t>(input_);
+    auto ids_num = static_cast<int64_t>(ids.size());
+
+    // Since paddings are not trainable and fixed in forward, the gradient of
+    // paddings makes no sense and we don't deal with it in backward.
+    auto* d_table = weight_grad_;
+    auto* d_output = &out_grad_;
+    d_table->set_rows(ids);
+
+    auto* d_table_value = d_table->mutable_value();
+    d_table_value->Resize({ids_num, table_dim[1]});
+
+    d_table_value->template mutable_data<T>(dev_ctx_.GetPlace());
+
+    d_table->set_height(table_dim[0]);
+
+    auto* d_output_data = d_output->template data<T>();
+    auto* d_table_data = d_table_value->template data<T>();
+
+    auto d_output_dims = d_output->dims();
+    auto d_output_dims_2d =
+        flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+    PADDLE_ENFORCE_EQ(d_table_value->dims(),
+                      d_output_dims_2d,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: The shape of lookup_table@Grad and "
+                          "output@Grad should be same. "
+                          "But received lookup_table@Grad's shape = [%s], "
+                          "output@Grad's shape = [%s].",
+                          d_table_value->dims(),
+                          d_output_dims_2d));
+    memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
+  }
+
+ private:
+  const Context& dev_ctx_;
+  const DenseTensor& input_;
+  const DenseTensor& weight_;
+  const DenseTensor& out_grad_;
+  SelectedRows* weight_grad_;
+  int64_t padding_idx_;
+};
+
+template <typename T, typename Context>
+void EmbeddingSparseGradKernel(const Context& ctx,
+                               const DenseTensor& input,
+                               const DenseTensor& weight,
+                               const DenseTensor& out_grad,
+                               int64_t padding_idx,
+                               SelectedRows* weight_grad) {
+  LookupTableV2SparseGradCPUFunctor<T, Context> functor(
+      ctx, input, weight, out_grad, padding_idx, weight_grad);
+  paddle::framework::VisitIntDataType(
+      paddle::framework::TransToProtoVarType(input.dtype()), functor);
+}
+
 }  // namespace phi
 
-PT_REGISTER_KERNEL(embedding_grad,
+PD_REGISTER_KERNEL(embedding_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::EmbeddingGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(embedding_sparse_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::EmbeddingSparseGradKernel,
                    float,
                    double,
                    phi::dtype::float16) {}
