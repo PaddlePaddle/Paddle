@@ -118,10 +118,12 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
 
 template class SoftmaxCUDNNFunctor<float>;
 template class SoftmaxCUDNNFunctor<platform::float16>;
-template class SoftmaxCUDNNFunctor<platform::bfloat16>;
 template class SoftmaxGradCUDNNFunctor<float>;
 template class SoftmaxGradCUDNNFunctor<platform::float16>;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+template class SoftmaxCUDNNFunctor<platform::bfloat16>;
 template class SoftmaxGradCUDNNFunctor<platform::bfloat16>;
+#endif
 
 // MIOPEN do not support double
 #ifndef PADDLE_WITH_HIP
@@ -150,8 +152,10 @@ template class SoftmaxGradFunctor<platform::CUDADeviceContext,
 
 template class SoftmaxFunctor<phi::GPUContext, platform::float16, false>;
 template class SoftmaxFunctor<phi::GPUContext, platform::float16, true>;
+#if CUDNN_VERSION_MIN(8, 1, 0)
 template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16, false>;
 template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16, true>;
+#endif
 template class SoftmaxFunctor<phi::GPUContext, float, false>;
 template class SoftmaxFunctor<phi::GPUContext, double, false>;
 template class SoftmaxFunctor<phi::GPUContext, float, true>;
@@ -159,7 +163,9 @@ template class SoftmaxFunctor<phi::GPUContext, double, true>;
 template class SoftmaxGradFunctor<phi::GPUContext, float>;
 template class SoftmaxGradFunctor<phi::GPUContext, double>;
 template class SoftmaxGradFunctor<phi::GPUContext, platform::float16>;
+#if CUDNN_VERSION_MIN(8, 1, 0)
 template class SoftmaxGradFunctor<phi::GPUContext, platform::bfloat16>;
+#endif
 
 }  // namespace math
 }  // namespace operators
