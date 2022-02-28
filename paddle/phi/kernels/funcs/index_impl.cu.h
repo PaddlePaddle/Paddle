@@ -54,7 +54,7 @@ __global__ void VectorizedIndexKernel(T *out,
 template <typename T, typename Functor>
 void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
   int numel = out->numel();
-  T *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+  T *out_data = dev_ctx.template Alloc<T>(out);
   if (numel <= 0) return;
   int vec_size = phi::GetVectorizedSize(out_data);
 #ifdef PADDLE_WITH_XPU_KP
