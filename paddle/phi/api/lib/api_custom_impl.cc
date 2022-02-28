@@ -34,7 +34,7 @@ namespace experimental {
 Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
-  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "copy", kernel_key);
 
@@ -67,7 +67,7 @@ std::vector<Tensor> split_impl(const Tensor& x,
                                const ScalarArray& num_or_sections,
                                const Scalar& axis) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
 
   Backend kernel_backend = kernel_key.backend();
   DataLayout kernel_layout = kernel_key.layout();
