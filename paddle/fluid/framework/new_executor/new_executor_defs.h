@@ -300,7 +300,7 @@ struct OpFuncNode {
   OpKernelComputeFunc kernel_func_;
   platform::DeviceContext* dev_ctx_;  // not owned
 
-  // fit for pten kernel
+  // fit for phi kernel
   phi::Kernel* pt_kernel_{nullptr};  // not owned
 
   OpFuncType type_;
@@ -321,7 +321,7 @@ class Instruction {
 
   OpKernelComputeFunc KernelFunc() const;
 
-  phi::Kernel* PtenKernel() const;
+  phi::Kernel* PhiKernel() const;
 
   OpFuncType KernelType() const;
 
