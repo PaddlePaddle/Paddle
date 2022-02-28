@@ -20,7 +20,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-// XKTODO (change name)
 void SeluGradKernel(const Context& dev_ctx,
                     const DenseTensor& out,
                     const DenseTensor& d_out,

@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#if defined(__NVCC__) || defined(__HIPCC__)
-// TODO( add GPU related file here )
-#endif
 #include <string>
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/for_range.h"
