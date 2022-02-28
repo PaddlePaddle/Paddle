@@ -14,8 +14,7 @@
 
 #pragma once
 
-// CUDA and HIP use same api
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_helper.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -24,8 +23,6 @@
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-
-#include "paddle/phi/backends/gpu/gpu_helper.h"
 
 namespace phi {
 
