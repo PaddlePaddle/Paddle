@@ -27,7 +27,10 @@ using XPUKernelSet =
 using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 
 XPUOpMap& get_kp_ops() {
-  static XPUOpMap s_xpu_kp_kernels{};
+  static XPUOpMap s_xpu_kp_kernels{
+      {"elementwise_add",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+  };
 
   return s_xpu_kp_kernels;
 }
