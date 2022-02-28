@@ -446,6 +446,7 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'conv_gelu_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'fc_fuse_pass',
                                  ['use_gpu', 'use_fc_padding'], [False, False])
+        graph = self._apply_pass(graph, 'fc_elementwise_add_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
         if self._is_fc_quantized(graph):
             # Disabled due to topology-dependent speed-up

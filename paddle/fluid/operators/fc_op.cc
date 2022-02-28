@@ -137,6 +137,10 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W", "(Tensor), The weight fc op with shape (I, O).");
     AddInput("Bias", "(Tensor, optional) Bias vector with shape (1 x O")
         .AsDispensable();
+    AddInput("ResidualData",
+             "(Tensor) Residual data which will be added to fc output")
+        .AsDispensable()
+        .AsExtra();
     AddOutput("Out",
               "(Tensor) The output tensor of fully connected operator. ");
     AddAttr<int>("in_num_col_dims",
