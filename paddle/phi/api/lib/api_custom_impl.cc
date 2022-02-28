@@ -58,7 +58,7 @@ Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking) {
 
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(
-      *dev_ctx, *dense_x, phi::TransToPtenPlace(backend), blocking, kernel_out);
+      *dev_ctx, *dense_x, phi::TransToPhiPlace(backend), blocking, kernel_out);
 
   return out;
 }
