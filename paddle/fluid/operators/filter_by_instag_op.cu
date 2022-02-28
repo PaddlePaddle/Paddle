@@ -38,13 +38,9 @@ namespace operators {
 using Tensor = framework::Tensor;
 using SelectedRows = phi::SelectedRows;
 using LoDTensor = framework::LoDTensor;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 template <typename T>
 using Vector = framework::Vector<T>;
-#else
-template <typename T>
-using Vector = framework::CPUVector<T>;
-#endif
 
 #define WARP_SIZE 32
 #define MAX_WARP_NUM 32
