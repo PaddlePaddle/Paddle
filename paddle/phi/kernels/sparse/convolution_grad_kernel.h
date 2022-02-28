@@ -33,5 +33,34 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       DenseTensor* x_grad,
                       DenseTensor* kernel_grad);
 
+template <typename T, typename Context>
+std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
+                                    const SparseCooTensor& x,
+                                    const DenseTensor& rulebook,
+                                    const DenseTensor& kernel,
+                                    const SparseCooTensor& out_grad,
+                                    const std::vector<int>& paddings,
+                                    const std::vector<int>& dilations,
+                                    const std::vector<int>& strides,
+                                    const int groups) {
+  DenseTensor x_grad = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor kernel_grad = phi::Empty<T, Context>(dev_ctx);
+  Conv3dGradKernel<T, Context>(dev_ctx,
+                               x,
+                               rulebook,
+                               kernel,
+                               out_grad,
+                               paddings,
+                               dilations,
+                               strides,
+                               groups,
+                               &x_grad,
+                               &kernel_grad);
+  std::vector<DenseTensor> out(2);
+  out[0] = x_grad;
+  out[1] = kernel_grad;
+  return out;
+}
+
 }  // namespace sparse
 }  // namespace phi

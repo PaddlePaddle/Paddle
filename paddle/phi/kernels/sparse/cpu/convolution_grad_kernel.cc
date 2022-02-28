@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/cpu/convolution.h"
+#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
 namespace phi {
 namespace sparse {
@@ -42,6 +43,8 @@ void Conv3dGradKernel(const Context& dev_ctx,
   const int out_channels = kernel_dims[4];
   const int* rulebook_ptr = rulebook.data<int>();
 
+  const int rulebook_len = rulebook.dims()[1];
+
   DenseTensorMeta in_features_meta(
       x.dtype(), {rulebook_len, in_channels}, DataLayout::NCHW);
   DenseTensorMeta d_x_features_meta(
@@ -53,15 +56,23 @@ void Conv3dGradKernel(const Context& dev_ctx,
   phi::DenseTensor d_x_features =
       phi::Empty(dev_ctx, std::move(d_x_features_meta));
   phi::DenseTensor out_grad_features =
-      phi::Empty(dev_ctx, std::move(out_features_meta));
+      phi::Empty(dev_ctx, std::move(out_grad_features_meta));
 
-  T* in_features_ptr = in_features.mutable_data<T>(place);
-  T* d_x_features_ptr = d_x_features.mutable_data<T>(place);
-  T* out_grad_features_ptr = out_grad_features.mutable_data<T>(place);
-  kernel_grad.Resize(kernel_dims);
-  T* d_kernel_ptr = kernel_grad->mutable_data<T>(place);
+  dev_ctx.Alloc(
+      &in_features, in_features.dtype(), sizeof(T) * in_features.numel());
+  T* in_features_ptr = in_features.data<T>();
+  dev_ctx.Alloc(
+      &d_x_features, d_x_features.dtype(), sizeof(T) * d_x_features.numel());
+  T* d_x_features_ptr = d_x_features.data<T>();
+  dev_ctx.Alloc(&out_grad_features,
+                out_grad_features.dtype(),
+                sizeof(T) * out_grad_features.numel());
+  T* out_grad_features_ptr = out_grad_features.data<T>();
+  kernel_grad->Resize(kernel_dims);
+  dev_ctx.Alloc(
+      kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
+  T* d_kernel_ptr = kernel_grad->data<T>();
 
-  const int rulebook_len = rulebook.dims()[1];
   Gather<T>(x.non_zero_elements().data<T>(),
             rulebook_ptr + rulebook_len,
             rulebook_len,
@@ -126,9 +137,10 @@ void Conv3dGradKernel(const Context& dev_ctx,
   }
 
   // 4. scatter
-  x_grad.Resize(x.dims());
-  T* x_grad_values_ptr = x_grad->mutable_data<T>(place);
-  memset(x_grad_values_ptr, 0, sizeof(T) * x_grad->nnz() * in_channels);
+  x_grad->Resize(x.non_zero_elements().dims());
+  dev_ctx.Alloc(x_grad, x_grad->dtype(), sizeof(T) * x_grad->numel());
+  T* x_grad_values_ptr = x_grad->data<T>();
+  memset(x_grad_values_ptr, 0, sizeof(T) * x_grad->numel());
   Scatter<T>(d_x_features_ptr,
              rulebook.data<int>() + rulebook_len,
              rulebook_len,
@@ -138,3 +150,13 @@ void Conv3dGradKernel(const Context& dev_ctx,
 
 }  // namespace sparse
 }  // namespace phi
+
+PD_REGISTER_KERNEL(sparse_conv_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::Conv3dGradKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}

@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -59,7 +60,8 @@ void TestConv3dBase(const std::vector<int>& indices,
                     const std::vector<int>& paddings,
                     const std::vector<int>& strides,
                     const std::vector<int>& dilations,
-                    const float diff = 1e-3) {
+                    const float diff = 1e-3,
+                    const bool backward = false) {
   phi::CPUContext dev_ctx_cpu;
   dev_ctx_cpu.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -127,6 +129,24 @@ void TestConv3dBase(const std::vector<int>& indices,
           correct_out_features[i] - out.non_zero_elements().data<T>()[i]));
       ASSERT_LT(tmp, diff);
     }
+
+    if (backward) {
+      std::vector<DenseTensor> grads = sparse::Conv3dGrad<T>(dev_ctx_cpu,
+                                                             x_tensor,
+                                                             rulebook,
+                                                             kernel_tensor,
+                                                             out,
+                                                             paddings,
+                                                             dilations,
+                                                             strides,
+                                                             1);
+      // for (int i = 0; i < (int)grads.size(); i++) {
+      //  for (int j = 0; j < (int)grads[i].numel(); j++) {
+      //    printf("%f ", (float)grads[i].data<T>()[j]);
+      //  }
+      //  printf("\n");
+      //}
+    }
   }
 }
 
@@ -141,7 +161,9 @@ void TestConv3d(const std::vector<int>& indices,
                 const int non_zero_num,
                 const std::vector<int>& paddings,
                 const std::vector<int>& strides,
-                const std::vector<int>& dilations) {
+                const std::vector<int>& dilations,
+                const float diff = 1e-3,
+                const bool backward = false) {
   // test float
   TestConv3dBase<float>(indices,
                         features,
@@ -154,7 +176,9 @@ void TestConv3d(const std::vector<int>& indices,
                         non_zero_num,
                         paddings,
                         strides,
-                        dilations);
+                        dilations,
+                        diff,
+                        backward);
   // test double
   TestConv3dBase<double>(indices,
                          cast<float, double>(features),
@@ -167,7 +191,9 @@ void TestConv3d(const std::vector<int>& indices,
                          non_zero_num,
                          paddings,
                          strides,
-                         dilations);
+                         dilations,
+                         diff,
+                         backward);
 }
 
 TEST(DEV_API, sparse_conv3d) {
@@ -467,5 +493,55 @@ TEST(DEV_API, sparse_conv2d) {
              dilations);
 }
 
+TEST(DEV_API, sparse_conv3d_backward) {
+  const int in_channels = 1;
+  const int out_channels = 1;
+  DDim x_dims = {1, 4, 4, 4, in_channels};
+  DDim kernel_dims = {3, 3, 3, in_channels, out_channels};
+  DDim out_dims = {1, 2, 2, 2, out_channels};
+  std::vector<int> paddings = {0, 0, 0};
+  std::vector<int> strides = {1, 1, 1};
+  std::vector<int> dilations = {1, 1, 1};
+
+  const int non_zero_num = 2;
+  std::vector<int> indices_flatten = {0, 0, 0, 2, 3, 2, 3, 2};
+
+  std::vector<float> features = {-0.28833008, 0.0287323};
+  // 3*3*3=27
+  std::vector<float> kernel = {
+      0.64306641, 0.45043945, 0.47216797, 0.22924805, 0.97509766, 0.86181641,
+      0.57861328, 0.91796875, 0.87255859, 0.16589355, 0.44555664, 0.01889038,
+      0.46459961, 0.44726562, 0.19909668, 0.89697266, 0.37158203, 0.00513077,
+      0.69628906, 0.26904297, 0.74707031, 0.54003906, 0.5390625,  0.07958984,
+      0.47338867, 0.90966797, 0.17126465};
+
+  std::vector<int> out_indices_flatten = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                          0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0,
+                                          1, 1, 0, 1, 0, 1, 0, 1, 0, 1};
+
+  std::vector<float> out_features = {4.9200e-03,
+                                     2.6140e-02,
+                                     2.2900e-03,
+                                     -2.3596e-01,
+                                     1.5000e-04,
+                                     1.0670e-02,
+                                     5.7200e-03,
+                                     1.2850e-02};
+
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations,
+             1e-3,
+             true);
+}
 }  // namespace tests
 }  // namespace phi
