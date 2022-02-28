@@ -23,7 +23,6 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/group_norm_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/phi/core/utils/array.h"
 
 namespace paddle {
 namespace operators {
@@ -178,7 +177,9 @@ __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
   T x_var = var[ng];
   x_var = x_var - x_mean * x_mean;
   T var_inv = rsqrt(x_var + epsilon);
-  if (cid == 0 && threadIdx.x == 0) real_var[ng] = x_var;
+  if (cid == 0 && threadIdx.x == 0) {
+    real_var[ng] = x_var;
+  }
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     T val;
     int hid, wid;
@@ -191,8 +192,12 @@ __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
       val = x[(bid * H + hid) * W * C + wid * C + ccid];
     }
     val = (val - x_mean) * var_inv;
-    if (flags & kHasScale) val *= scale[gid * group_size + cid];
-    if (flags & kHasBias) val += bias[gid * group_size + cid];
+    if (flags & kHasScale) {
+      val *= scale[ccid];
+    }
+    if (flags & kHasBias) {
+      val += bias[ccid];
+    }
     if (data_layout == DataLayout::kNCHW) {
       y[index] = val;
     } else {
