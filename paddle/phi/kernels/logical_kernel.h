@@ -18,12 +18,12 @@ limitations under the License. */
 
 namespace phi {
 
-#define DECLEAR_LOGICAL_BINARY_KERNEL(type)            \
-  template <typename T, typename Context>              \
-  void Logical##type##OpKernel(const Context& dev_ctx, \
-                               const DenseTensor& x,   \
-                               const DenseTensor& y,   \
-                               DenseTensor* out);
+#define DECLEAR_LOGICAL_BINARY_KERNEL(type)          \
+  template <typename T, typename Context>            \
+  void Logical##type##Kernel(const Context& dev_ctx, \
+                             const DenseTensor& x,   \
+                             const DenseTensor& y,   \
+                             DenseTensor* out);
 
 DECLEAR_LOGICAL_BINARY_KERNEL(And)
 DECLEAR_LOGICAL_BINARY_KERNEL(Or)
@@ -31,8 +31,8 @@ DECLEAR_LOGICAL_BINARY_KERNEL(Xor)
 #undef DECLEAR_LOGICAL_BINARY_KERNEL
 
 template <typename T, typename Context>
-void LogicalNotOpKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        DenseTensor* out);
+void LogicalNotKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      DenseTensor* out);
 
 }  // namespace phi

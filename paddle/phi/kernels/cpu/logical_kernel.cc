@@ -26,10 +26,10 @@ namespace phi {
 
 #define DEFINE_LOGICAL_BINARY_KERNEL(type)                         \
   template <typename T, typename Context>                          \
-  void Logical##type##OpKernel(const Context& dev_ctx,             \
-                               const DenseTensor& x,               \
-                               const DenseTensor& y,               \
-                               DenseTensor* out) {                 \
+  void Logical##type##Kernel(const Context& dev_ctx,               \
+                             const DenseTensor& x,                 \
+                             const DenseTensor& y,                 \
+                             DenseTensor* out) {                   \
     funcs::Logical##type##Functor<T> binary_func;                  \
     ElementwiseCompute<funcs::Logical##type##Functor<T>, T, bool>( \
         dev_ctx, x, y, -1, binary_func, out);                      \
@@ -41,9 +41,9 @@ DEFINE_LOGICAL_BINARY_KERNEL(Xor)
 #undef DEFINE_LOGICAL_BINARY_KERNEL
 
 template <typename T, typename Context>
-void LogicalNotOpKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        DenseTensor* out) {
+void LogicalNotKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      DenseTensor* out) {
   auto* out_ptr = dev_ctx.template Alloc<bool>(out);
   funcs::LogicalNotFunctor<T> unary_func;
 
@@ -57,7 +57,7 @@ void LogicalNotOpKernel(const Context& dev_ctx,
   PD_REGISTER_KERNEL(logical_and,                           \
                      CPU,                                   \
                      ALL_LAYOUT,                            \
-                     phi::Logical##func_type##OpKernel,     \
+                     phi::Logical##func_type##Kernel,       \
                      float,                                 \
                      double,                                \
                      bool,                                  \

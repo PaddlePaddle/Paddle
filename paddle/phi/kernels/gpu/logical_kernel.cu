@@ -24,10 +24,10 @@ namespace phi {
 
 #define DEFINE_LOGICAL_BINARY_KERNEL(type)                               \
   template <typename T, typename Context>                                \
-  void Logical##type##OpKernel(const Context& dev_ctx,                   \
-                               const DenseTensor& x,                     \
-                               const DenseTensor& y,                     \
-                               DenseTensor* out) {                       \
+  void Logical##type##Kernel(const Context& dev_ctx,                     \
+                             const DenseTensor& x,                       \
+                             const DenseTensor& y,                       \
+                             DenseTensor* out) {                         \
     using InT = typename funcs::Logical##type##Functor<T>::ELEMENT_TYPE; \
     using OutT = bool;                                                   \
     dev_ctx.template Alloc<bool>(out);                                   \
@@ -44,9 +44,9 @@ DEFINE_LOGICAL_BINARY_KERNEL(Xor)
 #undef DEFINE_LOGICAL_BINARY_KERNEL
 
 template <typename T, typename Context>
-void LogicalNotOpKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        DenseTensor* out) {
+void LogicalNotKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      DenseTensor* out) {
   using InT = typename funcs::LogicalNotFunctor<T>::ELEMENT_TYPE;
   using OutT = bool;
 
@@ -64,7 +64,7 @@ void LogicalNotOpKernel(const Context& dev_ctx,
   PD_REGISTER_KERNEL(logical_and,                            \
                      GPU,                                    \
                      ALL_LAYOUT,                             \
-                     phi::Logical##func_type##OpKernel,      \
+                     phi::Logical##func_type##Kernel,        \
                      float,                                  \
                      double,                                 \
                      bool,                                   \
