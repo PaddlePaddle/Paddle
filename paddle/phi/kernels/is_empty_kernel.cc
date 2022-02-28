@@ -26,7 +26,8 @@ void IsEmptyKernel(const Context& dev_ctx,
   // Note: is_empty is always executed on CPU and the output data should
   // always be allocated for CPUPlace. We reigister CUDA kernel for this op to
   // avoid the unnecessary data transform.
-  out->mutable_data<bool>(phi::CPUPlace())[0] = phi::product(x.dims()) == 0;
+  bool* out_data = dev_ctx.template HostAlloc<bool>(out);
+  out_data[0] = phi::product(x.dims()) == 0;
 }
 
 }  // namespace phi
