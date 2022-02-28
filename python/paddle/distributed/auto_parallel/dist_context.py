@@ -587,7 +587,8 @@ class DistributedContext:
         for k, v in self.__dict__.items():
             if k == "_serial_program" or k == "_serial_graph" \
                 or k == "_dist_main_programs" or k == "_dist_startup_programs" \
-                or k == "_serial_ordered_nodes":
+                or k == "_serial_ordered_nodes" or k == "_serial_ordered_tensor_nodes" \
+                or k == "_serial_ordered_op_nodes":
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
