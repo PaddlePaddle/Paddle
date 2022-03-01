@@ -21,8 +21,8 @@
 #include "paddle/infrt/dialect/infrt/infrt_dialect.h"
 #include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/pd_ops.h"
-#include "paddle/infrt/dialect/phi/infrt_phi_tensor.h"
-#include "paddle/infrt/dialect/phi/phi_base.h"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
 #include "paddle/infrt/dialect/tensor_shape.h"
 
 namespace infrt {
