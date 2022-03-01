@@ -14,6 +14,7 @@
 
 #pragma once
 #include <mlir/Pass/Pass.h>
+#include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
@@ -51,7 +52,7 @@ class TRTGraphSplitPass
  public:
   ::llvm::StringRef getName() const override { return "trtGraphSplitPass"; }
   void getDependentDialects(mlir::DialectRegistry &registry) const override {
-    registry.insert<TensorRTDialect>();
+    registry.insert<TensorRTDialect, ::infrt::dialect::INFRTDialect>();
   }
   void runOnFunction() override;
   explicit TRTGraphSplitPass(size_t min_subgraph_size = 3)

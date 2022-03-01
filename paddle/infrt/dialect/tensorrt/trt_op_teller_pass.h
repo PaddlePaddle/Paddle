@@ -14,6 +14,7 @@
 
 #pragma once
 #include <mlir/Pass/Pass.h>
+#include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
@@ -57,7 +58,7 @@ class TRTOpTellerPass
     : public mlir::PassWrapper<TRTOpTellerPass, mlir::FunctionPass> {
  public:
   void getDependentDialects(mlir::DialectRegistry &registry) const override {
-    registry.insert<TensorRTDialect>();
+    registry.insert<TensorRTDialect, ::infrt::dialect::INFRTDialect>();
   }
   ::llvm::StringRef getName() const override { return "trtOpTellerPass"; }
   void runOnFunction() override;
