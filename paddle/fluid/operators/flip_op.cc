@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/flip_op.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -29,6 +29,7 @@ class FlipOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+  // TODO move to phi kernel
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"), true,
@@ -90,7 +91,7 @@ class FlipOp : public framework::OperatorWithKernel {
     for (int i = 0; i < x_dims.size(); ++i) {
       output_dims[i] = x_dims[i];
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
     ctx->ShareLoD("X", "Out");
   }
 
@@ -150,14 +151,6 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(flip, ops::FlipOp, ops::FlipOpMaker, ops::FlipOpInferVarType,
                   ops::FlipOpGradMaker<paddle::framework::OpDesc>,
                   ops::FlipOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    flip, ops::FlipKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, int32_t>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, plat::complex<float>>,
-    ops::FlipKernel<paddle::platform::CPUDeviceContext, plat::complex<double>>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(flip)

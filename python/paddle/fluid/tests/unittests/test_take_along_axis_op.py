@@ -106,6 +106,20 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [2, 2]
+        self.index_shape = [4, 2]
+        self.index_np = np.array(
+            [[0, 0], [1, 0], [0, 0], [1, 0]]).astype('int64')
+        self.x_np = np.random.random(self.shape).astype(np.float32)
+        self.place = [paddle.CPUPlace()]
+        self.axis = 0
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

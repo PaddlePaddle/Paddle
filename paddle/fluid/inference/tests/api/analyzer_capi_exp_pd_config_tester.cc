@@ -79,8 +79,6 @@ TEST(PD_Config, interface) {
 
   PD_ConfigEnableMkldnnBfloat16(config);
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
-  bool mkldnn_bf16_enabled = PD_ConfigMkldnnBfloat16Enabled(config);
-  EXPECT_TRUE(mkldnn_bf16_enabled);
 #endif
 
   PD_ConfigEnableMemoryOptim(config, true);

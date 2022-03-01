@@ -162,8 +162,8 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   out_dims_vec.push_back(1);
   std::vector<int64_t> tmp_dims_vec{tmp_dim_0};
   tmp_dims_vec.push_back(1);
-  ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
-  ctx->SetOutputDim("Tmp", framework::make_ddim(tmp_dims_vec));
+  ctx->SetOutputDim("Out", phi::make_ddim(out_dims_vec));
+  ctx->SetOutputDim("Tmp", phi::make_ddim(tmp_dims_vec));
 }
 
 void MatchMatrixTensorOpGrad::InferShape(
@@ -249,7 +249,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     memset(bottom_l_trans_data, 0.0,
            tmp->dims()[0] * tmp->dims()[1] * sizeof(T));
 
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
 
     call_gemm(blas, CblasNoTrans, CblasNoTrans, x->dims()[0], dim_t * dim_in,
               dim_in, 1.0f, bottom_l_data, t_data, 0.0f, bottom_l_trans_data);
@@ -262,7 +262,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
         const auto* l_t_data =
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
         const auto* r_data = bottom_r_data + offset_r[b] * dim_in;
-        auto blas_2 = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+        auto blas_2 = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
         call_gemm_with_lda(blas_2, CblasNoTrans, CblasTrans, len_l, len_r,
                            dim_in, 1.0f, l_t_data, r_data, 0.0f, top_data,
                            dim_t * dim_in);
@@ -346,7 +346,7 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
 
     auto* t_data = w->data<T>();
     auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));

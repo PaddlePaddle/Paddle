@@ -133,6 +133,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "paddle/utils/string/to_string.h"
+
 namespace paddle {
 namespace string {
 namespace tinyformat {

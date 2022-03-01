@@ -1132,10 +1132,10 @@ def _append_backward_ops_(block,
         # So rename here before _addup_repetitive_outputs_.
         if program._appending_grad_times > 1:
             for op_desc in grad_op_desc:
-                if not _is_grad_op_(op):
-                    for name in op_desc.input_arg_names():
-                        if name in rename_var_map:
-                            op_desc._rename_input(name, rename_var_map[name])
+                forward_op_inputs = op.desc.input_arg_names()
+                for name in op_desc.input_arg_names():
+                    if name in rename_var_map and name not in forward_op_inputs:
+                        op_desc._rename_input(name, rename_var_map[name])
                 for name in op_desc.output_arg_names():
                     if "@GRAD" not in name:
                         continue

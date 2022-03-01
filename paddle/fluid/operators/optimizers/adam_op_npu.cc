@@ -122,9 +122,9 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     const Tensor* beta2_tensor = nullptr;
     const Tensor* epsilon_tensor = nullptr;
 
-    Tensor beta1_tmp(framework::proto::VarType::FP32);
-    Tensor beta2_tmp(framework::proto::VarType::FP32);
-    Tensor epsilon_tmp(framework::proto::VarType::FP32);
+    Tensor beta1_tmp(experimental::DataType::FLOAT32);
+    Tensor beta2_tmp(experimental::DataType::FLOAT32);
+    Tensor epsilon_tmp(experimental::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
       beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
@@ -255,9 +255,9 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
 
-      Tensor one(framework::proto::VarType::FP32);
-      Tensor decay(framework::proto::VarType::FP32);
-      Tensor tmp(framework::proto::VarType::FP32);
+      Tensor one(experimental::DataType::FLOAT32);
+      Tensor decay(experimental::DataType::FLOAT32);
+      Tensor tmp(experimental::DataType::FLOAT32);
 
       tmp.mutable_data<float>({1}, place);
       one.mutable_data<float>({1}, place);

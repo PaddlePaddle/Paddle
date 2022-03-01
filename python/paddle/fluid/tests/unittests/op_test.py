@@ -30,6 +30,7 @@ from copy import copy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.framework import _in_eager_mode
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
@@ -167,8 +168,10 @@ def get_numeric_gradient(place,
         elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             numpy_tensor = numpy_tensor.flatten()
-            return struct.unpack('<f', struct.pack('<I', numpy_tensor[i]
-                                                   << 16))[0]
+            return struct.unpack('<f',
+                                 struct.pack('<I',
+                                             np.uint32(numpy_tensor[i])
+                                             << np.uint32(16)))[0]
         elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
@@ -271,7 +274,7 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
 def convert_uint16_to_float(in_list):
     in_list = np.asarray(in_list)
     out = np.vectorize(
-        lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+        lambda x: struct.unpack('<f', struct.pack('<I', np.uint32(x) << np.uint32(16)))[0],
         otypes=[np.float32])(in_list.flat)
     return np.reshape(out, in_list.shape)
 
@@ -377,7 +380,7 @@ class OpTest(unittest.TestCase):
             hasattr(self, 'output_dtype') and
             self.output_dtype == np.uint16) or (
                 hasattr(self, 'mkldnn_data_type') and
-                getattr(self, 'mkldnn_data_type') is "bfloat16") or (
+                getattr(self, 'mkldnn_data_type') == "bfloat16") or (
                     hasattr(self, 'attrs') and
                     'mkldnn_data_type' in self.attrs and
                     self.attrs['mkldnn_data_type'] == 'bfloat16')
@@ -603,8 +606,12 @@ class OpTest(unittest.TestCase):
 
             if is_input:
                 v = self._create_var_from_numpy(np_value_temp)
+
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
+                    if _in_eager_mode():
+                        v.retain_grads()
+
                 if has_lod:
                     v.value().get_tensor().set_recursive_sequence_lengths(
                         lod_temp)
@@ -615,7 +622,6 @@ class OpTest(unittest.TestCase):
                     type=core.VarDesc.VarType.LOD_TENSOR,
                     persistable=False,
                     stop_gradient=False)
-
             return v
 
         # prepare variable for input or output
@@ -678,7 +684,6 @@ class OpTest(unittest.TestCase):
             # prepare input variable
             inputs = self.append_input_output_for_dygraph(op_proto, self.inputs,
                                                           True, False, block)
-
             # prepare output variable
             outputs = self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
@@ -1657,7 +1662,7 @@ class OpTest(unittest.TestCase):
         for grad in analytic_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+                max_relative_error = 0.04 if max_relative_error < 0.04 else max_relative_error
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
 
@@ -1665,7 +1670,7 @@ class OpTest(unittest.TestCase):
         for grad in numeric_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+                max_relative_error = 0.04 if max_relative_error < 0.04 else max_relative_error
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
 
@@ -1738,6 +1743,7 @@ class OpTest(unittest.TestCase):
                 for attrs_name in self.attrs:
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
+
             block.append_op(
                 type=self.op_type,
                 inputs=inputs,
@@ -1814,7 +1820,9 @@ class OpTest(unittest.TestCase):
                         inputs={"X": loss_sum},
                         outputs={"Out": loss},
                         attrs={'scale': 1.0 / float(len(avg_sum))})
+
                 loss.backward()
+
                 fetch_list_grad = []
                 for inputs_to_check_name in inputs_to_check:
                     a = inputs_grad_dict[inputs_to_check_name].gradient()
@@ -1831,11 +1839,21 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del (inputs[no_grad_val])
 
-                grad_inputs = paddle.grad(
-                    outputs=fluid.layers.utils.flatten(outputs),
-                    inputs=fluid.layers.utils.flatten(inputs),
-                    grad_outputs=grad_outputs)
-                return [grad.numpy() for grad in grad_inputs]
+                if _in_eager_mode():
+                    core.eager.run_backward(
+                        fluid.layers.utils.flatten(outputs), grad_outputs,
+                        False)
+                    grad_inputs = []
+                    for inputs_list in inputs.values():
+                        for inp in inputs_list:
+                            grad_inputs.append(inp.grad.numpy())
+                    return grad_inputs
+                else:
+                    grad_inputs = paddle.grad(
+                        outputs=fluid.layers.utils.flatten(outputs),
+                        inputs=fluid.layers.utils.flatten(inputs),
+                        grad_outputs=grad_outputs)
+                    return [grad.numpy() for grad in grad_inputs]
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):

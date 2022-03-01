@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/tensor_formatter.h"
 
 #include <string>
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -90,7 +91,8 @@ std::string TensorFormatter::Format(const framework::LoDTensor& print_tensor,
                << std::endl;
   }
 
-  std::type_index dtype = framework::ToTypeIndex(print_tensor.type());
+  std::type_index dtype = framework::ToTypeIndex(
+      framework::TransToProtoVarType(print_tensor.dtype()));
   if (print_tensor_type_) {
     log_stream << "  - dtype: " << platform::demangle(dtype.name())
                << std::endl;

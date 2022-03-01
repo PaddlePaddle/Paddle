@@ -278,6 +278,8 @@ class TestLayerNormOp(unittest.TestCase):
             has_scale=False,
             has_bias=False,
             y_grad_scale=0.1)
+        self.check_forward_backward(
+            shape=[512, 1024], begin_norm_axis=1, has_scale=True, has_bias=True)
 
 
 class TestLayerNormAPI(unittest.TestCase):

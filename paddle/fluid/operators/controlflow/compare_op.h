@@ -97,6 +97,9 @@ class CompareOpKernel
                                  functor<int>, inverse_functor<int>>,         \
                              ::paddle::operators::CompareOpKernel<            \
                                  ::paddle::platform::dev##DeviceContext,      \
+                                 functor<int16_t>, inverse_functor<int16_t>>, \
+                             ::paddle::operators::CompareOpKernel<            \
+                                 ::paddle::platform::dev##DeviceContext,      \
                                  functor<int64_t>, inverse_functor<int64_t>>, \
                              ::paddle::operators::CompareOpKernel<            \
                                  ::paddle::platform::dev##DeviceContext,      \

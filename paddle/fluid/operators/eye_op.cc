@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/eye_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -82,14 +82,8 @@ Return an identity tensor whose shape is [num_rows, num_columns].
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(
     eye, ops::EyeOp, ops::EyeOpMaker, ops::EyeOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(eye, ops::EyeKernel<CPU, float>,
-                       ops::EyeKernel<CPU, double>,
-                       ops::EyeKernel<CPU, int64_t>, ops::EyeKernel<CPU, int>,
-                       ops::EyeKernel<CPU, paddle::platform::float16>);

@@ -59,8 +59,8 @@ TEST(DeviceCode, cuda) {
   paddle::framework::Tensor cpu_z;
 
   float scale = 2;
-  auto dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  auto dims =
+      phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   cpu_x.mutable_data<float>(dims, paddle::platform::CPUPlace());
   cpu_y.mutable_data<float>(dims, paddle::platform::CPUPlace());
 

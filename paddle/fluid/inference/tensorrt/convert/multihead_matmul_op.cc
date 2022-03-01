@@ -85,67 +85,31 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
     if (engine_->with_dynamic_shape()) {
       if (engine_->use_oss()) {
-        int head_size = hidden_out / head_number;
-        // [3, head_number, head_size, hidden_in] -> [head_number, 3, head_size,
-        // hidden_in]
-        auto transpose_weight_v2 = [](const float* src, float* dst, int three,
-                                      int head_number, int head_size,
-                                      int hidden_in) {
-          const int HH = head_size * hidden_in;
-          for (int i = 0; i < three; ++i) {
-            for (int n = 0; n < head_number; ++n) {
-              for (int hh = 0; hh < HH; ++hh) {
-                dst[n * three * HH + i * HH + hh] =
-                    src[i * head_number * HH + n * HH + hh];
-              }
-            }
-          }
-        };
-        // [3, head_number, head_size] -> [head_number, 3, head_size]
-        auto transpose_bias_v2 = [](const float* src, float* dst, int N,
-                                    int H) {
-          for (int i = 0; i < 3; ++i) {
-            for (int n = 0; n < N; ++n) {
-              for (int h = 0; h < H; ++h) {
-                dst[n * 3 * H + i * H + h] = src[i * N * H + n * H + h];
-              }
-            }
-          }
-        };
-        memcpy(weight_data_tmp.data(), weight_data,
-               weight_t->numel() * sizeof(float));
-        transpose_weight_v2(weight_data_tmp.data(), weight_data, three,
-                            head_number, head_size, hidden_in);
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
                                  static_cast<int32_t>(weight_t->numel())};
-
-        std::vector<float> bias_data_tmp;
-        bias_data_tmp.reserve(bias_t->numel());
-        memcpy(bias_data_tmp.data(), bias_data,
-               bias_t->numel() * sizeof(float));
-        transpose_bias_v2(bias_data_tmp.data(), bias_data, head_number,
-                          head_size);
         nvinfer1::Weights bias{nvinfer1::DataType::kFLOAT,
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
-
-        nvinfer1::ILayer* fc_layer = nullptr;
-        float dp_probs = 1.0 / 127.0;
-        if (enable_int8) {
+        if (engine_->with_interleaved()) {
+          VLOG(4) << "fused multihead_matmul op: use_oss and with_interleaved";
+          if (!enable_int8) {
+            PADDLE_THROW(
+                platform::errors::Fatal("use with_interleaved must be int8."));
+          }
+          nvinfer1::ILayer* fc_layer = nullptr;
+          float dp_probs = 1.0 / 127.0;
           nvinfer1::DimsHW nv_ksize(1, 1);
           fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution, *input, n,
                                           nv_ksize, weight, bias);
-        } else {
-          fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input, n,
-                                          weight, bias);
-        }
-
-        if (enable_int8) {
+          fc_layer->setName(
+              ("Multihead: Convolution/FullyConnected: (Output: " +
+               output_name + ")")
+                  .c_str());
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("fc_out_threshold"), true,
               platform::errors::InvalidArgument(
-                  "must have out threshold in multihead layers in int8 mode"));
+                  "must have out_threshold in multihead layers in int8 mode"));
           float out_scale =
               BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
           engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
@@ -153,73 +117,194 @@ class MultiheadMatMulOpConverter : public OpConverter {
             dp_probs =
                 BOOST_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
           }
-        }
-
-        auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
-
-        auto creator = GetPluginRegistry()->getPluginCreator(
-            "CustomQKVToContextPluginDynamic", "2");
-        assert(creator != nullptr);
-        int type = static_cast<int>((engine_->WithFp16() == 1)
-                                        ? nvinfer1::DataType::kHALF
-                                        : nvinfer1::DataType::kFLOAT);
-        if (enable_int8) {
-          type = static_cast<int>(nvinfer1::DataType::kHALF);
+          auto creator = GetPluginRegistry()->getPluginCreator(
+              "CustomQKVToContextPluginDynamic", "3");
+          assert(creator != nullptr);
+          std::vector<nvinfer1::PluginField> fields{
+              {"hidden_size", &hidden_out, nvinfer1::PluginFieldType::kINT32,
+               1},
+              {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32,
+               1}};
           if (qkv2context_plugin_int8) {
-            type = static_cast<int>(nvinfer1::DataType::kINT8);
+            fields.push_back({"dq_probs", &dp_probs,
+                              nvinfer1::PluginFieldType::kFLOAT32, 1});
           }
-        }
-        bool has_mask = true;
-        int var_seqlen = 1;
-        std::vector<nvinfer1::PluginField> fields{
-            {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
-            {"hidden_size", &hidden_out, nvinfer1::PluginFieldType::kINT32, 1},
-            {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
-            {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
-            {"var_seqlen", &var_seqlen, nvinfer1::PluginFieldType::kINT32, 1}};
-        if (qkv2context_plugin_int8) {
-          fields.push_back(
-              {"dq_probs", &dp_probs, nvinfer1::PluginFieldType::kFLOAT32, 1});
-        }
-        nvinfer1::PluginFieldCollection* plugin_collection =
-            static_cast<nvinfer1::PluginFieldCollection*>(
-                malloc(sizeof(*plugin_collection) +
-                       fields.size() *
-                           sizeof(nvinfer1::PluginField)));  // remember to free
-        plugin_collection->nbFields = static_cast<int>(fields.size());
-        plugin_collection->fields = fields.data();
+          nvinfer1::PluginFieldCollection* plugin_collection =
+              static_cast<nvinfer1::PluginFieldCollection*>(malloc(
+                  sizeof(*plugin_collection) +
+                  fields.size() *
+                      sizeof(nvinfer1::PluginField)));  // remember to free
+          plugin_collection->nbFields = static_cast<int>(fields.size());
+          plugin_collection->fields = fields.data();
 
-        auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
-                                            plugin_collection);
-        free(plugin_collection);
+          auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
+                                              plugin_collection);
+          free(plugin_collection);
 
-        std::vector<nvinfer1::ITensor*> plugin_inputs;
-        plugin_inputs.emplace_back(fc_layer->getOutput(0));
-        plugin_inputs.emplace_back(mask_tensor);
-        if (engine_->Has("ernie_pos_name")) {
+          std::vector<nvinfer1::ITensor*> plugin_inputs;
+          plugin_inputs.emplace_back(fc_layer->getOutput(0));
+          if (engine_->Has("ernie_pos_name")) {
+            plugin_inputs.emplace_back(engine_->GetITensor(
+                engine_->Get<std::string>("ernie_pos_name")));
+          } else {
+            plugin_inputs.emplace_back(engine_->GetITensor(
+                engine_->network()
+                    ->getInput(2)
+                    ->getName()));  // cu_seqlens, eval_placeholder_2
+          }
+          auto max_seqlen_tensor =
+              engine_->GetITensor(engine_->network()->getInput(3)->getName());
+          engine_->SetTensorDynamicRange(max_seqlen_tensor, 1.0f);
+          auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle,
+              *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
+          nvinfer1::Dims shape_dim;
+          shape_dim.nbDims = 1;
+          shape_dim.d[0] = -1;
+          shuffle_layer->setReshapeDimensions(shape_dim);
+          engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
           plugin_inputs.emplace_back(
-              engine_->GetITensor(engine_->Get<std::string>("ernie_pos_name")));
+              shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
+          shuffle_layer->setName(
+              ("Multihead: Shuffle: (Output: " + output_name + ")").c_str());
+          auto plugin_layer = engine_->network()->addPluginV2(
+              plugin_inputs.data(), plugin_inputs.size(), *plugin);
+          layer = plugin_layer;
         } else {
-          plugin_inputs.emplace_back(engine_->GetITensor(
-              engine_->network()
-                  ->getInput(2)
-                  ->getName()));  // cu_seqlens, eval_placeholder_2
-        }
-        auto max_seqlen_tensor =
-            engine_->GetITensor(engine_->network()->getInput(3)->getName());
-        auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Shuffle,
-            *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
-        nvinfer1::Dims shape_dim;
-        shape_dim.nbDims = 1;
-        shape_dim.d[0] = -1;
-        shuffle_layer->setReshapeDimensions(shape_dim);
-        plugin_inputs.emplace_back(
-            shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
+          int head_size = hidden_out / head_number;
+          // [3, head_number, head_size, hidden_in] -> [head_number, 3,
+          // head_size,
+          // hidden_in]
+          auto transpose_weight_v2 = [](const float* src, float* dst, int three,
+                                        int head_number, int head_size,
+                                        int hidden_in) {
+            const int HH = head_size * hidden_in;
+            for (int i = 0; i < three; ++i) {
+              for (int n = 0; n < head_number; ++n) {
+                for (int hh = 0; hh < HH; ++hh) {
+                  dst[n * three * HH + i * HH + hh] =
+                      src[i * head_number * HH + n * HH + hh];
+                }
+              }
+            }
+          };
+          // [3, head_number, head_size] -> [head_number, 3, head_size]
+          auto transpose_bias_v2 = [](const float* src, float* dst, int N,
+                                      int H) {
+            for (int i = 0; i < 3; ++i) {
+              for (int n = 0; n < N; ++n) {
+                for (int h = 0; h < H; ++h) {
+                  dst[n * 3 * H + i * H + h] = src[i * N * H + n * H + h];
+                }
+              }
+            }
+          };
+          memcpy(weight_data_tmp.data(), weight_data,
+                 weight_t->numel() * sizeof(float));
+          transpose_weight_v2(weight_data_tmp.data(), weight_data, three,
+                              head_number, head_size, hidden_in);
 
-        auto plugin_layer = engine_->network()->addPluginV2(
-            plugin_inputs.data(), plugin_inputs.size(), *plugin);
-        layer = plugin_layer;
+          std::vector<float> bias_data_tmp;
+          bias_data_tmp.reserve(bias_t->numel());
+          memcpy(bias_data_tmp.data(), bias_data,
+                 bias_t->numel() * sizeof(float));
+          transpose_bias_v2(bias_data_tmp.data(), bias_data, head_number,
+                            head_size);
+
+          nvinfer1::ILayer* fc_layer = nullptr;
+          float dp_probs = 1.0 / 127.0;
+          if (enable_int8) {
+            nvinfer1::DimsHW nv_ksize(1, 1);
+            fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution, *input, n,
+                                            nv_ksize, weight, bias);
+          } else {
+            fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input, n,
+                                            weight, bias);
+          }
+
+          if (enable_int8) {
+            PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"), true,
+                              platform::errors::InvalidArgument(
+                                  "must have out threshold in multihead layers "
+                                  "in int8 mode"));
+            float out_scale =
+                BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+            engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
+            if (qkv2context_plugin_int8) {
+              dp_probs =
+                  BOOST_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
+            }
+          }
+
+          auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
+
+          auto creator = GetPluginRegistry()->getPluginCreator(
+              "CustomQKVToContextPluginDynamic", "2");
+          assert(creator != nullptr);
+          int type = static_cast<int>((engine_->WithFp16() == 1)
+                                          ? nvinfer1::DataType::kHALF
+                                          : nvinfer1::DataType::kFLOAT);
+          if (enable_int8) {
+            type = static_cast<int>(nvinfer1::DataType::kHALF);
+            if (qkv2context_plugin_int8) {
+              type = static_cast<int>(nvinfer1::DataType::kINT8);
+            }
+          }
+          bool has_mask = true;
+          int var_seqlen = 1;
+          std::vector<nvinfer1::PluginField> fields{
+              {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
+              {"hidden_size", &hidden_out, nvinfer1::PluginFieldType::kINT32,
+               1},
+              {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
+              {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
+              {"var_seqlen", &var_seqlen, nvinfer1::PluginFieldType::kINT32,
+               1}};
+          if (qkv2context_plugin_int8) {
+            fields.push_back({"dq_probs", &dp_probs,
+                              nvinfer1::PluginFieldType::kFLOAT32, 1});
+          }
+          nvinfer1::PluginFieldCollection* plugin_collection =
+              static_cast<nvinfer1::PluginFieldCollection*>(malloc(
+                  sizeof(*plugin_collection) +
+                  fields.size() *
+                      sizeof(nvinfer1::PluginField)));  // remember to free
+          plugin_collection->nbFields = static_cast<int>(fields.size());
+          plugin_collection->fields = fields.data();
+
+          auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
+                                              plugin_collection);
+          free(plugin_collection);
+
+          std::vector<nvinfer1::ITensor*> plugin_inputs;
+          plugin_inputs.emplace_back(fc_layer->getOutput(0));
+          plugin_inputs.emplace_back(mask_tensor);
+          if (engine_->Has("ernie_pos_name")) {
+            plugin_inputs.emplace_back(engine_->GetITensor(
+                engine_->Get<std::string>("ernie_pos_name")));
+          } else {
+            plugin_inputs.emplace_back(engine_->GetITensor(
+                engine_->network()
+                    ->getInput(2)
+                    ->getName()));  // cu_seqlens, eval_placeholder_2
+          }
+          auto max_seqlen_tensor =
+              engine_->GetITensor(engine_->network()->getInput(3)->getName());
+          auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle,
+              *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
+          nvinfer1::Dims shape_dim;
+          shape_dim.nbDims = 1;
+          shape_dim.d[0] = -1;
+          shuffle_layer->setReshapeDimensions(shape_dim);
+          engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
+          plugin_inputs.emplace_back(
+              shuffle_layer->getOutput(0));  // max_seqlen, eval_placeholder_3
+
+          auto plugin_layer = engine_->network()->addPluginV2(
+              plugin_inputs.data(), plugin_inputs.size(), *plugin);
+          layer = plugin_layer;
+        }
       } else {
         PADDLE_ENFORCE_EQ(
             input->getDimensions().nbDims, 3,

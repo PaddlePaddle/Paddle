@@ -58,7 +58,7 @@ class WhereGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    framework::Tensor tensor_zeros(dout_t->type());
+    framework::Tensor tensor_zeros(dout_t->dtype());
     tensor_zeros.mutable_data<T>(dout_t->dims(), ctx.GetPlace());
     const auto& runner =
         NpuOpRunner("ZerosLike", {*dout_t}, {tensor_zeros}, {});

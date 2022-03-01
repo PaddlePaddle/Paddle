@@ -43,8 +43,9 @@ namespace egr {
 /* --------------------- */
 /* ---- Eager Scale ---- */
 /* --------------------- */
-void benchmark_eager_scale(const EagerTensor& tensor, bool accuracy_check) {
-  EagerTensor input_tensor = tensor;
+void benchmark_eager_scale(const paddle::experimental::Tensor& tensor,
+                           bool accuracy_check) {
+  paddle::experimental::Tensor input_tensor = tensor;
   float scale = 2.0;
   float bias = 3.0;
 
@@ -55,7 +56,7 @@ void benchmark_eager_scale(const EagerTensor& tensor, bool accuracy_check) {
                    true /*trace_backward*/);
   }
 
-  std::vector<EagerTensor> target_tensors = {input_tensor};
+  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor};
   RunBackward(target_tensors, {});
 
   if (accuracy_check) {
@@ -69,10 +70,10 @@ void benchmark_eager_scale(const EagerTensor& tensor, bool accuracy_check) {
 /* ----------------------------------- */
 /* ---- Eager Intermediate Matmul ---- */
 /* ----------------------------------- */
-void benchmark_eager_intermediate_matmul(const EagerTensor& X,
-                                         const EagerTensor& Y,
+void benchmark_eager_intermediate_matmul(const paddle::experimental::Tensor& X,
+                                         const paddle::experimental::Tensor& Y,
                                          bool accuracy_check) {
-  EagerTensor input_tensor0 = X;
+  paddle::experimental::Tensor input_tensor0 = X;
 
   size_t max_num_runs = accuracy_check ? 2 : max_num_benchmark_runs;
   for (size_t i = 0; i < max_num_runs; i++) {
@@ -80,12 +81,12 @@ void benchmark_eager_intermediate_matmul(const EagerTensor& X,
         input_tensor0, Y, {{"trans_x", false}, {"trans_y", false}});
   }
 
-  std::vector<EagerTensor> target_tensors = {input_tensor0};
+  std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
   RunBackward(target_tensors, {});
 
   if (accuracy_check) {
     // Examine Forward Grad (w.r.t max_num_runs = 2)
-    eager_test::CompareVariableWithValue<float>(input_tensor0, 16);
+    eager_test::CompareTensorWithValue<float>(input_tensor0, 16);
     // Examine Backward Grad (w.r.t max_num_runs = 2)
     eager_test::CompareGradTensorWithValue<float>(X, 16);
     eager_test::CompareGradTensorWithValue<float>(Y, 16);
@@ -95,22 +96,23 @@ void benchmark_eager_intermediate_matmul(const EagerTensor& X,
 /* -------------------------------- */
 /* ---- Eager Intermediate MLP ---- */
 /* -------------------------------- */
-void benchmark_eager_intermediate_mlp(const EagerTensor& X,
-                                      const std::vector<EagerTensor>& Ws,
-                                      const std::vector<EagerTensor>& Bs,
-                                      bool accuracy_check) {
-  EagerTensor input0 = X;
+void benchmark_eager_intermediate_mlp(
+    const paddle::experimental::Tensor& X,
+    const std::vector<paddle::experimental::Tensor>& Ws,
+    const std::vector<paddle::experimental::Tensor>& Bs, bool accuracy_check) {
+  paddle::experimental::Tensor input0 = X;
 
   for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
-    EagerTensor Out = matmul_v2_dygraph_function(
+    paddle::experimental::Tensor Out = matmul_v2_dygraph_function(
         input0, Ws[i], {{"trans_x", false}, {"trans_y", false}});
 
     input0 = elementwise_add_dygraph_function(Out, Bs[i], {});
   }
 
-  EagerTensor Out = reduce_sum_dygraph_function(input0, {{"reduce_all", true}});
+  paddle::experimental::Tensor Out =
+      reduce_sum_dygraph_function(input0, {{"reduce_all", true}});
 
-  std::vector<EagerTensor> target_tensors = {Out};
+  std::vector<paddle::experimental::Tensor> target_tensors = {Out};
   RunBackward(target_tensors, {});
 
   if (accuracy_check) {
@@ -118,7 +120,7 @@ void benchmark_eager_intermediate_mlp(const EagerTensor& X,
         compute_mlp_expected_results();
 
     // Examine Forward Grad (w.r.t max_num_runs = 2)
-    eager_test::CompareVariableWithValue<float>(Out, result["Out"]);
+    eager_test::CompareTensorWithValue<float>(Out, result["Out"]);
 
     // Examine Backward Grad (w.r.t max_num_runs = 2)
     eager_test::CompareGradTensorWithValue<float>(X, result["GradX"]);
@@ -214,7 +216,7 @@ void benchmark_fluid_scale(const std::shared_ptr<imperative::VarBase>& X,
          {std::shared_ptr<imperative::VarBase>(
              new imperative::VarBase(true, "Out"))}}};
 
-    tracer.TraceOp("scale", ins, outs, attrs, place, true);
+    tracer.TraceOp<VarBase>("scale", ins, outs, attrs, place, true);
 
     tmp_out = outs["Out"][0];
   }
@@ -250,7 +252,7 @@ void benchmark_fluid_matmul(const std::shared_ptr<imperative::VarBase>& X,
          {std::shared_ptr<imperative::VarBase>(
              new imperative::VarBase(true, "Out"))}}};
 
-    tracer.TraceOp("matmul_v2", ins, outs, attrs, place, true);
+    tracer.TraceOp<VarBase>("matmul_v2", ins, outs, attrs, place, true);
 
     tmp_out = outs["Out"][0];
   }
@@ -288,7 +290,7 @@ void benchmark_fluid_mlp(
              {std::shared_ptr<imperative::VarBase>(
                  new imperative::VarBase(true, "Out"))}}};
 
-    tracer.TraceOp("matmul_v2", ins, outs, attrs, place, true);
+    tracer.TraceOp<VarBase>("matmul_v2", ins, outs, attrs, place, true);
 
     // EW-Add0
     ins = {{"X", outs["Out"]}, {"Y", {Bs[i]}}};
@@ -296,7 +298,7 @@ void benchmark_fluid_mlp(
              {std::shared_ptr<imperative::VarBase>(
                  new imperative::VarBase(true, "Out"))}}};
 
-    tracer.TraceOp("elementwise_add", ins, outs, attrs, place, true);
+    tracer.TraceOp<VarBase>("elementwise_add", ins, outs, attrs, place, true);
     input0 = outs["Out"][0];
   }
 
@@ -307,7 +309,7 @@ void benchmark_fluid_mlp(
                new imperative::VarBase(true, "Out"))}}};
   attrs = {{"reduce_all", true}};
 
-  tracer.TraceOp("reduce_sum", ins, outs, attrs, place, true);
+  tracer.TraceOp<VarBase>("reduce_sum", ins, outs, attrs, place, true);
 
   auto* engine = tracer.GetEngine();
   std::vector<std::shared_ptr<imperative::VarBase>> grad_tensors{nullptr};

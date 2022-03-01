@@ -16,11 +16,12 @@
 
 #include <cmath>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -83,7 +84,7 @@ void recompute_bias_and_weights(const Scope* scope, ir::Node* conv_weight,
   // Re-compute weight of conv2d from AffineChannel
   auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
   auto weights_shape = weights->dims();
-  auto weights_shape_2d = flatten_to_2d(weights_shape, 1);
+  auto weights_shape_2d = phi::flatten_to_2d(weights_shape, 1);
   auto* weights_data = weights->mutable_data<float>(platform::CPUPlace());
 
   EigenMatrixArrayMap weights_array_2d(weights_data, weights_shape_2d[0],
@@ -215,8 +216,9 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     VarDesc eltwise_y_in_desc(
         patterns::PDNodeName(name_scope_, "eltwise_y_in"));
     // Set shape && datatype manually
-    eltwise_y_in_desc.SetShape(framework::vectorize(ac_bias_tensor->dims()));
-    eltwise_y_in_desc.SetDataType(ac_bias_tensor->type());
+    eltwise_y_in_desc.SetShape(phi::vectorize(ac_bias_tensor->dims()));
+    eltwise_y_in_desc.SetDataType(
+        framework::TransToProtoVarType(ac_bias_tensor->dtype()));
     eltwise_y_in_desc.SetLoDLevel(ac_bias->Var()->GetLoDLevel());
     eltwise_y_in_desc.SetPersistable(true);
 

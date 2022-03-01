@@ -28,7 +28,7 @@ class SoftplusMKLDNNHandler
                         const float beta, const dnnl::engine engine)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine,
                                                            ctx.GetPlace()) {
-    auto x_tz = framework::vectorize(x->dims());
+    auto x_tz = phi::vectorize(x->dims());
     auto x_md =
         dnnl::memory::desc(x_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
