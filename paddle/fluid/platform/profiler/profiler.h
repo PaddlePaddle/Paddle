@@ -15,16 +15,18 @@
 #pragma once
 
 #include <atomic>
+#include <bitset>
 #include <cstdint>
 #include <functional>
 #include <list>
-#include <bitset>
 #include <memory>
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/profiler/event_node.h"
-#include "paddle/fluid/platform/profiler/tracer_base.h"
 #include "paddle/fluid/platform/profiler/cpu_utilization.h"
+#include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
+#include "paddle/fluid/platform/profiler/tracer_base.h"
+
+DECLARE_int64(host_trace_level);
 
 namespace paddle {
 namespace platform {
@@ -33,8 +35,8 @@ static constexpr uint32_t kProfileCPUOptionBit = 0;
 static constexpr uint32_t kProfileGPUOptionBit = 1;
 
 struct ProfilerOptions {
-  uint32_t trace_level = 0;
   uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu
+  uint32_t trace_level = FLAGS_host_trace_level;
 };
 
 class Profiler {
