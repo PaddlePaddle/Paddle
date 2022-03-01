@@ -55,11 +55,11 @@ class TestFuseGemmEpilogueOpReluMMFP16(OpTest):
         self.inputs = {
             'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
-            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+            'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'out': get_output(self.inputs['X'], self.inputs['Y'],
-                              self.inputs['bias'], 'relu')
+            'Out': get_output(self.inputs['X'], self.inputs['Y'],
+                              self.inputs['Bias'], 'relu')
         }
         self.attrs = {"activation": 'relu'}
 
@@ -104,11 +104,11 @@ class TestFuseGemmEpilogueOpReluMTMFP16(OpTest):
         self.inputs = {
             'X': np.random.random((4, 8)).astype(self.dtype) - 0.5,
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
-            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+            'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'out': get_output(self.inputs['X'].T, self.inputs['Y'],
-                              self.inputs['bias'], 'relu')
+            'Out': get_output(self.inputs['X'].T, self.inputs['Y'],
+                              self.inputs['Bias'], 'relu')
         }
         self.attrs = {'trans_x': True, "activation": 'relu'}
 
@@ -153,11 +153,11 @@ class TestFuseGemmEpilogueOpReluMMTFP16(OpTest):
         self.inputs = {
             'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
             'Y': np.random.random((128, 4)).astype(self.dtype) - 0.5,
-            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+            'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'out': get_output(self.inputs['X'], self.inputs['Y'].T,
-                              self.inputs['bias'], 'relu')
+            'Out': get_output(self.inputs['X'], self.inputs['Y'].T,
+                              self.inputs['Bias'], 'relu')
         }
         self.attrs = {'trans_y': True, "activation": 'relu'}
 
@@ -202,11 +202,11 @@ class TestFuseGemmEpilogueOpReluMTMTFP16(OpTest):
         self.inputs = {
             'X': np.random.random((4, 8)).astype(self.dtype) - 0.5,
             'Y': np.random.random((128, 4)).astype(self.dtype) - 0.5,
-            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+            'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'out': get_output(self.inputs['X'].T, self.inputs['Y'].T,
-                              self.inputs['bias'], 'relu')
+            'Out': get_output(self.inputs['X'].T, self.inputs['Y'].T,
+                              self.inputs['Bias'], 'relu')
         }
         self.attrs = {'trans_x': True, 'trans_y': True, "activation": 'relu'}
 
@@ -251,11 +251,11 @@ class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(OpTest):
         self.inputs = {
             'X': np.random.random((2, 2, 8, 4)).astype(self.dtype) - 0.5,
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
-            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+            'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'out': get_output(self.inputs['X'].reshape(
-                (-1, 4)), self.inputs['Y'], self.inputs['bias'],
+            'Out': get_output(self.inputs['X'].reshape(
+                (-1, 4)), self.inputs['Y'], self.inputs['Bias'],
                               'relu').reshape((2, 2, 8, 128))
         }
         self.attrs = {"activation": 'relu'}
@@ -303,11 +303,11 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(OpTest):
         self.inputs = {
             'X': np.random.random((4, 2, 2, 8)).astype(self.dtype) - 0.5,
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
-            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+            'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
         self.outputs = {
-            'out': get_output(self.inputs['X'].reshape(
-                (4, -1)).T, self.inputs['Y'], self.inputs['bias'],
+            'Out': get_output(self.inputs['X'].reshape(
+                (4, -1)).T, self.inputs['Y'], self.inputs['Bias'],
                               'relu').reshape((2, 2, 8, 128))
         }
         self.attrs = {'trans_x': True, "activation": 'relu'}
@@ -355,14 +355,14 @@ class TestFuseGemmEpilogueOpGeluMMFP16(OpTest):
         self.inputs = {
             'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
-            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+            'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
 
         self.attrs = {"activation": 'gelu'}
 
         self.outputs = {
-            'out': get_output(self.inputs['X'], self.inputs['Y'],
-                              self.inputs['bias'], 'gelu')
+            'Out': get_output(self.inputs['X'], self.inputs['Y'],
+                              self.inputs['Bias'], 'gelu')
         }
 
     def init_dtype_type(self):
@@ -406,14 +406,14 @@ class TestFuseGemmEpilogueOpNoneMMFP16(OpTest):
         self.inputs = {
             'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
             'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
-            'bias': np.random.random((128, )).astype(self.dtype) - 0.5
+            'Bias': np.random.random((128, )).astype(self.dtype) - 0.5
         }
 
         self.attrs = {"activation": 'none'}
 
         self.outputs = {
-            'out': get_output(self.inputs['X'], self.inputs['Y'],
-                              self.inputs['bias'], 'none')
+            'Out': get_output(self.inputs['X'], self.inputs['Y'],
+                              self.inputs['Bias'], 'none')
         }
 
     def init_dtype_type(self):

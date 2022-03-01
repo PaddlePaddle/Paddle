@@ -28,14 +28,14 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedGemmEpilogueOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "FusedGemmEpilogueOp");
-    OP_INOUT_CHECK(ctx->HasInput("bias"), "Output", "bias",
+    OP_INOUT_CHECK(ctx->HasInput("Bias"), "Output", "Bias",
                    "FusedGemmEpilogueOp");
-    OP_INOUT_CHECK(ctx->HasOutput("out"), "Output", "out",
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
                    "FusedGemmEpilogueOp");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    auto bias_dims = ctx->GetInputDim("bias");
+    auto bias_dims = ctx->GetInputDim("Bias");
 
     auto trans_x = ctx->Attrs().Get<bool>("trans_x");
     auto trans_y = ctx->Attrs().Get<bool>("trans_y");
@@ -94,13 +94,13 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
               activation));
     }
 
-    if (activation == "none" && ctx->HasOutput("reserve_space")) {
+    if (activation == "none" && ctx->HasOutput("ReserveSpace")) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "The reserve_space would not be used when activation = \"none\""));
+          "The ReserveSpace would not be used when activation = \"none\""));
     }
 
     // cublasLt's restriction for auxiliary.
-    if (ctx->HasOutput("reserve_space") && activation != "none") {
+    if (ctx->HasOutput("ReserveSpace") && activation != "none") {
       int min_size_of_n = activation == "relu" ? 128 : 8;
       int N_size = trans_y ? y_dims[0] : y_dims[1];
       PADDLE_ENFORCE_EQ(N_size % min_size_of_n, 0,
@@ -125,11 +125,11 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
       out_dims.push_back(y_dims[1]);
     }
 
-    ctx->SetOutputDim("out", phi::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     // Note (Ming Huang): Reserve space of relu is a bit-mask,
     // which cannot pass nan_and_inf checking if shape is set.
-    if (activation == "gelu" && ctx->HasOutput("reserve_space")) {
-      ctx->SetOutputDim("reserve_space", phi::make_ddim(out_dims));
+    if (activation == "gelu" && ctx->HasOutput("ReserveSpace")) {
+      ctx->SetOutputDim("ReserveSpace", phi::make_ddim(out_dims));
     }
   }
 
@@ -145,12 +145,12 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
 class FusedGemmEpilogueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input tensor X of Out = Act((X * Y) + bias).");
-    AddInput("Y", "The input tensor Y of Out = Act((X * Y) + bias).");
-    AddInput("bias", "The input tensor bias of Out = Act((X * Y) + bias).");
+    AddInput("X", "The input tensor X of Out = Act((X * Y) + Bias).");
+    AddInput("Y", "The input tensor Y of Out = Act((X * Y) + Bias).");
+    AddInput("Bias", "The input tensor bias of Out = Act((X * Y) + Bias).");
 
-    AddOutput("out", "The output tensor Out of Out = Act((X * Y) + bias).");
-    AddOutput("reserve_space",
+    AddOutput("Out", "The output tensor Out of Out = Act((X * Y) + Bias).");
+    AddOutput("ReserveSpace",
               R"DOC(Reserve GPU space to place 
         auxiliary data pointer. It is used to pass auxiliary data pointer 
         for fused_gemm_epilogue op. If not given (empty string), the 
@@ -267,10 +267,10 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
               activation_grad));
     }
 
-    if (activation_grad != "none" && !ctx->HasInput("reserve_space")) {
+    if (activation_grad != "none" && !ctx->HasInput("ReserveSpace")) {
       PADDLE_ENFORCE_EQ(true, false,
                         platform::errors::InvalidArgument(
-                            "The reserve_space should not be empty. "
+                            "The ReserveSpace should not be empty. "
                             "when activation_grad == {relu_grad, gelu_grad}."));
     }
 
@@ -309,7 +309,7 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input grad tensor to Out of Out = (Act(X) * Y) + bias");
     AddInput("X", "The input tensor X of Out = (Act(X) * Y) + bias");
     AddInput("Y", "The input tensor Y of Out = (Act(X) * Y) + bias");
-    AddInput("reserve_space",
+    AddInput("ReserveSpace",
              R"DOC(A GPU space to fetch 
         auxiliary data pointer. It is used to pass auxiliary data pointer 
         for fused_gemm_epilogue_grad op. If not given (empty string), the 

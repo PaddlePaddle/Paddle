@@ -31,10 +31,10 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
 
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
-    const Tensor* bias = ctx.Input<Tensor>("bias");
+    const Tensor* bias = ctx.Input<Tensor>("Bias");
 
-    Tensor* out = ctx.Output<Tensor>("out");
-    Tensor* reserve_space = ctx.Output<Tensor>("reserve_space");
+    Tensor* out = ctx.Output<Tensor>("Out");
+    Tensor* reserve_space = ctx.Output<Tensor>("ReserveSpace");
 
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
@@ -184,7 +184,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     const Tensor* dout = ctx.Input<Tensor>("DOut");
     const Tensor* x = ctx.Input<Tensor>("X");
     const Tensor* y = ctx.Input<Tensor>("Y");
-    const Tensor* reserve_space = ctx.Input<Tensor>("reserve_space");
+    const Tensor* reserve_space = ctx.Input<Tensor>("ReserveSpace");
 
     Tensor* dx = ctx.Output<Tensor>("DX");
     Tensor* dy = ctx.Output<Tensor>("DY");

@@ -78,8 +78,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
     fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
     fused_gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
     fused_gemm_epilogue_op_desc.SetInput("Y", {matmul_w->Name()});
-    fused_gemm_epilogue_op_desc.SetInput("bias", {ele_bias->Name()});
-    fused_gemm_epilogue_op_desc.SetOutput("out", {ele_out->Name()});
+    fused_gemm_epilogue_op_desc.SetInput("Bias", {ele_bias->Name()});
+    fused_gemm_epilogue_op_desc.SetOutput("Out", {ele_out->Name()});
     fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
     fused_gemm_epilogue_op_desc.SetAttr("op_role",
                                         matmul_op_desc->GetAttr("op_role"));
@@ -155,8 +155,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     fused_gemm_epilogue_op_desc.SetType("fused_gemm_epilogue");
     fused_gemm_epilogue_op_desc.SetInput("X", {subgraph.at(x)->Name()});
     fused_gemm_epilogue_op_desc.SetInput("Y", {matmul_w->Name()});
-    fused_gemm_epilogue_op_desc.SetInput("bias", {ele_bias->Name()});
-    fused_gemm_epilogue_op_desc.SetOutput("out", {act_out->Name()});
+    fused_gemm_epilogue_op_desc.SetInput("Bias", {ele_bias->Name()});
+    fused_gemm_epilogue_op_desc.SetOutput("Out", {act_out->Name()});
     fused_gemm_epilogue_op_desc.SetAttr("activation", activation);
     fused_gemm_epilogue_op_desc.SetAttr("op_role",
                                         matmul_op_desc->GetAttr("op_role"));
@@ -175,14 +175,14 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
       int divisor_of_n = activation == "relu" ? 128 : 8;
       if (matmul_w_shape[1] % divisor_of_n) return;
 
-      VarDesc reserve_space(patterns::PDNodeName(scope_name, "reserve_space"));
+      VarDesc reserve_space(patterns::PDNodeName(scope_name, "ReserveSpace"));
       auto *reserve_space_node = g->CreateVarNode(&reserve_space);
 
       EpiloguePassActivationCache::Instance().InsertFusedActivation(
           GetReserveSpaceCacheKey(act_out->Var()->Name(), g->GetBlockId()),
           reserve_space_node);
 
-      gemm_epilogue_node->Op()->SetOutput("reserve_space",
+      gemm_epilogue_node->Op()->SetOutput("ReserveSpace",
                                           {reserve_space_node->Name()});
 
       if (!is_act_grad_x_from_act) {
@@ -398,7 +398,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
                                               {subgraph.at(dout)->Name()});
     fused_gemm_epilogue_grad_op_desc.SetInput("X", {matmul_grad_x->Name()});
     fused_gemm_epilogue_grad_op_desc.SetInput("Y", {matmul_grad_w->Name()});
-    fused_gemm_epilogue_grad_op_desc.SetInput("reserve_space",
+    fused_gemm_epilogue_grad_op_desc.SetInput("ReserveSpace",
                                               {reserve_space_node->Name()});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DX", {act_grad_dx->Name()});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DY", {matmul_grad_dw->Name()});
