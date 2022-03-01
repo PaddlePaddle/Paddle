@@ -17,6 +17,8 @@
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #endif  // PADDLE_WITH_CUDA
@@ -66,14 +68,14 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
     using ValueType = phi::funcs::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
-    auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
-            ctx);
+    auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto &dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
+        platform::CPUDeviceContext>::TYPE &>(dev_ctx);
 
     Tensor input_trans;
     // lapack is a column-major storge, transpose make the input to
     // have a continuous memory layout
-    input_trans = dito.Transpose(input);
+    input_trans = phi::funcs::TransposeLast2Dims<T>(dev_ctx, input);
     auto *input_vector = input_trans.data<T>();
 
     auto dims = input.dims();
@@ -134,7 +136,7 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
                                   "When has_vectors is true,"
                                   "the eigenvectors needs to be calculated, "
                                   "so the eigenvectors must be provided."));
-      input_trans = dito.Transpose(input_trans);
+      input_trans = phi::funcs::TransposeLast2Dims<T>(dev_ctx, input_trans);
       eigen_vectors->ShareDataWith(input_trans);
     }
   }
@@ -155,11 +157,11 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
-                                                 T>(ctx);
+    auto &dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
+        platform::CUDADeviceContext>::TYPE &>(dev_ctx);
+
     Tensor input_trans;
-    input_trans = dito.Transpose(input);
+    input_trans = phi::funcs::TransposeLast2Dims<T>(dev_ctx, input);
     auto *input_vector = input_trans.data<T>();
     auto &dims = input.dims();
     int dim_size = dims.size();
@@ -228,7 +230,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
                                   "When has_vectors is true,"
                                   "the eigenvectors needs to be calculated,"
                                   "so the eigenvectors must be provided."));
-      input_trans = dito.Transpose(input_trans);
+      input_trans = phi::funcs::TransposeLast2Dims<T>(dev_ctx, input_trans);
       eigen_vectors->ShareDataWith(input_trans);
     }
   }

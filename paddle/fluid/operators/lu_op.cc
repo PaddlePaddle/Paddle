@@ -111,10 +111,11 @@ class LUKernel : public framework::OpKernel<T> {
                           "lu without pivoting is not implemented on the CPU, "
                           "but got pivots=False"));
 
-    math::DeviceIndependenceTensorOperations<paddle::platform::CPUDeviceContext,
-                                             T>
-        helper(ctx);
-    *out = helper.Transpose(*xin);
+    auto &dev_ctx =
+        context.template device_context<platform::CPUDeviceContext>();
+    auto &dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
+        platform::CPUDeviceContext>::TYPE &>(dev_ctx);
+    *out = phi::funcs::TransposeLast2Dims<T>(dev_ctx, *xin);
 
     auto outdims = out->dims();
     auto outrank = outdims.size();
@@ -145,7 +146,7 @@ class LUKernel : public framework::OpKernel<T> {
       phi::funcs::lapackLu<T>(m, n, out_data_item, lda, ipiv_data_item,
                               info_data_item);
     }
-    *out = helper.Transpose(*out);
+    *out = phi::funcs::TransposeLast2Dims<T>(dev_ctx, *out);
   }
 };
 

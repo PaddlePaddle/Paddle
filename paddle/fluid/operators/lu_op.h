@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/set_value_op.h"
-#include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/operators/tril_triu_op.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
 #include "paddle/phi/kernels/math_kernel.h"
 
 namespace paddle {
@@ -487,8 +487,10 @@ class LUGradKernel : public framework::OpKernel<T> {
     auto dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
 
-    const auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::DeviceIndependenceTensorOperations<DeviceContext, T> helper(ctx);
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto& dev_ctx = static_cast<
+        const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
+        dev_ctx);
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto xdims = xin->dims();
@@ -508,8 +510,8 @@ class LUGradKernel : public framework::OpKernel<T> {
 
     Tensor_Conj<DeviceContext, T>(dev_ctx, L_narrow, &L_narrow_mH);
     Tensor_Conj<DeviceContext, T>(dev_ctx, U_narrow, &U_narrow_mH);
-    L_narrow_mH = helper.Transpose(L_narrow_mH);
-    U_narrow_mH = helper.Transpose(U_narrow_mH);
+    L_narrow_mH = phi::funcs::TransposeLast2Dims<T>(dev_ctx, L_narrow_mH);
+    U_narrow_mH = phi::funcs::TransposeLast2Dims<T>(dev_ctx, U_narrow_mH);
 
     auto LmHdims = L_narrow_mH.dims();
     auto UmHdims = U_narrow_mH.dims();
@@ -562,7 +564,8 @@ class LUGradKernel : public framework::OpKernel<T> {
         Tensor_narrow<DeviceContext, T>(ctx, &U, &U_complement, 0, k, k, n);
         Tensor_narrow<DeviceContext, T>(ctx, dout, &U_grad_complement, 0, k, k,
                                         n);
-        framework::Tensor U_complement_mH = helper.Transpose(U_complement);
+        framework::Tensor U_complement_mH =
+            phi::funcs::TransposeLast2Dims<T>(dev_ctx, U_complement);
 
         Tensor_Conj<DeviceContext, T>(dev_ctx, U_complement_mH,
                                       &U_complement_mH);
@@ -604,12 +607,12 @@ class LUGradKernel : public framework::OpKernel<T> {
 
       framework::Tensor psi_principal, phi_mH, psi_tmp;
       Tensor_Conj<DeviceContext, T>(dev_ctx, phi, &phi_mH);
-      phi_mH = helper.Transpose(phi_mH);
+      phi_mH = phi::funcs::TransposeLast2Dims<T>(dev_ctx, phi_mH);
       triangular_solve<DeviceContext, T>(dev_ctx, U_narrow, phi_mH,
                                          &psi_principal, true, false, false);
 
       Tensor_Conj<DeviceContext, T>(dev_ctx, psi_principal, &psi_principal);
-      psi_principal = helper.Transpose(psi_principal);
+      psi_principal = phi::funcs::TransposeLast2Dims<T>(dev_ctx, psi_principal);
       slice_starts[0] = 0;
       slice_starts[1] = 0;
       slice_ends[0] = k;
@@ -635,7 +638,8 @@ class LUGradKernel : public framework::OpKernel<T> {
       Tensor_narrow<DeviceContext, T>(ctx, &L, &L_complement, k, m, 0, k);
       Tensor_narrow<DeviceContext, T>(ctx, dout, &L_grad_complement, k, m, 0,
                                       k);
-      framework::Tensor L_complement_mH = helper.Transpose(L_complement);
+      framework::Tensor L_complement_mH =
+          phi::funcs::TransposeLast2Dims<T>(dev_ctx, L_complement);
       Tensor_Conj<DeviceContext, T>(dev_ctx, L_complement_mH, &L_complement_mH);
 
       auto mat_dim_g = phi::funcs::CreateMatrixDescriptor(
@@ -692,12 +696,12 @@ class LUGradKernel : public framework::OpKernel<T> {
       auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(psi.dims(), 0, false);
       blas.MatMul(Pmat, mat_dim_p, psi, mat_dim_b, static_cast<T>(1), &psi_tmp,
                   static_cast<T>(0));
-      psi_tmp = helper.Transpose(psi_tmp);
+      psi_tmp = phi::funcs::TransposeLast2Dims<T>(dev_ctx, psi_tmp);
 
       Tensor_Conj<DeviceContext, T>(dev_ctx, U_narrow, &U_narrow_mH);
       triangular_solve<DeviceContext, T>(dev_ctx, U_narrow_mH, psi_tmp, &psi,
                                          true, false, false);
-      *dx = helper.Transpose(psi);
+      *dx = phi::funcs::TransposeLast2Dims<T>(dev_ctx, psi);
     }
   }
 };

@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/svd_op.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
 
 namespace paddle {
 namespace operators {
@@ -66,10 +67,12 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     framework::DDim UT_dim = U->dims();
     std::swap(UT_dim[rank - 1], UT_dim[rank - 2]);  // Get the dim of UT_dim
     U->Resize(UT_dim);                              // U is entirely UT
-    auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
-                                                 T>(context);
-    auto tmp_U = dito.Transpose(*U);
+
+    auto& dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
+        platform::CUDADeviceContext>::TYPE&>(dev_ctx);
+    auto tmp_U = phi::funcs::TransposeLast2Dims<T>(dev_ctx, *U);
     U->ShareDataWith(tmp_U);  // U becomse UT, aka VT
   }
   void GesvdjBatched(const platform::CUDADeviceContext& dev_ctx, int batchSize,

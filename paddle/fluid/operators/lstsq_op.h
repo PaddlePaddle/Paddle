@@ -20,13 +20,13 @@
 #include "paddle/fluid/operators/eig_op.h"
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
-#include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
 
 #define EPSILON 1e-6
 
@@ -64,8 +64,10 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     auto* rank = context.Output<Tensor>("Rank");
     auto* singular_values = context.Output<Tensor>("SingularValues");
 
-    auto dito =
-        math::DeviceIndependenceTensorOperations<DeviceContext, T>(context);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& dev_ctx = static_cast<
+        const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
+        dev_ctx);
 
     auto x_dims = x.dims();
     auto y_dims = y->dims();
@@ -109,8 +111,9 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    Tensor input_x_trans = dito.Transpose(new_x);
-    Tensor input_y_trans = dito.Transpose(*solution);
+    Tensor input_x_trans = phi::funcs::TransposeLast2Dims<T>(dev_ctx, new_x);
+    Tensor input_y_trans =
+        phi::funcs::TransposeLast2Dims<T>(dev_ctx, *solution);
     framework::TensorCopy(input_x_trans, new_x.place(), &new_x);
     framework::TensorCopy(input_y_trans, solution->place(), solution);
 
@@ -231,7 +234,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
       if (rank_working_ptr) *rank_working_ptr = static_cast<int>(rank_32);
     }
 
-    Tensor tmp_s = dito.Transpose(*solution);
+    Tensor tmp_s = phi::funcs::TransposeLast2Dims<T>(dev_ctx, *solution);
     framework::TensorCopy(tmp_s, solution->place(), solution);
 
     if (m > n) {

@@ -17,9 +17,12 @@
 #include <cstdarg>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/pow.h"
+#include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/math_kernel.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -77,26 +80,37 @@ class SvdGradKernel : public framework::OpKernel<T> {
     int m = dX.dims()[dX.dims().size() - 2];
     int n = dX.dims()[dX.dims().size() - 1];
     int k = S.dims()[S.dims().size() - 1];
-    auto dito = math::DeviceIndependenceTensorOperations<DeviceContext, T>(ctx);
+
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& dev_ctx = static_cast<
+        const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
+        dev_ctx);
     framework::Tensor U, VH, dU, dV, dVH;
     if (full) {
       // if full_matrices is set, slice the U and VT to k columns
-      U = dito.Slice(U_const, {-1}, {0}, {k});
-      VH = dito.Slice(VH_const, {-2}, {0}, {k});
-      dU = dito.Slice(dU_const, {-1}, {0}, {k});
-      dVH = dito.Slice(dVH_const, {-2}, {0}, {k});
+      U = phi::funcs::Slice<T>(dev_ctx, U_const, {-1}, {0}, {k});
+      VH = phi::funcs::Slice<T>(dev_ctx, VH_const, {-2}, {0}, {k});
+      dU = phi::funcs::Slice<T>(dev_ctx, dU_const, {-1}, {0}, {k});
+      dVH = phi::funcs::Slice<T>(dev_ctx, dVH_const, {-2}, {0}, {k});
     } else {
       U = U_const;
       VH = VH_const;
       dU = dU_const;
       dVH = dVH_const;
     }
-    auto s_inverse = dito.Pow(S, -1);
-    auto s_square = dito.Pow(S, 2);
+    auto s_inverse = phi::funcs::Pow<T>(dev_ctx, S, -1);
+    auto s_square = phi::funcs::Pow<T>(dev_ctx, S, 2);
     auto F =
-        dito.Sub(dito.Unsqueeze(s_square, -2), dito.Unsqueeze(s_square, -1));
-    F = dito.Add(F, dito.Diag(dito.Infinits({k})));
-    F = dito.Pow(F, -1);
+        phi::Subtract<ValueType>(dev_ctx, phi::funcs::Unsqueeze(s_square, -2),
+                                 phi::funcs::Unsqueeze(s_square, -1));
+    F = phi::Add<ValueType>(
+        dev_ctx, F,
+        phi::funcs::Diag<T>(
+            dev_ctx,
+            phi::Full<T>(
+                dev_ctx, {k},
+                static_cast<T>(std::numeric_limits<double>::infinity()))));
+    F = phi::funcs::Pow<T>(dev_ctx, F, -1);
     Tensor sigma_term;
     Tensor u_term;
     Tensor v_term;
@@ -104,37 +118,59 @@ class SvdGradKernel : public framework::OpKernel<T> {
     if (ctx.HasInput(framework::GradVarName("S"))) {
       const framework::Tensor& gS =
           *ctx.Input<framework::Tensor>(framework::GradVarName("S"));
-      sigma_term = dito.Mul(dito.Unsqueeze(gS, -2), U);
-      sigma_term = dito.Matmul(sigma_term, VH);
+      sigma_term = phi::Multiply<T>(dev_ctx, phi::funcs::Unsqueeze(gS, -2), U);
+      sigma_term = phi::Matmul<T>(dev_ctx, sigma_term, VH);
     }
 
     if (ctx.HasInput(framework::GradVarName("U"))) {
-      auto UTG = dito.Matmul(U, dU, true, false);
-      auto GTU = dito.Matmul(dU, U, true, false);
-      u_term = dito.Mul(dito.Mul(dito.Sub(UTG, GTU), F), dito.Unsqueeze(S, -2));
-      u_term = dito.Matmul(U, u_term);
+      auto UTG = phi::Matmul<T>(dev_ctx, U, dU, true, false);
+      auto GTU = phi::Matmul<T>(dev_ctx, dU, U, true, false);
+      u_term = phi::Multiply<T>(
+          dev_ctx,
+          phi::Multiply<T>(dev_ctx, phi::Subtract<T>(dev_ctx, UTG, GTU), F),
+          phi::funcs::Unsqueeze(S, -2));
+      u_term = phi::Matmul<T>(dev_ctx, U, u_term);
       if (m > k) {
-        auto project = dito.Sub(dito.Eye(m), dito.Matmul(U, U, false, true));
-        u_term = dito.Add(u_term, dito.Mul(dito.Matmul(project, dU),
-                                           dito.Unsqueeze(s_inverse, -2)));
+        auto project = phi::Subtract<T>(
+            dev_ctx,
+            phi::funcs::Diag<T>(dev_ctx, phi::Full<T>(dev_ctx, {m}, 1)),
+            phi::Matmul<T>(dev_ctx, U, U, false, true));
+        u_term = phi::Add<T>(
+            dev_ctx, u_term,
+            phi::Multiply<T>(dev_ctx,
+                             phi::Matmul<T>(dev_ctx, project, dU, false, false),
+                             phi::funcs::Unsqueeze(s_inverse, -2)));
       }
-      u_term = dito.Matmul(u_term, VH);
+      u_term = phi::Matmul<T>(dev_ctx, u_term, VH);
     }
 
     if (ctx.HasInput(framework::GradVarName("VH"))) {
-      auto UTG = dito.Matmul(VH, dVH, false, true);
-      auto GTU = dito.Matmul(dVH, VH, false, true);
-      v_term = dito.Mul(dito.Matmul(dito.Mul(dito.Sub(UTG, GTU), F), VH),
-                        dito.Unsqueeze(S, -1));
+      auto UTG = phi::Matmul<T>(dev_ctx, VH, dVH, false, true);
+      auto GTU = phi::Matmul<T>(dev_ctx, dVH, VH, false, true);
+      v_term = phi::Multiply<T>(
+          dev_ctx,
+          phi::Matmul<T>(
+              dev_ctx,
+              phi::Multiply<T>(dev_ctx, phi::Subtract<T>(dev_ctx, UTG, GTU), F,
+                               false, false),
+              VH),
+          phi::funcs::Unsqueeze(S, -1));
       if (n > k) {
-        auto project = dito.Sub(dito.Eye(n), dito.Matmul(VH, VH, true, false));
-        v_term = dito.Add(v_term, dito.Mul(dito.Matmul(dVH, project),
-                                           dito.Unsqueeze(s_inverse, -1)));
+        auto project = phi::Subtract<T>(
+            dev_ctx,
+            phi::funcs::Diag<T>(dev_ctx, phi::Full<T>(dev_ctx, {m}, 1)),
+            phi::Matmul<T>(dev_ctx, VH, VH, true, false));
+        v_term = phi::Add<T>(
+            dev_ctx, v_term,
+            phi::Multiply<T>(
+                dev_ctx, phi::Matmul<T>(dev_ctx, dVH, project, false, false),
+                phi::funcs::Unsqueeze(s_inverse, -1)));
       }
-      v_term = dito.Matmul(U, v_term);
+      v_term = phi::Matmul<T>(dev_ctx, U, v_term, false, false);
     }
 
-    dX.ShareDataWith(dito.Add(dito.Add(u_term, sigma_term), v_term));
+    dX.ShareDataWith(
+        phi::Add<T>(dev_ctx, phi::Add<T>(dev_ctx, u_term, sigma_term), v_term));
   }
 };
 

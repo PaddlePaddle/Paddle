@@ -20,10 +20,16 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/matrix_inverse.h"
-#include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/diag_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
+#include "paddle/phi/kernels/math_kernel.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -217,8 +223,10 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     // Ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
     // we set d|A| = unsqueeze(dA * |A|, [-1, -2]) * inverse(A).transpose(-2,
     // -1)
-
-    math::DeviceIndependenceTensorOperations<DeviceContext, T> helper(context);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& dev_ctx = static_cast<
+        const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
+        dev_ctx);
 
     // First: inverse(A)
     framework::Tensor inverse_A;
@@ -232,21 +240,23 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
     // Second: inverse(A).transpose(-2, -1)
-    framework::Tensor transpose_inverse_A = helper.Transpose(inverse_A);
+    framework::Tensor transpose_inverse_A =
+        phi::funcs::TransposeLast2Dims<T>(dev_ctx, inverse_A);
+
     VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
             << transpose_inverse_A.dims();
 
     // Third: dA * |A|
-    auto mul_dA_detA = helper.Mul(*grad, *det);
+    auto mul_dA_detA = phi::Multiply<T>(dev_ctx, *grad, *det);
     VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
     // Fourth: unsqueeze(dA * |A|, [-1, -2])
-    auto unsqueeze1 = helper.Unsqueeze(mul_dA_detA, -1);
-    auto unsqueeze2 = helper.Unsqueeze(unsqueeze1, -2);
+    auto unsqueeze1 = phi::funcs::Unsqueeze(mul_dA_detA, -1);
+    auto unsqueeze2 = phi::funcs::Unsqueeze(unsqueeze1, -2);
     VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
 
     // Finally: unsqueeze(dA * |A|) * inverse(A)
-    auto res = helper.Mul(unsqueeze2, transpose_inverse_A);
+    auto res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
 
     VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
 
@@ -373,7 +383,10 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     // we set dsl|A| = unsqueeze(dslA, [-1, -2]) *
     // inverse(A).conj().transpose(-2, -1)
 
-    math::DeviceIndependenceTensorOperations<DeviceContext, T> helper(context);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& dev_ctx = static_cast<
+        const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
+        dev_ctx);
 
     // First: inverse(A)
     framework::Tensor inverse_A;
@@ -400,7 +413,8 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
 
     // Third: inverse(A).conj().transpose(-2, -1)
-    framework::Tensor transpose_inverse_A = helper.Transpose(conj_inverse_A);
+    framework::Tensor transpose_inverse_A =
+        phi::funcs::TransposeLast2Dims<T>(dev_ctx, conj_inverse_A);
     VLOG(3) << "inverse(A).conj().transpose(-2, -1) dims: "
             << transpose_inverse_A.dims();
 
@@ -417,12 +431,12 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     det_grad.Resize(det_grad.dims().reshape(det_grad_vec));
 
     // Fifth: unsqueeze(dslA, [-1, -2])
-    auto unsqueeze1 = helper.Unsqueeze(det_grad, -1);
-    auto unsqueeze2 = helper.Unsqueeze(unsqueeze1, -2);
+    auto unsqueeze1 = phi::funcs::Unsqueeze(det_grad, -1);
+    auto unsqueeze2 = phi::funcs::Unsqueeze(unsqueeze1, -2);
     VLOG(3) << "unsqueezed(dslA, [-1, -2]) dims: " << unsqueeze2.dims();
 
     // Finally: unsqueeze(dslA) * inverse(A)
-    auto res = helper.Mul(unsqueeze2, transpose_inverse_A);
+    auto res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
     VLOG(3) << "unsqueeze(dslA) * inverse(A) dims: " << res.dims();
 
     framework::TensorCopy(res, context.GetPlace(), dslogdet);

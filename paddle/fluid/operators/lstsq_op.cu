@@ -19,7 +19,10 @@
 #include <vector>
 #include "paddle/fluid/operators/lstsq_op.h"
 #include "paddle/fluid/operators/qr_op.h"
+#include "paddle/fluid/operators/tril_triu_op.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
 
 namespace paddle {
 namespace operators {
@@ -34,11 +37,10 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     const Tensor& y = *context.Input<Tensor>("Y");
     auto* solution = context.Output<Tensor>("Solution");
 
-    auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
-                                                 T>(context);
     auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
+        platform::CUDADeviceContext>::TYPE&>(dev_ctx);
 
     auto x_dims = x.dims();
     auto y_dims = y.dims();
@@ -67,12 +69,12 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     auto tau_dims_vec = phi::vectorize<int>(x_dims);
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
-    Tensor tau = dito.Fill(tau_dims_vec, 0);
+    Tensor tau = phi::Full<T>(dev_ctx, tau_dims_vec, 0);
     auto tau_data = tau.mutable_data<T>(context.GetPlace());
 
     if (m >= n) {
-      Tensor tmp_x = dito.Transpose(new_x);
-      Tensor tmp_y = dito.Transpose(new_y);
+      Tensor tmp_x = phi::funcs::TransposeLast2Dims<T>(dev_ctx, new_x);
+      Tensor tmp_y = phi::funcs::TransposeLast2Dims<T>(dev_ctx, new_y);
       auto x_data = tmp_x.mutable_data<T>(context.GetPlace());
       auto y_data = tmp_y.mutable_data<T>(context.GetPlace());
 
@@ -85,12 +87,27 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
                                      x_data, x_stride, tau_data, tau_stride,
                                      y_data, y_stride);
 
-      Tensor trans_r = dito.Transpose(tmp_x);
-      Tensor slice_r = dito.Slice(trans_r, {-2}, {0}, {min_mn});
-      Tensor res_r = dito.TrilTriu(slice_r, 0, false);
+      Tensor trans_r = phi::funcs::TransposeLast2Dims<T>(dev_ctx, tmp_x);
+      Tensor slice_r =
+          phi::funcs::Slice<T>(dev_ctx, trans_r, {-2}, {0}, {min_mn});
 
-      Tensor trans_y = dito.Transpose(tmp_y);
-      Tensor slice_y = dito.Slice(trans_y, {-2}, {0}, {min_mn});
+      // TODO(paddle-dev): call phi TrilTriu method directly
+      phi::DenseTensor res_r;
+      res_r.Resize(slice_r.dims());
+      platform::ForRange<DeviceContext> for_range(
+          context.template device_context<DeviceContext>(),
+          static_cast<size_t>(x.numel()));
+      const auto& dims = slice_r.dims();
+      const auto H = dims[dims.size() - 2];
+      const auto W = dims[dims.size() - 1];
+      paddle::operators::TrilTriuCompute<T> tril_triu_computer(
+          slice_r.data<T>(), 0, false, H, W,
+          res_r.mutable_data<T>(dev_ctx.GetPlace()));
+      for_range(tril_triu_computer);
+
+      Tensor trans_y = phi::funcs::TransposeLast2Dims<T>(dev_ctx, tmp_y);
+      Tensor slice_y =
+          phi::funcs::Slice<T>(dev_ctx, trans_y, {-2}, {0}, {min_mn});
 
       // Step 3, solve R X = Y
       triangular_solve<DeviceContext, T>(dev_ctx, res_r, slice_y, solution,
@@ -104,16 +121,17 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
                                      tau_data, x_stride, tau_stride);
 
       // Step 2, solve R^H Z = Y
-      Tensor trans_r = dito.Transpose(new_x);
+      Tensor trans_r = phi::funcs::TransposeLast2Dims<T>(dev_ctx, new_x);
       triangular_solve<DeviceContext, T>(dev_ctx, trans_r, new_y, solution,
                                          true, true, false);
 
       // Step 3, X <- Q Z
       BatchedOrgqr<DeviceContext, T>(dev_ctx, batch_count, n, n, min_mn, x_data,
                                      n, tau_data, x_stride, tau_stride);
-      Tensor trans_q = dito.Transpose(new_x);
-      Tensor slice_q = dito.Slice(trans_q, {-1}, {0}, {m});
-      Tensor solu_tensor = dito.Matmul(slice_q, *solution, false, false);
+      Tensor trans_q = phi::funcs::TransposeLast2Dims<T>(dev_ctx, new_x);
+      Tensor slice_q = phi::funcs::Slice<T>(dev_ctx, trans_q, {-1}, {0}, {m});
+      Tensor solu_tensor =
+          phi::Matmul<T>(dev_ctx, slice_q, *solution, false, false);
       framework::TensorCopy(solu_tensor, solution->place(), solution);
     }
   }

@@ -16,6 +16,13 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/funcs/diag_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
+#include "paddle/phi/kernels/math_kernel.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -52,21 +59,30 @@ class EighGradKernel : public framework::OpKernel<T> {
 
     auto& dims = output_v.dims();
     const int m = dims[dims.size() - 1];
-    auto dito =
-        math::DeviceIndependenceTensorOperations<DeviceContext, T, ValueType>(
-            ctx);
-    auto tV = dito.Transpose(dito.Conj(output_v));
-    auto W = dito.template Sub<ValueType>(dito.Unsqueeze(output_w, -2),
-                                          dito.Unsqueeze(output_w, -1));
-    Tensor result = dito.Matmul(tV, output_v_grad);
+
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& dev_ctx = static_cast<
+        const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
+        dev_ctx);
+    auto tV = phi::funcs::TransposeLast2Dims<T>(
+        dev_ctx, phi::Conj<T>(dev_ctx, output_v));
+
+    auto W =
+        phi::Subtract<ValueType>(dev_ctx, phi::funcs::Unsqueeze(output_w, -2),
+                                 phi::funcs::Unsqueeze(output_w, -1));
+    Tensor result = phi::Matmul<T>(dev_ctx, tV, output_v_grad, false, false);
     result.mutable_data<T>(dims, ctx.GetPlace());
     std::vector<int> out_shape = phi::vectorize<int>(dims);
-    auto constant = dito.Fill(out_shape, 0.5);
-    result = dito.Sub(result, dito.Conj(dito.Transpose(result)));
-    result = dito.Mul(result, constant);
-    result = dito.Div(result, W);
-    result = dito.DiagFill(m, m, m, 0, output_w_grad, result);
-    x_grad = dito.Matmul(output_v, dito.Matmul(result, tV));
+    auto constant = phi::Full<T>(dev_ctx, out_shape, 0.5);
+    result = phi::Subtract<T>(
+        dev_ctx, result,
+        phi::Conj<T>(dev_ctx,
+                     phi::funcs::TransposeLast2Dims<T>(dev_ctx, result)));
+    result = phi::Multiply<T>(dev_ctx, result, constant);
+    result = phi::Divide<T>(dev_ctx, result, W);
+    result = phi::funcs::DiagFill(dev_ctx, m, m, m, 0, output_w_grad, result);
+    x_grad =
+        phi::Matmul<T>(dev_ctx, output_v, phi::Matmul<T>(dev_ctx, result, tV));
   }
 };
 

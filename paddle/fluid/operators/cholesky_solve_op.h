@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/kernels/funcs/transpose_function.h"
 #include "paddle/phi/kernels/math_kernel.h"
 
 namespace paddle {
@@ -59,8 +60,6 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
   framework::Tensor b_bst(bin.type());
   TensorExpand<T, DeviceContext>(dev_ctx, bin, &b_bst, b_bst_dims_vec);
 
-  math::DeviceIndependenceTensorOperations<DeviceContext, T> helper(ctx);
-
   // calculate u's conjugate for complex
   framework::Tensor u_conj(u_bst.type());
   platform::ForRange<DeviceContext> u_for_range(dev_ctx, u_bst.numel());
@@ -68,7 +67,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
       u_bst.data<T>(), u_bst.numel(),
       u_conj.mutable_data<T>(u_bst.dims(), dev_ctx.GetPlace()));
   u_for_range(u_functor);
-  u_conj = helper.Transpose(u_conj);
+  u_conj = phi::funcs::TransposeLast2Dims<T>(dev_ctx, u_conj);
 
   // calculate b's conjugate for complex
   framework::Tensor b_conj(b_bst.type());
@@ -77,7 +76,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
       b_bst.data<T>(), b_bst.numel(),
       b_conj.mutable_data<T>(b_bst.dims(), dev_ctx.GetPlace()));
   b_for_range(b_functor);
-  b_conj = helper.Transpose(b_conj);
+  b_conj = phi::funcs::TransposeLast2Dims<T>(dev_ctx, b_conj);
 
   auto ut_data = u_conj.mutable_data<T>(dev_ctx.GetPlace());
   auto uindims = u_bst.dims();
@@ -117,7 +116,7 @@ void cholesky_solve_fn(const paddle::framework::ExecutionContext &ctx,
       out->data<T>(), out->numel(),
       out->mutable_data<T>(out->dims(), dev_ctx.GetPlace()));
   out_for_range(out_functor);
-  *out = helper.Transpose(*out);
+  *out = phi::funcs::TransposeLast2Dims<T>(dev_ctx, *out);
 }
 
 template <typename DeviceContext, typename T>
@@ -145,7 +144,6 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
     auto upper = ctx.Attr<bool>("upper");
 
     const auto &dev_ctx = ctx.template device_context<DeviceContext>();
-    math::DeviceIndependenceTensorOperations<DeviceContext, T> helper(ctx);
 
     std::vector<int64_t> u_bst_dims_vec;
     std::vector<int64_t> b_bst_dims_vec;
@@ -177,7 +175,7 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
           out->data<T>(), out->numel(),
           out_conj.mutable_data<T>(out->dims(), dev_ctx.GetPlace()));
       out_for_range(out_functor);
-      out_conj = helper.Transpose(out_conj);
+      out_conj = phi::funcs::TransposeLast2Dims<T>(dev_ctx, out_conj);
 
       framework::Tensor commonterm(out->type());
       auto outdims = out_conj.dims();
@@ -200,7 +198,8 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
           commonterm_conj.mutable_data<T>(commonterm.dims(),
                                           dev_ctx.GetPlace()));
       commonterm_for_range(commonterm_functor);
-      commonterm_conj = helper.Transpose(commonterm_conj);
+      commonterm_conj =
+          phi::funcs::TransposeLast2Dims<T>(dev_ctx, commonterm_conj);
 
       phi::AddRawKernel<T>(
           static_cast<const typename paddle::framework::ConvertToPhiContext<
