@@ -46,7 +46,7 @@ template <typename DeviceContext, typename T>
 class LstsqCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    using ValueType = phi::funcs::Real<T>;
+    using ValueType = phi::dtype::Real<T>;
 
     const Tensor& x = *context.Input<Tensor>("X");
     auto y = context.Input<Tensor>("Y");
@@ -169,7 +169,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
                               &rank_32, &wkopt, lwork, &rwkopt, &info);
     }
 
-    lwork = std::max<int>(1, static_cast<int>(phi::funcs::Real<T>(wkopt)));
+    lwork = std::max<int>(1, static_cast<int>(phi::dtype::Real<T>(wkopt)));
     Tensor work;
     work.Resize(phi::make_ddim({lwork}));
     T* work_data = work.mutable_data<T>(context.GetPlace());
