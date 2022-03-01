@@ -84,7 +84,7 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void ConcatInferMeta(const std::vector<MetaTensor>& x,
+void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config) {
@@ -93,10 +93,19 @@ void ConcatInferMeta(const std::vector<MetaTensor>& x,
                     phi::errors::InvalidArgument(
                         "The size of input meta vector should be greater"
                         "than 0."));
+  if (axis_scalar.FromTensor()) {
+    auto out_dims =
+        phi::make_ddim(std::vector<int>(x.at(0)->dims().size(), -1));
+    out->set_dims(out_dims);
+    out->set_dtype(x.at(0)->dtype());
+    out->set_layout(x.at(0)->layout());
+    out->share_lod(*x.at(0));
+    return;
+  }
 
   int axis = axis_scalar.to<int>();
   // 1. calculate axis
-  int rank = x.at(0).dims().size();
+  int rank = x.at(0)->dims().size();
   PADDLE_ENFORCE_EQ(
       axis >= -rank && axis < rank,
       true,
@@ -111,15 +120,17 @@ void ConcatInferMeta(const std::vector<MetaTensor>& x,
 
   // 2. calculate out dims
   std::vector<phi::DDim> x_dims;
-  for (auto& x_t : x) {
-    x_dims.push_back(x_t.dims());
+  x_dims.reserve(x.size());
+  for (const auto* x_t : x) {
+    x_dims.emplace_back(x_t->dims());
   }
   phi::DDim out_dim =
       phi::funcs::ComputeAndCheckShape(config.is_runtime, x_dims, axis);
 
   out->set_dims(out_dim);
-  out->set_dtype(x.at(0).dtype());
-  out->set_layout(x.at(0).layout());
+  out->set_dtype(x.at(0)->dtype());
+  out->set_layout(x.at(0)->layout());
+  out->share_lod(*x.at(0));
 }
 
 }  // namespace phi
