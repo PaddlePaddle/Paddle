@@ -951,14 +951,16 @@ PDNode *patterns::ElementwiseActivation::operator()(
 PDNode *patterns::OneDNNOp::operator()(
     const std::vector<PDNode *> &operator_ins,
     const std::vector<PDNode *> &operator_outs,
-    const std::string &supported_operator) {
+    const std::string &operator_type) {
   auto operator_to_replace =
-      pattern->NewNode(op_to_replace_repr())->assert_is_op(supported_operator);
+      pattern->NewNode(op_to_replace_repr())->assert_is_op(operator_type);
 
-  // Check if op is MKL-DNN enabled
-  operator_to_replace->assert_op_attr("use_mkldnn", true);
+  operator_to_replace->assert_more([](Node *node) {
+    auto is_explicitly_disabled = node->Op()->HasAttr("use_mkldnn") &&
+                                  node->Op()->GetAttrIfExists<bool>("use_mkldnn") == false;
+    return is_explicitly_disabled == false;
+  });
 
-  // linked structure
   operator_to_replace->LinksFrom(operator_ins);
   operator_to_replace->LinksTo(operator_outs);
 
