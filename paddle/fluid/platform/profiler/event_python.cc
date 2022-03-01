@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
+#include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 
@@ -78,7 +79,8 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
   return host_python_node;
 }
 
-ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree, const ExtraInfo& extra_info)
+ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
+                               const ExtraInfo& extra_info)
     : tree_(std::move(tree)), extra_info_(extra_info) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
@@ -108,6 +110,12 @@ void ProfilerResult::Save(const std::string& file_name,
     logger.LogMetaInfo(GetExtraInfo());
   }
   return;
+}
+
+std::unique_ptr<ProfilerResult> LoadProfilerResult(std::string filename) {
+  DeserializationReader reader(filename);
+  std::unique_ptr<ProfilerResult> result = reader.Parse();
+  return result;
 }
 
 }  // namespace platform

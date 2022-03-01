@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.core import (_RecordEvent, TracerEventType)
+from paddle.fluid.core import (_RecordEvent, TracerEventType,
+                               LoadProfilerResult)
 from typing import Any
 from warnings import warn
 import functools

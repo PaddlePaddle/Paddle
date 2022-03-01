@@ -2998,6 +2998,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
       .value("PythonUserDefined",
              paddle::platform::TracerEventType::PythonUserDefined);
+  m.def("LoadProfilerResult", &paddle::platform::LoadProfilerResult);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
