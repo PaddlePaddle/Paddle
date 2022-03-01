@@ -142,7 +142,7 @@ void topoSortBlock(mlir::Block &body) {  // NOLINT
 }  // namespace
 
 // Implementation of the trtGraphFusePass.
-void trtGraphFusePass::runOnFunction() {
+void TRTGraphFusePass::runOnFunction() {
   mlir::Block &body = getFunction().front();
   mlir::OpBuilder builder(&body, body.begin());
   bool changed = false;

@@ -198,18 +198,6 @@ class TestRandomValue(unittest.TestCase):
         self.assertTrue(np.array_equal(x[20, 1, 600, 600:605], expect))
         expect = [3581, 3420, -8027, -5237, -2436]
         self.assertTrue(np.array_equal(x[30, 2, 1000, 1000:1005], expect))
-
-        x = paddle.randint(
-            -10000000000, 10000000000, [32, 3, 1024, 1024],
-            dtype='int64').numpy()
-        self.assertTrue(x.mean(), 508875.1003187795)
-        self.assertTrue(x.std(), 5773284791.012394)
-        expect = [-5352702009, -3189943379, -7498166080, 8629418125, 417401588]
-        self.assertTrue(np.array_equal(x[10, 0, 100, 100:105], expect))
-        expect = [-5355102829, 9398365180, -6332668719, 7272720590, -6953958520]
-        self.assertTrue(np.array_equal(x[20, 1, 600, 600:605], expect))
-        expect = [6880597315, 7394530725, 3382014770, -486932811, 8908561217]
-        self.assertTrue(np.array_equal(x[30, 2, 1000, 1000:1005], expect))
         paddle.enable_static()
 
 

@@ -121,7 +121,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       kernel_type_(kernel_type),
       func_(nullptr),
       dev_ctx_(dev_ctx),
-      run_pten_kernel_(true),
+      run_phi_kernel_(true),
       pt_kernel_signature_(kernel_signature),
       pt_kernel_(pt_kernel) {}
 
@@ -151,7 +151,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
   // NOTE(zhiqiu): for kernels on given device, for example NPU, the order to
   // choose is:
-  // pten npu kernel > fluid npu kernel > pten cpu kernel > fluid cpu kernel
+  // phi npu kernel > fluid npu kernel > phi cpu kernel > fluid cpu kernel
 
   // 1. get expected kernel key
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
@@ -168,12 +168,12 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                                                expected_kernel_key) ||
       paddle::platform::is_in_xpu_black_list(op.Type());
 #endif
-  if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
-    pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
+  if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
+    pt_kernel_signature = op.GetExpectedPhiKernelArgs(dygraph_exe_ctx);
     VLOG(6) << pt_kernel_signature;
 
     pt_kernel_name = pt_kernel_signature.name;
-    pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
+    pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
     auto pt_kernel = phi::KernelFactory::Instance().SelectKernel(pt_kernel_name,
                                                                  pt_kernel_key);
 
@@ -195,7 +195,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
     } else {
-      VLOG(6) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
+      VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
               << "` not found.";
     }
   }
@@ -211,7 +211,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       || is_xpu_unsupport
 #endif
       ) {
-    if (phi::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+    if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
       auto pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
@@ -423,12 +423,12 @@ static void PreparedOpRunPtImpl(
                                        platform::TracerEventType::OperatorInner,
                                        1, platform::EventRole::kInnerOp);
 
-    PreparePtenData<VarType>(pt_kernel, pt_kernel_signature, ins);
+    PreparePhiData<VarType>(pt_kernel, pt_kernel_signature, ins);
 
     phi::KernelContext pt_kernel_context;
-    BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
-                                           outs, attrs, default_attrs, dev_ctx,
-                                           &pt_kernel_context);
+    BuildDygraphPhiKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
+                                          outs, attrs, default_attrs, dev_ctx,
+                                          &pt_kernel_context);
 
     pt_kernel(&pt_kernel_context);
   }
@@ -451,7 +451,7 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const NameVarMap<VarBase>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<VarBase>(op_, kernel_type_, pt_kernel_signature_,
                                  pt_kernel_, dev_ctx_, ins, outs, attrs,
                                  default_attrs);
@@ -465,7 +465,7 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const NameVarMap<VariableWrapper>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<VariableWrapper>(
         op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
         outs, attrs, default_attrs);
@@ -479,7 +479,7 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
                      const NameVarMap<egr::EagerVariable>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<egr::EagerVariable>(
         op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
         outs, attrs, default_attrs);

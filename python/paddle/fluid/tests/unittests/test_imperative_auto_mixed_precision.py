@@ -20,6 +20,7 @@ import six
 from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 import paddle.nn as nn
 from paddle.static import InputSpec
+from paddle.autograd import PyLayer
 
 if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
@@ -1130,20 +1131,55 @@ class TestBf16(unittest.TestCase):
     test amp for BF16 
     '''
 
-    def train(self, enable_amp=True):
+    def train(self, enable_amp=True, amp_level='O1'):
         paddle.seed(100)
         input = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
         conv = paddle.nn.Conv2D(4, 6, (3, 3))
         with paddle.amp.auto_cast(
-                enable=enable_amp, level='O2', dtype='bfloat16'):
+                enable=enable_amp, level=amp_level, dtype='bfloat16'):
             output = conv(input)
         output = output.cast('float32')
         return output.numpy()
 
     def test_bf16(self):
-        out_fp32 = self.train(enable_amp=False)
-        out_bf16 = self.train(enable_amp=True)
-        self.assertTrue(np.allclose(out_fp32, out_bf16, rtol=1.e-3, atol=1.e-1))
+        if fluid.core.is_compiled_with_cuda():
+            cudnn_version = paddle.device.get_cudnn_version()
+            if cudnn_version is not None and cudnn_version >= 8100:
+                out_fp32 = self.train(enable_amp=False)
+                out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
+                out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
+                self.assertTrue(
+                    np.allclose(
+                        out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
+                self.assertTrue(
+                    np.allclose(
+                        out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
+
+
+class TestPyLayerWithAmp(unittest.TestCase):
+    def test_pylayer(self):
+        class MyMM(PyLayer):
+            @staticmethod
+            def forward(ctx, a, b):
+                ctx.save_for_backward(a, b)
+                return a.mm(b)
+
+            @staticmethod
+            def backward(ctx, grad):
+                a, b = ctx.saved_tensor()
+                # NOTE(zhiqiu): a and b is float32 now, while grad is fp16 when forward runs with auto_cast()
+                # thus, the mm operation raise errors because of the dtype of inputs are inconsistent
+                return grad.mm(b.t()), a.t().mm(grad)
+
+        x = paddle.rand([10, 10])
+        y = paddle.rand([10, 10])
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        with paddle.amp.auto_cast():
+            res = MyMM.apply(x, y)
+            loss = paddle.mean(res)
+        loss.backward()
 
 
 if __name__ == '__main__':

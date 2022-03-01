@@ -29,8 +29,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void RandintRawKernel(const Context& dev_ctx,
-                      int64_t low,
-                      int64_t high,
+                      int low,
+                      int high,
                       const ScalarArray& shape,
                       DataType dtype,
                       int seed,
@@ -38,7 +38,9 @@ void RandintRawKernel(const Context& dev_ctx,
   out->Resize(phi::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
   if (FLAGS_use_curand) {
-    uint64_t range = static_cast<uint64_t>(high) - static_cast<uint64_t>(low);
+    uint64_t high = static_cast<uint64_t>(high);
+    uint64_t low = static_cast<uint64_t>(low);
+    uint64_t range = high - low;
     if (UNLIKELY(range >= (1ULL << 32))) {
       // When 'range' grater than maximum of uint32, generate uint64 rand value
       funcs::uniform_distribution<uint64_t> dist;
@@ -80,8 +82,8 @@ void RandintRawKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void RandintKernel(const Context& dev_ctx,
-                   int64_t low,
-                   int64_t high,
+                   int low,
+                   int high,
                    const ScalarArray& shape,
                    DataType dtype,
                    DenseTensor* out) {

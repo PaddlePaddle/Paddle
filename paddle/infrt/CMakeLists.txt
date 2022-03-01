@@ -74,6 +74,7 @@ endif()
 
 
 add_subdirectory(api)
+add_subdirectory(backends)
 add_subdirectory(common)
 add_subdirectory(dialect)
 add_subdirectory(host_context)
@@ -96,6 +97,7 @@ set(infrt_mlir_incs
         pd_extra_ops_inc
         rewrite_inc
         trt_ops_inc
+        pd_lower_to_trt_inc
         )
 
 if (INFRT_WITH_PHI)
