@@ -393,20 +393,9 @@ def _build_table(statistic_data,
     total_time = statistic_data.time_range_summary.get_cpu_range_sum(
         TracerEventType.ProfileStep)
     ###### Print Device Summary ######
-    headers = ['Device', 'Process Utilization (%)']
-    device_names = ['CPU']
-    device_names.extend([
-        'GPU{}'.format(key)
-        for key in statistic_data.time_range_summary.GPUTimeRange.keys()
-    ])
-    MAX_NAME_COLUMN_WIDTH = 50
-    name_column_width = max(
-        [len(device_name) for device_name in device_names]) + 4
-    name_column_width = max(len(headers[0]), name_column_width)
-    name_column_width = min(name_column_width, MAX_NAME_COLUMN_WIDTH)
-
+    headers = ['Device', 'Utilization (%)']
+    name_column_width = 30
     DEFAULT_COLUMN_WIDTH = 20
-
     add_column(name_column_width)
     for _ in headers[1:]:
         add_column(DEFAULT_COLUMN_WIDTH)
@@ -449,13 +438,16 @@ def _build_table(statistic_data,
     append(header_sep)
     append(row_format.format(*headers))
     append(header_sep)
-    row_values = []
-    row_values.extend([
-        'CPU', format_ratio(
+    row_values = [
+        'CPU(Process)', format_ratio(
             float(statistic_data.extra_info['Process Cpu Utilization']))
-    ])
+    ]
     append(row_format.format(*row_values))
-
+    row_values = [
+        'CPU(System)', format_ratio(
+            float(statistic_data.extra_info['System Cpu Utilization']))
+    ]
+    append(row_format.format(*row_values))
     for gpu_name in statistic_data.time_range_summary.get_gpu_devices():
         gpu_time = float(
             statistic_data.time_range_summary.get_gpu_range_sum(
@@ -466,8 +458,9 @@ def _build_table(statistic_data,
 
     append(header_sep)
     append(
-        "Note:\nCPU Utilization = process CPU time over all cpu cores / elapsed time, so max utilization can be reached 100% * number of cpu cores.\n"
-        "GPU Utilization = process GPU time / elapsed time")
+        "Note:\nCPU(Process) Utilization = Current process CPU time over all cpu cores / elapsed time, so max utilization can be reached 100% * number of cpu cores.\n"
+        "CPU(System) Utilization = All processes CPU time over all cpu cores(busy time) / (busy time + idle time).\n"
+        "GPU Utilization = Current process GPU time / elapsed time")
     append('-' * line_length)
     append('')
     append('')
