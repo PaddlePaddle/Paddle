@@ -279,9 +279,6 @@ __global__ void filter_copy_fuse_kernel(
         map_data[t * 3] = (int64_t)previous;
         map_data[t * 3 + 1] = x1_lods_data[p];
         map_lods_data[t] = t;
-
-        // out_lods_data[1] = 2
-
         out_lods_data[out_lods_idx] = previous + batch_len;
         map_data[t * 3 + 2] = batch_len;
         out_lods_idx++;
