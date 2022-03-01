@@ -138,15 +138,48 @@ class XPUTestTanhOP(XPUOpTestWrapper):
         self.use_dynamic_create_class = False
 
     class XPUTestTanh(TestActivationOPBase):
+        def setUp(self):
+            self.op_type = 'exp'
+            self.set_xpu()
+            self.set_shape()
+            self.place = paddle.XPUPlace(0)
+            self.init_dtype()
+            self.set_case()
+
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
+
+        def init_dtype(self):
+            self.dtype = self.in_type
+
+        def set_shape(self):
+            self.shape = (11)
+
         def set_case(self):
             self.op_type = "tanh"
             self.dtype = self.in_type
-
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             out = np.tanh(x)
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
+
+    class XPUTestTanh1(XPUTestExp):
+        def set_shape(self):
+            self.shape = (11, 17)
+
+    class XPUTestTanh2(XPUTestExp):
+        def set_shape(self):
+            self.shape = (11, 17, 3)
+
+    class XPUTestTanh3(XPUTestExp):
+        def set_shape(self):
+            self.shape = (11, 17, 3, 5)
+
+    class XPUTestTanh4(XPUTestExp):
+        def set_shape(self):
+            self.shape = (11, 17, 3, 5, 7)
 
 
 support_types = get_xpu_op_support_types('tanh')
