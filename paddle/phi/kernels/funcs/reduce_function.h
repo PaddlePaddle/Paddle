@@ -32,20 +32,19 @@
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/fast_divmod.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
+#include "paddle/utils/string/string_helper.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
@@ -328,7 +327,13 @@ struct ReduceConfig {
     if (should_reduce_again) {
       tmp->ResizeAndAllocate(phi::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
-      output_data = tmp->mutable_data<Ty>(place);
+
+      phi::GPUContext dev_ctx(place);
+      const auto alloc =
+          std::make_unique<paddle::experimental::DefaultAllocator>(place);
+      dev_ctx.SetAllocator(alloc.get());
+
+      output_data = dev_ctx.Alloc<Ty>(tmp);
     } else {
       output_data = y_data;
     }
@@ -1024,14 +1029,14 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer,
                             reducer.initial(),
                             stream);
+  phi::GPUContext dev_ctx(place);
+  const auto alloc =
+      std::make_unique<paddle::experimental::DefaultAllocator>(place);
+  dev_ctx.SetAllocator(alloc.get());
+  phi::DenseTensor tmp =
+      phi::Empty<uint8_t>(dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
 
-  phi::DenseTensor tmp = phi::DenseTensor(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-      phi::DenseTensorMeta(
-          phi::DataType::UINT8,
-          phi::make_ddim({static_cast<int64_t>(temp_storage_bytes)})));
-
-  auto* temp_storage = tmp.mutable_data<uint8_t>(place);
+  auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
 
   cub::DeviceReduce::Reduce(temp_storage,
                             temp_storage_bytes,
@@ -1069,7 +1074,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       const TransformOp& transform,
                       const std::vector<int>& origin_reduce_dims,
                       gpuStream_t stream) {
-  y->mutable_data<Ty>(x.place());
+  dev_ctx.Alloc<Ty>(y);
 
   auto x_dim = phi::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
@@ -1081,9 +1086,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
   // y_data;
 
   phi::DDim tmp_ddim;
-  phi::DenseTensor tmp = phi::DenseTensor(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(y->place()),
-      phi::DenseTensorMeta(y->dtype(), tmp_ddim, y->layout()));
+  phi::DenseTensor tmp = phi::Empty<Ty>(dev_ctx);
 
   auto x_data = x.data<Tx>();
   auto y_data = y->data<Ty>();
