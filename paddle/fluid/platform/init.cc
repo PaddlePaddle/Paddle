@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/place.h"
 
 #ifdef PADDLE_WITH_XPU
@@ -161,6 +162,8 @@ void LoadCustomDevice(const std::string &library_dir) {
 #endif
 
 void InitDevices() {
+  // set name at the entry point of Paddle
+  platform::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
