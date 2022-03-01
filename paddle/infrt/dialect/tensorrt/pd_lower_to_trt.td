@@ -25,4 +25,6 @@ def PD2TRT_Relu6_Lower : Pat<
         (PD_Relu6Op $X, $threshold),
         (TRT_ActivationOp $X, (INFRT_createSI32Attr<"8">)/*kCLIP*/, (INFRT_createF32Attr<"0.0">), $threshold)>;
 
+def PD2TRT_Return_Lower : Pat<(PD_ReturnOp $inputs), (TRT_FetchOp $inputs)>;
+
 #endif // PD_LOWER_TO_TRT
