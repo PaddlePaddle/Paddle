@@ -19,9 +19,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TopkV2Kernel(const Context& ctx,
+void TopkV2Kernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const DenseTensor& k,
+                  const DenseTensor& k_t,
                   int k_int,
                   int axis,
                   bool largest,

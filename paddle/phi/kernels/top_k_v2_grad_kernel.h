@@ -19,14 +19,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TraceGradKernel(const Context& ctx,
-                     const DenseTensor& out_grad,
-                     const DenseTensor& x,
-                     const DenseTensor& indices,
-                     int k,
-                     int axis,
-                     bool largest,
-                     bool sorted,
-                     DenseTensor* in_grad);
+void TopkV2GradKernel(const Context& dev_ctx,
+                      const DenseTensor& out_grad,
+                      const DenseTensor& x,
+                      const DenseTensor& indices,
+                      int k,
+                      int axis,
+                      bool largest,
+                      bool sorted,
+                      DenseTensor* x_grad);
 
 }  // namespace phi
