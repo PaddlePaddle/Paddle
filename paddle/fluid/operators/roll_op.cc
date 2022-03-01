@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/roll_op.h"
-
 #include <memory>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/operators/utils.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -149,29 +152,15 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(RollGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DELCARE_INFER_SHAPE_FUNCTOR(roll, RollInferShapeFunctor,
+                            PT_INFER_META(phi::RollInferMeta));
+
 REGISTER_OPERATOR(roll, ops::RollOp, ops::RollOpMaker,
                   ops::RollGradMaker<paddle::framework::OpDesc>,
-                  ops::RollGradMaker<paddle::imperative::OpBase>);
+                  ops::RollGradMaker<paddle::imperative::OpBase>,
+                  RollInferShapeFunctor);
 REGISTER_OPERATOR(roll_grad, ops::RollGradOp,
                   ops::RollGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    roll, ops::RollKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RollKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::RollKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RollKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::RollKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex<float>>,
-    ops::RollKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    roll_grad, ops::RollGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RollGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::RollGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RollGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::RollGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<float>>,
-    ops::RollGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(roll)
     .AddCheckpoint(
