@@ -144,9 +144,6 @@ void TestConv3dBase(const std::vector<int>& indices,
           .get());
   dev_ctx_gpu.PartialInitWithAllocator();
 
-  const auto cuda_alloc =
-      std::make_shared<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CUDAPlace());
   DenseTensor d_indices_tensor = phi::Empty(
       dev_ctx_gpu,
       DenseTensorMeta(DataType::INT32, {4, non_zero_num}, DataLayout::NCHW));
@@ -169,7 +166,6 @@ void TestConv3dBase(const std::vector<int>& indices,
 
   SparseCooTensor d_x_tensor(d_indices_tensor, d_features_tensor, x_dims);
 
-  // TODO(zhangkaihuo) change layout to DHWCOC
   DenseTensor d_kernel_tensor = phi::Empty(
       dev_ctx_gpu,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
@@ -205,7 +201,7 @@ void TestConv3dBase(const std::vector<int>& indices,
                     sizeof(int) * h_indices_tensor.numel());
   phi::Copy(dev_ctx_gpu,
             d_out.non_zero_indices(),
-            phi::GPUPlace(),
+            phi::CPUPlace(),
             true,
             &h_indices_tensor);
 
@@ -225,7 +221,7 @@ void TestConv3dBase(const std::vector<int>& indices,
                     sizeof(T) * h_features_tensor.numel());
   phi::Copy(dev_ctx_gpu,
             d_out.non_zero_elements(),
-            phi::GPUPlace(),
+            phi::CPUPlace(),
             true,
             &h_features_tensor);
   for (uint64_t i = 0; i < correct_out_features.size(); i++) {

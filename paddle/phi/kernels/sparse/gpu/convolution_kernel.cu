@@ -17,6 +17,7 @@ limitations under the License. */
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 
+#include "glog/logging.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -203,24 +204,20 @@ int ProductRuleBook(const Context& dev_ctx,
                     SparseCooTensor* out,
                     std::vector<int>* h_counter,
                     std::vector<int>* h_offsets) {
-  // const auto place = dev_ctx.GetPlace();
   const auto& kernel_dims = kernel.dims();
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
   const int* indices_ptr = non_zero_indices.data<int>();
-  // int* counter_ptr = counter_per_kernel->mutable_data<int>(place);
   dev_ctx.Alloc(counter_per_kernel,
                 counter_per_kernel->dtype(),
                 sizeof(int) * counter_per_kernel->numel());
   int* counter_ptr = counter_per_kernel->data<int>();
-  // int* offsets_ptr = offsets_per_kernel->mutable_data<int>(place);
   dev_ctx.Alloc(offsets_per_kernel,
                 offsets_per_kernel->dtype(),
                 sizeof(int) * offsets_per_kernel->numel());
   int* offsets_ptr = offsets_per_kernel->data<int>();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  rulebook->ResizeAndAllocate({2 * kernel_size * non_zero_num});
-  // int* rulebook_ptr = rulebook->mutable_data<int>(place);
+  rulebook->ResizeAndAllocate({2, kernel_size * non_zero_num});
   dev_ctx.Alloc(rulebook, rulebook->dtype(), sizeof(int) * rulebook->numel());
   int* rulebook_ptr = rulebook->data<int>();
 
@@ -280,15 +277,12 @@ int ProductRuleBook(const Context& dev_ctx,
   out_index->ResizeAndAllocate({rulebook_len});
   unique_value->ResizeAndAllocate({rulebook_len});
   unique_key->ResizeAndAllocate({rulebook_len});
-  // int* out_index_ptr = out_index->mutable_data<int>(place);
   dev_ctx.Alloc(
       out_index, out_index->dtype(), sizeof(int) * out_index->numel());
   int* out_index_ptr = out_index->data<int>();
-  // int* unique_value_ptr = unique_value->mutable_data<int>(place);
   dev_ctx.Alloc(
       unique_value, unique_value->dtype(), sizeof(int) * unique_value->numel());
   int* unique_value_ptr = unique_value->data<int>();
-  // int* unique_key_ptr = unique_key->mutable_data<int>(place);
   dev_ctx.Alloc(
       unique_key, unique_key->dtype(), sizeof(int) * unique_key->numel());
   int* unique_key_ptr = unique_key->data<int>();
@@ -313,7 +307,7 @@ int ProductRuleBook(const Context& dev_ctx,
                       unique_key_ptr + rulebook_len,
                       out_index_ptr);
 
-  // 4. unique => tmp2_out_index
+  // 4. unique
   thrust::pair<int*, int*> new_end =
       thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
                             unique_key_ptr,
@@ -330,10 +324,11 @@ int ProductRuleBook(const Context& dev_ctx,
       x.dtype(), {out_non_zero_num, kernel_dims[4]}, x.layout());
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
-  // int* out_indices_ptr = out_indices.mutable_data<int>(dev_ctx.GetPlace());
+
   dev_ctx.Alloc(
       &out_indices, out_indices.dtype(), sizeof(int) * out_indices.numel());
   int* out_indices_ptr = out_indices.data<int>();
+
   config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, 1);
   UpdateIndexKernel<<<config.block_per_grid.x,
@@ -370,12 +365,12 @@ void Conv3dKernel(const Context& dev_ctx,
   // Currently, only support x.layout is NDHWC, groups = 1
   // if x.layout != NDHWC then transpose(x), transpose(weight)
 
-  const auto& place = dev_ctx.GetPlace();
   const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   DDim out_dims = {1, 1, 1, 1, 1};
   GetOutShape(x_dims, kernel_dims, paddings, dilations, strides, &out_dims);
+  out->set_dims(out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
   std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
@@ -387,7 +382,6 @@ void Conv3dKernel(const Context& dev_ctx,
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
   DenseTensorMeta offsets_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  // DenseTensor rulebook = phi::Empty<int, Context>(dev_ctx);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
   DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(offsets_meta));
   DenseTensor out_index = phi::Empty<int, Context>(dev_ctx);
@@ -423,11 +417,9 @@ void Conv3dKernel(const Context& dev_ctx,
       phi::Empty(dev_ctx, std::move(in_features_meta));
   phi::DenseTensor out_features =
       phi::Empty(dev_ctx, std::move(out_features_meta));
-  // T* in_features_ptr = in_features.mutable_data<T>(place);
   dev_ctx.Alloc(
       &in_features, in_features.dtype(), sizeof(T) * in_features.numel());
   T* in_features_ptr = in_features.data<T>();
-  // T* out_features_ptr = out_features.mutable_data<T>(place);
   dev_ctx.Alloc(
       &out_features, out_features.dtype(), sizeof(T) * out_features.numel());
   T* out_features_ptr = out_features.data<T>();
@@ -445,17 +437,10 @@ void Conv3dKernel(const Context& dev_ctx,
 
   // 3. call gemm for every werght
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  // T* out_values_ptr =
-  // out->mutable_non_zero_elements()->mutable_data<T>(place);
-  dev_ctx.Alloc(out->mutable_non_zero_elements(),
-                out->mutable_non_zero_elements()->dtype(),
-                sizeof(T) * in_features.numel());
-  T* out_values_ptr = out->mutable_non_zero_elements()->data<T>();
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemsetAsync(out_values_ptr,
-                      0,
-                      sizeof(T) * out->nnz() * out_channels,
-                      dev_ctx.stream()));
+  auto* out_values = out->mutable_non_zero_elements();
+  dev_ctx.Alloc(
+      out_values, out_values->dtype(), sizeof(T) * out_values->numel());
+  T* out_values_ptr = out_values->data<T>();
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
