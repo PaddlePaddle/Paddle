@@ -77,7 +77,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
       } else {
         out_dim = {-1, dims[rank - 1] - cvm_offset};
       }
-      outs_dims[i] = framework::make_ddim(out_dim);
+      outs_dims[i] = phi::make_ddim(out_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -91,7 +91,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
     bool flag = 0;
     for (auto* input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
-        input_data_type = input->type();
+        input_data_type = framework::TransToProtoVarType(input->dtype());
         flag = 1;
         break;
       }
