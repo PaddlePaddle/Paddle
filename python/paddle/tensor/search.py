@@ -542,9 +542,9 @@ def where(condition, x=None, y=None, name=None):
 
 
     Args:
-        condition(Tensor): The condition to choose x or y.
-        x(Tensor, optional): x is a Tensor with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
-        y(Tensor, optional): y is a Tensor with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
+        condition(Tensor): The condition to choose x or y. When True(nonzero), yield x, otherwise yield y.
+        x(Tensor or Scalar, optional): x is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
+        y(Tensor or Scalar, optional): y is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
 
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -571,6 +571,12 @@ def where(condition, x=None, y=None, name=None):
           #            [[2],
           #             [3]]),)
     """
+    if np.isscalar(x):
+        x = layers.fill_constant([1], np.array([x]).dtype.name, x)
+
+    if np.isscalar(y):
+        y = layers.fill_constant([1], np.array([y]).dtype.name, y)
+
     if x is None and y is None:
         return nonzero(condition, as_tuple=True)
 

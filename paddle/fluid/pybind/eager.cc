@@ -64,12 +64,6 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
   auto ddims = phi::make_ddim(dims);
-  PADDLE_ENFORCE_GE(
-      phi::product(ddims), 0,
-      paddle::platform::errors::InvalidArgument(
-          "Create Eager Tensor with dims contain minus num is ilegal"
-          "Please check your code and make sure you new a "
-          "eager tensor with fixed shape instead of using -1."));
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -81,21 +75,19 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
     std::shared_ptr<phi::DenseTensor> dense_tensor =
         std::make_shared<phi::DenseTensor>(
             phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-            phi::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
+            phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                  ddims));
-    dense_tensor->mutable_data(place);
+    if (phi::product(ddims) > 0) {
+      dense_tensor->mutable_data(place);
+    }
     self->tensor.set_impl(dense_tensor);
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "We only support LoDTensor to be constructed by this initializer, "
-        "please check your var type first and make sure you are going to "
-        "construct LoDTensor."));
   }
 
   if (!autograd_meta->GetMutableGradNode()) {
     VLOG(3) << "Tensor(" << name
             << ") have not GradNode, add GradNodeAccumulation for it.";
-    autograd_meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+    autograd_meta->SetGradNode(
+        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
   }
 }
 
@@ -141,7 +133,7 @@ void InitTensorWithTensor(TensorObject* self,
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
     self->tensor.set_impl(
-        src.copy_to(phi::TransToPtenBackend(place), true).impl());
+        src.copy_to(phi::TransToPhiBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   if (src.get_autograd_meta()) {
@@ -165,7 +157,7 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
     auto temp =
         paddle::experimental::Tensor(std::make_shared<phi::DenseTensor>(src));
     self->tensor.set_impl(
-        temp.copy_to(phi::TransToPtenBackend(place), true).impl());
+        temp.copy_to(phi::TransToPhiBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);

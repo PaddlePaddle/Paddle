@@ -670,7 +670,7 @@ def max_unpool1d(x,
                  data_format="NCL",
                  output_size=None,
                  name=None):
-    """
+    r"""
     This API implements max unpooling 1d opereation.
     `max_unpool1d` accepts the output of `max_pool1d` as input, 
     including the indices of the maximum value and calculate the partial inverse. 
@@ -779,7 +779,7 @@ def max_unpool2d(x,
                  data_format="NCHW",
                  output_size=None,
                  name=None):
-    """
+    r"""
     This API implements max unpooling 2d opereation.
     See more details in :ref:`api_nn_pooling_MaxUnPool2D` .
 
@@ -894,7 +894,7 @@ def max_unpool3d(x,
                  data_format="NCDHW",
                  output_size=None,
                  name=None):
-    """
+    r"""
     This API implements max unpooling 3d opereation.
     `max_unpool3d` accepts the output of `max_pool3d` as input, 
     including the indices of the maximum value and calculate the partial inverse. 

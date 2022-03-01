@@ -63,11 +63,11 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.device_context<DeviceContext>();
     int axis = ctx.Attr<int>("axis");
-    auto pt_x = paddle::experimental::MakePtenDenseTensor(*x);
-    auto pt_y = paddle::experimental::MakePtenDenseTensor(*y);
-    auto pt_z = paddle::experimental::MakePtenDenseTensor(*z);
+    auto pt_x = paddle::experimental::MakePhiDenseTensor(*x);
+    auto pt_y = paddle::experimental::MakePhiDenseTensor(*y);
+    auto pt_z = paddle::experimental::MakePhiDenseTensor(*z);
     phi::DivideRawKernel<T>(
-        static_cast<const typename framework::ConvertToPtenContext<
+        static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *pt_x.get(), *pt_y.get(), axis, pt_z.get());
   }

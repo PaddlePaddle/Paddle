@@ -32,7 +32,7 @@ enum class DataLayout {
   NUM_DATA_LAYOUTS,
   // See Note [ Why we need ALL in basic kernel key member? ]
   ALL_LAYOUT = UNDEFINED,
-  // Note: Unify pten DataLayout and fluid::framework::DataLayout,
+  // Note: Unify phi DataLayout and fluid::framework::DataLayout,
   // for compatible with fluid DataLayout, here need prefix `k`
   // Note: The original `kAnyLayout (enum value 2)` is a strange design.
   // `kAnyLayout` originally cannot represent any kind of Layout,

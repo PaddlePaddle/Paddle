@@ -1554,7 +1554,7 @@ class Unfold(Layer):
 
 
 class Fold(Layer):
-    """
+    r"""
 
     This Op is used to combines an array of sliding local blocks into a large containing
     tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 

@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/softmax_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -70,7 +71,8 @@ class SoftmaxMKLDNNHandler
                           out_grad->dims(), in_x_grad->dims()));
 
     auto dims = out_grad->dims();  // input and output share the same shape
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
+    const int axis =
+        phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
     auto softmax_tz = phi::vectorize<int64_t>(dims);
 
     auto data_softmax_md = MKLDNNMemDesc(
@@ -96,7 +98,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     Tensor* output = ctx.Output<Tensor>("Out");
     bool is_inplaced = input->IsSharedBufferWith(*output);
 
-    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
+    const int axis =
+        phi::funcs::CanonicalAxis(ctx.Attr<int>("axis"), input->dims().size());
 
     SoftmaxMKLDNNHandler<T> handler(mkldnn_engine, ctx.GetPlace(), input,
                                     output, axis);
