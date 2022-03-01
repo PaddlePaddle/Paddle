@@ -20,6 +20,7 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
@@ -41,6 +42,14 @@ static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaxinumNumBlocks);
 }
+
+template <typename T>
+struct NonzeroFunctor {
+  HOSTDEVICE explicit inline NonzeroFunctor() {}
+  HOSTDEVICE inline T operator()(const T x) const {
+    return static_cast<T>(static_cast<double>(x) != 0);
+  }
+};
 
 template <typename T>
 struct SigmoidFwdFunctor {
@@ -211,15 +220,19 @@ class GPUSigmoidCrossEntropyWithLogitsGradKernel
     bool normalize = context.Attr<bool>("normalize");
     if (normalize) {
       T *counts = counts_tensor->mutable_data<T>(context.GetPlace());
-      auto norm_ptr = memory::Alloc(dev_ctx, sizeof(T));
-      T *norm = reinterpret_cast<T *>(norm_ptr->ptr());
-      Sum<T, kNumCUDAThreads><<<1, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
-          counts, limit, static_cast<T>(1e-5), norm);
+      Tensor *norm_tensor = new Tensor();
+      norm_tensor->mutable_data<T>(context.GetPlace(), sizeof(T));
+      const std::vector<int> reduce_dim = {1};
+      TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+          context.cuda_device_context(), *counts_tensor, norm_tensor,
+          NonzeroFunctor<T>(), reduce_dim, dev_ctx.stream());
+      T *norm = norm_tensor->mutable_data<T>(context.GetPlace());
       std::vector<const framework::Tensor *> div_ins = {dX};
       std::vector<framework::Tensor *> div_outs = {dX};
       auto div_functor = DivFunctor<T>(norm);
       phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs,
                                        div_functor);
+      delete norm_tensor;
     }
   }
 };
