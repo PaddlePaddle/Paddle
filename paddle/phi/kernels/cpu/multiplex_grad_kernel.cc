@@ -53,7 +53,7 @@ void MultiplexGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(multiplex_gard,
+PD_REGISTER_KERNEL(multiplex_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::MultiplexGradKernel,
