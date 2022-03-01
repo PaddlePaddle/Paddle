@@ -1863,14 +1863,6 @@ REGISTER_OP_CUDA_KERNEL(
 FOR_EACH_ACTIVATION_CUDA_OP(REGISTER_ACTIVATION_CUDA_KERNEL)
 
 #ifdef PADDLE_WITH_XPU_KP
-
-// REGISTER_OP_KERNEL(relu, KP, plat::XPUPlace,
-//                    ops::ActivationCudaKernel<plat::XPUDeviceContext,
-//                    ops::CudaReluFunctor<float>>);
-// REGISTER_OP_KERNEL(relu_grad, KP, plat::XPUPlace,
-//                    ops::ActivationGradCudaKernel<plat::XPUDeviceContext,
-//                    ops::CudaReluGradFunctor<float>>);
-// XPU op register
 #define REGISTER_ACTIVATION_XPU_KERNEL(act_type, op_name, functor,             \
                                        grad_functor)                           \
   REGISTER_OP_KERNEL(                                                          \
