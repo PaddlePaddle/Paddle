@@ -123,11 +123,15 @@ class TestGatherBF16Op(OpTest):
         self.dtype = np.uint16
         self.config()
         xnp = np.random.random(self.x_shape).astype(np.float32)
+        axis_np = np.array(self.axis).astype(self.axis_type)
+        index_np = np.array(self.index).astype(self.index_type)
         self.inputs = {
             'X': convert_float_to_uint16(xnp),
-            'Index': np.array(self.index).astype(self.index_type)
+            'Index': index_np,
+            'Axis': axis_np
         }
-        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+        out = gather_numpy(self.inputs['X'], index_np, axis_np[0])
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
@@ -139,9 +143,11 @@ class TestGatherBF16Op(OpTest):
         """
         For multi-dimension input
         """
-        self.x_shape = (10, 20)
+        self.x_shape = (3, 88, 3)
         self.index = [1, 3, 5]
         self.index_type = "int32"
+        self.axis = [1]
+        self.axis_type = "int32"
 
 
 class TestGatherOp1(OpTest):
