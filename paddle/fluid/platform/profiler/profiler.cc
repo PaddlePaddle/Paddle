@@ -95,7 +95,7 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
       collector.ThreadNames();
   for (const auto& kv : thread_names) {
     extrainfo.AddExtraInfo(string_format(std::string("%llu"), kv.first),
-                           std::string("\"%s\""), kv.second.c_str());
+                           kv.second);
   }
   return std::unique_ptr<ProfilerResult>(
       new platform::ProfilerResult(std::move(tree), extrainfo));

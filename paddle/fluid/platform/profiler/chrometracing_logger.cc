@@ -446,12 +446,12 @@ void ChromeTracingLogger::LogMetaInfo(
   for (const auto& kv : extra_info) {
     if (count > 1) {
       output_file_stream_ << string_format(std::string(R"JSON(
-     "%s": %s,
+     "%s": "%s",
    )JSON"),
                                            kv.first.c_str(), kv.second.c_str());
     } else {
       output_file_stream_ << string_format(std::string(R"JSON(
-     "%s": %s
+     "%s": "%s"
    )JSON"),
                                            kv.first.c_str(), kv.second.c_str());
     }
