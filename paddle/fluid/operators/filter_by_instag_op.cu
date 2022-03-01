@@ -279,7 +279,9 @@ __global__ void filter_copy_fuse_kernel(
         map_data[t * 3] = (int64_t)previous;
         map_data[t * 3 + 1] = x1_lods_data[p];
         map_lods_data[t] = t;
+
         // out_lods_data[1] = 2
+
         out_lods_data[out_lods_idx] = previous + batch_len;
         map_data[t * 3 + 2] = batch_len;
         out_lods_idx++;
@@ -506,12 +508,15 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     if (mixv_out_lods.size() - 1 > 0) {
       map_lods.resize(mixv_out_lods.size());
 
+      mixv_map_lods.CopyToCPU();
+
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.emplace_back(map_lods);
 
       map->set_lod(map_lod_info);
       loss_weight->set_lod(map_lod_info);
 
+      mixv_out_lods.CopyToCPU();
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.emplace_back(out_lods);
       out->set_lod(out_lod_info);
@@ -529,6 +534,9 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       mixv_map_lods[0] = 0;
       mixv_map_lods[1] = 1;
       mixv_out_lods.push_back(1);
+
+      mixv_map_lods.CopyToCPU();
+      mixv_out_lods.CopyToCPU();
 
       std::vector<Vector<size_t>> map_lod_info;
       map_lod_info.emplace_back(map_lods);
