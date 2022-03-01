@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-
 import os
 
 
@@ -31,8 +29,37 @@ class Device(object):
         self.memory = memory
         self.labels = labels
 
+    def labels_string(self):
+        return ",".join(self.labels)
+
+    @classmethod
+    def parse_device(self):
+        dev = Device()
+        visible_devices = None
+        if 'CUDA_VISIBLE_DEVICES' in os.environ or 'NVIDIA_VISIBLE_DEVICES' in os.environ:
+            dev.dtype = DeviceType.GPU
+            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv(
+                "NVIDIA_VISIBLE_DEVICES")
+        elif 'XPU_VISIBLE_DEVICES' in os.environ:
+            dev.dtype = DeviceType.XPU
+            visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
+        elif 'ASCEND_VISIBLE_DEVICES' in os.environ:
+            dev.dtype = DeviceType.NPU
+            visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
+
+        if visible_devices and visible_devices != 'all':
+            dev.labels = visible_devices.split(',')
+            dev.count = len(dev.labels)
+        else:
+            return self.detect_device()
+
+        return dev
+
     @classmethod
     def detect_device(self):
+        # enable paddle detection is very expansive
+        import paddle.fluid as fluid
+
         dev = Device()
         num = 0
         visible_devices = None
@@ -60,6 +87,3 @@ class Device(object):
             dev.count = len(dev.labels)
 
         return dev
-
-    def labels_string(self):
-        return ",".join(self.labels)

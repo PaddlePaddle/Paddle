@@ -39,7 +39,9 @@ class ControllerBase(object):
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
 
-        self.job = Job()
+        self.job = Job(np=self.ctx.args.np,
+                       mode=self.ctx.args.mode,
+                       id=self.ctx.args.id)
         self.pod = Pod()
 
         self.join_server = None
@@ -47,38 +49,40 @@ class ControllerBase(object):
     def run(self):
         self.build_job()
         self.build_pod()
-        self.ctx.logger.debug("Run pod {}\n {}".format(self.pod,
-                                                       self.pod.containers[0]))
+
         assert len(self.pod.containers) > 0, "No container in the pod"
+        self.ctx.logger.debug(self.pod)
+        self.ctx.logger.debug(self.pod.containers[0])
 
         self.pod.deploy()
 
     def stop(self, sigint=None):
+        self.ctx.logger.debug("Controller stop")
         self.master.stop()
         self.pod.stop(sigint)
 
     def finalize(self):
+        self.ctx.logger.debug("Controller finalize")
         self.pod.join()
         self.master.stop()
+        sys.exit(self.pod.exit_code)
 
     def signal_handler(self, sigint, frame):
         self.ctx.logger.info("Termiating with signal {}".format(sigint))
         self.sigint = sigint
-        self.ctx.running = False
+        self.ctx.status.done()
         self.stop(sigint)
         time.sleep(1)
         sys.exit(sigint)
 
 
-'''
-Controller API for customization
-'''
-
-
 class Controller(ControllerBase):
+    '''
+    Controller API for customization
+    '''
+
     def build_job(self):
-        self.job.set_replicas(self.ctx.args.np)
-        self.job.id = self.ctx.args.id
+        self.ctx.logger.info(self.job)
 
     def build_pod(self):
         raise NotImplementedError
@@ -112,8 +116,14 @@ class Controller(ControllerBase):
                       container=None,
                       entrypoint=None,
                       envs={},
-                      is_init=False,
-                      log_file=None):
+                      log_tag=None,
+                      is_init=False):
+        if not is_init and log_tag is not None:
+            log_file = "{}.{}.{}.log".format(self.job.id, self.pod.name,
+                                             log_tag)
+        else:
+            log_file = None
+
         if not container:
             container = self.new_container(
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file)
@@ -123,26 +133,27 @@ class Controller(ControllerBase):
         else:
             self.pod.containers.append(container)
 
-    '''
-    how many process/container should be run in pod
-    '''
-
     def pod_replicas(self):
+        '''
+        how many process/container should be run in pod
+        '''
+
         if self.ctx.args.nproc_per_node:
             return int(self.ctx.args.nproc_per_node)
         else:
             return self.ctx.node.device.count
 
-    '''
-    save_log append *info* to the log file of pod.name
-    '''
-
-    def save_log(self, info):
+    def save_pod_log(self, info):
+        '''
+        save_pod_log append *info* to the log file of pod.name
+        '''
         if not self.ctx.args.log_dir:
             return
 
-        f = os.path.join(self.ctx.args.log_dir, '{}.log'.format(self.pod.name))
+        f = os.path.join(self.ctx.args.log_dir,
+                         '{}.{}.log'.format(self.job.id, self.pod.name))
         try:
+            os.makedirs(os.path.dirname(f), exist_ok=True)
             with open(f, 'a+') as fd:
                 fd.write(str(info))
         except Exception as e:

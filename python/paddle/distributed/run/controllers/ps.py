@@ -27,12 +27,6 @@ class PSController(Controller):
         else:
             return False
 
-    def build_job(self):
-
-        self.job.replicas = self.ctx.args.np or 1
-
-        self.job.endpoints = []
-
     def build_pod(self):
         self.pod.rank = self.ctx.args.rank
 
@@ -63,7 +57,7 @@ class PSController(Controller):
 
         peer_list = [json.loads(i) for i in peer_list]
 
-        self.save_log(peer_list)
+        self.save_pod_log(peer_list)
 
         server_endpoints = [j for i in peer_list for j in i['servers']]
         trainer_endpoints = [j for i in peer_list for j in i['trainers']]
@@ -85,8 +79,8 @@ class PSController(Controller):
                 "PADDLE_ROLE": "PSERVER",
                 "PADDLE_RANK": "{}".format(i + server_rank_offset),
             }
-            log_file = "server.{}.{}.log".format(self.pod.name, i)
-            self.add_container(envs=e, log_file=log_file)
+            log_tag = "ps.{}".format(i)
+            self.add_container(envs=e, log_tag=log_tag)
 
         for i in range(trainer_num):
             e = {
@@ -95,5 +89,5 @@ class PSController(Controller):
                 "PADDLE_ROLE": "TRAINER_CPU",
                 "PADDLE_RANK": "{}".format(i + server_rank_offset),
             }
-            log_file = "trainer.{}.{}.log".format(self.pod.name, i)
-            self.add_container(envs=e, log_file=log_file)
+            log_tag = "trainer.{}".format(i)
+            self.add_container(envs=e, log_tag=log_tag)

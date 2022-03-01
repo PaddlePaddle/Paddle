@@ -91,6 +91,9 @@ class Container(object):
     def wait(self, timeout=None):
         self.proc.wait(timeout)
 
+    def exit_code(self):
+        return self.proc.exit_code()
+
     def status(self):
         if not self.proc:
             return Status.UNINIT

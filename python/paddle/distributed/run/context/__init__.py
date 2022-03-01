@@ -16,8 +16,8 @@ from argparse import ArgumentParser, REMAINDER
 import os, copy
 
 from paddle.distributed.run import plugins
-from .node import Node
 
+from .node import Node
 from .status import Status
 
 import logging
@@ -27,14 +27,15 @@ class Context(object):
     def __init__(self, enable_plugin=True):
         self.args = self.parse_args()
         self.envs = self.fetch_envs()
-        self.node = self.fetch_node_info()
         self.logger = self.get_logger()
-        self.events = []
 
+        self.node = Node()
         self.status = Status()
 
-        # global status flag
-        self.running = True
+        self.set_env_in_args()
+
+        # design for event queue, later
+        self.events = []
 
         if enable_plugin:
             self._enable_plugin()
@@ -64,10 +65,10 @@ class Context(object):
             "--log", type=str, default="INFO", help="Log level. Default INFO")
 
         base_group.add_argument(
-            "--max_restart",
-            type=int,
-            default=0,
-            help="How many times can restart. Default 0")
+            "--np",
+            type=str,
+            default="1",
+            help="number of peer, job pod/node number")
 
         base_group.add_argument(
             "--nproc_per_node",
@@ -100,6 +101,15 @@ class Context(object):
             "--id", type=str, default="default", help="job unique id")
 
         base_group.add_argument(
+            "--devices",
+            type=str,
+            default=None,
+            help="accelerate devices"
+            "For example:"
+            "--devices=\"0,1,2,3\" will launch four training processes each bound to one device."
+        )
+        '''
+        base_group.add_argument(
             "--gpus",
             type=str,
             default=None,
@@ -126,6 +136,7 @@ class Context(object):
             "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
         )
         base_group.add_argument("--selected_npus", dest="npus")
+        '''
 
         base_group.add_argument(
             "training_script",
@@ -201,22 +212,23 @@ class Context(object):
         # parameter elastic mode
         elastic_group = parser.add_argument_group("Elastic Parameters")
         elastic_group.add_argument(
-            "--elastic_server", type=str, help="etcd server host:port")
-        elastic_group.add_argument(
-            "--elastic_pre_hook", type=str, help="elastic pre_hook shell cmd")
+            "--max_restart",
+            type=int,
+            default=3,
+            help="How many times can restart. Default 3")
 
         elastic_group.add_argument(
-            "--np",
-            type=str,
-            default=1,
-            help="number of peer, job pod/node number")
-        elastic_group.add_argument(
-            "--scale", type=int, default=0, help="scale np")
-        elastic_group.add_argument(
-            "--host", type=str, help="bind host, default to POD_IP env")
-        elastic_group.add_argument(
-            "--force", type=bool, default=False, help="update np force")
+            "--elastic_level",
+            type=int,
+            default=-1,
+            help="elastic level -1 disable, 0 failed exit, peers hold, 1 interal restart"
+        )
 
+        elastic_group.add_argument(
+            "--elastic_timeout",
+            type=int,
+            default=30,
+            help="how many seconds to wait before elastic perform training")
         return parser.parse_args()
 
     def _valide_env(self, key):
@@ -233,9 +245,6 @@ class Context(object):
         ge = os.environ.copy()
         return {k: ge[k] for k in ge if self._valide_env(k)}
 
-    def fetch_node_info(self):
-        return Node()
-
     def get_logger(self, level=logging.INFO):
         logger = logging.getLogger("PADDLERUN")
         logger.setLevel(self.args.log.upper() or level)
@@ -245,3 +254,23 @@ class Context(object):
         ch.setFormatter(formatter)
         logger.addHandler(ch)
         return logger
+
+    def set_env_in_args(self):
+        env_args = {
+            'PADDLE_MASTER': 'master',
+            'PADDLE_DEVICES': 'devices',
+            'PADDLE_NP': 'np',
+            'PADDLE_MODE': 'mode',
+            'PADDLE_LOG': 'log',
+            'PADDLE_NPROC_PER_NODE': 'nproc_per_node',
+            'PADDLE_JOB_ID': 'id',
+            'PADDLE_RANK': 'rank',
+            'PADDLE_LOG_DIR': 'log_dir',
+            'PADDLE_MAX_RESTlRT': 'max_restart',
+            'PADDLE_ELASTIC_LEVEL': 'elastic_level',
+            'PADDLE_ELASTIC_TIMEOUT': 'elastic_timeout',
+        }
+
+        for k, v in env_args.items():
+            if k in self.envs:
+                setattr(self.args, v, self.envs[k])

@@ -21,7 +21,9 @@ from contextlib import closing
 
 class Node(object):
     def __init__(self):
-        self.device = Device.detect_device()
+        # enable paddle detection is very expansive
+        # self.device = Device.detect_device()
+        self.device = Device.parse_device()
         self.ip = self.get_host_ip()
         self.free_ports = []
 

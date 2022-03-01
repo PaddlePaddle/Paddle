@@ -20,9 +20,9 @@ class JobMode:
 
 
 class Job(object):
-    def __init__(self):
-        self.mode = JobMode.COLLECTIVE
-        self.id = 'default'
+    def __init__(self, np="", mode=JobMode.COLLECTIVE, id='default'):
+        self.mode = mode
+        self.id = id
 
         self.ips = []
         self.ports = []
@@ -33,11 +33,18 @@ class Job(object):
         self.replicas_max = self.replicas
         self.elastic = False
 
+        self.set_replicas(np)
+
+    def __str__(self):
+        return "Job: {}, mode {}, replicas {},{}:{}".format(
+            self.id, self.mode, self.replicas, self.replicas_min,
+            self.replicas_max)
+
     def set_replicas(self, np: str):
         np = np if np else '1'
 
         if ':' in np:
-            nps = np.split(':').strip()
+            nps = np.split(':')
             self.replicas_min, self.replicas_max = int(nps[0]), int(nps[1])
             self.replicas = self.replicas_max  # default to max
 

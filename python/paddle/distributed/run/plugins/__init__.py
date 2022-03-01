@@ -12,27 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
+
 __all__ = []
 
 
 def log(ctx):
-    ctx.logger.debug("int args {}".format(ctx.args).replace(", ", "\n"))
-    ctx.logger.debug("int envs {}".format(ctx.envs))
-
-
-def fill_job(ctx):
-    if ctx.args.host:
-        ctx.node.ip = ctx.args.host
-        ctx.envs["POD_IP"] = ctx.args.host
+    ctx.logger.debug("-----------  Configuration Arguments -----------")
+    for arg, value in sorted(six.iteritems(vars(ctx.args))):
+        ctx.logger.debug("%s: %s" % (arg, value))
+    ctx.logger.debug("------------------------------------------------")
 
 
 def process_args(ctx):
     # reset device by args
-    argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
+    #argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
+    argdev = ctx.args.devices
     if argdev:
         ctx.node.device.labels = argdev.split(',')
         ctx.node.device.count = len(ctx.node.device.labels)
         ctx.logger.debug('device reset by args {}'.format(argdev))
 
 
-enabled_plugins = [log, fill_job, process_args]
+def collective_compatible(ctx):
+    if 'PADDLE_TRAINER_ENDPOINTS' in ctx.envs:
+        ctx.master = ctx.envs['PADDLE_TRAINER_ENDPOINTS'].split(',')[0]
+
+
+enabled_plugins = [process_args, log]

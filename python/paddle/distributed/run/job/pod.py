@@ -39,6 +39,8 @@ class PodSepc(object):
 
         self.replicas = 0  # number of containers
 
+        self._exit_code = 0
+
 
 class Pod(PodSepc):
     def __init__(self):
@@ -66,6 +68,13 @@ class Pod(PodSepc):
         for c in self.containers:
             c.wait(None)
 
+    @property
+    def exit_code(self):
+        for c in self.containers:
+            if c.exit_code() != 0:
+                return c.exit_code()
+        return 0
+
     def status(self):
         if self.is_failed():
             return Status.FAILED
@@ -74,6 +83,10 @@ class Pod(PodSepc):
             return Status.COMPLETED
 
         return Status.UNKNOWN
+
+    def reset(self):
+        self.init_containers = []
+        self.containers = []
 
     def is_failed(self):
         for c in self.containers:
@@ -90,16 +103,15 @@ class Pod(PodSepc):
     def logs(self, idx=0):
         self.containers[idx].logs()
 
-    '''
-    watch return if any container status in any_list
-    or all container status in all_list
-    '''
-
     def watch(self,
               all_list=[Status.COMPLETED],
               any_list=[Status.FAILED],
               interval=1,
               timeout=-1):
+        '''
+        watch return if any container status in any_list
+        or all container status in all_list
+        '''
         st = time.time()
         while timeout < 0 or st + timeout > time.time():
             for c in self.containers:

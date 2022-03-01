@@ -21,6 +21,7 @@ class Status(object):
     RESTARTING = "restarting"
     UNKNOWN = "unknown"
     COMPLETED = "completed"
+    DONE = "done"  # should exit whatever status
 
     def __init__(self):
         self._current_status = None
@@ -31,11 +32,24 @@ class Status(object):
     def need_restart(self):
         return self._current_status == self.RESTARTING
 
+    def is_done(self):
+        if self._current_status == self.DONE:
+            return True
+
+        return True if self._current_status in [self.COMPLETED, self.FAILED
+                                                ] else False
+
     def run(self):
         self._current_status = self.RUNNING
+
+    def fail(self):
+        self._current_status = self.FAILED
 
     def complete(self):
         self._current_status = self.COMPLETED
 
     def restart(self):
         self._current_status = self.RESTARTING
+
+    def done(self):
+        self._current_status = self.DONE

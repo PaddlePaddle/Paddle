@@ -63,8 +63,8 @@ class HTTPMaster(Master):
         if self.ctx.args.master:
             self.endpoint = self.ctx.args.master
             ip, port = self.endpoint.split(':')
-            if ip == self.ctx.node.ip and not self.ctx.node.is_server_ready(
-                    ip, int(port)):
+            if ip in ['127.0.0.1', self.ctx.node.ip
+                      ] and not self.ctx.node.is_server_ready(ip, int(port)):
                 self.server = KVServer(int(port))
                 self.role = Master.MAIN
         else:
@@ -116,7 +116,7 @@ class HTTPMaster(Master):
 
         ky = 'aaaaaa' if rank < 0 and self.role == Master.MAIN else key
         k = "{}/{}/{}".format(prefix, ky, rank)
-        assert self.client.put(k, value, lease=self.client.lease(600))
+        assert self.client.put(k, value)
         self.gc.append(k)
 
         while True:
@@ -162,8 +162,6 @@ class ETCDMaster(Master):
         '''
         path = "{}/{}/{}".format(prefix, key, rank)
 
-        # need clean if restart
-        #self.remove_list.add(path)
         self.client.delete_prefix(prefix)
 
         self.ctx.logger.debug("sync  path {} value {}".format(path, value))
@@ -192,29 +190,29 @@ class ETCDMaster(Master):
             else:
                 time.sleep(0.5)
 
-    def register_heartbeat(self, job_id, pod_id, ttl):
+    def register_heartbeat(self, job_id, pod_id, ttl=10):
         if hasattr(self, 'heartbeat_prefix'):
             self.ctx.logger.warning("Heartbeat already done")
             return
 
-        self.heartbeat_prefix = '/paddle/heartbeat/{}'.format(job_id)
+        self.job_prefix = '/paddle/{}'.format(job_id)
+        self.heartbeat_prefix = '{}/heartbeat'.format(self.job_prefix)
 
         lease = self.client.lease(ttl)
 
-        self.client.delete_prefix(self.heartbeat_prefix)
+        #self.client.delete_prefix(self.job_prefix)
 
         beat_path = "{}/{}".format(self.heartbeat_prefix, pod_id)
         self.client.put(beat_path, six.b(pod_id), lease=lease)
 
         def _beat_watch(event):
-            self.client.put(beat_path, six.b(pod_id), lease=lease)
             self.ctx.status.restart()
 
-        self.beat_watch = self.client.add_watch_prefix_callback(
+        beat_watch = self.client.add_watch_prefix_callback(
             self.heartbeat_prefix, _beat_watch)
 
         def _heartbeat():
-            while self.ctx.running:
+            while not self.ctx.status.is_done():
                 try:
                     lease.refresh()
                     if pod_id not in self.fetch_peer_alive():
@@ -223,6 +221,8 @@ class ETCDMaster(Master):
                 except Exception as e:
                     self.ctx.logger.error("Heartbeat error {}".format(e))
                 time.sleep(ttl / 2)
+            self.ctx.logger.debug("Heartbeat done")
+            self.client.cancel_watch(beat_watch)
 
         self.beat_thread = threading.Thread(
             name='heartbeat', target=_heartbeat, daemon=True)
@@ -242,33 +242,26 @@ class ETCDMaster(Master):
             if len(self.fetch_peer_alive()) == replicas_max:
                 return (True, replicas_max)
             else:
-                time.sleep(0.1)
+                time.sleep(0.5)
 
         np = len(self.fetch_peer_alive())
-        if np > replicas_min and np < replicas_max:
+        if np >= replicas_min and np <= replicas_max:
             return (True, np)
         else:
             return (False, np)
 
+    def restart_peer(self):
+        self.client.delete_prefix(self.heartbeat_prefix)
+
     def set_status(self, status):
-        assert self.client.put(self.heartbeat_prefix,
+        assert self.client.put(self.job_prefix,
                                six.b(status),
                                lease=self.client.lease(600))
 
     def get_status(self):
-        return six.ensure_str(self.client.get(self.heartbeat_prefix)[0] or '')
-
-    def clean(self):
-        return
-        for i in self.remove_list:
-            self.client.delete_prefix(i)
+        return six.ensure_str(self.client.get(self.job_prefix)[0] or '')
 
     def stop(self):
         if hasattr(self, 'beat_thread'):
+            self.ctx.status.done()
             self.beat_thread.join()
-
-        if hasattr(self, 'beat_watch'):
-            self.client.cancel_watch(self.beat_watch)
-
-        ## TODO(MAYBE LATE)
-        self.clean()
