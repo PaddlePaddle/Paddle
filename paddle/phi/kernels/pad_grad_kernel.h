@@ -13,16 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature PadGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("pad_grad",
-                         {GradVarName("Out")},
-                         {"paddings", "pad_value"},
-                         {GradVarName("X")});
-}
-
+template <typename T, typename Context>
+void PadGradKernel(const Context& dev_ctx,
+                   const DenseTensor& d_out,
+                   const std::vector<int>& paddings,
+                   float pad_value,
+                   DenseTensor* d_x);
 }  // namespace phi
-PD_REGISTER_ARG_MAPPING_FN(pad_grad, phi::PadGradOpArgumentMapping);

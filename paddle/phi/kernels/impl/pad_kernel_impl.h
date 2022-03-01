@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/fluid/operators/math/padding.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 namespace phi {
 template <typename T, typename Context>
 void PadKernel(const Context& dev_ctx,
@@ -26,7 +26,7 @@ void PadKernel(const Context& dev_ctx,
                DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   int rank = x.dims().size();
-  paddle::operators::math::PaddingFunctor<DeviceContext, T>(
+  funcs::PaddingFunctor<Context, T>(
       rank, dev_ctx, paddings, static_cast<T>(pad_value), x, out);
 }
 }  // namespace phi

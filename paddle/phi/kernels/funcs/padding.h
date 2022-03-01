@@ -15,25 +15,26 @@ limitations under the License. */
 #pragma once
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 
-// NOTE(xiongkun): for the use of ExeuctionContext
-#include "paddle/fluid/framework/operator.h"
+namespace phi {
+namespace funcs {
 
-namespace paddle {
-namespace operators {
-namespace math {
-
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+using EigenTensor = paddle::framework::EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T, size_t D>
-void PadFunction(const framework::ExecutionContext& context,
-                 const std::vector<int>& pads, const framework::Tensor& src,
-                 T pad_value, framework::Tensor* out) {
+void PadFunction(const DeviceContext& context,
+                 const std::vector<int>& pads,
+                 const DenseTensor& src,
+                 T pad_value,
+                 DenseTensor* out) {
   std::array<std::pair<int64_t, int64_t>, D> paddings;
 
   for (size_t i = 0; i < paddings.size(); ++i) {
@@ -44,16 +45,16 @@ void PadFunction(const framework::ExecutionContext& context,
   auto src_tensor = EigenTensor<T, D>::From(src);
   auto out_tensor = EigenTensor<T, D>::From(*out);
 
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
+  auto& place = *(context.eigen_device());
   EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_tensor, src_tensor, paddings, pad_value);
 }
 
 template <typename DeviceContext, typename T, size_t D>
-void PadGradFunction(const framework::ExecutionContext& context,
-                     const std::vector<int>& pads, const framework::Tensor& src,
-                     framework::Tensor* d_out) {
+void PadGradFunction(const DeviceContext& context,
+                     const std::vector<int>& pads,
+                     const DenseTensor& src,
+                     DenseTensor* d_out) {
   std::array<std::pair<int64_t, int64_t>, D> paddings;
   for (size_t i = 0; i < paddings.size(); ++i) {
     paddings[i].first = -pads[i * 2];
@@ -62,16 +63,18 @@ void PadGradFunction(const framework::ExecutionContext& context,
 
   auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
   auto src_tensor = EigenTensor<T, D>::From(src);
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
+  auto& place = *(context.eigen_device());
   EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
       place, d_out_tensor, src_tensor, paddings, static_cast<T>(0));
 }
 
 template <typename DeviceContext, typename T>
-void PaddingFunctor(int rank, const framework::ExecutionContext& context,
-                    const std::vector<int>& pads, T pad_value,
-                    const framework::Tensor& src, framework::Tensor* out) {
+void PaddingFunctor(int rank,
+                    const DeviceContext& context,
+                    const std::vector<int>& pads,
+                    T pad_value,
+                    const DenseTensor& src,
+                    DenseTensor* out) {
   switch (rank) {
     case 1:
       PadFunction<DeviceContext, T, 1>(context, pads, src, pad_value, out);
@@ -92,16 +95,18 @@ void PaddingFunctor(int rank, const framework::ExecutionContext& context,
       PadFunction<DeviceContext, T, 6>(context, pads, src, pad_value, out);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "PadOp only support tensors with no more"
-          " than 6 dimensions currently."));
+      PADDLE_THROW(
+          phi::errors::Unimplemented("PadOp only support tensors with no more"
+                                     " than 6 dimensions currently."));
   }
 }
 
 template <typename DeviceContext, typename T>
-void PaddingGradFunctor(int rank, const framework::ExecutionContext& context,
+void PaddingGradFunctor(int rank,
+                        const DeviceContext& context,
                         const std::vector<int>& pads,
-                        const framework::Tensor& src, framework::Tensor* out) {
+                        const DenseTensor& src,
+                        DenseTensor* out) {
   switch (rank) {
     case 1:
       PadGradFunction<DeviceContext, T, 1>(context, pads, src, out);
@@ -122,9 +127,9 @@ void PaddingGradFunctor(int rank, const framework::ExecutionContext& context,
       PadGradFunction<DeviceContext, T, 6>(context, pads, src, out);
       break;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "PadOp only support tensors with no more"
-          " than 6 dimensions currently."));
+      PADDLE_THROW(
+          phi::errors::Unimplemented("PadOp only support tensors with no more"
+                                     " than 6 dimensions currently."));
   }
 }
 
@@ -141,6 +146,5 @@ inline bool IsSymmetricPadding(const std::vector<int>& pads,
   }
   return is_sys_pad;
 }
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

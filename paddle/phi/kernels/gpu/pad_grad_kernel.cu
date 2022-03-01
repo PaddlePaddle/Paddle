@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/kernels/pad_grad_kernel.h"
 
-namespace phi {
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/pad_grad_kernel_impl.h"
 
-KernelSignature PadGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("pad_grad",
-                         {GradVarName("Out")},
-                         {"paddings", "pad_value"},
-                         {GradVarName("X")});
-}
-
-}  // namespace phi
-PD_REGISTER_ARG_MAPPING_FN(pad_grad, phi::PadGradOpArgumentMapping);
+PD_REGISTER_KERNEL(pad_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PadGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
