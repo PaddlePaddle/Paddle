@@ -29,6 +29,12 @@ final_state_name_mapping = {
         "x": "X",
         "y": "Y",
         "out": "Out",
+    },
+    "matmul_v2": {
+        "final_op_name": "add",
+        "x": "X",
+        "y": "Y",
+        "out": "Out",
     }
 }
 

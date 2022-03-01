@@ -42,7 +42,8 @@ class TestElementwiseAddOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(self.use_mkldnn == False))
+        self.check_output(
+            check_dygraph=(self.use_mkldnn == False), check_eager=True)
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
