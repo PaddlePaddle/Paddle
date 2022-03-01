@@ -22,6 +22,7 @@
 #endif
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
 namespace phi {
@@ -52,6 +53,11 @@ class MPTypeTrait<phi::dtype::float16> {
   using Type = float;
 };
 
+template <>
+class MPTypeTrait<phi::dtype::bfloat16> {
+ public:
+  using Type = float;
+};
 /**
  * @brief Will be used in BlockYReduce, get the index of reduce_num in shared
  * memory.

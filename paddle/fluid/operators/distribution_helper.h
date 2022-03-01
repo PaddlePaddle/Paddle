@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -194,12 +195,14 @@ __global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
   using SType = hiprandStatePhilox4_32_10_t;
 #endif
   size_t total_thread = GRID_NUM_X * BLOCK_NUM_X;
-  T args[kCount];
+  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  MT args[kCount];
   T result[kCount];
   for (size_t i = idx; i < size; i += total_thread * kCount) {
-    kps::ElementwiseRandom<SType, T, kCount, 1, DistOp>(&args[0], dist, &state);
-    kps::ElementwiseUnary<T, T, kCount, 1, 1, TransformOp>(&result[0], &args[0],
-                                                           trans);
+    kps::ElementwiseRandom<SType, MT, kCount, 1, DistOp>(&args[0], dist,
+                                                         &state);
+    kps::ElementwiseUnary<MT, T, kCount, 1, 1, TransformOp>(&result[0],
+                                                            &args[0], trans);
     kps::WriteData<T, T, kCount, 1, 1, true>(out_data + i, &result[0], size - i,
                                              1, stride, 1);
     __syncthreads();
