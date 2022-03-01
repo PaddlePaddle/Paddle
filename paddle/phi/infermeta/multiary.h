@@ -25,7 +25,7 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     MetaTensor* out,
                                     MetaConfig config = MetaConfig());
 
-void ConcatInferMeta(const std::vector<MetaTensor>& x,
+void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());

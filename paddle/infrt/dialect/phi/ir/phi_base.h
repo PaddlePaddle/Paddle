@@ -19,11 +19,13 @@
 
 #include <string>
 
-#include "paddle/infrt/dialect/phi/infrt_phi_base.h.inc"
-#include "paddle/infrt/dialect/phi/infrt_phi_baseDialect.h.inc"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_baseDialect.h.inc"
 
 #define GET_TYPEDEF_CLASSES
-#include "paddle/infrt/dialect/phi/infrt_phi_baseTypes.h.inc"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_baseTypes.h.inc"
+
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_base.h.inc"
 
 namespace mlir {
 namespace OpTrait {
