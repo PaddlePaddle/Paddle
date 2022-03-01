@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/phi/phi_base.h"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
 
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/Dialect.h>
@@ -21,8 +21,8 @@
 #include <mlir/IR/TypeUtilities.h>
 #include <mlir/IR/Types.h>
 #include "paddle/infrt/common/global.h"
-#include "paddle/infrt/dialect/phi/infrt_phi_base.cpp.inc"
-#include "paddle/infrt/dialect/phi/infrt_phi_baseDialect.cpp.inc"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_base.cpp.inc"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_baseDialect.cpp.inc"
 
 namespace infrt {
 namespace phi {
@@ -51,11 +51,11 @@ void PHIDialect::printType(::mlir::Type type,
 void PHIDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "paddle/infrt/dialect/phi/infrt_phi_base.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_base.cpp.inc"  // NOLINT
       >();
   addTypes<
 #define GET_TYPEDEF_LIST
-#include "paddle/infrt/dialect/phi/infrt_phi_baseTypes.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_baseTypes.cpp.inc"  // NOLINT
       >();
 }
 
@@ -81,4 +81,4 @@ mlir::Type PHIDialect::parseType(mlir::DialectAsmParser& parser) const {
 }  // namespace infrt
 
 #define GET_TYPEDEF_CLASSES
-#include "paddle/infrt/dialect/phi/infrt_phi_baseTypes.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_baseTypes.cpp.inc"  // NOLINT
