@@ -30,4 +30,8 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void WhereInferMeta(const MetaTensor& condition,
+                    const MetaTensor& x,
+                    const MetaTensor& y,
+                    MetaTensor* out);
 }  // namespace phi
