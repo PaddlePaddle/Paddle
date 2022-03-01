@@ -47,13 +47,33 @@
 
 - backward_api : trunc_grad
   forward : trunc (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : trunc_grad
+
+# - backward_api : norm_grad
+#   forward : norm (Tensor x, int axis, float epsilon, bool is_test) -> Tensor(out), Tensor(norm)
+#   args : (Tensor out_grad, Tensor x, Tensor norm, int axis, float epsilon, bool is_test)
+#   output : Tensor(x_grad)
+#   infer_meta :
+#     func : UnchangedInferMeta
+#     param : [x]
+#   kernel :
+#     func : norm_grad
+
+- backward_api : diagonal_grad
+  forward : diagonal (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : trunc_grad
+    func : diagonal_grad
 
 # - backward_api : split_grad
 #   forward : split (Tensor x, ScalarArray num_or_sections, Scalar axis) -> Tensor[](out)

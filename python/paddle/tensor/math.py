@@ -2427,6 +2427,8 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_diagonal(x, offset, axis1, axis2)
         return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
     def __check_input(input, offset, dim1, dim2):

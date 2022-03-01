@@ -667,6 +667,81 @@ void TraceInferMeta(
   out->set_dims(phi::make_ddim(sizes));
 }
 
+void DiagonalInferMeta(const MetaTensor& input,
+                       int offset,
+                       int axis1,
+                       int axis2,
+                       MetaTensor* out) {
+  auto x_dims = input.dims();
+  int offset_ = offset;
+  int axis1_ = axis1 < 0 ? x_dims.size() + axis1 : axis1;
+  int axis2_ = axis2 < 0 ? x_dims.size() + axis2 : axis2;
+
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::OutOfRange("Input's dim is out of range (expected at "
+                              "least 2 dimensions, but got %ld).",
+                              x_dims.size()));
+  PADDLE_ENFORCE_LT(
+      axis1_,
+      x_dims.size(),
+      phi::errors::OutOfRange(
+          "Attr(axis1) is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          axis1));
+  PADDLE_ENFORCE_LT(
+      axis2_,
+      x_dims.size(),
+      phi::errors::OutOfRange(
+          "Attr(axis2) is out of range (expected to be in range of [%ld, "
+          "%ld], but got %ld).",
+          -(x_dims.size()),
+          (x_dims.size() - 1),
+          axis2));
+  PADDLE_ENFORCE_NE(
+      axis1_,
+      axis2_,
+      phi::errors::InvalidArgument("The dimensions should not be identical "
+                                   "%d vs %d.",
+                                   axis1,
+                                   axis2));
+
+  auto out_dims = vectorize(x_dims);
+  // from out_dims get the dim size of axis1_.
+  auto axis1_size = out_dims[axis1_];
+  auto axis2_size = out_dims[axis2_];
+  // delete two dims by attr axis1 and axis2 from out_dims.
+  /* example:
+     out_dim = [2, 3, 4];
+     axis1 = 0;
+     axis2 = 1;
+     according to the attr of axis1 and axis2, we get:
+     out_dim = [4].
+  */
+  out_dims.erase(out_dims.begin() + std::max(axis1_, axis2_));
+  out_dims.erase(out_dims.begin() + std::min(axis1_, axis2_));
+
+  if (offset_ == 0) {
+    out_dims.push_back(std::min(axis1_size, axis2_size));
+  } else if (offset_ > 0) {
+    if ((axis2_size - offset_) > 0) {
+      out_dims.push_back(std::min(axis1_size, axis2_size - offset_));
+    } else {
+      out_dims.push_back(0);
+    }
+  } else {
+    if ((axis1_size + offset_) > 0) {
+      out_dims.push_back(std::min(axis1_size + offset_, axis2_size));
+    } else {
+      out_dims.push_back(0);
+    }
+  }
+  out->set_dims(phi::make_ddim(out_dims));
+}
+
 void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& kernel_sizes,
                      const std::vector<int>& strides,

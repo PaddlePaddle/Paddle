@@ -124,6 +124,15 @@ class TestDiagonalAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
         paddle.enable_static()
 
+    def test_api_eager(self):
+        paddle.disable_static(self.place)
+        with _test_eager_guard():
+            x_tensor = paddle.to_tensor(self.x)
+            out = paddle.diagonal(x_tensor)
+        out_ref = np.diagonal(self.x)
+        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        paddle.enable_static()
+
     def test_api_eager_dygraph(self):
         with _test_eager_guard():
             self.test_api_dygraph()
