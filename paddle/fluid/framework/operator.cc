@@ -2190,7 +2190,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           auto in_it = ctx.inputs.find(attr_names[i]);
           if (in_it != ctx.inputs.end()) {
             // get data from input
-            auto val = experimental::MakePtenScalarFromVar(*(in_it->second[0]));
+            auto val = experimental::MakePhiScalarFromVar(*(in_it->second[0]));
             int32_t val_int = val.template to<int32_t>();
             pt_kernel_context->EmplaceBackAttr(val_int);
           } else {

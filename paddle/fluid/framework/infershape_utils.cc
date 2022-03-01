@@ -496,7 +496,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         if (ctx->IsRuntime()) {
           const auto& infershape_inputs = ctx->GetInputVarPtrs(attr_name);
           auto var_temp = BOOST_GET_CONST(Variable*, infershape_inputs[i]);
-          auto val = experimental::MakePtenScalarFromVar(*var_temp);
+          auto val = experimental::MakePhiScalarFromVar(*var_temp);
           int32_t val_int = val.template to<int32_t>();
           infer_meta_context.EmplaceBackAttr(val_int);
         } else {
