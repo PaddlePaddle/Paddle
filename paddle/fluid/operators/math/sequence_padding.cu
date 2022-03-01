@@ -59,7 +59,7 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                   int lod_level = 0, bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
-    const auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
+    auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
     const auto& seq_tensor_dims = seq_tensor.dims();
     const auto& pad_tensor_dims = pad_tensor->dims();
     int max_seq_len = MaximumSequenceLength(seq_offsets);
@@ -104,10 +104,11 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     T* pad_data = pad_tensor->data<T>();
     const T* pad_value_data = pad_value.data<T>();
 
+    paddle::framework::MixVector<size_t> mix_vector_seq_offsets(&seq_offsets);
     SequencePaddingKernel<T, kSeqToPad><<<grid, threads, 0, context.stream()>>>(
         pad_data, seq_data, pad_value_data, pad_value.numel() == 1,
-        seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
-        step_width, norm_by_times, layout);
+        mix_vector_seq_offsets.CUDAData(context.GetPlace()), seq_num,
+        pad_seq_len, step_width, norm_by_times, layout);
   }
 };
 
@@ -157,9 +158,10 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     const T* pad_data = pad_tensor.data<T>();
     T* seq_data = seq_tensor->data<T>();
 
+    paddle::framework::MixVector<size_t> mixv_seq_offsets(&seq_offsets);
     SequencePaddingKernel<T, kPadToSeq><<<grid, threads, 0, context.stream()>>>(
         seq_data, pad_data, nullptr, false,
-        seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
+        mixv_seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
         step_width, norm_by_times, layout);
   }
 };

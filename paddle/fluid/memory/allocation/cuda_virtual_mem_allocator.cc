@@ -101,7 +101,7 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
 
 bool CUDAVirtualMemAllocator::IsAllocThreadSafe() const { return false; }
 
-void CUDAVirtualMemAllocator::FreeImpl(pten::Allocation* allocation) {
+void CUDAVirtualMemAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
       allocation->place(), place_,
       platform::errors::PermissionDenied(
@@ -140,7 +140,7 @@ void CUDAVirtualMemAllocator::FreeImpl(pten::Allocation* allocation) {
   delete allocation;
 }
 
-pten::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
+phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   size = AlignedSize(size, granularity_);
 
   CUdeviceptr ptr = virtual_mem_base_ + virtual_mem_alloced_offset_;

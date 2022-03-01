@@ -15,7 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/pten/api/all.h"
+#include "paddle/fluid/eager/hooks.h"
+#include "paddle/phi/api/all.h"
 
 namespace egr {
 /**
@@ -133,22 +134,31 @@ class GradNodeBase {
    * **/
   void SetDefaultGradInOutMeta();
   /**
-   * Register GradientHook or ReduceHook
+   * Register GradientHook
    * **/
-  void RegisterGradientHook(size_t slot_id, size_t rank,
-                            const std::function<paddle::experimental::Tensor(
-                                const paddle::experimental::Tensor&)>& hook);
-  void RegisterReduceHook(const std::function<void(void)>& hook);
+  int64_t RegisterGradientHook(size_t slot_id, size_t rank,
+                               std::shared_ptr<egr::TensorHook>&& hook);
 
   /**
-   * Apply GradientHook or ReduceHook
+  * Remove GradientHook
+  * **/
+  bool RemoveGradientHook(const int64_t& hook_id) {
+    auto remove_cnt = gradient_hooks_.erase(hook_id);
+    if (remove_cnt == 0) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Apply GradientHook
    * **/
-  inline bool GradientHooksRegistered() { return gradient_hooks_.size() != 0; }
-  inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
+  inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
 
   std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
       const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
-  void ApplyReduceHooks();
+
+  virtual std::string name() { return "GradNodeBase"; }
 
  private:
   // TODO(jiabin): Use SmallVector instead after merge PR from develop
@@ -167,13 +177,14 @@ class GradNodeBase {
   // Gradient Hooks
   // Customer may register a list of hooks which will be called in order during
   // backward
-  // Each entry consists one pair of <out_rank, std::function>
-  std::vector<std::tuple<
-      /* slot id */ size_t, /* rank */ size_t,
-      /* hook */ std::function<paddle::experimental::Tensor(
-          const paddle::experimental::Tensor&)>>>
+  // Each entry consists one pair of
+  // <hook_id, <out_rank, std::shared_ptr<TensorHook>>>
+  std::map<int64_t, std::tuple<
+                        /* slot id */ size_t, /* rank */ size_t,
+                        /* hook */ std::shared_ptr<TensorHook>>>
       gradient_hooks_;
-  std::vector<std::function<void(void)>> reduce_hooks_;
+
+  int64_t next_hook_id_{0};
 };
 
 class Edge {

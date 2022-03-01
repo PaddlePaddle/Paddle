@@ -22,7 +22,7 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/operators/conv_transpose_op.h"
 #include "paddle/fluid/operators/math/padding.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -34,7 +34,7 @@ static void DataTranspose(const framework::ExecutionContext& ctx,
                           const Tensor* input, Tensor* output,
                           const std::vector<int>& axis, int flag = 0) {
   auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  pten::funcs::Transpose<platform::CUDADeviceContext, T, D> transpose;
+  phi::funcs::Transpose<platform::CUDADeviceContext, T, D> transpose;
   auto in_dims = input->dims();
   std::vector<int64_t> input_transpose_vec;
   for (size_t i = 0; i < axis.size(); ++i) {
@@ -43,8 +43,7 @@ static void DataTranspose(const framework::ExecutionContext& ctx,
     else
       input_transpose_vec.push_back(in_dims[i]);
   }
-  framework::DDim input_transpose_dims(
-      framework::make_ddim(input_transpose_vec));
+  framework::DDim input_transpose_dims(phi::make_ddim(input_transpose_vec));
   output->mutable_data<T>(input_transpose_dims, ctx.GetPlace());
   transpose(dev_ctx, *input, output, axis);
 }
@@ -75,8 +74,8 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 
     // if channel_last, transpose to channel_first
     Tensor input_transpose;
-    std::vector<int> input_vec = framework::vectorize<int>(input->dims());
-    std::vector<int> output_vec = framework::vectorize<int>(output->dims());
+    std::vector<int> input_vec = phi::vectorize<int>(input->dims());
+    std::vector<int> output_vec = phi::vectorize<int>(output->dims());
     if (data_layout == platform::DataLayout::kNHWC) {
       if (strides.size() == 2U) {
         std::vector<int> axis = {0, 3, 1, 2};
@@ -101,10 +100,10 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     auto in_dims = input_transpose.dims();
     auto filter_dims = filter->dims();
     framework::DDim in_data_dims;
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -128,8 +127,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
         input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
         input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
-      framework::DDim new_input_shape(
-          framework::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_input.Resize(new_input_shape);
       auto& dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
@@ -175,7 +173,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     }
 
     const T* input_data = transformed_input.data<T>();
-    input_vec = framework::vectorize<int>(transformed_input.dims());
+    input_vec = phi::vectorize<int>(transformed_input.dims());
 
     std::vector<int> transformed_output_vec = output_vec;
     for (size_t i = 0; i < data_dim; ++i) {
@@ -187,14 +185,13 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 
     Tensor transformed_output;
     if (!is_sys_pad) {
-      DDim transformed_output_shape(
-          framework::make_ddim(transformed_output_vec));
+      DDim transformed_output_shape(phi::make_ddim(transformed_output_vec));
       transformed_output.mutable_data<T>(transformed_output_shape,
                                          ctx.GetPlace());
     } else {
       output->mutable_data<T>(ctx.GetPlace());
       transformed_output.ShareDataWith(*output);
-      transformed_output.Resize(framework::make_ddim(transformed_output_vec));
+      transformed_output.Resize(phi::make_ddim(transformed_output_vec));
     }
     T* transformed_output_data = transformed_output.data<T>();
 
@@ -298,7 +295,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
       Tensor output_transpose;
       Tensor output_nchw;
       output_nchw.ShareDataWith(*output);
-      output_nchw.Resize(framework::make_ddim(output_vec));
+      output_nchw.Resize(phi::make_ddim(output_vec));
       if (strides.size() == 2U) {
         std::vector<int> axis = {0, 2, 3, 1};
         DataTranspose<T, 4>(ctx, &output_nchw, &output_transpose, axis);
@@ -341,9 +338,8 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     // if channel_last, transpose to channel_first
     Tensor input_transpose;
     Tensor output_grad_transpose;
-    std::vector<int> input_vec = framework::vectorize<int>(input->dims());
-    std::vector<int> output_vec =
-        framework::vectorize<int>(output_grad->dims());
+    std::vector<int> input_vec = phi::vectorize<int>(input->dims());
+    std::vector<int> output_vec = phi::vectorize<int>(output_grad->dims());
     if (data_layout == platform::DataLayout::kNHWC) {
       if (strides.size() == 2U) {
         std::vector<int> axis = {0, 3, 1, 2};
@@ -371,10 +367,10 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     auto in_dims = input_transpose.dims();
     auto filter_dims = filter->dims();
     framework::DDim in_data_dims;
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -399,7 +395,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
         input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
       framework::DDim new_output_grad_shape(
-          framework::make_ddim(new_output_grad_shape_vec));
+          phi::make_ddim(new_output_grad_shape_vec));
       transformed_output_grad.Resize(new_output_grad_shape);
       auto& dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
@@ -439,7 +435,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
 
     const T* input_data = input_transpose.data<T>();
     const T* output_grad_data = transformed_output_grad.data<T>();
-    output_vec = framework::vectorize<int>(transformed_output_grad.dims());
+    output_vec = phi::vectorize<int>(transformed_output_grad.dims());
 
     // ------------------- cudnn descriptors ---------------------
     platform::DataLayout layout;
@@ -575,7 +571,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
         Tensor input_grad_transpose;
         Tensor input_grad_nchw;
         input_grad_nchw.ShareDataWith(*input_grad);
-        input_grad_nchw.Resize(framework::make_ddim(input_vec));
+        input_grad_nchw.Resize(phi::make_ddim(input_vec));
         if (strides.size() == 2U) {
           std::vector<int> axis = {0, 2, 3, 1};
           DataTranspose<T, 4>(ctx, &input_grad_nchw, &input_grad_transpose,
@@ -650,7 +646,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
-      pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+      phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
       set_zero(dev_ctx, ddO, static_cast<T>(0));
     }
     if (dW) {
@@ -727,15 +723,14 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       }
     }
     std::vector<int> output_vec =
-        framework::vectorize<int>(transformed_dO_channel.dims());
+        phi::vectorize<int>(transformed_dO_channel.dims());
 
     auto in_dims = transformed_X_channel.dims();
     auto filter_dims = W->dims();
-    framework::DDim in_data_dims =
-        framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -773,13 +768,12 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
         input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
         input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
-      framework::DDim new_input_shape(
-          framework::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_X.Resize(new_input_shape);
       transformed_ddX.Resize(new_input_shape);
 
       framework::DDim new_output_grad_shape(
-          framework::make_ddim(new_output_grad_shape_vec));
+          phi::make_ddim(new_output_grad_shape_vec));
       transformed_dO.Resize(new_output_grad_shape);
 
       transformed_dO =
@@ -864,15 +858,13 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
     }
 
     if (!is_sys_pad) {
-      DDim transformed_output_shape(
-          framework::make_ddim(transformed_output_vec));
+      DDim transformed_output_shape(phi::make_ddim(transformed_output_vec));
       transformed_ddO_channel.mutable_data<T>(transformed_output_shape,
                                               ctx.GetPlace());
     } else {
       ddO->mutable_data<T>(ctx.GetPlace());
       transformed_ddO_channel = *ddO;
-      transformed_ddO_channel.Resize(
-          framework::make_ddim(transformed_output_vec));
+      transformed_ddO_channel.Resize(phi::make_ddim(transformed_output_vec));
     }
 
     const T* x = transformed_X.data<T>();

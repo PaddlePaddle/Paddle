@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
-
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/split.h"
@@ -152,7 +151,9 @@ void HeterClient::SendAndRecvAsync(
     const std::string& message_name,
     const std::vector<std::string>& send_var_name,
     const std::vector<std::string>& recv_var_name, const std::string& mode) {
-  platform::RecordEvent record_event("HeterClient->SendAndRecvAsync");
+  platform::RecordEvent record_event("HeterClient->SendAndRecvAsync",
+                                     platform::TracerEventType::Communication,
+                                     1);
   const platform::DeviceContext* p_ctx = &ctx;
   const framework::Scope* p_scope = &scope;
   const std::string message_name_val = message_name;

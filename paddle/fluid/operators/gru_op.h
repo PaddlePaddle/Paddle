@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -69,7 +69,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     batch_gate_grad.mutable_data<T>(gate_dims, context.GetPlace());
     batch_reset_hidden_prev_grad.mutable_data<T>(hidden_dims,
                                                  context.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, T> zero;
+    phi::funcs::SetConstant<DeviceContext, T> zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     zero(dev_ctx, &batch_hidden_grad, static_cast<T>(0.0));
     zero(dev_ctx, &batch_gate_grad, static_cast<T>(0.0));
@@ -157,7 +157,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     }
     if (bias_grad) {
       bias_grad->mutable_data<T>(context.GetPlace());
-      pten::funcs::ColwiseSum<DeviceContext, T> col_sum;
+      phi::funcs::ColwiseSum<DeviceContext, T> col_sum;
       col_sum(dev_ctx, batch_gate_grad, bias_grad);
     }
     if (h0 && h0_grad) {

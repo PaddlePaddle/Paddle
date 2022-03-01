@@ -135,7 +135,7 @@ struct TestGatherOpHandle {
     int height = kDims[0] * 2;
     std::vector<int64_t> rows{0, 1, 2, 3, 3, 0, 14, 7, 3, 1,
                               2, 4, 6, 3, 1, 1, 1,  1, 3, 7};
-    std::vector<float> send_vector(f::product(kDims));
+    std::vector<float> send_vector(phi::product(kDims));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k;
     }
@@ -146,7 +146,7 @@ struct TestGatherOpHandle {
       PADDLE_ENFORCE_NOT_NULL(
           in_var, platform::errors::NotFound(
                       "The variable '%s' is not found in the scope.", "input"));
-      auto in_selected_rows = in_var->GetMutable<pten::SelectedRows>();
+      auto in_selected_rows = in_var->GetMutable<phi::SelectedRows>();
       auto value = in_selected_rows->mutable_value();
       value->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
 
@@ -162,10 +162,10 @@ struct TestGatherOpHandle {
     PADDLE_ENFORCE_NOT_NULL(
         out_var, platform::errors::NotFound(
                      "The variable '%s' is not found in the scope.", "out"));
-    auto out_selected_rows = out_var->GetMutable<pten::SelectedRows>();
+    auto out_selected_rows = out_var->GetMutable<phi::SelectedRows>();
 
     auto in_var = param_scopes_.at(output_scope_idx)->FindVar("input");
-    auto in_selected_rows = in_var->GetMutable<pten::SelectedRows>();
+    auto in_selected_rows = in_var->GetMutable<phi::SelectedRows>();
 
     out_selected_rows->mutable_value()->ShareDataWith(
         in_selected_rows->value());
@@ -177,7 +177,7 @@ struct TestGatherOpHandle {
 
     p::CPUPlace cpu_place;
 
-    auto& out_select_rows = out_var->Get<pten::SelectedRows>();
+    auto& out_select_rows = out_var->Get<phi::SelectedRows>();
     auto rt = out_select_rows.value();
 
     PADDLE_ENFORCE_EQ(out_select_rows.height(), height,
@@ -200,7 +200,8 @@ struct TestGatherOpHandle {
     float* ct = result_tensor.data<float>();
 
     for (int64_t j = 0;
-         j < f::product(kDims) * static_cast<int64_t>(gpu_list_.size()); ++j) {
+         j < phi::product(kDims) * static_cast<int64_t>(gpu_list_.size());
+         ++j) {
       ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
     }
   }

@@ -145,7 +145,7 @@ class SliceOp : public framework::OperatorWithKernel {
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
         auto tmp_md = dnnl::memory::desc(
-            framework::vectorize(ctx.Input<Tensor>("Input")->dims()),
+            phi::vectorize(ctx.Input<Tensor>("Input")->dims()),
             dnnl::memory::data_type::f32, ctx.Input<Tensor>("Input")->format());
         if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
           return framework::OpKernelType(input_data_type, ctx.GetPlace(),
@@ -324,7 +324,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
       auto tmp_md = dnnl::memory::desc(
-          framework::vectorize(
+          phi::vectorize(
               ctx.Input<Tensor>(framework::GradVarName("Out"))->dims()),
           dnnl::memory::data_type::f32,
           ctx.Input<Tensor>(framework::GradVarName("Out"))->format());

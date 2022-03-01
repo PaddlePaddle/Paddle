@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/pten/core/utils/array.h"
-#include "paddle/pten/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/core/utils/array.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -26,31 +26,31 @@ namespace operators {
 
 // Add
 template <typename T>
-using AddFunctor = pten::funcs::AddFunctor<T>;
+using AddFunctor = phi::funcs::AddFunctor<T>;
 
 template <typename T>
-using InverseAddFunctor = pten::funcs::InverseAddFunctor<T>;
+using InverseAddFunctor = phi::funcs::InverseAddFunctor<T>;
 
 // Subtract
 template <typename T>
-using SubFunctor = pten::funcs::SubtractFunctor<T>;
+using SubFunctor = phi::funcs::SubtractFunctor<T>;
 
 template <typename T>
-using InverseSubFunctor = pten::funcs::InverseSubtractFunctor<T>;
+using InverseSubFunctor = phi::funcs::InverseSubtractFunctor<T>;
 
 // Multiply
 template <typename T>
-using MulFunctor = pten::funcs::MultiplyFunctor<T>;
+using MulFunctor = phi::funcs::MultiplyFunctor<T>;
 
 template <typename T>
-using InverseMulFunctor = pten::funcs::InverseMultiplyFunctor<T>;
+using InverseMulFunctor = phi::funcs::InverseMultiplyFunctor<T>;
 
 // Divide
 template <typename T>
-using DivFunctor = pten::funcs::DivideFunctor<T>;
+using DivFunctor = phi::funcs::DivideFunctor<T>;
 
 template <typename T>
-using InverseDivFunctor = pten::funcs::InverseDivideFunctor<T>;
+using InverseDivFunctor = phi::funcs::InverseDivideFunctor<T>;
 
 // Floor Divide
 template <typename T>
@@ -92,12 +92,11 @@ using Complex = paddle::platform::complex<T>;
 
 template <typename InT, typename OutT>
 struct DivGradXYFunctor {
-  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT a,
-                                                               const InT b,
-                                                               const InT c) {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT a, const InT b,
+                                                   const InT c) {
     // dx = dout / y
     // dy = - dout * out / y
-    pten::framework::Array<OutT, 2> outs;
+    phi::Array<OutT, 2> outs;
     outs[0] = a / c;
     outs[1] = -a * b / c;
     return outs;
@@ -106,9 +105,9 @@ struct DivGradXYFunctor {
 
 template <typename InT, typename OutT>
 struct DivGradXYFunctor<Complex<InT>, Complex<OutT>> {
-  inline HOSTDEVICE pten::framework::Array<Complex<OutT>, 2> operator()(
+  inline HOSTDEVICE phi::Array<Complex<OutT>, 2> operator()(
       const Complex<InT> a, const Complex<InT> b, const Complex<InT> c) {
-    pten::framework::Array<Complex<OutT>, 2> outs;
+    phi::Array<Complex<OutT>, 2> outs;
     Complex<InT> c_conj(c.real, -c.imag);
     Complex<InT> out_div_c_conj((b / c).real, -(b / c).imag);
     outs[0] = a / c_conj;
@@ -247,10 +246,9 @@ struct MinGradYFunctor {
 
 template <typename InT, typename OutT>
 struct MinGradXYFunctor {
-  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT x,
-                                                               const InT y,
-                                                               const InT dout) {
-    pten::framework::Array<OutT, 2> outs;
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x, const InT y,
+                                                   const InT dout) {
+    phi::Array<OutT, 2> outs;
     // dx = dout * (x < y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
     // dy = dout * (x >= y)
@@ -274,10 +272,9 @@ struct MulGradFunctor<Complex<T>> {
 
 template <typename InT, typename OutT>
 struct MulGradXYFunctor {
-  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT a,
-                                                               const InT b,
-                                                               const InT c) {
-    pten::framework::Array<OutT, 2> outs;
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT a, const InT b,
+                                                   const InT c) {
+    phi::Array<OutT, 2> outs;
     // dx = dout * y
     outs[0] = a * b;
     // dy = dout * x
@@ -288,9 +285,9 @@ struct MulGradXYFunctor {
 
 template <typename InT, typename OutT>
 struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
-  inline HOSTDEVICE pten::framework::Array<Complex<OutT>, 2> operator()(
+  inline HOSTDEVICE phi::Array<Complex<OutT>, 2> operator()(
       const Complex<InT> a, const Complex<InT> b, const Complex<InT> c) {
-    pten::framework::Array<Complex<OutT>, 2> outs;
+    phi::Array<Complex<OutT>, 2> outs;
     // dx = dout * y
     Complex<InT> b_conj(b.real, -b.imag);
     outs[0] = a * b_conj;
@@ -317,10 +314,9 @@ struct MaxGradYFunctor {
 
 template <typename InT, typename OutT>
 struct MaxGradXYFunctor {
-  inline HOSTDEVICE pten::framework::Array<OutT, 2> operator()(const InT x,
-                                                               const InT y,
-                                                               const InT dout) {
-    pten::framework::Array<OutT, 2> outs;
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x, const InT y,
+                                                   const InT dout) {
+    phi::Array<OutT, 2> outs;
     // dx = dout * (x > y)
     outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
     // dy = dout * (x <= y)

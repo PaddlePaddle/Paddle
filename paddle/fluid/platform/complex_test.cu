@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/pten/kernels/funcs/eigen/extensions.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace paddle {

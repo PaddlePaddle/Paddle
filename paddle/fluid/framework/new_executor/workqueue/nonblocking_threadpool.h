@@ -408,7 +408,8 @@ class ThreadPoolTempl {
       ec_.Notify(true);
       return false;
     }
-    platform::RecordEvent("SleepWaitForWork");
+    platform::RecordEvent("SleepWaitForWork",
+                          platform::TracerEventType::UserDefined, 2);
     ec_.CommitWait(waiter);
     blocked_--;
     return true;

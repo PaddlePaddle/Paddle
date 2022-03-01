@@ -77,7 +77,7 @@ class CUDALinspaceKernel : public framework::OpKernel<T> {
                                   "than 0, but received num is %d",
                                   num));
 
-    out->Resize(framework::make_ddim({num}));
+    out->Resize(phi::make_ddim({num}));
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
     double step = 0;

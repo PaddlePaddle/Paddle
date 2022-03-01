@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/event_manager.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"

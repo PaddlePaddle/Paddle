@@ -621,28 +621,26 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
 
 typedef bool (*RegisterDevicePluginFn)(CustomRuntimeParams* runtime_params);
 
-bool LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
+void LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
                           std::unique_ptr<C_DeviceInterface> device_interface,
-                          void* dso_handle) {
+                          const std::string& dso_lib_path, void* dso_handle) {
   if (ValidCustomCustomRuntimeParams(&runtime_params)) {
     auto device =
         std::make_unique<CustomDevice>(runtime_params.device_type, 255, true,
                                        std::move(device_interface), dso_handle);
     if (false == DeviceManager::Register(std::move(device))) {
-      LOG(WARNING) << "Skip this library. Register failed!!! there may be a "
+      LOG(WARNING) << "Skipped lib [" << dso_lib_path
+                   << "]. Register failed!!! there may be a "
                       "Custom Runtime with the same name.";
-      return false;
     }
   } else {
-    LOG(WARNING)
-        << "Skip this library. Wrong parameters!!! please check the version "
-           "compatibility between PaddlePaddle and Custom Runtime.";
-    return false;
+    LOG(WARNING) << "Skipped lib [" << dso_lib_path
+                 << "]. Wrong parameters!!! please check the version "
+                    "compatibility between PaddlePaddle and Custom Runtime.";
   }
-  return true;
 }
 
-bool LoadCustomRuntimeLib(void* dso_handle) {
+void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle) {
   CustomRuntimeParams runtime_params;
   std::memset(&runtime_params, 0, sizeof(CustomRuntimeParams));
   runtime_params.size = sizeof(CustomRuntimeParams);
@@ -653,19 +651,23 @@ bool LoadCustomRuntimeLib(void* dso_handle) {
 
   RegisterDevicePluginFn init_plugin_fn =
       reinterpret_cast<RegisterDevicePluginFn>(dlsym(dso_handle, "InitPlugin"));
-  if (!init_plugin_fn) {
-    LOG(WARNING) << "Skip this library. InitPlugin symbol not found.";
-    return false;
+
+  if (init_plugin_fn == nullptr) {
+    LOG(WARNING) << "Skipped lib [" << dso_lib_path << "]: fail to find "
+                 << "InitPlugin symbol in this lib.";
+    return;
   }
+
   init_plugin_fn(&runtime_params);
   if (runtime_params.device_type == nullptr) {
-    LOG(WARNING)
-        << "Skip this library. InitPlugin failed!!! please check the version "
-           "compatibility between PaddlePaddle and Custom Runtime.";
-    return false;
+    LOG(WARNING) << "Skipped lib [" << dso_lib_path
+                 << "]: InitPlugin failed, please check the version "
+                    "compatibility between PaddlePaddle and Custom Runtime.";
+    return;
   }
-  return LoadCustomRuntimeLib(runtime_params, std::move(device_interface),
-                              dso_handle);
+  LoadCustomRuntimeLib(runtime_params, std::move(device_interface),
+                       dso_lib_path, dso_handle);
+  LOG(INFO) << "Successed in loading custom runtime in lib: " << dso_lib_path;
 }
 
 }  // namespace platform

@@ -26,10 +26,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/pten/kernels/primitive/kernel_primitives.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
 
 #if !defined(_WIN32)
@@ -95,7 +95,7 @@ struct normal_transform {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
-namespace kps = pten::kps;
+namespace kps = phi::kps;
 
 /*********************** Distribution Function *************************/
 template <typename T>
@@ -180,8 +180,8 @@ struct normal_distribution<double> {
 /******** Launch GPU function of distribution and transformation *********/
 template <typename T, typename DistOp, typename TransformOp>
 __global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
-                                   DistOp dist, TransformOp trans,
-                                   T *out_data) {
+                                   DistOp dist, TransformOp trans, T *out_data,
+                                   size_t stride) {
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   static constexpr int kCount = DistOp::kReturnsCount;
 #if defined(__NVCC__)
@@ -201,7 +201,8 @@ __global__ void DistributionKernel(size_t size, uint64_t seed, uint64_t offset,
     kps::ElementwiseUnary<T, T, kCount, 1, 1, TransformOp>(&result[0], &args[0],
                                                            trans);
     kps::WriteData<T, T, kCount, 1, 1, true>(out_data + i, &result[0], size - i,
-                                             1, total_thread, 1);
+                                             1, stride, 1);
+    __syncthreads();
   }
 }
 
@@ -234,7 +235,7 @@ void distribution_and_transform(const platform::CUDADeviceContext &dev_ctx,
 
   DistributionKernel<
       T, DistOp, TransformOp><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-      size, seed, offset, dist, trans, out_data);
+      size, seed, offset, dist, trans, out_data, total_thread);
 }
 
 #endif

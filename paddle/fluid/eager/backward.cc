@@ -71,14 +71,6 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   return node_in_degree_map;
 }
 
-void RunBackwardHooks(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& grad_tensors,
-    egr::GradNodeBase* grad_node) {
-  grad_node->ApplyGradientHooks(grad_tensors);
-  VLOG(6) << "Apply Reduce Hooks for node";
-  grad_node->ApplyReduceHooks();
-}
-
 void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
                  const std::vector<paddle::experimental::Tensor>& grad_tensors,
                  bool retain_graph) {
@@ -174,11 +166,8 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
     std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffers_dict[node]);
-    VLOG(6) << "Run Backward Kernel with input_buffer";
 
-    RunBackwardHooks(node_input_buffer->Buffers(), node);
-    // TODO(jiabin): Support post hook here and make hook run in seperate
-    // operator
+    VLOG(6) << "Run Backward Kernel with input_buffer";
     // Run Pre Backward Node and get outputs
     std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers());
@@ -232,10 +221,11 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
                 << " 's name is: " << grad_output_tensor.name();
 
         auto* next_node = next_node_shared.get();
-
         if (!node_input_buffers_dict.count(next_node)) {
-          node_input_buffers_dict[next_node] =
-              std::make_unique<GradTensorHolder>(next_node->InputMeta());
+          const auto& input_meta = next_node->InputMeta();
+          auto grad_tensor_holder =
+              std::make_unique<GradTensorHolder>(input_meta);
+          node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
         }
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;

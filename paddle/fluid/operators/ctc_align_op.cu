@@ -110,10 +110,12 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       // merge elements and delete blank
       T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
 
+      paddle::framework::MixVector<size_t> mixv_input_lod(&input_lod[level]);
       MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
           num_tokens, tokens, num_seq,
-          input_lod[level].CUDAMutableData(ctx.GetPlace()), blank,
-          merge_repeated, dev_out_lod0_ptr, output_data);
+          mixv_input_lod.CUDAMutableData(ctx.GetPlace()), blank, merge_repeated,
+          dev_out_lod0_ptr, output_data);
+      mixv_input_lod.CopyToCPU();
 
       // set output lod
       std::vector<size_t> host_out_lod0(dev_out_lod0.begin(),
@@ -128,7 +130,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       if (host_out_lod0.back() == 0) {
         output->Resize({1, 1});
         output->mutable_data<T>(ctx.GetPlace());
-        pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
+        phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_constant;
         set_constant(ctx.template device_context<platform::CUDADeviceContext>(),
                      output, -1);
       }

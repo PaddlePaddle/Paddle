@@ -33,10 +33,11 @@ import paddle.utils.deprecated as deprecated
 class TensorHookRemoveHelper(object):
     """
     A helper class that for removing Tensor gradient's hook.
+    NOTE(wuweilong):the operation weakref.ref(tensor) will cause some unexpected errors in eager mode.
     """
 
     def __init__(self, tensor, hook_id):
-        self._tensor_ref = weakref.ref(tensor)
+        self._tensor = tensor if core._in_eager_mode() else weakref.ref(tensor)
         self._hook_id = hook_id
 
     def remove(self):
@@ -46,7 +47,7 @@ class TensorHookRemoveHelper(object):
         Returns:
             bool: Return True if removed successfully
         """
-        tensor = self._tensor_ref()
+        tensor = self._tensor if core._in_eager_mode() else self._tensor()
         if tensor is not None:
             res = tensor._remove_grad_hook(self._hook_id)
             if res is True:
@@ -780,13 +781,6 @@ def monkey_patch_varbase():
                 "_set_grad_ivar is only supported for Parameter Tensor")
 
     @framework.dygraph_only
-    def clear_gradient(self, set_to_zero=True):
-        if set_to_zero:
-            self._zero_grads()
-        else:
-            self._clear_gradient()
-
-    @framework.dygraph_only
     def clone(self):
         return _C_ops_.assign(self)
 
@@ -815,7 +809,6 @@ def monkey_patch_varbase():
     if core._in_eager_mode():
         setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
-        setattr(core.eager.Tensor, "clear_gradient", clear_gradient)
         setattr(core.eager.Tensor, "clone", clone)
         setattr(core.eager.Tensor, "value", value)
     else:

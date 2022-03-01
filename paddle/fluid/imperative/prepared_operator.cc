@@ -19,15 +19,15 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
 #include "paddle/utils/small_vector.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -49,8 +49,8 @@ const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
   if (var.IsType<framework::LoDTensor>()) {
     return &(var.Get<framework::LoDTensor>());
-  } else if (var.IsType<pten::SelectedRows>()) {
-    return &(var.Get<pten::SelectedRows>().value());
+  } else if (var.IsType<phi::SelectedRows>()) {
+    return &(var.Get<phi::SelectedRows>().value());
   } else {
     return nullptr;
   }
@@ -114,14 +114,14 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
                        const framework::OpKernelType& kernel_type,
                        const framework::KernelSignature& kernel_signature,
-                       const pten::Kernel& pt_kernel,
+                       const phi::Kernel& pt_kernel,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
       kernel_type_(kernel_type),
       func_(nullptr),
       dev_ctx_(dev_ctx),
-      run_pten_kernel_(true),
+      run_phi_kernel_(true),
       pt_kernel_signature_(kernel_signature),
       pt_kernel_(pt_kernel) {}
 
@@ -151,7 +151,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
   // NOTE(zhiqiu): for kernels on given device, for example NPU, the order to
   // choose is:
-  // pten npu kernel > fluid npu kernel > pten cpu kernel > fluid cpu kernel
+  // phi npu kernel > fluid npu kernel > phi cpu kernel > fluid cpu kernel
 
   // 1. get expected kernel key
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
@@ -159,18 +159,29 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
 
   framework::KernelSignature pt_kernel_signature;
-  pten::KernelKey pt_kernel_key;
+  phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
-  if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
-    pt_kernel_signature = op.GetExpectedPtenKernelArgs(dygraph_exe_ctx);
+#ifdef PADDLE_WITH_XPU
+  bool is_xpu_unsupport =
+      paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
+          !paddle::platform::is_xpu_support_op(op.Type(),
+                                               expected_kernel_key) ||
+      paddle::platform::is_in_xpu_black_list(op.Type());
+#endif
+  if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
+    pt_kernel_signature = op.GetExpectedPhiKernelArgs(dygraph_exe_ctx);
     VLOG(6) << pt_kernel_signature;
 
     pt_kernel_name = pt_kernel_signature.name;
-    pt_kernel_key = TransOpKernelTypeToPtenKernelKey(expected_kernel_key);
-    auto pt_kernel = pten::KernelFactory::Instance().SelectKernel(
-        pt_kernel_name, pt_kernel_key);
+    pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
+    auto pt_kernel = phi::KernelFactory::Instance().SelectKernel(pt_kernel_name,
+                                                                 pt_kernel_key);
 
-    if (pt_kernel.IsValid()) {
+    if (pt_kernel.IsValid()
+#ifdef PADDLE_WITH_XPU
+        && !is_xpu_unsupport
+#endif
+        ) {
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
@@ -184,7 +195,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
     } else {
-      VLOG(6) << "Dynamic mode ChoosePtenKernel - kernel `" << pt_kernel_name
+      VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
               << "` not found.";
     }
   }
@@ -197,17 +208,13 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
        kernels_iter->second.find(expected_kernel_key) ==
            kernels_iter->second.end())
 #ifdef PADDLE_WITH_XPU
-      ||
-      paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-          !paddle::platform::is_xpu_support_op(op.Type(),
-                                               expected_kernel_key) ||
-      paddle::platform::is_in_xpu_black_list(op.Type())
+      || is_xpu_unsupport
 #endif
-          ) {
-    if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(op.Type())) {
+      ) {
+    if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op.Type())) {
       auto pt_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
-      auto pt_cpu_kernel = pten::KernelFactory::Instance().SelectKernel(
+      auto pt_cpu_kernel = phi::KernelFactory::Instance().SelectKernel(
           pt_kernel_name, pt_cpu_kernel_key);
       if (pt_cpu_kernel.IsValid()) {
         VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
@@ -230,9 +237,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
 #ifdef PADDLE_WITH_XPU
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-      (kernel_iter == kernels.end() ||
-       !paddle::platform::is_xpu_support_op(op.Type(), expected_kernel_key) ||
-       paddle::platform::is_in_xpu_black_list(op.Type()))) {
+      (kernel_iter == kernels.end() || is_xpu_unsupport)) {
     VLOG(3) << "missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
@@ -348,16 +353,18 @@ static void PreparedOpRunImpl(
   framework::Scope scope;
 
   {
-    platform::RecordEvent record_event(op.Type() + " infer_shape",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::infer_shape",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 
   {
-    platform::RecordEvent record_event(op.Type() + " compute",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::compute",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
 
     func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
                                           attrs, default_attrs));
@@ -398,28 +405,30 @@ static void PreparedOpRunPtImpl(
     const framework::OperatorBase& op,
     const framework::OpKernelType& kernel_type,
     const framework::KernelSignature& pt_kernel_signature,
-    const pten::Kernel& pt_kernel, platform::DeviceContext* dev_ctx,
+    const phi::Kernel& pt_kernel, platform::DeviceContext* dev_ctx,
     const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
   {
-    platform::RecordEvent record_event(op.Type() + " infer_shape",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::infer_shape",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(
         &ins, &outs, &attrs, &default_attrs, op.Type(), &kernel_type);
     op.Info().infer_shape_(&infer_shape_ctx);
   }
 
   {
-    platform::RecordEvent record_event(op.Type() + " compute",
-                                       platform::EventRole::kInnerOp);
+    platform::RecordEvent record_event(op.Type() + "::compute",
+                                       platform::TracerEventType::OperatorInner,
+                                       1, platform::EventRole::kInnerOp);
 
-    PreparePtenData<VarType>(pt_kernel, pt_kernel_signature, ins);
+    PreparePhiData<VarType>(pt_kernel, pt_kernel_signature, ins);
 
-    pten::KernelContext pt_kernel_context;
-    BuildDygraphPtenKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
-                                           outs, attrs, default_attrs, dev_ctx,
-                                           &pt_kernel_context);
+    phi::KernelContext pt_kernel_context;
+    BuildDygraphPhiKernelContext<VarType>(pt_kernel_signature, pt_kernel, ins,
+                                          outs, attrs, default_attrs, dev_ctx,
+                                          &pt_kernel_context);
 
     pt_kernel(&pt_kernel_context);
   }
@@ -442,7 +451,7 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const NameVarMap<VarBase>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<VarBase>(op_, kernel_type_, pt_kernel_signature_,
                                  pt_kernel_, dev_ctx_, ins, outs, attrs,
                                  default_attrs);
@@ -456,7 +465,7 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const NameVarMap<VariableWrapper>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<VariableWrapper>(
         op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
         outs, attrs, default_attrs);
@@ -470,7 +479,7 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
                      const NameVarMap<egr::EagerVariable>& outs,
                      const framework::AttributeMap& attrs,
                      const framework::AttributeMap& default_attrs) {
-  if (run_pten_kernel_) {
+  if (run_phi_kernel_) {
     PreparedOpRunPtImpl<egr::EagerVariable>(
         op_, kernel_type_, pt_kernel_signature_, pt_kernel_, dev_ctx_, ins,
         outs, attrs, default_attrs);

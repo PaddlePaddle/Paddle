@@ -115,8 +115,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                         bias_dim, bias_dim.size()));
 
   bool check = true;
-  if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
-                              framework::product(bias_dim) <= 0)) {
+  if ((!ctx->IsRuntime()) &&
+      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
     check = false;
   }
 
@@ -993,7 +993,7 @@ class BatchNormDoubleGradKernel<platform::CPUDeviceContext, T>
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
     const int sample_size = X->numel() / C;
-    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
+    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
     const T *mean_data = Saved_mean->data<T>();
     const T *inv_var_data = Saved_variance->data<T>();

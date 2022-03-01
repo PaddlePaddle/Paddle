@@ -157,7 +157,7 @@ inline framework::DDim GetDecreasedDims(const framework::DDim slice_dims,
       new_shape.push_back(1);
     }
 
-    decreased_dims = framework::make_ddim(new_shape);
+    decreased_dims = phi::make_ddim(new_shape);
   }
   return decreased_dims;
 }
