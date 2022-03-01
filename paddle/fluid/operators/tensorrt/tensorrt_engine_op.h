@@ -90,8 +90,10 @@ static paddle::experimental::DataType TRT2FluidDataType(
       return paddle::experimental::DataType::FLOAT16;
     case nvinfer1::DataType::kINT8:
       return paddle::experimental::DataType::INT8;
+#if IS_TRT_VERSION_GE(7000)
     case nvinfer1::DataType::kBOOL:
       return paddle::experimental::DataType::BOOL;
+#endif
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
