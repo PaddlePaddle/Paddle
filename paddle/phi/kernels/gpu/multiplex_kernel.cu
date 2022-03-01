@@ -53,7 +53,8 @@ void MultiplexKernel(const Context& ctx,
                          out->data<T>() + i * cols,
                          ctx.GetPlace(),
                          ins[k].data<T>() + i * cols,
-                         cols * sizeof(T));
+                         cols * sizeof(T),
+                         stream);
   }
 }
 

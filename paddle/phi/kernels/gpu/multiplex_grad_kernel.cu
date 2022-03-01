@@ -49,7 +49,8 @@ void MultiplexGradKernel(const Context& ctx,
                            ins_grad[k]->data<T>() + i * cols,
                            ctx.GetPlace(),
                            out_grad.data<T>() + i * cols,
-                           cols * sizeof(T));
+                           cols * sizeof(T),
+                           stream);
     }
   }
 }

@@ -36,7 +36,7 @@ void MultiplexKernel(const Context& ctx,
   }
   auto rows = ins[0].dims()[0];
   auto cols = ins[0].numel() / rows;
-  auto* index = ids.data<int32_t>();
+  auto index = ids.data<int32_t>();
   for (auto i = 0; i < rows; i++) {
     int32_t k = index[i];
     PADDLE_ENFORCE_GE(
