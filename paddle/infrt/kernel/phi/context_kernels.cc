@@ -18,7 +18,7 @@ namespace infrt {
 namespace kernel {
 namespace phi {
 
-backends::CpuPhiContext CreateCpuContext() { return {}; }
+::phi::CPUContext CreateCpuContext() { return {}; }
 
 }  // namespace phi
 }  // namespace kernel

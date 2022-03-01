@@ -50,10 +50,13 @@ class InferMetaContext {
   const std::pair<int, int>& OutputRangeAt(size_t idx) const;
 
   const MetaConfig& GetMetaConfig() const;
+
   const MetaTensor& InputAt(size_t idx) const;
-  std::vector<MetaTensor> InputsBetween(size_t start, size_t end) const;
+  paddle::optional<const phi::MetaTensor&> OptionalInputAt(size_t idx) const;
+  std::vector<MetaTensor*> InputsBetween(size_t start, size_t end) const;
+
   MetaTensor* MutableOutputAt(size_t idx);
-  std::vector<MetaTensor> MutableOutputBetween(size_t start, size_t end);
+  std::vector<MetaTensor*> MutableOutputBetween(size_t start, size_t end);
 
   template <typename AttrType>
   AttrType AttrAt(size_t idx) {
@@ -136,7 +139,7 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   };
 
   template <typename... Tail>
-  struct InferMetaFnCallHelper<const std::vector<MetaTensor>&, Tail...> {
+  struct InferMetaFnCallHelper<paddle::optional<const MetaTensor&>, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
@@ -144,7 +147,25 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
       static_assert(out_idx == 0,
                     "InferMeta's Input should appear before Outputs.");
       const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
-      std::vector<MetaTensor> arg =
+      auto arg = ctx->OptionalInputAt(range.first);
+
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                 pargs...,
+                                                                 arg);
+    }
+  };
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<const std::vector<MetaTensor*>&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
+      static_assert(attr_idx == 0,
+                    "InferMeta's Input should appear before Attributes.");
+      static_assert(out_idx == 0,
+                    "InferMeta's Input should appear before Outputs.");
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);
+      std::vector<MetaTensor*> arg =
           ctx->InputsBetween(range.first, range.second);
       InferMetaFnCallHelper<
           Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
@@ -189,13 +210,12 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   };
 
   template <typename... Tail>
-  struct InferMetaFnCallHelper<std::vector<MetaTensor>*, Tail...> {
+  struct InferMetaFnCallHelper<std::vector<MetaTensor*>, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Call(InferMetaContext* ctx, PreviousArgs&... pargs) {
       const std::pair<int, int> range = ctx->OutputRangeAt(out_idx);
-      std::vector<MetaTensor> tmp =
+      std::vector<MetaTensor*> arg =
           ctx->MutableOutputBetween(range.first, range.second);
-      std::vector<MetaTensor>* arg = &tmp;
       InferMetaFnCallHelper<
           Tail...>::template Call<in_idx, attr_idx, out_idx + 1>(ctx,
                                                                  pargs...,
