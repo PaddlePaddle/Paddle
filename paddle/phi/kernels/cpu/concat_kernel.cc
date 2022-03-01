@@ -37,6 +37,7 @@ void ConcatKernel(const Context& dev_ctx,
   axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
 
   std::vector<phi::DDim> x_dims;
+  x_dims.reserve(x.size());
   for (size_t i = 0; i < x.size(); ++i) {
     x_dims.push_back(x[i]->dims());
   }
@@ -96,10 +97,12 @@ void ConcatKernel(const Context& dev_ctx,
       output_offset += in_stride[axis];
     }
   } else {
+    // TODO(chenweihang): concat functor support vector<DenseTensor*> input
     std::vector<phi::DenseTensor> inputs;
+    inputs.reserve(x.size());
     for (size_t j = 0; j < x.size(); ++j) {
       if (x[j]->numel() > 0) {
-        inputs.push_back(*x[j]);
+        inputs.emplace_back(*x[j]);
       } else {
         continue;
       }
