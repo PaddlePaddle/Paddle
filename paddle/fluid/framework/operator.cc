@@ -2038,6 +2038,8 @@ void OperatorWithKernel::BuildPtenKernelContext(
                         "to the size of kernel attribute_defs (%d).",
                         attr_names.size(), attr_defs.size()));
 
+  size_t tensor_array_size = 0UL;
+
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ctx.inputs.find(input_names[i]);
 
@@ -2062,16 +2064,26 @@ void OperatorWithKernel::BuildPtenKernelContext(
       auto* var = ins_vector[offset];
       if (var->IsType<framework::LoDTensor>()) {
         tensor_in = &(var->Get<framework::LoDTensor>());
+        pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<phi::SelectedRows>()) {
         tensor_in = &(var->Get<phi::SelectedRows>());
+        pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        paddle::SmallVector<const phi::TensorBase*> tensor_vector;
+        auto& tensor_array = var->Get<framework::LoDTensorArray>();
+        for (auto& t : tensor_array) {
+          tensor_vector.emplace_back(&t);
+        }
+        pt_kernel_context->EmplaceBackInputsWithoutSetRange(tensor_vector);
+        tensor_array_size = tensor_array.size();
+        end_idx += tensor_array.size() - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
-
-      pt_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
     }
+    // Note: here cannot deal with vector<LoDTensorArray> input
     pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
 
@@ -2100,22 +2112,39 @@ void OperatorWithKernel::BuildPtenKernelContext(
       auto* var = outs_vector[offset];
       if (var->template IsType<framework::LoDTensor>()) {
         tensor_out = var->template GetMutable<framework::LoDTensor>();
+        experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
+                                                        output_defs.at(i));
+        SetAllocationForOutputTenosr(
+            tensor_out, phi::TransToPtenPlace(output_defs.at(i).backend));
+        pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
       } else if (var->template IsType<phi::SelectedRows>()) {
         tensor_out = var->template GetMutable<phi::SelectedRows>();
+        pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+      } else if (var->template IsType<framework::LoDTensorArray>()) {
+        paddle::SmallVector<phi::TensorBase*> tensor_vector;
+        auto* tensor_array =
+            var->template GetMutable<framework::LoDTensorArray>();
+        // NOTE(chenweihang): [ How to handle LoDTensorArray? ]
+        // LoDTensorArray is a flexible output type that allows tensor to be
+        // created inside the kernel, which makes us unable to know its output
+        // size in advance. If we create a new TensorArray type and let it
+        // inherit TensorBase, it can also be supported, but this is too ugly!
+        // For now, assume that the input and output LoDTensorArray and the
+        // input LoDTensorArray have the same size. I know that this does not
+        // fit all situations (such as slice), but it needs to be able to
+        // support some kernels (such as assign, reverse) to be able to migrate.
+        tensor_array->resize(tensor_array_size);
+        for (auto& t : *tensor_array) {
+          tensor_vector.emplace_back(&t);
+        }
+        pt_kernel_context->EmplaceBackOutputsWithoutSetRange(tensor_vector);
+        end_idx += tensor_array_size - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
-
-      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
-                                                      output_defs.at(i));
-      SetAllocationForOutputTenosr(
-          tensor_out, phi::TransToPtenPlace(output_defs.at(i).backend));
-
-      pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
-
     pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
 

@@ -259,6 +259,8 @@ void BuildDygraphPtenKernelContext(
                         "to the size of kernel attribute_defs (%d).",
                         attr_names.size(), attr_defs.size()));
 
+  size_t tensor_array_size = 0UL;
+
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ins.find(input_names[i]);
 
@@ -280,14 +282,24 @@ void BuildDygraphPtenKernelContext(
       auto& var = ins_vector[offset]->Var();
       if (var.template IsType<phi::DenseTensor>()) {
         tensor_in = &(var.template Get<phi::DenseTensor>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<phi::SelectedRows>()) {
         tensor_in = &(var.template Get<phi::SelectedRows>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var.template IsType<framework::LoDTensorArray>()) {
+        paddle::SmallVector<const phi::TensorBase*> tensor_vector;
+        auto& tensor_array = var.template Get<framework::LoDTensorArray>();
+        for (auto& t : tensor_array) {
+          tensor_vector.emplace_back(&t);
+        }
+        kernel_ctx->EmplaceBackInputsWithoutSetRange(tensor_vector);
+        tensor_array_size = tensor_array.size();
+        end_idx += tensor_array.size() - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var.Type())));
       }
-      kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
     }
     kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
@@ -316,20 +328,30 @@ void BuildDygraphPtenKernelContext(
       auto* var = outs_vector[offset]->MutableVar();
       if (var->template IsType<phi::DenseTensor>()) {
         tensor_out = var->template GetMutable<phi::DenseTensor>();
+        experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
+                                                        output_defs.at(i));
+        framework::SetAllocationForOutputTenosr(
+            tensor_out, phi::TransToPtenPlace(output_defs.at(i).backend));
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
       } else if (var->template IsType<phi::SelectedRows>()) {
         tensor_out = var->template GetMutable<phi::SelectedRows>();
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
+      } else if (var->template IsType<framework::LoDTensorArray>()) {
+        paddle::SmallVector<phi::TensorBase*> tensor_vector;
+        auto* tensor_array =
+            var->template GetMutable<framework::LoDTensorArray>();
+        // See NOTE [ How to handle LoDTensorArray? ]
+        tensor_array->resize(tensor_array_size);
+        for (auto& t : *tensor_array) {
+          tensor_vector.emplace_back(&t);
+        }
+        kernel_ctx->EmplaceBackOutputsWithoutSetRange(tensor_vector);
+        end_idx += tensor_array_size - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
-
-      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
-                                                      output_defs.at(i));
-      framework::SetAllocationForOutputTenosr(
-          tensor_out, phi::TransToPtenPlace(output_defs.at(i).backend));
-
-      kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
