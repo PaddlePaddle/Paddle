@@ -32,7 +32,7 @@
 namespace phi {
 
 template <typename T, typename Context, int OutRank>
-void ApplyBroadcast(const Context& context,
+void ApplyBroadcast(const Context& ctx,
                     const DenseTensor* input_tensor,
                     DenseTensor* output_tensor) {
   const auto& input_dims = input_tensor->dims();
@@ -65,10 +65,10 @@ void ApplyBroadcast(const Context& context,
   // output
   auto x = EigenTensor<T, OutRank>::From(*input_tensor, new_input_dims);
 
-  output_tensor->mutable_data<T>(context.GetPlace());
+  ctx.template Alloc<T>(output_tensor);
   auto y = EigenTensor<T, OutRank>::From(*output_tensor, output_dims);
 
-  auto& place = *context.eigen_device();
+  auto& place = *ctx.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, OutRank>::Eval(
       place, y, x, bcast_dims);
 }
