@@ -13,32 +13,26 @@
 // limitations under the License.
 
 #pragma once
+
+#include <mlir/Dialect/Traits.h>
+#include <mlir/IR/Attributes.h>
+#include <mlir/IR/Builders.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/Dialect.h>
-#include <mlir/IR/OpDefinition.h>
+#include <mlir/IR/Matchers.h>
+#include <mlir/IR/OpImplementation.h>
+#include <mlir/IR/TypeUtilities.h>
+#include <mlir/Interfaces/CallInterfaces.h>
+#include <mlir/Interfaces/DerivedAttributeOpInterface.h>
+#include <mlir/Interfaces/InferTypeOpInterface.h>
+#include <mlir/Interfaces/LoopLikeInterface.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
-#include <string>
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_kernelTypes.h.inc"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
 
-#include "paddle/infrt/dialect/infrt/common_type.h"
-#include "paddle/infrt/dialect/phi/ir/infrt_phi_base.h.inc"
-#include "paddle/infrt/dialect/phi/ir/infrt_phi_baseDialect.h.inc"
-
-namespace mlir {
-namespace OpTrait {
-
-template <typename ConcreteType>
-class PhiOpTrait : public OpTrait::TraitBase<ConcreteType, PhiOpTrait> {
- public:
-  static LogicalResult verifyTrait(Operation *op) {
-    return LogicalResult::success();
-  }
-};
-
-}  // namespace OpTrait
-}  // namespace mlir
-
-#define GET_TYPEDEF_CLASSES
-#include "paddle/infrt/dialect/phi/ir/infrt_phi_baseTypes.h.inc"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_kernelDialect.h.inc"
 
 namespace infrt {
 namespace phi {}  // namespace phi

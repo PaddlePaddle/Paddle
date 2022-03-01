@@ -21,6 +21,7 @@
 #include "paddle/infrt/dialect/infrt/infrt_dialect.h"
 #include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/pd_ops.h"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_kernel.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 #include "paddle/infrt/dialect/tensor_shape.h"
@@ -34,6 +35,7 @@ void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
                   mlir::pd::PaddleDialect,
 #ifdef INFRT_WITH_PHI
                   phi::PHIDenseTensorDialect,
+                  phi::PHIKernelDialect,
                   phi::PHIDialect
 #endif
                   >();

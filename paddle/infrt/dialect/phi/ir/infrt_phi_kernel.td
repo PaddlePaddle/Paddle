@@ -17,11 +17,17 @@ def PHI_KernelDialect : Dialect {
 }
 
 // PHI Kernel related ops.
-class PDT_Kernel<string mnemonic, list<OpTrait> traits = []> : Op<PHI_KernelDialect, mnemonic, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove])> {
+class PDT_Kernel<string mnemonic, list<OpTrait> traits = []> : 
+  Op<PHI_KernelDialect, mnemonic, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove])> {
 }
 
 def PDCK_AbsOp : PDT_Kernel<"phi.abs.host.fp32"> {
-  let arguments = (ins CPU_Context:$dev_ctx, DenseTensor:$x);
+  let arguments = (ins Context:$dev_ctx, DenseTensor:$x);
+  let results = (outs DenseTensor:$output);
+}
+
+def FakeKernelOp : PDT_Kernel<"cpu.matmul"> {
+  let arguments = (ins Context:$dev_ctx, DenseTensor:$x, DenseTensor:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
   let results = (outs DenseTensor:$output);
 }
 

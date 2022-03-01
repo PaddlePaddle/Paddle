@@ -40,8 +40,14 @@ llvm::Optional<TargetType> GetTargetType(llvm::StringRef key);
 llvm::Optional<LayoutType> GetLayoutType(llvm::StringRef key);
 llvm::Optional<PrecisionType> GetPrecisionType(llvm::StringRef key);
 
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, TargetType type);
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, LayoutType type);
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PrecisionType type);
+llvm::StringRef GetString(TargetType type);
+llvm::StringRef GetString(LayoutType type);
+llvm::StringRef GetString(PrecisionType type);
+
+template <typename T>
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, T type) {
+  os << GetString(type);
+  return os;
+}
 
 }  // end namespace infrt

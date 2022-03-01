@@ -13,25 +13,42 @@ def PHI_Dialect : Dialect {
   let cppNamespace = "::infrt::phi";
 }
 
-class AllocatorTypeOf<string place, list<Trait> traits=[]>:
-    TypeDef<PHI_Dialect, place # "Allocator", traits> {
-    let summary = !strconcat("!phi.allocator_", place, " type");
-}
-
-class ContextTypeOf<string place, list<Trait> traits=[]>:
-    TypeDef<PHI_Dialect, place # "Context", traits> {
-    let summary = !strconcat("!phi.context_", place, " type");
-}
-
 def PhiOpTrait : NativeOpTrait<"PhiOpTrait">;
 
-def CPU_Allocator : AllocatorTypeOf<"CPU">;
-def GPU_Allocator : AllocatorTypeOf<"GPU">;
+class PHI_Type<string type, list<Trait> traits = []>
+  : TypeDef<PHI_Dialect, type, !listconcat(traits, [PhiOpTrait, IsolatedFromAbove])> {}
 
-def CPU_Context : ContextTypeOf<"CPU">;
-def GPU_Context : ContextTypeOf<"GPU">;
+class PHI_TypeParameter<string cppEnumType, string stringToSymbolFnName,
+  string symbolToStringFnName, string desc = ""> : TypeParameter<cppEnumType, desc> {
+  let parser = [{[&]() -> ::mlir::FailureOr<}] # cppEnumType # [{> {
+    ::llvm::StringRef enumKeyword;
+    if (::mlir::failed($_parser.parseKeyword(&enumKeyword)))
+      return ::mlir::failure();
+    auto maybeEnum = }] # stringToSymbolFnName # [{(enumKeyword);
+    if (maybeEnum)
+      return *maybeEnum;
+    llvm_unreachable("}] # cppEnumType # [{ can not be found.");
+    return {};
+  }()}];
+  let printer = "$_printer << " # symbolToStringFnName # "($_self)";
+}
 
-def Allocator : AnyTypeOf<[CPU_Allocator, GPU_Allocator], "Allocator type">;
-def Context : AnyTypeOf<[CPU_Context, GPU_Context], "Context type">;
+def Target : PHI_TypeParameter<"::infrt::TargetType", "GetTargetType", "GetString">;
+
+def Allocator : PHI_Type<"Allocator"> {
+  let mnemonic = "allocator";
+  let parameters = (ins
+    Target:$target
+  );
+  let assemblyFormat = "`<` $target `>`";
+}
+
+def Context : PHI_Type<"Context"> {
+  let mnemonic = "context";
+  let parameters = (ins
+    Target:$target
+  );
+  let assemblyFormat = "`<` $target `>`";
+}
 
 #endif

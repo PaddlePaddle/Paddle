@@ -12,20 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/context_kernels.h"
-#include "paddle/infrt/kernel/phi/allocator_kernels.h"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_kernel.h"
+
+#include <mlir/IR/BuiltinTypes.h>
+
+#include "paddle/infrt/dialect/dense_tensor.h"
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_kernel.h.inc"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_kernelDialect.cpp.inc"
 
 namespace infrt {
-namespace kernel {
 namespace phi {
 
-::phi::CPUContext CreateCpuContext() {
-  ::phi::CPUContext ctx{};
-  // Need to fix: memory leak
-  ctx.SetAllocator(new ::infrt::backends::CpuPhiAllocator{});
-  return ctx;
+void PHIKernelDialect::initialize() {
+  addOperations<
+#define GET_OP_LIST
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_kernel.cpp.inc"
+      >();
 }
 
 }  // namespace phi
-}  // namespace kernel
 }  // namespace infrt
+
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_kernel.cpp.inc"  // NOLINT

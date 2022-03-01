@@ -43,15 +43,17 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel("phi_dt.fill_dense_tensor.f32",
                       INFRT_KERNEL(infrt::kernel::phi::FillDenseTensorF32));
   registry->AddKernel(
-      "phi_dt.fake_phi_kernel",
-      std::bind(&KernelLauncherFunc<decltype(&FakePhiKernel),
-                                    &FakePhiKernel,
-                                    decltype(&FakePhiInferShape),
-                                    &FakePhiInferShape>,
-                KernelLauncher<decltype(&FakePhiKernel),
-                               &FakePhiKernel,
-                               decltype(&FakePhiInferShape),
-                               &FakePhiInferShape>(),
+      "phi_kernel.cpu.matmul",
+      std::bind(&kernel::KernelLauncherFunc<
+                    decltype(&::phi::MatmulKernel<float, ::phi::CPUContext>),
+                    &::phi::MatmulKernel<float, ::phi::CPUContext>,
+                    decltype(&::phi::MatmulInferMeta),
+                    &::phi::MatmulInferMeta>,
+                kernel::KernelLauncher<
+                    decltype(&::phi::MatmulKernel<float, ::phi::CPUContext>),
+                    &::phi::MatmulKernel<float, ::phi::CPUContext>,
+                    decltype(&::phi::MatmulInferMeta),
+                    &::phi::MatmulInferMeta>(),
                 std::placeholders::_1));
 }
 

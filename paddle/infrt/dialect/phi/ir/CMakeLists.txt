@@ -6,4 +6,4 @@ add_mlir_dialect(infrt_phi_kernel phi_kernel)
 
 gather_srcs(infrt_src SRCS
     phi_base.cc 
-    infrt_phi_tensor.cc)
+    infrt_phi_tensor.cc infrt_phi_kernel.cc)
