@@ -394,7 +394,8 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
       }
       output_data[i] =
           reinterpret_cast<T *>(output->mutable_data<T>(ctx.GetPlace()));
-      lods_data[i] = lods.CUDAData(ctx.GetPlace());
+      paddle::framework::MixVector<size_t> lods_v{&lods};
+      lods_data[i] = lods_v.CUDAData(ctx.GetPlace());
       seqpool_output_data[i] =
           reinterpret_cast<T *>(seqpool_outputs[i].mutable_data<T>(
               {batch_size, embedding_size}, ctx.GetPlace()));
@@ -458,7 +459,8 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
 
       in_grads_data[i] =
           reinterpret_cast<T *>(in_grad->mutable_data<T>(ctx.GetPlace()));
-      lods_data[i] = lods.CUDAData(ctx.GetPlace());
+      paddle::framework::MixVector<size_t> lods_v{&lods};
+      lods_data[i] = lods_v.CUDAData(ctx.GetPlace());
       cvm_data[i] = reinterpret_cast<const T *>(cvm->data<T>());
     }
     FusedSeqpoolCVMGrad(ctx, out_grads_data, in_grads_data, cvm_data, lods_data,
