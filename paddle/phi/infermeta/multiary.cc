@@ -122,4 +122,41 @@ void ConcatInferMeta(const std::vector<MetaTensor>& x,
   out->set_layout(x.at(0).layout());
 }
 
+void WarpctcInferMeta(const MetaTensor& logits,
+                      const MetaTensor& label,
+                      const paddle::optional<const MetaTensor&> logits_length,
+                      const paddle::optional<const MetaTensor&> labels_length,
+                      int blank,
+                      bool norm_by_times,
+                      MetaTensor* warpctc_grad,
+                      MetaTensor* loss) {
+  auto logits_dims = logits.dims();
+  int sequence_width = 0;
+
+  if (logits_length.is_initialized()) {
+    sequence_width = logits_dims[2];
+  } else {
+    sequence_width =
+        static_cast<int>(phi::product(logits_dims) / logits_dims[0]);
+  }
+
+  PADDLE_ENFORCE_GE(
+      blank,
+      0,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+  PADDLE_ENFORCE_LT(
+      blank,
+      sequence_width,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+
+  loss->set_dims({-1, 1});
+  loss->set_dtype(logits.dtype());
+}
+
 }  // namespace phi

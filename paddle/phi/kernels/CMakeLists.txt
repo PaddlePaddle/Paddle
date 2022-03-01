@@ -18,11 +18,12 @@ set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
 # NOTE: Some kernels depend on some targets that are not commonly used.
 # These targets are not suitable for common dependencies.
 # In this case, you need to manually generate them here.
-set(MANUAL_BUILD_KERNELS math_kernel softmax_kernel softmax_grad_kernel warpctc_kernel)
+set(MANUAL_BUILD_KERNELS math_kernel softmax_kernel softmax_grad_kernel warpctc_kernel warpctc_grad_kernel)
 kernel_library(math_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel)
 kernel_library(softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(warpctc_kernel DEPS ${COMMON_KERNEL_DEPS} phi_dynload_warpctc sequence_padding sequence_scale)
+kernel_library(warpctc_grad_kernel DEPS ${COMMON_KERNEL_DEPS} sequence_padding sequence_scale)
 # auto parse and build kernel targets by cmake
 register_kernels(EXCLUDES ${MANUAL_BUILD_KERNELS} DEPS ${COMMON_KERNEL_DEPS})
 

@@ -23,6 +23,16 @@ KernelSignature WarpctcOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"WarpCTCGrad", "Loss"});
 }
 
+KernelSignature WarpctcGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "warpctc_grad",
+      {"WarpCTCGrad", "Logits", GradVarName("Loss"), "LogitsLength"},
+      {"blank", "norm_by_times"},
+      {GradVarName("Logits")});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(warpctc, phi::WarpctcOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(warpctc_grad, phi::WarpctcGradOpArgumentMapping);
