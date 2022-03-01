@@ -80,11 +80,11 @@ inline paddle::optional<phi::MetaTensor> MakeMetaTensor(
 }
 
 inline std::vector<phi::MetaTensor> MakeMetaTensor(
-    const std::vector<phi::DenseTensor>& tensors) {
+    const std::vector<const phi::DenseTensor*>& tensors) {
   std::vector<phi::MetaTensor> meta_tensors;
   meta_tensors.reserve(tensors.size());
-  for (const auto& t : tensors) {
-    meta_tensors.emplace_back(t);
+  for (const auto* t : tensors) {
+    meta_tensors.emplace_back(*t);
   }
   return meta_tensors;
 }
