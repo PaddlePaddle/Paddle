@@ -16,13 +16,8 @@ if (NOT WITH_ONNXRUNTIME)
   return()
 endif ()
 
-if (WITH_GPU)
-  message(SEND_ERROR "onnxruntime no support GPU")
-  return()
-endif()
-
 if (WITH_ARM)
-  message(SEND_ERROR "onnxruntime no support arm")
+  message(SEND_ERROR "The current onnxruntime backend doesn't support ARM cpu")
   return()
 endif ()
 

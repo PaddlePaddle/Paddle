@@ -1507,8 +1507,10 @@ Predictor::Predictor(const Config &config) {
       return;
     }
 #else
-    LOG(WARNING) << "Please compile with ONNXRuntime， fall back to using "
-                    "Paddle Inference.";
+    LOG(WARNING)
+        << "The onnxruntime backend isn't enabled,"
+           " and please re-compile Paddle with WITH_ONNXRUNTIME option,"
+           "fall back to using Paddle Inference.";
 #endif
   }
   predictor_ = paddle::CreatePaddlePredictor<
