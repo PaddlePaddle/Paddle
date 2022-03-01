@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_registry.h"
+
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/reduce_prod_kernel.h"
 
 namespace phi {
 
