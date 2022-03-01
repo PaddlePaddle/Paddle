@@ -43,7 +43,7 @@ function match_cu_file_directory {
   do
     [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
   done
-  for sub_dir in "" "/gpu" "/hybird"
+  for sub_dir in "" "/gpu" "/gpudnn"
   do
     [ "${cu_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 0
   done
@@ -56,13 +56,13 @@ function load_CHANGE_OP_FILES_by_header_file {
   local change_file
   for change_file in $(grep -rl "${1}" paddle/fluid/operators paddle/phi/kernels/)
   do
-    if [[ "$change_file" =~ "_op.cu" ]]
+    if [[ "$change_file" =~ "_op.cu" || "$change_file" =~ "_kernel.cu" ||  "$change_file" =~ "_kernel_gpudnn.cu" ]]
     then
       # match cu file directory limit
       match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\"."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
-    elif [[ "$change_file" =~ ".h" ]]
+    elif [[ "$change_file" =~ ".h" && $(dirname $change_file) != "paddle/phi/kernels" ]]
     then
       [ -n "${INCLUDE_SEARCH_MAP[$change_file]}" ] && continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\", keep searching."
@@ -82,13 +82,13 @@ function load_CHANGE_OP_FILES {
     # match directory limit
     [[ "$change_file" =~ "paddle/fluid/operators/" ]] || [[ "$change_file" =~ "paddle/phi/kernels/" ]]  || continue
     # match file name limit
-    if [[ "$change_file" =~ "_op.cu" ]]
+    if [[ "$change_file" =~ "_op.cu" || "$change_file" =~ "_kernel.cu" || "$change_file" =~ "_kernel_gpudnn.cu" ]]
     then
       # match cu file directory limit
       match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${change_file}\" changed."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
-    elif [[ "$change_file" =~ ".h" ]]
+    elif [[ "$change_file" =~ ".h" && $(dirname $change_file) != "paddle/phi/kernels" ]]
     then
       LOG "[INFO] Found \"${change_file}\" changed, keep searching."
       INCLUDE_SEARCH_MAP[${change_file}]="searched"
@@ -131,6 +131,8 @@ function load_CHANGE_OP_MAP {
       op_name=${change_file_name##*/}
       op_name=${op_name%_cudnn_op*}
       op_name=${op_name%_op*}
+      op_name=${op_name%_grad_kernel*}
+      op_name=${op_name%_kernel*}
       [ -n "${SKIP_OP_MAP[$op_name]}" ] && continue
       LOG "[INFO] Load op: \"${op_name}\"."
       CHANGE_OP_MAP[${op_name}]="$change_file"
