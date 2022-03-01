@@ -8,6 +8,7 @@ if(WITH_NV_JETSON)
   set(paddle_known_gpu_archs10 "53 62 72")
 elseif(NEW_RELEASE_ALL)
   message("Using New Release Strategy - All Arches Packge")
+  add_definitions(-DNEW_RELEASE_ALL)
   set(paddle_known_gpu_archs "35 37 50 52 60 61 70 75 80 86")
   set(paddle_known_gpu_archs10 "35 37 50 52 60 61 70 75")
   set(paddle_known_gpu_archs11 "35 37 50 52 60 61 70 75 80")
@@ -153,7 +154,7 @@ function(select_nvcc_arch_flags out_variable)
 
   # remove dots and convert to lists
   string(REGEX REPLACE "\\." "" cuda_arch_bin "${cuda_arch_bin}")
-  string(REGEX REPLACE "\\." "" cuda_arch_ptx "${CUDA_ARCH_PTX}")
+  string(REGEX REPLACE "\\." "" cuda_arch_ptx "${cuda_arch_ptx}")
   string(REGEX MATCHALL "[0-9()]+" cuda_arch_bin "${cuda_arch_bin}")
   string(REGEX MATCHALL "[0-9]+"   cuda_arch_ptx "${cuda_arch_ptx}")
 
