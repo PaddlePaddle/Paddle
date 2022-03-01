@@ -100,7 +100,7 @@ class XPUTestExpOP(XPUOpTestWrapper):
         def set_shape(self):
             self.shape = (11, 17, 3, 5)
 
-    class XPUTestExp1(XPUTestExp):
+    class XPUTestExp4(XPUTestExp):
         def set_shape(self):
             self.shape = (11, 17, 3, 5, 7)
 
@@ -240,19 +240,19 @@ class XPUTestReluOP(XPUOpTestWrapper):
             self.inputs = {'X': x}
             self.outputs = {'Out': out}
 
-    class XPUTestExp1(XPUTestRelu):
+    class XPUTestRelu1(XPUTestRelu):
         def set_shape(self):
             self.shape = (11, 17)
 
-    class XPUTestExp2(XPUTestRelu):
+    class XPUTestRelu2(XPUTestRelu):
         def set_shape(self):
             self.shape = (11, 17, 3)
 
-    class XPUTestExp3(XPUTestRelu):
+    class XPUTestRelu3(XPUTestRelu):
         def set_shape(self):
             self.shape = (11, 17, 3, 5)
 
-    class XPUTestExp1(XPUTestRelu):
+    class XPUTestRelu4(XPUTestRelu):
         def set_shape(self):
             self.shape = (11, 17, 3, 5, 7)
 
@@ -267,18 +267,53 @@ class XPUTestGeluOP(XPUOpTestWrapper):
         self.op_name = 'gelu'
         self.use_dynamic_create_class = False
 
+    #test gelu 
     class XPUTestGelu(TestActivationOPBase):
+        def setUp(self):
+            self.op_type = 'gelu'
+            self.set_xpu()
+            self.set_shape()
+            self.place = paddle.XPUPlace(0)
+            self.init_dtype()
+            self.set_case()
+
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
+
+        def init_dtype(self):
+            self.dtype = self.in_type
+
+        def set_shape(self):
+            self.shape = (11)
+
         def set_case(self):
             self.op_type = "gelu"
             self.dtype = self.in_type
 
             approximate = False
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             out = gelu(x, approximate)
 
             self.inputs = {'X': x}
             self.outputs = {'Out': out}
             self.attrs = {"approximate": approximate, 'use_xpu': True}
+
+    class XPUTestGelu1(XPUTestGelu):
+        def set_shape(self):
+            self.shape = (11, 17)
+
+    class XPUTestGelu2(XPUTestGelu):
+        def set_shape(self):
+            self.shape = (11, 17, 3)
+
+    class XPUTestGelu3(XPUTestGelu):
+        def set_shape(self):
+            self.shape = (11, 17, 3, 5)
+
+    class XPUTestGelu4(XPUTestGelu):
+        def set_shape(self):
+            self.shape = (11, 17, 3, 5, 7)
 
 
 support_types = get_xpu_op_support_types('gelu')
