@@ -2108,12 +2108,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
-
-      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
-                                                      output_defs.at(i));
-      SetAllocationForOutputTenosr(
-          tensor_out, phi::TransToPhiPlace(output_defs.at(i).backend));
-
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
 

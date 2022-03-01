@@ -233,26 +233,5 @@ static void SetAllocationForUninitializedDenseTensor(
   dense_tensor->ResetHolder(shared_allocation);
 }
 
-void SetAllocationForOutputTenosr(phi::TensorBase* tensor,
-                                  const platform::Place& place) {
-  if (phi::DenseTensor::classof(tensor)) {
-    auto* dense_tensor = static_cast<phi::DenseTensor*>(tensor);
-    if (!dense_tensor->IsInitialized() || !(dense_tensor->place() == place)) {
-      SetAllocationForUninitializedDenseTensor(dense_tensor, place);
-    }
-  } else if (phi::SelectedRows::classof(tensor)) {
-    auto* selected_rows = static_cast<phi::SelectedRows*>(tensor);
-    if (!selected_rows->value().IsInitialized() ||
-        !(selected_rows->place() == place)) {
-      SetAllocationForUninitializedDenseTensor(selected_rows->mutable_value(),
-                                               place);
-    }
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported tensor type is received when setting allocation for "
-        "output tensor."));
-  }
-}
-
 }  // namespace framework
 }  // namespace paddle
