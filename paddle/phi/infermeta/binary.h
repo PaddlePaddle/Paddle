@@ -29,6 +29,13 @@ namespace phi {
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
 
+void BilinearTensorProductInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& weight,
+                                    paddle::optional<const MetaTensor&> bias,
+                                    MetaTensor* out,
+                                    MetaConfig config = MetaConfig());
+
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void MatmulInferMeta(const MetaTensor& x,

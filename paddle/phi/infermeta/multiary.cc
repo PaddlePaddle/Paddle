@@ -13,75 +13,73 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/multiary.h"
-
+#include <vector>
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
 
-void BilinearTensorProductInferMeta(const MetaTensor& x,
-                                    const MetaTensor& y,
-                                    const MetaTensor& weight,
-                                    paddle::optional<const MetaTensor&> bias,
-                                    MetaTensor* out,
-                                    MetaConfig config) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  auto weight_dims = weight.dims();
-
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      2UL,
-      errors::InvalidArgument("The input(X) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      y_dims.size(),
-      2UL,
-      errors::InvalidArgument("The input(Y) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      weight_dims.size(),
-      3UL,
-      errors::InvalidArgument(
-          "Expected the input(Weight) is a 3D tensor. But received %dD tensor.",
-          weight_dims.size()));
-  if (config.is_runtime || (x_dims[0] > 0 && y_dims[0] > 0)) {
-    PADDLE_ENFORCE_EQ(x_dims[0],
-                      y_dims[0],
-                      errors::InvalidArgument(
-                          "The first dimension(batch_size) of input(X) must be "
-                          "equal to the first dimension of the input(Y)."));
+std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors) {
+  std::vector<DDim> dims;
+  dims.reserve(tensors.size());
+  for (const MetaTensor* tensor : tensors) {
+    dims.emplace_back(tensor->dims());
   }
-  PADDLE_ENFORCE_EQ(x_dims[1],
-                    weight_dims[1],
-                    errors::InvalidArgument(
-                        "The second dimension of input(X) must be equal to "
-                        "the second dimension of the input(Weight)."));
-  PADDLE_ENFORCE_EQ(y_dims[1],
-                    weight_dims[2],
-                    errors::InvalidArgument(
-                        "The second dimension of input(Y) must be equal to "
-                        "the third dimension of the input(Weight)."));
+  return dims;
+}
 
-  if (bias.get_ptr()) {
-    auto bias_dims = bias->dims();
-    PADDLE_ENFORCE_EQ(bias_dims.size(),
-                      2UL,
-                      errors::InvalidArgument(
-                          "The Input(Bias) must be a 2-D tensor with "
-                          "the 2nd dimension fixed to 1 (a row vector)."));
-    PADDLE_ENFORCE_EQ(bias_dims[0],
-                      1UL,
-                      errors::InvalidArgument(
-                          "The Input(Bias) must be a 2-D tensor with "
-                          "the 2nd dimension fixed to 1 (a row vector)."));
-    PADDLE_ENFORCE_EQ(bias_dims[1],
-                      weight_dims[0],
-                      errors::InvalidArgument(
-                          "The second dimension of input(Bias) must be equal "
-                          "to the first dimension of the input(Weight)."));
+void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
+                               std::vector<MetaTensor*> out) {
+  int target_rank = 0;
+  const auto& input_dims = GetMetaTensorsDim(x);
+
+  // 1. Find Output rank = max(Inputs rank)
+  for (const auto& input_ddim : input_dims) {
+    target_rank = std::max(target_rank, input_ddim.size());
   }
 
-  out->set_dims({x_dims[0], weight_dims[0]});
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
+  PADDLE_ENFORCE_GT(target_rank,
+                    0,
+                    paddle::platform::errors::InvalidArgument(
+                        "BroadcastTensorsOp requires at least one input tensor"
+                        "to have rank greater than zero"));
+
+  std::vector<int64_t> target_dims(target_rank, 0);
+  // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
+  for (int index = 0; index < target_rank; index++) {
+    // Loop axes in reverse order,
+    // For each axis, take the maximum as target size
+    // Fill size = 1 if shape vector exhausts
+    int target_dim_size = 1;
+    for (const auto& input_ddim : input_dims) {
+      // Reversed order
+      int axis = static_cast<int>(input_ddim.size()) - index - 1;
+      int dim_size = 1;
+      if (axis >= 0) {
+        dim_size = input_ddim[axis];
+      }
+
+      if (target_dim_size != 1 && dim_size != 1 &&
+          target_dim_size != dim_size) {
+        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+            "BroadcastTensorsOp inputs does not satisfy bcast semantics,"
+            "Please check axis = %d in reverse order",
+            index));
+      }
+
+      // We performed bcast semantics check at python level
+      // So input tensors should all have legal shape
+      target_dim_size = std::max(target_dim_size, dim_size);
+    }
+    target_dims[target_rank - index - 1] = target_dim_size;
+  }
+
+  // 3. Set Output Dim
+  for (size_t i = 0; i < out.size(); i++) {
+    out[i]->set_dims(phi::make_ddim(target_dims));
+    out[i]->share_lod(*(x[i]));
+    out[i]->set_dtype(x[i]->dtype());
+  }
 }
 
 void ConcatInferMeta(const std::vector<MetaTensor*>& x,
