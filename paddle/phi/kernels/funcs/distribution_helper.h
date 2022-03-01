@@ -82,19 +82,18 @@ struct uniform_real_transform {
 
 template <typename T, typename R>
 struct uniform_int_transform {
-  explicit uniform_int_transform(int64_t min, int64_t max) {
-    range_ = static_cast<uint64_t>(max) - static_cast<uint64_t>(min);
+  explicit uniform_int_transform(int min, int max) {
+    range_ = static_cast<uint32_t>(max - min);
     min_ = min;
   }
 
   HOSTDEVICE inline T operator()(R rand) const {
-    int64_t rand_range = static_cast<int64_t>(rand % range_);
-    return static_cast<T>(rand_range + min_);
+    return static_cast<T>(static_cast<int>(rand % range_) + min_);
   }
 
  private:
-  uint64_t range_;
-  int64_t min_;
+  uint32_t range_;
+  int min_;
 };
 
 template <typename T>

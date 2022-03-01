@@ -38,19 +38,9 @@ void RandintRawKernel(const Context& dev_ctx,
   out->Resize(phi::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
   if (FLAGS_use_curand) {
-    uint64_t high = static_cast<uint64_t>(high);
-    uint64_t low = static_cast<uint64_t>(low);
-    uint64_t range = high - low;
-    if (UNLIKELY(range >= (1ULL << 32))) {
-      // When 'range' grater than maximum of uint32, generate uint64 rand value
-      funcs::uniform_distribution<uint64_t> dist;
-      funcs::uniform_int_transform<T, uint64_t> trans(low, high);
-      funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
-    } else {
-      funcs::uniform_distribution<uint32_t> dist;
-      funcs::uniform_int_transform<T, uint32_t> trans(low, high);
-      funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
-    }
+    funcs::uniform_distribution<uint32_t> dist;
+    funcs::uniform_int_transform<T, uint32_t> trans(low, high);
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
     DenseTensor tmp;
     tmp.Resize(phi::make_ddim(shape.GetData()));

@@ -77,7 +77,7 @@ __global__ void bernoulli_cuda_kernel(
 
   size_t total_thread = gridDim.x * blockDim.x;
   for (size_t i = 4 * thread_idx; i < size; i += total_thread * 4) {
-    phi::funcs::uniform_distribution<float> dist;
+    funcs::uniform_distribution<float> dist;
     float4 rand = dist(&state);
 #pragma unroll
     for (size_t j = 0; j < 4; j++) {
