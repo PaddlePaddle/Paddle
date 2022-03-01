@@ -446,11 +446,7 @@ void BroadcastKernelForDifferentDimSize(
 #undef CALL_BROADCAST_FOR_DIM_SIZE
 }
 
-template <ElementwiseType ET,
-          typename InT,
-          typename OutT,
-          typename Functor,
-          int NumOuts = 1>
+template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void BroadcastKernelForDifferentVecSize(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
@@ -458,6 +454,8 @@ void BroadcastKernelForDifferentVecSize(
     int axis,
     Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
+  using ReturnType = typename Traits::ReturnT;
+  constexpr int NumOuts = phi::GetMultiOutsValue<OutT, ReturnType>::Get();
   const int kArity =
       Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
@@ -573,7 +571,7 @@ void BroadcastKernel(const KPDevice &ctx,
                ? *std::max_element(dims_size.begin(), dims_size.end()) -
                      *std::min_element(dims_size.begin(), dims_size.end())
                : axis;
-    BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
+    BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor>(
         ctx, ins, outs, axis, func);
   }
 }

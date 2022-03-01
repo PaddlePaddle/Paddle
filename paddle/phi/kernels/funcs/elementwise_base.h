@@ -41,6 +41,49 @@ template <class T, int Num>
 using ConditionalT =
     typename std::conditional_t<Num == 1, T, phi::Array<T, Num>>;
 
+template <typename OutT,
+          typename T,
+          int kStart,
+          int kEnd,
+          bool kIsEnd,
+          bool kIsMatched>
+struct IsMultiNumOuts {};
+
+// This case should not happen
+template <typename OutT, typename T, int kStart, int kEnd>
+struct IsMultiNumOuts<OutT, T, kStart, kEnd, true, true> {};
+
+template <typename OutT, typename T, int kStart, int kEnd>
+struct IsMultiNumOuts<OutT, T, kStart, kEnd, true, false> {
+  static constexpr int NumOuts = 1;
+};
+
+template <typename OutT, typename T, int kStart, int kEnd>
+struct IsMultiNumOuts<OutT, T, kStart, kEnd, false, false> {
+  static constexpr int NumOuts = IsMultiNumOuts<
+      OutT,
+      T,
+      kStart + 1,
+      kEnd,
+      kStart + 1 == kEnd,
+      std::is_same<T, phi::Array<OutT, kStart + 1>>::value>::NumOuts;
+};
+
+template <typename OutT, typename T, int kStart, int kEnd>
+struct IsMultiNumOuts<OutT, T, kStart, kEnd, false, true> {
+  static constexpr int NumOuts = kStart;
+};
+
+template <typename OutT, typename T>
+struct GetMultiOutsValue {
+  static constexpr int Get() {
+    return IsMultiNumOuts<OutT, T, 0, kMaxNumOuts, false, false>::NumOuts;
+  }
+
+ private:
+  static constexpr int kMaxNumOuts = 8;
+};
+
 namespace funcs {
 using DDim = phi::DDim;
 
@@ -755,6 +798,8 @@ void ElementwiseKernel(const KPDevice &ctx,
                        std::vector<DenseTensor *> *outs,
                        Functor func) {
   using Traits = paddle::platform::FunctionTraits<Functor>;
+  using ReturnType = typename Traits::ReturnT;
+  constexpr int kNumOuts = phi::GetMultiOutsValue<OutT, ReturnType>::Get();
   const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,
@@ -765,15 +810,15 @@ void ElementwiseKernel(const KPDevice &ctx,
                         ins.size(),
                         kArity));
   PADDLE_ENFORCE_EQ(outs->size(),
-                    NumOuts,
+                    kNumOuts,
                     phi::errors::InvalidArgument(
                         "Number of outputs shall equal to number of functions, "
                         "but number of outputs is %d, of functions is %d.",
                         outs->size(),
-                        NumOuts));
+                        kNumOuts));
 
-  if (NumOuts > 1) {
-    for (int i = 1; i < NumOuts; ++i) {
+  if (kNumOuts > 1) {
+    for (int i = 1; i < kNumOuts; ++i) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),
@@ -788,15 +833,15 @@ void ElementwiseKernel(const KPDevice &ctx,
   int vec_size = GetVectorizedSizeForTensors<OutT, Functor>(ins, *outs);
   switch (vec_size) {
     case 4:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 4>(
+      ElementwiseCudaKernel<OutT, Functor, kArity, kNumOuts, 4>(
           ctx, ins, outs, func);
       break;
     case 2:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 2>(
+      ElementwiseCudaKernel<OutT, Functor, kArity, kNumOuts, 2>(
           ctx, ins, outs, func);
       break;
     case 1:
-      ElementwiseCudaKernel<OutT, Functor, kArity, NumOuts, 1>(
+      ElementwiseCudaKernel<OutT, Functor, kArity, kNumOuts, 1>(
           ctx, ins, outs, func);
       break;
     default: {
