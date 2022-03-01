@@ -1210,6 +1210,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
                 << "` not found.";
       }
+    } else {
+      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_key = TransOpKernelTypeToPtenKernelKey(*kernel_type_.get());
     }
 #ifdef PADDLE_WITH_XPU
     bool is_xpu_unsupport =
