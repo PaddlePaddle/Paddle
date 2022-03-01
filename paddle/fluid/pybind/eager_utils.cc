@@ -741,5 +741,40 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
 
   return result;
 }
+
+std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
+    PyObject* obj) {
+  std::vector<paddle::experimental::Tensor*> result;
+
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    if (len == 0) {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("The list of Tensor is empty."));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          &(reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor));
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    if (len == 0) {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("The tuple of Tensor is empty."));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(
+          &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))->tensor));
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The PyObject must be list of Tensors, but got "
+        "%s",
+        (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
+  }
+
+  return result;
+}
+
 }  // namespace pybind
 }  // namespace paddle

@@ -50,9 +50,6 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
 }
 
 static void PyLayerDealloc(PyLayerObject* self) {
-  if (self->stop_gradients) {
-    Py_DECREF(self->stop_gradients);
-  }
   if (self->to_save) {
     Py_DECREF(self->to_save);
   }
@@ -68,90 +65,144 @@ static void PyLayerDealloc(PyLayerObject* self) {
 PyObject* pylayer_method_name(PyObject* self, PyObject* noargs) {
   EAGER_TRY
   return ToPyObject(
-      reinterpret_cast<PyLayerObject*>(self)->node.lock()->name());
+      reinterpret_cast<PyLayerObject*>(self)->grad_node.lock()->name());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyObject* pylayer_method_apply(PyObject* cls, PyObject* inputs) {
   EAGER_TRY
+  VLOG(6) << "Begin run PyLayer apply...";
   PyObject* backward_function =
       PyObject_GetAttrString(cls, "_backward_function");
-  if (!backward_function) return nullptr;
+  if (!backward_function) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Get _backward_function faild."));
+  }
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
-  if (!ctx) return nullptr;
+  if (!ctx) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Construct PyLayerContext faild."));
+  }
+  VLOG(6) << "PyLayer construct PyLayerContext finish...";
 
   bool require_any_grad = false;
 
-  std::vector<egr::AutogradMeta*> inputs_autograd_meta;
+  std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
   auto inputs_size = PyTuple_GET_SIZE(inputs);
-  auto forward_args = PyTuple_New(inputs_size + 2);
-  ctx->stop_gradients = PyTuple_New(inputs_size);
+  auto forward_args = PyTuple_New(inputs_size + 1);
   inputs_autograd_meta.reserve(inputs_size);
-  Py_INCREF(cls);
-  PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(cls));
   Py_INCREF(ctx);
-  PyTuple_SET_ITEM(forward_args, 1, reinterpret_cast<PyObject*>(ctx));
+  PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
   for (Py_ssize_t i = 0; i < inputs_size; i++) {
     PyObject* obj = PyTuple_GET_ITEM(inputs, i);
 
     if (IsEagerTensor(obj)) {
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
           reinterpret_cast<TensorObject*>(obj)->tensor);
-      inputs_autograd_meta.push_back(autograd_meta);
-      bool stop_gradient_value =
+      inputs_autograd_meta.push_back({autograd_meta});
+      bool stop_gradient =
           autograd_meta == nullptr ? true : autograd_meta->StopGradient();
-      if (!stop_gradient_value) {
+      if (!stop_gradient) {
         require_any_grad = true;
       }
-      PyObject* stop_gradient = stop_gradient_value ? Py_True : Py_False;
-      Py_INCREF(stop_gradient);
-      PyTuple_SET_ITEM(ctx->stop_gradients, i, stop_gradient);
+    } else if (PyList_Check(obj) || PyTuple_Check(obj)) {
+      auto tensors = CastPyArg2VectorOfTensor(obj, i);
+      auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensors);
+      inputs_autograd_meta.push_back(autograd_meta);
     } else {
-      inputs_autograd_meta.push_back(nullptr);
-      Py_INCREF(Py_True);
-      PyTuple_SET_ITEM(ctx->stop_gradients, i, Py_True);
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "PyLayer forward arguements mast be Tensor or list of Tensor."));
     }
     Py_INCREF(obj);
-    PyTuple_SET_ITEM(forward_args, i + 2, obj);
+    PyTuple_SET_ITEM(forward_args, i + 1, obj);
   }
 
+  VLOG(6)
+      << "PyLayer forward args is ready, begin call user's forward function...";
   // call forward
   auto forward_fn = PyObject_GetAttrString(cls, "forward");
-  if (!forward_fn) return nullptr;
-  auto outputs = PyObject_CallObject(forward_fn, forward_args);
-  if (!outputs) return nullptr;
-
+  if (!forward_fn) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Get forward function faild."));
+  }
   bool trace_backward = egr::Controller::Instance().HasGrad();
+  egr::Controller::Instance().SetHasGrad(false);
+  auto outputs = PyObject_CallObject(forward_fn, forward_args);
+  egr::Controller::Instance().SetHasGrad(trace_backward);
+  if (!outputs) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "forward function return a nullptr."));
+  }
+
+  VLOG(6) << "PyLayer forward function finish...";
 
   if (require_any_grad && trace_backward) {
-    std::vector<paddle::experimental::Tensor*> outputs_tensor;
-    std::vector<egr::AutogradMeta*> outputs_autograd_meta;
-    auto outputs_size = PyTuple_GET_SIZE(outputs);
+    PyObject* outputs_tuple = nullptr;
+    if (PyTuple_Check(outputs)) {
+      outputs_tuple = outputs;
+    } else {
+      outputs_tuple = PyTuple_New(1);
+      Py_INCREF(outputs);
+      PyTuple_SET_ITEM(outputs_tuple, 0, outputs);
+    }
+    std::vector<std::vector<paddle::experimental::Tensor*>> outputs_tensor;
+    std::vector<std::vector<egr::AutogradMeta*>> outputs_autograd_meta;
+    auto outputs_size = PyTuple_GET_SIZE(outputs_tuple);
     outputs_tensor.reserve(outputs_size);
     outputs_autograd_meta.reserve(outputs_size);
-    for (Py_ssize_t i = 0; i < inputs_size; i++) {
-      PyObject* obj = PyTuple_GET_ITEM(inputs, i);
+    for (Py_ssize_t i = 0; i < outputs_size; i++) {
+      PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
       if (IsEagerTensor(obj)) {
         outputs_tensor.push_back(
-            &(reinterpret_cast<TensorObject*>(obj)->tensor));
-        outputs_autograd_meta.push_back(egr::EagerUtils::autograd_meta(
-            &(reinterpret_cast<TensorObject*>(obj)->tensor)));
+            {&(reinterpret_cast<TensorObject*>(obj)->tensor)});
+        outputs_autograd_meta.push_back({egr::EagerUtils::autograd_meta(
+            &(reinterpret_cast<TensorObject*>(obj)->tensor))});
+      } else if (PyList_Check(obj) || PyTuple_Check(obj)) {
+        auto tensors = GetTensorPtrListFromPyObject(obj);
+        outputs_tensor.push_back(tensors);
+        outputs_autograd_meta.push_back(
+            egr::EagerUtils::autograd_meta(&tensors));
       } else {
         PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-            "PyLayer forward mast return Tensors."));
+            "PyLayer forward mast return Tensor or list of Tensor."));
       }
     }
 
-    for (auto autograd_meta : outputs_autograd_meta) {
-      autograd_meta->WeakSetStopGradient(false);
+    for (auto autograd_metas : outputs_autograd_meta) {
+      for (auto autograd_meta : autograd_metas) {
+        autograd_meta->WeakSetStopGradient(false);
+      }
     }
 
     auto grad_node = std::make_shared<egr::GradNodePyLayer>(
-        reinterpret_cast<PyObject*>(ctx));
+        reinterpret_cast<PyObject*>(ctx), outputs_size, inputs_size);
     ctx->grad_node = grad_node;
 
-    grad_node->AddEdges();
+    for (size_t i = 0; i < inputs_autograd_meta.size(); i++) {
+      if (inputs_autograd_meta[i].size() == 1) {
+        grad_node->SetGradOutMeta(inputs_autograd_meta[i][0], i);
+        grad_node->AddEdges(inputs_autograd_meta[i][0], i);
+      } else {
+        grad_node->SetGradOutMeta(&inputs_autograd_meta[i], i);
+        grad_node->AddEdges(&inputs_autograd_meta[i], i);
+      }
+    }
+
+    for (size_t i = 0; i < outputs_autograd_meta.size(); i++) {
+      if (outputs_autograd_meta[i].size() == 1) {
+        egr::EagerUtils::SetOutRankWithSlot(outputs_autograd_meta[i][0], i);
+        egr::EagerUtils::SetHistory(outputs_autograd_meta[i][0], grad_node);
+        grad_node->SetGradInMeta(outputs_autograd_meta[i][0], i);
+        egr::EagerUtils::CheckAndRetainGrad(*outputs_tensor[i][0]);
+      } else {
+        egr::EagerUtils::SetOutRankWithSlot(&outputs_autograd_meta[i], i);
+        egr::EagerUtils::SetHistory(&outputs_autograd_meta[i], grad_node);
+        grad_node->SetGradInMeta(&outputs_autograd_meta[i], i);
+        egr::EagerUtils::CheckAndRetainGrad(outputs_tensor[i]);
+      }
+    }
+    VLOG(6) << "PyLayer construct backward node finish...";
   }
 
   return outputs;

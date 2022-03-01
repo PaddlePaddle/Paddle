@@ -97,6 +97,9 @@ class EagerUtils {
   static std::vector<AutogradMeta*> autograd_meta(
       std::vector<paddle::experimental::Tensor>* targets);
 
+  static std::vector<AutogradMeta*> autograd_meta(
+      std::vector<paddle::experimental::Tensor*>* targets);
+
   static std::pair<size_t, size_t> OutRankInfo(
       const paddle::experimental::Tensor& target);
 
@@ -198,6 +201,8 @@ class EagerUtils {
   static void CheckAndRetainGrad(const paddle::experimental::Tensor& tensor);
   static void CheckAndRetainGrad(
       const std::vector<paddle::experimental::Tensor>& tensors);
+  static void CheckAndRetainGrad(
+      const std::vector<paddle::experimental::Tensor*>& tensors);
   static std::shared_ptr<egr::GradNodeBase> GetGradAccumulationNode(
       const paddle::experimental::Tensor& tensor);
 };

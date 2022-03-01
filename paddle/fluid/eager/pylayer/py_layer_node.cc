@@ -21,6 +21,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/pybind/eager.h"
 
 #include "glog/logging.h"
 
@@ -30,6 +31,10 @@ std::vector<std::vector<paddle::experimental::Tensor>> GradNodePyLayer::
 operator()(
     const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
   VLOG(3) << "Running Eager Backward Node: GradNodePyLayer";
+  paddle::pybind::PyLayerObject* ctx =
+      reinterpret_cast<paddle::pybind::PyLayerObject*>(ctx_);
+  auto backward_args = PyTuple_New(grads.size() + 1);
+
   paddle::experimental::Tensor grad_out;
 
   return {{grad_out}};

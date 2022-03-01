@@ -27,8 +27,7 @@ typedef struct {
 typedef struct {
   PyObject_HEAD
 
-      PyObject* stop_gradients;
-  PyObject* to_save;
+      PyObject* to_save;
   PyObject* non_differentiable;
   PyObject* dirty_tensors;
   bool materialize_grads;
