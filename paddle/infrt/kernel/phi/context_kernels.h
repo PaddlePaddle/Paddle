@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/infrt/backends/host/phi_context.h"
 #include "paddle/infrt/backends/host/phi_allocator.h"
+#include "paddle/infrt/backends/host/phi_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace infrt {
