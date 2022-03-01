@@ -47,6 +47,7 @@ class TimeRangeSummary:
     r"""
     Analyse time ranges for each TracerEventType, and summarize the time.
     """
+
     def __init__(self):
         self.CPUTimeRange = collections.defaultdict(list)
         self.GPUTimeRange = collections.defaultdict(
