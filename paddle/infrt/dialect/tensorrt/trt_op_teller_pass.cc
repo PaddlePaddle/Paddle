@@ -33,16 +33,14 @@ void TRTOpTellerPass::runOnFunction() {
     auto *op = worklist.back();
     worklist.pop_back();
     if (op == nullptr) continue;
-    auto op1 = ::llvm::dyn_cast_or_null<mlir::pd::FeedOp>(op);
-    if (op1) continue;
-    auto op2 = ::llvm::dyn_cast_or_null<mlir::pd::FetchOp>(op);
-    if (op2) continue;
-    auto op3 = ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(op);
-    if (op3) continue;
+    if (::llvm::dyn_cast_or_null<mlir::pd::FeedOp>(op)) continue;
+    if (::llvm::dyn_cast_or_null<mlir::pd::FetchOp>(op)) continue;
+    if (::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(op)) continue;
+    if (::llvm::dyn_cast_or_null<GraphOp>(op)) continue;
     builder.setInsertionPoint(op);
     auto loc = getFunction().getLoc();
-    auto graph_op = builder.create<mlir::pd::GraphOp>(
-        loc, op->getResultTypes(), op->getOperands());
+    auto graph_op =
+        builder.create<GraphOp>(loc, op->getResultTypes(), op->getOperands());
 
     ::llvm::SmallVector<mlir::Value, 4> tblgen_repl_values;
     for (auto v :
@@ -55,7 +53,7 @@ void TRTOpTellerPass::runOnFunction() {
     graph_op.body().push_back(block);
     op->moveBefore(block, block->begin());
     builder.setInsertionPointToEnd(block);
-    builder.create<mlir::pd::ReturnOp>(loc, op->getResults());
+    builder.create<FetchOp>(loc, op->getResults());
   }
 }
 }  // namespace trt
