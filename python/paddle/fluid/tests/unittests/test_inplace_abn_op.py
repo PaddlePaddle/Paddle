@@ -144,9 +144,9 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                                  fetch_list=fetch_name)
             fetch_outs.append(bn_fetches)
             fetch_names.append(fetch_name)
-
-        for bn_val, inplace_abn_val, name1, name2 in zip(*(fetch_outs +
-                                                           fetch_names)):
+        
+        for bn_val, inplace_abn_val, name1, name2 in zip(*(
+                fetch_outs + fetch_names)):
             self.assertTrue(
                 np.allclose(
                     bn_val, inplace_abn_val, atol=1e-2),
