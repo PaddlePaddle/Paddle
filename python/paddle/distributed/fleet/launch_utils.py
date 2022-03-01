@@ -1011,14 +1011,16 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
             free_ports = [
-                x for x in range(start_port,
-                                 start_port + len(node_ranks[node_rank]))
+                x
+                for x in range(start_port, start_port + len(node_ranks[
+                    node_rank]))
             ]
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
             free_ports = [
-                x for x in range(start_port,
-                                 start_port + len(node_ranks[node_rank]))
+                x
+                for x in range(start_port, start_port + len(node_ranks[
+                    node_rank]))
             ]
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
@@ -1130,14 +1132,16 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
         if os.environ.get('PADDLE_PORT') is not None:
             start_port = int(os.getenv("PADDLE_PORT", ""))
             free_ports = [
-                x for x in range(start_port,
-                                 start_port + len(node_ranks[node_rank]))
+                x
+                for x in range(start_port, start_port + len(node_ranks[
+                    node_rank]))
             ]
         elif os.environ.get('FLAGS_START_PORT') is not None:
             start_port = int(os.environ.get('FLAGS_START_PORT'))
             free_ports = [
-                x for x in range(start_port,
-                                 start_port + len(node_ranks[node_rank]))
+                x
+                for x in range(start_port, start_port + len(node_ranks[
+                    node_rank]))
             ]
         else:
             free_ports = find_free_ports(len(node_ranks[node_rank]))
