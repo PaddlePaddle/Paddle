@@ -2074,6 +2074,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
     }
     pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
+  VLOG(4) << "Done inputs";
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto it = ctx.outputs.find(output_names[i]);
@@ -2107,17 +2108,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
-
-      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
-                                                      output_defs.at(i));
-      SetAllocationForOutputTenosr(
-          tensor_out, phi::TransToPhiPlace(output_defs.at(i).backend));
-
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
 
     pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
+  VLOG(4) << "Done outputs";
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
     if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
@@ -2224,6 +2220,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       }
     }
   }
+  VLOG(4) << "Done attributes";
 }
 
 }  // namespace framework
