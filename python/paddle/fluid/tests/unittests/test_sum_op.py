@@ -298,6 +298,32 @@ def create_test_sum_fp16_class(parent):
     globals()[cls_name] = TestSumFp16Case
 
 
+#----------- test bf16 -----------
+class TestSumBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "sum"
+        self.init_kernel_type()
+        x0 = np.random.random((3, 40)).astype(np.float32)
+        x1 = np.random.random((3, 40)).astype(np.float32)
+        x2 = np.random.random((3, 40)).astype(np.float32)
+        y = x0 + x1 + x2
+        self.inputs = {
+            "X": [("x0", convert_float_to_uint16(x0)),
+                  ("x1", convert_float_to_uint16(x1)),
+                  ("x2", convert_float_to_uint16(x2))]
+        }
+        self.outputs = {'Out': convert_float_to_uint16(y)}
+
+    def init_kernel_type(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', numeric_grad_delta=0.5)
+
+
 class API_Test_Add_n(unittest.TestCase):
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
