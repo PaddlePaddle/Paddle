@@ -48,6 +48,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+#define TYPEALIGN(ALIGNVAL, LEN) \
+  (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
@@ -61,6 +63,12 @@ class PSGPUWrapper {
     sleep_seconds_before_fail_exit_ = 300;
   }
 
+  void PullSparse(const paddle::platform::Place& place, const int table_id,
+                  const std::vector<const uint64_t*>& keys,
+                  const std::vector<float*>& values,
+                  const std::vector<int64_t>& slot_lengths,
+                  const std::vector<int>& slot_dim,
+                  const int hidden_size);
   void PullSparse(const paddle::platform::Place& place, const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
@@ -79,6 +87,11 @@ class PSGPUWrapper {
                    const FeatureValue* total_values_gpu, const int64_t* gpu_len,
                    const int slot_num, const int hidden_size,
                    const int64_t total_length);
+  void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
+                   const std::vector<float*>& values,
+                   const FeatureValue* total_values_gpu, const int64_t* gpu_len,
+                   const int slot_num, const int hidden_size,
+                   const int64_t total_length, int* gpu_dim);
 
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
@@ -86,6 +99,13 @@ class PSGPUWrapper {
                    const std::vector<int64_t>& slot_lengths,
                    const int hidden_size, const int64_t total_length,
                    const int batch_size);
+
+  void CopyForPush(const paddle::platform::Place& place,
+                   const std::vector<const float*>& grad_values,
+                   FeaturePushValue* total_grad_values_gpu,
+                   const std::vector<int64_t>& slot_lengths,
+                   const int64_t total_length, const int batch_size,
+                   size_t grad_value_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -246,7 +266,10 @@ class PSGPUWrapper {
     day_ = day;
   }
 
-  void SetDataset(Dataset* dataset) { dataset_ = dataset; }
+  void SetDataset(Dataset* dataset) { 
+    dataset_ = dataset;
+    VLOG(0) << "yxf set dataset end";
+  }
 
   // PSGPUWrapper singleton
   static std::shared_ptr<PSGPUWrapper> GetInstance() {
@@ -273,7 +296,9 @@ class PSGPUWrapper {
     for (size_t i = 0; i < slot_mf_dim_vector.size(); i++) {
       slot_dim_map_[slot_vector_[i]] = slot_mf_dim_vector_[i];
     }
-
+    for (auto& it : slot_dim_map_) {
+      VLOG(0) << "yxf::setslotdimslot: " << it.first << " dim: " << it.second;
+    }
     std::unordered_set<int> dims_set;
     for (auto& it : slot_dim_map_) {
       dims_set.insert(it.second);
@@ -290,15 +315,19 @@ class PSGPUWrapper {
     mem_pools_.resize(resource_->total_gpu() * num_of_dim);
     max_mf_dim_ = index_dim_vec_.back();
     multi_mf_dim_ = (dim_index_map.size() >= 1) ? dim_index_map.size() : 0;
+    VLOG(0) << "yxf::multi_mf_dim_: " << multi_mf_dim_;
     resource_->set_multi_mf(multi_mf_dim_, max_mf_dim_);
     slot_index_vec_.resize(slot_mf_dim_vector_.size());
     for (size_t i = 0; i < slot_index_vec_.size(); i++) {
       slot_index_vec_[i] = dim_index_map[slot_mf_dim_vector_[i]];
+      VLOG(0) << "yxfff:slotindex: " << i << " slot: " << slot_vector_[i] << " dim index: " << slot_index_vec_[i];
     }
     val_type_size_ =
         TYPEALIGN(8, sizeof(FeatureValue) + sizeof(float) * (max_mf_dim_ + 1));
+    VLOG(0) << "yxf::wrapper:val type size: " << val_type_size_;
     grad_type_size_ =
         TYPEALIGN(8, sizeof(FeaturePushValue) + (max_mf_dim_ * sizeof(float)));
+    VLOG(0) << "yxf::wrapper:grad type size: " << grad_type_size_;
   }
 
   void ShowOneTable(int index) { HeterPs_->show_one_table(index); }
@@ -316,13 +345,6 @@ class PSGPUWrapper {
   std::vector<int> slot_vector_;
   std::vector<int> slot_offset_vector_;
   std::vector<int> slot_mf_dim_vector_;
-  std::unordered_map<int, int> slot_dim_map_;
-  std::vector<int> slot_index_vec_;
-  std::vector<int> index_dim_vec_;
-  int multi_mf_dim_{0};
-  int max_mf_dim_{0};
-  size_t val_type_size_{0};
-  size_t grad_type_size_{0};
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
@@ -341,6 +363,24 @@ class PSGPUWrapper {
   int year_;
   int month_;
   int day_;
+  std::unordered_map<int, int> slot_dim_map_;
+  std::vector<int> slot_index_vec_;
+  std::vector<int> index_dim_vec_;
+  int multi_mf_dim_{0};
+  int max_mf_dim_{0};
+  size_t val_type_size_{0};
+  size_t grad_type_size_{0};
+  
+  double time_1 = 0.0;
+  double time_2 = 0.0;
+  double time_3 = 0.0;
+  double time_4 = 0.0;
+
+
+  //std::vector<std::shared_ptr<memory::Allocation>> hbm_pools_;
+  std::vector<MemoryPool*> mem_pools_;
+  std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
+                                           // pools of totol dims number
 
   std::vector<MemoryPool*> mem_pools_;
   std::vector<HBMMemoryPool*> hbm_pools_;  // in multi mfdim, one table need hbm
@@ -365,6 +405,39 @@ class PSGPUWrapper {
  protected:
   static bool is_initialized_;
 };
+
+/*
+class MemoryPool {
+ public:
+  MemoryPool(size_t capacity, size_t block_size) : _capacity(capacity),
+_block_size(block_size) {
+    _mem = (char*)malloc(block_size * _capacity);
+  }
+  ~MemoryPool() {
+    free(_mem);
+  }
+  size_t block_size() {
+    return _block_size;
+  }
+  char *mem() {
+    return _mem;
+  }
+
+  size_t capacity() {
+    return _capacity;
+  }
+  size_t byte_size() {
+    return _capacity * _block_size;
+  }
+  void* mem_address(const uint32_t &idx) {
+    return (void*)&_mem[(idx - 1) * _block_size];
+  }
+ private:
+  char* _mem = NULL;
+  size_t _capacity;
+  size_t _block_size;
+};
+*/
 
 }  // end namespace framework
 }  // end namespace paddle

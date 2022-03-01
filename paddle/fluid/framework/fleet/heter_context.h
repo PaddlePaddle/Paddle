@@ -86,16 +86,21 @@ class HeterContext {
       total_size += keys.size();
     }
     return total_size;
+    //VLOG(3) << "yxf::hetercontext size: " << total_size;
   }
   void SetShardNum(uint32_t shard_num) { shard_num_ = shard_num; }
   uint32_t ShardNum() { return shard_num_; }
   void init(int shard_num, int device_num) {
     shard_num_ = shard_num;
     feature_keys_.resize(shard_num_);
+    feature_dim_keys_.resize(shard_num_);
     value_ptr_.resize(shard_num_);
 
     device_values_.resize(device_num);
     device_keys_.resize(device_num);
+
+    device_dim_keys_.resize(device_num);
+    device_dim_ptr_.resize(device_num);
     mutex_.resize(device_num);
     for (size_t i = 0; i < mutex_.size(); ++i) {
       mutex_[i] = new std::mutex();
@@ -111,14 +116,13 @@ class HeterContext {
     for (size_t i = 0; i < feature_dim_keys_.size(); i++) {
       feature_dim_keys_[i].resize(dim_num);
       value_dim_ptr_[i].resize(dim_num);
-      if (i == 0) {
-        for (int j = 0; j < dim_num; j++) {
-          feature_dim_keys_[i][j].push_back(0);
-        }
-      }
+      // if (i == 0) {
+      //   for (int j = 0; j < dim_num; j++) {
+      //     feature_dim_keys_[i][j].push_back(0);
+      //   }
+      // }
     }
     device_values_.resize(device_num);
-    device_dim_values_.resize(device_num);
     device_keys_.resize(device_num);
 
     device_dim_keys_.resize(device_num);
@@ -175,6 +179,7 @@ class HeterContext {
         }
       }
     }
+
   }
   void batch_add_keys(
       const std::vector<std::unordered_set<uint64_t>>& thread_keys) {

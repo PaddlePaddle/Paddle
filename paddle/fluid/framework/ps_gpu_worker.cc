@@ -201,6 +201,7 @@ void PSGPUWorker::TrainFilesWithProfiler() {
   device_reader_->Start();
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
+  std::unordered_map<std::string, double> op_total_time_map;
   for (auto& op : ops_) {
     bool need_skip = false;
     for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -214,10 +215,13 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     }
   }
 
-  VLOG(3) << "op name size: " << op_name.size();
+  VLOG(1) << "op name size: " << op_name.size();
   op_total_time.resize(op_name.size());
   for (size_t i = 0; i < op_total_time.size(); ++i) {
     op_total_time[i] = 0.0;
+  }
+  for (size_t i = 0; i < op_name.size(); i++) {
+    op_total_time_map[op_name[i]] = 0.0;
   }
   platform::Timer timeline;
   double total_time = 0.0;
@@ -248,6 +252,7 @@ void PSGPUWorker::TrainFilesWithProfiler() {
         dev_ctx_->Wait();
         VLOG(3) << "Op " << op_name[run_op_idx] << " Finished";
         timeline.Pause();
+        op_total_time_map[op_name[run_op_idx]] += timeline.ElapsedSec();
         op_total_time[run_op_idx++] += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
       }
@@ -266,6 +271,11 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     VLOG(1) << "card:" << thread_id_ << ", op: " << op_name[i]
             << ", mean time: " << op_total_time[i] / total_ins_num
             << "s, totol time:" << op_total_time[i] << "sec";
+  }
+  for (auto& it : op_total_time_map) {
+    VLOG(1) << "op type in card:" << thread_id_ << ", op type: " << it.first
+            << ", mean time: " << it.second / total_ins_num
+            << "s, totol time:" << it.second << "sec";
   }
   return;
 }
