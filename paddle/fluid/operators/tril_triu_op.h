@@ -15,8 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
@@ -43,59 +41,6 @@ class TrilTriuCompute {
   const int64_t H_;
   const int64_t W_;
   T* out_;
-};
-
-template <typename DeviceContext, typename T>
-class TrilTriuOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const auto* x = context.Input<framework::Tensor>("X");
-    const auto* x_data = x->data<T>();
-    auto* out = context.Output<framework::Tensor>("Out");
-    auto* out_data = out->mutable_data<T>(context.GetPlace());
-
-    const int diagonal = context.Attr<int>("diagonal");
-    const bool lower = context.Attr<bool>("lower");
-
-    const auto& dims = x->dims();
-    const auto H = dims[dims.size() - 2];
-    const auto W = dims[dims.size() - 1];
-
-    platform::ForRange<DeviceContext> for_range(
-        context.template device_context<DeviceContext>(),
-        static_cast<size_t>(x->numel()));
-
-    paddle::operators::TrilTriuCompute<T> tril_triu_computer(
-        x_data, diagonal, lower, H, W, out_data);
-    for_range(tril_triu_computer);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class TrilTriuGradOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const auto* d_out =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    const auto* dout_data = d_out->data<T>();
-    auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* dx_data = d_x->mutable_data<T>(context.GetPlace());
-
-    const int diagonal = context.Attr<int>("diagonal");
-    const bool lower = context.Attr<bool>("lower");
-
-    const auto& dims = d_out->dims();
-    const auto H = dims[dims.size() - 2];
-    const auto W = dims[dims.size() - 1];
-
-    platform::ForRange<DeviceContext> for_range(
-        context.template device_context<DeviceContext>(),
-        static_cast<size_t>(d_out->numel()));
-
-    paddle::operators::TrilTriuCompute<T> tril_triu_grad_computer(
-        dout_data, diagonal, lower, H, W, dx_data);
-    for_range(tril_triu_grad_computer);
-  }
 };
 
 }  // namespace operators
