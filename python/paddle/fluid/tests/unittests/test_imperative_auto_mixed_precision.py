@@ -1156,7 +1156,7 @@ class TestBf16(unittest.TestCase):
                         out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
 
 
-class TestPyLayerWithAmp(unittest.TestCase):
+class TestAmpWithPyLyer(unittest.TestCase):
     def test_pylayer(self):
         class MyMM(PyLayer):
             @staticmethod
@@ -1168,7 +1168,7 @@ class TestPyLayerWithAmp(unittest.TestCase):
             def backward(ctx, grad):
                 a, b = ctx.saved_tensor()
                 # NOTE(zhiqiu): a and b is float32 now, while grad is fp16 when forward runs with auto_cast()
-                # thus, the mm operation raise errors because of the dtype of inputs are inconsistent
+                # thus, the mm operation raise errors because of the dtype of inputs are inconsistent before.
                 return grad.mm(b.t()), a.t().mm(grad)
 
         x = paddle.rand([10, 10])
@@ -1180,6 +1180,24 @@ class TestPyLayerWithAmp(unittest.TestCase):
             res = MyMM.apply(x, y)
             loss = paddle.mean(res)
         loss.backward()
+
+
+class TestAmpWithHook(unittest.TestCase):
+    def test_hook(self):
+        v = paddle.rand([3, 3])
+        v.stop_gradient = False
+
+        def foo(grad):
+            print('grad', grad, grad.dtype)  # grad's dtype is float32
+            res = paddle.mm(grad, grad)  # mm runs in fp16
+            print('res', res, res.dtype)  # res's dtype is float16
+            return res
+
+        v.register_hook(foo)
+        with paddle.amp.auto_cast():
+            a = paddle.mm(v, v)
+            loss = a.sum()
+            self.assertRaises(RuntimeError, loss.backward)
 
 
 if __name__ == '__main__':
