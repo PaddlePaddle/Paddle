@@ -125,8 +125,8 @@ Example:
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(split, SplitInferShapeFunctor,
-                            PT_INFER_META(phi::SplitInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(split, SplitInferShapeFunctor,
+                            PD_INFER_META(phi::SplitInferMeta));
 
 REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
