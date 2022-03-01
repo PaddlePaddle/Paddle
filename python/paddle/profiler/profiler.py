@@ -224,7 +224,6 @@ class Profiler:
         else:
             self.targets = supported_targets
         profileoption = ProfilerOptions()
-        profileoption.trace_level = 2
         if ProfilerTarget.CPU in self.targets:
             profileoption.trace_switch |= 1
         if ProfilerTarget.GPU in self.targets:
@@ -397,10 +396,9 @@ class Profiler:
             statistic_data = StatisticData(
                 self.profiler_result.get_data(),
                 self.profiler_result.get_extra_info())
-            print(
-                _build_table(
-                    statistic_data,
-                    sorted_by=sorted_by,
-                    op_detail=op_detail,
-                    thread_sep=thread_sep,
-                    time_unit=time_unit))
+            print(_build_table(
+                statistic_data,
+                sorted_by=sorted_by,
+                op_detail=op_detail,
+                thread_sep=thread_sep,
+                time_unit=time_unit))

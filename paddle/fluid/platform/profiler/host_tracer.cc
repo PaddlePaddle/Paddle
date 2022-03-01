@@ -70,18 +70,17 @@ void StatisticsHostEvents(const TraceEventCollector& collector) {
   REG_EVENT(WorkQueue::AddTask);
   REG_EVENT(prepare_data);
   REG_EVENT(compute);
-  REG_EVENT(Compute);
   REG_EVENT(ProfileStep);
 #undef REG_EVENT
 
   // statistics
   for (const auto& evt : collector.HostEvents()) {
-    VLOG(1) << "name: " << evt.name;
+    // VLOG(1) << "name: " << evt.name;
     std::string prefix = evt.name;
     size_t split = evt.name.find('#');
     if (split != std::string::npos) {
       prefix = evt.name.substr(0, split);
-      VLOG(1) << "prefix name: " << prefix;
+      // VLOG(1) << "prefix name: " << prefix;
     }
     auto iter = name2idx.find(prefix);
     if (iter != name2idx.end()) {
@@ -99,16 +98,21 @@ void StatisticsHostEvents(const TraceEventCollector& collector) {
             << " threads:" << idx2threads[kv.second].size();
   }
 
-  VLOG(1) << "========Executor analysis========";
 #define GET_EVENT_TATALTIME(event) idx2total_ns[name2idx[#event]]
 #define GET_EVENT_COUNT(event) idx2cnt[name2idx[#event]]
-  if (GET_EVENT_COUNT(compute) == 0) {
+  bool new_executor =
+      GET_EVENT_COUNT(prepare_data) * 2 < GET_EVENT_COUNT(compute);
+  VLOG(1) << "========Executor analysis("
+          << (new_executor ? "new executor" : "old executor") << ")========";
+  if (new_executor) {
+    VLOG(1) << "Step: " << GET_EVENT_TATALTIME(ProfileStep) << "ns "
+            << GET_EVENT_COUNT(ProfileStep) << "times";
     VLOG(1) << "threadpool AddTask: " << GET_EVENT_TATALTIME(WorkQueue::AddTask)
             << "ns " << GET_EVENT_COUNT(WorkQueue::AddTask) << "times";
     uint64_t allocator_cost =
         GET_EVENT_TATALTIME(StreamSafeCUDAAllocator::Allocate) +
         GET_EVENT_TATALTIME(StreamSafeCUDAAllocator::Free);
-    VLOG(1) << "StreamSafe Allocator: " << allocator_cost << "ns "
+    VLOG(1) << "Allocator: " << allocator_cost << "ns "
             << GET_EVENT_COUNT(StreamSafeCUDAAllocator::Allocate) +
                    GET_EVENT_COUNT(StreamSafeCUDAAllocator::Free)
             << "times";
@@ -120,9 +124,11 @@ void StatisticsHostEvents(const TraceEventCollector& collector) {
                    GET_EVENT_COUNT(AutoGrowthBestFitAllocator::Free)
             << "times";
     VLOG(1) << "kernel luanch: "
-            << GET_EVENT_TATALTIME(Compute) - allocator_cost << "ns ";
-    VLOG(1) << "op count: " << GET_EVENT_COUNT(Compute);
-  } else {
+            << GET_EVENT_TATALTIME(compute) - allocator_cost << "ns ";
+    VLOG(1) << "op count: " << GET_EVENT_COUNT(compute);
+  } else {  // old executor
+    VLOG(1) << "Step: " << GET_EVENT_TATALTIME(ProfileStep) << "ns "
+            << GET_EVENT_COUNT(ProfileStep) << "times";
     VLOG(1) << "static kernel=========";
     VLOG(1) << "data transform: " << GET_EVENT_TATALTIME(prepare_data) << "ns "
             << GET_EVENT_COUNT(prepare_data) << "times";
