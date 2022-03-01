@@ -75,13 +75,11 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "conv_affine_channel_fuse_pass",  //
-      "adaptive_pool2d_convert_global_pass",
-      "conv_eltwiseadd_affine_channel_fuse_pass",  //
-      "shuffle_channel_detect_pass",               //
-      "quant_conv2d_dequant_fuse_pass",            //
-      "delete_quant_dequant_op_pass",              //
-      "delete_quant_dequant_filter_op_pass",       //
+  "adaptive_pool2d_convert_global_pass",
+      "shuffle_channel_detect_pass",          //
+      "quant_conv2d_dequant_fuse_pass",       //
+      "delete_quant_dequant_op_pass",         //
+      "delete_quant_dequant_filter_op_pass",  //
       // "fc_fuse_pass",                        //
       "simplify_with_basic_ops_pass",                 //
       "embedding_eltwise_layernorm_fuse_pass",        //
@@ -134,22 +132,20 @@ const std::vector<std::string> kLiteSubgraphPasses({
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",             //
-    "is_test_pass",                                  //
-        "simplify_with_basic_ops_pass",              //
-        "conv_affine_channel_fuse_pass",             //
-        "conv_eltwiseadd_affine_channel_fuse_pass",  //
-        "conv_bn_fuse_pass",                         //
-        "conv_eltwiseadd_bn_fuse_pass",              //
-        "embedding_eltwise_layernorm_fuse_pass",     //
-        "multihead_matmul_fuse_pass_v2",             //
-        "gpu_cpu_squeeze2_matmul_fuse_pass",         //
-        "gpu_cpu_reshape2_matmul_fuse_pass",         //
-        "gpu_cpu_flatten2_matmul_fuse_pass",         //
-        "gpu_cpu_map_matmul_v2_to_mul_pass",         //
-        "gpu_cpu_map_matmul_v2_to_matmul_pass",      //
-        "gpu_cpu_map_matmul_to_mul_pass",            //
-        "fc_fuse_pass",                              //
-        "fc_elementwise_layernorm_fuse_pass",        //
+    "is_test_pass",                               //
+        "simplify_with_basic_ops_pass",           //
+        "conv_bn_fuse_pass",                      //
+        "conv_eltwiseadd_bn_fuse_pass",           //
+        "embedding_eltwise_layernorm_fuse_pass",  //
+        "multihead_matmul_fuse_pass_v2",          //
+        "gpu_cpu_squeeze2_matmul_fuse_pass",      //
+        "gpu_cpu_reshape2_matmul_fuse_pass",      //
+        "gpu_cpu_flatten2_matmul_fuse_pass",      //
+        "gpu_cpu_map_matmul_v2_to_mul_pass",      //
+        "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
+        "gpu_cpu_map_matmul_to_mul_pass",         //
+        "fc_fuse_pass",                           //
+        "fc_elementwise_layernorm_fuse_pass",     //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
@@ -236,14 +232,12 @@ void CpuPassStrategy::EnableMKLDNN() {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
     for (auto &pass : std::vector<std::string>({
-             "depthwise_conv_mkldnn_pass",     //
-             "conv_bn_fuse_pass",              // Execute BN passes again to
-             "conv_eltwiseadd_bn_fuse_pass",   // preserve correct pass order
-             "conv_affine_channel_fuse_pass",  //
-             "conv_eltwiseadd_affine_channel_fuse_pass",  //
-             "conv_transpose_bn_fuse_pass",               //
-             "conv_transpose_eltwiseadd_bn_fuse_pass",    //
-             "conv_bias_mkldnn_fuse_pass",                //
+             "depthwise_conv_mkldnn_pass",    //
+             "conv_bn_fuse_pass",             // Execute BN passes again to
+             "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
+             "conv_transpose_bn_fuse_pass",   //
+             "conv_transpose_eltwiseadd_bn_fuse_pass",  //
+             "conv_bias_mkldnn_fuse_pass",              //
              "conv_transpose_bias_mkldnn_fuse_pass",
              // TODO(baoachun): Need to support 5-dimensional input.
              // "conv3d_bias_mkldnn_fuse_pass",  //

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -72,7 +72,7 @@ class TakeAlongAxisGradOpKernel : public framework::OpKernel<T> {
 
     // Set to zero tensor.
     auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+    phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
     functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
             input_grad, static_cast<T>(0));
 

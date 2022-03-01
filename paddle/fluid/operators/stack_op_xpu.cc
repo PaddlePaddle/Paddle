@@ -73,7 +73,7 @@ class StackGradXPUKernel : public framework::OpKernel<T> {
     auto dy_dims = dy->dims();
 
     if (axis < 0) axis += dy_dims.size() + 1;
-    auto dy_shape = framework::vectorize<int>(dy_dims);
+    auto dy_shape = phi::vectorize<int>(dy_dims);
 
     std::vector<int> dx_dims_list(dx.size(), 1);
     std::vector<T*> dx_lists;

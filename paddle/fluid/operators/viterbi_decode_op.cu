@@ -168,7 +168,7 @@ struct GetMaxValue<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const Tensor& input, T* max_value) {
     Tensor out_data;
-    out_data.Resize(framework::make_ddim({1}));
+    out_data.Resize(phi::make_ddim({1}));
     out_data.mutable_data<T>(platform::CUDAPlace());
     switch (ComputeBlockSize(input.numel())) {
       FIXED_BLOCK_DIM_CASE(

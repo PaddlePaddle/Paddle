@@ -11,7 +11,7 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -22,7 +22,7 @@ typedef struct {
   PyObject_HEAD paddle::experimental::Tensor tensor;
 } TensorObject;
 
-int TensorDtype2NumpyDtype(pten::DataType dtype);
+int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
@@ -89,10 +89,15 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
+paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable = false);
+
 paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 const std::string& arg_name,
                                                 PyObject* args, ssize_t arg_idx,
                                                 bool dispensable = false);
+
 std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
@@ -102,6 +107,7 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
                                                    PyObject* args,
                                                    ssize_t arg_idx,
                                                    bool dispensable = false);
+
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);

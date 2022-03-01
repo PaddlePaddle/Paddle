@@ -65,9 +65,9 @@ class ShardingOptimizerStage2(Optimizer):
                  params,
                  optim,
                  group=None,
-                 broadcast_fp16=False,
                  offload=False,
                  device="gpu",
+                 pertrain_sync_models=True,
                  **kw):
 
         super().__init__(optim._learning_rate, params, kw)
@@ -98,8 +98,12 @@ class ShardingOptimizerStage2(Optimizer):
 
         self.world_size = self.group.nranks
         self.rank = self.group.rank
+        self._global_root_rank = self.group.ranks[0]
 
-        self.broadcast_fp16 = broadcast_fp16
+        # Synchronous all ranks models
+        if pertrain_sync_models:
+            self._sync_params_and_buffers()
+
         self.param_storages = {}  # {dtype: {rank: InternalStorage}}
 
         if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
@@ -131,6 +135,22 @@ class ShardingOptimizerStage2(Optimizer):
 
         # Update optimizer parameters and adjust parameter storage and use according to rank.
         self._update_opt_status()
+
+    @paddle.no_grad()
+    def _sync_params_and_buffers(self):
+        """
+        Sync all model states for all ranks
+        """
+
+        for p in self._local_params:
+            dist.broadcast(
+                p,
+                src=self._global_root_rank,
+                group=self.group,
+                use_calc_stream=True)
+
+        # Multi stream operation will be supported later
+        dist.wait(tensor=p, group=self.group, use_calc_stream=True)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -383,7 +403,7 @@ class ShardingOptimizerStage2(Optimizer):
             for dst_rank, internal_storage in dtype_per_rank.items():
                 dist.broadcast(
                     tensor=internal_storage.buffer,
-                    src=dst_rank,
+                    src=self.group.ranks[dst_rank],
                     group=self.group,
                     use_calc_stream=True)
 

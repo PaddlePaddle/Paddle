@@ -59,9 +59,9 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
     MLUCnnl::Fill(ctx, bias, bias_desc.get(), GetBasePtr(&bias_tensor));
 
     auto* out_var = ctx.OutputVar("Out");
-    if (in_var->IsType<pten::SelectedRows>() && in_var != out_var) {
-      auto& in_slr = in_var->Get<pten::SelectedRows>();
-      auto* out_slr = out_var->GetMutable<pten::SelectedRows>();
+    if (in_var->IsType<phi::SelectedRows>() && in_var != out_var) {
+      auto& in_slr = in_var->Get<phi::SelectedRows>();
+      auto* out_slr = out_var->GetMutable<phi::SelectedRows>();
       out_slr->set_rows(in_slr.rows());
       out_slr->set_height(in_slr.height());
     }
@@ -85,15 +85,13 @@ class ScaleMLUKernel : public framework::OpKernel<T> {
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
       MLUCnnlTensorDesc new_bias_desc(new_bias_tensor);
 
-      MLUCnnlOpTensorDesc mul_op_desc(
-          CNNL_OP_TENSOR_MUL,
-          ToCnnlDataType(framework::TransToProtoVarType(in->dtype())),
-          CNNL_NOT_PROPAGATE_NAN);
+      MLUCnnlOpTensorDesc mul_op_desc(CNNL_OP_TENSOR_MUL,
+                                      ToCnnlDataType(in->dtype()),
+                                      CNNL_NOT_PROPAGATE_NAN);
       MLUCnnl::OpTensor(
           ctx, mul_op_desc.get(), scale_desc.get(), GetBasePtr(&scale_tensor),
           bias_desc.get(), GetBasePtr(&bias_tensor), new_bias_desc.get(),
-          GetBasePtr(&new_bias_tensor),
-          ToCnnlDataType(framework::TransToProtoVarType(in->dtype())));
+          GetBasePtr(&new_bias_tensor), ToCnnlDataType(in->dtype()));
       MLUCnnl::Scale(ctx, axis, input_desc.get(), GetBasePtr(in),
                      scale_desc.get(), GetBasePtr(&scale_tensor),
                      new_bias_desc.get(), GetBasePtr(&new_bias_tensor),

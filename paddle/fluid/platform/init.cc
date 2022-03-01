@@ -141,6 +141,25 @@ void InitCupti() {
 }
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void LoadCustomDevice(const std::string &library_dir) {
+  LOG(INFO) << "Try loading custom device libs from: [" << library_dir << "]";
+  std::vector<std::string> libs = platform::ListAllLibraries(library_dir);
+  for (const auto &lib_path : libs) {
+    auto dso_handle = dlopen(lib_path.c_str(), RTLD_NOW);
+    PADDLE_ENFORCE_NOT_NULL(
+        dso_handle,
+        platform::errors::InvalidArgument(
+            "Fail to open library: %s with error: %s", lib_path, dlerror()));
+
+    platform::LoadCustomRuntimeLib(lib_path, dso_handle);
+    framework::LoadCustomKernelLib(lib_path, dso_handle);
+  }
+  LOG(INFO) << "Finished in LoadCustomDevice with libs_path: [" << library_dir
+            << "]";
+}
+#endif
+
 void InitDevices() {
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
@@ -227,6 +246,7 @@ void InitDevices(const std::vector<int> devices) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   places.emplace_back(platform::CUDAPinnedPlace());
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   const char *custom_kernel_root_p = std::getenv("CUSTOM_DEVICE_ROOT");
   if (!custom_kernel_root_p) {
     VLOG(3) << "Env [CUSTOM_DEVICE_ROOT] is not set.";
@@ -234,24 +254,22 @@ void InitDevices(const std::vector<int> devices) {
     std::string custom_kernel_root(custom_kernel_root_p);
     if (!custom_kernel_root.empty()) {
       LOG(INFO) << "ENV [CUSTOM_DEVICE_ROOT]=" << custom_kernel_root;
-      framework::LoadCustomKernel(custom_kernel_root);
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-      if (platform::LoadCustomDevice(custom_kernel_root)) {
-        auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
-        for (auto &dev_type : device_types) {
-          VLOG(1) << "Device type: " << dev_type << ", visible devices count: "
-                  << platform::DeviceManager::GetDeviceCount(dev_type);
-          for (size_t i = 0;
-               i < platform::DeviceManager::GetDeviceCount(dev_type); i++) {
-            places.push_back(platform::CustomPlace(dev_type, i));
-          }
+      LoadCustomDevice(custom_kernel_root);
+
+      auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+      for (auto &dev_type : device_types) {
+        auto device_count = platform::DeviceManager::GetDeviceCount(dev_type);
+        LOG(INFO) << "CustomDevice: " << dev_type
+                  << ", visible devices count: " << device_count;
+        for (size_t i = 0; i < device_count; i++) {
+          places.push_back(platform::CustomPlace(dev_type, i));
         }
       }
-#endif
     } else {
       VLOG(3) << "ENV [CUSTOM_DEVICE_ROOT] is empty.";
     }
   }
+#endif
   platform::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN

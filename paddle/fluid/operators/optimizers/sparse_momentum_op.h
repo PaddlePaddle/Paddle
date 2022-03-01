@@ -145,7 +145,7 @@ class SparseMomentumOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("VelocityOut"), "Output", "VelocityOut",
                    "SparseMomentum");
 
-    auto lr_dims = framework::product(ctx->GetInputDim("LearningRate"));
+    auto lr_dims = phi::product(ctx->GetInputDim("LearningRate"));
     PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1, true,
                       platform::errors::InvalidArgument(
                           "Learning_rate should be a scalar. But Received "

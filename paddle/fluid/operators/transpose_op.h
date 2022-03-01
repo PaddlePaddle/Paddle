@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -29,32 +29,32 @@ inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
                          const std::vector<int>& axis) {
   switch (dim) {
     case 1:
-      pten::funcs::Transpose<DeviceContext, T, 1> trans1;
+      phi::funcs::Transpose<DeviceContext, T, 1> trans1;
       trans1(dev_ctx, in, out, axis);
       break;
     case 2:
-      pten::funcs::Transpose<DeviceContext, T, 2> trans2;
+      phi::funcs::Transpose<DeviceContext, T, 2> trans2;
       trans2(dev_ctx, in, out, axis);
       break;
     case 3:
-      pten::funcs::Transpose<DeviceContext, T, 3> trans3;
+      phi::funcs::Transpose<DeviceContext, T, 3> trans3;
       trans3(dev_ctx, in, out, axis);
       break;
     case 4:
-      pten::funcs::Transpose<DeviceContext, T, 4> trans4;
+      phi::funcs::Transpose<DeviceContext, T, 4> trans4;
       trans4(dev_ctx, in, out, axis);
       break;
     case 5:
-      pten::funcs::Transpose<DeviceContext, T, 5> trans5;
+      phi::funcs::Transpose<DeviceContext, T, 5> trans5;
       trans5(dev_ctx, in, out, axis);
       break;
     case 6:
-      pten::funcs::Transpose<DeviceContext, T, 6> trans6;
+      phi::funcs::Transpose<DeviceContext, T, 6> trans6;
       trans6(dev_ctx, in, out, axis);
       break;
     default:
       // for dim >= 7 situation
-      pten::funcs::TransposeNormal<DeviceContext, T> trans_normal;
+      phi::funcs::TransposeNormal<DeviceContext, T> trans_normal;
       trans_normal(dev_ctx, in, out, axis);
   }
 }

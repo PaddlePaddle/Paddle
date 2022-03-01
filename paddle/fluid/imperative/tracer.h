@@ -34,6 +34,8 @@ namespace imperative {
 
 enum class AmpLevel;
 
+enum class AmpDtype;
+
 using GarbageCollectorMap =
     std::map<platform::Place,
              std::unique_ptr<paddle::framework::GarbageCollector>>;
@@ -131,18 +133,41 @@ class Tracer {
 
   AmpLevel GetAmpLevel() const { return amp_level_; }
 
+  void SetAmpDtype(std::string amp_dtype) {
+    VLOG(4) << "set amp_dtype to " << amp_dtype;
+    if (amp_dtype == "float16") {
+      amp_dtype_ = phi::DataType::FLOAT16;
+    } else if (amp_dtype == "bfloat16") {
+      amp_dtype_ = phi::DataType::BFLOAT16;
+    } else {
+      amp_dtype_ = phi::DataType::FLOAT32;
+    }
+  }
+
+  std::string GetAmpDtype() const {
+    if (amp_dtype_ == phi::DataType::FLOAT16) {
+      return std::string("float16");
+    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+      return std::string("bfloat16");
+    } else {
+      return std::string("float32");
+    }
+  }
+
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
-  bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   GarbageCollectorMap gcs_;
+
+  static thread_local bool enable_program_desc_tracing_;
   static thread_local bool has_grad_;
   static thread_local AmpLevel amp_level_;
+  static thread_local phi::DataType amp_dtype_;
 };
 
 // To access static variable current_tracer

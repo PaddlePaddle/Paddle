@@ -45,8 +45,8 @@ class GatherNdXPUKernel : public framework::OpKernel<T> {
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
 
-    auto x_shape = paddle::framework::vectorize<int>(x->dims());
-    auto index_shape = paddle::framework::vectorize<int>(index->dims());
+    auto x_shape = phi::vectorize<int>(x->dims());
+    auto index_shape = phi::vectorize<int>(index->dims());
     if (index_shape.size() == 1) {
       index_shape.insert(index_shape.begin(), 1);
     }

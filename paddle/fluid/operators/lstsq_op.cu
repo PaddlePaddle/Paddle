@@ -64,7 +64,7 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     framework::TensorCopy(y, context.GetPlace(), &new_y);
 
     // Prepare tau
-    auto tau_dims_vec = framework::vectorize<int>(x_dims);
+    auto tau_dims_vec = phi::vectorize<int>(x_dims);
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
     Tensor tau = dito.Fill(tau_dims_vec, 0);

@@ -54,8 +54,8 @@ class TriangularSolveOp : public framework::OperatorWithKernel {
                           "But received X's shape[-2] = %d and shape[-1] = %d.",
                           x_dims[x_dims_n - 2], x_dims[x_dims_n - 1]));
 
-    std::vector<int64_t> x_dims_vec = paddle::framework::vectorize(x_dims);
-    std::vector<int64_t> y_dims_vec = paddle::framework::vectorize(y_dims);
+    std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
+    std::vector<int64_t> y_dims_vec = phi::vectorize(y_dims);
 
     std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(),
                                         x_dims_vec.end() - 2);
@@ -70,7 +70,7 @@ class TriangularSolveOp : public framework::OperatorWithKernel {
                                                      y_dims_vec[y_dims_n - 1]});
 
     // dim of 'Out' is the same with 'Y' after broadcast
-    ctx->SetOutputDim("Out", framework::make_ddim(y_broadcast_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(y_broadcast_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 

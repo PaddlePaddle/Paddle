@@ -109,8 +109,8 @@ class ModeCPUKernel : public framework::OpKernel<T> {
     // calculation,
     // then tranpose it back to orginal axis.
     if (axis == in_dims.size() - 1) {
-      const int64_t& input_height = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t& input_height =
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t& input_width = in_dims[in_dims.size() - 1];
       getMode<T, int64_t>(input_height, input_width, in_dims.size(), input,
                           output_data, indices_data);
@@ -134,7 +134,7 @@ class ModeCPUKernel : public framework::OpKernel<T> {
         for (int i = axis + 1; i < in_dims.size(); i++) {
           tmp_out_shape.emplace_back(in_dims[i]);
         }
-        framework::DDim tmp_out_dim = framework::make_ddim(tmp_out_shape);
+        framework::DDim tmp_out_dim = phi::make_ddim(tmp_out_shape);
         output->Resize(tmp_out_dim);
         indices->Resize(tmp_out_dim);
       }
@@ -159,8 +159,8 @@ class ModeCPUKernel : public framework::OpKernel<T> {
       TransCompute<platform::CPUDeviceContext, T>(ndims, dev_context, *input,
                                                   &trans_input, trans_axis);
 
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
+      const int64_t input_height =
+          phi::product(phi::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
       const int64_t input_width = trans_shape[trans_shape.size() - 1];
       framework::Tensor tmp_out;
       T* t_out = tmp_out.mutable_data<T>(trans_out_shape, context.GetPlace());
@@ -211,14 +211,14 @@ class ModeGradCPUKernel : public framework::OpKernel<T> {
       for (int i = axis + 1; i < in_dims.size(); i++) {
         tmp_out_shape.emplace_back(out_dims[i - 1]);
       }
-      out_dims = framework::make_ddim(tmp_out_shape);
+      out_dims = phi::make_ddim(tmp_out_shape);
     }
     T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     if (axis == in_dims.size() - 1) {
       // allocate the memory for the input_grad
       // assign the out_grad to input_grad directly
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t input_height =
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t input_width = in_dims[in_dims.size() - 1];
 
       // init the output grad with 0, because some input elements has no grad
@@ -294,8 +294,8 @@ class ModeGradCPUKernel : public framework::OpKernel<T> {
         TransCompute<platform::CPUDeviceContext, int64_t>(
             ndims, dev_context, indices_tmp, &trans_ind, trans_axis);
       }
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_in_shape, 0, trans_in_shape.size() - 1));
+      const int64_t input_height = phi::product(
+          phi::slice_ddim(trans_in_shape, 0, trans_in_shape.size() - 1));
       const int64_t input_width = trans_in_shape[trans_in_shape.size() - 1];
 
       // Assign the out_grad to tranpose input_grad

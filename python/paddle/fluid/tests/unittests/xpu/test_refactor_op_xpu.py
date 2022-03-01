@@ -60,10 +60,11 @@ class XPUTestArgsortOp1(XPUOpTestWrapper):
 
     class TestArgsortOp(XPUOpTest):
         def setUp(self):
-            self.set_xpu()
             self.op_type = "argsort"
             self.place = paddle.XPUPlace(0)
+            self.__class__.no_need_check_grad = True
             self.dtype = self.in_type
+
             self.input_shape = (2, 2, 2, 3, 3)
             self.axis = -1 if not hasattr(self, 'init_axis') else self.init_axis
             self.descending = False if not hasattr(
@@ -94,10 +95,6 @@ class XPUTestArgsortOp1(XPUOpTestWrapper):
                     self.x, kind='heapsort', axis=self.axis)
                 self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
 
-        def set_xpu(self):
-            self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
-
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
@@ -110,9 +107,10 @@ class XPUTestArgsortOp2(XPUOpTestWrapper):
 
     class TestArgsortOp(XPUOpTest):
         def setUp(self):
-            self.set_xpu()
             self.op_type = "argsort"
             self.place = paddle.XPUPlace(0)
+            self.__class__.no_need_check_grad = True
+
             self.init_dtype()
             self.init_inputshape()
             self.init_axis()
@@ -142,10 +140,6 @@ class XPUTestArgsortOp2(XPUOpTestWrapper):
                 self.indices = np.argsort(
                     self.x, kind='heapsort', axis=self.axis)
                 self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
-
-        def set_xpu(self):
-            self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
 
         def init_inputshape(self):
             self.input_shape = (2, 2, 2, 3, 3)
@@ -220,11 +214,9 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
 
     class TestHuberLossOp(XPUOpTest):
         def setUp(self):
-            self.set_xpu()
             self.op_type = 'huber_loss'
             self.place = paddle.XPUPlace(0)
-
-            self.init_dtype()
+            self.dtype = self.in_type
 
             self.set_inputs()
             self.set_attrs()
@@ -252,12 +244,6 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
 
         def set_shape(self):
             return (100, 1)
-
-        def set_xpu(self):
-            self.__class__.use_xpu = True
-
-        def init_dtype(self):
-            self.dtype = self.in_type
 
         def test_check_output(self):
             self.check_output_with_place(self.place)

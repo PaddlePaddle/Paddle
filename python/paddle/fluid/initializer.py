@@ -138,11 +138,11 @@ class ConstantInitializer(Initializer):
         assert isinstance(block, framework.Block)
 
         if framework.in_dygraph_mode():
-            var = _C_ops.fill_constant(
-                var, 'value',
-                float(self._value), 'force_cpu', self._force_cpu, 'dtype',
-                int(var.dtype), 'str_value',
-                str(float(self._value)), 'shape', var.shape)
+            _C_ops.fill_constant(var, 'value',
+                                 float(self._value), 'force_cpu',
+                                 self._force_cpu, 'dtype',
+                                 int(var.dtype), 'str_value',
+                                 str(float(self._value)), 'shape', var.shape)
             return None
         else:
             # fill constant should set the "str_value" to preserve precision

@@ -35,7 +35,7 @@
 #include <vector>
 
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/pten/backends/dynload/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 #if defined(__arm__) || defined(__aarch64__) || defined(__ARM_NEON) || \
     defined(__ARM_NEON__)

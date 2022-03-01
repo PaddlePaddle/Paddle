@@ -44,7 +44,7 @@ class StackMKLDNNHandler
     }
 
     // in stack op all inputs must have same dims
-    auto input_dims = framework::vectorize<int64_t>(inputs[0]->dims());
+    auto input_dims = phi::vectorize<int64_t>(inputs[0]->dims());
 
     memory::data_type dt = framework::ToMKLDNNDataType(
         framework::TransToProtoVarType(inputs[0]->dtype()));
@@ -65,7 +65,7 @@ class StackMKLDNNHandler
       input_dims[stack_axis] *= inputs.size();
       dst_md = memory::desc(input_dims, dt, MKLDNNMemoryFormat::any);
     } else {
-      auto extended_input_dims = framework::vectorize<int64_t>(output->dims());
+      auto extended_input_dims = phi::vectorize<int64_t>(output->dims());
       extended_input_dims[stack_axis] = 1;
 
       for (size_t i = 0; i < inputs.size(); ++i) {
@@ -77,7 +77,7 @@ class StackMKLDNNHandler
       // distinguish between f.e. abcd and abdc if last dim is equal to 1 so
       // enforcing is needed for better performance
       dst_fmt = platform::GetPlainMKLDNNFormat(extended_input_dims.size());
-      dst_md = memory::desc(framework::vectorize(output->dims()), dt, dst_fmt);
+      dst_md = memory::desc(phi::vectorize(output->dims()), dt, dst_fmt);
     }
 
     this->AcquireForwardPrimitiveDescriptor(dst_md, stack_axis, srcs_md);
@@ -132,7 +132,7 @@ class StackMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(platform::GetMKLDNNFormat(
-        dst_mem->get_desc().reshape(framework::vectorize(output->dims()))));
+        dst_mem->get_desc().reshape(phi::vectorize(output->dims()))));
   }
 };
 }  // namespace operators

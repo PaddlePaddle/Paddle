@@ -56,7 +56,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
     if (input_var->IsType<framework::LoDTensor>()) {
       SaveLodTensor(ctx, place, input_var, filename);
-    } else if (input_var->IsType<pten::SelectedRows>()) {
+    } else if (input_var->IsType<phi::SelectedRows>()) {
       SaveSelectedRows(ctx, place, input_var, filename);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -105,7 +105,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
                         const platform::Place &place,
                         const framework::Variable *var,
                         const std::string &filename) const {
-    auto &selectedRows = var->Get<pten::SelectedRows>();
+    auto &selectedRows = var->Get<phi::SelectedRows>();
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

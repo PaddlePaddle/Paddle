@@ -134,7 +134,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
 
   int start = in_place ? 1 : 0;
   if (!in_place) {
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> constant_functor;
     constant_functor(
         context.template device_context<platform::CUDADeviceContext>(), out,
         static_cast<T>(0));
@@ -151,7 +151,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       if (lod_length && in_i.IsInitialized()) {
         in_data.emplace_back(in_i.data<T>());
       }
-    } else if (in_vars[i]->IsType<pten::SelectedRows>()) {
+    } else if (in_vars[i]->IsType<phi::SelectedRows>()) {
       selectrow_index.push_back(i);
     }
   }
@@ -162,7 +162,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     size_t rows = 0;
     int64_t length = 0;
     for (auto index : selectrow_index) {
-      auto &sr = in_vars[index]->Get<pten::SelectedRows>();
+      auto &sr = in_vars[index]->Get<phi::SelectedRows>();
       auto &sr_value = sr.value();
       auto &sr_rows = sr.rows();
 
@@ -235,7 +235,7 @@ class SumKernel<platform::CUDADeviceContext, T>
 
     if (out_var->IsType<framework::LoDTensor>()) {
       SumToLoDTensor<T>(context);
-    } else if (out_var->IsType<pten::SelectedRows>()) {
+    } else if (out_var->IsType<phi::SelectedRows>()) {
       SelectedRowsCompute<platform::CUDADeviceContext, T>(context);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       LodTensorArrayCompute<platform::CUDADeviceContext, T>(context);
@@ -258,4 +258,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SumKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SumKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::float16>,
+    ops::SumKernel<paddle::platform::CUDADeviceContext, plat::bfloat16>);

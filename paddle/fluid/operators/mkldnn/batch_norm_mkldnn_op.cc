@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {}  // namespace framework
@@ -64,7 +64,7 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
         x->format(), MKLDNNMemoryFormat::undef,
         platform::errors::InvalidArgument("Wrong format set for X tensor"));
 
-    auto src_tz = paddle::framework::vectorize(x->dims());
+    auto src_tz = phi::vectorize(x->dims());
 
     // Flags are added by bitwise OR operation
     auto flags = dnnl::normalization_flags::use_scale_shift;  // 001
@@ -96,8 +96,8 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
                       platform::errors::InvalidArgument(
                           "Wrong format set for Input out_grad tensor"));
 
-    auto src_tz = paddle::framework::vectorize<int64_t>(in_x->dims());
-    auto scale_tz = paddle::framework::vectorize<int64_t>(scale->dims());
+    auto src_tz = phi::vectorize<int64_t>(in_x->dims());
+    auto scale_tz = phi::vectorize<int64_t>(scale->dims());
     PADDLE_ENFORCE_EQ(
         scale_tz.size(), 1,
         platform::errors::InvalidArgument(
@@ -110,7 +110,7 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
     MKLDNNMemoryFormat src_fmt =
         platform::MKLDNNFormatForSize(src_tz.size(), in_x->format());
 
-    auto dims = framework::vectorize(in_x->dims());
+    auto dims = phi::vectorize(in_x->dims());
     auto diff_dst_md =
         dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =
@@ -128,7 +128,7 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
 
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor *scale,
                                                         const Tensor *shift) {
-    auto scale_tz = paddle::framework::vectorize(scale->dims());
+    auto scale_tz = phi::vectorize(scale->dims());
     const unsigned int C = scale_tz[0];
     PADDLE_ENFORCE_EQ(
         scale_tz.size(), 1,
@@ -245,7 +245,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       const float momentum = ctx.Attr<float>("momentum");
 
-      const unsigned int C = paddle::framework::vectorize(scale->dims())[0];
+      const unsigned int C = phi::vectorize(scale->dims())[0];
 
       // mkldnn only compute stats for current batch
       // so we need compute momentum stats via Eigen lib
@@ -287,7 +287,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     BatchNormMKLDNNHandler<T> handler(ctx, mkldnn_engine, x, scale, diff_y);
 
     // MKLDNN requires a single piece of memory for scale and shift/bias data
-    const unsigned int C = paddle::framework::vectorize(scale->dims())[0];
+    const unsigned int C = phi::vectorize(scale->dims())[0];
     const size_t scaleshift_size = 2 * C;
     std::vector<T> diff_scaleshift_data;
     diff_scaleshift_data.reserve(scaleshift_size);
