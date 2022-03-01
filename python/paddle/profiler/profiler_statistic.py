@@ -30,9 +30,9 @@ _CommunicationOpName = ['reduce', 'broadcast', 'rpc']
 
 
 class SortedKeys(Enum):
-    '''
-  Sorted keys for printing op summary table.
-  '''
+    r"""
+    Sorted keys for printing op summary table.
+    """
     OpTotal = 0
     OpAvg = 1
     OpMax = 2
@@ -44,10 +44,9 @@ class SortedKeys(Enum):
 
 
 class TimeRangeSummary:
-    '''
+    r"""
     Analyse time ranges for each TracerEventType, and summarize the time.
-    '''
-
+    """
     def __init__(self):
         self.CPUTimeRange = collections.defaultdict(list)
         self.GPUTimeRange = collections.defaultdict(
@@ -58,9 +57,9 @@ class TimeRangeSummary:
             lambda: collections.defaultdict(int))
 
     def parse(self, nodetrees):
-        '''
-    Analysis node trees in profiler result, and get time range for different tracer event type
-    '''
+        r"""
+        Analysis node trees in profiler result, and get time range for different tracer event type.
+        """
         thread2hostnodes = traverse_tree(nodetrees)
         for threadid, hostnodes in thread2hostnodes.items():
             CPUTimeRange = collections.defaultdict(list)
@@ -136,9 +135,9 @@ class TimeRangeSummary:
 
 
 class EventSummary:
-    '''
+    r"""
     Analyse operator event in profiling data, correlate with its device event.
-    '''
+    """
 
     class DeviceItem:
         def __init__(self, name):
@@ -309,9 +308,9 @@ class EventSummary:
             dict)  # for userdefined
 
     def parse(self, nodetrees):
-        '''
-    Analysis operator event in the nodetress.
-    '''
+        r"""
+        Analysis operator event in the nodetress.
+        """
         thread2hostnodes = traverse_tree(nodetrees)
         for threadid, hostnodes in thread2hostnodes.items():
             for hostnode in hostnodes[1:]:  #skip root node
@@ -352,9 +351,9 @@ class EventSummary:
 
 
 class StatisticData:
-    '''
+    r"""
     Hold all analysed results.
-    '''
+    """
 
     def __init__(self, node_trees, extra_info):
         self.node_trees = node_trees
@@ -423,9 +422,9 @@ def _build_table(statistic_data,
         result.append('\n')
 
     def format_time(time, unit='ms', indent=0):
-        '''
-      Transform time in ns to time in unit.
-      '''
+        r"""
+        Transform time in ns to time in unit.
+        """
         if time == float('inf'):
             return '-'
         else:
@@ -439,9 +438,9 @@ def _build_table(statistic_data,
             return '{}{:.2f}'.format(' ' * indent, result)
 
     def format_ratio(ratio, indent=0):
-        '''
-      Transform ratio within [0, 1] to percentage presentation.
-      '''
+        r"""
+        Transform ratio within [0, 1] to percentage presentation.
+        """
         return '{}{:.2f}'.format(' ' * indent, ratio * 100)
 
     append(add_title(line_length, "Device Summary"))
