@@ -35,8 +35,8 @@ static constexpr uint32_t kProfileCPUOptionBit = 0;
 static constexpr uint32_t kProfileGPUOptionBit = 1;
 
 struct ProfilerOptions {
-  uint32_t trace_level = FLAGS_host_trace_level;
   uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu
+  uint32_t trace_level = FLAGS_host_trace_level;
 };
 
 class Profiler {

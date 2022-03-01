@@ -183,7 +183,7 @@ void ChromeTracingLogger::LogRuntimeTraceEventNode(
       std::string(
           R"JSON(
   { 
-    "name": "launch", "id": %d, "pid": %lld, "tid": %lld,
+    "name": "launch", "id": %d, "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, 
     "ph": "s", "cat": "async"
   },

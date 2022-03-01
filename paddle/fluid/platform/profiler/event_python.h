@@ -91,5 +91,7 @@ class ProfilerResult {
   HostPythonNode* CopyTree(HostTraceEventNode* root);
 };
 
+std::unique_ptr<ProfilerResult> LoadProfilerResult(std::string filename);
+
 }  // namespace platform
 }  // namespace paddle

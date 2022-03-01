@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/chrometracing_logger.h"
+#include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 
@@ -109,6 +110,12 @@ void ProfilerResult::Save(const std::string& file_name,
     logger.LogMetaInfo(GetExtraInfo());
   }
   return;
+}
+
+std::unique_ptr<ProfilerResult> LoadProfilerResult(std::string filename) {
+  DeserializationReader reader(filename);
+  std::unique_ptr<ProfilerResult> result = reader.Parse();
+  return result;
 }
 
 }  // namespace platform
