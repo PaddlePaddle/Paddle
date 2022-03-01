@@ -17,9 +17,7 @@
 namespace phi {
 
 KernelSignature SGDOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  LOG(ERROR) << "11";
   if (ctx.IsDenseTensorInput("Grad")) {
-    LOG(ERROR) << "dense";
     return KernelSignature("sgd",
                            {"Param", "LearningRate", "Grad", "MasterParam"},
                            {"multi_precision"},

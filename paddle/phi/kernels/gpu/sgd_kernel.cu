@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/sgd_kernel.h"
 
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
@@ -72,7 +73,6 @@ void SGDDenseKernel(const Context& dev_ctx,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
-  LOG(ERROR) << "run here";
   using MPDType = typename paddle::operators::details::MPTypeTrait<T>::Type;
   // do check here
   // if (multi_precision) {
