@@ -79,7 +79,7 @@ class DepthwiseConvTransposeKernel : public framework::OpKernel<T> {
     math::DepthwiseConvInputGradFunctor<phi::GPUContext, T>
         depthwiseConvInputGrad;
     depthwiseConvInputGrad(
-        static_cast<const typename framework::ConvertToPtenContext<
+        static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *output, filter, *input, strides,
         std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
@@ -131,7 +131,7 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
     if (input_grad) {
       math::DepthwiseConvFunctor<phi::GPUContext, T> depthwiseConv;
       depthwiseConv(
-          static_cast<const typename framework::ConvertToPtenContext<
+          static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *output_grad, filter, strides,
           std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
@@ -146,7 +146,7 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
       math::DepthwiseConvFilterGradFunctor<phi::GPUContext, T>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(
-          static_cast<const typename framework::ConvertToPtenContext<
+          static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *output_grad, *input, strides,
           std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
