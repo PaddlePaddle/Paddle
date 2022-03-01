@@ -53,7 +53,7 @@ class PReluOp : public framework::OperatorWithKernel {
                             "For mode 'channel', data_format must be one of "
                             "NCHW and NHWC. But recevied data_format: %s",
                             data_format_str));
-      if (data_format_str == "NCHW") {
+      if (data_format_str == "NCHW" || ctx->IsRunMKLDNNKernel()) {
         PADDLE_ENFORCE_EQ(
             product(ctx->GetInputDim("Alpha")) == x_dim[1], true,
             platform::errors::InvalidArgument(
@@ -127,6 +127,24 @@ class PReluOp : public framework::OperatorWithKernel {
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+    // All inputs (including alpha) need shape rotating
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+        paddle::platform::MKLDNNDeviceContext::tls()
+                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(),
+                                     framework::DataLayout::kNHWC);
+    }
+#endif
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -211,6 +229,24 @@ class PReluGradOp : public framework::OperatorWithKernel {
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+    // All inputs (including alpha) need shape rotating
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+        paddle::platform::MKLDNNDeviceContext::tls()
+                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(),
+                                     framework::DataLayout::kNHWC);
+    }
+#endif
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 

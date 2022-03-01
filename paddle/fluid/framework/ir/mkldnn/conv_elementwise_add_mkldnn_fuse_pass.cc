@@ -117,7 +117,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW", "AnyLayout"})
+      .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))

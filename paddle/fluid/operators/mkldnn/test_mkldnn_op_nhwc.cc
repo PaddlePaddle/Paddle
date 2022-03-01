@@ -94,7 +94,7 @@ TEST(test_pool2d_transpose_nhwc, cpu_place) {
 
 TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   framework::DDim dims({1, 4, 8, 512});           // NHWC shape
-  framework::DDim expected_dims({1, 512, 3, 7});  // NHWC expected shape
+  framework::DDim expected_dims({1, 512, 3, 7});  // NCHW expected shape
   platform::CPUPlace p;
   framework::Scope scope;
 

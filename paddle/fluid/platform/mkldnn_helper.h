@@ -559,6 +559,27 @@ inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
   }
 }
 
+inline void RegisterModelLayout(
+    std::vector<std::unique_ptr<framework::OperatorBase>>& ops) {
+  // Make some lambda with param of string
+  for (auto& op : ops) {
+    if (op->HasAttr("data_format")) {
+      auto data_format = op->Attr<std::string>("data_format");
+      platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+          data_format.compare("NHWC") == 0 ? framework::DataLayout::kNHWC
+                                           : framework::DataLayout::kNCHW);
+      return;
+    }
+    if (op->HasAttr("data_layout")) {
+      auto data_format = op->Attr<std::string>("data_layout");
+      platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+          data_format.compare("NHWC") == 0 ? framework::DataLayout::kNHWC
+                                           : framework::DataLayout::kNCHW);
+      return;
+    }
+  }
+}
+
 inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
   return (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8" ||
           op->GetAttrIfExists<bool>("use_quantizer"));
