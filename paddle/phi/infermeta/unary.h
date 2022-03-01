@@ -165,7 +165,7 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
 void RollInferMeta(const MetaTensor& x,
                    const ScalarArray& shifts,
-                   const std::vector<int64_t>& axis,
+                   const ScalarArray& axis,
                    MetaTensor* out);
 
 }  // namespace phi

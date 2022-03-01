@@ -23,7 +23,7 @@ template <typename T, typename Context>
 void RollKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const ScalarArray& shifts,
-                const std::vector<int64_t>& axis,
+                const ScalarArray& axis,
                 DenseTensor* out);
 
 }  // namespace phi

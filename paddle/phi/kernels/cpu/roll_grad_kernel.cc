@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/roll_kernel_impl.h"
 
 namespace phi {
@@ -25,7 +26,7 @@ void RollGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
                     const ScalarArray& shifts,
-                    const std::vector<int64_t>& axis,
+                    const ScalarArray& axis,
                     DenseTensor* x_grad) {
   std::vector<T> out_vec;
   paddle::framework::TensorToVector(out_grad, dev_ctx, &out_vec);
@@ -35,17 +36,19 @@ void RollGradKernel(const Context& dev_ctx,
   DDim input_dim = out_grad.dims();
 
   // axis = none, reshape to 1-D tensor
-  if (axis.size() == 0) {
-    axis.push_back(0l);
+  auto axis_data = axis.GetData();
+  if (axis_data.size() == 0) {
+    axis_data.push_back(0l);
     input_dim = phi::Dim<1>(out_vec.size());
   }
 
   for (size_t i = 0; i < nums; i++) {
-    shift_along_dim(out_vec.data(), input_dim, axis[i], 0 - shifts_data[i]);
+    shift_along_dim(
+        out_vec.data(), input_dim, axis_data[i], 0 - shifts_data[i]);
   }
 
-  dev_ctx.template Alloc(x_grad);
-  TensorFromVector(out_vec, dev_ctx, x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
+  paddle::framework::TensorFromVector(out_vec, dev_ctx, x_grad);
   x_grad->Resize(out_grad.dims());
 }
 

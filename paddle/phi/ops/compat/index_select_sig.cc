@@ -20,7 +20,7 @@ KernelSignature IndexSelectGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("index_select_grad",
                          {"X", "Index", GradVarName("Out")},
-                         {"offset"},
+                         {"dim"},
                          {GradVarName("X")});
 }
 

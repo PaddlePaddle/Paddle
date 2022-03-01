@@ -1118,19 +1118,20 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
 
 void RollInferMeta(const MetaTensor& x,
                    const ScalarArray& shifts,
-                   const std::vector<int64_t>& axis,
+                   const ScalarArray& axis,
                    MetaTensor* out) {
   auto shifts_data = shifts.GetData();
+  auto axis_data = axis.GetData();
 
-  if (axis.size() != 0) {
+  if (axis_data.size() != 0) {
     PADDLE_ENFORCE_EQ(
-        axis.size(),
+        axis_data.size(),
         shifts_data.size(),
         phi::errors::InvalidArgument("When dims.size() != 0, dims.size() "
                                      "should be equal to "
                                      "shifts.size(). But received "
                                      "dims.size() = %d, shifts.size() = %d",
-                                     axis.size(),
+                                     axis_data.size(),
                                      shifts_data.size()));
   } else {
     PADDLE_ENFORCE_EQ(

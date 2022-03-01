@@ -56,7 +56,7 @@ __global__ void RollCudaKernel(const T* input,
     phi::Array<int64_t, N> _sizes;                                            \
     for (size_t idx = 0; idx < N; ++idx) {                                    \
       _strides[idx] = strides[idx];                                           \
-      _shifts[idx] = shifts[idx];                                             \
+      _shifts[idx] = shifts_data[idx];                                        \
       _sizes[idx] = sizes[idx];                                               \
     }                                                                         \
     RollCudaKernel<                                                           \
