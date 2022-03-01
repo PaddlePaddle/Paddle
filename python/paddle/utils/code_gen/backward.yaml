@@ -25,6 +25,41 @@
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, bias, bias_after_scale)
 
+- backward_api : digamma_grad
+  forward : digamma (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : digamma_grad
+
+- backward_api : abs_grad
+  forward : abs (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : abs_grad
+
+- backward_api : trunc_grad
+  forward : trunc (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : trunc_grad
+
+# - backward_api : split_grad
+#   forward : split (Tensor x, ScalarArray num_or_sections, Scalar axis) -> Tensor[](out)
+#   args : (Tensor[] out_grad, Scalar axis)
+#   output : Tensor(x_grad)    
+#   invoke : concat( out_grad, axis)
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
 
 # - backward_api : matmul_triple_grad

@@ -193,3 +193,30 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+- api : digamma
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : digamma
+  backward : digamma_grad
+
+- api : abs
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : abs
+  backward : abs_grad
+
+- api : trunc
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : trunc
+  backward : trunc_grad
