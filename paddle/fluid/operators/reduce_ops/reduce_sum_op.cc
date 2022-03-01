@@ -16,6 +16,10 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -98,10 +102,14 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_sum"; }
 };
 
+DELCARE_INFER_SHAPE_FUNCTOR(reduce_sum, ReduceSumInferShapeFunctor,
+                            PT_INFER_META(phi::ReduceInferMetaBase));
+
 REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
+                  ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>,
+                  ReduceSumInferShapeFunctor);
 REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
                   ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
