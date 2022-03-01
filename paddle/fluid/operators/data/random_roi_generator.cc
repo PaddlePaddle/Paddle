@@ -99,6 +99,10 @@ void RandomROIGenerator::GenerateRandomROI(
   }
 }
 
+// initialization static variables out of GeneratorManager
+GeneratorManager* GeneratorManager::gm_instance_ptr_ = nullptr;
+std::mutex GeneratorManager::m_;
+
 }  // namespace data
 }  // namespace operators
 }  // namespace paddle

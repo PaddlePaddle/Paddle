@@ -14,10 +14,11 @@
 
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_HIP)
 
+#include <map>
+#include <vector>
 #include "paddle/fluid/operators/data/batch_decode_random_crop_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/math/math_function.h"
-// #include "paddle/fluid/operators/transpose_op.h"
 
 namespace paddle {
 namespace operators {
@@ -27,7 +28,6 @@ using LoDTensorBlockingQueueHolder = operators::reader::LoDTensorBlockingQueueHo
 using DataLayout = framework::DataLayout;
 
 NvjpegDecoderThreadPool* decode_pool = nullptr;
-// std::seed_seq* rand_seq = nullptr;
 
 template <typename T>
 class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
@@ -45,13 +45,14 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
 
     const framework::LoDTensorArray* inputs =
         ctx.Input<framework::LoDTensorArray>("X");
-    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads << ", batch_size: " << inputs->size() << ", program_id: " << program_id;
+    int batch_size = inputs->size();
+    LOG(ERROR) << "GPUBatchDecodeJpegKernel Compute start, num_threads: " << num_threads << ", batch_size: " << batch_size << ", program_id: " << program_id;
 
     auto* out = ctx.OutputVar("Out");
     auto dev = platform::CUDAPlace(local_rank);
     
     auto& out_array = *out->GetMutable<framework::LoDTensorArray>();
-    out_array.resize(inputs->size());
+    out_array.resize(batch_size);
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
@@ -59,7 +60,7 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
 
     framework::LoDTensorArray temp_array;
     if (data_layout == DataLayout::kNCHW) {
-      temp_array.resize(inputs->size());
+      temp_array.resize(batch_size);
     }
 
     auto aspect_ratio_min = ctx.Attr<float>("aspect_ratio_min");
@@ -70,9 +71,9 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
     auto area_max = ctx.Attr<float>("area_max");
     AreaRange area_range{area_min, area_max};
 
-    std::seed_seq rand_seq{static_cast<int64_t>(time(0))};
-    std::vector<int> rands(inputs->size());
-    rand_seq.generate(rands.begin(), rands.end());
+    auto* generators = GeneratorManager::Instance()->GetGenerators(
+                          program_id, batch_size, aspect_ratio_range,
+                          area_range);
 
     for (size_t i = 0; i < inputs->size(); i++) {
       const framework::LoDTensor x = inputs->at(i);
@@ -84,8 +85,7 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
           .bit_stream = x_data,
           .bit_len = x_numel,
           .tensor = &temp_array[i],
-          .roi_generator = new RandomROIGenerator(
-                                  aspect_ratio_range, area_range, rands[i]),
+          .roi_generator = generators->at(i).get(),
           .place = dev
         };
         decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
@@ -95,8 +95,7 @@ class GPUBatchDecodeRandomCropKernel : public framework::OpKernel<T> {
           .bit_stream = x_data,
           .bit_len = x_numel,
           .tensor = &out_array[i],
-          .roi_generator = new RandomROIGenerator(
-                                  aspect_ratio_range, area_range, rands[i]),
+          .roi_generator = generators->at(i).get(),
           .place = dev
         };
         decode_pool->AddTask(std::make_shared<NvjpegDecodeTask>(task));
