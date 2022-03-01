@@ -147,7 +147,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             if len(attrs[0]['paddings']) == 4:
                 return 1, 2
             else:
-                return 1, 2
+                return 1, 4
 
         attrs = [
             program_config.ops[i].attrs
