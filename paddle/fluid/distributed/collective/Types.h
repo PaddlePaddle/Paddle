@@ -32,5 +32,9 @@ struct BroadcastOptions {
   int source_root = 0;
 };
 
+struct BarrierOptions {
+  std::vector<int> place_ids;
+};
+
 }  //  namespace distributed
 }  //  namespace paddle

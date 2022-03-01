@@ -59,6 +59,10 @@ void BindDistributed(py::module *m) {
       .def_readwrite("source_root",
                      &distributed::BroadcastOptions::source_root);
 
+  py::class_<distributed::BarrierOptions>(*m, "BarrierOptions")
+      .def(py::init<>())
+      .def_readwrite("place_ids", &distributed::BarrierOptions::place_ids);
+
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
                  std::shared_ptr<distributed::ProcessGroup>>(*m, "ProcessGroup")
@@ -87,6 +91,35 @@ void BindDistributed(py::module *m) {
                  return self.Broadcast(tensors, opts);
                },
                py::arg("tensor"), py::arg("source_rank"),
+               py::call_guard<py::gil_scoped_release>())
+
+          .def("barrier",
+               [](distributed::ProcessGroup &self, std::vector<int> place_ids) {
+                 distributed::BarrierOptions opts;
+                 opts.place_ids = place_ids;
+                 return self.Barrier(opts);
+               },
+               py::arg("place_ids") = std::vector<int>{},
+               py::call_guard<py::gil_scoped_release>())
+
+          .def("send",
+               [](distributed::ProcessGroup &self, py::handle py_tensor,
+                  int dst) {
+                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                 std::vector<Tensor> tensors = {tensor};
+                 return self.Send(tensors, dst);
+               },
+               py::arg("tensor"), py::arg("dst"),
+               py::call_guard<py::gil_scoped_release>())
+
+          .def("recv",
+               [](distributed::ProcessGroup &self, py::handle py_tensor,
+                  int src) {
+                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                 std::vector<Tensor> tensors = {tensor};
+                 return self.Recv(tensors, src);
+               },
+               py::arg("tensor"), py::arg("src"),
                py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL)
