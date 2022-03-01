@@ -18,6 +18,9 @@
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+
 namespace phi {
 
 template <typename T, typename MT>
@@ -61,14 +64,15 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
 }
 
 template <typename T, typename Context>
-void SGDKernel(const Context& dev_ctx,
-               const DenseTensor& param,
-               const DenseTensor& learning_rate,
-               const DenseTensor& grad,
-               const DenseTensor& master_param,
-               bool multi_precision,
-               DenseTensor* param_out,
-               DenseTensor* master_param_out) {
+void SGDDenseKernel(const Context& dev_ctx,
+                    const DenseTensor& param,
+                    const DenseTensor& learning_rate,
+                    const DenseTensor& grad,
+                    paddle::optional<const DenseTensor&> master_param,
+                    bool multi_precision,
+                    DenseTensor* param_out,
+                    DenseTensor* master_param_out) {
+  LOG(ERROR) << "run here";
   using MPDType = typename paddle::operators::details::MPTypeTrait<T>::Type;
   // do check here
   // if (multi_precision) {
@@ -77,7 +81,7 @@ void SGDKernel(const Context& dev_ctx,
 
   // }
   const MPDType* master_in_data =
-      multi_precision ? master_param.data<MPDType>() : nullptr;
+      multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
       multi_precision
           ? master_param_out->mutable_data<MPDType>(dev_ctx.GetPlace())
@@ -91,20 +95,21 @@ void SGDKernel(const Context& dev_ctx,
       grad.data<T>(),
       learning_rate.data<T>(),
       param.numel(),
-      param_out->mutable_data<T>(ctx.GetPlace()),
+      param_out->mutable_data<T>(dev_ctx.GetPlace()),
       master_in_data,
       master_out_data);
 }
 
 template <typename T, typename Context>
-void SGDKernel(const Context& dev_ctx,
-               const DenseTensor& param,
-               const DenseTensor& learning_rate,
-               const SelectedRows& grad,
-               const DenseTensor& master_param,
-               bool multi_precision,
-               DenseTensor* param_out,
-               DenseTensor* master_param_out) {
+void SGDDenseParamSparseGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& learning_rate,
+    const SelectedRows& grad,
+    paddle::optional<const DenseTensor&> master_param,
+    bool multi_precision,
+    DenseTensor* param_out,
+    DenseTensor* master_param_out) {
   using MPDType = typename paddle::operators::details::MPTypeTrait<T>::Type;
   // do some check here
   // if (multi_precision) {
@@ -113,7 +118,7 @@ void SGDKernel(const Context& dev_ctx,
 
   // }
   const MPDType* master_in_data =
-      multi_precision ? master_param.data<MPDType>() : nullptr;
+      multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
       multi_precision
           ? master_param_out->mutable_data<MPDType>(dev_ctx.GetPlace())
@@ -155,7 +160,7 @@ void SGDKernel(const Context& dev_ctx,
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
   paddle::framework::MixVector<int64_t> mixv_in_rows(&in_rows);
-  SparseSGDFunctorKernel<<<max_blocks, thread_x, 0, dev_ctx..stream()>>>(
+  SparseSGDFunctorKernel<<<max_blocks, thread_x, 0, dev_ctx.stream()>>>(
       in_data,
       mixv_in_rows.CUDAData(dev_ctx.GetPlace()),
       learning_rate.data<T>(),
@@ -164,4 +169,41 @@ void SGDKernel(const Context& dev_ctx,
       in_rows.size());
 }
 
+template <typename T, typename Context>
+void SGDSparseParamSparseGradKernel(
+    const Context& dev_ctx,
+    const SelectedRows& param,
+    const DenseTensor& learning_rate,
+    const SelectedRows& grad,
+    paddle::optional<const SelectedRows&> master_param,
+    bool multi_precision,
+    SelectedRows* param_out,
+    SelectedRows* master_param_out) {
+  PADDLE_THROW("not impl");
+}
+
 }  // namespace phi
+
+PD_REGISTER_KERNEL(sgd,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SGDDenseKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}
+
+PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SGDDenseParamSparseGradKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}
+
+PD_REGISTER_KERNEL(sgd_sparse_param_sparse_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SGDSparseParamSparseGradKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}

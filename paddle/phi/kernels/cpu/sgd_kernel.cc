@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/sgd_kernel.h"
 #include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
@@ -112,40 +114,42 @@ void sgd_dense_param_sparse_grad_impl<phi::dtype::bfloat16>(
 }
 
 template <typename T, typename Context>
-void SGDKernel(const Context& dev_ctx,
-               const DenseTensor& param,
-               const DenseTensor& learning_rate,
-               const DenseTensor& grad,
-               const DenseTensor& master_param,
-               bool multi_precision,
-               DenseTensor* param_out,
-               DenseTensor* master_param_out) {
+void SGDDenseKernel(const Context& dev_ctx,
+                    const DenseTensor& param,
+                    const DenseTensor& learning_rate,
+                    const DenseTensor& grad,
+                    paddle::optional<const DenseTensor&> master_param,
+                    bool multi_precision,
+                    DenseTensor* param_out,
+                    DenseTensor* master_param_out) {
   dev_ctx.template Alloc<T>(param_out);
   sgd_dense_param_dense_grad_impl<T>(param, learning_rate, grad, param_out);
 }
 
 template <typename T, typename Context>
-void SGDKernel(const Context& dev_ctx,
-               const DenseTensor& param,
-               const DenseTensor& learning_rate,
-               const SelectedRows& grad,
-               const DenseTensor& master_param,
-               bool multi_precision,
-               DenseTensor* param_out,
-               DenseTensor* master_param_out) {
+void SGDDenseParamSparseGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& learning_rate,
+    const SelectedRows& grad,
+    paddle::optional<const DenseTensor&> master_param,
+    bool multi_precision,
+    DenseTensor* param_out,
+    DenseTensor* master_param_out) {
   dev_ctx.template Alloc<T>(param_out);
   sgd_dense_param_sparse_grad_impl<T>(param, learning_rate, grad, param_out);
 }
 
 template <typename T, typename Context>
-void SGDKernel(const Context& dev_ctx,
-               const SelectedRows& param,
-               const DenseTensor& learning_rate,
-               const SelectedRows& grad,
-               const SelectedRows& master_param,
-               bool multi_precision,
-               SelectedRows* param_out,
-               SelectedRows* master_param_out) {
+void SGDSparseParamSparseGradKernel(
+    const Context& dev_ctx,
+    const SelectedRows& param,
+    const DenseTensor& learning_rate,
+    const SelectedRows& grad,
+    paddle::optional<const SelectedRows&> master_param,
+    bool multi_precision,
+    SelectedRows* param_out,
+    SelectedRows* master_param_out) {
   // for distributed training, a sparse var may be empty,
   // just skip updating.
   if (grad.rows().size() == 0) {
@@ -183,3 +187,27 @@ void SGDKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(sgd,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SGDDenseKernel,
+                   phi::dtype::bfloat16,
+                   float,
+                   double) {}
+
+PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SGDDenseParamSparseGradKernel,
+                   phi::dtype::bfloat16,
+                   float,
+                   double) {}
+
+PD_REGISTER_KERNEL(sgd_sparse_param_sparse_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SGDSparseParamSparseGradKernel,
+                   phi::dtype::bfloat16,
+                   float,
+                   double) {}
