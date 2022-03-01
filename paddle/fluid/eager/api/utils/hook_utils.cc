@@ -69,27 +69,23 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
         meta->WeakGrad();
 
     // Define Hook
-    std::function<paddle::experimental::Tensor(
-        const paddle::experimental::Tensor&)>
-        hook = [weak_grad_tensor](const paddle::experimental::Tensor& t) {
-          if (!weak_grad_tensor.expired()) {
-            auto grad_tensor = weak_grad_tensor.lock();
-            if (t.defined()) {
-              VLOG(7) << "Set impl for RetainGrad Hook for tensor: "
-                      << t.name();
-              // Simply Copy impl() to grad_tensor
-              grad_tensor->set_impl(t.impl());
-              return *grad_tensor.get();
-            } else {
-              VLOG(7)
-                  << "Retain NULL paddle::experimental::Tensor in Grad Hook";
-              return paddle::experimental::Tensor();
-            }
-          } else {
-            VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
-            return paddle::experimental::Tensor();
-          }
-        };
+    auto hook = [weak_grad_tensor](const paddle::experimental::Tensor& t) {
+      if (!weak_grad_tensor.expired()) {
+        auto grad_tensor = weak_grad_tensor.lock();
+        if (t.defined()) {
+          VLOG(7) << "Set impl for RetainGrad Hook for tensor: " << t.name();
+          // Simply Copy impl() to grad_tensor
+          grad_tensor->set_impl(t.impl());
+          return *grad_tensor.get();
+        } else {
+          VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+          return paddle::experimental::Tensor();
+        }
+      } else {
+        VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+        return paddle::experimental::Tensor();
+      }
+    };
 
     // Append to GradientHooks
     RegisterGradientHookForTensor(tensor,
