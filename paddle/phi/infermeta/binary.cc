@@ -355,7 +355,12 @@ void BincountInferMeta(const MetaTensor& x,
             input_dim));
   }
   out->set_dims(phi::make_ddim({-1}));
-  out->set_dtype(x.dtype());
+  if (weights.is_initialized()) {
+    out->set_dtype(weights->dtype());
+  } else {
+    out->set_dtype(x.dtype());
+  }
+
   out->share_lod(x);
 }
 
