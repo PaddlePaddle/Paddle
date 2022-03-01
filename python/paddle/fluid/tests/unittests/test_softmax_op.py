@@ -338,11 +338,9 @@ class TestSoftmaxBF16Op(OpTest):
             check_dygraph=(self.use_mkldnn == False))
 
 
-unittest.skipIf(
+@unittest.skipIf(
     not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
     "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
-
-
 class TestSoftmaxBF16CUDNNOp(TestSoftmaxBF16Op):
     def init_cudnn(self):
         return True
