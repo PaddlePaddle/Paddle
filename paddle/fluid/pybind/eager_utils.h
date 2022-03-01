@@ -18,11 +18,9 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-typedef struct {
-  PyObject_HEAD paddle::experimental::Tensor tensor;
-} TensorObject;
-
 int TensorDtype2NumpyDtype(phi::DataType dtype);
+
+bool IsEagerTensor(PyObject* obj);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);

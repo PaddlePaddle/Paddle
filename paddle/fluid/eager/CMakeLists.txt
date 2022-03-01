@@ -9,6 +9,7 @@ endif()
 
 add_subdirectory(api)
 add_subdirectory(accumulation)
+add_subdirectory(pylayer)
 
 cc_library(grad_node_info SRCS grad_node_info.cc DEPS phi phi_api)
 cc_library(grad_tensor_holder SRCS grad_tensor_holder.cc DEPS grad_node_info gradient_accumulator)

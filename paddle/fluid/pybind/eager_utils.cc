@@ -173,6 +173,10 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
+bool IsEagerTensor(PyObject* obj) {
+  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
+}
+
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
