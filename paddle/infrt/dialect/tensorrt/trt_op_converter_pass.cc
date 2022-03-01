@@ -25,9 +25,9 @@ namespace trt {
 struct PD2TRT_graph_Lower : public ::mlir::RewritePattern {
   PD2TRT_graph_Lower(::mlir::MLIRContext *context) : ::mlir::RewritePattern("pd.graph", 1, context, {"trt.graph"}) {}
   ::mlir::LogicalResult matchAndRewrite(::mlir::Operation *op, ::mlir::PatternRewriter &rewriter) const override {
-    auto castedOp = ::llvm::dyn_cast<::mlir::pd::GraphOp>(op);
-    ::mlir::Operation::operand_range inputs = castedOp.inputs();
-    auto odsLoc = rewriter.getFusedLoc(op->getLoc());
+    auto casted_op = ::llvm::dyn_cast<::mlir::pd::GraphOp>(op);
+    ::mlir::Operation::operand_range inputs = casted_op.inputs();
+    auto ods_loc = rewriter.getFusedLoc(op->getLoc());
     GraphOp trt_graph_op;
     // inputs
     ::mlir::SmallVector<::mlir::Value, 4> trt_inputs;
@@ -38,15 +38,15 @@ struct PD2TRT_graph_Lower : public ::mlir::RewritePattern {
     ::mlir::SmallVector<::mlir::NamedAttribute, 4> trt_attrs;
     // outputs
     ::mlir::SmallVector<::mlir::Type> trt_outputs_types;
-    for (auto v : castedOp.getODSResults(0)) {
+    for (auto v : casted_op.getODSResults(0)) {
       trt_outputs_types.push_back(v.getType());
     }
-    trt_graph_op = rewriter.create<GraphOp>(odsLoc, trt_outputs_types, trt_inputs, trt_attrs);
+    trt_graph_op = rewriter.create<GraphOp>(ods_loc, trt_outputs_types, trt_inputs, trt_attrs);
     ::mlir::Block *block = new ::mlir::Block;
     block->getOperations().splice(block->begin(),
-                                  castedOp.getBody()->getOperations(),
-                                  castedOp.getBody()->begin(),
-                                  castedOp.getBody()->end());
+                                  casted_op.getBody()->getOperations(),
+                                  casted_op.getBody()->begin(),
+                                  casted_op.getBody()->end());
     trt_graph_op.body().push_back(block);
 
     ::llvm::SmallVector<::mlir::Value, 4> replace_values;
