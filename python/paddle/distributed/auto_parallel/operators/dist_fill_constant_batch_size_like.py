@@ -65,7 +65,8 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         if (not self.is_input_compatible(dist_op)) or \
             (not self.is_output_compatible(dist_op)):
             return False
-
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
         out_name = op_desc.output('Out')[0]
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
         in_name = op_desc.input('Input')[0]
@@ -78,7 +79,7 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         changed = False
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
+        x_name = op_desc.input('Input')[0]
         out_name = op_desc.output('Out')[0]
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)

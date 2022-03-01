@@ -1868,6 +1868,8 @@ class DistributedMulImpl1(DistributedOperatorImpl):
                                 out_var_dist_attr)
 
         intermediate_var_0 = main_block.create_var(
+            name=unique_name.generate_with_ignorable_key(".".join(
+                ["c_allreduce_sum", 'tmp'])),
             shape=Out_var.shape,
             dtype=Out_var.dtype,
             type=Out_var.type,
