@@ -2,7 +2,7 @@
 #else
 #define PHI_TENSOR
 
-include "paddle/infrt/dialect/phi/infrt_phi_base.td"
+include "paddle/infrt/dialect/phi/ir/infrt_phi_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/infrt_base.td"
