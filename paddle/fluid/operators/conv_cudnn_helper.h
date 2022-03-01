@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -53,11 +54,11 @@ static inline void GetNCDHW(const framework::DDim& dims,
 }
 
 template <typename DeviceContext, typename T, size_t D>
-static void RemovePaddingSlice(const DeviceContext& context,
+static void RemovePaddingSlice(const phi::GPUContext& context,
                                const Tensor* input, Tensor* out,
                                const std::vector<int>& starts,
                                const std::vector<int>& axes) {
-  auto& place = *context.template eigen_device();
+  auto& place = *context.eigen_device();
   auto in_dims = input->dims();
   auto new_out_dims = out->dims();
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
