@@ -825,7 +825,7 @@ PD_REGISTER_KERNEL(conv3d_grad_grad,
                    phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
-                   GPUDNN,
+                   GPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConvCudnnGradGradKernel,
                    float,
