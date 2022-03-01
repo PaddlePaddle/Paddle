@@ -125,9 +125,9 @@ class MatMulMLUKernel : public framework::OpKernel<T> {
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
     float alpha = static_cast<T>(ctx.Attr<float>("alpha"));
 
-    std::vector<int64_t> x_dims = framework::vectorize(X->dims());
-    std::vector<int64_t> y_dims = framework::vectorize(Y->dims());
-    std::vector<int64_t> out_dims = framework::vectorize(Out->dims());
+    std::vector<int64_t> x_dims = phi::vectorize(X->dims());
+    std::vector<int64_t> y_dims = phi::vectorize(Y->dims());
+    std::vector<int64_t> out_dims = phi::vectorize(Out->dims());
     int x_ndim = x_dims.size();
     int y_ndim = y_dims.size();
 
@@ -144,24 +144,24 @@ class MatMulMLUKernel : public framework::OpKernel<T> {
     y_temp.ShareDataWith(*Y);
     if (x_ndim == 1) {
       x_dims.insert(x_dims.begin(), 1);
-      x_temp.Resize(framework::make_ddim(x_dims));
+      x_temp.Resize(phi::make_ddim(x_dims));
       x_ndim = 2;
       // matmul op of mlu needs `std::max(x->dim, y->dim) == out->dim`
       if (out_dims.size() < y_dims.size()) {
         std::vector<int64_t> temp_out_dims(out_dims.begin(), out_dims.end());
         temp_out_dims.insert(temp_out_dims.end() - 1, 1);
-        Out->Resize(framework::make_ddim(temp_out_dims));
+        Out->Resize(phi::make_ddim(temp_out_dims));
       }
     }
     if (y_ndim == 1) {
       y_dims.push_back(1);
-      y_temp.Resize(framework::make_ddim(y_dims));
+      y_temp.Resize(phi::make_ddim(y_dims));
       y_ndim = 2;
       // matmul op of mlu needs `std::max(x->dim, y->dim) == out->dim`
       if (out_dims.size() < x_dims.size()) {
         std::vector<int64_t> temp_out_dims(out_dims.begin(), out_dims.end());
         temp_out_dims.push_back(1);
-        Out->Resize(framework::make_ddim(temp_out_dims));
+        Out->Resize(phi::make_ddim(temp_out_dims));
       }
     }
 
@@ -191,8 +191,8 @@ class MatMulMLUKernel : public framework::OpKernel<T> {
       MatMulND<T>(ctx, x_temp, y_temp, Out, transpose_x, transpose_y, alpha);
     }
 
-    if (framework::vectorize(Out->dims()) != out_dims) {
-      Out->Resize(framework::make_ddim(out_dims));
+    if (phi::vectorize(Out->dims()) != out_dims) {
+      Out->Resize(phi::make_ddim(out_dims));
     }
   }
 };
@@ -210,9 +210,9 @@ class MatMulGradMLUKernel : public framework::OpKernel<T> {
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
     float alpha = static_cast<T>(ctx.Attr<float>("alpha"));
 
-    std::vector<int64_t> x_dims = framework::vectorize(X->dims());
-    std::vector<int64_t> y_dims = framework::vectorize(Y->dims());
-    std::vector<int64_t> out_dims = framework::vectorize(dOut->dims());
+    std::vector<int64_t> x_dims = phi::vectorize(X->dims());
+    std::vector<int64_t> y_dims = phi::vectorize(Y->dims());
+    std::vector<int64_t> out_dims = phi::vectorize(dOut->dims());
     int x_ndim = x_dims.size();
     int y_ndim = y_dims.size();
     int out_ndim = out_dims.size();
@@ -236,16 +236,16 @@ class MatMulGradMLUKernel : public framework::OpKernel<T> {
     if (x_ndim == 1) {
       x_dims.insert(x_dims.begin(), 1);
       out_dims.insert(out_dims.end() - 1, 1);
-      x_temp.Resize(framework::make_ddim(x_dims));
-      dout_temp.Resize(framework::make_ddim(out_dims));
+      x_temp.Resize(phi::make_ddim(x_dims));
+      dout_temp.Resize(phi::make_ddim(out_dims));
       x_ndim = 2;
       out_ndim += 1;
     }
     if (y_ndim == 1) {
       y_dims.push_back(1);
       out_dims.push_back(1);
-      y_temp.Resize(framework::make_ddim(y_dims));
-      dout_temp.Resize(framework::make_ddim(out_dims));
+      y_temp.Resize(phi::make_ddim(y_dims));
+      dout_temp.Resize(phi::make_ddim(out_dims));
       y_ndim = 2;
       out_ndim += 1;
     }
@@ -253,7 +253,7 @@ class MatMulGradMLUKernel : public framework::OpKernel<T> {
     // Case 2: [M, K] x [K, N] = [M, N]
     if (out_ndim == 2) {
       if (dX) {
-        dX->Resize(framework::make_ddim(x_dims));
+        dX->Resize(phi::make_ddim(x_dims));
         if (transpose_x) {
           MatMul2D<T>(ctx, y_temp, dout_temp, dX, transpose_y, true, alpha);
         } else {
@@ -262,7 +262,7 @@ class MatMulGradMLUKernel : public framework::OpKernel<T> {
         dX->Resize(X->dims());
       }
       if (dY) {
-        dY->Resize(framework::make_ddim(y_dims));
+        dY->Resize(phi::make_ddim(y_dims));
         if (transpose_y) {
           MatMul2D<T>(ctx, dout_temp, x_temp, dY, true, transpose_x, alpha);
         } else {
@@ -285,7 +285,7 @@ class MatMulGradMLUKernel : public framework::OpKernel<T> {
     if (dX) {
       Tensor dx_temp(X->type());
       if (x_dims != x_bcast_dims) {
-        dx_temp.Resize(framework::make_ddim(x_bcast_dims));
+        dx_temp.Resize(phi::make_ddim(x_bcast_dims));
       } else {
         dX->mutable_data<T>(ctx.GetPlace());
         dx_temp.ShareDataWith(*dX);
@@ -306,7 +306,7 @@ class MatMulGradMLUKernel : public framework::OpKernel<T> {
     if (dY) {
       Tensor dy_temp(Y->type());
       if (y_dims != y_bcast_dims) {
-        dy_temp.Resize(framework::make_ddim(y_bcast_dims));
+        dy_temp.Resize(phi::make_ddim(y_bcast_dims));
       } else {
         dY->mutable_data<T>(ctx.GetPlace());
         dy_temp.ShareDataWith(*dY);
