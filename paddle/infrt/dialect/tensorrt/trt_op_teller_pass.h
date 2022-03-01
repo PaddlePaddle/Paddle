@@ -37,17 +37,17 @@ namespace trt {
  * destination func:
  * func @main() -> tensor<?xf32> {
  *  %a = "pd.feed"()...
- *  %c = "pd.graph"(%a) {
+ *  %c = "trt.create_engine"(%a) {
  *     %m = "pd.conv2d"(%a)...
- *     "pd.return" (%m)
+ *     "Infrt.return" (%m)
  *  } ...
- *  %d = "pd.graph"(%c) {
+ *  %d = "trt.create_engine"(%c) {
  *      %m = "pd.conv3d"(%c)...
- *      "pd.return" (%m)
+ *      "Infrt.return" (%m)
  *  } ...
- *  %f = "pd.graph"(%a) {
+ *  %f = "trt.create_engine"(%a) {
  *      %m = "pd.conv2d"(%a)...
- *      "pd.return" (%m)
+ *      "Infrt.return" (%m)
  *  } ...
  *  "pd.fetch" (%d, %f)
  * }

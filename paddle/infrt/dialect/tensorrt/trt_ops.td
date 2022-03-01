@@ -5,8 +5,6 @@ include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/LoopLikeInterface.td"
 include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/IR/OpBase.td"
-//include "paddle/infrt/dialect/basic_kernels.td"
-//include "paddle/infrt/dialect/dense_tensor.td"
 include "paddle/infrt/dialect/tensorrt/trt_op_base.td"
 
 def TRT_CreateEngineOp : TRT_Op<"create_engine", [SingleBlockImplicitTerminator<"::infrt::dialect::ReturnOp">]> {
