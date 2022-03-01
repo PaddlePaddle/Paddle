@@ -30,14 +30,13 @@
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/phi/phi_base.h"
-
 #include "paddle/infrt/dialect/infrt/infrt_dialect.h"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
 
-#include "paddle/infrt/dialect/phi/phi_cpu_kernelsDialect.h.inc"
+#include "paddle/infrt/dialect/phi/ir/phi_cpu_kernelsDialect.h.inc"
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/phi/phi_cpu_kernels.h.inc"
+#include "paddle/infrt/dialect/phi/ir/phi_cpu_kernels.h.inc"
 
-#include "paddle/infrt/dialect/phi/phi_gpu_kernelsDialect.h.inc"
+#include "paddle/infrt/dialect/phi/ir/phi_gpu_kernelsDialect.h.inc"
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/phi/phi_gpu_kernels.h.inc"
+#include "paddle/infrt/dialect/phi/ir/phi_gpu_kernels.h.inc"

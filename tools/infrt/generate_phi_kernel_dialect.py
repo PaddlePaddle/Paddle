@@ -86,8 +86,8 @@ def generate_inputs_info(input_info):
         target_ = target_type_converter[target_.strip()]
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
-        input_args_ += " DenseTensorType<\"{}\",\"{}\",\"{}\">:$in{},".format(
-            target_.strip(), layout_.strip(), precision_.strip(), str(index))
+        input_args_ += " DenseTensor<\"{}\",\"{}\",\"{}\">:$in{},".format(
+            target_.strip(), precision_.strip(), layout_.strip(), str(index))
     input_args_ = input_args_[:-1]
     return input_args_
 
@@ -108,8 +108,8 @@ def generate_results_info(output_info):
         target_ = target_type_converter[target_.strip()]
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
-        output_args_ += " DenseTensorType<\"{}\",\"{}\",\"{}\">:$out{},".format(
-            target_.strip(), layout_.strip(), precision_.strip(), str(index))
+        output_args_ += " DenseTensor<\"{}\",\"{}\",\"{}\">:$out{},".format(
+            target_.strip(), precision_.strip(), layout_.strip(), str(index))
     return ("{});".format(output_args_[:-1]))
 
 
@@ -189,7 +189,6 @@ def generate_gpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
     dialect_name = alias.split(".")
     dialect_name = dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[
         3]
-    print(dialect_name)
 
     header = 'def {kernel_name} : PDTGPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
         kernel_name=alias.replace(".", ""),
@@ -226,7 +225,7 @@ def generate_dialect_head():
 include \"mlir/Interfaces/InferTypeOpInterface.td\"\n\
 include \"mlir/Interfaces/LoopLikeInterface.td\"\n\
 include \"mlir/IR/OpBase.td\"\n\
-include \"paddle/infrt/dialect/phi/infrt_phi_kernel.td\""
+include \"paddle/infrt/dialect/phi/ir/infrt_phi_kernel.td\""
 
     return (comment_ + includes_)
 
@@ -262,11 +261,11 @@ def main(path_):
                         print("Unsupported backend:" + get_kernel_target(
                             kernel_alias_))
         end = "#endif  // PTEN_KERNELS"
-        with open("../../paddle/infrt/dialect/phi/phi_cpu_kernels.td",
+        with open("../../paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td",
                   "w") as dst:
             dst.write('{start_}\n{dialect_}\n{end_}'.format(
                 start_=head, dialect_=cpu_registry_, end_=end))
-        with open("../../paddle/infrt/dialect/phi/phi_gpu_kernels.td",
+        with open("../../paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td",
                   "w") as dst:
             dst.write('{start_}\n{dialect_}\n{end_}'.format(
                 start_=head, dialect_=gpu_registry_, end_=end))

@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/phi/phi_kernels.h"
+#include "paddle/infrt/dialect/phi/ir/phi_kernels.h"
 #include <mlir/IR/BuiltinTypes.h>
 
-#include "paddle/infrt/dialect/phi/phi_gpu_kernelsDialect.cpp.inc"
+#include "paddle/infrt/dialect/phi/ir/phi_gpu_kernelsDialect.cpp.inc"
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/phi/phi_cpu_kernels.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/phi/ir/phi_cpu_kernels.cpp.inc"  // NOLINT
 
-#include "paddle/infrt/dialect/phi/phi_cpu_kernelsDialect.cpp.inc"
+#include "paddle/infrt/dialect/phi/ir/phi_cpu_kernelsDialect.cpp.inc"
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/phi/phi_gpu_kernels.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/phi/ir/phi_gpu_kernels.cpp.inc"  // NOLINT
 
 namespace infrt {
 namespace phi {
@@ -29,14 +29,14 @@ namespace phi {
 void PHICPUKernelDialect::initialize() {
 #define GET_OP_LIST
   addOperations<
-#include "paddle/infrt/dialect/phi/phi_cpu_kernels.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/phi/ir/phi_cpu_kernels.cpp.inc"  // NOLINT
       >();
 }
 
 void PHIGPUKernelDialect::initialize() {
 #define GET_OP_LIST
   addOperations<
-#include "paddle/infrt/dialect/phi/phi_gpu_kernels.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/phi/ir/phi_gpu_kernels.cpp.inc"  // NOLINT
       >();
 }
 
