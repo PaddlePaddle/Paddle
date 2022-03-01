@@ -74,7 +74,6 @@ void CumsumKernel(const Context& dev_ctx,
     axis += out_dims.size();
   }
 
-  // Out.template mutable_data<T>(context.GetPlace());
   dev_ctx.template Alloc<T>(out);
 
   int pre = 1;
