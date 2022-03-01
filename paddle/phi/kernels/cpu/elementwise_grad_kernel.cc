@@ -34,7 +34,7 @@ void AddGradFunc(const CPUContext& dev_ctx,
                  DenseTensor* dy,
                  int axis = -1) {
   if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-    elementwise_add_grad<T>(dev_ctx, x, y, out, dout, dx, dy);
+    ElementwiseAddGrad<T>(dev_ctx, x, y, out, dout, dx, dy);
   } else {
     ElemwiseExplicitGradCompute<T, IdentityGrad<T>, IdentityGrad<T>>(
         dev_ctx,
@@ -94,7 +94,7 @@ void SubtractGradKernel(const Context& dev_ctx,
                         DenseTensor* dy) {
   // skip out
   auto* out = &dout;
-  elementwise_sub_grad<T>(dev_ctx, x, y, *out, dout, dx, dy, axis);
+  ElementwiseSubGrad<T>(dev_ctx, x, y, *out, dout, dx, dy, axis);
 }
 
 template <typename T, typename Context>

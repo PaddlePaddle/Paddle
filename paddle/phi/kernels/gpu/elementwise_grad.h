@@ -57,14 +57,14 @@ static __global__ void SimpleElemwiseAddGradCUDAKernel(
 }
 
 template <typename T>
-void default_elementwise_add_grad(const GPUContext &ctx,
-                                  const DenseTensor &x,
-                                  const DenseTensor &y,
-                                  const DenseTensor &out,
-                                  const DenseTensor &dout,
-                                  DenseTensor *dx,
-                                  DenseTensor *dy,
-                                  int axis = -1) {
+void DefaultElementwiseAddGrad(const GPUContext &ctx,
+                               const DenseTensor &x,
+                               const DenseTensor &y,
+                               const DenseTensor &out,
+                               const DenseTensor &dout,
+                               DenseTensor *dx,
+                               DenseTensor *dy,
+                               int axis = -1) {
   auto *dout_data = dout.data<T>();
 
   // dx
@@ -106,15 +106,17 @@ void default_elementwise_add_grad(const GPUContext &ctx,
 }
 
 template <typename T>
-void elementwise_add_grad(const GPUContext &ctx,
-                          const DenseTensor &x,
-                          const DenseTensor &y,
-                          const DenseTensor &out,
-                          const DenseTensor &dout,
-                          DenseTensor *dx,
-                          DenseTensor *dy) {
-  auto *dx_data = dx->mutable_data<T>(ctx.GetPlace());
-  auto *dy_data = dy->mutable_data<T>(ctx.GetPlace());
+void ElementwiseAddGrad(const GPUContext &ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        const DenseTensor &out,
+                        const DenseTensor &dout,
+                        DenseTensor *dx,
+                        DenseTensor *dy) {
+  ctx.template Alloc<T>(dx);
+  ctx.template Alloc<T>(dy);
+  auto *dx_data = dx->data<T>();
+  auto *dy_data = dy->data<T>();
   auto *dout_data = dout.data<T>();
   if (dx_data == dout_data && dy_data != dout_data) {
     VLOG(4) << "Special case when dx_data is the same as dout_data, "

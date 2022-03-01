@@ -36,13 +36,13 @@ using DDim = phi::DDim;
  * New parameter: *is_run_common_broadcast* is a flag to record whether to run
  * common broadcast code.
  */
-inline void get_mid_dims(const DDim &x_dims,
-                         const DDim &y_dims,
-                         const int axis,
-                         int *pre,
-                         int *n,
-                         int *post,
-                         int *is_run_common_broadcast) {
+inline void GetMidDims(const DDim &x_dims,
+                       const DDim &y_dims,
+                       const int axis,
+                       int *pre,
+                       int *n,
+                       int *post,
+                       int *is_run_common_broadcast) {
   *pre = 1;
   *n = 1;
   *post = 1;
@@ -73,7 +73,7 @@ inline void get_mid_dims(const DDim &x_dims,
   }
 }
 
-inline DDim trim_trailing_singular_dims(const DDim &dims) {
+inline DDim TrimTrailingSingularDims(const DDim &dims) {
   // Remove trailing dimensions of size 1 for y
   auto actual_dims_size = dims.size();
   for (; actual_dims_size != 0; --actual_dims_size) {

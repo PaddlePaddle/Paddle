@@ -80,14 +80,14 @@ struct IdentityGrad {
 
 template <typename T>
 typename std::enable_if<std::is_floating_point<T>::value>::type
-elementwise_add_grad(const CPUContext& ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     const DenseTensor& out,
-                     const DenseTensor& dout,
-                     DenseTensor* dx,
-                     DenseTensor* dy,
-                     int axis = -1) {
+ElementwiseAddGrad(const CPUContext& ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   const DenseTensor& out,
+                   const DenseTensor& dout,
+                   DenseTensor* dx,
+                   DenseTensor* dy,
+                   int axis = -1) {
   auto blas = phi::funcs::GetBlas<CPUContext, T>(ctx);
   if (dx) {
     blas.VCOPY(
@@ -102,14 +102,14 @@ elementwise_add_grad(const CPUContext& ctx,
 
 template <typename T>
 typename std::enable_if<!std::is_floating_point<T>::value>::type
-elementwise_add_grad(const CPUContext& ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     const DenseTensor& out,
-                     const DenseTensor& dout,
-                     DenseTensor* dx,
-                     DenseTensor* dy,
-                     int axis = -1) {
+ElementwiseAddGrad(const CPUContext& ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   const DenseTensor& out,
+                   const DenseTensor& dout,
+                   DenseTensor* dx,
+                   DenseTensor* dy,
+                   int axis = -1) {
   ElemwiseExplicitGradCompute<T, IdentityGrad<T>, IdentityGrad<T>>(
       ctx, x, y, out, dout, axis, dx, dy, IdentityGrad<T>(), IdentityGrad<T>());
 }
@@ -131,14 +131,14 @@ struct SubGradDY {
 };
 
 template <typename T>
-void elementwise_sub_grad(const CPUContext& ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          const DenseTensor& out,
-                          const DenseTensor& dout,
-                          DenseTensor* dx,
-                          DenseTensor* dy,
-                          int axis = -1) {
+void ElementwiseSubGrad(const CPUContext& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& out,
+                        const DenseTensor& dout,
+                        DenseTensor* dx,
+                        DenseTensor* dy,
+                        int axis = -1) {
   ElemwiseExplicitGradCompute<T, SubGradDX<T>, SubGradDY<T>>(
       ctx, x, y, out, dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
 }

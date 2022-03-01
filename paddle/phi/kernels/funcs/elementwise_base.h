@@ -286,12 +286,10 @@ void CommonForwardBroadcastCPU(const DenseTensor &x,
   std::vector<int> index_array(max_dim, 0);
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
-  PADDLE_ENFORCE_NOT_NULL(x_data,
-                          paddle::platform::errors::InvalidArgument(
-                              "The input X should not be empty."));
-  PADDLE_ENFORCE_NOT_NULL(y_data,
-                          paddle::platform::errors::InvalidArgument(
-                              "The input Y should not be empty."));
+  PADDLE_ENFORCE_NOT_NULL(
+      x_data, errors::InvalidArgument("The input X should not be empty."));
+  PADDLE_ENFORCE_NOT_NULL(
+      y_data, errors::InvalidArgument("The input Y should not be empty."));
   OutType *out_data = ctx.Alloc<OutType>(z);
 
   const int out_size = std::accumulate(
@@ -393,37 +391,37 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      paddle::platform::errors::InvalidArgument(
+      errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
   PADDLE_ENFORCE_LT(axis,
                     max_dim,
-                    paddle::platform::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim,
                         axis));
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
-    auto y_dims_trimed = trim_trailing_singular_dims(y_dims);
+    auto y_dims_trimed = TrimTrailingSingularDims(y_dims);
     axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
-    get_mid_dims(x_dims,
-                 y_dims_trimed,
-                 axis_trim,
-                 &pre,
-                 &n,
-                 &post,
-                 &is_run_common_broadcast);
+    GetMidDims(x_dims,
+               y_dims_trimed,
+               axis_trim,
+               &pre,
+               &n,
+               &post,
+               &is_run_common_broadcast);
   } else {
-    auto x_dims_trimed = trim_trailing_singular_dims(x_dims);
+    auto x_dims_trimed = TrimTrailingSingularDims(x_dims);
     axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
-    get_mid_dims(y_dims,
-                 x_dims_trimed,
-                 axis_trim,
-                 &pre,
-                 &n,
-                 &post,
-                 &is_run_common_broadcast);
+    GetMidDims(y_dims,
+               x_dims_trimed,
+               axis_trim,
+               &pre,
+               &n,
+               &post,
+               &is_run_common_broadcast);
   }
   // special case for common implementation.
   // case 1: x=[2,3,1,5], y=[2,1,4,1]

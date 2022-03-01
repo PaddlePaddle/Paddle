@@ -134,7 +134,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
 
 inline framework::DDim trim_trailing_singular_dims(
     const framework::DDim &dims) {
-  return phi::funcs::trim_trailing_singular_dims(dims);
+  return phi::funcs::TrimTrailingSingularDims(dims);
 }
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP,
@@ -434,8 +434,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  phi::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                           &is_run_common_broadcast);
+  phi::funcs::GetMidDims(x_dim, y_dim, axis, &pre, &n, &post,
+                         &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -982,8 +982,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  phi::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                           &is_run_common_broadcast);
+  phi::funcs::GetMidDims(x_dim, y_dim, axis, &pre, &n, &post,
+                         &is_run_common_broadcast);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
   if (x->IsInitialized()) x_data = x->data<T>();

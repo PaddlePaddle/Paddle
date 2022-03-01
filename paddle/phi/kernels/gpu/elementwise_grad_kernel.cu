@@ -34,9 +34,9 @@ void AddGradFunc(const GPUContext& dev_ctx,
                  DenseTensor* dy,
                  int axis = -1) {
   if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-    elementwise_add_grad<T>(dev_ctx, x, y, out, dout, dx, dy);
+    ElementwiseAddGrad<T>(dev_ctx, x, y, out, dout, dx, dy);
   } else {
-    default_elementwise_add_grad<T>(dev_ctx, x, y, out, dout, dx, dy, axis);
+    DefaultElementwiseAddGrad<T>(dev_ctx, x, y, out, dout, dx, dy, axis);
   }
 }
 
