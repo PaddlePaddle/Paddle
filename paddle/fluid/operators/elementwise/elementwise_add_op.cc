@@ -117,17 +117,6 @@ REGISTER_OPERATOR(elementwise_add_triple_grad, ops::ElementwiseOpTripleGrad,
                   ops::ElementwiseTripleGradOpInplaceInferer,
                   ops::ElementwiseTripleGradNoBufVarsInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add_onednn,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-
 // A specialization elementwise_add operator, used in gradient accumulation with
 // inplace addto.
 REGISTER_OPERATOR(

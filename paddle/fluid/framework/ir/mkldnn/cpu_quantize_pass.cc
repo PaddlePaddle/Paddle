@@ -810,7 +810,7 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
 void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::ElementwiseAddOneDNN elementwise_add_pattern{pattern, name_scope_};
+  patterns::ElementwiseAdd elementwise_add_pattern{pattern, name_scope_};
 
   elementwise_add_pattern(
       pattern->NewNode(elementwise_add_pattern.elementwise_add_x_repr()),
@@ -873,7 +873,7 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
   gpd(graph, handler);
   AddStatis(quantize_elementwise_add_count);
 
-  PrettyLogDetail("---    quantized %d elementwise_add_onednn ops",
+  PrettyLogDetail("---    quantized %d elementwise_add ops",
                   quantize_elementwise_add_count);
 }
 

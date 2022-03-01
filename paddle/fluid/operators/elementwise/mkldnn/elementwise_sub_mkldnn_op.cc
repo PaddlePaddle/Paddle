@@ -131,14 +131,6 @@ REGISTER_OP_KERNEL(
     ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_sub>,
     ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_sub>)
 
-REGISTER_OP_KERNEL(
-    elementwise_sub_onednn, MKLDNN, paddle::platform::CPUPlace,
-    ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_sub>,
-    ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
-                             dnnl::algorithm::binary_sub>,
-    ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_sub>,
-    ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_sub>)
-
 REGISTER_OP_KERNEL(elementwise_sub_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::EltwiseSubMKLDNNGradKernel<paddle::platform::bfloat16>,
                    ops::EltwiseSubMKLDNNGradKernel<float>)

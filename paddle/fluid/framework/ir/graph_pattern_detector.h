@@ -509,17 +509,6 @@ struct ElementwiseActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
-struct OneDNNOp : public PatternBase {
-  OneDNNOp(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "OneDNN_Operator") {}
-
-  PDNode* operator()(const std::vector<PDNode*>& operator_ins,
-                     const std::vector<PDNode*>& operator_outs,
-                     const std::string& operator_type);
-
-  PATTERN_DECL_NODE(op_to_replace);
-};
-
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:
@@ -975,22 +964,6 @@ struct Pool : public PatternBase {
 struct ElementwiseAdd : public PatternBase {
   ElementwiseAdd(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "elementwise_add") {}
-
-  PDNode* operator()(PDNode* x_var, PDNode* y_var);
-
-  PATTERN_DECL_NODE(elementwise_add_op);
-  PATTERN_DECL_NODE(elementwise_add_x);
-  PATTERN_DECL_NODE(elementwise_add_y);
-  PATTERN_DECL_NODE(elementwise_add_out);
-};
-
-// ElementwiseAddOneDNN used in residual connections.
-// y_var is used and convolution output.
-// The operator is removed, when residual
-// connection fusion is on.
-struct ElementwiseAddOneDNN : public PatternBase {
-  ElementwiseAddOneDNN(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "elementwise_add_onednn") {}
 
   PDNode* operator()(PDNode* x_var, PDNode* y_var);
 

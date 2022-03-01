@@ -35,23 +35,24 @@ class ElementwiseActivationMkldnnFusePassTest(InferencePassTest):
             data_B = fluid.data(
                 name="data_B", shape=[-1, 3, 100, 100], dtype="float32")
             elt_out = self.operand(data_A, data_B)
-            if self.act_beta is not None:
-                act_out = self.act(elt_out, self.act_alpha, self.act_beta)
-            elif self.act_alpha is not None:
-                act_out = self.act(elt_out, self.act_alpha)
-            else:
-                act_out = self.act(elt_out)
+            if self.act is not None:
+                if self.act_beta is not None:
+                    elt_out = self.act(elt_out, self.act_alpha, self.act_beta)
+                elif self.act_alpha is not None:
+                    elt_out = self.act(elt_out, self.act_alpha)
+                else:
+                    elt_out = self.act(elt_out)
 
         self.feeds = {
             "data_A": np.random.random((1, 3, 100, 100)).astype("float32"),
             "data_B": np.random.random((1, 3, 100, 100)).astype("float32")
         }
-        self.fetch_list = [act_out]
+        self.fetch_list = [elt_out]
         self.enable_mkldnn = True
 
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
-        self.act = fluid.layers.relu
+        self.act = None
 
     def test_check_output(self):
         use_gpu = False

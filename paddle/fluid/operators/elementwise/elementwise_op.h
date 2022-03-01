@@ -195,7 +195,7 @@ class ElementwiseOpInferVarType
 
 class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() final {
     AddInputX();
     AddInputY();
     AddOpOutput();

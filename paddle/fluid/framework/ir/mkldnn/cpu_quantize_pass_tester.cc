@@ -90,7 +90,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("Scale_x", 1.0f);
     op->SetAttr("Scale_y", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
-  } else if (type == "elementwise_add_onednn") {
+  } else if (type == "elementwise_add") {
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
@@ -167,7 +167,7 @@ void CheckScales(const OpDesc* op, float scale, float shift) {
               scale);
     scale_names.push_back("Scale_in");
     scale_names.push_back("Scale_out");
-  } else if (type == "matmul" || type == "elementwise_add_onednn") {
+  } else if (type == "matmul" || type == "elementwise_add") {
     scale_names.push_back("Scale_x");
     scale_names.push_back("Scale_y");
     scale_names.push_back("Scale_out");
@@ -556,8 +556,8 @@ ProgramDesc BuildProgramDescElementwiseAdd() {
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
-  SetOp(&prog, "elementwise_add_onednn", "ElementwiseAdd", {"b", "d"}, {"e"},
-        true, "int8");
+  SetOp(&prog, "elementwise_add", "ElementwiseAdd", {"b", "d"}, {"e"}, true,
+        "int8");
   SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
 
   return prog;
@@ -567,7 +567,7 @@ TEST(CpuQuantizePass, elementwise_add) {
   // 2 Quant + 2 IN + 1 DeQuant + 1 OUT
   int added_nodes = 6;
   std::unordered_map<std::string, int> expected_operators = {
-      {"elementwise_add_onednn", 1}, {"quantize", 2}, {"dequantize", 3}};
+      {"elementwise_add", 1}, {"quantize", 2}, {"dequantize", 3}};
   MainTest(BuildProgramDescElementwiseAdd(), variable_names_elementwise_add,
            expected_operators, added_nodes, SCALE * S8_MAX);
 }
@@ -575,7 +575,7 @@ TEST(CpuQuantizePass, elementwise_add) {
 TEST(CpuQuantizePass, elementwise_add_output_scale_missing) {
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"elementwise_add_onednn", 1}, {"quantize", 0}, {"dequantize", 2}};
+      {"elementwise_add", 1}, {"quantize", 0}, {"dequantize", 2}};
   MainTest(BuildProgramDescElementwiseAdd(), variable_names_elementwise_add,
            expected_operators, added_nodes, 1.f, 1.f, "e");
 }
@@ -583,7 +583,7 @@ TEST(CpuQuantizePass, elementwise_add_output_scale_missing) {
 TEST(CpuQuantizePass, elementwise_add_unsigned_and_signed_input) {
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"elementwise_add_onednn", 1}, {"quantize", 0}, {"dequantize", 2}};
+      {"elementwise_add", 1}, {"quantize", 0}, {"dequantize", 2}};
   MainTest(BuildProgramDescElementwiseAdd(), variable_names_elementwise_add,
            expected_operators, added_nodes, 1.f, 1.f, "", "b");
 }

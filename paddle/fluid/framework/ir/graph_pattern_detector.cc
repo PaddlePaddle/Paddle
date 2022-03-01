@@ -948,25 +948,6 @@ PDNode *patterns::ElementwiseActivation::operator()(
   return activation_out_var;
 }
 
-PDNode *patterns::OneDNNOp::operator()(
-    const std::vector<PDNode *> &operator_ins,
-    const std::vector<PDNode *> &operator_outs,
-    const std::string &operator_type) {
-  auto operator_to_replace =
-      pattern->NewNode(op_to_replace_repr())->assert_is_op(operator_type);
-
-  operator_to_replace->assert_more([](Node *node) {
-    auto is_explicitly_disabled = node->Op()->HasAttr("use_mkldnn") &&
-                                  node->Op()->GetAttrIfExists<bool>("use_mkldnn") == false;
-    return is_explicitly_disabled == false;
-  });
-
-  operator_to_replace->LinksFrom(operator_ins);
-  operator_to_replace->LinksTo(operator_outs);
-
-  return operator_to_replace;
-}
-
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators
@@ -1952,23 +1933,6 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
   auto out_var = pattern->NewNode(elementwise_add_out_repr())
                      ->AsOutput()
                      ->assert_is_op_output("elementwise_add", "Out");
-
-  elementwise_add_op->LinksFrom({x_var, y_var});
-  elementwise_add_op->LinksTo({out_var});
-
-  return out_var;
-}
-
-PDNode *patterns::ElementwiseAddOneDNN::operator()(PDNode *x_var,
-                                                   PDNode *y_var) {
-  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
-                                ->assert_is_op("elementwise_add_onednn");
-
-  x_var->AsInput()->assert_is_op_input("elementwise_add_onednn", "X");
-  y_var->AsInput()->assert_is_op_input("elementwise_add_onednn", "Y");
-  auto out_var = pattern->NewNode(elementwise_add_out_repr())
-                     ->AsOutput()
-                     ->assert_is_op_output("elementwise_add_onednn", "Out");
 
   elementwise_add_op->LinksFrom({x_var, y_var});
   elementwise_add_op->LinksTo({out_var});
