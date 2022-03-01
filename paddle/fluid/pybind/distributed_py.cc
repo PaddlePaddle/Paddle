@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -143,6 +144,19 @@ void BindDistributed(py::module *m) {
                     [](distributed::ProcessGroupStrategy &self, int nrings) {
                       self.nrings_ = nrings;
                     });
+
+  m->def("eager_assign_group_by_size",
+         [](py::handle py_tensors, std::vector<bool> is_sparse_gradient,
+            std::vector<size_t> group_size_limits,
+            std::vector<int64_t> tensor_indices) {
+           auto tensors = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
+           return distributed::Eager_AssignGroupBySize(
+               tensors, is_sparse_gradient, group_size_limits, tensor_indices);
+         },
+         py::arg("tensors"), py::arg("is_sparse_gradient"),
+         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
+         py::arg("tensor_indices") = std::vector<int64_t>{},
+         py::call_guard<py::gil_scoped_release>());
 }
 
 }  // end namespace pybind
