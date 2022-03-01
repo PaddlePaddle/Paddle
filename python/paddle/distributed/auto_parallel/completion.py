@@ -385,7 +385,7 @@ class Completer:
                     and node.var().name() == var_name:
                     return node
 
-        def _find_related_nodes(source_node):
+        def _find_nodes_related_to_cond(source_node):
             related_nodes = []
             visited = set()
             frontier = list()
@@ -404,14 +404,41 @@ class Completer:
                     continue
                 # TODO: need more restrictions
                 for node in cur.inputs:
-                    if (node.is_var() and node.var() is not None) \
-                        or (node.is_op() and node.op() is not None):
-                        # if node.is_var() and node.var() is not None:
-                        #     print("find var node", _node_id(cur), _node_id(node), node.node.original_desc_id(), node.var().name(),flush=True)
-                        # if node.is_op() and node.op() is not None:
-                        #     print("find var op", _node_id(cur), _node_id(node), node.node.original_desc_id(), node.op().type(), flush=True)
-                        frontier.append(node)
-                        related_nodes.append(node)
+                    # if node.is_var() and node.var() is not None:
+                    #     print("find var node", _node_id(cur), _node_id(node), node.node.original_desc_id(), node.var().name(), len(node.var().shape()), flush=True)
+                    # if node.is_op() and node.op() is not None:
+                    #     print("find var op", _node_id(cur), _node_id(node), node.node.original_desc_id(), node.op().type(), flush=True)
+                    if node.is_var() and node.var() is not None:
+                        # print("find var node", _node_id(cur), _node_id(node), node.node.original_desc_id(), node.var().name(), flush=True)
+                        if node.var().type() != core.VarDesc.VarType.READER \
+                            and len(node.var().shape()) == 1:
+                            frontier.append(node)
+                            related_nodes.append(node)
+                    if node.is_op() and node.op() is not None:
+                        flag = True
+                        if node.op().type() == "create_py_reader" \
+                            or node.op().type() == "create_double_buffer_reader" \
+                            or node.op().type() == "read":
+                            flag = False
+                        for tensor_node in node.inputs:
+                            if tensor_node.is_var() and tensor_node.var(
+                            ) is not None:
+                                # print("find input var node", _node_id(cur), _node_id(tensor_node), tensor_node.node.original_desc_id(), tensor_node.var().name(), flush=True)
+                                if tensor_node.var().type() == core.VarDesc.VarType.READER \
+                                    or len(tensor_node.var().shape()) != 1:
+                                    flag = False
+                                    break
+                        for tensor_node in node.outputs:
+                            if tensor_node.is_var() and tensor_node.var(
+                            ) is not None:
+                                # print("find output var node", _node_id(cur), _node_id(tensor_node), tensor_node.node.original_desc_id(), tensor_node.var().name(), flush=True)
+                                if tensor_node.var().type() == core.VarDesc.VarType.READER \
+                                    or len(tensor_node.var().shape()) != 1:
+                                    flag = False
+                                    break
+                        if flag:
+                            frontier.append(node)
+                            related_nodes.append(node)
                 visited.add(_node_id(cur))
             return related_nodes
 
@@ -449,8 +476,22 @@ class Completer:
                     cond_tensor_related_nodes.append(cond_tensor_node)
                     # print("first cond tensor node", _node_id(node), node.node.original_desc_id(), node.var().name())
                     break
+
+            # for node in cond_tensor_related_nodes:
+            #     if node.is_var() and node.var() is not None:
+            #         print("1-cond related var node", _node_id(node), node.node.original_desc_id(), node.var().name())
+            #     if node.is_op() and node.op() is not None:
+            #         print("1-cond related var op", _node_id(node), node.node.original_desc_id(), node.op().type())
+
             cond_tensor_related_nodes.extend(
-                _find_related_nodes(cond_tensor_node))
+                _find_nodes_related_to_cond(cond_tensor_node))
+
+            # for node in _find_nodes_related_to_cond(cond_tensor_node):
+            #     if node.is_var() and node.var() is not None:
+            #         print("2-cond related var node", _node_id(node), node.node.original_desc_id(), node.var().name())
+            #     if node.is_op() and node.op() is not None:
+            #         print("2-cond related var op", _node_id(node), node.node.original_desc_id(), node.op().type())
+
             # Step 2.2: Find related nodes of cond var in the subgraph of while_op
             cond_tensor_node = None
             for node in reversed(sub_graph_nodes):
@@ -458,10 +499,17 @@ class Completer:
                     and node.var().name() == cond_tensor_name \
                         and len(node.outputs) == 0:
                     cond_tensor_node = node
-                    # print("inner_conditional var", _node_id(cond_tensor_node))
+                    # print("cond var node in subgraph", _node_id(cond_tensor_node), cond_tensor_node.node.original_desc_id(), cond_tensor_node.var().name())
                     break
+
+            # for node in _find_nodes_related_to_cond(cond_tensor_node):
+            #     if node.is_var() and node.var() is not None:
+            #         print("3-cond related var node", _node_id(node), node.node.original_desc_id(), node.var().name())
+            #     if node.is_op() and node.op() is not None:
+            #         print("3-cond related var op", _node_id(node), node.node.original_desc_id(), node.op().type())
+
             cond_tensor_related_nodes.extend(
-                _find_related_nodes(cond_tensor_node))
+                _find_nodes_related_to_cond(cond_tensor_node))
             # Step 2.3: Add the StepScops output of while_op
             stepscopes_tensor_name = while_op_node.op().output("StepScopes")[0]
             stepscopes_tensor_node = None
@@ -473,9 +521,9 @@ class Completer:
             # Step 2.4: Set the process meshes of all nodes related to cond var to the process mesh of while op
             for node in cond_tensor_related_nodes:
                 # if node.is_var() and node.var() is not None:
-                #     print("cond var node", _node_id(node), node.node.original_desc_id(), node.var().name())
+                #     print("cond related var node", _node_id(node), node.node.original_desc_id(), node.var().name())
                 # if node.is_op() and node.op() is not None:
-                #     print("cond var op", _node_id(node), node.node.original_desc_id(), node.op().type())
+                #     print("cond related var op", _node_id(node), node.node.original_desc_id(), node.op().type())
                 tensor_dist_attr = self._dist_context.get_dist_attr_for_graph(
                     node)
                 tensor_dist_attr.process_mesh = merged_process_mesh
@@ -725,7 +773,6 @@ class Completer:
 
         # Initialize distributed attributes for all var and op node in serial_main_program
         self._dist_context.init_dist_attr_for_program()
-        # print("$$$$$$$$$$$$$$$-1")
         # print_program_with_dist_attr(serial_main_program, self._dist_context)
 
         # Initialize distributed attributes for all var and op node in graph

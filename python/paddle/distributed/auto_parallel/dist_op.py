@@ -76,7 +76,8 @@ class DistributedOperator:
             if tensor is None:
                 tensor_shape = []
             else:
-                if tensor.type == core.VarDesc.VarType.READER:
+                if tensor.type == core.VarDesc.VarType.READER \
+                    or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
                     tensor_shape = []
                 else:
                     tensor_shape = tensor.shape
@@ -86,7 +87,9 @@ class DistributedOperator:
                                                        tensor_dims_mapping)
         for tensor_name in self._serial_op.output_arg_names:
             tensor = self._serial_op.block._var_recursive(tensor_name)
-            if tensor.type == core.VarDesc.VarType.READER or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+            if tensor.type == core.VarDesc.VarType.READER \
+                or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+                or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
                 tensor_shape = []
             else:
                 tensor_shape = tensor.shape
@@ -103,24 +106,6 @@ class DistributedOperator:
             self._dist_attr.impl_idx = 0
         if self._dist_attr.is_recompute is None:
             self._dist_attr.is_recompute = False
-
-    def _reset_to_default_dist_attr(self):
-        for tensor_dist_attr in self.dist_attr.inputs_dist_attrs.values():
-            old_tensor_dims_mapping = tensor_dist_attr.dims_mapping
-            new_tensor_dims_mapping = [
-                -1 for _ in range(len(old_tensor_dims_mapping))
-            ]
-            tensor_dist_attr.dims_mapping = new_tensor_dims_mapping
-        for tensor_dist_attr in self.dist_attr.outputs_dist_attrs.values():
-            old_tensor_dims_mapping = tensor_dist_attr.dims_mapping
-            new_tensor_dims_mapping = [
-                -1 for _ in range(len(old_tensor_dims_mapping))
-            ]
-            tensor_dist_attr.dims_mapping = new_tensor_dims_mapping
-        self._dist_attr.op_type = self.serial_op.type
-        self._dist_attr.impl_type = "default"
-        self._dist_attr.impl_idx = 0
-        self._dist_attr.is_recompute = False
 
     def _filter_dist_attr(self, dist_attr):
         if dist_attr is None:
@@ -159,7 +144,11 @@ class DistributedOperator:
         for name in self.serial_op.input_arg_names:
             input_dist_attr = self.dist_attr.get_input_dist_attr(name)
             dims_mapping = input_dist_attr.dims_mapping
-            shape = self.get_serial_input(name).shape
+            if self.get_serial_input(
+                    name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+                shape = []
+            else:
+                shape = self.get_serial_input(name).shape
             if len(shape) != len(dims_mapping):
                 return False
             for i in range(len(dims_mapping)):
@@ -175,7 +164,11 @@ class DistributedOperator:
         for name in self.serial_op.output_arg_names:
             output_dist_attr = self.dist_attr.get_output_dist_attr(name)
             dims_mapping = output_dist_attr.dims_mapping
-            shape = self.get_serial_output(name).shape
+            if self.get_serial_output(name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY\
+                or self.get_serial_output(name).type == core.VarDesc.VarType.STEP_SCOPES:
+                shape = []
+            else:
+                shape = self.get_serial_output(name).shape
             if len(shape) != len(dims_mapping):
                 return False
             for i in range(len(dims_mapping)):

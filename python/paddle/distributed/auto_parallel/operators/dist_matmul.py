@@ -1666,8 +1666,8 @@ class DistributedMulImpl0(DistributedOperatorImpl):
                     ['float16', 'float32', 'float64'], 'linear')
         # attrs = {'trans_x': False, 'trans_y': False}
         attrs = {
-            "x_num_col_dims": src_op.desc.attrs("x_num_col_dims"),
-            "y_num_col_dims": src_op.desc.attrs("y_num_col_dims")
+            "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
+            "y_num_col_dims": src_op.desc.attr("y_num_col_dims")
         }
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
         mul_op = main_block.append_op(
@@ -1850,8 +1850,8 @@ class DistributedMulImpl1(DistributedOperatorImpl):
                     'linear')
         # attrs = {'trans_x': False, 'trans_y': False}
         attrs = {
-            "x_num_col_dims": src_op.desc.attrs("x_num_col_dims"),
-            "y_num_col_dims": src_op.desc.attrs("y_num_col_dims")
+            "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
+            "y_num_col_dims": src_op.desc.attr("y_num_col_dims")
         }
         inputs = {'X': X_var, 'Y': Weight_var}
 

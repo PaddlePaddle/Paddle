@@ -183,6 +183,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             else:
                 batch_dim_mappings.append(dims_mapping[1])
 
+        if not batch_dim_mappings:
+            return changed
+
         compatible_dim_mapping = compute_compatible_dim_mapping(
             batch_dim_mappings)
         assert compatible_dim_mapping is not None, "There is no compatible dim mapping."

@@ -512,6 +512,7 @@ class DistributedContext:
             serial_tensor = dist_tensor.serial_tensor
             dist_attr = dist_tensor.dist_attr
             if serial_tensor.type == core.VarDesc.VarType.READER \
+                or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
                 or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
                 tensor_shape = []
             else:
@@ -535,6 +536,7 @@ class DistributedContext:
                     tensor_shape = []
                 else:
                     if dist_op.get_serial_input(arg_name).type == core.VarDesc.VarType.READER \
+                        or dist_op.get_serial_input(arg_name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
                         or dist_op.serial_op.type == "create_py_reader":
                         tensor_shape = []
                     else:
@@ -549,6 +551,7 @@ class DistributedContext:
                         dims_mapping[i] = -1
             for arg_name in serial_op.output_arg_names:
                 if dist_op.get_serial_output(arg_name).type == core.VarDesc.VarType.READER \
+                    or dist_op.get_serial_output(arg_name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
                     or dist_op.get_serial_output(arg_name).type == core.VarDesc.VarType.STEP_SCOPES:
                     tensor_shape = []
                 else:
