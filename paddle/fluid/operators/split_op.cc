@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/split_op.h"
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace operators {
 using framework::Tensor;
@@ -22,52 +25,6 @@ using framework::Tensor;
 class SplitOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of SplitOp should not be null."));
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
-                      platform::errors::InvalidArgument(
-                          "Outputs(Out) of SplitOp should not be empty."));
-    auto in_dims = ctx->GetInputDim("X");
-    auto outs_names = ctx->Outputs("Out");
-    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
-    size_t num = static_cast<size_t>(ctx->Attrs().Get<int>("num"));
-    std::vector<int> sections = static_cast<std::vector<int>>(
-        ctx->Attrs().Get<std::vector<int>>("sections"));
-    const size_t outs_number = outs_names.size();
-
-    if (sections.size() > 0) {
-      PADDLE_ENFORCE_EQ(
-          sections.size(), outs_number,
-          platform::errors::InvalidArgument("tensor split sections size "
-                                            "should be equal to output size."));
-    }
-
-    if (ctx->HasInput("AxisTensor")) {
-      auto out_dims = phi::make_ddim(std::vector<int>(in_dims.size(), -1));
-      std::vector<framework::DDim> outs_dims(outs_number, out_dims);
-      ctx->SetOutputsDim("Out", outs_dims);
-      for (size_t i = 0; i < outs_number; ++i) {
-        ctx->ShareLoD("X", "Out", 0, i);
-      }
-      return;
-    }
-
-    bool each_section_is_known =
-        (sections.size() > 0 && !ctx->HasInputs("SectionsTensorList"));
-
-    auto outs_dims = UpdateOutsDims(ctx->IsRuntime(), each_section_is_known,
-                                    in_dims, num, sections, axis, outs_number);
-    ctx->SetOutputsDim("Out", outs_dims);
-    if (axis != 0) {
-      // Only pass LoD when not spliting along the first dim.
-      for (size_t i = 0; i < outs_number; ++i) {
-        ctx->ShareLoD("X", "Out", 0, i);
-      }
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -168,6 +125,10 @@ Example:
 
 namespace ops = paddle::operators;
 
+DELCARE_INFER_SHAPE_FUNCTOR(split, SplitInferShapeFunctor,
+                            PT_INFER_META(phi::SplitInferMeta));
+
 REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
-                  ops::SplitGradMaker<paddle::imperative::OpBase>);
+                  ops::SplitGradMaker<paddle::imperative::OpBase>,
+                  SplitInferShapeFunctor);
