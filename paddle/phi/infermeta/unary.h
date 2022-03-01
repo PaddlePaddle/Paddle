@@ -107,7 +107,7 @@ void TransferLayoutInferMeta(const MetaTensor& x,
 void SplitInferMeta(const MetaTensor& x_meta,
                     const ScalarArray& num_or_sections,
                     const Scalar& axis,
-                    std::vector<MetaTensor>* out,
+                    std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
 
 void UnbindInferMeta(const MetaTensor& x,

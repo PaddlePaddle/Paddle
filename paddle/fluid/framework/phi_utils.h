@@ -62,9 +62,6 @@ class KernelArgsNameMaker {
 
 void InitDefaultKernelSignatureMap();
 
-void SetAllocationForOutputTenosr(phi::TensorBase* tensor,
-                                  const platform::Place& place);
-
 // TODO(Wilber): support others device context.
 template <typename T>
 struct ConvertToPhiContext {

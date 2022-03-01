@@ -136,26 +136,5 @@ phi::ScalarArray MakePhiScalarArrayFromVarList(
   return result;
 }
 
-void ResetTensorDtypeAndLayoutByArgDef(phi::TensorBase* dst,
-                                       const phi::TensorArgDef& arg_def) {
-  VLOG(5) << "ResetTensor by TensorArgDef.";
-  if (phi::DenseTensor::classof(dst)) {
-    auto* dense_t = static_cast<phi::DenseTensor*>(dst);
-    auto* meta = phi::DenseTensorUtils::GetMutableMeta(dense_t);
-    meta->dtype = arg_def.dtype;
-    meta->layout = arg_def.layout;
-  } else if (phi::SelectedRows::classof(dst)) {
-    auto* selected_rows = static_cast<phi::SelectedRows*>(dst);
-    auto* meta =
-        phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value());
-    meta->dtype = arg_def.dtype;
-    meta->layout = arg_def.layout;
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Unsupported tensor type is received when reseting tensor dtype and "
-        "layout by argument definition."));
-  }
-}
-
 }  // namespace experimental
 }  // namespace paddle
