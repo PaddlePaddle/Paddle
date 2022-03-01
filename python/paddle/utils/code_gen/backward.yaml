@@ -35,6 +35,12 @@
     param : [x, y]
   kernel :
     func : add_grad
+
+# - backward_api : split_grad
+#   forward : split (Tensor x, ScalarArray num_or_sections, Scalar axis) -> Tensor[](out)
+#   args : (Tensor[] out_grad, Scalar axis)
+#   output : Tensor(x_grad)    
+#   invoke : concat( out_grad, axis)
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
 
 # - backward_api : matmul_triple_grad

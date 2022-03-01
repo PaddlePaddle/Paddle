@@ -30,7 +30,7 @@ final_state_name_mapping = {
         "y": "Y",
         "out": "Out",
     },
-    "matmul_v2": {
+    "elementwise_add": {
         "final_op_name": "add",
         "x": "X",
         "y": "Y",

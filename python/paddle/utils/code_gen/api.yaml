@@ -5,6 +5,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : add
+  backward : add_grad
 
 - api : cast
   args : (Tensor x, DataType out_dtype)

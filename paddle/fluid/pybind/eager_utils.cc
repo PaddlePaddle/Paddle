@@ -58,6 +58,8 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::npy_api::NPY_INT64_;
     case phi::DataType::FLOAT16:
       return pybind11::detail::NPY_FLOAT16_;
+    case phi::DataType::BFLOAT16:
+      return pybind11::detail::NPY_UINT16_;
     case phi::DataType::FLOAT32:
       return pybind11::detail::npy_api::NPY_FLOAT_;
     case phi::DataType::FLOAT64:
