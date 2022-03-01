@@ -359,6 +359,8 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
 
     int embedding_size = inputs[0]->numel() / inputs[0]->dims()[0];
     int batch_size = -1;
+    std::vector<paddle::framework::MixVector<size_t> *> mix_lods_v(slot_size);
+
     for (size_t i = 0; i < slot_size; ++i) {
       const auto *input = inputs[i];
 
@@ -394,8 +396,8 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
       }
       output_data[i] =
           reinterpret_cast<T *>(output->mutable_data<T>(ctx.GetPlace()));
-      paddle::framework::MixVector<size_t> lods_v{&lods};
-      lods_data[i] = lods_v.CUDAData(ctx.GetPlace());
+      mix_lods_v[i] = new paddle::framework::MixVector<size_t>(&lods);
+      lods_data[i] = mix_lods_v[i]->CUDAData(ctx.GetPlace());
       seqpool_output_data[i] =
           reinterpret_cast<T *>(seqpool_outputs[i].mutable_data<T>(
               {batch_size, embedding_size}, ctx.GetPlace()));
@@ -404,6 +406,10 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
     FusedSeqpoolCVM(ctx, input_data, output_data, seqpool_output_data,
                     lods_data, batch_size, slot_size, embedding_size,
                     padding_value, use_cvm, cvm_offset);
+
+    for (int i = 0; i < slot_size; i++) {
+      delete mix_lods_v[i];
+    }
   }
 };
 
@@ -427,6 +433,8 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
 
     int embedding_size = in_grads[0]->numel() / in_grads[0]->dims()[0];
     int batch_size = -1;
+    std::vector<paddle::framework::MixVector<size_t> *> mix_lods_v(slot_size);
+
     for (size_t i = 0; i < slot_size; ++i) {
       auto *in_grad = in_grads[i];
 
@@ -459,13 +467,17 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
 
       in_grads_data[i] =
           reinterpret_cast<T *>(in_grad->mutable_data<T>(ctx.GetPlace()));
-      paddle::framework::MixVector<size_t> lods_v{&lods};
-      lods_data[i] = lods_v.CUDAData(ctx.GetPlace());
+      mix_lods_v[i] = new paddle::framework::MixVector<size_t>(&lods);
+      lods_data[i] = mix_lods_v[i]->CUDAData(ctx.GetPlace());
       cvm_data[i] = reinterpret_cast<const T *>(cvm->data<T>());
     }
     FusedSeqpoolCVMGrad(ctx, out_grads_data, in_grads_data, cvm_data, lods_data,
                         batch_size, slot_size, embedding_size, use_cvm,
                         cvm_offset);
+
+    for (int i = 0; i < slot_size; i++) {
+      delete mix_lods_v[i];
+    }
   }
 };
 
