@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/atan2_grad_kernel_impl.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+namespace phi {
 
-PD_REGISTER_KERNEL(atan2_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::Atan2GradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+KernelSignature WhereGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("where_grad",
+                         {"Condition", "X", "Y", GradVarName("Out")},
+                         {},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(where_grad, phi::WhereGradOpArgumentMapping);
