@@ -2253,7 +2253,7 @@ class TestSquare(TestActivation):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestSquare(TestActivation):
+class TestSquareBF16(OpTest):
     def setUp(self):
         self.op_type = "square"
         self.init_dtype()
@@ -2276,7 +2276,7 @@ class TestSquare(TestActivation):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.05)
 
 
 class TestPow(TestActivation):
@@ -2543,7 +2543,7 @@ class TestSoftplusBF16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.05)
 
 
 class TestSoftplusAPI(unittest.TestCase):
