@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
@@ -61,6 +61,7 @@ class InferShapeContext {
   virtual ~InferShapeContext() = default;
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
+  virtual bool HasAttr(const std::string &name) const = 0;
 
   virtual std::vector<proto::VarType::Type> GetInputsVarType(
       const std::string &name) const = 0;

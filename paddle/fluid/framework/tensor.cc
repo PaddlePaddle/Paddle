@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/pten/api/lib/utils/storage.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 

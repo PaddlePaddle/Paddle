@@ -909,12 +909,32 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
 
 class Jacobian(object):
     r"""
-    Object that represents the Jacobian matrix of a muli-input multi-output 
-    function.
+    Computes the Jacobian matrix of function `func`, which may take as input
+    single or multiple tensor typed arguments and output a single tensor or
+    multiple tensors. 
+    
+    In case `func` is multi-input and multi-output, i.e., 
+    
+    func: Callable[[Tensor, ...], [Tensor, ...]]
 
-    The Jacobian values are lazily evaluated if accessed through indices.
-    In contrast, slicing access would trigger evaluating the full matrix
-    if it's not already computed.
+    `func` is treated as a vector valued function with all its inputs flattened
+    into a single one dimensional tensor, or a two dimensional tensor with the
+    first dimension retained as the batching dimension. The same rule applies to
+    the function outputs.
+
+    Once the Jacobian J is constructed, there are four ways to retrieve the 
+    partial derivatives.
+
+    - J[:], retrieving the full matrix.
+    
+    - J[:, j], retrieving the partial derivatives w.r.t. the j'th input 
+    variable.
+
+    - J[i, :], retrieving the partial derivatives w.r.t. the i'th output 
+    variable.
+
+    - J[i, j], retrieving the partial derivatives w.r.t. the i'th output 
+    variable and the j'th input variable. 
 
     Examples:
         .. code-block:: python
@@ -984,7 +1004,10 @@ class Jacobian(object):
         return x.reshape(to)
 
     def flatten_all(self, xs):
-        return paddle.concat([self.flatten(x) for x in xs], axis=-1)
+        if isinstance(xs, (list, tuple)):
+            return paddle.concat([self.flatten(x) for x in xs], axis=-1)
+        else:
+            return self.flatten(xs)
 
     def shape(self):
         return (self.ydim, self.xdim)
@@ -995,23 +1018,23 @@ class Jacobian(object):
         else:
             i, j = tup, None
 
-        if isinstance(i, slice):
-            slicing = True
-        else:
-            slicing = False
+        full = isinstance(i, slice)
 
-        if slicing:
+        if full:
             if 'full' not in self.jacobian:
                 rows = [
                     self.flatten_all(gradients(self.y[..., i], self.xs))
                     for i in range(self.ydim)
                 ]
-                self.jacobian['full'] = paddle.stack(rows)
-            return self.jacobian['full'][i]
+                self.jacobian['full'] = full_jacobian = paddle.stack(rows)
+            else:
+                full_jacobian = self.jacobian['full']
+
+            return full_jacobian[i] if j is None else full_jacobian[i][..., j]
 
         assert 0 <= i < self.ydim, f"Jacobian index i={i} is not valid."
-        assert (j is None) or (
-            0 <= j < self.xdim), f"Jacobian index j={j} is not valid."
+        assert j is None or isinstance(j, slice) or (0 <= j < self.xdim), (
+            f"Jacobian index j={j} is not valid.")
         if 'full' in self.jacobian:
             JJ = self.jacobian['full']
         else:
@@ -1024,3 +1047,17 @@ class Jacobian(object):
             return JJ[i]
         else:
             return JJ[i][..., j]
+
+
+class Hessian(object):
+    def __init__(self, func, inputs, batch=False):
+        f_x = lambda xs: Jacobian(func, xs, batch=batch)[0]
+        self.symbolic = Jacobian(f_x, inputs, batch=batch)
+        self.xs = inputs
+        self.batch = batch
+
+    def __getitem__(self, tup):
+        return self.symbolic[tup]
+
+    def shape(self):
+        return self.symbolic.shape()

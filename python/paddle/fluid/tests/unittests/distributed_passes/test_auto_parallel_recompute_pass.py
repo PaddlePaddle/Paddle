@@ -40,7 +40,7 @@ class TestRecomputePass(AutoPallelPassTestBase):
     def apply_passes(self):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.recompute = True
-        dist_strategy.recompute_configs = {"checkpoints": ["tmp3", "tmp6"]}
+        dist_strategy.recompute_configs = {"checkpoints": ["tmp_3", "tmp_6"]}
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
 

@@ -50,7 +50,7 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    int in_dtype = ctx.Attr<int>("in_dtype");
+    int in_dtype = ctx.Attr<int>("out_dtype");
     if (in_dtype >= 0) {
       return framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(in_dtype),
@@ -106,25 +106,6 @@ REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
                   ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::ReduceSumGradNoNeedBufferVarInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, bool,
-                                  ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, double,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16, ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<float>, ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<double>,
-
-                      ops::SumFunctor>);
 
 template <typename T>
 using CPUReduceSumGradKernel =

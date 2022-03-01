@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,18 +35,18 @@ class DeviceTraceEventNode {
   // destructor
   ~DeviceTraceEventNode() {}
   // getter
-  std::string name() const { return device_event_.name; }
-  TracerEventType type() const { return device_event_.type; }
-  uint64_t start_ns() const { return device_event_.start_ns; }
-  uint64_t end_ns() const { return device_event_.end_ns; }
-  uint64_t device_id() const { return device_event_.device_id; }
-  uint64_t context_id() const { return device_event_.context_id; }
-  uint64_t stream_id() const { return device_event_.stream_id; }
-  uint64_t duration() const {
+  std::string Name() const { return device_event_.name; }
+  TracerEventType Type() const { return device_event_.type; }
+  uint64_t StartNs() const { return device_event_.start_ns; }
+  uint64_t EndNs() const { return device_event_.end_ns; }
+  uint64_t DeviceId() const { return device_event_.device_id; }
+  uint64_t ContextId() const { return device_event_.context_id; }
+  uint64_t StreamId() const { return device_event_.stream_id; }
+  uint64_t Duration() const {
     return device_event_.end_ns - device_event_.start_ns;
   }
-  uint32_t correlation_id() const { return device_event_.correlation_id; }
-  KernelEventInfo kernel_info() const {
+  uint32_t CorrelationId() const { return device_event_.correlation_id; }
+  KernelEventInfo KernelInfo() const {
     PADDLE_ENFORCE_EQ(
         device_event_.type, TracerEventType::Kernel,
         platform::errors::Unavailable(
@@ -54,7 +54,7 @@ class DeviceTraceEventNode {
             "TracerEventType in node must be TracerEventType::Kernel."));
     return device_event_.kernel_info;
   }
-  MemcpyEventInfo memcpy_info() const {
+  MemcpyEventInfo MemcpyInfo() const {
     PADDLE_ENFORCE_EQ(
         device_event_.type, TracerEventType::Memcpy,
         platform::errors::Unavailable(
@@ -62,7 +62,7 @@ class DeviceTraceEventNode {
             "TracerEventType in node must be TracerEventType::Memcpy."));
     return device_event_.memcpy_info;
   }
-  MemsetEventInfo memset_info() const {
+  MemsetEventInfo MemsetInfo() const {
     PADDLE_ENFORCE_EQ(
         device_event_.type, TracerEventType::Memset,
         platform::errors::Unavailable(
@@ -87,17 +87,17 @@ class CudaRuntimeTraceEventNode {
   // destructor
   ~CudaRuntimeTraceEventNode();
   // getter
-  std::string name() const { return runtime_event_.name; }
-  TracerEventType type() const { return runtime_event_.type; }
-  uint64_t start_ns() const { return runtime_event_.start_ns; }
-  uint64_t end_ns() const { return runtime_event_.end_ns; }
-  uint64_t process_id() const { return runtime_event_.process_id; }
-  uint64_t thread_id() const { return runtime_event_.thread_id; }
-  uint64_t duration() const {
+  std::string Name() const { return runtime_event_.name; }
+  TracerEventType Type() const { return runtime_event_.type; }
+  uint64_t StartNs() const { return runtime_event_.start_ns; }
+  uint64_t EndNs() const { return runtime_event_.end_ns; }
+  uint64_t ProcessId() const { return runtime_event_.process_id; }
+  uint64_t ThreadId() const { return runtime_event_.thread_id; }
+  uint64_t Duration() const {
     return runtime_event_.end_ns - runtime_event_.start_ns;
   }
-  uint32_t correlation_id() const { return runtime_event_.correlation_id; }
-  uint32_t callback_id() const { return runtime_event_.callback_id; }
+  uint32_t CorrelationId() const { return runtime_event_.correlation_id; }
+  uint32_t CallbackId() const { return runtime_event_.callback_id; }
   // member function
   void AddDeviceTraceEventNode(DeviceTraceEventNode* node) {
     device_node_ptrs_.push_back(node);
@@ -124,13 +124,13 @@ class HostTraceEventNode {
   ~HostTraceEventNode();
 
   // getter
-  std::string name() const { return host_event_.name; }
-  TracerEventType type() const { return host_event_.type; }
-  uint64_t start_ns() const { return host_event_.start_ns; }
-  uint64_t end_ns() const { return host_event_.end_ns; }
-  uint64_t process_id() const { return host_event_.process_id; }
-  uint64_t thread_id() const { return host_event_.thread_id; }
-  uint64_t duration() const {
+  std::string Name() const { return host_event_.name; }
+  TracerEventType Type() const { return host_event_.type; }
+  uint64_t StartNs() const { return host_event_.start_ns; }
+  uint64_t EndNs() const { return host_event_.end_ns; }
+  uint64_t ProcessId() const { return host_event_.process_id; }
+  uint64_t ThreadId() const { return host_event_.thread_id; }
+  uint64_t Duration() const {
     return host_event_.end_ns - host_event_.start_ns;
   }
 

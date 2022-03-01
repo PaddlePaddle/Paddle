@@ -108,7 +108,7 @@ static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(
         is_aligned(y, kAlignment)) {                                          \
       size_t thread = std::min<size_t>(512, dev_ctx.GetMaxThreadsPerBlock()); \
       size_t block = (n / __vec_size + thread - 1) / thread;                  \
-      block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize().x);     \
+      block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu fwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
       FP16FastGeluFwdCUDAKernel<                                              \
@@ -144,7 +144,7 @@ static bool TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(
         is_aligned(x_g, kAlignment)) {                                        \
       size_t thread = std::min<size_t>(512, dev_ctx.GetMaxThreadsPerBlock()); \
       size_t block = (n / __vec_size + thread - 1) / thread;                  \
-      block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize().x);     \
+      block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu bwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
       FP16FastGeluBwdCUDAKernel<                                              \

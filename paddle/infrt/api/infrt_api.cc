@@ -42,7 +42,6 @@ using namespace infrt::host_context;  // NOLINT
 using namespace infrt::tensor;        // NOLINT
 using namespace infrt::tensor;        // NOLINT
 using infrt::dt::TensorMapType;       // NOLINT
-using infrt::dt::TensorType;          // NOLINT
 
 namespace infrt {
 
@@ -145,7 +144,7 @@ class PredictExecutor : public MlirToRuntimeTranslator {
 
     // process results
     auto& last_op = predict_func.front().back();
-    if (last_op.getName().getStringRef() == "infrt.return") {
+    if (last_op.getName().getStringRef() == "Infrt.return") {
       for (size_t i = 0; i < last_op.getNumOperands(); ++i) {
         auto* value = AddValue(mlir::Value(last_op.getOperand(i)));
         results_.push_back(ValueRef(value));

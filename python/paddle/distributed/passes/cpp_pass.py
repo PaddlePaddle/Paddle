@@ -26,3 +26,70 @@ class FuseElementwiseAddActPass(CPPPassWrapper):
 
     def _type(self):
         return PassType.FUSION_OPT
+
+
+@register_pass("fuse_bn_act")
+class FuseBatchNormActPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseBatchNormActPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_bn_act_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_bn_add_act")
+class FuseBatchNormAddActPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseBatchNormAddActPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_bn_add_act_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_relu_depthwise_conv")
+class FuseReluDepthwiseConvPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseReluDepthwiseConvPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_relu_depthwise_conv_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_optimizer")
+class FuseOptimizerPass(CPPPassWrapper):
+    def __init__(self):
+        super(FuseOptimizerPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return [
+            "fuse_adam_op_pass", "fuse_sgd_op_pass", "fuse_momentum_op_pass"
+        ]
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("inplace_addto_op")
+class InplaceAddtoOpPass(CPPPassWrapper):
+    def __init__(self):
+        super(InplaceAddtoOpPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "inplace_addto_op_pass"
+
+    def _type(self):
+        return PassType.CALC_OPT

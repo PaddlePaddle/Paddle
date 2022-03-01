@@ -972,7 +972,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
     def __next__(self):
         try:
             if _in_eager_mode():
-                return core.eager.read_next_eager_tensor_list(
+                return core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0])
             else:
                 return self._reader.read_next_var_list()

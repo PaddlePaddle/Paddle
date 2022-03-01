@@ -1287,7 +1287,7 @@ def softmax_with_cross_entropy(logits,
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
 
     outputs = {'Softmax': softmax, 'Loss': loss}
-    if core.is_compiled_with_npu():
+    if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
         backprop = helper.create_variable_for_type_inference(dtype=logits.dtype)
         outputs['Backprop'] = backprop
     helper.append_op(

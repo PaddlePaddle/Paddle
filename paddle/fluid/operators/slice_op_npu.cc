@@ -181,7 +181,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
     auto decrease_size = decrease_axis.size();
     if (decrease_size > 0) {
       if (decrease_size == static_cast<size_t>(in_dims.size())) {
-        out_dims = framework::make_ddim(std::vector<int>(decrease_size, 1));
+        out_dims = phi::make_ddim(std::vector<int>(decrease_size, 1));
       } else {
         std::vector<int> origin_out_shape(out_dims.size() + decrease_size, -1);
         for (size_t i = 0; i < decrease_size; ++i) {
@@ -194,7 +194,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
             ++index;
           }
         }
-        out_dims = framework::make_ddim(origin_out_shape);
+        out_dims = phi::make_ddim(origin_out_shape);
       }
       tmp_dout.Resize(out_dims);
     }

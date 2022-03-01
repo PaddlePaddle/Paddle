@@ -67,5 +67,45 @@ TEST(KernelImpl, pair) {
   ASSERT_EQ(results[1]->get<float>(), 3.f);
 }
 
+void TestFunc(const std::string& arg_0,
+              const std::string& arg_1,
+              const std::string& arg_2,
+              Attribute<std::string> attr_0,
+              Result<std::string> res_0,
+              Result<std::string> res_1) {
+  CHECK_EQ(arg_0, "arg_0");
+  CHECK_EQ(arg_1, "arg_1");
+  CHECK_EQ(arg_2, "arg_2");
+  CHECK_EQ(attr_0.get(), "attr_0");
+
+  // res_0.Set(Argument<std::string>(ValueRef(new Value())));
+  // res_1.Set(Argument<std::string>(ValueRef(new Value())));
+}
+
+TEST(KernelRegistry, basic) {
+  KernelFrameBuilder kernel_frame;
+
+  Value arg_0(std::string{"arg_0"});
+  Value arg_1(std::string{"arg_1"});
+  Value arg_2(std::string{"arg_2"});
+  Value attr_0(std::string{"attr_0"});
+
+  kernel_frame.AddArgument(&arg_0);
+  kernel_frame.AddArgument(&arg_1);
+  kernel_frame.AddArgument(&arg_2);
+  kernel_frame.AddAttribute(&attr_0);
+  kernel_frame.SetNumResults(2);
+
+  CHECK_EQ(kernel_frame.GetNumArgs(), 3);
+  CHECK_EQ(kernel_frame.GetNumResults(), 2);
+  CHECK_EQ(kernel_frame.GetNumAttributes(), 1);
+  CHECK_EQ(kernel_frame.GetNumElements(), 6UL);
+
+  CHECK_EQ(kernel_frame.GetArgAt<std::string>(2), "arg_2");
+  CHECK_EQ(kernel_frame.GetAttributeAt(0)->get<std::string>(), "attr_0");
+
+  KernelImpl<decltype(&TestFunc), TestFunc>::Invoke(&kernel_frame);
+}
+
 }  // namespace host_context
 }  // namespace infrt

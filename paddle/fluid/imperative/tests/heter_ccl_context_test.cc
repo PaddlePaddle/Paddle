@@ -50,7 +50,7 @@ void AllReduceByStream(int local_rank, int device_id) {
   // input and output data
   framework::Variable* src_dev_var(new framework::Variable());
   auto* src_dev_tensor = src_dev_var->GetMutable<framework::LoDTensor>();
-  src_dev_tensor->mutable_data<float>(framework::make_ddim({data_size}), place);
+  src_dev_tensor->mutable_data<float>(phi::make_ddim({data_size}), place);
 
   std::vector<float> src_vec;
   for (int i = 0; i < data_size; i++) {
@@ -61,7 +61,7 @@ void AllReduceByStream(int local_rank, int device_id) {
 
   framework::Variable* dst_dev_var(new framework::Variable());
   auto* dst_dev_tensor = dst_dev_var->GetMutable<framework::LoDTensor>();
-  dst_dev_tensor->mutable_data<float>(framework::make_ddim({data_size}), place);
+  dst_dev_tensor->mutable_data<float>(phi::make_ddim({data_size}), place);
 
   // call allreduce
   hpc.AllReduceByStream(*src_dev_var, dst_dev_var, 0, false);

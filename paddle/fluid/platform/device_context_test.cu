@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 TEST(Device, Init) {
   using paddle::platform::DeviceContext;
@@ -26,6 +27,20 @@ TEST(Device, Init) {
   int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
+    device_context->SetAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(CUDAPlace(i), device_context->stream())
+            .get());
+    device_context->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
+    device_context->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(CUDAPlace(i))
+            .get());
+    device_context->PartialInitWithAllocator();
+
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
     ASSERT_NE(nullptr, gpu_device);
     delete device_context;
@@ -39,6 +54,19 @@ TEST(Device, CUDADeviceContext) {
   int count = paddle::platform::GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     CUDADeviceContext* device_context = new CUDADeviceContext(CUDAPlace(i));
+    device_context->SetAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(CUDAPlace(i), device_context->stream())
+            .get());
+    device_context->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
+    device_context->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(CUDAPlace(i))
+            .get());
+    device_context->PartialInitWithAllocator();
     Eigen::GpuDevice* gpu_device = device_context->eigen_device();
     ASSERT_NE(nullptr, gpu_device);
 #ifdef PADDLE_WITH_HIP

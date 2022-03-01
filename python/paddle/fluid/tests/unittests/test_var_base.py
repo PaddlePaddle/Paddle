@@ -1094,6 +1094,20 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
         paddle.enable_static()
 
+    def test_tensor_str_bf16(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
+        a = paddle.cast(a, dtype=core.VarDesc.VarType.BF16)
+        paddle.set_printoptions(precision=4)
+        a_str = str(a)
+
+        expected = '''Tensor(shape=[2, 2], dtype=bfloat16, place=Place(cpu), stop_gradient=True,
+       [[1.5000, 1.    ],
+        [0.    , 0.    ]])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
     def test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.rand([1])

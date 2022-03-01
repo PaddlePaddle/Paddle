@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/label_smooth_op.h"
-
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -50,7 +49,7 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("X");
     if (ctx->HasInput("PriorDist")) {
       auto noise_dims = ctx->GetInputDim("PriorDist");
-      auto noise_numel = paddle::framework::product(noise_dims);
+      auto noise_numel = phi::product(noise_dims);
       PADDLE_ENFORCE_EQ(
           in_dims[in_dims.size() - 1], noise_numel,
           platform::errors::InvalidArgument(
@@ -152,11 +151,3 @@ REGISTER_OPERATOR(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
                   ops::LabelSmoothGradMaker<paddle::framework::OpDesc>,
                   ops::LabelSmoothGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);
-REGISTER_OP_CPU_KERNEL(
-    label_smooth,
-    ops::LabelSmoothKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LabelSmoothKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    label_smooth_grad,
-    ops::LabelSmoothGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LabelSmoothGradKernel<paddle::platform::CPUDeviceContext, double>);

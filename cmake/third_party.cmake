@@ -299,8 +299,10 @@ if(WITH_PSLIB)
 
         include(external/leveldb)
         list(APPEND third_party_deps extern_leveldb)
-        include(external/brpc)
-        list(APPEND third_party_deps extern_brpc)
+        if(NOT WITH_HETERPS)
+            include(external/brpc)
+            list(APPEND third_party_deps extern_brpc)
+        endif()
     endif()
 endif(WITH_PSLIB)
 
