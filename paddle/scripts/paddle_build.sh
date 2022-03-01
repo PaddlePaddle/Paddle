@@ -776,7 +776,9 @@ set +x
             tmpfile=$tmp_dir/$tmpfile_rand
             ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
         fi
-
+        ut_total_endTime_s=`date +%s`
+        echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
+        
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
