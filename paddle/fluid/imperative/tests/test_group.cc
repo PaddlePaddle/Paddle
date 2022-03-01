@@ -96,7 +96,7 @@ void GroupConcatSplit(Place place, size_t size) {
   {  // concat
     auto* tensor = group.dense_contents_.GetMutable<framework::LoDTensor>();
     tensor->Resize(phi::make_ddim({group.all_length_}))
-        .mutable_data(place, framework::TransToPtenDataType(group.dtype_));
+        .mutable_data(place, framework::TransToPhiDataType(group.dtype_));
     group.ConcatTensors(*dev_ctx);
 
     group.DivNRanks(*dev_ctx, 1);

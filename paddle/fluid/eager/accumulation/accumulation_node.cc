@@ -76,13 +76,13 @@ operator()(
 }
 
 void GradNodeAccumulation::RegisterReduceHook(
-    const std::function<void(void)>& hook) {
-  reduce_hooks_.emplace_back(hook);
+    std::shared_ptr<TensorVoidHook>&& hook) {
+  reduce_hooks_.emplace_back(std::move(hook));
 }
 
 void GradNodeAccumulation::ApplyReduceHooks() {
   for (auto& hook : reduce_hooks_) {
-    hook();
+    (*hook)();
   }
 }
 }  // namespace egr

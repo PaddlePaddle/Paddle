@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/softmax_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -251,10 +250,3 @@ REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
                   ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
                   ops::SoftmaxInplaceInferer);
 REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    softmax_grad,
-    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);

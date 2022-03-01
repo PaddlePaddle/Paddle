@@ -74,6 +74,7 @@ endif()
 
 
 add_subdirectory(api)
+add_subdirectory(backends)
 add_subdirectory(common)
 add_subdirectory(dialect)
 add_subdirectory(host_context)
@@ -96,9 +97,11 @@ set(infrt_mlir_incs
         pd_extra_ops_inc
         rewrite_inc
         trt_ops_inc
+        pd_lower_to_trt_inc
         )
+
 if (INFRT_WITH_PHI)
-    set(phi_libs pten)
+    set(phi_libs phi)
     set(infrt_mlir_incs ${infrt_mlir_incs}
         MLIRinfrt_phi_tensorIncGen
         MLIRinfrt_phi_baseIncGen
