@@ -51,6 +51,7 @@ tools/__pycache__
 paddle/infrt/dialect/pd_ops.td
 paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td
 paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td
+tools/infrt/kernels.json
 paddle/infrt/dialect/pd_ops_info.h
 .lit_test_times.txt
 paddle/infrt/tests/dialect/Output
