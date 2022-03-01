@@ -43,7 +43,7 @@ function match_cu_file_directory {
   do
     [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
   done
-  for sub_dir in "" "/gpu" "/gpudnn"
+  for sub_dir in "" "/gpu" "/gpudnn" "/sparse/gpu"
   do
     [ "${cu_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 0
   done
