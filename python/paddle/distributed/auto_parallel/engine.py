@@ -258,7 +258,7 @@ class Engine:
                     "train_" + name: val
                     for name, val in logs.items()
                 }
-                self._logger.info(logs)
+                self._logger.info(train_logs)
 
     def _train_step(self, data):
         logs = {}

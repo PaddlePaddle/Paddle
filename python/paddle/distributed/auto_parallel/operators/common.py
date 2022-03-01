@@ -17,7 +17,9 @@ from ..dist_attribute import OperatorDistributedAttribute
 
 _g_distributed_operator_impl_containers = {}
 
-_g_elementwise_ops = ["elementwise_add", "gelu", "dropout", "cast"]
+_g_elementwise_ops = [
+    "elementwise_add", "gelu", "dropout", "cast", "gather", "concat"
+]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 
@@ -171,31 +173,37 @@ def find_best_compatible_distributed_operator_impl(dist_op, fwd=True):
         if dist_op_impl_container:
             compatible_impls.extend(
                 dist_op_impl_container.get_input_compatible_impls(dist_op))
+        # print("fwd find 1", len(compatible_impls), compatible_impls)
         # Second, find impls in the elementwise container
         if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
             compatible_impls.extend(
                 dist_op_eltwise_impl_container.get_input_compatible_impls(
                     dist_op))
+        # print("fwd find 2", len(compatible_impls), compatible_impls)
         # Third, find impls in the default container
         if dist_op_default_impl_container:
             compatible_impls.extend(
                 dist_op_default_impl_container.get_input_compatible_impls(
                     dist_op))
+        # print("fwd find 3", len(compatible_impls), compatible_impls)
     else:
         # First, find impls in the corresponding container
         if dist_op_impl_container:
             compatible_impls.extend(
                 dist_op_impl_container.get_output_compatible_impls(dist_op))
+        # print("bwd find 0", len(compatible_impls), compatible_impls)
         # Second, find impls in the elementwise container
         if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
             compatible_impls.extend(
                 dist_op_eltwise_impl_container.get_output_compatible_impls(
                     dist_op))
+        # print("bwd find 1", len(compatible_impls), compatible_impls)
         # Third, find impls in the default container
         if dist_op_default_impl_container:
             compatible_impls.extend(
                 dist_op_default_impl_container.get_output_compatible_impls(
                     dist_op))
+        # print("bwd find 2", len(compatible_impls), compatible_impls)
     if compatible_impls:
         # For now, just return the first compatible impl
         best_compatible_impl = compatible_impls[0]
