@@ -23,13 +23,15 @@ namespace framework {
 namespace ir {
 
 void FuseGemmEpiloguePass::ApplyImpl(ir::Graph *graph) const {
-  graph = FuseLinearActFwd(graph, {"relu", "gelu"}, false, false);
-  graph = FuseLinearActFwd(graph, {"relu"}, true, true);
-  graph = FuseLinearActFwd(graph, {"gelu"}, true, false);
+  EpiloguePassActivationCache cache;
+
+  graph = FuseLinearActFwd(graph, {"relu", "gelu"}, false, false, &cache);
+  graph = FuseLinearActFwd(graph, {"relu"}, true, true, &cache);
+  graph = FuseLinearActFwd(graph, {"gelu"}, true, false, &cache);
   graph = FuseLinearFwd(graph, false);
   graph = FuseLinearFwd(graph, true);
-  graph = FuseLinearActBwd(graph, {"relu_grad"}, true);
-  graph = FuseLinearActBwd(graph, {"gelu_grad"}, false);
+  graph = FuseLinearActBwd(graph, {"relu_grad"}, true, &cache);
+  graph = FuseLinearActBwd(graph, {"gelu_grad"}, false, &cache);
   graph = FuseLinearBwd(graph, false);
   graph = FuseLinearBwd(graph, true);
 }
@@ -108,7 +110,8 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearFwd(ir::Graph *graph,
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types,
-    bool is_training, bool is_act_grad_x_from_act) const {
+    bool is_training, bool is_act_grad_x_from_act,
+    EpiloguePassActivationCache *cache) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 
@@ -178,7 +181,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActFwd(
       VarDesc reserve_space(patterns::PDNodeName(scope_name, "ReserveSpace"));
       auto *reserve_space_node = g->CreateVarNode(&reserve_space);
 
-      EpiloguePassActivationCache::Instance().InsertFusedActivation(
+      cache->InsertFusedActivation(
           GetReserveSpaceCacheKey(act_out->Var()->Name(), g->GetBlockId()),
           reserve_space_node);
 
@@ -324,7 +327,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
 
 ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     ir::Graph *graph, const std::unordered_set<std::string> &act_grad_types,
-    bool is_act_grad_x_from_act) const {
+    bool is_act_grad_x_from_act, EpiloguePassActivationCache *cache) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("gemm_epilogue");
@@ -373,11 +376,10 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
 
     auto key =
         GetReserveSpaceCacheKey(matmul_grad_x->Var()->Name(), g->GetBlockId());
-    if (!EpiloguePassActivationCache::Instance().HasFusedActivation(key)) {
+    if (!cache->HasFusedActivation(key)) {
       return;
     }
-    auto *reserve_space_node =
-        EpiloguePassActivationCache::Instance().GetFusedActivationSpace(key);
+    auto *reserve_space_node = cache->GetFusedActivationSpace(key);
 
     std::vector<int64_t> matmul_grad_x_shape = matmul_grad_x->Var()->GetShape();
     std::vector<int64_t> matmul_grad_w_shape = matmul_grad_w->Var()->GetShape();

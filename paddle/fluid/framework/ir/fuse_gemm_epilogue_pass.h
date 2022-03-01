@@ -35,15 +35,12 @@ class Node;
 
 class EpiloguePassActivationCache {
  public:
-  static EpiloguePassActivationCache &Instance() {
-    static EpiloguePassActivationCache instance;
-    return instance;
-  }
+  EpiloguePassActivationCache() {}
 
   EpiloguePassActivationCache(const EpiloguePassActivationCache &) = delete;
   void operator=(const EpiloguePassActivationCache &) = delete;
 
-  bool HasFusedActivation(const std::string &key) {
+  bool HasFusedActivation(const std::string &key) const {
     return fused_activation_space_map_.count(key);
   }
 
@@ -67,7 +64,6 @@ class EpiloguePassActivationCache {
   }
 
  private:
-  EpiloguePassActivationCache() {}
   std::unordered_map<std::string, ir::Node *> fused_activation_space_map_;
   std::mutex mtx;
 };
@@ -82,12 +78,12 @@ class FuseGemmEpiloguePass : public FusePassBase {
   ir::Graph *FuseLinearFwd(ir::Graph *graph, bool is_training) const;
   ir::Graph *FuseLinearActFwd(ir::Graph *graph,
                               const std::unordered_set<std::string> &act_types,
-                              bool is_training,
-                              bool is_act_grad_x_from_act) const;
+                              bool is_training, bool is_act_grad_x_from_act,
+                              EpiloguePassActivationCache *cache) const;
   ir::Graph *FuseLinearBwd(ir::Graph *graph, bool without_x_gradient) const;
   ir::Graph *FuseLinearActBwd(
       ir::Graph *graph, const std::unordered_set<std::string> &act_grad_types,
-      bool is_act_grad_x_from_act) const;
+      bool is_act_grad_x_from_act, EpiloguePassActivationCache *cache) const;
 
  private:
   bool IsGemmFromLinear_(const std::vector<int64_t> &x_shape,
