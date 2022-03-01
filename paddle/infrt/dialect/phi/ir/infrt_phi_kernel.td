@@ -1,10 +1,10 @@
 #ifndef PHI_KERNEL
 #define PHI_KERNEL
 
-include "paddle/infrt/dialect/phi/infrt_phi_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/phi/ir/infrt_phi_base.td"
 
 class DenseTensorType<string target, string layout, string precision> :
     Type<CPred<"$_self == ::infrt::DenseTensorType::get($_self.getContext(),::infrt::TargetType::"#target#", ::infrt::LayoutType::"#layout#", ::infrt::PrecisionType::"#precision#")">, "!infrt.densetensor type", "::infrt::DenseTensorType">;

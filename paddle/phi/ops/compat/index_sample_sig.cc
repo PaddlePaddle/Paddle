@@ -12,25 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/phi/infrt_phi_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include <mlir/IR/BuiltinTypes.h>
-
-#include "paddle/infrt/dialect/phi/infrt_phi_tensorDialect.cpp.inc"
-#include "paddle/infrt/dialect/phi/infrt_phi_tensorTypes.cpp.inc"
-
-namespace infrt {
 namespace phi {
 
-void PHIDenseTensorDialect::initialize() {
-#define GET_OP_LIST
-  addOperations<
-#include "paddle/infrt/dialect/phi/infrt_phi_tensor.cpp.inc"
-      >();
+KernelSignature IndexSampleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("index_sample_grad",
+                         {GradVarName("Out"), "X", "Index"},
+                         {},
+                         {GradVarName("X")});
 }
 
 }  // namespace phi
-}  // namespace infrt
 
-#define GET_OP_CLASSES
-#include "paddle/infrt/dialect/phi/infrt_phi_tensor.cpp.inc"  // NOLINT
+PD_REGISTER_ARG_MAPPING_FN(index_sample_grad,
+                           phi::IndexSampleGradOpArgumentMapping);
