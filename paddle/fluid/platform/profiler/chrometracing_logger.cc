@@ -183,7 +183,7 @@ void ChromeTracingLogger::LogRuntimeTraceEventNode(
       std::string(
           R"JSON(
   { 
-    "name": "launch", "id": %d, "pid": %lld, "tid": %lld,
+    "name": "launch", "id": %d, "pid": %lld, "tid": "%lld(C++)",
     "ts": %lld, 
     "ph": "s", "cat": "async"
   },
@@ -249,7 +249,7 @@ void ChromeTracingLogger::HandleTypeKernel(
   float blocks_per_sm = 0.0;
   float warps_per_sm = 0.0;
   float occupancy = 0.0;
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUPTI)
   constexpr int threads_per_warp = 32;
   const gpuDeviceProp& device_property =
       GetDeviceProperties(device_node.DeviceId());
@@ -446,12 +446,12 @@ void ChromeTracingLogger::LogMetaInfo(
   for (const auto& kv : extra_info) {
     if (count > 1) {
       output_file_stream_ << string_format(std::string(R"JSON(
-     "%s": %s,
+     "%s": "%s",
    )JSON"),
                                            kv.first.c_str(), kv.second.c_str());
     } else {
       output_file_stream_ << string_format(std::string(R"JSON(
-     "%s": %s
+     "%s": "%s"
    )JSON"),
                                            kv.first.c_str(), kv.second.c_str());
     }

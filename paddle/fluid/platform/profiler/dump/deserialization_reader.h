@@ -14,7 +14,6 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/platform/profiler/dump/nodetree.pb.h"
-#include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 
 namespace paddle {

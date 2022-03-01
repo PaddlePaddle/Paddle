@@ -69,7 +69,8 @@ struct HostPythonNode {
 class ProfilerResult {
  public:
   ProfilerResult() : tree_(nullptr) {}
-  explicit ProfilerResult(std::unique_ptr<NodeTrees> tree, const ExtraInfo& extra_info);
+  explicit ProfilerResult(std::unique_ptr<NodeTrees> tree,
+                          const ExtraInfo& extra_info);
   ~ProfilerResult();
   std::map<uint64_t, HostPythonNode*> GetData() {
     return thread_event_trees_map_;
@@ -80,10 +81,8 @@ class ProfilerResult {
 
   void Save(const std::string& file_name,
             const std::string format = std::string("json"));
-  
-  std::unique_ptr<NodeTrees>& GetNodeTrees(){
-    return tree_;
-  }
+
+  std::unique_ptr<NodeTrees>& GetNodeTrees() { return tree_; }
 
  private:
   std::map<uint64_t, HostPythonNode*> thread_event_trees_map_;
@@ -91,6 +90,8 @@ class ProfilerResult {
   ExtraInfo extra_info_;
   HostPythonNode* CopyTree(HostTraceEventNode* root);
 };
+
+std::unique_ptr<ProfilerResult> LoadProfilerResult(std::string filename);
 
 }  // namespace platform
 }  // namespace paddle
