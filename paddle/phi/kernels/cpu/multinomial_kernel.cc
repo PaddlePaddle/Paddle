@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/multinomial_functor.h"
 
 namespace phi {
 
@@ -32,12 +33,13 @@ void MultinomialKernel(const Context& dev_ctx,
   const int64_t num_categories = in_dims[in_rank - 1];
   const int64_t num_distributions = in_rank > 1 ? in_dims[in_rank - 2] : 1;
 
-  MultinomialFunctor<T>(out_data,
-                        in_data,
-                        num_samples,
-                        replacement,
-                        num_categories,
-                        num_distributions);
+  funcs::MultinomialFunctor<T>(dev_ctx,
+                               out_data,
+                               in_data,
+                               num_samples,
+                               replacement,
+                               num_categories,
+                               num_distributions);
 }
 
 }  // namespace phi

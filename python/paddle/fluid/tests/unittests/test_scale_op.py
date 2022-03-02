@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -151,6 +151,23 @@ class TestScaleFp16Op(TestScaleOp):
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place, ["X"], "Out", max_relative_error=0.05)
+
+
+class TestScaleBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "scale"
+        self.dtype = np.uint16
+        self.attrs = {'scale': -2.3}
+        x = np.random.random((10, 10)).astype(np.float32)
+        out = x * np.float32(self.attrs['scale'])
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
