@@ -2419,8 +2419,8 @@ def tensordot(x, y, axes=2, name=None):
     axes_y = []
     if np.issubdtype(type(axes), np.integer):
         assert axes >= 0, (
-            "The 'axes' in " + op_type + 
-             f" should not be negative, but received axes={axes}.")
+            "The 'axes' in " + op_type +
+            f" should not be negative, but received axes={axes}.")
         axes_x = range(x.ndim - axes, x.ndim)
         axes_y = range(axes)
     else:
