@@ -96,7 +96,25 @@ class ProcessGroup {
       std::vector<Tensor>& /* tensors */,
       const BroadcastOptions& = BroadcastOptions()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support allreduce", GetBackendName()));
+        "ProcessGroup%s does not support broadcast", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Barrier(
+      const BarrierOptions& = BarrierOptions()) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support barrier", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<Tensor>& tensors /* tensors */, int dst_rank) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<Tensor>& tensors /* tensors */, int src_rank) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support receive", GetBackendName()));
   }
 
  protected:
