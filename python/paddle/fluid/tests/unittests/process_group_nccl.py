@@ -132,6 +132,36 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             print("test broadcast api ok")
 
+            # test barrier
+            # rank 0
+            if pg.rank() == 0:
+                task = pg.barrier()
+                task.wait()
+            # rank 1
+            else:
+                task = pg.barrier()
+                task.wait()
+
+            print("test barrier api ok\n")
+
+            # test send/recv
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            if pg.rank() == 0:
+                task = pg.send(tensor_x, dst=1)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            # rank 1
+            else:
+                y = np.random.random(self.shape).astype(self.dtype)
+                tensor_y = paddle.to_tensor(y)
+                task = pg.recv(tensor_y, src=0)
+                task.wait()
+                paddle.device.cuda.synchronize()
+                assert np.array_equal(tensor_x, tensor_y)
+                print("test send/recv api ok\n")
+
 
 class TestProcessGroupFp16(TestProcessGroupFp32):
     def setUp(self):

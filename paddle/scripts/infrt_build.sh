@@ -102,9 +102,11 @@ function infrt_gen_and_build() {
 
 function create_fake_models() {
     cd ${PADDLE_ROOT}/build
+    cd python/dist/
     # create multi_fc model, this will generate "multi_fc_model"
     python3 -m pip uninstall -y paddlepaddle
-    python3 -m pip install paddlepaddle
+    python3 -m pip install  *whl
+    cd ${PADDLE_ROOT}/build
     python3 ${PADDLE_ROOT}/tools/infrt/fake_models/multi_fc.py
 }
 

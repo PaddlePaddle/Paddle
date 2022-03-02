@@ -27,7 +27,7 @@ namespace experimental {
 #endif
 
 /**
- * Now there is no module to call pten's API. When compiling, the function
+ * Now there is no module to call phi's API. When compiling, the function
  * implementation will be optimized. Therefore, the symbol will be exposed
  * manually for the time being.
  *
@@ -41,7 +41,7 @@ namespace experimental {
 
 #define PD_DECLARE_API(name)                        \
   extern PADDLE_API int RegisterSymbolsFor##name(); \
-  UNUSED static int use_pten_api_##name = RegisterSymbolsFor##name()
+  UNUSED static int use_phi_api_##name = RegisterSymbolsFor##name()
 
 }  // namespace experimental
 }  // namespace paddle
