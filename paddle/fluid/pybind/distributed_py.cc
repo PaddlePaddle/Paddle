@@ -35,12 +35,25 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #endif
 
+#if defined(PADDLE_WITH_GLOO)
+#include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
+#include "paddle/fluid/distributed/store/tcp_store.h"
+#endif
+
 namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
 
 using Tensor = paddle::experimental::Tensor;
+
+#if defined(PADDLE_WITH_GLOO)
+using ProcessGroupGloo = paddle::distributed::ProcessGroupGloo;
+using GlooStore = paddle::distributed::ProcessGroupGloo::GlooStore;
+using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
+#endif
+
+static constexpr std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";
 
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
@@ -144,6 +157,45 @@ void BindDistributed(py::module *m) {
                     [](distributed::ProcessGroupStrategy &self, int nrings) {
                       self.nrings_ = nrings;
                     });
+
+#if defined(PADDLE_WITH_GLOO)
+  py::class_<GlooOptions>(*m, "GlooOptions")
+      .def(py::init<>())
+      .def_readwrite("_device", &GlooOptions::device)
+      .def_static("create", &GlooOptions::create);
+
+  py::class_<GlooStore, std::shared_ptr<GlooStore>>(*m, "GlooStore")
+      .def(py::init(
+               [](const std::shared_ptr<paddle::distributed::TCPStore> &store) {
+                 return std::make_shared<GlooStore>(store);
+               }),
+           py::call_guard<py::gil_scoped_release>());
+
+  py::class_<ProcessGroupGloo, std::shared_ptr<ProcessGroupGloo>>(
+      *m, "ProcessGroupGloo", ProcessGroup)
+      .def(py::init<const std::shared_ptr<GlooStore> &, int, int,
+                    std::shared_ptr<GlooOptions> &>(),
+           py::call_guard<py::gil_scoped_release>())
+      .def(py::init([](const std::shared_ptr<GlooStore> &store, int rank,
+                       int world_size) {
+             auto opts = GlooOptions::create();
+             char *ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
+             if (ifname && strlen(ifname) > 1) {
+               opts->device = ProcessGroupGloo::createDeviceForInterface(
+                   std::string(ifname));
+             } else {
+               opts->device = ProcessGroupGloo::createDefaultDevice();
+             }
+             return std::make_shared<ProcessGroupGloo>(store, rank, world_size,
+                                                       opts);
+           }),
+           py::arg("store"), py::arg("rank"),
+           py::arg("world_size"),  // py::arg("timeout") =
+                                   // kProcessGroupDefaultTimeout,
+           py::call_guard<py::gil_scoped_release>())
+      .def_static("create_default_device",
+                  &ProcessGroupGloo::createDefaultDevice);
+#endif
 
   m->def("eager_assign_group_by_size",
          [](py::handle py_tensors, std::vector<bool> is_sparse_gradient,
