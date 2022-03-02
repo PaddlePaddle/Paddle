@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
@@ -49,6 +50,12 @@ void UnchangedInferMetaCheckAxis(const MetaTensor& x,
           axis,
           rank));
   out->share_meta(x);
+}
+
+void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype::ToReal(x.dtype()));
+  out->set_layout(x.layout());
 }
 
 void FlattenInferMeta(const MetaTensor& x,
@@ -375,7 +382,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   ReshapeInferMeta(x, shape, out, config);
 }
 
-/*  Why not use ReduceInferMeta directly?
+/*  Why not use ReduceInferMetaBase directly?
     Because we need make InferMetaFunction's args follow the design of api.yaml
 */
 void SumInferMeta(const MetaTensor& x,
@@ -383,22 +390,53 @@ void SumInferMeta(const MetaTensor& x,
                   DataType dtype,
                   bool keep_dim,
                   MetaTensor* out) {
-  ReduceInferMetaBase(x, axis, keep_dim, dtype, out);
+  bool reduce_all = false;
+  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, dtype, out);
 }
 
 void ReduceInferMetaBase(const MetaTensor& x,
                          const std::vector<int64_t>& axis,
                          bool keep_dim,
+                         bool reduce_all,
                          DataType dtype,
                          MetaTensor* out) {
-  bool reduce_all = true;
-  std::set<int64_t> dims_set(axis.begin(), axis.end());
+  auto x_rank = x.dims().size();
+
+  std::vector<int64_t> formated_axis = axis;
+  for (size_t i = 0; i < axis.size(); ++i) {
+    PADDLE_ENFORCE_LT(axis[i],
+                      x_rank,
+                      errors::InvalidArgument(
+                          "The reduce dim index %d should be in the "
+                          "range [-dimension(X), dimension(X)] "
+                          "which dimesion = %d. But received dim index = %d.",
+                          i,
+                          x_rank,
+                          axis[i]));
+    PADDLE_ENFORCE_GE(axis[i],
+                      -x_rank,
+                      errors::InvalidArgument(
+                          "The reduce dim index %d should be in the "
+                          "range [-dimension(X), dimension(X)] "
+                          "which dimesion = %d. But received dim index = %d.",
+                          i,
+                          x_rank,
+                          axis[i]));
+
+    if (axis[i] < 0) {
+      formated_axis[i] = axis[i] + x_rank;
+    }
+  }
+
+  bool full_dim = true;
+  std::set<int64_t> dims_set(formated_axis.begin(), formated_axis.end());
   for (int64_t i = 0; i < x.dims().size(); ++i) {
     if (dims_set.find(i) == dims_set.end()) {
-      reduce_all = false;
+      full_dim = false;
       break;
     }
   }
+  reduce_all = reduce_all || full_dim;
 
   std::vector<int64_t> out_dim_vector;
   if (keep_dim) {
@@ -441,11 +479,20 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void ReduceInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keep_dim,
-                     MetaTensor* out) {
-  ReduceInferMetaBase(x, axis, keep_dim, DataType::UNDEFINED, out);
+void MeanRawInferMeta(const MetaTensor& x,
+                      const std::vector<int64_t>& axis,
+                      bool keep_dim,
+                      bool reduce_all,
+                      MetaTensor* out) {
+  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
+}
+
+void MeanInferMeta(const MetaTensor& x,
+                   const std::vector<int64_t>& axis,
+                   bool keep_dim,
+                   MetaTensor* out) {
+  bool reduce_all = false;
+  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
 }
 
 void TransferLayoutInferMeta(const MetaTensor& x,
