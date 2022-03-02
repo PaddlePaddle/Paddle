@@ -15,32 +15,36 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
-template <typename DeviceContext, typename T, typename IndexT>
+template <typename Context, typename T, typename IndexT>
 class SegmentPoolFunctor {
  public:
   /* mean pool has summed_ids output */
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  const framework::Tensor& segments, framework::Tensor* output,
-                  framework::Tensor* summed_ids = nullptr,
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const DenseTensor& segments,
+                  DenseTensor* output,
+                  DenseTensor* summed_ids = nullptr,
                   const std::string pooltype = "SUM");
 };
 
-template <typename DeviceContext, typename T, typename IndexT>
+template <typename Context, typename T, typename IndexT>
 class SegmentPoolGradFunctor {
  public:
   /* mean pool has summed_ids output */
-  void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  const framework::Tensor& output,
-                  const framework::Tensor& out_grad,
-                  const framework::Tensor& segments, framework::Tensor* in_grad,
-                  const framework::Tensor* summed_ids = nullptr,
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& out_grad,
+                  const DenseTensor& segments,
+                  DenseTensor* in_grad,
+                  const DenseTensor* summed_ids = nullptr,
                   const std::string pooltype = "SUM");
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

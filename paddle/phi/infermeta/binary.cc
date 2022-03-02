@@ -348,4 +348,23 @@ void BCELossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void SegmentPoolInferMeta(const MetaTensor& x,
+                          const MetaTensor& segment_ids,
+                          const std::string& pooltype,
+                          MetaTensor* out,
+                          MetaTensor* summed_ids,
+                          MetaConfig config) {
+  auto dims = x.dims();
+  dims[0] = -1;
+  out->set_dims(dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+
+  if (pooltype == "MEAN") {
+    summed_ids->set_dims({-1, 1});
+    summed_ids->set_dtype(x.dtype());
+    summed_ids->set_layout(x.layout());
+  }
+}
+
 }  // namespace phi
