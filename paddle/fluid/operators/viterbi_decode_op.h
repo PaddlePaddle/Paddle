@@ -151,12 +151,12 @@ struct GetInputIndex<false> {
                   const std::vector<int>& output_strides, int output_idx,
                   int* index_array, int* lhs_idx, int* rhs_idx) {
     int out_dims_size = output_strides.size();
-    *lhs_idx =
-        phi::GetElementwiseIndex(lhs_dims.data(), out_dims_size, index_array);
-    *rhs_idx =
-        phi::GetElementwiseIndex(rhs_dims.data(), out_dims_size, index_array);
-    phi::UpdateElementwiseIndexArray(output_dims.data(), out_dims_size,
-                                     index_array);
+    *lhs_idx = phi::funcs::GetElementwiseIndex(lhs_dims.data(), out_dims_size,
+                                               index_array);
+    *rhs_idx = phi::funcs::GetElementwiseIndex(rhs_dims.data(), out_dims_size,
+                                               index_array);
+    phi::funcs::UpdateElementwiseIndexArray(output_dims.data(), out_dims_size,
+                                            index_array);
   }
 };
 
