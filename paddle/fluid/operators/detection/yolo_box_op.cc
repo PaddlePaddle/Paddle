@@ -103,7 +103,7 @@ class YoloBoxOp : public framework::OperatorWithKernel {
                           class_num));
 
     int box_num;
-    if (dim_x[2] > 0 && dim_x[3] > 0 || ctx->IsRuntime()) {
+    if ((dim_x[2] > 0 && dim_x[3] > 0) || ctx->IsRuntime()) {
       box_num = dim_x[2] * dim_x[3] * anchor_num;
     } else {
       box_num = -1;
