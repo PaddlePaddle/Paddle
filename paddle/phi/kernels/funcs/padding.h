@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -27,7 +27,7 @@ template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = paddle::framework::EigenTensor<T, D, MajorType, IndexType>;
+using EigenTensor = EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T, size_t D>
 void PadFunction(const DeviceContext& context,

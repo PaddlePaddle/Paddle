@@ -1266,7 +1266,7 @@ function card_test() {
     elif [ "${WITH_ASCEND_CL}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
-        CUDA_DEVICE_COUNT=4
+        CUDA_DEVICE_COUNT=$(rocm-smi -i | grep GPU | wc -l)
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
     fi
@@ -2592,22 +2592,6 @@ function reuse_so_cache() {
     fi
 }
 
-function find_temporary_files() {
-    set +x
-    jsonData=`curl \
-            -H "Authorization: token ${GITHUB_API_TOKEN}"\
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/files`
-    
-    result=`echo ${jsonData}|python ${PADDLE_ROOT}/tools/check_file_suffix.py`
-    
-    if [ ${#result} -gt 0 ]
-    then
-	echo ${result}
-	exit 65
-    fi
-}
-
 function trt_convert_test() {
     set +e
     cd ${PADDLE_ROOT}
@@ -2638,10 +2622,19 @@ function build_pr_and_develop() {
         rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
-    git checkout -b develop_base_pr upstream/$BRANCH
-    cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-    generate_api_spec "$1" "DEV"
-    mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+
+    git fetch upstream develop
+    dev_commit=`git log -1|head -1|awk '{print $2}'`
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
+    if [ "$url_return" == '200' ];then
+        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
+    else
+        git checkout -b develop_base_pr upstream/$BRANCH
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        generate_api_spec "$1" "DEV"
+        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+    fi
 }
 
 function build_develop() {
@@ -2669,7 +2662,6 @@ function main() {
         set +e
         check_style_info=$(check_style)
         check_style_code=$?
-        find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
@@ -2689,7 +2681,6 @@ function main() {
         ;;
       build_and_check_cpu)
         set +e
-        find_temporary_files
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
