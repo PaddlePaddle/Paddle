@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <cooperative_groups.h>
+#include <thrust/copy.h>
+#include <thrust/device_vector.h>
 #include <cstring>
 #include <random>
 #include <string>

@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA)
-#include <cooperative_groups.h>
-#include <thrust/copy.h>
-#include <thrust/device_vector.h>
 #include <cstring>
 #include <random>
 #include <string>
@@ -54,6 +50,8 @@ __global__ void filter_copy_fuse_kernel(
     size_t* map_lods_data, size_t* out_lods_data, size_t* out_idx_data,
     const T* x1_data, int x1_embed_size, int x1_lods_filled, int x2_lods_filled,
     float* loss_weight_data, float fill_value) {
+#if defined(PADDLE_WITH_CUDA)
+
   // N is instance num
   // one threads for ins_per_thread instances
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -635,4 +633,3 @@ REGISTER_OP_CUDA_KERNEL(filter_by_instag_grad,
                         ops::FilterByInstagGradGPUKernel<double>,
                         ops::FilterByInstagGradGPUKernel<int32_t>,
                         ops::FilterByInstagGradGPUKernel<int64_t>);
-#endif
