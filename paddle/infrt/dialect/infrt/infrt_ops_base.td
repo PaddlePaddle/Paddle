@@ -40,6 +40,12 @@ def DenseTensor : Infrt_Type<"DenseTensor"> {
   );
 }
 
+// Type Constrait for concrete DenseTensor type.
+class DenseTensor<string target, string precision, string layout> :
+    Type<CPred<"$_self == ::infrt::DenseTensorType::get($_self.getContext(), ::infrt::TargetType::"#target#",::infrt::PrecisionType::"#precision#",::infrt::LayoutType::"#layout#")">, 
+    "!infrt.DenseTensor<"#target#","#precision#","#layout#">", 
+    "::infrt::DenseTensorType">;
+
 // Base class for infrt dialect attributes.
 class Infrt_Attr<string name, list<Trait> traits = [],
                    string baseCppClass = "::mlir::Attribute">

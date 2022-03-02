@@ -58,7 +58,7 @@ Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking) {
 
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(
-      *dev_ctx, *dense_x, phi::TransToPtenPlace(backend), blocking, kernel_out);
+      *dev_ctx, *dense_x, phi::TransToPhiPlace(backend), blocking, kernel_out);
 
   return out;
 }
@@ -94,12 +94,16 @@ std::vector<Tensor> split_impl(const Tensor& x,
   std::vector<Tensor> out;
   auto dense_outs = SetKernelOutput(out_number, kernel_backend, &out);
   std::vector<phi::MetaTensor> meta_outs;
+  meta_outs.reserve(out_number);
+  std::vector<phi::MetaTensor*> meta_out_ptrs;
+  meta_out_ptrs.reserve(out_number);
   for (size_t i = 0; i < out_number; ++i) {
     meta_outs.push_back(dense_outs[i]);
+    meta_out_ptrs.push_back(&meta_outs.back());
   }
 
   phi::SplitInferMeta(
-      MakeMetaTensor(*dense_x), num_or_sections, axis, &meta_outs);
+      MakeMetaTensor(*dense_x), num_or_sections, axis, meta_out_ptrs);
 
   using kernel_signature = void (*)(const platform::DeviceContext&,
                                     const phi::DenseTensor&,

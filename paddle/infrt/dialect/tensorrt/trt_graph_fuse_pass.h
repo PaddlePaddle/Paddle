@@ -14,6 +14,8 @@
 
 #pragma once
 #include <mlir/Pass/Pass.h>
+#include "paddle/infrt/dialect/infrt_base.h"
+#include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
 namespace trt {
@@ -26,35 +28,38 @@ namespace trt {
  *
  * func @main() -> tensor<?xf32> {
  *  %a = "pd.feed"()...
- *  %c = "pd.graph"(%a) {
+ *  %c = "trt.create_engine"(%a) {
  *     %m = "pd.conv2d"(%a)...
- *     "pd.return" %m
+ *     "Infrt.return" %m
  *  } ...
- *  %d = "pd.graph"(%c) {
+ *  %d = "trt.create_engine"(%c) {
  *      %m = "pd.conv3d"(%c)...
- *      "pd.return" %m
+ *      "Infrt.return" %m
  *  } ...
- *  %f = "pd.graph"(%a) {
+ *  %f = "trt.create_engine"(%a) {
  *      %m = "pd.conv2d"(%a)...
- *      "pd.return" %m
+ *      "Infrt.return" %m
  *  } ...
  *  "pd.fetch" %d, %f
  *
  * destination func:
  * func @main() -> tensor<?xf32> {
  *  %a = "pd.feed"()...
- *  %d, %f = "pd.graph"(%a) {
+ *  %d, %f = "trt.create_engine"(%a) {
  *     %m = "pd.conv2d"(%a)...
  *     %n = "pd.conv3d"(%m)...
  *     %s = "pd.conv2d"(%a)...
- *     "pd.return" %n, %s
+ *     "Infrt.return" %n, %s
  *  } ...
  *  "pd.fetch" %d, %f
  * }
  */
-class trtGraphFusePass
-    : public mlir::PassWrapper<trtGraphFusePass, mlir::FunctionPass> {
+class TRTGraphFusePass
+    : public mlir::PassWrapper<TRTGraphFusePass, mlir::FunctionPass> {
  public:
+  void getDependentDialects(mlir::DialectRegistry &registry) const override {
+    registry.insert<TensorRTDialect, ::infrt::dialect::INFRTDialect>();
+  }
   ::llvm::StringRef getName() const override { return "trtGraphFusePass"; }
   void runOnFunction() override;
 };
