@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,7 @@ import math
 import warnings
 
 import numpy as np
+import paddle
 from paddle import _C_ops
 
 from ..fluid import core
@@ -123,7 +124,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: A tensor with prepended dimensions shape.
-        
+
         Examples:
             .. code-block:: python
 
@@ -153,14 +154,22 @@ class Categorical(Distribution):
         logits_shape = list(self.logits.shape)
         if len(logits_shape) > 1:
             sample_shape = shape + logits_shape[:-1]
-            logits = nn.reshape(self.logits,
-                                [np.prod(logits_shape[:-1]), logits_shape[-1]])
+            logits = paddle.reshape(
+                self.logits, [np.prod(logits_shape[:-1]), logits_shape[-1]])
         else:
             sample_shape = shape
             logits = self.logits
 
-        sample_index = multinomial(logits, num_samples, True)
-        return nn.reshape(sample_index, sample_shape, name=name)
+        sample_index = multinomial(
+            self._logits_to_probs(logits), num_samples, True)
+
+        # multinomial sample shape is (logits.shape[:-1], num_samples), need to
+        # tanspose to (num_samples, logits.shape[:-1])
+        permute = list(range(sample_index.dim()))
+        permute.insert(0, permute.pop(-1))
+        sample_index = sample_index.transpose(permute)
+
+        return paddle.reshape(sample_index, sample_shape, name=name)
 
     def kl_divergence(self, other):
         """The KL-divergence between two Categorical distributions.
@@ -170,7 +179,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: kl-divergence between two Categorical distributions.
-        
+
         Examples:
             .. code-block:: python
 
@@ -200,19 +209,20 @@ class Categorical(Distribution):
         if not in_dygraph_mode():
             check_type(other, 'other', Categorical, 'kl_divergence')
 
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
-        other_logits = other.logits - nn.reduce_max(
-            other.logits, dim=-1, keep_dim=True)
+        logits = self.logits - \
+            paddle.max(self.logits, axis=-1, keepdim=True)
+        other_logits = other.logits - paddle.max(
+            other.logits, axis=-1, keepdim=True)
         e_logits = ops.exp(logits)
         other_e_logits = ops.exp(other_logits)
-        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
-        other_z = nn.reduce_sum(other_e_logits, dim=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
+        other_z = paddle.sum(other_e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
-        kl = nn.reduce_sum(
-            prob * (logits - nn.log(z) - other_logits + nn.log(other_z)),
-            dim=-1,
-            keep_dim=True,
-            name=name)
+        kl = paddle.sum(prob * (
+            logits - paddle.log(z) - other_logits + paddle.log(other_z)),
+                        axis=-1,
+                        keepdim=True,
+                        name=name)
 
         return kl
 
@@ -221,7 +231,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: Shannon entropy of Categorical distribution. The data type is float32.
-        
+
         Examples:
             .. code-block:: python
 
@@ -241,14 +251,14 @@ class Categorical(Distribution):
 
         """
         name = self.name + '_entropy'
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
+        logits = self.logits - \
+            paddle.max(self.logits, axis=-1, keepdim=True)
         e_logits = ops.exp(logits)
-        z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
 
-        neg_entropy = nn.reduce_sum(
-            prob * (logits - nn.log(z)), dim=-1, keep_dim=True)
-        entropy = nn.scale(neg_entropy, scale=-1.0, name=name)
+        neg_entropy = paddle.sum(prob * (logits - paddle.log(z)), axis=-1)
+        entropy = paddle.scale(neg_entropy, scale=-1.0, name=name)
         return entropy
 
     def probs(self, value):
@@ -266,7 +276,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: probability according to the category index.
-        
+
         Examples:
             .. code-block:: python
 
@@ -288,33 +298,33 @@ class Categorical(Distribution):
         """
         name = self.name + '_probs'
 
-        dist_sum = nn.reduce_sum(self.logits, dim=-1, keep_dim=True)
+        dist_sum = paddle.sum(self.logits, axis=-1, keepdim=True)
         prob = self.logits / dist_sum
 
         shape = list(prob.shape)
         value_shape = list(value.shape)
         if len(shape) == 1:
             num_value_in_one_dist = np.prod(value_shape)
-            index_value = nn.reshape(value, [num_value_in_one_dist, 1])
+            index_value = paddle.reshape(value, [num_value_in_one_dist, 1])
             index = index_value
         else:
             num_dist = np.prod(shape[:-1])
             num_value_in_one_dist = value_shape[-1]
-            prob = nn.reshape(prob, [num_dist, shape[-1]])
+            prob = paddle.reshape(prob, [num_dist, shape[-1]])
             if len(value_shape) == 1:
                 value = nn.expand(value, [num_dist])
                 value_shape = shape[:-1] + value_shape
-            index_value = nn.reshape(value, [num_dist, -1, 1])
+            index_value = paddle.reshape(value, [num_dist, -1, 1])
             if shape[:-1] != value_shape[:-1]:
                 raise ValueError(
                     "shape of value {} must match shape of logits {}".format(
                         str(value_shape[:-1]), str(shape[:-1])))
 
-            index_prefix = nn.unsqueeze(
+            index_prefix = paddle.unsqueeze(
                 arange(
-                    num_dist, dtype=index_value.dtype), axes=-1)
+                    num_dist, dtype=index_value.dtype), axis=-1)
             index_prefix = nn.expand(index_prefix, [1, num_value_in_one_dist])
-            index_prefix = nn.unsqueeze(index_prefix, axes=-1)
+            index_prefix = paddle.unsqueeze(index_prefix, axis=-1)
 
             if index_value.dtype != index_prefix.dtype:
                 tensor.cast(index_prefix, dtype=index_value.dtype)
@@ -322,7 +332,7 @@ class Categorical(Distribution):
 
         # value is the category index to search for the corresponding probability.
         select_prob = gather_nd(prob, index)
-        return nn.reshape(select_prob, value_shape, name=name)
+        return paddle.reshape(select_prob, value_shape, name=name)
 
     def log_prob(self, value):
         """Log probabilities of the given category. Refer to ``probs`` method.
@@ -332,7 +342,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: Log probability.
-        
+
         Examples:
             .. code-block:: python
 
@@ -354,4 +364,4 @@ class Categorical(Distribution):
         """
         name = self.name + '_log_prob'
 
-        return nn.log(self.probs(value), name=name)
+        return paddle.log(self.probs(value), name=name)

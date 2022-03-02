@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

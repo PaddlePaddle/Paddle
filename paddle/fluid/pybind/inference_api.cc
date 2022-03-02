@@ -615,6 +615,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_tensorrt_dla", &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)
       .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
+      .def("enable_tensorrt_inspector",
+           &AnalysisConfig::EnableTensorRtInspector)
+      .def("tensorrt_inspector_enabled",
+           &AnalysisConfig::tensorrt_inspector_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_dlnne", &AnalysisConfig::EnableDlnne,
            py::arg("min_subgraph_size") = 3)

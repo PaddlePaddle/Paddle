@@ -26,7 +26,7 @@ using Tensor = framework::Tensor;
 using framework::DataLayout;
 
 inline dnnl::memory::dims GetWeightsTz(const Tensor* filter, const int groups) {
-  auto weights_tz = framework::vectorize(filter->dims());
+  auto weights_tz = phi::vectorize(filter->dims());
   int g = std::max(groups, 1);
   int g_dim = (g > 1) ? 1 : 0;
   platform::GetGroupConvWeightsTz(weights_tz, g);
@@ -116,13 +116,12 @@ class ConvTransposeMKLDNNHandlerT
             "Now we only support 2d oneDNN convolution transpose op"));
 
     const auto& input_dims = input->dims();
-    const auto data_dims =
-        framework::slice_ddim(input_dims, 2, input_dims.size());
+    const auto data_dims = phi::slice_ddim(input_dims, 2, input_dims.size());
     const auto& filter_dims = filter->dims();
     const auto filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
 
-    const auto ksize = framework::vectorize(filter_data_dims);
+    const auto ksize = phi::vectorize(filter_data_dims);
 
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              data_dims, strides, ksize);
@@ -130,9 +129,9 @@ class ConvTransposeMKLDNNHandlerT
     std::transform(dilations.begin(), dilations.end(), dilations.begin(),
                    [](int64_t i) { return i - 1; });
 
-    const auto src_tz = framework::vectorize(input->dims());
+    const auto src_tz = phi::vectorize(input->dims());
     const auto weights_tz = GetWeightsTz(filter, groups);
-    const auto dst_tz = framework::vectorize(output->dims());
+    const auto dst_tz = phi::vectorize(output->dims());
     const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
 
     /* create memory descriptor for convolution without specified format
@@ -162,7 +161,7 @@ class ConvTransposeMKLDNNHandlerT
     auto fwd_prop_kind = is_test_ ? dnnl::prop_kind::forward_inference
                                   : dnnl::prop_kind::forward_training;
     if (bias) {
-      std::vector<int64_t> bias_tz = framework::vectorize(bias->dims());
+      std::vector<int64_t> bias_tz = phi::vectorize(bias->dims());
       const auto bias_md =
           platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
       this->AcquireForwardPrimitiveDescriptor(
@@ -205,9 +204,9 @@ class ConvTransposeMKLDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
-    auto user_src_md = platform::MKLDNNMemDesc(
-        framework::vectorize(input->dims()), platform::MKLDNNGetDataType<T>(),
-        input->format());
+    auto user_src_md = platform::MKLDNNMemDesc(phi::vectorize(input->dims()),
+                                               platform::MKLDNNGetDataType<T>(),
+                                               input->format());
     return platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
         AcquireMemoryWithReorder(user_src_md, this->fwd_pd_->src_desc(),
                                  platform::to_void_cast<T>(input_data));
@@ -264,8 +263,9 @@ class ConvTransposeMKLDNNHandlerT
         dev_ctx.SetBlob(key_reorder_p, reorder_p);
 
         auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-        platform::RecordEvent record_reorder("int_reorder",
-                                             platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder(
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                      {DNNL_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -286,8 +286,9 @@ class ConvTransposeMKLDNNHandlerT
       auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
           dev_ctx.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
-        platform::RecordEvent record_reorder("int_reorder",
-                                             platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder(
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, {{DNNL_ARG_FROM, *user_memory_p},
                                      {DNNL_ARG_TO, *target_memory_p}});
         astream.wait();
@@ -301,7 +302,7 @@ class ConvTransposeMKLDNNHandlerT
       const framework::Tensor* bias) {
     const K* bias_data = bias->data<K>();
     auto user_bias_md = platform::MKLDNNMemDesc(
-        framework::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
+        phi::vectorize(bias->dims()), platform::MKLDNNGetDataType<K>(),
         MKLDNNMemoryFormat::x);
     return this->AcquireMemoryWithReorder(
         dev_ctx, user_bias_md, this->fwd_pd_->bias_desc(),

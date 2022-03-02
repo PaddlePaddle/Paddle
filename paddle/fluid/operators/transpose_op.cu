@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/fluid/operators/transpose_op.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -88,6 +89,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
+                            plat::bfloat16>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
                             paddle::platform::complex<float>>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
                             paddle::platform::complex<double>>);
@@ -98,6 +101,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
                                 plat::float16>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                plat::bfloat16>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
                                 paddle::platform::complex<float>>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
@@ -112,6 +117,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
+                            plat::bfloat16>,
+    ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
                             paddle::platform::complex<float>>,
     ops::TransposeGPUKernel<paddle::platform::CUDADeviceContext,
                             paddle::platform::complex<double>>);
@@ -124,6 +131,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext, double>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
                                 plat::float16>,
+    ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
+                                plat::bfloat16>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,
                                 paddle::platform::complex<float>>,
     ops::TransposeGradGPUKernel<paddle::platform::CUDADeviceContext,

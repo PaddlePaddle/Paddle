@@ -172,7 +172,7 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
             quant=False,
             max_examples=50,
             max_duration=1000,
-            passes=["reshape2_matmul_fuse_pass"])
+            passes=["gpu_cpu_reshape2_matmul_fuse_pass"])
 
 
 if __name__ == "__main__":

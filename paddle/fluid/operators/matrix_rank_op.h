@@ -14,8 +14,9 @@
 
 #pragma once
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/controlflow/compare_op.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -24,37 +25,27 @@ using DDim = framework::DDim;
 
 namespace detail {
 static DDim GetEigenvalueDim(const DDim& dim, int k) {
-  auto vec = framework::vectorize(dim);
+  auto vec = phi::vectorize(dim);
   vec.erase(vec.end() - 2, vec.end());
   vec.push_back(k);
-  return framework::make_ddim(vec);
+  return phi::make_ddim(vec);
 }
 
 static DDim NewAxisDim(const DDim& dim, int k) {
-  auto vec = framework::vectorize(dim);
+  auto vec = phi::vectorize(dim);
   vec.push_back(k);
-  return framework::make_ddim(vec);
+  return phi::make_ddim(vec);
 }
 
 static DDim RemoveLastDim(const DDim& dim) {
-  auto vec = framework::vectorize(dim);
+  auto vec = phi::vectorize(dim);
   if (vec.size() <= 1) {
-    return framework::make_ddim({1});
+    return phi::make_ddim({1});
   }
   vec.erase(vec.end() - 1, vec.end());
-  return framework::make_ddim(vec);
+  return phi::make_ddim(vec);
 }
 }  // namespace detail
-
-template <typename T>
-struct GreaterThanFunctor {
-  HOSTDEVICE int operator()(const T a, const T b) const { return a > b; }
-};
-
-template <typename T>
-struct LessThanFunctor {
-  HOSTDEVICE int operator()(const T a, const T b) const { return a < b; }
-};
 
 template <typename T>
 struct GreaterElementFunctor {

@@ -15,9 +15,6 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag nvjpeg_dso_flag;
-void *nvjpeg_dso_handle;
-
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 NVJPEG_RAND_ROUTINE_EACH(DEFINE_WRAP);

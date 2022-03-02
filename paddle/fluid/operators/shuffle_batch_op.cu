@@ -67,7 +67,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     for (int i = 0; i < x->dims().size() - 1; i++) {
       elem_size *= x->dims()[i];
     }
-    shuffleidx->Resize(framework::make_ddim({elem_size}));
+    shuffleidx->Resize(phi::make_ddim({elem_size}));
 
     int64_t seed_int = 0;
     if (seed->IsInitialized()) {
@@ -107,8 +107,8 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
         dev_ctx, elem_size * x_embed_size);
     for_range(functor);
 
-    auto *seed_out_data = seed_out->mutable_data<int64_t>(
-        framework::make_ddim({1}), platform::CPUPlace());
+    auto *seed_out_data = seed_out->mutable_data<int64_t>(phi::make_ddim({1}),
+                                                          platform::CPUPlace());
     *seed_out_data = engine();
 #endif
   }

@@ -59,15 +59,15 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
       return;
     }
 
-    using MT = typename details::MPTypeTrait<T>::Type;
-    using Div = kernel_primitives::DivideFunctor<T, MT>;
+    using Div = kernel_primitives::DivideFunctor<T, T>;
     std::vector<int> reduce_dims;
     reduce_dims.reserve(rank);
     for (decltype(rank) i = 0; i < rank; ++i) {
       reduce_dims.push_back(i);
     }
-    TensorReduceFunctorImpl<T, T, kernel_primitives::AddFunctor, Div>(
-        *input, output, Div(numel), reduce_dims, stream);
+    TensorReduceImpl<T, T, kernel_primitives::AddFunctor, Div>(
+        context.cuda_device_context(), *input, output, Div(numel), reduce_dims,
+        stream);
   }
 };
 

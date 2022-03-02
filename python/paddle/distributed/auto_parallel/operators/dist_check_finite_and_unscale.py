@@ -26,23 +26,21 @@ from ..process_group import new_process_group
 from ..dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.process_group import get_world_process_group
 
-global_process_mesh = get_world_process_group().ranks
+world_process_group = get_world_process_group()
 
 
 class DistributedCheckFiniteAndUnscale(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedCheckFiniteAndUnscale, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedCheckFiniteAndUnscale, self).__init__(op_type)
 
 
 register_distributed_operator_impl_container(
-    "check_finite_and_unscale",
     DistributedCheckFiniteAndUnscale("check_finite_and_unscale"))
 
 
 class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedCheckFiniteAndUnscaleImpl, self).__init__()
+        super(DistributedCheckFiniteAndUnscaleImpl, self).__init__(name)
         self._name = name
         self._forward_implemented = False
         self._backward_implemented = True
@@ -55,6 +53,11 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
     def is_output_compatible(self, dist_op):
         raise RuntimeError(
             "DistributedCheckFiniteAndUnscaleImpl's is_output_compatible should not be called !"
+        )
+
+    def is_auto_compatible(self, dist_op):
+        raise RuntimeError(
+            "DistributedCheckFiniteAndUnscaleImpl's is_auto_compatible should not be called !"
         )
 
     def update_dims_mapping(self, dist_op):
@@ -73,9 +76,9 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        backward_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.main_block
+        backward_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(backward_op))
@@ -116,7 +119,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         main_block._sync_with_cpp()
 
         # sync result
-        group = new_process_group(global_process_mesh)
+        group = new_process_group(world_process_group.ranks)
 
         inf_var = main_block.var(kwargs['FoundInfinite'][0])
         inf_var_int32 = main_block.create_var(

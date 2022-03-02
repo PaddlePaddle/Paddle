@@ -58,5 +58,15 @@ TEST(mlu_enforce, mlu_success) {
       CheckMluStatusFailure(CN_ERROR_INVALID_VALUE, "invalid argument"));
   EXPECT_TRUE(CheckMluStatusFailure(CN_MEMORY_ERROR_OUT_OF_MEMORY,
                                     "device has no memory to alloc"));
+#ifdef PADDLE_WITH_CNCL
+  EXPECT_TRUE(CheckMluStatusSuccess(CNCL_RET_SUCCESS));
+  EXPECT_TRUE(CheckMluStatusFailure(CNCL_RET_ERR_INTERNAL, "CNCL error"));
+  EXPECT_TRUE(CheckMluStatusFailure(CNCL_RET_ERR_NULL_POINTER, "CNCL error"));
+  EXPECT_TRUE(CheckMluStatusFailure(CNCL_RET_ERR_INIT, "CNCL error"));
+  EXPECT_TRUE(CheckMluStatusFailure(CNCL_RET_ERR_NOT_INIT, "CNCL error"));
+  EXPECT_TRUE(CheckMluStatusFailure(CNCL_RET_ERR_REINIT, "CNCL error"));
+  EXPECT_TRUE(
+      CheckMluStatusFailure(CNCL_RET_ERR_INVALID_VERSION, "CNCL error"));
+#endif
 }
 #endif

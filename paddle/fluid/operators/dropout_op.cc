@@ -179,8 +179,12 @@ REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
 REGISTER_OP_CPU_KERNEL(
     dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     dropout_grad,
     ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext,
+                           paddle::platform::bfloat16>);

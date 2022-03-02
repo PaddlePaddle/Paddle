@@ -32,42 +32,175 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY,
 from ..process_group import new_process_group
 from ..utils import _get_comm_group, _get_corresponding_rank
 
+__op_not_need_param_init__ = ["while", "cond"]
+
 
 class DistributedDefault(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedDefault, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedDefault, self).__init__(op_type)
 
 
-register_distributed_operator_impl_container("default",
-                                             DistributedDefault("default"))
+register_distributed_operator_impl_container(DistributedDefault("default"))
 
 
 # Replicated Default
 class DistributedDefaultImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedDefaultImpl0, self).__init__()
-        self._name = name
+        super(DistributedDefaultImpl0, self).__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
     def is_input_compatible(self, dist_op):
-        raise NotImplementedError("Please Implement this method.")
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        for arg_name in op_desc.input_arg_names():
+            serial_tensor = dist_op.get_serial_input(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if len(dims_mapping) > 1:
+                for mapping in dims_mapping[1:]:
+                    if mapping != -1:
+                        return False
+        return True
 
     def is_output_compatible(self, dist_op):
-        raise NotImplementedError("Please Implement this method.")
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        output_names = op_desc.output_names()
+        xshape_arg_names = []
+        if "XShape" in output_names:
+            xshape_arg_names = op_desc.output("XShape")
+        for arg_name in op_desc.output_arg_names():
+            serial_tensor = dist_op.get_serial_output(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if arg_name not in xshape_arg_names:
+                if len(dims_mapping) > 1:
+                    for mapping in dims_mapping[1:]:
+                        if mapping != -1:
+                            return False
+            else:
+                if dims_mapping[0] != -1:
+                    return False
+                if len(dims_mapping) > 2:
+                    for mapping in dims_mapping[2:]:
+                        if mapping != -1:
+                            return False
+        return True
+
+    def is_auto_compatible(self, dist_op):
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        batch_dim_mappings = []
+        # Check input compatibility
+        for arg_name in op_desc.input_arg_names():
+            serial_tensor = dist_op.get_serial_input(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if len(dims_mapping) > 1:
+                for mapping in dims_mapping[1:]:
+                    if mapping != -1:
+                        return False
+            batch_dim_mappings.append(dims_mapping[0])
+
+        # Check output compatibility
+        output_names = op_desc.output_names()
+        xshape_arg_names = []
+        if "XShape" in output_names:
+            xshape_arg_names = op_desc.output("XShape")
+        for arg_name in op_desc.output_arg_names():
+            serial_tensor = dist_op.get_serial_output(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if arg_name not in xshape_arg_names:
+                if len(dims_mapping) > 1:
+                    for mapping in dims_mapping[1:]:
+                        if mapping != -1:
+                            return False
+                batch_dim_mappings.append(dims_mapping[0])
+            else:
+                if dims_mapping[0] != -1:
+                    return False
+                if len(dims_mapping) > 2:
+                    for mapping in dims_mapping[2:]:
+                        if mapping != -1:
+                            return False
+                batch_dim_mappings.append(dims_mapping[1])
+
+        # Check batch dim mapping compatibility
+        if not all(batch_dim_mappings[0] == dim_mapping
+                   for dim_mapping in batch_dim_mappings):
+            return False
+
+        return True
 
     def update_dims_mapping(self, dist_op):
-        raise NotImplementedError("Please Implement this method.")
+        changed = False
+        op_desc = dist_op.serial_op.desc
+        op_dist_attr = dist_op.dist_attr
+        # The following statement will be replaced by a more elegent way
+        if op_desc.type() == "shape" or op_desc.type() == "slice":
+            return False
+        output_names = op_desc.output_names()
+        xshape_arg_names = []
+        if "XShape" in output_names:
+            xshape_arg_names = op_desc.output("XShape")
+        batch_dim_mappings = []
+        for arg_name in op_desc.input_arg_names():
+            serial_tensor = dist_op.get_serial_input(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            batch_dim_mappings.append(dims_mapping[0])
+        for arg_name in op_desc.output_arg_names():
+            serial_tensor = dist_op.get_serial_output(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if arg_name not in xshape_arg_names:
+                batch_dim_mappings.append(dims_mapping[0])
+            else:
+                batch_dim_mappings.append(dims_mapping[1])
+
+        compatible_dim_mapping = compute_compatible_dim_mapping(
+            batch_dim_mappings)
+        assert compatible_dim_mapping is not None, "There is no compatible dim mapping."
+        for arg_name in op_desc.input_arg_names():
+            serial_tensor = dist_op.get_serial_input(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
+            if compatible_dim_mapping != dims_mapping[0]:
+                dims_mapping[0] = compatible_dim_mapping
+                changed = True
+        for arg_name in op_desc.output_arg_names():
+            serial_tensor = dist_op.get_serial_output(arg_name)
+            if serial_tensor.is_parameter:
+                continue
+            dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+            if arg_name not in xshape_arg_names:
+                if compatible_dim_mapping != dims_mapping[0]:
+                    dims_mapping[0] = compatible_dim_mapping
+                    changed = True
+            else:
+                if compatible_dim_mapping != dims_mapping[1]:
+                    dims_mapping[1] = compatible_dim_mapping
+                    changed = True
+
+        return changed
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
 
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        startup_block = dist_op_context.get_dst_startup_program().global_block()
-        src_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.work_block
+        startup_block = dist_op_context.startup_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -96,6 +229,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         main_block._sync_with_cpp()
 
         # param initialization sync
+        if src_op.type in __op_not_need_param_init__:
+            return
+
         for varname in dist_op_desc.input_arg_names():
             if startup_block.has_var(varname) and startup_block.var(
                     varname
@@ -147,12 +283,12 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        backward_op = dist_op_context.get_cur_src_op()
+        main_block = dist_op_context.work_block
+        backward_op = dist_op_context.cur_src_op
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(backward_op))
-        rank_id = dist_op_context.get_rank_id()
+        rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs
         for input_name in backward_op.desc.input_names():

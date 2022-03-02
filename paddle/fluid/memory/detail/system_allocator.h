@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <stddef.h>  // for size_t
+#include <string>
 
 namespace paddle {
 namespace memory {
@@ -104,6 +105,23 @@ class MLUAllocator : public SystemAllocator {
  private:
   size_t mlu_alloc_size_ = 0;
   int mlu_id_;
+};
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class CustomAllocator : public SystemAllocator {
+ public:
+  explicit CustomAllocator(const std::string& device_type, size_t dev_id)
+      : dev_type_(device_type), dev_id_(dev_id) {}
+
+  virtual void* Alloc(size_t* index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
+
+ private:
+  size_t plug_alloc_size = 0;
+  std::string dev_type_;
+  size_t dev_id_;
 };
 #endif
 

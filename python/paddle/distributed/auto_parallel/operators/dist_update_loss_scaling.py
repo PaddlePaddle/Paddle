@@ -20,18 +20,17 @@ from ..utils import set_dist_op_desc_original_id
 
 
 class DistributedUpdateLossScaling(DistributedOperatorImplContainer):
-    def __init__(self, name):
-        super(DistributedUpdateLossScaling, self).__init__()
-        self._name = name
+    def __init__(self, op_type):
+        super(DistributedUpdateLossScaling, self).__init__(op_type)
 
 
 register_distributed_operator_impl_container(
-    "update_loss_scaling", DistributedUpdateLossScaling("update_loss_scaling"))
+    DistributedUpdateLossScaling("update_loss_scaling"))
 
 
 class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedUpdateLossScalingImpl, self).__init__()
+        super(DistributedUpdateLossScalingImpl, self).__init__(name)
         self._name = name
         self._forward_implemented = False
         self._backward_implemented = True
@@ -44,6 +43,11 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
     def is_output_compatible(self, dist_op):
         raise RuntimeError(
             "DistributedUpdateLossScalingImpl's is_output_compatible should not be called !"
+        )
+
+    def is_auto_compatible(self, dist_op):
+        raise RuntimeError(
+            "DistributedUpdateLossScalingImpl's is_auto_compatible should not be called !"
         )
 
     def update_dims_mapping(self, dist_op):
@@ -61,9 +65,9 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
 
         # the backward function only filte the gradient with current rank id
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        backward_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.main_block
+        backward_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(backward_op))

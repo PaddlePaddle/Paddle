@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -37,13 +38,13 @@ class PReluMKLDNNHandler
                      const std::string& data_format, bool is_test = false)
       : platform::MKLDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
+            platform::CreateKey(dev_ctx, phi::vectorize(x->dims()),
                                 uniq_name)) {
-    if (!this->isCached()) {
-      auto x_md = memory::desc(framework::vectorize(x->dims()),
+    if (unlikely(!this->isCached())) {
+      auto x_md = memory::desc(phi::vectorize(x->dims()),
                                MKLDNNGetDataType<T>(), x->format());
 
-      auto weights_dims = framework::vectorize(weights->dims());
+      auto weights_dims = phi::vectorize(weights->dims());
 
       // weights must have same size as X only for "element" case
       if (weights->dims().size() != x->dims().size()) {
@@ -82,9 +83,8 @@ class PReluMKLDNNHandler
                                               "@alpha_mem_p");
     }
 
-    auto user_weights_md =
-        memory::desc(framework::vectorize(input->dims()),
-                     MKLDNNGetDataType<T>(), input->format());
+    auto user_weights_md = memory::desc(
+        phi::vectorize(input->dims()), MKLDNNGetDataType<T>(), input->format());
     return this->AcquireMemoryWithReorder(
         user_weights_md, this->fwd_pd_->weights_desc(),
         to_void_cast<T>(input_data), "@alpha_mem_p", is_test);

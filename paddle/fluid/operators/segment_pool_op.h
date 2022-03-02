@@ -16,10 +16,10 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/segment_pooling.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/pten/common/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -49,7 +49,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     return;
   }
 
-  bool cpu_place = context.GetPlace().GetType() == pten::AllocationType::CPU;
+  bool cpu_place = context.GetPlace().GetType() == phi::AllocationType::CPU;
   if (cpu_place) {
     auto dims = input->dims();
     auto* segment_ids = segment->data<IndexT>();
@@ -60,15 +60,14 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
             "Segment ids must be >= 0, but got last id %d", dims[0]));
     output->Resize({dims});
     output->mutable_data<T>(context.GetPlace());
-    math::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, output, static_cast<T>(0));
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!cpu_place) {
     Tensor length;
-    length.mutable_data<IndexT>(framework::make_ddim({1}),
-                                platform::CPUPlace());
+    length.mutable_data<IndexT>(phi::make_ddim({1}), platform::CPUPlace());
     IndexT* length_data = length.data<IndexT>();
     const IndexT* segment_ids = segment->data<IndexT>();
 
@@ -98,7 +97,7 @@ void SegmentKernelLaunchHelper(const framework::ExecutionContext& context) {
     } else if (pooltype == "MIN") {
       init_value = static_cast<T>(FLT_MAX);
     }
-    math::SetConstant<DeviceContext, T> setconst;
+    phi::funcs::SetConstant<DeviceContext, T> setconst;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     setconst(dev_ctx, output, static_cast<T>(init_value));
     // the gpu kernel of mean pool record the counts of segment_ids
@@ -122,7 +121,7 @@ class SegmentPoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* segment = context.Input<Tensor>("SegmentIds");
-    auto index_type = segment->type();
+    auto index_type = framework::TransToProtoVarType(segment->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       SegmentKernelLaunchHelper<DeviceContext, T, int>(context);
     } else if (index_type == framework::proto::VarType::INT64) {
@@ -152,11 +151,11 @@ class SegmentPoolGradKernel : public framework::OpKernel<T> {
     }
 
     in_g->mutable_data<T>(context.GetPlace());
-    math::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, in_g, static_cast<T>(0));
 
-    auto index_type = segment->type();
+    auto index_type = framework::TransToProtoVarType(segment->dtype());
     if (index_type == framework::proto::VarType::INT32) {
       SegmentPoolGradFunctor<DeviceContext, T, int> pool;
       pool(context.template device_context<DeviceContext>(), *input, *output,

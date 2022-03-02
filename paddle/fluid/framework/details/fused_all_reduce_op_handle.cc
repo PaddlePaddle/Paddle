@@ -13,11 +13,12 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/fused_all_reduce_op_handle.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
 DECLARE_bool(allreduce_record_one_event);
@@ -67,7 +68,8 @@ FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
 }
 
 void FusedAllReduceOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   VLOG(4) << this->DebugString();
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -337,7 +339,8 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
   size_t size_of_dtype = 0;
   for (size_t i = 0; i < grad_tensor.size(); ++i) {
     // Get dtype
-    auto ele_dtype = grad_tensor.at(i).second->type();
+    auto ele_dtype =
+        framework::TransToProtoVarType(grad_tensor.at(i).second->dtype());
     if (i == 0) {
       *dtype = ele_dtype;
       size_of_dtype = framework::SizeOfType(ele_dtype);

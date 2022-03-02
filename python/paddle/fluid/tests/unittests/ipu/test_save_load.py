@@ -93,8 +93,9 @@ class TestBase(IPUOpTest):
                 if not save_otherwise_load:
                     paddle.static.load(main_prog, "model/model")
 
-                ipu_strategy = compiler.get_ipu_strategy()
-                ipu_strategy.is_training = self.attrs['is_training']
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.SetGraphConfig(
+                    is_training=self.attrs['is_training'])
                 program = compiler.IPUCompiledProgram(
                     main_prog, ipu_strategy=ipu_strategy).compile(
                         self.feed_list, fetch_list)

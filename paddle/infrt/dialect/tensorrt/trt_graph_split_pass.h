@@ -14,6 +14,8 @@
 
 #pragma once
 #include <mlir/Pass/Pass.h>
+#include "paddle/infrt/dialect/infrt_base.h"
+#include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
 namespace trt {
@@ -27,11 +29,11 @@ namespace trt {
  *
  * func @main() -> tensor<?xf32> {
  *  %a = "pd.feed"()...
- *  %d, %f = "pd.graph"(%a) {
+ *  %d, %f = "trt.create_engine"(%a) {
  *     %m = "pd.conv2d"(%a)...
  *     %n = "pd.conv3d"(%m)...
  *     %s = "pd.conv2d"(%a)...
- *     "pd.return" (%n, %s)
+ *     "Infrt.return" (%n, %s)
  *  } ...
  *  "pd.fetch" (%d, %f)
  * }
@@ -45,12 +47,15 @@ namespace trt {
  *  "pd.fetch" (%d, %f)
  * }
  */
-class trtGraphSplitPass
-    : public mlir::PassWrapper<trtGraphSplitPass, mlir::FunctionPass> {
+class TRTGraphSplitPass
+    : public mlir::PassWrapper<TRTGraphSplitPass, mlir::FunctionPass> {
  public:
   ::llvm::StringRef getName() const override { return "trtGraphSplitPass"; }
+  void getDependentDialects(mlir::DialectRegistry &registry) const override {
+    registry.insert<TensorRTDialect, ::infrt::dialect::INFRTDialect>();
+  }
   void runOnFunction() override;
-  explicit trtGraphSplitPass(size_t min_subgraph_size = 3)
+  explicit TRTGraphSplitPass(size_t min_subgraph_size = 3)
       : min_subgraph_size_(min_subgraph_size) {}
 
  private:
