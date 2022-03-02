@@ -588,16 +588,6 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
-    Tensor temp_var;
-    temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
-    set_zero(dev_ctx, &temp_var, static_cast<T>(0));
-    T* temp_var_data = temp_var.data<T>();
-
-    Tensor temp_mean;
-    temp_mean.mutable_data<T>(var->dims(), ctx.GetPlace());
-    set_zero(dev_ctx, &temp_mean, static_cast<T>(0));
-    T* temp_mean_data = temp_mean.data<T>();
-
     Tensor ds, db;
     ds.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
     db.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
@@ -699,6 +689,16 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
       }
 
     } else {
+      Tensor temp_var;
+      temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
+      set_zero(dev_ctx, &temp_var, static_cast<T>(0));
+      T* temp_var_data = temp_var.data<T>();
+
+      Tensor temp_mean;
+      temp_mean.mutable_data<T>(var->dims(), ctx.GetPlace());
+      set_zero(dev_ctx, &temp_mean, static_cast<T>(0));
+      T* temp_mean_data = temp_mean.data<T>();
+
       int flags = (scale_data != nullptr) * kHasScale +
                   (bias_data != nullptr) * kHasBias;
       UNROLL_ALL_CASES(flags, GroupNormBackwardGetMeanAndVar, y_data,
