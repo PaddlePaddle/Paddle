@@ -59,6 +59,20 @@ class TestFcFusePass(PassAutoScanTest):
 
     def add_ignore_pass_case(self):
         # Here we put some skip rules to avoid known bugs
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8000:
+
+            def teller3(program_config, predictor_config):
+                if predictor_config.tensorrt_engine_enabled():
+                    x_shape = list(program_config.inputs["mul_x"].shape)
+                    if len(x_shape) >= 6:
+                        return True
+                return False
+
+            self.add_skip_case(
+                teller3, SkipReasons.TRT_NOT_SUPPORT,
+                "Trt may crash when inputs' dims>=6 under trt8.0 ")
+
         def teller1(program_config, predictor_config):
             # shape of bias should be [1, mul_y_shape[-1]] or [mul_y_shape[-1]]
             x_shape = list(program_config.inputs["mul_x"].shape)
@@ -108,7 +122,7 @@ class TestFcFusePass(PassAutoScanTest):
         x_shape = draw(
             st.lists(
                 st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=4))
+                    min_value=1, max_value=4), min_size=2, max_size=6))
         # 2. Generate attr:x_num_col_dims/y_num_col_dims of mul
         x_num_col_dims = draw(
             st.integers(
