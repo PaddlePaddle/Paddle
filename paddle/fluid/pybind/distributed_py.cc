@@ -109,6 +109,7 @@ void BindDistributed(py::module *m) {
       *m, "ProcessGroupNCCL", ProcessGroup)
       .def(py::init<const distributed::ProcessGroupStrategy &, int, int>(),
            py::call_guard<py::gil_scoped_release>());
+#endif
 
   py::class_<distributed::ProcessGroup::Task,
              std::shared_ptr<distributed::ProcessGroup::Task>>(*m, "task")
@@ -118,7 +119,6 @@ void BindDistributed(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("synchronize", &distributed::ProcessGroup::Task::Synchronize,
            py::call_guard<py::gil_scoped_release>());
-#endif
 
   // define parallel strategy, it will be removed
   py::class_<distributed::ProcessGroupStrategy> pg_strategy(
