@@ -171,6 +171,7 @@ namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_place_pytype = nullptr;
+PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_cudaplace_pytype = nullptr;
 PyTypeObject *g_cpuplace_pytype = nullptr;
 PyTypeObject *g_xpuplace_pytype = nullptr;
@@ -1348,7 +1349,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindReader(&m);
 
-  py::class_<Scope>(m, "_Scope", R"DOC(
+  py::class_<Scope> _Scope(m, "_Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.
 
     Variables in a parent scope can be retrieved from local scope.
@@ -1368,7 +1369,9 @@ All parameter, weight, gradient are variables in Paddle.
           param_array = np.full((height, row_numel), 5.0).astype("float32")
           param.set(param_array, place)
 
-        )DOC")
+        )DOC");
+  g_framework_scope_pytype = reinterpret_cast<PyTypeObject *>(_Scope.ptr());
+  _Scope
       .def("_remove_from_pool",
            [](Scope &self) { ScopePool::Instance().Remove(&self); })
       .def("var",

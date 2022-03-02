@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/py_func_op.h"
@@ -35,6 +36,7 @@ namespace pybind {
 
 extern PyTypeObject* p_tensor_type;
 
+extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
@@ -828,6 +830,64 @@ paddle::experimental::ScalarArray CastPyArg2ScalarArray(
 
   // Fake a ScalarArray
   return paddle::experimental::ScalarArray({1});
+}
+
+paddle::framework::Scope* CastPyArg2ScopePtr(PyObject* obj) {
+  if (PyObject_IsInstance(
+          obj, reinterpret_cast<PyObject*>(g_framework_scope_pytype))) {
+    return ::pybind11::handle(obj).cast<paddle::framework::Scope*>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "PyObject can not be cast into framework::Scope"));
+  }
+}
+
+std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+  if (list == nullptr) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of scope, but got "
+          "None",
+          op_type, arg_name, arg_idx));
+    }
+  }
+
+  std::vector<paddle::framework::Scope*> result;
+  if (PyList_Check(list)) {
+    Py_ssize_t len = PyList_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of scope, but got "
+          "empty list",
+          op_type, arg_name, arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(CastPyArg2ScopePtr(PyList_GetItem(list, i)));
+    }
+  } else if (PyTuple_Check(list)) {
+    Py_ssize_t len = PyTuple_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of scope, but got "
+          "empty list",
+          op_type, arg_name, arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      result.emplace_back(CastPyArg2ScopePtr(PyList_GetItem(list, i)));
+    }
+  } else if (list == Py_None) {
+    return {};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s",
+        op_type, arg_name, arg_idx,
+        (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
+  }
+  return result;
 }
 
 }  // namespace pybind
