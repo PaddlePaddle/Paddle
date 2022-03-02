@@ -1402,7 +1402,8 @@ def gather(x, index, axis=None, name=None):
         return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'int16', 'uint8'],
+        x, 'x',
+        ['float16', 'float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
         'gather')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
 
@@ -2419,8 +2420,8 @@ def tensordot(x, y, axes=2, name=None):
     axes_y = []
     if np.issubdtype(type(axes), np.integer):
         assert axes >= 0, (
-            "The 'axes' in " + op_type +
-            f" should not be negative, but received axes={axes}.")
+        "The 'axes' in " + op_type +
+        f" should not be negative, but received axes={axes}.")
         axes_x = range(x.ndim - axes, x.ndim)
         axes_y = range(axes)
     else:
