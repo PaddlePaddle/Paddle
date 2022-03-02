@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/reduce_grad.h"
 namespace phi {
 
 struct SumGradFunctor {
@@ -46,8 +45,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool reduce_all,
                          DataType in_dtype,
                          DataType out_dtype,
-                         DenseTensor* x_grad) {
-}
+                         DenseTensor* x_grad) {}
 
 }  // namespace phi
 

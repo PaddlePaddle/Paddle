@@ -14,25 +14,10 @@
 
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
 
-namespace phi {
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-struct SumGradFunctor {
-  template <typename DeviceContext,
-            typename X,
-            typename Y,
-            typename DX,
-            typename DY,
-            typename Dim>
-  void operator()(const DeviceContext& place,
-                  X* x,
-                  Y* y,
-                  DX* dx,
-                  DY* dy,
-                  const Dim& dim,
-                  int size) {
-    dx->device(place) = dy->broadcast(dim);
-  }
-};
+namespace phi {
 
 template <typename T, typename Context>
 void ReduceSumGradKernel(const Context& dev_ctx,
@@ -43,22 +28,20 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool reduce_all,
                          DataType in_dtype,
                          DataType out_dtype,
-                         DenseTensor* x_grad) {
-}
+                         DenseTensor* x_grad) {}
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(sum_grad,
-  GPU,
-  ALL_LAYOUT,
-  phi::ReduceSumGradKernel,
-  bool,
-  float,
-  double,
-  phi::dtype::float16,
-  phi::dtype::bfloat16,
-  int,
-  int64_t,
-  phi::dtype::complex<float>,
-  phi::dtype::complex<double>) {}
-
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ReduceSumGradKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
