@@ -2629,7 +2629,7 @@ function build_pr_and_develop() {
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
-        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
+        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
     else
         git checkout -b develop_base_pr upstream/$BRANCH
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
