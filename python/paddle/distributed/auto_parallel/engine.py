@@ -99,11 +99,11 @@ class Engine:
             all_ranks = world_process_group.ranks
             for rank in all_ranks:
                 self._parallel(rank)
-        place = _get_device()
-        if isinstance(place, fluid.CUDAPlace):
+        self._place = _get_device()
+        if isinstance(self._place, fluid.CUDAPlace):
             self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
         if self._executor is None:
-            self._executor = fluid.Executor(place)
+            self._executor = paddle.static.Executor(self._place)
 
     def _build(self):
         serial_main_prog = self._serial_main_progs.get(self.mode, None)
@@ -119,12 +119,13 @@ class Engine:
             labels = [s._create_feed_layer() for s in to_list(labels_spec)]
             self._input_vars = inputs
             self._label_vars = labels
-            feed_list = self._input_vars + self._label_vars
+            self._feed_vars = self._input_vars + self._label_vars
             outputs = to_list(self.model(*inputs))
             if self.mode != "predict" and self.loss:
                 loss = self.loss(*(outputs + labels))
                 self._loss_var = loss
 
+        self._fetch_vars = {"outputs": outputs, "loss": loss}
         self._serial_main_progs[self.mode] = serial_main_prog
         self._serial_startup_progs[self.mode] = serial_startup_prog
         self._dist_contexts[self.mode] = DistributedContext(
@@ -278,19 +279,31 @@ class Engine:
         dist_startup_prog = self._dist_startup_progs[self.mode][self._cur_rank]
         dist_context = self._dist_contexts[self.mode]
         dist_main_block = dist_main_prog.global_block()
+        serial_main_prog = self._serial_main_progs[self.mode]
+        serial_main_block = serial_main_prog.global_block()
         op_size = len(dist_main_block.ops)
         places = paddle.static.cuda_places()
         with fluid.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = NonIterableGeneratorLoader(
                 dataset, feed_list, places, batch_size, epochs, steps_per_epoch)
         new_op_size = len(dist_main_block.ops)
-        for idx in range(new_op_size - 1, op_size - 1, -1):
+        for _ in range(new_op_size - 1, op_size - 1, -1):
             op = dist_main_block.ops[new_op_size - 1]
             new_op_desc = dist_main_block.desc._prepend_op()
             new_op_desc.copy_from(op.desc)
             new_op = Operator(
                 dist_main_block, new_op_desc, type=new_op_desc.type())
             dist_main_block.ops.insert(0, new_op)
+            for in_name in new_op.input_arg_names:
+                if in_name == "lod_tensor_blocking_queue_0":
+                    continue
+                if in_name not in dist_main_block.vars:
+                    in_var = serial_main_block._var_recursive(in_name)
+                    dist_main_block._clone_variable(in_var, in_var.persistable)
+            for out_name in new_op.output_arg_names:
+                if out_name not in dist_main_block.vars:
+                    out_var = serial_main_block._var_recursive(out_name)
+                    dist_main_block._clone_variable(out_var, out_var.persistable)
             dist_op = DistributedOperator(new_op)
             dist_context.add_dist_op_for_program(dist_op)
         for _ in range(new_op_size - op_size):
