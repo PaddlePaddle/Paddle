@@ -35,8 +35,8 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     }
 
     // cast `indices` or `label` if their type is not INT32
-    Tensor indices_int32(framework::TransToPtenDataType(VT::INT32));
-    Tensor label_int32(framework::TransToPtenDataType(VT::INT32));
+    Tensor indices_int32(framework::TransToPhiDataType(VT::INT32));
+    Tensor label_int32(framework::TransToPhiDataType(VT::INT32));
     auto indices_type = framework::TransToProtoVarType(indices->type());
     if (indices_type != VT::INT32) {
       PADDLE_ENFORCE_EQ(MLUSupportsCast(indices_type, VT::INT32), true,
@@ -78,7 +78,7 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     // equal
     MLUCnnlTensorDesc indices_int32_desc(indices_int32);
     MLUCnnlTensorDesc label_int32_desc(label_int32);
-    Tensor equal_tensor(framework::TransToPtenDataType(VT::BOOL));
+    Tensor equal_tensor(framework::TransToPhiDataType(VT::BOOL));
     equal_tensor.Resize(indices->dims());
     equal_tensor.mutable_data<bool>(ctx.GetPlace());
     MLUCnnlTensorDesc equal_tensor_desc(equal_tensor);
@@ -88,7 +88,7 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
                    GetBasePtr(&equal_tensor));
 
     // cast equal
-    Tensor equal_fp32(framework::TransToPtenDataType(VT::FP32));
+    Tensor equal_fp32(framework::TransToPhiDataType(VT::FP32));
     equal_fp32.Resize(indices->dims());
     equal_fp32.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc equal_fp32_desc(equal_fp32);
@@ -99,7 +99,7 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
 
     // [correct]
     // reduce_max
-    Tensor correct_max(framework::TransToPtenDataType(VT::FP32));
+    Tensor correct_max(framework::TransToPhiDataType(VT::FP32));
     correct_max.Resize(phi::make_ddim({num_samples}));
     correct_max.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc correct_max_desc(correct_max);
@@ -112,7 +112,7 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
                     correct_max_desc.get(), GetBasePtr(&correct_max));
 
     // reduce_sum
-    Tensor correct_sum(framework::TransToPtenDataType(VT::FP32));
+    Tensor correct_sum(framework::TransToPhiDataType(VT::FP32));
     correct_sum.Resize(correct->dims());
     correct_sum.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc correct_sum_desc(correct_sum);
@@ -138,7 +138,7 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
     MLUCnnl::Fill(ctx, num_samples, total_desc.get(), GetBasePtr(total));
 
     // use `total` of type `float32` for calculating accuracy
-    Tensor total_fp32(framework::TransToPtenDataType(VT::FP32));
+    Tensor total_fp32(framework::TransToPhiDataType(VT::FP32));
     total_fp32.Resize(total->dims());
     total_fp32.mutable_data<float>(ctx.GetPlace());
     MLUCnnlTensorDesc total_fp32_desc(total_fp32);

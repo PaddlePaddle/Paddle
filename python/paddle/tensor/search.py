@@ -542,7 +542,7 @@ def where(condition, x=None, y=None, name=None):
 
 
     Args:
-        condition(Tensor): The condition to choose x or y.
+        condition(Tensor): The condition to choose x or y. When True(nonzero), yield x, otherwise yield y.
         x(Tensor or Scalar, optional): x is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
         y(Tensor or Scalar, optional): y is a Tensor or Scalar with data type float32, float64, int32, int64. Either both or neither of x and y should be given.
 

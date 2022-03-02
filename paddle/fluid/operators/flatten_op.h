@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -132,9 +132,9 @@ class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
     auto &dev_ctx = context.device_context<DeviceContext>();
 
     // call new kernel
-    phi::FlattenKernel<T, typename paddle::framework::ConvertToPtenContext<
+    phi::FlattenKernel<T, typename paddle::framework::ConvertToPhiContext<
                               DeviceContext>::TYPE>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
+        static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE &>(dev_ctx),
         *in, start_axis, stop_axis, out);
   }
@@ -153,9 +153,9 @@ class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.device_context<DeviceContext>();
 
     // call new kernel
-    phi::FlattenGradKernel<T, typename paddle::framework::ConvertToPtenContext<
+    phi::FlattenGradKernel<T, typename paddle::framework::ConvertToPhiContext<
                                   DeviceContext>::TYPE>(
-        static_cast<const typename paddle::framework::ConvertToPtenContext<
+        static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE &>(dev_ctx),
         *d_out, *xshape, d_x);
   }
