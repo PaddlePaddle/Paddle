@@ -256,10 +256,16 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
 #endif
   } else {
     if (upscale_in_train) {
-      // todo: can y share with data with x directly?
+// todo: can y share with data with x directly?
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipMemcpyAsync(y_data, x_data, sizeof(T) * x_numel,
+                         cudaMemcpyDeviceToDevice, stream));
+#else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemcpyAsync(y_data, x_data, sizeof(T) * x_numel,
                           cudaMemcpyDeviceToDevice, stream));
+#endif
     } else {
       T factor = static_cast<T>(1.0f - dropout_prob);
       std::vector<const framework::Tensor*> ins = {&x};
