@@ -1861,3 +1861,67 @@ REGISTER_OP_CUDA_KERNEL(
   __macro(hard_swish, HardSwish, CudaHardSwishFunctor,                        \
           CudaHardSwishGradFunctor);
 FOR_EACH_ACTIVATION_CUDA_OP(REGISTER_ACTIVATION_CUDA_KERNEL)
+
+#ifdef PADDLE_WITH_XPU_KP
+#define REGISTER_ACTIVATION_XPU_KERNEL(act_type, op_name, functor,             \
+                                       grad_functor)                           \
+  REGISTER_OP_KERNEL(                                                          \
+      act_type, KP, plat::XPUPlace,                                            \
+      ops::ActivationCudaKernel<plat::XPUDeviceContext, ops::functor<float>>); \
+  REGISTER_OP_KERNEL(act_type##_grad, KP, plat::XPUPlace,                      \
+                     ops::ActivationGradCudaKernel<plat::XPUDeviceContext,     \
+                                                   ops::grad_functor<float>>);
+
+REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu, LeakyRelu, CudaLeakyReluFunctor,
+                               CudaLeakyReluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(relu, Relu, CudaReluFunctor,
+                               CudaReluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, Sigmoid, CudaSigmoidFunctor,
+                               CudaSigmoidGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(exp, Exp, CudaExpFunctor, CudaExpGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(log, Log, CudaLogFunctor, CudaLogGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(reciprocal, Reciprocal, CudaReciprocalFunctor,
+                               CudaReciprocalGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(softplus, Softplus, CudaSoftplusFunctor,
+                               CudaSoftplusGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(hard_swish, HardSwish, CudaHardSwishFunctor,
+                               CudaHardSwishGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(elu, Elu, CudaELUFunctor, CudaELUGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(celu, Celu, CudaCELUFunctor,
+                               CudaCELUGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(sqrt, Sqrt, CudaSqrtFunctor,
+                               CudaSqrtGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(square, Square, CudaSquareFunctor,
+                               CudaSquareGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(silu, Silu, CudaSiluFunctor,
+                               CudaSiluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(logsigmoid, LogSigmoid, CudaLogSigmoidFunctor,
+                               CudaLogSigmoidGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(softshrink, SoftShrink, CudaSoftShrinkFunctor,
+                               CudaSoftShrinkGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(ceil, Ceil, CudaCeilFunctor,
+                               CudaZeroGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(floor, Floor, CudaFloorFunctor,
+                               CudaZeroGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(log1p, Log1p, CudaLog1pFunctor,
+                               CudaLog1pGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(brelu, BRelu, CudaBReluFunctor,
+                               CudaBReluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(soft_relu, SoftRelu, CudaSoftReluFunctor,
+                               CudaSoftReluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(softsign, Softsign, CudaSoftsignFunctor,
+                               CudaSoftsignGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(relu6, Relu6, CudaRelu6Functor,
+                               CudaRelu6GradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(hard_shrink, HardShrink, CudaHardShrinkFunctor,
+                               CudaHardShrinkGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(hard_sigmoid, HardSigmoid,
+                               CudaHardSigmoidFunctor,
+                               CudaHardSigmoidGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(swish, Swish, CudaSwishFunctor,
+                               CudaSwishGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(thresholded_relu, ThresholdedRelu,
+                               CudaThresholdedReluFunctor,
+                               CudaThresholdedReluGradFunctor);
+
+#endif  // PADDLE_WITH_XPU_KP
