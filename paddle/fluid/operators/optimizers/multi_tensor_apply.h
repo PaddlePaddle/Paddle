@@ -94,11 +94,40 @@ static __global__ void MultiTensorApplyCUDAKernel(
           args...);
 }
 
-template <typename Functor, int BlockDim, int MaxTensorNumPerLaunch,
-          int MaxChunkNumPerLaunch, typename... Args>
-static void MultiTensorApply(Functor functor, gpuStream_t stream,
-                             const int *offsets, int n, int chunk_size,
-                             Args... args) {
+template <int MaxTensorNumPerLaunch, int MaxChunkNumPerLaunch>
+class MultiTensorLauncher {
+ public:
+  MultiTensorLauncher(
+      const TensorMetaList<MaxTensorNumPerLaunch, MaxChunkNumPerLaunch> &meta,
+      const int &chunk_id, const int &chunk_size, const int &block_dim,
+      const gpuStream_t &stream)
+      : meta_(meta),
+        chunk_id_(chunk_id),
+        chunk_size_(chunk_size),
+        block_dim_(block_dim),
+        stream_(stream) {}
+
+  template <typename Functor, typename... Args>
+  void Launch(Functor &&functor, Args &&... args) const {
+    MultiTensorApplyCUDAKernel<
+        Functor, MaxTensorNumPerLaunch,
+        MaxChunkNumPerLaunch><<<chunk_id_, block_dim_, 0, stream_>>>(
+        functor, meta_, chunk_size_, args...);
+  }
+
+ private:
+  const TensorMetaList<MaxTensorNumPerLaunch, MaxChunkNumPerLaunch> &meta_;
+  const int &chunk_id_;
+  const int &chunk_size_;
+  const int &block_dim_;
+  const gpuStream_t &stream_;
+};
+
+template <int MaxTensorNumPerLaunch, int MaxChunkNumPerLaunch,
+          typename Callback>
+static void MultiTensorApplyWithCallback(gpuStream_t stream, const int *offsets,
+                                         int n, int chunk_size, int block_dim,
+                                         Callback &&callback) {
   if (n == 0) return;
 
   constexpr auto NumTensor = MaxTensorNumPerLaunch;
@@ -110,6 +139,11 @@ static void MultiTensorApply(Functor functor, gpuStream_t stream,
   int numel_offset = 0;
   metas.start_tensor_id = 0;
   metas.start_chunk_id = 0;
+  int launch_num = 0;
+
+  MultiTensorLauncher<MaxTensorNumPerLaunch, MaxChunkNumPerLaunch> launcher(
+      metas, chunk_id, chunk_size, block_dim, stream);
+
   for (int i = 0; i < n; ++i) {
     auto length = offsets[i + 1] - offsets[i];
     if (tensor_id == 0) {
@@ -132,9 +166,8 @@ static void MultiTensorApply(Functor functor, gpuStream_t stream,
       bool last_chunk = (i + 1 == n && j + 1 == chunk_num);
 
       if (tensor_full || block_full || last_chunk) {
-        MultiTensorApplyCUDAKernel<Functor, NumTensor,
-                                   NumChunk><<<chunk_id, BlockDim, 0, stream>>>(
-            functor, metas, chunk_size, args...);
+        callback(launcher, launch_num);
+        ++launch_num;
         chunk_id = 0;
         if (j + 1 == chunk_num) {  // chunk for the current tensor is full
           metas.start_chunk_id = 0;
@@ -150,6 +183,18 @@ static void MultiTensorApply(Functor functor, gpuStream_t stream,
       }
     }
   }
+}
+
+template <typename Functor, int MaxTensorNumPerLaunch, int MaxChunkNumPerLaunch,
+          typename... Args>
+static void MultiTensorApply(Functor functor, gpuStream_t stream,
+                             const int *offsets, int n, int chunk_size,
+                             int block_dim, Args &&... args) {
+  auto callback = [&](const MultiTensorLauncher<MaxTensorNumPerLaunch,
+                                                MaxChunkNumPerLaunch> &launcher,
+                      int i) { launcher.Launch(functor, args...); };
+  MultiTensorApplyWithCallback<MaxTensorNumPerLaunch, MaxChunkNumPerLaunch>(
+      stream, offsets, n, chunk_size, block_dim, callback);
 }
 
 }  // namespace operators
