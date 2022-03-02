@@ -87,12 +87,63 @@ class StftOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+template <typename T>
+class StftGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("stft_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+class StftGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    const auto out_grad_name = framework::GradVarName("Out");
+    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
+                   "stft_grad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "stft_grad");
+
+    const auto x_grad_name = framework::GradVarName("X");
+    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
+                   "stft_grad");
+
+    ctx->ShareDim("X", /*->*/ x_grad_name);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    const auto in_dtype = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    const auto kernel_dtype = framework::ToRealType(in_dtype);
+    return framework::OpKernelType(kernel_dtype, ctx.GetPlace());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(stft, ops::StftOp, ops::StftOpMaker);
+REGISTER_OPERATOR(stft, ops::StftOp, ops::StftOpMaker,
+                  ops::StftGradOpMaker<paddle::framework::OpDesc>,
+                  ops::StftGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(stft_grad, ops::StftGradOp);
+
 REGISTER_OP_CPU_KERNEL(
     stft, ops::StftKernel<paddle::platform::CPUDeviceContext, float>,
     ops::StftKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CPU_KERNEL(
+    stft_grad, ops::StftGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::StftGradKernel<paddle::platform::CPUDeviceContext, double>);
