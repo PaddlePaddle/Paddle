@@ -19,14 +19,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TopkV2Kernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& k_t,
-                  int k_int,
-                  int axis,
-                  bool largest,
-                  bool sorted,
-                  DenseTensor* out,
-                  DenseTensor* indices);
+void TopkKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& k_t,
+                int k_int,
+                int axis,
+                bool largest,
+                bool sorted,
+                DenseTensor* out,
+                DenseTensor* indices);
 
 }  // namespace phi

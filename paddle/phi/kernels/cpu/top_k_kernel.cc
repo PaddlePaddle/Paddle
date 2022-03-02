@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/top_k_v2_kernel.h"
+#include "paddle/phi/kernels/top_k_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -121,15 +121,15 @@ static void FullTopK(Type input_height,
 }
 
 template <typename T, typename Context>
-void TopkV2Kernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& k_t,
-                  int k,
-                  int axis,
-                  bool largest,
-                  bool sorted,
-                  DenseTensor* out,
-                  DenseTensor* indices) {
+void TopkKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& k_t,
+                int k,
+                int axis,
+                bool largest,
+                bool sorted,
+                DenseTensor* out,
+                DenseTensor* indices) {
   const auto* input = &x;
   // Get the top k elements of each row of input tensor
   const auto& in_dims = input->dims();
@@ -228,11 +228,5 @@ void TopkV2Kernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(top_k_v2,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::TopkV2Kernel,
-                   float,
-                   double,
-                   int32_t,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    top_k, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {}

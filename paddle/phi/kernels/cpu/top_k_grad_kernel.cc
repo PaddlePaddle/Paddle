@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/top_k_v2_grad_kernel.h"
+#include "paddle/phi/kernels/top_k_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -50,15 +50,15 @@ static void FullTopKAssign(const Type& input_height,
 }
 
 template <typename T, typename Context>
-void TopkV2GradKernel(const Context& dev_ctx,
-                      const DenseTensor& out_grad,
-                      const DenseTensor& x,
-                      const DenseTensor& indices,
-                      int k,
-                      int axis,
-                      bool largest,
-                      bool sorted,
-                      DenseTensor* x_grad) {
+void TopkGradKernel(const Context& dev_ctx,
+                    const DenseTensor& out_grad,
+                    const DenseTensor& x,
+                    const DenseTensor& indices,
+                    int k,
+                    int axis,
+                    bool largest,
+                    bool sorted,
+                    DenseTensor* x_grad) {
   const auto& in_dims = x.dims();
   const auto& out_dims = indices.dims();
 
@@ -141,10 +141,10 @@ void TopkV2GradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(top_k_v2_grad,
+PD_REGISTER_KERNEL(top_k_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::TopkV2GradKernel,
+                   phi::TopkGradKernel,
                    float,
                    double,
                    int32_t,

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/top_k_v2_kernel.h"
+#include "paddle/phi/kernels/top_k_kernel.h"
 
 #include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -37,15 +37,15 @@ namespace ops = paddle::operators;
   FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
 
 template <typename T, typename Context>
-void TopkV2Kernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& k_t,
-                  int k,
-                  int axis,
-                  bool largest,
-                  bool sorted,
-                  DenseTensor* out,
-                  DenseTensor* indices) {
+void TopkKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& k_t,
+                int k,
+                int axis,
+                bool largest,
+                bool sorted,
+                DenseTensor* out,
+                DenseTensor* indices) {
   const auto* input = &x;
   // get the input dims
   const auto& in_dims = input->dims();
@@ -256,10 +256,10 @@ void TopkV2Kernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(top_k_v2,
+PD_REGISTER_KERNEL(top_k,
                    GPU,
                    ALL_LAYOUT,
-                   phi::TopkV2Kernel,
+                   phi::TopkKernel,
                    float,
                    double,
                    int,
