@@ -20,10 +20,12 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
@@ -172,6 +174,14 @@ __global__ void ScatterKernel(const T* input,
   }
 }
 
+__global__ void DistanceKernel(const int* start,
+                               const int* end,
+                               int* distance) {
+  if (threadIdx.x == 0) {
+    *distance = end - start;
+  }
+}
+
 // the basic algorithm can refer to convolution_kernel.cc or
 // the second paper
 // example:
@@ -230,8 +240,8 @@ int ProductRuleBook(const Context& dev_ctx,
   Dims4D d_dilations(1, dilations[2], dilations[1], dilations[0]);
 
   // 1. product rule book
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-      counter_ptr, 0, sizeof(int) * kernel_size, dev_ctx.stream()));
+  phi::funcs::SetConstant<Context, int> set_zero;
+  set_zero(dev_ctx, counter_per_kernel, 0);
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
@@ -249,26 +259,48 @@ int ProductRuleBook(const Context& dev_ctx,
                                               rulebook_ptr,
                                               counter_ptr);
 
-  // 2. remove -1
+// 2. remove -1
+#ifdef PADDLE_WITH_HIP
+  int* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
+#else
   int* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                              rulebook_ptr,
                              rulebook_ptr + 2 * kernel_size * non_zero_num,
                              -1);
+
+#ifdef PADDLE_WITH_HIP
+  thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                          counter_ptr,
                          counter_ptr + kernel_size,
                          offsets_ptr);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&(*h_counter)[0],
-                                             counter_ptr,
-                                             kernel_size * sizeof(int),
-                                             cudaMemcpyDeviceToHost,
-                                             dev_ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&(*h_offsets)[0],
-                                             offsets_ptr,
-                                             kernel_size * sizeof(int),
-                                             cudaMemcpyDeviceToHost,
-                                             dev_ctx.stream()));
+#ifdef PADDLE_WITH_HIP
+  phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
+                                     counter_ptr,
+                                     kernel_size * sizeof(int),
+                                     hipMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
+                                     offsets_ptr,
+                                     kernel_size * sizeof(int),
+                                     hipMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+#else
+  phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
+                                     counter_ptr,
+                                     kernel_size * sizeof(int),
+                                     cudaMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
+                                     offsets_ptr,
+                                     kernel_size * sizeof(int),
+                                     cudaMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+#endif
   dev_ctx.Wait();
   int rulebook_len =
       (*h_counter)[kernel_size - 1] + (*h_offsets)[kernel_size - 1];
@@ -294,27 +326,64 @@ int ProductRuleBook(const Context& dev_ctx,
                       dev_ctx.stream()>>>(
       rulebook_len, out_index_ptr, unique_value_ptr);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(unique_key_ptr,
-                                             rulebook_ptr + rulebook_len,
-                                             sizeof(int) * rulebook_len,
-                                             cudaMemcpyDeviceToDevice,
-                                             dev_ctx.stream()));
+#ifdef PADDLE_WITH_HIP
+  phi::backends::gpu::GpuMemcpyAsync(unique_key_ptr,
+                                     rulebook_ptr + rulebook_len,
+                                     rulebook_len * sizeof(int),
+                                     hipMemcpyDeviceToDevice,
+                                     dev_ctx.stream());
+#else
+  phi::backends::gpu::GpuMemcpyAsync(unique_key_ptr,
+                                     rulebook_ptr + rulebook_len,
+                                     rulebook_len * sizeof(int),
+                                     cudaMemcpyDeviceToDevice,
+                                     dev_ctx.stream());
+#endif
 
-  // compared with thrust::sort_by_key, thrust::merge_by_key may achieved higher
-  // performance, but thrust::merge_by_key limited by data size
+// compared with thrust::sort_by_key, thrust::merge_by_key may achieved higher
+// performance, but thrust::merge_by_key limited by data size
+#ifdef PADDLE_WITH_HIP
+  thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                       unique_key_ptr,
                       unique_key_ptr + rulebook_len,
                       out_index_ptr);
 
   // 4. unique
   thrust::pair<int*, int*> new_end =
+#ifdef PADDLE_WITH_HIP
+      thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#else
       thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                             unique_key_ptr,
                             unique_key_ptr + rulebook_len,
                             unique_value_ptr);
+  // thrust::distance doesn't support stream parameters
+  // const int out_non_zero_num = thrust::distance(unique_key_ptr,
+  // new_end.first);
+  DistanceKernel<<<1, 1>>>(unique_key_ptr,
+                           new_end.first,
+                           rulebook_ptr + 2 * kernel_size * non_zero_num - 1);
+  int out_non_zero_num = 0;
+#ifdef PADDLE_WITH_HIP
+  phi::backends::gpu::GpuMemcpyAsync(
+      &out_non_zero_num,
+      rulebook_ptr + 2 * kernel_size * non_zero_num - 1,
+      sizeof(int),
+      hipMemcpyDeviceToHost,
+      dev_ctx.stream());
+#else
+  phi::backends::gpu::GpuMemcpyAsync(
+      &out_non_zero_num,
+      rulebook_ptr + 2 * kernel_size * non_zero_num - 1,
+      sizeof(int),
+      cudaMemcpyDeviceToHost,
+      dev_ctx.stream());
+#endif
   dev_ctx.Wait();
-  const int out_non_zero_num = thrust::distance(unique_key_ptr, new_end.first);
 
   // 5. update out_indices and rulebook by unique_value_ptr
   const int64_t sparse_dim = 4;
