@@ -51,10 +51,23 @@ class ControllerBase(object):
         self.build_pod()
 
         assert len(self.pod.containers) > 0, "No container in the pod"
-        self.ctx.logger.debug(self.pod)
+        self.ctx.logger.info("Run {}".format(self.pod))
         self.ctx.logger.debug(self.pod.containers[0])
 
         self.pod.deploy()
+
+        self.watch()
+
+    def watch(self) -> bool:
+        status = self.pod.watch()
+
+        if status == self.ctx.status.COMPLETED:
+            self.ctx.logger.info("Pod {}".format(status))
+        elif status == self.ctx.status.FAILED:
+            self.ctx.logger.info("Pod {}".format(status))
+            self.ctx.logger.info("Container failed !!!\n{}".format(
+                self.pod.failed_container()))
+            self.pod.stop()
 
     def stop(self, sigint=None):
         self.ctx.logger.debug("Controller stop")
@@ -62,9 +75,10 @@ class ControllerBase(object):
         self.pod.stop(sigint)
 
     def finalize(self):
-        self.ctx.logger.debug("Controller finalize")
         self.pod.join()
         self.master.stop()
+
+        self.ctx.logger.info("Done with code {}".format(self.pod.exit_code))
         sys.exit(self.pod.exit_code)
 
     def signal_handler(self, sigint, frame):
@@ -105,10 +119,10 @@ class Controller(ControllerBase):
                       use_ctx_env=True,
                       out=None,
                       err=None):
-        c = Container()
-        c.entrypoint = entrypoint or self._get_entrypoint()
-        c.env = self.ctx.get_envs() if use_ctx_env else {}
-        c.out, c.err = self._get_out_err_file(out, err)
+        c = Container(
+            entrypoint=(entrypoint or self._get_entrypoint()),
+            env=(self.ctx.get_envs() if use_ctx_env else {}), )
+        c.outfile, c.errfile = self._get_out_err_file(out, err)
         c.update_env(envs)
         return c
 
@@ -129,9 +143,9 @@ class Controller(ControllerBase):
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file)
 
         if is_init:
-            self.pod.init_containers.append(container)
+            self.pod.add_init_container(container)
         else:
-            self.pod.containers.append(container)
+            self.pod.add_container(container)
 
     def pod_replicas(self):
         '''

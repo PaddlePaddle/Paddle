@@ -19,30 +19,64 @@ from .status import Status
 
 import os, copy, sys
 import time
-'''
-A container can be run by process or just a callable function
-'''
 
 
 class Container(object):
-    def __init__(self):
-        self.entrypoint = []
-        self.rank = 0
-        self.retry: int = 3
-        self.out = None
-        self.err = None
-        self.env = {}
-        self.proc = None
-        self.grace_period = 10
+    '''
+    TODO(kuizhiqing) A container can be run by process/thread or just a callable function
+    '''
+
+    def __init__(self, entrypoint=[], rank=-1, env={}):
+        self._entrypoint = entrypoint
+        self._rank = rank
+        self._out = None
+        self._err = None
+        self._env = env
+        self._proc = None
+
+        self._retry: int = 3
+        self._grace_period = 10
 
         self._log_handler = None
 
+    @property
+    def entrypoint(self):
+        return self._entrypoint
+
+    @entrypoint.setter
+    def entrypoint(self, entry):
+        self._entrypoint = entry
+
+    @property
+    def rank(self):
+        return self._rank
+
+    @rank.setter
+    def rank(self, r):
+        self._rank = r
+
+    @property
+    def outfile(self):
+        return self._out
+
+    @outfile.setter
+    def outfile(self, out):
+        self._out = out
+
+    @property
+    def errfile(self):
+        return self._err
+
+    @errfile.setter
+    def errfile(self, err):
+        self._err = err
+
     def update_env(self, env={}, **kwargs):
         env = {k: v for k, v in env.items() if isinstance(v, str)}
-        self.env.update(env)
+        self._env.update(env)
 
         kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
-        self.env.update(kwargs)
+        self._env.update(kwargs)
 
     def _get_fd(self, pth):
         if not pth:
@@ -59,24 +93,24 @@ class Container(object):
     def start(self, timeout=-1):
         st = time.time()
 
-        if self.proc and self.proc.alive():
+        if self._proc and self._proc.alive():
             return True
 
-        self.stdout = self._get_fd(self.out) or sys.stdout
-        if self.out == self.err:
-            self.stderr = self.stdout
-        elif self.err:
-            self.stderr = self._get_fd(self.err) or sys.stderr
+        self._stdout = self._get_fd(self._out) or sys.stdout
+        if self._out == self._err:
+            self._stderr = self._stdout
+        elif self._err:
+            self._stderr = self._get_fd(self._err) or sys.stderr
 
-        self.proc = ProcessContext(
-            self.entrypoint, env=self.env, out=self.stdout, err=self.stderr)
-        self.proc.start()
+        self._proc = ProcessContext(
+            self._entrypoint, env=self._env, out=self._stdout, err=self._stderr)
+        self._proc.start()
 
         while timeout > 0 and time.time() - st < timeout:
-            if self.proc.alive():
+            if self._proc.alive():
                 time.sleep(0.1)
                 continue
-            if self.proc.exit_code() == 0:
+            if self._proc.exit_code() == 0:
                 return True
             return False
 
@@ -85,32 +119,37 @@ class Container(object):
             self._log_handler.close()
             self._log_handler = None
 
-        if self.proc and self.proc.alive():
-            return self.proc.terminate(force)
+        if self._proc and self._proc.alive():
+            return self._proc.terminate(force)
 
     def wait(self, timeout=None):
-        self.proc.wait(timeout)
+        self._proc.wait(timeout)
 
     def exit_code(self):
-        return self.proc.exit_code()
+        return self._proc.exit_code() if self._proc else -1
 
     def status(self):
-        if not self.proc:
+        if not self._proc:
             return Status.UNINIT
-        if self.proc.alive():
+        if self._proc.alive():
             return Status.RUNNING
-        elif self.proc.exit_code() == 0:
+        elif self._proc.exit_code() == 0:
             return Status.COMPLETED
         else:
             return Status.FAILED
 
     def __str__(self):
-        return 'Container env {} cmd {} rank {}'.format(
-            self.env, self.entrypoint, self.rank)
+        return 'Container rank {} status {} cmd {} code {} log {} \nenv {}'.format(
+            self._rank,
+            self.status(),
+            self._entrypoint,
+            self.exit_code(),
+            self.errfile,
+            self._env, )
 
     def logs(self, fn=None, offset=-1):
         if not self._log_handler:
-            self._log_handler = open(self.out)
+            self._log_handler = open(self._out)
 
         if offset >= 0:
             self._log_handler.seek(offset, 0)

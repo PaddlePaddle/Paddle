@@ -32,21 +32,33 @@ class CollectiveController(Controller):
     def build_pod(self):
         self.pod.replicas = self.pod_replicas()
 
-        self.pod.rank = self.ctx.args.rank if self.pod.rank < 0 else self.pod.rank
+        # rank will be reset when restart
+        self.pod.rank = self.ctx.args.rank
 
         port = self.ctx.node.get_free_port()
+
+        # compatible
+        endpoints = [
+            "{}:{}".format(self.ctx.node.ip, p)
+            for p in self.ctx.node.get_free_ports(self.pod.replicas)
+        ]
 
         data = json.dumps({
             'name': self.pod.name,
             'rank': self.pod.rank,
             'replicas': self.pod.replicas,
             'dtype': self.ctx.node.device.dtype,
-            'candidate': '{}:{}'.format(self.ctx.node.ip, port)
+            'candidate': '{}:{}'.format(self.ctx.node.ip, port),
+            'endpoints': ",".join(endpoints),
         })
 
         peer_list, rank = self.master.sync_peers(
             '/{}/info'.format(self.job.id), self.pod.name, data,
             self.job.replicas, self.pod.rank)
+        self.pod.rank = rank
+
+        if len(peer_list) < 1:
+            return False
 
         peer_list = [json.loads(i) for i in peer_list]
 
@@ -55,12 +67,12 @@ class CollectiveController(Controller):
 
         global_size = sum([i['replicas'] for i in peer_list])
         rank_offset = sum([i['replicas'] for i in peer_list[:rank]])
-
-        self.pod.rank = rank
         '''
         The new desinged collective need nothing but a master endpoint
         '''
         collective_master = peer_list[0]['candidate']
+
+        job_endpoints = [i['endpoints'] for i in peer_list]
 
         self.pod.reset()
         for i in range(self.pod.replicas):
@@ -70,8 +82,16 @@ class CollectiveController(Controller):
                 "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
+                ## compatible env
+                "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
+                "PADDLE_CURRENT_ENDPOINT": endpoints[i],
+                "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),
+                "PADDLE_TRAINERS_NUM": "{}".format(global_size),
+                "PADDLE_RANK_IN_NODE": str(i),
             }
             self.add_container(envs=e, log_tag=i)
+
+        return True
 
 
 class CollectiveElasticController(CollectiveController):
@@ -91,18 +111,20 @@ class CollectiveElasticController(CollectiveController):
         self.master.register_heartbeat(self.job.id, self.pod.name)
 
     def watch(self) -> bool:
+        '''
+        watch self and peer status, return true to exit
+        '''
         while True:
             # self status
             status = self.pod.watch(timeout=2)
-            self.ctx.logger.info("Pod status {}".format(status))
-            self.ctx.logger.info("Ctx status {}".format(
-                self.ctx.status._current_status))
+            self.ctx.logger.debug("Pod status {}, Ctx status {}".format(
+                status, self.ctx.status.current()))
 
+            # completed
             if status == self.ctx.status.COMPLETED:
                 self.master.set_status(status)
                 self.ctx.status.complete()
                 self.ctx.logger.info("Pod complete {}".format(status))
-                self.pod.stop()
                 return True
 
             # self failure
@@ -118,7 +140,7 @@ class CollectiveElasticController(CollectiveController):
                     return False
 
             # peer failure
-            if self.ctx.status.need_restart() and self.master.get_status(
+            if self.ctx.status.is_restarting() and self.master.get_status(
             ) != self.ctx.status.COMPLETED:
                 self.pod.stop()
                 return False
@@ -145,7 +167,8 @@ class CollectiveElasticController(CollectiveController):
 
             self.ctx.logger.debug("Run {}".format(self.job))
 
-            self.build_pod()
+            if not self.build_pod():
+                continue
 
             self.master.set_status(self.ctx.status.RUNNING)
             self.ctx.status.run()
@@ -158,7 +181,5 @@ class CollectiveElasticController(CollectiveController):
 
             if self.watch():
                 break
-
-            self.pod.restart += 1
 
         self.ctx.logger.debug("Job done {}".format(self.job))

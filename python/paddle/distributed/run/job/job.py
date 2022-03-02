@@ -20,37 +20,61 @@ class JobMode:
 
 
 class Job(object):
-    def __init__(self, np="", mode=JobMode.COLLECTIVE, id='default'):
-        self.mode = mode
-        self.id = id
+    def __init__(self, id='default', mode=JobMode.COLLECTIVE, np="1"):
+        self._mode = mode
+        self._id = id
 
-        self.ips = []
-        self.ports = []
-        self.endpoints = []
+        self._replicas = 0
+        self._replicas_min = self._replicas
+        self._replicas_max = self._replicas
+        self._elastic = False
 
-        self.replicas = 0
-        self.replicas_min = self.replicas
-        self.replicas_max = self.replicas
-        self.elastic = False
-
-        self.set_replicas(np)
+        self.set_replicas(str(np))
 
     def __str__(self):
-        return "Job: {}, mode {}, replicas {},{}:{}".format(
-            self.id, self.mode, self.replicas, self.replicas_min,
-            self.replicas_max)
+        return "Job: {}, mode {}, replicas {}[{}:{}], elastic {}".format(
+            self.id, self.mode, self._replicas, self._replicas_min,
+            self._replicas_max, self.elastic)
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def elastic(self):
+        return self._elastic
+
+    @property
+    def replicas(self):
+        return self._replicas
+
+    @property
+    def replicas_min(self):
+        return self._replicas_min
+
+    @property
+    def replicas_max(self):
+        return self._replicas_max
+
+    @replicas.setter
+    def replicas(self, replicas):
+        self._replicas = replicas
 
     def set_replicas(self, np: str):
-        np = np if np else '1'
+        np = str(np) if np else '1'
 
         if ':' in np:
             nps = np.split(':')
-            self.replicas_min, self.replicas_max = int(nps[0]), int(nps[1])
-            self.replicas = self.replicas_max  # default to max
+            self._replicas_min, self._replicas_max = int(nps[0]), int(nps[1])
+            self._replicas = self._replicas_max  # default to max
 
-            self.elastic = True
+            self._elastic = True
         else:
-            self.replicas = int(np)
-            self.replicas_min, self.replicas_max = self.replicas, self.replicas
+            self._replicas = int(np)
+            self._replicas_min, self._replicas_max = self._replicas, self._replicas
 
-            self.elastic = False
+            self._elastic = False

@@ -15,6 +15,7 @@
 
 class Status(object):
     UNINIT = "uninit"
+    READY = "ready"
     RUNNING = "running"
     FAILED = "failed"
     TERMINATING = "terminating"

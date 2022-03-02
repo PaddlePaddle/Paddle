@@ -23,22 +23,20 @@ import time
 
 class PodSepc(object):
     def __init__(self):
-        self.name = ''.join(
+        self._name = ''.join(
             random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6))
 
-        self.endpoints = []
-
         # by controller
-        self.init_containers: List[Container] = []
-        self.containers: List[Container] = []
-        self.resource: Resource = None
-        self.status: Status = None
-        self.rank = -1
-        self.init_timeout = 120  # 2 min timeout for each init container
-        self.restart = 0
+        self._init_containers: List[Container] = []
+        self._containers: List[Container] = []
 
-        self.replicas = 0  # number of containers
+        #self.resource: Resource = None
+        #self.status: Status = None
 
+        self._rank = -1
+        self._init_timeout = 120  # 2 min timeout for each init container
+        self._restart = -1
+        self._replicas = 0  # number of containers
         self._exit_code = 0
 
 
@@ -46,34 +44,81 @@ class Pod(PodSepc):
     def __init__(self):
         super().__init__()
 
-    def json(self):
-        pass
-
     def __str__(self):
-        return "Pod: {}, replicas {}".format(self.name, self.replicas)
+        return "Pod: {}, replicas {}, status {}".format(self.name,
+                                                        self.replicas,
+                                                        self.status())
+
+    def failed_container(self):
+        for c in self._containers:
+            if c.status() == Status.FAILED:
+                return c
+        return None
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def replicas(self):
+        return self._replicas
+
+    @replicas.setter
+    def replicas(self, r):
+        self._replicas = r
+
+    @property
+    def rank(self):
+        return self._rank
+
+    @rank.setter
+    def rank(self, r):
+        self._rank = r
+
+    @property
+    def restart(self):
+        return self._restart
+
+    @property
+    def containers(self):
+        return self._containers
+
+    def add_container(self, c):
+        c.rank = len(self._containers)
+        self._containers.append(c)
+
+    @property
+    def init_containers(self):
+        return self._init_containers
+
+    def add_init_container(self, c):
+        c.rank = len(self._init_containers)
+        self._init_containers.append(c)
+
+    @property
+    def exit_code(self):
+        for c in self._containers:
+            if c.exit_code() != 0:
+                return c.exit_code()
+        return 0
 
     def deploy(self):
-        for i in self.init_containers:
-            i.start(self.init_timeout)
+        for i in self._init_containers:
+            i.start(self._init_timeout)
 
-        for c in self.containers:
+        for c in self._containers:
             c.start()
 
+        self._restart += 1
+
     def stop(self, sigint=0):
-        for c in self.containers:
+        for c in self._containers:
             force = True if sigint == 9 else False
             c.terminate(force)
 
     def join(self):
-        for c in self.containers:
+        for c in self._containers:
             c.wait(None)
-
-    @property
-    def exit_code(self):
-        for c in self.containers:
-            if c.exit_code() != 0:
-                return c.exit_code()
-        return 0
 
     def status(self):
         if self.is_failed():
@@ -82,26 +127,26 @@ class Pod(PodSepc):
         if self.is_completed():
             return Status.COMPLETED
 
-        return Status.UNKNOWN
+        return Status.READY
 
     def reset(self):
-        self.init_containers = []
-        self.containers = []
+        self._init_containers = []
+        self._containers = []
 
     def is_failed(self):
-        for c in self.containers:
+        for c in self._containers:
             if c.status() == Status.FAILED:
                 return True
         return False
 
     def is_completed(self):
-        for c in self.containers:
+        for c in self._containers:
             if c.status() != Status.COMPLETED:
                 return False
         return True
 
     def logs(self, idx=0):
-        self.containers[idx].logs()
+        self._containers[idx].logs()
 
     def watch(self,
               all_list=[Status.COMPLETED],
@@ -114,11 +159,11 @@ class Pod(PodSepc):
         '''
         st = time.time()
         while timeout < 0 or st + timeout > time.time():
-            for c in self.containers:
+            for c in self._containers:
                 if c.status() in any_list:
                     return c.status()
 
-            s = [c.status() for c in self.containers]
+            s = [c.status() for c in self._containers]
             if len(set(s)) == 1 and s[0] in all_list:
                 return s[0]
 

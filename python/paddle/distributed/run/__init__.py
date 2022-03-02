@@ -21,6 +21,11 @@ from . import plugins
 '''
 Paddle distribution training entry ``python -m paddle.distributed.run``.
 
+Help
+
+# for arg usage and explanation, try the following command
+# python -m paddle.distributed.run -h
+
 Collective Mode
 
 Case 1: 1 node
@@ -66,6 +71,16 @@ Case 3: multi-node, specified master/rendezvous server
 # python -m paddle.distributed.run --master 10.0.0.1:13538 --server_num=2 --trainer_num=2 --np 2 train.py
 # the master ip must be one of the node and the port must available
 
+Case 4: specified servers and trainers in each node
 
+python -m paddle.distributed.run --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903 train.py
+
+
+Elastic Mode
+
+# run following command in 3 node to run immediately, or in 2 node to run after elastic_timeout
+# python -m paddle.distributed.run --master etcd://10.0.0.1:2379 --np 2:3 train.py
+
+# once the peer number changes between 2:3, the strategy holds
 
 '''

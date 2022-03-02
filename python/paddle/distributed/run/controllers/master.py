@@ -19,14 +19,16 @@ import time
 import sys
 import six
 import threading
-'''
-Master is a distributed store desgin to exchange info among nodes
-'''
+import copy
 
 ETCD_PROTOCAL = 'etcd://'
 
 
 class Master(object):
+    '''
+    Master is a distributed store desgin to exchange info among nodes
+    '''
+
     MAIN = "main"
     STANBY = "stanby"
     PATICIPANT = "participant"
@@ -136,6 +138,7 @@ class HTTPMaster(Master):
                     return ret, rank
             else:
                 time.sleep(0.5)
+        return [], 0
 
     def clean(self):
         for i in self.gc:
@@ -164,12 +167,13 @@ class ETCDMaster(Master):
 
         self.client.delete_prefix(prefix)
 
-        self.ctx.logger.debug("sync  path {} value {}".format(path, value))
+        self.ctx.logger.debug("sync path {} value {}".format(path, value))
 
         while True:
             self.client.put(path, six.b(value))
 
             result = [i for i in self.client.get_prefix(prefix)]
+            result = copy.deepcopy(result)
             self.ctx.logger.debug("sync peers {}".format(result))
 
             if len(result) == size:
@@ -184,8 +188,11 @@ class ETCDMaster(Master):
                 else:
                     ret = [None] * size
                     for v, k in result:
-                        ret[int(six.ensure_str(k.key).split('/')[
-                            -1])] = six.ensure_str(v)
+                        ii = int(six.ensure_str(k.key).split('/')[-1])
+                        if ii < 0:
+                            self.ctx.logger.error(
+                                "rank {} error in sync".format(ii))
+                        ret[ii] = six.ensure_str(v)
                     return ret, rank
             else:
                 time.sleep(0.5)
@@ -264,4 +271,5 @@ class ETCDMaster(Master):
     def stop(self):
         if hasattr(self, 'beat_thread'):
             self.ctx.status.done()
-            self.beat_thread.join()
+            # TODO(kuizhiqing) thread should exit
+            #self.beat_thread.join()

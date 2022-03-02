@@ -56,158 +56,79 @@ class Context(object):
             "--master",
             type=str,
             default=None,
-            help="The master/rendezvous server, ip:port")
+            help="the master/rendezvous server, ip:port")
 
         base_group.add_argument(
-            "--rank", type=int, default=-1, help="The peer rank")
+            "--rank", type=int, default=-1, help="the peer rank")
 
         base_group.add_argument(
-            "--log", type=str, default="INFO", help="Log level. Default INFO")
+            "--log", type=str, default="INFO", help="log level. Default INFO")
 
         base_group.add_argument(
             "--np",
             type=str,
             default="1",
-            help="number of peer, job pod/node number")
+            help="the number of peers, i.e. pod/node number")
 
         base_group.add_argument(
             "--nproc_per_node",
             type=int,
             default=None,
-            help="The number of processes to launch on a node."
-            "In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can"
-            " bound to one or average number of gpus.")
+            help="the number of processes in a pod")
 
         base_group.add_argument(
             "--log_dir",
             type=str,
             default="log",
-            help="The path for each process's log. Default --log_dir=log/")
-        '''
-        base_group.add_argument(
-            "--backend",
-            type=str,
-            default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
-            help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
-            "Default value is auto which perfers nccl or bkcl.")
-        '''
+            help="the path for each process's log. Default ./log")
         base_group.add_argument(
             "--mode",
             type=str,
             default="collective",
-            help="run mode of job, can be:collective/ps/ps-heter")
+            help="run mode of the job, collective/ps/ps-heter")
 
         base_group.add_argument(
-            "--id", type=str, default="default", help="job unique id")
+            "--id",
+            type=str,
+            default="default",
+            help="unique id of the job. Default default")
 
         base_group.add_argument(
             "--devices",
             type=str,
             default=None,
-            help="accelerate devices"
-            "For example:"
-            "--devices=\"0,1,2,3\" will launch four training processes each bound to one device."
-        )
-        '''
-        base_group.add_argument(
-            "--gpus",
-            type=str,
-            default=None,
-            help="It's for gpu training."
-            "For example:"
-            "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
-        )
-        base_group.add_argument("--selected_gpus", dest="gpus")
-
-        base_group.add_argument(
-            "--xpus",
-            type=str,
-            default=None,
-            help="It's for xpu training. For example: "
-            "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu."
-        )
-        base_group.add_argument("--selected_xpus", dest="xpus")
-
-        base_group.add_argument(
-            "--npus",
-            type=str,
-            default=None,
-            help="It's for xpu training. For example: "
-            "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
-        )
-        base_group.add_argument("--selected_npus", dest="npus")
-        '''
+            help="accelerate devices. as --gpus,npus,xps")
 
         base_group.add_argument(
             "training_script",
             type=str,
-            help="The full path to the single GPU training "
-            "program/script to be launched in parallel, "
-            "followed by all the arguments for the "
+            help="the full path of py script,"
+            "followed by arguments for the "
             "training script")
 
         base_group.add_argument('training_script_args', nargs=REMAINDER)
-        '''
-        # Optional arguments for the launch helper
-        # for collective
-        collective_group = parser.add_argument_group("Collective Parameters")
-        collective_group.add_argument(
-            "--ips",
-            type=str,
-            default="127.0.0.1",
-            help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
-        collective_group.add_argument(
-            "--cluster_topo_path",
-            type=str,
-            default=None,
-            help="A json format file will be stored in this path which is used"
-            "to represent the cluster topology information for auto parallel.")
-        collective_group.add_argument(
-            "--rank_mapping_path",
-            type=str,
-            default=None,
-            help="A json format file will be stored in this path which is used"
-            "to map processes to machines for auto parallel.")
-        collective_group.add_argument(
-            "--enable_auto_mapping",
-            type=bool,
-            default=False,
-            help="Set true to enable the lazy launch for auto-parallel scenario."
-        )
-        '''
 
         ps_group = parser.add_argument_group("Parameter-Server Parameters")
         # for parameter server
         ps_group.add_argument(
             "--servers",
             type=str,
-            default="",
-            help="User defined servers ip:port")
+            default='',
+            help="servers endpoints full list")
         ps_group.add_argument(
-            "--workers",
+            "--trainers",
             type=str,
-            default="",
-            help="User defined workers ip:port")
-        ps_group.add_argument(
-            "--heter_workers",
-            type=str,
-            default="",
-            help="User defined heter workers in each stage ip1:port1;ip2:port2")
-        ps_group.add_argument(
-            "--heter_devices",
-            type=str,
-            default="",
-            help="User defined heter devices in each stage cpu;gpu;cpu")
+            default='',
+            help="trainers endpoints full list")
 
         ps_group.add_argument(
-            "--trainer_num", type=int, help="number of trainers")
+            "--trainer_num", type=int, default=None, help="number of trainers")
         ps_group.add_argument(
-            "--server_num", type=int, help="number of servers")
+            "--server_num", type=int, default=None, help="number of servers")
         ps_group.add_argument(
-            "--heter_worker_num",
-            type=str,
-            help="number of heter_workers in each stage 1;2;3")
-        ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
+            "--gloo_port", type=int, default=6767, help="gloo http port")
+        ps_group.add_argument(
+            "--with_gloo", type=str, default="0", help="use gloo or not")
 
         # parameter elastic mode
         elastic_group = parser.add_argument_group("Elastic Parameters")
@@ -215,20 +136,20 @@ class Context(object):
             "--max_restart",
             type=int,
             default=3,
-            help="How many times can restart. Default 3")
+            help="the times can restart. Default 3")
 
         elastic_group.add_argument(
             "--elastic_level",
             type=int,
             default=-1,
-            help="elastic level -1 disable, 0 failed exit, peers hold, 1 interal restart"
+            help="elastic level: -1 disable, 0 failed exit, peers hold, 1 interal restart"
         )
 
         elastic_group.add_argument(
             "--elastic_timeout",
             type=int,
             default=30,
-            help="how many seconds to wait before elastic perform training")
+            help="seconds to wait before elastic perform training")
         return parser.parse_args()
 
     def _valide_env(self, key):
@@ -269,6 +190,12 @@ class Context(object):
             'PADDLE_MAX_RESTlRT': 'max_restart',
             'PADDLE_ELASTIC_LEVEL': 'elastic_level',
             'PADDLE_ELASTIC_TIMEOUT': 'elastic_timeout',
+            'PADDLE_SERVER_NUM': 'server_num',
+            'PADDLE_TRAINER_NUM': 'trainer_num',
+            'PADDLE_SERVERS_ENDPOINTS': 'servers',
+            'PADDLE_TRAINERS_ENDPOINTS': 'trainers',
+            'PADDLE_GLOO_PORT': 'gloo_port',
+            'PADDLE_WITH_GLOO': 'with_gloo',
         }
 
         for k, v in env_args.items():

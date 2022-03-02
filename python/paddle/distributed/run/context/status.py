@@ -15,6 +15,7 @@
 
 class Status(object):
     UNINIT = "uninit"
+    READY = "ready"
     RUNNING = "running"
     FAILED = "failed"
     TERMINATING = "terminating"
@@ -26,18 +27,20 @@ class Status(object):
     def __init__(self):
         self._current_status = None
 
+    def current(self):
+        return self._current_status
+
     def is_running(self):
         return self._current_status == self.RUNNING
 
-    def need_restart(self):
+    def is_restarting(self):
         return self._current_status == self.RESTARTING
 
     def is_done(self):
-        if self._current_status == self.DONE:
+        if self._current_status in [self.DONE, self.COMPLETED, self.FAILED]:
             return True
-
-        return True if self._current_status in [self.COMPLETED, self.FAILED
-                                                ] else False
+        else:
+            return False
 
     def run(self):
         self._current_status = self.RUNNING
