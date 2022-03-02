@@ -9,6 +9,12 @@ gather_srcs(infrt_src SRCS
 add_mlir_dialect(infrt_ops infrt)
 
 set(LLVM_TARGET_DEFINITIONS infrt_ops.td)
+mlir_tablegen(infrt_ops_baseAttributes.h.inc -gen-attrdef-decls -dialect=infrt)
+mlir_tablegen(infrt_ops_baseAttributes.cpp.inc -gen-attrdef-defs -dialect=infrt)
+add_public_tablegen_target(MLIRinfrt_ops_baseAttributesIncGen)
+add_dependencies(mlir-headers MLIRinfrt_ops_baseAttributesIncGen)
+
+set(LLVM_TARGET_DEFINITIONS infrt_ops.td)
 mlir_tablegen(infrt_opsAttributes.h.inc -gen-attrdef-decls -dialect=infrt)
 mlir_tablegen(infrt_opsAttributes.cpp.inc -gen-attrdef-defs -dialect=infrt)
 add_public_tablegen_target(MLIRinfrt_opsAttributesIncGen)
