@@ -125,24 +125,6 @@ struct DivFunctor {
   }
 };
 
-template <typename T, int BlockDim>
-__global__ void Sum(const T *counts, int num, const T eps, T *sum) {
-  typedef cub::BlockReduce<double, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-  T in = 0;
-  for (int i = threadIdx.x; i < num; i += BlockDim) {
-    in += counts[i];
-  }
-  __syncthreads();
-  auto out =
-      BlockReduce(temp_storage).Reduce(static_cast<double>(in), cub::Sum());
-  __syncthreads();
-  if (threadIdx.x == 0) {
-    T a = out > eps ? out : eps;
-    sum[0] = a;
-  }
-}
-
 // Out = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
 template <typename DeviceContext, typename T>
 class GPUSigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
