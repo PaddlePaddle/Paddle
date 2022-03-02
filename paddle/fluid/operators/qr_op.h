@@ -74,19 +74,19 @@ class QrCPUKernel : public framework::OpKernel<T> {
     int q_stride = m * k;
     int r_stride = k * n;
 
-    auto* x_data = x.data<phi::funcs::Real<T>>();
+    auto* x_data = x.data<phi::dtype::Real<T>>();
     T* q_data = nullptr;
     if (compute_q) {
-      q_data = q.mutable_data<phi::funcs::Real<T>>(
+      q_data = q.mutable_data<phi::dtype::Real<T>>(
           context.GetPlace(),
-          size_t(batch_size * m * k * sizeof(phi::funcs::Real<T>)));
+          size_t(batch_size * m * k * sizeof(phi::dtype::Real<T>)));
       memset(q_data, 0,
-             size_t(batch_size * m * k * sizeof(phi::funcs::Real<T>)));
+             size_t(batch_size * m * k * sizeof(phi::dtype::Real<T>)));
     }
-    auto* r_data = r.mutable_data<phi::funcs::Real<T>>(
+    auto* r_data = r.mutable_data<phi::dtype::Real<T>>(
         context.GetPlace(),
-        size_t(batch_size * k * n * sizeof(phi::funcs::Real<T>)));
-    memset(r_data, 0, size_t(batch_size * k * n * sizeof(phi::funcs::Real<T>)));
+        size_t(batch_size * k * n * sizeof(phi::dtype::Real<T>)));
+    memset(r_data, 0, size_t(batch_size * k * n * sizeof(phi::dtype::Real<T>)));
 
     // Implement QR by calling Eigen
     for (int i = 0; i < batch_size; ++i) {
@@ -142,7 +142,7 @@ class QrGradKernel : public framework::OpKernel<T> {
     // Use a different name dA instead of dX
     framework::Tensor& dA =
         *ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    dA.mutable_data<phi::funcs::Real<T>>(ctx.GetPlace());
+    dA.mutable_data<phi::dtype::Real<T>>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     phi::funcs::SetConstant<DeviceContext, T>()(dev_ctx, &dA, T(0));
 
@@ -224,7 +224,7 @@ class QrGradKernel : public framework::OpKernel<T> {
     } else {
       // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
       // Calculate dX and dY individually and concatenate them to get dA
-      dA.mutable_data<phi::funcs::Real<T>>(ctx.GetPlace());
+      dA.mutable_data<phi::dtype::Real<T>>(ctx.GetPlace());
 
       auto Y = dito.Slice(A, {-1}, {m}, {n});
       auto U = dito.Slice(R, {-1}, {0}, {m});
