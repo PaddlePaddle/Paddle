@@ -24,7 +24,8 @@ namespace paddle {
 namespace platform {
 namespace ipu {
 
-struct IpuStrategy {
+class IpuStrategy {
+ public:
   IpuStrategy();
 
   // TODO(alleng) create PaddleOptions
@@ -75,22 +76,30 @@ struct IpuStrategy {
   // custom ops
   std::vector<IpuCustomOpIdentifier> custom_ops;
 
+ public:
+  void AddBoolOption(const std::string &option, bool value);
+  void AddUint64Option(const std::string &option, std::uint64_t value);
+  void AddDoubleOption(const std::string &option, double value);
+  void AddStringOption(const std::string &option, const std::string &value);
+  void InsertStringOption(const std::string &option, const std::string &value);
+  void InsertStringPairOption(const std::string &option, const std::string &key,
+                              const std::string &value);
+  void SetTensorLocation(const std::string &tensor, const std::string &option,
+                         std::uint64_t value);
+  void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
+                   const std::string &domain, int version);
+
+  std::string GetOption(const std::string &);
+  std::vector<std::string> GetVectorOption(const std::string &);
+  std::map<std::string, std::string> GetMapOption(const std::string &);
+  std::string GetOptionType(const std::string &);
+  std::vector<std::string> GetAllOptionNames();
+
+  void EnablePattern(const std::string &t);
+  void DisablePattern(const std::string &t);
+  const bool IsPatternEnabled(const std::string &t);
+
  private:
-  std::map<std::string, std::function<void(bool)>> bool_options;
-  std::map<std::string, std::function<void(std::uint64_t)>> uint64_options;
-  std::map<std::string, std::function<void(double)>> double_options;
-  std::map<std::string, std::function<void(std::string)>> string_options;
-  std::map<std::string,
-           std::function<void(std::pair<std::string, std::string>)>>
-      container_options;
-
-  std::map<std::string, std::function<std::string()>> options_getter;
-  std::map<std::string, std::function<std::vector<std::string>()>>
-      vector_options_getter;
-  std::map<std::string, std::function<std::map<std::string, std::string>()>>
-      map_options_getter;
-  std::map<std::string, std::string> options_type;
-
   template <typename ValueType>
   void set(
       const std::string &key, ValueType value,
@@ -117,27 +126,20 @@ struct IpuStrategy {
     return it->second();
   }
 
- public:
-  void AddBoolOption(const std::string &option, bool value);
-  void AddUint64Option(const std::string &option, std::uint64_t value);
-  void AddDoubleOption(const std::string &option, double value);
-  void AddStringOption(const std::string &option, const std::string &value);
-  void InsertStringOption(const std::string &option, const std::string &value);
-  void InsertStringPairOption(const std::string &option, const std::string &key,
-                              const std::string &value);
-  void SetTensorLocation(const std::string &tensor, const std::string &option,
-                         std::uint64_t value);
-  void AddCustomOp(const std::string &paddle_op, const std::string &popart_op,
-                   const std::string &domain, int version);
+  std::map<std::string, std::function<void(bool)>> bool_options;
+  std::map<std::string, std::function<void(std::uint64_t)>> uint64_options;
+  std::map<std::string, std::function<void(double)>> double_options;
+  std::map<std::string, std::function<void(std::string)>> string_options;
+  std::map<std::string,
+           std::function<void(std::pair<std::string, std::string>)>>
+      container_options;
 
-  std::string GetOption(const std::string &);
-  std::vector<std::string> GetVectorOption(const std::string &);
-  std::map<std::string, std::string> GetMapOption(const std::string &);
-  std::string GetOptionType(const std::string &);
-
-  void EnablePattern(const std::string &t);
-  void DisablePattern(const std::string &t);
-  const bool IsPatternEnabled(const std::string &t);
+  std::map<std::string, std::function<std::string()>> options_getter;
+  std::map<std::string, std::function<std::vector<std::string>()>>
+      vector_options_getter;
+  std::map<std::string, std::function<std::map<std::string, std::string>()>>
+      map_options_getter;
+  std::map<std::string, std::string> options_type;
 };
 
 }  // namespace ipu

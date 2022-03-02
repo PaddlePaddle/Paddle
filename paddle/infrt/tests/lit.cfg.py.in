@@ -21,10 +21,11 @@ build_dir = "@CMAKE_BINARY_DIR@"
 config.llvm_tools_dir = os.path.join(build_dir, "third_party/install/llvm/bin")
 config.llvm_tools_dir = os.path.join(build_dir, "/third_party/install/llvm/lib")
 infrtopt_bin = os.path.join(build_dir, "paddle/infrt/dialect/")
+trtexec_bin = os.path.join(build_dir, "paddle/infrt/dialect/tensorrt/")
 infrtexec_bin = os.path.join(build_dir, "paddle/infrt/host_context/")
 
 llvm_bin = os.path.join(build_dir, "third_party/install/llvm/bin/")
 config.environment['PATH'] = os.path.pathsep.join(
-    (infrtopt_bin, infrtexec_bin, llvm_bin, config.environment['PATH']))
+    (infrtopt_bin, infrtexec_bin, trtexec_bin, llvm_bin, config.environment['PATH']))
 
 config.suffixes = ['.mlir']
