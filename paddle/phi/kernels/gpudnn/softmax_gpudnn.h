@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -47,6 +49,11 @@ class VecT4<phi::dtype::float16> {
  public:
   using Type = int2;
 };
+template <>
+class VecT4<phi::dtype::bfloat16> {
+ public:
+  using Type = int2;
+};
 
 // Vectorization trait 2 * sizeof(T)
 template <typename T>
@@ -63,6 +70,11 @@ class VecT2<float> {
 };
 template <>
 class VecT2<phi::dtype::float16> {
+ public:
+  using Type = int;
+};
+template <>
+class VecT2<phi::dtype::bfloat16> {
  public:
   using Type = int;
 };

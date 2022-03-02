@@ -88,6 +88,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_types[0] == proto::VarType::SELECTED_ROWS;
   }
 
+  bool IsForInferShape() const override { return true; }
+
  private:
   const InferShapeContext& ctx_;
 };
@@ -127,7 +129,9 @@ class CompatMetaTensor : public phi::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return phi::make_ddim(var->GetShape());
+
+      return var->GetShape().empty() ? phi::make_ddim({0UL})
+                                     : phi::make_ddim(var->GetShape());
     }
   }
 
