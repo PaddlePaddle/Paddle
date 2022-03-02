@@ -82,6 +82,12 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_key.dtype(),
                               arg_type);
       } else if (arg_type == std::type_index(typeid(
+                                 paddle::optional<const SelectedRows&>))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
+      } else if (arg_type == std::type_index(typeid(
                                  const std::vector<const DenseTensor*>&))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,

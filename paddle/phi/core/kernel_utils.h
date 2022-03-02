@@ -219,6 +219,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
 
