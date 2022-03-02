@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math.h"
 
 namespace paddle {
 namespace operators {

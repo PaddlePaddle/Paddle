@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +17,8 @@
 namespace phi {
 
 KernelSignature NllLossOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  // TODO(xiongkun): can't remove the forward mapping, because the Weight is
+  // optional
   return KernelSignature("nll_loss",
                          {"X", "Label", "Weight"},
                          {"ignore_index", "reduction"},

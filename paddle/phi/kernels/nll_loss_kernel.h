@@ -30,26 +30,4 @@ void NllLossRawKernel(const Context& dev_ctx,
                       DenseTensor* out,
                       DenseTensor* total_weight);
 
-template <typename T, typename Context>
-void NllLossKernel(const Context& dev_ctx,
-                   const DenseTensor& input,
-                   const DenseTensor& label,
-                   paddle::optional<const DenseTensor&> weight,
-                   int64_t ignore_index,
-                   const std::string& reduction,
-                   DenseTensor* out) {
-  DenseTensor total_weight;
-  total_weight.set_meta(
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(), {1}));
-  dev_ctx.template Alloc<T>(total_weight);
-  NllLossRawKernel(dev_ctx,
-                   input,
-                   label,
-                   weight,
-                   ignore_index,
-                   reduction,
-                   out,
-                   &total_weight);
-}
-
 }  // namespace phi

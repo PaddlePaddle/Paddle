@@ -16,7 +16,6 @@
 
 #include <memory>
 #include <string>
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -71,7 +70,7 @@ static void nll_loss_grad_2D(T* dx_data,
                              const int64_t n_classes,
                              const int64_t in_dim2,
                              const int64_t in_dim3,
-                             const std::string reduction,
+                             const std::string& reduction,
                              const int64_t ignore_index) {
   const auto map_size = in_dim2 * in_dim3;
   const auto sample_size = n_classes * map_size;

@@ -27,7 +27,7 @@ static void nll_loss_1D(T* out_data,
                         const T* weight_data,
                         const int64_t batch_size,
                         const int64_t n_classes,
-                        const std::string reduction,
+                        const std::string& reduction,
                         const int64_t ignore_index) {
   if (reduction == "none") {
     for (int64_t i = 0; i < batch_size; ++i) {
@@ -88,7 +88,7 @@ static void nll_loss_2D(T* out_data,
                         const int64_t n_classes,
                         const int64_t in_dim2,
                         const int64_t in_dim3,
-                        const std::string reduction,
+                        const std::string& reduction,
                         const int64_t ignore_index) {
   const auto map_size = in_dim2 * in_dim3;
   const auto sample_size = n_classes * map_size;
