@@ -46,14 +46,14 @@ class SvdCPUKernel : public framework::OpKernel<T> {
     int col_u = full ? rows : k;
     int col_v = full ? cols : k;
     int batches = numel / (rows * cols);
-    auto* U_out = U->mutable_data<phi::funcs::Real<T>>(
+    auto* U_out = U->mutable_data<phi::dtype::Real<T>>(
         context.GetPlace(),
-        size_t(batches * rows * col_u * sizeof(phi::funcs::Real<T>)));
-    auto* VH_out = VH->mutable_data<phi::funcs::Real<T>>(
+        size_t(batches * rows * col_u * sizeof(phi::dtype::Real<T>)));
+    auto* VH_out = VH->mutable_data<phi::dtype::Real<T>>(
         context.GetPlace(),
-        size_t(batches * col_v * cols * sizeof(phi::funcs::Real<T>)));
-    auto* S_out = S->mutable_data<phi::funcs::Real<T>>(
-        context.GetPlace(), size_t(batches * k * sizeof(phi::funcs::Real<T>)));
+        size_t(batches * col_v * cols * sizeof(phi::dtype::Real<T>)));
+    auto* S_out = S->mutable_data<phi::dtype::Real<T>>(
+        context.GetPlace(), size_t(batches * k * sizeof(phi::dtype::Real<T>)));
     /*SVD Use the Eigen Library*/
     math::BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches, full);
   }

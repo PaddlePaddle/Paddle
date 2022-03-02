@@ -41,7 +41,7 @@ void FullKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   int numel = out->numel();
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
   if (numel > 0) {
     // in transformer model the numel of outpout will be zero.
     std::vector<const DenseTensor*> inputs = {};
@@ -85,7 +85,7 @@ void FullLikeKernel(const Context& dev_ctx,
           static_cast<float>(value)));
   std::vector<const DenseTensor*> inputs = {};
   std::vector<DenseTensor*> outputs = {out};
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
   // This function has no input, so the inputs.size() == 0. Use kUnary, but the
   // data will not be loaded in the kernel because the number of parameters in
   // the operator is 0

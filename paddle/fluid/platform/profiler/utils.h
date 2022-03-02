@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <ctime>
+#include <string>
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/os_info.h"
 
 namespace paddle {
@@ -42,5 +45,11 @@ static std::string GetStringFormatLocalTime() {
 
 static int64_t nsToUs(int64_t ns) { return ns / 1000; }
 
+#ifdef PADDLE_WITH_CUPTI
+float CalculateEstOccupancy(uint32_t deviceId, uint16_t registersPerThread,
+                            int32_t staticSharedMemory,
+                            int32_t dynamicSharedMemory, int32_t blockX,
+                            int32_t blockY, int32_t blockZ, float blocksPerSm);
+#endif
 }  // namespace platform
 }  // namespace paddle

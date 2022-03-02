@@ -79,7 +79,7 @@ class ArgumentMappingContext {
   virtual bool HasOutput(const std::string& name) const = 0;
   virtual bool HasAttr(const std::string& name) const = 0;
 
-  // now we can't use Attribute here, it will cause pten relay on
+  // now we can't use Attribute here, it will cause phi relay on
   // boost::variant and BlockDesc
   virtual paddle::any Attr(const std::string& name) const = 0;
 
@@ -91,6 +91,10 @@ class ArgumentMappingContext {
 
   virtual bool IsDenseTensorOutput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
+
+  // use this function to mark it comes from InferShapeArgumentMappingContext
+  // and will be used in infershape
+  virtual bool IsForInferShape() const = 0;
 };
 
 }  // namespace phi

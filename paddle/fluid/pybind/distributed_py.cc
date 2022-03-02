@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -59,6 +60,10 @@ void BindDistributed(py::module *m) {
       .def_readwrite("source_root",
                      &distributed::BroadcastOptions::source_root);
 
+  py::class_<distributed::BarrierOptions>(*m, "BarrierOptions")
+      .def(py::init<>())
+      .def_readwrite("place_ids", &distributed::BarrierOptions::place_ids);
+
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
                  std::shared_ptr<distributed::ProcessGroup>>(*m, "ProcessGroup")
@@ -87,6 +92,35 @@ void BindDistributed(py::module *m) {
                  return self.Broadcast(tensors, opts);
                },
                py::arg("tensor"), py::arg("source_rank"),
+               py::call_guard<py::gil_scoped_release>())
+
+          .def("barrier",
+               [](distributed::ProcessGroup &self, std::vector<int> place_ids) {
+                 distributed::BarrierOptions opts;
+                 opts.place_ids = place_ids;
+                 return self.Barrier(opts);
+               },
+               py::arg("place_ids") = std::vector<int>{},
+               py::call_guard<py::gil_scoped_release>())
+
+          .def("send",
+               [](distributed::ProcessGroup &self, py::handle py_tensor,
+                  int dst) {
+                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                 std::vector<Tensor> tensors = {tensor};
+                 return self.Send(tensors, dst);
+               },
+               py::arg("tensor"), py::arg("dst"),
+               py::call_guard<py::gil_scoped_release>())
+
+          .def("recv",
+               [](distributed::ProcessGroup &self, py::handle py_tensor,
+                  int src) {
+                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                 std::vector<Tensor> tensors = {tensor};
+                 return self.Recv(tensors, src);
+               },
+               py::arg("tensor"), py::arg("src"),
                py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL)
@@ -143,6 +177,19 @@ void BindDistributed(py::module *m) {
                     [](distributed::ProcessGroupStrategy &self, int nrings) {
                       self.nrings_ = nrings;
                     });
+
+  m->def("eager_assign_group_by_size",
+         [](py::handle py_tensors, std::vector<bool> is_sparse_gradient,
+            std::vector<size_t> group_size_limits,
+            std::vector<int64_t> tensor_indices) {
+           auto tensors = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
+           return distributed::Eager_AssignGroupBySize(
+               tensors, is_sparse_gradient, group_size_limits, tensor_indices);
+         },
+         py::arg("tensors"), py::arg("is_sparse_gradient"),
+         py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
+         py::arg("tensor_indices") = std::vector<int64_t>{},
+         py::call_guard<py::gil_scoped_release>());
 }
 
 }  // end namespace pybind
