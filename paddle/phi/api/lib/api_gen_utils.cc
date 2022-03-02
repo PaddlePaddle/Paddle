@@ -12,26 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/utils/storage.h"
-#include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/meta_tensor.h"
-#include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
 
 namespace paddle {
 namespace experimental {
 
 /* ------------------ for input ----------------------- */
 
-inline std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
-    const Tensor& tensor) {
+std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(const Tensor& tensor) {
   return std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
 }
 
-inline std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
+std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
     const paddle::optional<Tensor>& tensor) {
   if (tensor) {
     return std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl());
@@ -39,7 +31,7 @@ inline std::shared_ptr<phi::DenseTensor> TensorToDenseTensor(
   return nullptr;
 }
 
-inline std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
+std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
     const std::vector<Tensor>& tensors) {
   auto pt_tensors = std::make_unique<std::vector<phi::DenseTensor>>();
   pt_tensors->reserve(tensors.size());
@@ -52,12 +44,11 @@ inline std::unique_ptr<std::vector<phi::DenseTensor>> TensorToDenseTensor(
   return std::move(pt_tensors);
 }
 
-inline std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
-    const Tensor& tensor) {
+std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor) {
   return std::dynamic_pointer_cast<phi::SelectedRows>(tensor.impl());
 }
 
-inline std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
+std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
     const paddle::optional<Tensor>& tensor) {
   if (tensor) {
     return std::dynamic_pointer_cast<phi::SelectedRows>(tensor->impl());
@@ -67,11 +58,11 @@ inline std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
 
 /* ----------------- for infer_meta --------------------- */
 
-inline phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor) {
+phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor) {
   return phi::MetaTensor(tensor);
 }
 
-inline paddle::optional<phi::MetaTensor> MakeMetaTensor(
+paddle::optional<phi::MetaTensor> MakeMetaTensor(
     const paddle::optional<const phi::DenseTensor&>& tensor) {
   if (tensor) {
     return {phi::MetaTensor(*tensor)};
@@ -79,7 +70,7 @@ inline paddle::optional<phi::MetaTensor> MakeMetaTensor(
   return {paddle::none};
 }
 
-inline std::vector<phi::MetaTensor> MakeMetaTensor(
+std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<phi::DenseTensor>& tensors) {
   std::vector<phi::MetaTensor> meta_tensors;
   meta_tensors.reserve(tensors.size());
@@ -89,11 +80,11 @@ inline std::vector<phi::MetaTensor> MakeMetaTensor(
   return meta_tensors;
 }
 
-inline phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor) {
+phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor) {
   return phi::MetaTensor(tensor);
 }
 
-inline paddle::optional<phi::MetaTensor> MakeMetaTensor(
+paddle::optional<phi::MetaTensor> MakeMetaTensor(
     const paddle::optional<const phi::SelectedRows&>& tensor) {
   if (tensor) {
     return {phi::MetaTensor(*tensor)};
@@ -103,7 +94,7 @@ inline paddle::optional<phi::MetaTensor> MakeMetaTensor(
 
 /* ------------------ for output ----------------------- */
 
-inline phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
+phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
   if (!out->initialized()) {
     auto dense_tensor = std::make_shared<phi::DenseTensor>(
         phi::make_intrusive<SharedStorage>(phi::TransToPhiPlace(backend)),
@@ -114,8 +105,9 @@ inline phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
   return static_cast<phi::DenseTensor*>(out->impl().get());
 }
 
-inline std::vector<phi::DenseTensor*> SetKernelOutput(
-    size_t out_size, Backend backend, std::vector<Tensor>* out) {
+std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
+                                               Backend backend,
+                                               std::vector<Tensor>* out) {
   out->reserve(out_size);
   std::vector<phi::DenseTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {
@@ -129,14 +121,37 @@ inline std::vector<phi::DenseTensor*> SetKernelOutput(
   return results;
 }
 
-inline phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend,
-                                                      Tensor* out) {
+phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend, Tensor* out) {
   if (!out->initialized()) {
     auto select_rows = std::make_shared<phi::SelectedRows>();
     out->set_impl(select_rows);
     return select_rows.get();
   }
   return static_cast<phi::SelectedRows*>(out->impl().get());
+}
+
+phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type) {
+  if (!out->initialized()) {
+    if (type == TensorType::SPARSE_COO) {
+      auto sparse_tensor = std::make_shared<phi::SparseCooTensor>(
+          phi::DenseTensor(), phi::DenseTensor(), phi::DDim{-1});
+      out->set_impl(sparse_tensor);
+      return sparse_tensor.get();
+    } else if (type == TensorType::SPARSE_CSR) {
+      auto sparse_tensor =
+          std::make_shared<phi::SparseCsrTensor>(phi::DenseTensor(),
+                                                 phi::DenseTensor(),
+                                                 phi::DenseTensor(),
+                                                 phi::DDim{-1});
+      out->set_impl(sparse_tensor);
+      return sparse_tensor.get();
+    } else {
+      auto dense_tensor = std::make_shared<phi::DenseTensor>();
+      out->set_impl(dense_tensor);
+      return dense_tensor.get();
+    }
+  }
+  return out->impl().get();
 }
 
 }  // namespace experimental
