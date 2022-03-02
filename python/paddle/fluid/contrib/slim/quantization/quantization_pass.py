@@ -47,42 +47,14 @@ _fake_quant_dequant_op_list = [
 ]
 
 _out_scale_op_list = [
-    "conv2d",
-    "depthwise_conv2d",
-    "mul",
-    "matmul",
-    "matmul_v2",
-    "relu",
-    "leaky_relu",
-    "relu6",
-    "sigmoid",
-    "tanh",
-    "prelu",
-    "swish",
-    "softmax",
-    "batch_norm",
-    "layer_norm",
-    "elementwise_add",
-    "pool2d",
-    "reshape2",
-    "transpose2",
-    "concat",
-    "elementwise_mul",
-    "scale",
-    "slice",
-    "hard_swish",
-    "hard_sigmoid",
-    "conv2d_transpose",
-    "gru",
-    "bilinear_interp",
-    "nearest_interp",
-    "trilinear_interp",
-    "flatten",
-    "flatten2",
-    "transpose",
-    "pad2d",
-    "reshape",
-    "layer_norm",
+    "conv2d", "depthwise_conv2d", "mul", "matmul", "matmul_v2", "relu",
+    "leaky_relu", "relu6", "sigmoid", "tanh", "prelu", "swish", "softmax",
+    "batch_norm", "layer_norm", "elementwise_add", "pool2d", "reshape2",
+    "transpose2", "concat", "elementwise_mul", "scale", "slice", "hard_swish",
+    "hard_sigmoid", "conv2d_transpose", "gru", "bilinear_interp",
+    "nearest_interp", "trilinear_interp", "flatten", "flatten2", "transpose",
+    "pad2d", "reshape", "layer_norm", "split", "flatten_contiguous_range",
+    "squeeze2", "nearest_interp_v2", "fill_constant_batch_size_like"
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
@@ -137,6 +109,10 @@ _op_real_in_out_name = {
     "flatten2": [["X"], ["Out"]],
     "unsqueeze2": [["X"], ["Out"]],
     "flatten_contiguous_range": [['X'], ["Out"]],
+    "split": [['X'], ["Out"]],
+    "squeeze2": [['X'], ["Out"]],
+    "nearest_interp_v2": [['X'], ["Out"]],
+    "fill_constant_batch_size_like": [['Input'], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -1804,7 +1780,8 @@ class AddQuantDequantPass(object):
         "squeeze", "elementwise_sub", "mul", "matmul", "relu", "relu6",
         "leaky_relu", "tanh", "swish", "scale", "transpose", "transpose2",
         "sigmoid", "pad2d", "flatten", "flatten2", "batch_norm", "layer_norm",
-        "matmul_v2"
+        "matmul_v2", "split", "flatten_contiguous_range", "squeeze2",
+        "nearest_interp_v2", "fill_constant_batch_size_like"
     ]
 
     # To be compatible with PaddleSlim, not remove _activation_type for now
