@@ -43,18 +43,18 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   }
 
   std::vector<MetaTensor> out_meta;
+  std::vector<MetaTensor*> out_meta_ptr;
   out_meta.reserve(out_number);
+  out_meta_ptr.reserve(out_number);
   std::vector<DenseTensor> result;
   result.reserve(out_number);
 
   for (size_t i = 0; i < out_number; ++i) {
-    auto dense_out = phi::Empty<T, Context>(dev_ctx);
-    MetaTensor tmp_meta(&dense_out);
-
-    result.push_back(dense_out);
-    out_meta.push_back(&result.back());
+    result.emplace_back(phi::Empty<T, Context>(dev_ctx));
+    out_meta.emplace_back(&result.back());
+    out_meta_ptr.push_back(&out_meta.back());
   }
-  SplitInferMeta(x, num_or_sections, axis, &out_meta);
+  SplitInferMeta(x, num_or_sections, axis, out_meta_ptr);
 
   std::vector<DenseTensor*> outs;
   outs.reserve(out_meta.size());
