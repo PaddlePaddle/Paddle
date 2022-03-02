@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
@@ -74,27 +76,49 @@ class FMHARef {
                       Tensor* src_mask_out_tensor, Tensor* softmax_out_tensor,
                       Tensor* dropout_mask_out_tensor,
                       Tensor* dropout_out_tensor, Tensor* qktv_out_tensor,
-                      Tensor* fmha_out_tensor) {
+                      Tensor* fmha_out_tensor, const Tensor* cache_k,
+                      const Tensor* cache_v, Tensor* cache_k_out,
+                      Tensor* cache_v_out) {
     // input shape: [bs, seq_len, 3, num_head, head_dim]
-    // transpose with perm [2, 0, 1, 3, 4],
+    // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
     int ndims = 5;
     std::vector<int> perm_1 = {2, 0, 3, 1, 4};
     TransposeGPUKernelDriver<T>(dev_ctx_, ndims, qkv_input_tensor, perm_1,
                                 transpose_2_out_tensor);
-
     T* qkv_data = transpose_2_out_tensor->data<T>();
     T* qk_out_data = qk_out_tensor->data<T>();
     T* qktv_out_data = qktv_out_tensor->data<T>();
     T* softmax_out_data = softmax_out_tensor->data<T>();
     T* dropout_out_data = dropout_out_tensor->data<T>();
     T* fmha_out_data = fmha_out_tensor->data<T>();
+    const T* cache_k_data = cache_k ? cache_k->data<T>() : nullptr;
+    const T* cache_v_data = cache_k ? cache_v->data<T>() : nullptr;
+    int cache_size = 0;
+    int cache_seq_len = 0;
+    if (cache_k) {
+      cache_size = cache_k->numel();
+      cache_seq_len = cache_k->dims()[2];
+    }
 
     int q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
     int k_size = q_size;
+    int new_k_size = cache_size + k_size;
     T* q_ptr = qkv_data;
     T* k_ptr = q_ptr + q_size;
     T* v_ptr = k_ptr + k_size;
+    if (cache_k) {
+      std::vector<Tensor> qkv = transpose_2_out_tensor->Split(1, 0);
+      int64_t kdims[4] = {qkv[1].dims()[1], qkv[1].dims()[2], qkv[1].dims()[3],
+                          qkv[1].dims()[4]};
+      qkv[1].Resize(phi::DDim(kdims, 4));
+      qkv[2].Resize(phi::DDim(kdims, 4));
+      phi::funcs::ConcatFunctor<phi::GPUContext, T> concat;
+      concat(dev_ctx_, {*cache_k, qkv[1]}, 2, cache_k_out);
+      concat(dev_ctx_, {*cache_v, qkv[2]}, 2, cache_v_out);
+      k_ptr = cache_k_out->data<T>();
+      v_ptr = cache_v_out->data<T>();
+    }
 
     // q*k^t, batched_gemm
     CBLAS_TRANSPOSE transA = CblasNoTrans;
@@ -102,7 +126,7 @@ class FMHARef {
     auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int gemm_batch_size = batch_size_ * num_head_;
     int gemm_m = seq_len_;
-    int gemm_n = seq_len_;
+    int gemm_n = cache_seq_len + seq_len_;
     int gemm_k = head_dim_;
     T alpha = static_cast<T>(1.0 / sqrt(head_dim_));
     T beta = static_cast<T>(0.0);
@@ -133,7 +157,7 @@ class FMHARef {
     transB = CblasNoTrans;
     gemm_m = seq_len_;
     gemm_n = head_dim_;
-    gemm_k = seq_len_;
+    gemm_k = cache_seq_len + seq_len_;
     alpha = static_cast<T>(1.0);
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;

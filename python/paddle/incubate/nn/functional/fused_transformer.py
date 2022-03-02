@@ -229,7 +229,10 @@ def fused_multi_head_attention(x,
                                ln_epsilon=1e-05,
                                training=True,
                                mode='upscale_in_train',
-                               name=None):
+                               name=None,
+                               ring_id=-1,
+                               cache_k=None,
+                               cache_v=None):
     r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
@@ -304,6 +307,9 @@ def fused_multi_head_attention(x,
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        ring_id (int, optional): For distributed forward in mp, only support NCCL and forward. Default is -1, means not using mp
+        cache_k (Tensor, optional): For generation model, cache structure
+        cache_v (Tensor, optional): For generation model, cache structure
 
     Returns:
         Tensor: The output Tensor, the data type and shape is same as `x`.
@@ -398,6 +404,9 @@ def fused_multi_head_attention(x,
             inputs['Ln2Scale'] = [ln_scale]
         if ln_bias:
             inputs['Ln2Bias'] = [ln_bias]
+        if cache_k:
+            inputs['CacheK'] = [cache_k]
+            inputs['CacheV'] = [cache_v]
 
         if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
             seed = helper.main_program.random_seed
@@ -417,6 +426,7 @@ def fused_multi_head_attention(x,
             'dropout_seed': seed if seed is not None else 0,
             'attn_dropout_implementation': mode,
             'dropout_implementation': mode,
+            'ring_id': ring_id
         }
 
         # set outputs
@@ -449,6 +459,8 @@ def fused_multi_head_attention(x,
         bias_dropout_residual_out = helper.create_variable_for_type_inference(
             dtype=dtype)
         final_out = helper.create_variable_for_type_inference(dtype=dtype)
+        cache_k_out = helper.create_variable_for_type_inference(dtype=dtype)
+        cache_v_out = helper.create_variable_for_type_inference(dtype=dtype)
 
         helper.append_op(
             type='fused_attention',
@@ -472,7 +484,12 @@ def fused_multi_head_attention(x,
                 "Ln2Mean": ln_mean_out,
                 "Ln2Variance": ln_variance_out,
                 "BiasDropoutResidualOut": bias_dropout_residual_out,
-                'Y': final_out
+                'Y': final_out,
+                'CacheKOut': cache_k_out,
+                'CacheVOut': cache_v_out
             },
             attrs=attrs)
+
+        if cache_k:
+            return [final_out, cache_k_out, cache_v_out]
         return final_out

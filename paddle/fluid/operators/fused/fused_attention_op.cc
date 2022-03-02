@@ -105,12 +105,14 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                           "input qkv_weight = [%s]",
                           x_dim, y_dim));
 
-    PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2], y_dim[3],
-                      platform::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 4"
-                          "(3, num_head, dim_head, dim_embed),"
-                          "and must satisfy the limitations: "
-                          "(num_head * dim_head == dim_embed)"));
+    if (ctx->Attrs().Get<int>("ring_id") == -1) {
+      PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2], y_dim[3],
+                        platform::errors::InvalidArgument(
+                            "The dimensions of qkv_weight must be 4"
+                            "(3, num_head, dim_head, dim_embed),"
+                            "and must satisfy the limitations: "
+                            "(num_head * dim_head == dim_embed)"));
+    }
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
       ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
@@ -133,19 +135,28 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("TransposeOut2",
                       {y_dim[0], x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
     // [batch, num_head, seq_len, seq_len]
-    ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+    auto last_dim = x_dim[1];
+    if (ctx->HasInput("CacheK")) {
+      auto cache_dim = ctx->GetInputDim("CacheK");
+      last_dim += cache_dim[2];
+      ctx->SetOutputDim("CacheKOut",
+                        {cache_dim[0], cache_dim[1], last_dim, cache_dim[3]});
+      ctx->SetOutputDim("CacheVOut",
+                        {cache_dim[0], cache_dim[1], last_dim, cache_dim[3]});
+    }
+    ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], last_dim});
 
     if (ctx->HasInput("SrcMask")) {
-      ctx->SetOutputDim("SrcMaskOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+      ctx->SetOutputDim("SrcMaskOut", {x_dim[0], y_dim[1], x_dim[1], last_dim});
     }
     // the same as QKOut's shape.
     ctx->SetOutputDim("AttnDropoutOut",
-                      {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+                      {x_dim[0], y_dim[1], x_dim[1], last_dim});
     if (ctx->Attrs().Get<bool>("attn_dropout_is_test") == false) {
       ctx->SetOutputDim("AttnDropoutMaskOut",
-                        {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+                        {x_dim[0], y_dim[1], x_dim[1], last_dim});
     }
-    ctx->SetOutputDim("SoftmaxOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+    ctx->SetOutputDim("SoftmaxOut", {x_dim[0], y_dim[1], x_dim[1], last_dim});
     // [batch_size, num_heads, seq_len, head_dim]
     ctx->SetOutputDim("QKTVOut", {x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
     // [batch_size, seq_len, number of heads*head size]
@@ -194,6 +205,10 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
              "(optional) Bias is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
+    AddInput("CacheK", "(optional) The cached K for generation inference.")
+        .AsDispensable();
+    AddInput("CacheV", "(optional) The cached V for generation inference.")
+        .AsDispensable();
     AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
     AddOutput("LnVariance", "Variance of the current mini batch.")
         .AsIntermediate();
@@ -217,6 +232,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("BiasDropoutResidualOut",
               "Result of residual + dropout(src + bias).")
         .AsIntermediate();
+    AddOutput("CacheKOut", "The udpated cache K.");
+    AddOutput("CacheVOut", "The udpated cache V.");
     AddOutput("Y", "Result after attention.");
 
     AddAttr<bool>("pre_layer_norm",
@@ -324,6 +341,10 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "0.0 and 0.001, But received [%s].",
                                 ln_epsilon));
         });
+    AddAttr<int>(
+        "ring_id",
+        "ring id for tensor model parallel. distributed training and inference")
+        .SetDefault(-1);
 
     AddComment(R"DOC(
   Add fused attention op whose logic is as follows:

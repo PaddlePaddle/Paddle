@@ -27,6 +27,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -51,6 +56,10 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
     auto *qkv_weight = ctx.Input<Tensor>("QKVW");
     auto *qkv_bias = ctx.Input<Tensor>("QKVBias");
+    auto *cache_k = ctx.Input<Tensor>("CacheK");
+    auto *cache_v = ctx.Input<Tensor>("CacheV");
+    auto *cache_k_out = ctx.Output<Tensor>("CacheKOut");
+    auto *cache_v_out = ctx.Output<Tensor>("CacheVOut");
     auto *qkv_out = ctx.Output<Tensor>("QKVOut");
     auto *qkv_bias_out = ctx.Output<Tensor>("QKVBiasOut");
 
@@ -86,6 +95,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *seed_1 = ctx.HasInput("Seed1") ? ctx.Input<Tensor>("Seed1") : nullptr;
     bool is_fix_seed_1 = ctx.Attr<bool>("attn_dropout_fix_seed");
     int seed_val_1 = ctx.Attr<int>("attn_dropout_seed");
+    int ring_id = ctx.Attr<int>("ring_id");
 
     // final output.
     auto *out = ctx.Output<Tensor>("Y");
@@ -128,6 +138,11 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
         dropout_mask_out->mutable_data<uint8_t>(ctx.GetPlace());
     auto *final_out_data = out->mutable_data<T>(ctx.GetPlace());
 
+    auto *cache_k_out_data =
+        cache_k_out ? cache_k_out->mutable_data<T>(ctx.GetPlace()) : nullptr;
+    auto *cache_v_out_data =
+        cache_v_out ? cache_v_out->mutable_data<T>(ctx.GetPlace()) : nullptr;
+
     int batch_size = input_x_dims[0];
     int max_seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
@@ -161,9 +176,14 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
 
     output_size = hidden_size;
     // (transA, transB, compute_bias) = (false, false, false)
+    // NOTE(Yuang Liu): For general input size == output size, change the
+    // position won't have effects. For mp, the output size is mp_head * dkey
+    // which is actually the input size. While the input size is hidden size,
+    // which is actually the output size. So for out linear, switch the
+    // input size and output size.
     auto out_linear_compute =
         AttnMatMul<T>(ctx.cuda_device_context(), false, false, bsz_seq,
-                      output_size, input_size, false);
+                      input_size, output_size, false);
     DropoutParam dropout_param2(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param2,
@@ -186,15 +206,15 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                  qkv_bias_out);
     }
     if (qkv_bias == nullptr) {
-      fmha_ref_compute.ComputeForward(*qkv_out, src_mask, transpose_out_2,
-                                      qk_out, src_mask_out, softmax_out,
-                                      attn_dropout_mask_out, attn_dropout_out,
-                                      qktv_out, fmha_out);
+      fmha_ref_compute.ComputeForward(
+          *qkv_out, src_mask, transpose_out_2, qk_out, src_mask_out,
+          softmax_out, attn_dropout_mask_out, attn_dropout_out, qktv_out,
+          fmha_out, cache_k, cache_v, cache_k_out, cache_v_out);
     } else {
-      fmha_ref_compute.ComputeForward(*qkv_bias_out, src_mask, transpose_out_2,
-                                      qk_out, src_mask_out, softmax_out,
-                                      attn_dropout_mask_out, attn_dropout_out,
-                                      qktv_out, fmha_out);
+      fmha_ref_compute.ComputeForward(
+          *qkv_bias_out, src_mask, transpose_out_2, qk_out, src_mask_out,
+          softmax_out, attn_dropout_mask_out, attn_dropout_out, qktv_out,
+          fmha_out, cache_k, cache_v, cache_k_out, cache_v_out);
     }
 
     // fmha_out: [batch_size, seq_len, num_head, head_dim]
@@ -202,6 +222,25 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // out_linear_out: [batch_size, seq_len, embed_dim]
     out_linear_compute.ComputeForward(out_linear_weight, fmha_out, nullptr,
                                       out_linear_out, nullptr);
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    if (ring_id >= 0) {
+      ncclDataType_t dtype = platform::ToNCCLDataType(
+          framework::TransToProtoVarType(out_linear_out->dtype()));
+      auto place = ctx.GetPlace();
+      int64_t numel = out_linear_out->numel();
+      const void *sendbuff = out_linear_out->data<T>();
+      void *recvbuff = out_linear_out->mutable_data<T>(place);
+      auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      gpuStream_t stream =
+          static_cast<platform::CUDADeviceContext *>(dev_ctx)->stream();
+      ncclRedOp_t nccl_red_type = ncclSum;
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+          sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(),
+          stream));
+    }
+#endif
+
     if (pre_layer_norm) {
       // output = (residual + dropout(input + bias))
       fused_dropout_layernorm_helper.ResidualDropoutBias(
