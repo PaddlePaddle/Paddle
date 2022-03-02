@@ -50,6 +50,19 @@ function match_cu_file_directory {
   return 1
 }
 
+# Limit h file directory
+function match_h_file_directory {
+  LOG "[INFO] run function match_h_file_directory"
+  local sub_dir h_file_dir
+  h_file_dir=$(dirname ${1})
+  # '.h' file should not in directory below
+  for sub_dir in "" "/cpu"
+  do
+    [ "${h_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 1
+  done
+  return 0
+}
+
 # Load op files by header file
 function load_CHANGE_OP_FILES_by_header_file {
   LOG "[INFO] run function load_CHANGE_OP_FILES_by_header_file"
@@ -62,8 +75,9 @@ function load_CHANGE_OP_FILES_by_header_file {
       match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\"."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
-    elif [[ "$change_file" =~ ".h" && $(dirname $change_file) != "paddle/phi/kernels" ]]
+    elif [[ "$change_file" =~ ".h" ]]
     then
+      match_h_file_directory $change_file || continue
       [ -n "${INCLUDE_SEARCH_MAP[$change_file]}" ] && continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\", keep searching."
       INCLUDE_SEARCH_MAP[$change_file]="searched"
@@ -88,8 +102,9 @@ function load_CHANGE_OP_FILES {
       match_cu_file_directory $change_file || continue
       LOG "[INFO] Found \"${change_file}\" changed."
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
-    elif [[ "$change_file" =~ ".h" && $(dirname $change_file) != "paddle/phi/kernels" ]]
+    elif [[ "$change_file" =~ ".h" ]]
     then
+      match_h_file_directory $change_file || continue
       LOG "[INFO] Found \"${change_file}\" changed, keep searching."
       INCLUDE_SEARCH_MAP[${change_file}]="searched"
       load_CHANGE_OP_FILES_by_header_file $change_file
