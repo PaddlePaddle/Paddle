@@ -127,7 +127,7 @@ struct SameDimsDivideFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    paddle::platform::errors::InvalidArgument(
+    phi::errors::InvalidArgument(
         "If use SameDimsDivideFunctor, template args(T) must be floating "
         "point. ");
   }
@@ -278,12 +278,10 @@ void CommonForwardBroadcastCPU(const DenseTensor& x,
   std::vector<int> index_array(max_dim, 0);
   const T* x_data = x.data<T>();
   const T* y_data = y.data<T>();
-  PADDLE_ENFORCE_NOT_NULL(x_data,
-                          paddle::platform::errors::InvalidArgument(
-                              "The input X should not be empty."));
-  PADDLE_ENFORCE_NOT_NULL(y_data,
-                          paddle::platform::errors::InvalidArgument(
-                              "The input Y should not be empty."));
+  PADDLE_ENFORCE_NOT_NULL(
+      x_data, phi::errors::InvalidArgument("The input X should not be empty."));
+  PADDLE_ENFORCE_NOT_NULL(
+      y_data, phi::errors::InvalidArgument("The input Y should not be empty."));
   OutType* out_data = ctx.Alloc<OutType>(z);
 
   const int out_size = std::accumulate(
@@ -317,12 +315,12 @@ void CommonElementwiseBroadcastForward(const CPUContext& dev_ctx,
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
   PADDLE_ENFORCE_LT(axis,
                     max_dim,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim,
                         axis));
@@ -385,12 +383,12 @@ void ElementwiseCompute(const CPUContext& dev_ctx,
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
   PADDLE_ENFORCE_LT(axis,
                     max_dim,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim,
                         axis));
@@ -630,12 +628,12 @@ void ElemwiseGradComputeWithBroadcast(const CPUContext& ctx,
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
   PADDLE_ENFORCE_LT(axis,
                     max_dim,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim,
                         axis));

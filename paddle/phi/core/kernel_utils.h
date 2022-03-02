@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/scalar.h"
@@ -210,6 +211,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 #ifdef PADDLE_WITH_XPU
   PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CustomContext);
+#endif
 
   /* Input Helpers */
 
@@ -237,6 +241,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);

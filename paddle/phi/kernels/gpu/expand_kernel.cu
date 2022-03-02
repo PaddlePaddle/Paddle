@@ -19,7 +19,7 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/impl/expand_kernel_impl.h"
 
-PT_REGISTER_KERNEL(expand,
+PD_REGISTER_KERNEL(expand,
                    GPU,
                    ALL_LAYOUT,
                    phi::ExpandKernel,

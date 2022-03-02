@@ -46,7 +46,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         attrs['loss'] = loss
         attrs['min_block_size'] = 81920
         attrs['origin_main_program'] = loss.block.program
+        attrs['origin_main_programs'] = [loss.block.program]
         attrs['origin_startup_program'] = startup_program
+        attrs['origin_startup_programs'] = [startup_program]
 
         attrs['cloned_main'] = attrs['origin_main_program'].clone()
         attrs['cloned_startup'] = attrs['origin_startup_program'].clone()

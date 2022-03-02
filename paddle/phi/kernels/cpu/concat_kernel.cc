@@ -22,7 +22,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/lod_utils.h"
-#include "paddle/phi/kernels/cpu/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
 namespace phi {
@@ -37,6 +37,7 @@ void ConcatKernel(const Context& dev_ctx,
   axis = phi::funcs::ComputeAxis(axis, x[0].dims().size());
 
   std::vector<phi::DDim> x_dims;
+  x_dims.reserve(x.size());
   for (size_t i = 0; i < x.size(); ++i) {
     x_dims.push_back(x[i].dims());
   }
@@ -54,7 +55,7 @@ void ConcatKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_EQ(
             x[i].lod().size(),
             lod_size_0,
-            paddle::platform::errors::Unimplemented(
+            phi::errors::Unimplemented(
                 "The lod level of all input LoDTensors should be same. "
                 "Maybe different lod level of input LoDTensors can concat,"
                 "it is not supported currently. The lod level of %dth input "
@@ -97,20 +98,22 @@ void ConcatKernel(const Context& dev_ctx,
     }
   } else {
     std::vector<phi::DenseTensor> inputs;
+    inputs.reserve(x.size());
     for (size_t j = 0; j < x.size(); ++j) {
       if (x[j].numel() > 0) {
-        inputs.push_back(x[j]);
+        inputs.emplace_back(x[j]);
       } else {
         continue;
       }
     }
-    ConcatImpl<T, Context>(dev_ctx, inputs, axis, out);
+    phi::funcs::ConcatFunctor<Context, T> functor;
+    functor(dev_ctx, inputs, axis, out);
   }
 }
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(concat,
+PD_REGISTER_KERNEL(concat,
                    CPU,
                    ALL_LAYOUT,
                    phi::ConcatKernel,

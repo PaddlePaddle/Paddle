@@ -29,8 +29,7 @@ class FancyAllocator : public phi::Allocator {
 
   AllocationPtr Allocate(size_t bytes_size) override {
     void* data = ::operator new(bytes_size);
-    auto* allocation =
-        new phi::Allocation(data, bytes_size, paddle::platform::CPUPlace());
+    auto* allocation = new phi::Allocation(data, bytes_size, phi::CPUPlace());
     return AllocationPtr(allocation, Delete);
   }
 };

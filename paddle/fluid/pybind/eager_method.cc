@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -34,6 +36,82 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 namespace paddle {
 namespace pybind {
+
+namespace py = ::pybind11;
+
+class PyTensorHook : public egr::TensorHook {
+ public:
+  explicit PyTensorHook(PyObject* func) : py_func_(func) {
+    Py_INCREF(py_func_);
+  }
+
+  ~PyTensorHook() {
+    py::gil_scoped_acquire gil;
+    Py_DECREF(py_func_);
+  }
+
+  paddle::experimental::Tensor operator()(
+      const paddle::experimental::Tensor& var) override {
+    py::gil_scoped_acquire gil;
+    VLOG(3) << "Call PyTensorHook for var " << var.name();
+
+    PyObject* res = nullptr;
+    try {
+      res = PyObject_CallFunctionObjArgs(py_func_, ToPyObject(var), nullptr);
+    } catch (platform::EnforceNotMet& e) {
+      throw std::move(e);
+    } catch (std::exception& e) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Hook function of Tensor raises an exception: %s.", e.what()));
+    } catch (...) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Hook function of Tensor raises an unknown exception."));
+    }
+
+    PADDLE_ENFORCE_NOT_NULL(res,
+                            platform::errors::Unavailable(
+                                "Hook function of Tensor return a nullptr."));
+    if (res == Py_None) {
+      return var;
+    }
+    return reinterpret_cast<TensorObject*>(res)->tensor;
+  }
+
+ private:
+  PyObject* py_func_;
+};
+
+class PyTensorVoidHook : public egr::TensorVoidHook {
+ public:
+  explicit PyTensorVoidHook(PyObject* func) : py_func_(func) {
+    Py_INCREF(py_func_);
+  }
+
+  ~PyTensorVoidHook() {
+    py::gil_scoped_acquire gil;
+    Py_DECREF(py_func_);
+  }
+
+  void operator()() override {
+    py::gil_scoped_acquire gil;
+    VLOG(3) << "Call PyTensorVoidHook";
+
+    try {
+      PyObject_CallFunctionObjArgs(py_func_, nullptr);
+    } catch (platform::EnforceNotMet& e) {
+      throw std::move(e);
+    } catch (std::exception& e) {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Hook function of Tensor raises an exception: %s.", e.what()));
+    } catch (...) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "Hook function of Tensor raises an unknown exception."));
+    }
+  }
+
+ private:
+  PyObject* py_func_;
+};
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
@@ -113,7 +191,7 @@ static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor =
-      self->tensor.copy_to(phi::TransToPtenBackend(place), blocking);
+      self->tensor.copy_to(phi::TransToPhiBackend(place), blocking);
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);
   egr::EagerUtils::autograd_meta(&cp_tensor)
       ->SetPersistable(
@@ -177,7 +255,7 @@ static PyObject* tensor_retain_grads(TensorObject* self, PyObject* args,
     if (!meta->GetMutableGradNode()) {
       VLOG(6) << "Make grad node of tensor: " << self->tensor.name()
               << "become accumulation node";
-      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
     }
     egr::egr_utils_api::RetainGradForTensor(self->tensor);
   }
@@ -186,36 +264,51 @@ static PyObject* tensor_retain_grads(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor__clear_gradient(TensorObject* self, PyObject* args,
-                                        PyObject* kwargs) {
+static PyObject* tensor_clear_gradient(TensorObject* self, PyObject* args,
+                                       PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "ClearGradient " << self->tensor.name();
 
+  Py_ssize_t args_num = PyTuple_Size(args);
+  bool set_to_zero = true;
+  if (args_num == (Py_ssize_t)1) {
+    CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  }
+
   paddle::experimental::Tensor* grad;
   if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
-    // Add RetainGrad as PostHook to AccumulationNode
-    std::shared_ptr<egr::GradNodeBase> grad_node =
-        egr::EagerUtils::grad_node(self->tensor);
-    PADDLE_ENFORCE(
-        grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation"));
-    auto accumulation_grad_node =
-        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    grad = accumulation_grad_node->Grad();
+    grad = egr::EagerUtils::mutable_grad(self->tensor);
+    PADDLE_ENFORCE(grad != nullptr,
+                   paddle::platform::errors::Fatal(
+                       "Detected NULL grad"
+                       "Please check if you have manually cleared"
+                       "the grad inside autograd_meta"));
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
     grad = meta->MutableGrad();
   }
 
-  if (grad->initialized()) {
-    VLOG(4) << "Gradient of " << self->tensor.name()
-            << " is initialized, will be released.";
-    auto dense_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
-    dense_tensor->MoveMemoryHolder();
+  if (grad->is_selected_rows()) {
+    auto selected_rows =
+        std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl());
+    if (selected_rows->mutable_value()->IsInitialized()) {
+      selected_rows->mutable_rows()->clear();
+      selected_rows->mutable_value()->clear();
+    }
+  } else if (grad->is_dense_tensor()) {
+    if (grad->initialized()) {
+      if (set_to_zero) {
+        grad->set_impl(paddle::experimental::zeros_like(*grad).impl());
+      } else {
+        VLOG(4) << "Gradient of " << self->tensor.name()
+                << " is initialized, will be released.";
+        auto dense_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
+        dense_tensor->MoveMemoryHolder();
+      }
+    }
   }
+
   Py_INCREF(Py_None);
   return Py_None;
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -228,19 +321,15 @@ static PyObject* tensor__zero_grads(TensorObject* self, PyObject* args,
 
   if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
     // Add RetainGrad as PostHook to AccumulationNode
-    std::shared_ptr<egr::GradNodeBase> grad_node =
-        egr::EagerUtils::grad_node(self->tensor);
-    PADDLE_ENFORCE(
-        grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node"
-                                        "Leaf tensor should have had grad_node "
-                                        "with type: GradNodeAccumulation"));
-    auto accumulation_grad_node =
-        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
-    if (accumulation_grad_node->Grad()->initialized()) {
-      accumulation_grad_node->Grad()->set_impl(
-          paddle::experimental::zeros_like(*(accumulation_grad_node->Grad()))
-              .impl());
+    paddle::experimental::Tensor* grad =
+        egr::EagerUtils::mutable_grad(self->tensor);
+    PADDLE_ENFORCE(grad != nullptr,
+                   paddle::platform::errors::Fatal(
+                       "Detected NULL grad"
+                       "Please check if you have manually cleared"
+                       "the grad inside autograd_meta"));
+    if (grad->initialized()) {
+      grad->set_impl(paddle::experimental::zeros_like(*(grad)).impl());
     }
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
@@ -392,6 +481,92 @@ static PyObject* tensor_method_set_value(TensorObject* self, PyObject* args,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_register_grad_hook(TensorObject* self, PyObject* args,
+                                           PyObject* kwargs) {
+  EAGER_TRY
+  int64_t hook_id;
+  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+    VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
+    std::shared_ptr<egr::GradNodeBase> grad_node =
+        egr::EagerUtils::grad_node(self->tensor);
+    PADDLE_ENFORCE(
+        grad_node.get() != nullptr,
+        paddle::platform::errors::Fatal("Detected NULL grad_node,"
+                                        "Leaf tensor should have had grad_node "
+                                        "with type: GradNodeAccumulation."));
+    auto rank_info =
+        egr::EagerUtils::unsafe_autograd_meta(self->tensor)->OutRankInfo();
+
+    PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
+
+    auto accumulation_grad_node =
+        std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+    hook_id = accumulation_grad_node->RegisterGradientHook(
+        rank_info.first, rank_info.second,
+        std::make_shared<PyTensorHook>(hook_func));
+
+  } else {
+    VLOG(6) << "Register hook for non leaf tensor: " << self->tensor.name();
+    std::shared_ptr<egr::GradNodeBase> grad_node =
+        egr::EagerUtils::grad_node(self->tensor);
+    auto rank_info =
+        egr::EagerUtils::unsafe_autograd_meta(self->tensor)->OutRankInfo();
+
+    PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
+
+    hook_id = grad_node->RegisterGradientHook(
+        rank_info.first, rank_info.second,
+        std::make_shared<PyTensorHook>(hook_func));
+  }
+  return ToPyObject(hook_id);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_remove_grad_hook(TensorObject* self, PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(6) << "Remove the registered hook for tensor: " << self->tensor.name();
+  std::shared_ptr<egr::GradNodeBase> grad_node =
+      egr::EagerUtils::grad_node(self->tensor);
+
+  int64_t hook_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
+
+  return ToPyObject(grad_node->RemoveGradientHook(hook_id));
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_register_reduce_hook(TensorObject* self, PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Register reduce hook for tensor: " << self->tensor.name();
+
+  std::shared_ptr<egr::GradNodeBase> grad_node =
+      egr::EagerUtils::grad_node(self->tensor);
+  PADDLE_ENFORCE_EQ(egr::egr_utils_api::IsLeafTensor(self->tensor), true,
+                    platform::errors::InvalidArgument(
+                        "Only can register backward hook for leaf Tensor."));
+  PADDLE_ENFORCE_EQ(
+      !egr::EagerUtils::unsafe_autograd_meta(self->tensor)->StopGradient(),
+      true, platform::errors::InvalidArgument(
+                "Cannot register backward hook on a Tensor that stop "
+                "gradient."));
+  PADDLE_ENFORCE(
+      grad_node.get() != nullptr,
+      paddle::platform::errors::Fatal("Detected NULL grad_node,"
+                                      "Leaf tensor should have had grad_node "
+                                      "with type: GradNodeAccumulation."));
+  PyObject* hook_func = PyTuple_GET_ITEM(args, 0);
+
+  auto accumulation_grad_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+  accumulation_grad_node->RegisterReduceHook(
+      std::make_shared<PyTensorVoidHook>(hook_func));
+
+  Py_INCREF(Py_None);
+  return Py_None;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))tensor_method_numpy,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -407,7 +582,7 @@ PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"retain_grads", (PyCFunction)(void (*)(void))tensor_retain_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
-    {"_clear_gradient", (PyCFunction)(void (*)(void))tensor__clear_gradient,
+    {"clear_gradient", (PyCFunction)(void (*)(void))tensor_clear_gradient,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_zero_grads", (PyCFunction)(void (*)(void))tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS, NULL},
@@ -428,6 +603,14 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_get_underline_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_set_value", (PyCFunction)(void (*)(void))tensor_method_set_value,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_register_grad_hook",
+     (PyCFunction)(void (*)(void))tensor_register_grad_hook,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_remove_grad_hook", (PyCFunction)(void (*)(void))tensor_remove_grad_hook,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_register_backward_hook",
+     (PyCFunction)(void (*)(void))tensor_register_reduce_hook,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 

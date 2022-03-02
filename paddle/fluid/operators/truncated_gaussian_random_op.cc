@@ -23,28 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-class CPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    float mean = context.Attr<float>("mean");
-    float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
-    T* data = tensor->mutable_data<T>(context.GetPlace());
-
-    std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
-                                           1.0);
-    TruncatedNormal<T> truncated_normal(mean, std);
-    int64_t size = tensor->numel();
-
-    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = truncated_normal(dist(*engine));
-    }
-  }
-};
-
 class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -124,5 +102,3 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(truncated_gaussian_random,
                              ops::TruncatedGaussianRandomOp,
                              ops::TruncatedGaussianRandomOpMaker);
-REGISTER_OP_CPU_KERNEL(truncated_gaussian_random,
-                       ops::CPUTruncatedGaussianRandomKernel<float>);

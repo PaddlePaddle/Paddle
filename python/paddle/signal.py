@@ -243,7 +243,7 @@ def stft(x,
          normalized=False,
          onesided=True,
          name=None):
-    """
+    r"""
     Short-time Fourier transform (STFT).
 
     The STFT computes the discrete Fourier transforms (DFT) of short overlapping
@@ -398,7 +398,7 @@ def istft(x,
           length=None,
           return_complex=False,
           name=None):
-    """
+    r"""
     Inverse short-time Fourier transform (ISTFT).
 
     Reconstruct time-domain signal from the giving complex input and window tensor when
