@@ -50,10 +50,10 @@ class TestActivationOPBase(XPUOpTest):
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
 
-    #def test_check_grad(self):
+    # def test_check_grad(self):
     #    if paddle.is_compiled_with_xpu():
     #        place = paddle.XPUPlace(0)
-    #        self.check_grad_with_place(place, ['X'], 'Out')
+    #        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class XPUTestExpOP(XPUOpTestWrapper):
@@ -165,19 +165,19 @@ class XPUTestTanhOP(XPUOpTestWrapper):
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
 
-    class XPUTestTanh1(XPUTestExp):
+    class XPUTestTanh1(XPUTestTanh):
         def set_shape(self):
             self.shape = (11, 17)
 
-    class XPUTestTanh2(XPUTestExp):
+    class XPUTestTanh2(XPUTestTanh):
         def set_shape(self):
             self.shape = (11, 17, 3)
 
-    class XPUTestTanh3(XPUTestExp):
+    class XPUTestTanh3(XPUTestTanh):
         def set_shape(self):
             self.shape = (11, 17, 3, 5)
 
-    class XPUTestTanh4(XPUTestExp):
+    class XPUTestTanh4(XPUTestTanh):
         def set_shape(self):
             self.shape = (11, 17, 3, 5, 7)
 
