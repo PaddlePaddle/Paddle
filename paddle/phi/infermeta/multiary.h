@@ -18,12 +18,17 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 namespace phi {
 
+std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors);
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
                                     paddle::optional<const MetaTensor&> bias,
                                     MetaTensor* out,
                                     MetaConfig config = MetaConfig());
+
+void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
+                               std::vector<MetaTensor*> out);
 
 void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      const Scalar& axis_scalar,
