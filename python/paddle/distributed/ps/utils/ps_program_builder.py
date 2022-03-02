@@ -88,7 +88,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
         self.attrs['origin_main_program'] = self.cloned_main
 
         if self.launch_barrier and self.launch_barrier_flag:
-            wait_server_ready(server_endpoints)
+            wait_server_ready(self.server_endpoints)
 
         return
 
@@ -127,7 +127,7 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
         self.attrs['origin_startup_program'] = self.cloned_startup
 
         if self.launch_barrier and self.launch_barrier_flag:
-            wait_server_ready(server_endpoints)
+            wait_server_ready(self.server_endpoints)
 
         return
 
@@ -166,7 +166,7 @@ class GpuPsProgramBuilder(PsProgramBuilder):
         self.attrs['origin_startup_program'] = self.cloned_startup
 
         if self.launch_barrier and self.launch_barrier_flag:
-            wait_server_ready(server_endpoints)
+            wait_server_ready(self.server_endpoints)
 
         return
 
@@ -219,7 +219,7 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
                                           [self.cloned_startup], self.pass_ctx)
 
         if self.launch_barrier and self.launch_barrier_flag:
-            wait_server_ready(server_endpoints)
+            wait_server_ready(self.server_endpoints)
 
         return
 

@@ -37,6 +37,10 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                         user_defined_strategy):
         super(ParameterServerOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        attrs = {}
+        attrs['role_maker'] = self.role_maker
+        attrs['k_steps'] = self.user_defined_strategy.a_sync_configs["k_steps"]
+        self.pass_ctx._attrs = attrs
 
     def _init_ps_pass_context(self, loss, startup_program):
         attrs = {}
@@ -89,7 +93,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return False
 
     def _can_apply(self):
-        if self._attrs['role_maker']._is_collective or self._attrs[
+        if self.pass_ctx._attrs['role_maker']._is_collective or self.pass_ctx._attrs[
                 'k_steps'] < 0:
             return False
         return True

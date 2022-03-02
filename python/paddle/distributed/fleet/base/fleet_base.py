@@ -1431,6 +1431,7 @@ class Fleet(object):
         # cache original feed forward program
         self.origin_main_program = loss.block.program
         context["origin_main_program"] = self.origin_main_program
+        context["origin_main_programs"] = [self.origin_main_program]
         context["loss"] = loss
         if startup_program == None:
             self.origin_startup_program = \
@@ -1441,6 +1442,7 @@ class Fleet(object):
                 startup_program.clone(for_test=False)
 
         context["origin_startup_program"] = startup_program
+        context["origin_startup_programs"] = [startup_program]
         context["role_maker"] = self._role_maker
 
         # Use the auto-parallel's routines instead
