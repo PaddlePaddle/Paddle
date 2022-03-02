@@ -46,6 +46,7 @@ from .auto_parallel import shard_tensor  # noqa: F401
 
 from .fleet import BoxPSDataset  # noqa: F401
 
+from .model import moe
 from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
 from .entry_attr import ShowClickEntry  # noqa: F401
