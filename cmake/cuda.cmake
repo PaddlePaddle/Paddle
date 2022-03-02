@@ -154,7 +154,7 @@ function(select_nvcc_arch_flags out_variable)
 
   # remove dots and convert to lists
   string(REGEX REPLACE "\\." "" cuda_arch_bin "${cuda_arch_bin}")
-  string(REGEX REPLACE "\\." "" cuda_arch_ptx "${CUDA_ARCH_PTX}")
+  string(REGEX REPLACE "\\." "" cuda_arch_ptx "${cuda_arch_ptx}")
   string(REGEX MATCHALL "[0-9()]+" cuda_arch_bin "${cuda_arch_bin}")
   string(REGEX MATCHALL "[0-9]+"   cuda_arch_ptx "${cuda_arch_ptx}")
 
