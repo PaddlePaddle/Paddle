@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <thrust/copy.h>
+#include <thrust/device_vector.h>
 #include <cstring>
 #include <random>
 #include <string>
@@ -27,7 +29,10 @@
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
+#if CUDA_VERSION >= 11000
+#include <cooperative_groups.h>
 namespace cg = cooperative_groups;
+#endif
 
 namespace paddle {
 namespace operators {
