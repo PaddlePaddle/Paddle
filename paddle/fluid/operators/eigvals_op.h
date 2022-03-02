@@ -48,7 +48,7 @@ struct PaddleComplex<
 template <typename T>
 using PaddleCType = typename PaddleComplex<T>::type;
 template <typename T>
-using Real = typename phi::funcs::Real<T>;
+using Real = typename phi::dtype::Real<T>;
 
 static void SpiltBatchSquareMatrix(const Tensor& input,
                                    std::vector<Tensor>* output) {
@@ -144,7 +144,7 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
           required_work_mem, work_mem));
 
   int64_t rwork_mem = rwork->memory_size();
-  int64_t required_rwork_mem = (n_dim << 1) * sizeof(phi::funcs::Real<T>);
+  int64_t required_rwork_mem = (n_dim << 1) * sizeof(phi::dtype::Real<T>);
   PADDLE_ENFORCE_GE(
       rwork_mem, required_rwork_mem,
       platform::errors::InvalidArgument(
@@ -154,11 +154,11 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
           required_rwork_mem, rwork_mem));
 
   int info = 0;
-  phi::funcs::lapackEig<T, phi::funcs::Real<T>>(
+  phi::funcs::lapackEig<T, phi::dtype::Real<T>>(
       'N', 'N', static_cast<int>(n_dim), a.template data<T>(),
       static_cast<int>(n_dim), output->template data<T>(), NULL, 1, NULL, 1,
       work->template data<T>(), static_cast<int>(work_mem / sizeof(T)),
-      rwork->template data<phi::funcs::Real<T>>(), &info);
+      rwork->template data<phi::dtype::Real<T>>(), &info);
 
   std::string name = "framework::platform::dynload::cgeev_";
   if (framework::TransToProtoVarType(input.dtype()) ==
@@ -188,10 +188,10 @@ class EigvalsKernel : public framework::OpKernel<T> {
     // query workspace size
     T qwork;
     int info;
-    phi::funcs::lapackEig<T, phi::funcs::Real<T>>(
+    phi::funcs::lapackEig<T, phi::dtype::Real<T>>(
         'N', 'N', static_cast<int>(n_dim), input_matrices[0].template data<T>(),
         static_cast<int>(n_dim), NULL, NULL, 1, NULL, 1, &qwork, -1,
-        static_cast<Real<T>*>(NULL), &info);
+        static_cast<phi::dtype::Real<T>*>(NULL), &info);
     int64_t lwork = static_cast<int64_t>(qwork);
 
     Tensor work, rwork;
@@ -208,7 +208,7 @@ class EigvalsKernel : public framework::OpKernel<T> {
     }
     if (framework::IsComplexType(
             framework::TransToProtoVarType(input->dtype()))) {
-      rwork.mutable_data<phi::funcs::Real<T>>(phi::make_ddim({n_dim << 1}),
+      rwork.mutable_data<phi::dtype::Real<T>>(phi::make_ddim({n_dim << 1}),
                                               ctx.GetPlace());
     }
 

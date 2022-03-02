@@ -47,8 +47,8 @@ KernelSignature ExpandGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PT_REGISTER_BASE_KERNEL_NAME(expand_v2, expand);
-PT_REGISTER_BASE_KERNEL_NAME(expand_v2_grad, expand_grad);
+PD_REGISTER_BASE_KERNEL_NAME(expand_v2, expand);
+PD_REGISTER_BASE_KERNEL_NAME(expand_v2_grad, expand_grad);
 
-PT_REGISTER_ARG_MAPPING_FN(expand_v2, phi::ExpandOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(expand_v2_grad, phi::ExpandGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(expand_v2, phi::ExpandOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(expand_v2_grad, phi::ExpandGradOpArgumentMapping);

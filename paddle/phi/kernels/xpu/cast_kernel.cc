@@ -86,7 +86,7 @@ void CastKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PT_REGISTER_KERNEL(cast,
+PD_REGISTER_KERNEL(cast,
                    XPU,
                    ALL_LAYOUT,
                    phi::CastKernel,

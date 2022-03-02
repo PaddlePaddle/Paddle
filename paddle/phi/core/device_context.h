@@ -132,6 +132,19 @@ class DeviceContext {
    */
   Generator* GetGenerator() const;
 
+  /**
+  * @brief Set the host generator for special op.
+  *
+  * @param Generator
+  */
+  void SetHostGenerator(Generator*);
+  /**
+   * @brief Get the host generator object.
+   *
+   * @return Generator
+   */
+  Generator* GetHostGenerator() const;
+
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;

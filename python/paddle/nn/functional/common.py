@@ -14,13 +14,11 @@
 
 import warnings
 import paddle
-from ...fluid.framework import in_dygraph_mode, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from ...tensor import concat
 from ...tensor.creation import zeros
 from paddle.static import Variable
-from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
 from ...fluid.layers import unfold  # noqa: F401
@@ -30,13 +28,17 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...fluid.framework import in_dygraph_mode, _varbase_creator
+from ...fluid.framework import _varbase_creator
 
-from ...fluid.framework import in_dygraph_mode
-from ...fluid import core, dygraph_utils
-from ...fluid import core, layers
+from ...fluid import dygraph_utils
+from ...fluid import layers
 from ...fluid.data_feeder import check_variable_and_dtype
+
 from paddle import _C_ops
+from paddle.framework import in_dynamic_mode
+from paddle.tensor.creation import full
+from paddle.framework import core
+from paddle.static import default_main_program
 
 __all__ = []
 
@@ -353,11 +355,11 @@ def interpolate(x,
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-        if isinstance(out_shape, Variable) and not in_dygraph_mode():
+        if isinstance(out_shape, Variable) and not in_dynamic_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
                     out_shape = list(out_shape.numpy())
                 for i, dim in enumerate(out_shape):
@@ -428,7 +430,7 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[2]
 
     else:
-        if in_dygraph_mode() and isinstance(scale, Variable):
+        if in_dynamic_mode() and isinstance(scale, Variable):
             scale = list(scale.numpy())
         if isinstance(scale, Variable):
             scale.stop_gradient = True
@@ -454,7 +456,7 @@ def interpolate(x,
                 "Attr(scale)'s type should be float, int, list, tuple, or Tensor."
             )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attr_list = []
         for k, v in attrs.items():
             attr_list.append(k)
@@ -719,7 +721,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
 
     check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
@@ -891,7 +893,7 @@ def dropout(x,
         seed = None
         mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
             out, mask = _C_ops.dropout(
@@ -930,7 +932,7 @@ def dropout(x,
             attrs=attrs)
         return out
     else:  #sometimes called dropout_nd #TODO: optimize with c++
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
         dtype = x.dtype
         keep_prob = 1 - p
@@ -943,7 +945,7 @@ def dropout(x,
 
             #get mask shape
             input_shape = x.shape
-            if not in_dygraph_mode():
+            if not in_dynamic_mode():
                 input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
@@ -954,7 +956,7 @@ def dropout(x,
                     "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".
                     format(len(input_shape), len(drop_axes)))
             mask_shape = [1] * len(input_shape)
-            if not in_dygraph_mode():
+            if not in_dynamic_mode():
                 for i in drop_axes:
                     mask_shape[i] = input_shape_tensor[i]
             else:
@@ -964,7 +966,7 @@ def dropout(x,
             #get mask
             random_tensor = paddle.uniform(
                 mask_shape, dtype='float32', min=0., max=1.0)
-            p = layers.fill_constant(shape=[1], dtype='float32', value=p)
+            p = full(shape=[1], fill_value=p, dtype='float32')
             keep_mask = paddle.greater_equal(random_tensor, p)
 
             scale_input = paddle.cast(scale_input, dtype)
@@ -1122,7 +1124,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     if p < 0 or p > 1:
         raise ValueError("p argument should between 0 and 1")
 
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'],
                                  'alpha_dropout')
 
@@ -1142,16 +1144,15 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         #get mask
         random_tensor = paddle.uniform(
             input_shape, dtype='float32', min=0., max=1.0)
-        p = layers.fill_constant(shape=[1], dtype='float32', value=p)
+        p = full(shape=[1], fill_value=p, dtype='float32')
         keep_mask = paddle.greater_equal(random_tensor, p)
         keep_mask = paddle.cast(keep_mask, dtype)
         drop_mask = paddle.subtract(
-            layers.fill_constant(
-                shape=input_shape, dtype=dtype, value=1.),
-            keep_mask)
+            full(
+                shape=input_shape, fill_value=1., dtype=dtype), keep_mask)
 
         #apply mask
-        b = layers.fill_constant(shape=[1], dtype=dtype, value=b)
+        b = full(shape=[1], fill_value=b, dtype=dtype)
         y = paddle.add(paddle.multiply(x, keep_mask),
                        paddle.scale(
                            drop_mask, scale=alpha_p))
@@ -1347,7 +1348,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(pad, Variable):
             pad = pad.numpy()
         out = _C_ops.pad3d(x, "paddings", pad, "mode", mode, "value", value,
@@ -1519,7 +1520,7 @@ def linear(x, weight, bias=None, name=None):
           #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
                                     False)
 
@@ -1614,7 +1615,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.label_smooth(label, prior_dist, 'epsilon', float(epsilon))
 
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
@@ -1765,7 +1766,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         remapped_label, sampled_class_center = _C_ops.class_center_sample(
             label, 'num_classes', num_classes, 'num_samples', num_samples,
             'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed',

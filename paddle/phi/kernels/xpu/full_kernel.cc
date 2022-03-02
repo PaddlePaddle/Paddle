@@ -59,7 +59,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
+  out->Resize(phi::make_ddim(shape.GetData()));
   FullValueXPU<T>(dev_ctx, out, val.to<T>());
 }
 
@@ -69,6 +69,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
   auto value = val.to<float>();
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
   using CommonType = typename std::common_type<
@@ -116,7 +117,7 @@ void FullLikeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(full,
+PD_REGISTER_KERNEL(full,
                    XPU,
                    ALL_LAYOUT,
                    phi::FullKernel,
@@ -132,11 +133,13 @@ PT_REGISTER_KERNEL(full,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(full_like,
+PD_REGISTER_KERNEL(full_like,
                    XPU,
                    ALL_LAYOUT,
                    phi::FullLikeKernel,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}

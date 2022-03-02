@@ -1,3 +1,4 @@
+cc_test(test_custom_kernel SRCS test_custom_kernel.cc DEPS phi_custom_kernel)
 cc_test(test_dense_tensor SRCS test_dense_tensor.cc DEPS dense_tensor)
 cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
 cc_test(test_type_info SRCS test_type_info.cc)
@@ -5,7 +6,7 @@ cc_test(test_kernel_factory SRCS test_kernel_factory.cc DEPS kernel_factory scal
 cc_test(test_sparse_coo_tensor SRCS test_sparse_coo_tensor.cc DEPS dense_tensor sparse_coo_tensor)
 cc_test(test_sparse_csr_tensor SRCS test_sparse_csr_tensor.cc DEPS dense_tensor sparse_csr_tensor)
 cc_test(test_op_utils SRCS test_op_utils.cc DEPS op_compat_infos)
-cc_test(test_pten_device_context SRCS test_device_context.cc DEPS pten_context cpu_context)
+cc_test(test_phi_device_context SRCS test_device_context.cc DEPS phi_context cpu_context)
 cc_test(test_meta_fn_utils SRCS test_meta_fn_utils.cc DEPS dense_tensor wrapped_infermeta infermeta infermeta_utils)
 
 cc_test(test_ddim SRCS test_ddim.cc DEPS ddim)

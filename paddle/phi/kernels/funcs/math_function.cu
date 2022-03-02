@@ -257,7 +257,7 @@ struct RowwiseAdd<paddle::platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         vector.numel(),
         size,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input vector size"
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
@@ -268,7 +268,7 @@ struct RowwiseAdd<paddle::platform::CUDADeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         out_dims,
         in_dims,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The output tensor shape should be same as the input tensor"
             " shape. Expected output tensor shape: %s,"
             " but received %s",
@@ -303,7 +303,7 @@ void ColwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
                     size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor column"
                         " dimension. Expected vector size=%d, but received %d",
@@ -339,7 +339,7 @@ void RowwiseSum<paddle::platform::CUDADeviceContext, double>::operator()(
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
                     in_dims[0],
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor row"
                         " dimension. Expected vector size=%d, but received %d",

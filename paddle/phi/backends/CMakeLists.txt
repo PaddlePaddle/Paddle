@@ -12,12 +12,16 @@ if(WITH_XPU)
   add_subdirectory(xpu)
 endif()
 
-cc_library(pten_context SRCS all_context.cc DEPS device_context cpu_context)
+cc_library(phi_context SRCS all_context.cc DEPS device_context cpu_context)
 
 if(WITH_XPU)
-  add_dependencies(pten_context xpu_context)
+  add_dependencies(phi_context xpu_context)
 endif()
 
 if(WITH_GPU)
-  add_dependencies(pten_context gpu_context)
+  add_dependencies(phi_context gpu_context)
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  add_dependencies(phi_context custom_context)
 endif()

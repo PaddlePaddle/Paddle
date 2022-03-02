@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.dygraph import layers
-from paddle.fluid import core
+from paddle.framework import core
 from paddle.fluid import dygraph_utils
-from paddle.fluid import unique_name
-from paddle.fluid.param_attr import ParamAttr
+from paddle.utils import unique_name
+from paddle.framework import ParamAttr
 from paddle.fluid.framework import _varbase_creator
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.initializer import Constant
+from paddle.nn.initializer import Constant
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.nn import functional as F
 import logging
 from paddle.fluid.log_helper import get_logger
 from paddle import _C_ops
+from paddle import in_dynamic_mode
+from paddle.nn import Layer
 
 __all__ = [
     'FakeQuantAbsMax',
@@ -43,7 +43,7 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-class FakeQuantAbsMax(layers.Layer):
+class FakeQuantAbsMax(Layer):
     r"""
     FakeQuantAbsMax layer does the abs_max quant and then dequant.
     Its computational formula is described as below:
@@ -76,7 +76,7 @@ class FakeQuantAbsMax(layers.Layer):
             self._scale = None
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             attrs = ('bit_length', self._quant_bits)
             quant_out = _varbase_creator(
                 type=input.type,
@@ -125,7 +125,7 @@ class FakeQuantAbsMax(layers.Layer):
         return quant_out
 
 
-class FakeQuantMovingAverageAbsMax(layers.Layer):
+class FakeQuantMovingAverageAbsMax(Layer):
     r"""
     FakeQuantMovingAverageAbsMax layer does the moving_average_abs_max quant and then dequant.
     Its computational formula is described as below:
@@ -175,7 +175,7 @@ class FakeQuantMovingAverageAbsMax(layers.Layer):
         self._accum.stop_gradient = True
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             attrs = ('moving_rate', self._moving_rate, 'bit_length',
                      self._quant_bits, 'is_test', not self.training)
             quant_out = _varbase_creator(
@@ -223,7 +223,7 @@ class FakeQuantMovingAverageAbsMax(layers.Layer):
         return quant_out
 
 
-class FakeQuantChannelWiseAbsMax(layers.Layer):
+class FakeQuantChannelWiseAbsMax(Layer):
     def __init__(self,
                  name=None,
                  channel_num=None,
@@ -253,7 +253,7 @@ class FakeQuantChannelWiseAbsMax(layers.Layer):
             self._scale = None
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             attrs = ('bit_length', self._quant_bits, 'quant_axis',
                      self._quant_axis)
             quant_out = _varbase_creator(
@@ -306,7 +306,7 @@ class FakeQuantChannelWiseAbsMax(layers.Layer):
         return quant_out
 
 
-class MovingAverageAbsMaxScale(layers.Layer):
+class MovingAverageAbsMaxScale(Layer):
     def __init__(self, name=None, moving_rate=0.9, dtype='float32'):
         r"""
         MovingAverageMaxScale layer is used to calculating the output quantization
@@ -345,7 +345,7 @@ class MovingAverageAbsMaxScale(layers.Layer):
         self._accum.stop_gradient = True
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             attrs = ('moving_rate', self._moving_rate, 'is_test',
                      not self.training)
             state = self._state if self.training else None
@@ -393,7 +393,7 @@ class MovingAverageAbsMaxScale(layers.Layer):
 QuantStub = MovingAverageAbsMaxScale
 
 
-class QuantizedConv2D(layers.Layer):
+class QuantizedConv2D(Layer):
     """
     The computational logic of QuantizedConv2D is the same with Conv2D.
     The only difference is that its inputs are all fake quantized.
@@ -482,7 +482,7 @@ class QuantizedConv2D(layers.Layer):
             data_format=self._data_format)
 
 
-class QuantizedConv2DTranspose(layers.Layer):
+class QuantizedConv2DTranspose(Layer):
     """
     The computational logic of QuantizedConv2DTranspose is the same with Conv2DTranspose.
     The only difference is that its inputs are all fake quantized.
@@ -588,7 +588,7 @@ class QuantizedConv2DTranspose(layers.Layer):
             data_format=self._data_format)
 
 
-class QuantizedLinear(layers.Layer):
+class QuantizedLinear(Layer):
     """
     The computational logic of QuantizedLinear is the same with Linear.
     The only difference is that its inputs are all fake quantized.
@@ -657,7 +657,7 @@ class QuantizedLinear(layers.Layer):
         return out
 
 
-class MAOutputScaleLayer(layers.Layer):
+class MAOutputScaleLayer(Layer):
     """
     Add MovingAverageMaxScale layer to the behind of the input layer.
     Calculate the scale (moving average abs max) for the output of the input layer.
@@ -684,7 +684,7 @@ class MAOutputScaleLayer(layers.Layer):
             return self._ma_output_scale(out)
 
 
-class FakeQuantMAOutputScaleLayer(layers.Layer):
+class FakeQuantMAOutputScaleLayer(Layer):
     """
     Add FakeQuantMovingAverageAbsMax layer to the behind of the input layer.
     """
