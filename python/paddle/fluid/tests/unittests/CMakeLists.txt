@@ -116,7 +116,7 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
 
-if(ON_INFER)
+if(NOT WITH_PYTHON AND ON_INFER)
     LIST(REMOVE_ITEM TEST_OPS test_eager_trace_op)
 endif()
 
