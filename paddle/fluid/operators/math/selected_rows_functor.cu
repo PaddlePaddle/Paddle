@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -445,6 +446,7 @@ template struct MergeAdd<platform::CUDADeviceContext, double>;
 template struct MergeAdd<platform::CUDADeviceContext, int>;
 template struct MergeAdd<platform::CUDADeviceContext, int64_t>;
 template struct MergeAdd<platform::CUDADeviceContext, platform::float16>;
+template struct MergeAdd<platform::CUDADeviceContext, platform::bfloat16>;
 template struct MergeAdd<platform::CUDADeviceContext, platform::complex<float>>;
 template struct MergeAdd<platform::CUDADeviceContext,
                          platform::complex<double>>;

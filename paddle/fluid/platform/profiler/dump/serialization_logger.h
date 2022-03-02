@@ -34,12 +34,13 @@ class SerializationLogger : public BaseLogger {
   void LogRuntimeTraceEventNode(const CudaRuntimeTraceEventNode&) override;
   void LogNodeTrees(const NodeTrees&) override;
   void LogMetaInfo(const std::unordered_map<std::string, std::string>);
+
  private:
   void OpenFile();
   void HandleTypeKernel(const DeviceTraceEventNode&);
   void HandleTypeMemset(const DeviceTraceEventNode&);
   void HandleTypeMemcpy(const DeviceTraceEventNode&);
-  
+
   std::string filename_;
   std::ofstream output_file_stream_;
   NodeTreesProto* node_trees_proto_;
