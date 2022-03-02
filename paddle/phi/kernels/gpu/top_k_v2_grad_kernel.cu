@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gpu/top_k.h"
 #include "paddle/phi/kernels/top_k_v2_grad_kernel.h"
 
+#include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/transpose.h"
 
 namespace phi {
+
+namespace ops = paddle::operators;
 
 template <typename T, typename Context>
 void TopkV2GradKernel(const Context& dev_ctx,
@@ -46,7 +48,7 @@ void TopkV2GradKernel(const Context& dev_ctx,
   const int64_t* indices_data = indices.data<int64_t>();
 
   int pre, n, post;
-  GetDims(in_dims, axis, &pre, &n, &post);
+  ops::GetDims(in_dims, axis, &pre, &n, &post);
 
   // calcluate the block and grid num
   auto ComputeBlockSize = [](int col) {
@@ -67,7 +69,8 @@ void TopkV2GradKernel(const Context& dev_ctx,
   int grid_size = std::min(max_blocks, pre);
 
   // lanuch the cuda kernel to assign the grad
-  AssignGradWithAxis<T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
+  ops::AssignGradWithAxis<
+      T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
       out_grad_data, indices_data, x_grad_data, pre, post, n, k);
 }
 
