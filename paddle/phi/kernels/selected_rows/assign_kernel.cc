@@ -18,6 +18,8 @@
 
 namespace phi {
 
+// Note: use `const paddle::optional<const SelectedRows&> x`
+// as input if needed
 template <typename Context>
 void AssignSRKernel(const Context& dev_ctx,
                     const SelectedRows& x,

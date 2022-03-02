@@ -16,20 +16,23 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
 template <typename Context>
 void AssignKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
+                  paddle::optional<const DenseTensor&> x,
                   DenseTensor* out) {
-  if (x.numel() == 0) {
+  if (!x.is_initialized()) {
     return;
   }
-  dev_ctx.Alloc(out, x.dtype());
-  Copy<Context>(dev_ctx, x, x.place(), false, out);
+  auto& x_tensor = *x.get_ptr();
+  Copy<Context>(dev_ctx, x_tensor, x_tensor.place(), false, out);
 }
 
+// Note: use `const paddle::optional<std::vector<const DenseTensor*>&> x`
+// as input if needed
 template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
                        const std::vector<const DenseTensor*>& x,

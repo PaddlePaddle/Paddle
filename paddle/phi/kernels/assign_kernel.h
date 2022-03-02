@@ -21,7 +21,7 @@ namespace phi {
 
 template <typename Context>
 void AssignKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
+                  paddle::optional<const DenseTensor&> x,
                   DenseTensor* out);
 
 template <typename Context>
