@@ -17,12 +17,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
-
+#include "paddle/phi/kernels/funcs/gather.h"
 #ifdef PADDLE_WITH_MKLML
 #include <omp.h>
 #endif
@@ -30,12 +29,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-
 template <typename DeviceContext, typename T, typename IndType>
 struct Argmax {
-  void operator()(const framework::ExecutionContext& ctx, const Tensor& input,
-                  Tensor* out_idx, Tensor* out, int axis) {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor& input, framework::Tensor* out_idx,
+                  framework::Tensor* out, int axis) {
     framework::DDim input_dims = input.dims();
     int64_t pre = 1;
     int64_t post = 1;
@@ -84,7 +82,7 @@ struct ARange {
 
 template <typename DeviceContext, typename T>
 struct GetMaxValue {
-  void operator()(const DeviceContext& dev_ctx, const Tensor& input,
+  void operator()(const DeviceContext& dev_ctx, const framework::Tensor& input,
                   T* max_value) {
     auto input_ptr = input.data<T>();
     auto num = input.numel();
@@ -94,14 +92,15 @@ struct GetMaxValue {
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 struct Gather {
-  void operator()(const DeviceContext& ctx, const Tensor& src,
-                  const Tensor& index, Tensor* output) {
-    CPUGather<T, IndexT>(ctx, src, index, output);
+  void operator()(const DeviceContext& ctx, const framework::Tensor& src,
+                  const framework::Tensor& index, framework::Tensor* output) {
+    phi::funcs::CPUGather<T, IndexT>(ctx, src, index, output);
   }
 };
 
 template <typename T, typename Functor, typename OutT = T>
-void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
+void SameDimsBinaryOP(const framework::Tensor& lhs,
+                      const framework::Tensor& rhs, framework::Tensor* out) {
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   OutT* out_ptr = out->data<OutT>();
@@ -118,8 +117,9 @@ template <typename DeviceContext,
           template <typename InT, typename OutT> typename CompareFunctor,
           typename T>
 struct GetMask {
-  void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
-                  const Tensor& rhs, Tensor* mask) {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor& lhs, const framework::Tensor& rhs,
+                  framework::Tensor* mask) {
     SameDimsBinaryOP<int64_t, CompareFunctor<int64_t, T>, T>(lhs, rhs, mask);
   }
 };
@@ -153,18 +153,19 @@ struct GetInputIndex<false> {
                   const std::vector<int>& output_strides, int output_idx,
                   int* index_array, int* lhs_idx, int* rhs_idx) {
     int out_dims_size = output_strides.size();
-    *lhs_idx =
-        phi::GetElementwiseIndex(lhs_dims.data(), out_dims_size, index_array);
-    *rhs_idx =
-        phi::GetElementwiseIndex(rhs_dims.data(), out_dims_size, index_array);
-    phi::UpdateElementwiseIndexArray(output_dims.data(), out_dims_size,
-                                     index_array);
+    *lhs_idx = phi::funcs::GetElementwiseIndex(lhs_dims.data(), out_dims_size,
+                                               index_array);
+    *rhs_idx = phi::funcs::GetElementwiseIndex(rhs_dims.data(), out_dims_size,
+                                               index_array);
+    phi::funcs::UpdateElementwiseIndexArray(output_dims.data(), out_dims_size,
+                                            index_array);
   }
 };
 
 template <typename T, typename Functor, bool is_multi_threads = false>
-void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
-                             Tensor* out) {
+void SimpleBroadcastBinaryOP(const framework::Tensor& lhs,
+                             const framework::Tensor& rhs,
+                             framework::Tensor* out) {
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
@@ -202,8 +203,8 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
 template <typename DeviceContext, template <typename T> typename BinaryFunctor,
           typename T>
 struct BinaryOperation {
-  void operator()(const DeviceContext& dev_ctx, const Tensor& lhs,
-                  const Tensor& rhs, Tensor* output) {
+  void operator()(const DeviceContext& dev_ctx, const framework::Tensor& lhs,
+                  const framework::Tensor& rhs, framework::Tensor* output) {
     if (lhs.dims() == rhs.dims()) {
       SameDimsBinaryOP<T, BinaryFunctor<T>>(lhs, rhs, output);
     } else {
@@ -224,20 +225,21 @@ struct BinaryOperation {
 
 class TensorBuffer {
  public:
-  explicit TensorBuffer(const LoDTensor& in) : buffer_(in), offset_(0) {
+  explicit TensorBuffer(const framework::LoDTensor& in)
+      : buffer_(in), offset_(0) {
     buffer_.Resize({buffer_.numel()});
   }
-  Tensor GetBufferBlock(std::initializer_list<int64_t> shape) {
+  framework::Tensor GetBufferBlock(std::initializer_list<int64_t> shape) {
     int64_t size = std::accumulate(shape.begin(), shape.end(), 1,
                                    std::multiplies<int64_t>());
-    Tensor block = buffer_.Slice(offset_, offset_ + size);
+    framework::Tensor block = buffer_.Slice(offset_, offset_ + size);
     offset_ += size;
     block.Resize(shape);
     return block;
   }
 
  private:
-  LoDTensor buffer_;  // need to resize 1-D Tensor
+  framework::LoDTensor buffer_;  // need to resize 1-D Tensor
   int offset_;
 };
 
@@ -248,17 +250,17 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     bool include_bos_eos_tag = ctx.Attr<bool>("include_bos_eos_tag");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto curr_place = ctx.GetPlace();
-    auto* input = ctx.Input<Tensor>("Input");
+    auto* input = ctx.Input<framework::Tensor>("Input");
     auto batch_size = static_cast<int>(input->dims()[0]);
     auto seq_len = static_cast<int>(input->dims()[1]);
     auto n_labels = static_cast<int>(input->dims()[2]);
     phi::funcs::SetConstant<DeviceContext, T> float_functor;
     phi::funcs::SetConstant<DeviceContext, int64_t> int_functor;
-    std::vector<Tensor> historys;
+    std::vector<framework::Tensor> historys;
     // We create tensor buffer in order to avoid allocating memory frequently
     // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...
     int buffer_size = batch_size * (n_labels + 1) * seq_len + 10 * batch_size;
-    LoDTensor int_buffer;
+    framework::LoDTensor int_buffer;
     int_buffer.Resize(phi::make_ddim({buffer_size}));
     int_buffer.mutable_data<int64_t>(ctx.GetPlace());
     TensorBuffer int_tensor_buffer(int_buffer);
@@ -266,64 +268,78 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     // 10 means allocate 10*batch_size*n_labels bytes, such as alpha, alpha_max
     buffer_size = batch_size * (seq_len + 10) * n_labels +
                   (batch_size + 2) * n_labels * n_labels;
-    LoDTensor float_buffer;
+    framework::LoDTensor float_buffer;
     float_buffer.Resize(phi::make_ddim({buffer_size}));
     float_buffer.mutable_data<T>(ctx.GetPlace());
     TensorBuffer float_tensor_buffer(float_buffer);
-    auto* length = ctx.Input<Tensor>("Length");
-    Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
+    auto* length = ctx.Input<framework::Tensor>("Length");
+    framework::Tensor left_length =
+        int_tensor_buffer.GetBufferBlock({batch_size, 1});
     framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
     int64_t max_seq_len = 0;
     GetMaxValue<DeviceContext, int64_t> get_max_value;
     get_max_value(dev_ctx, left_length, &max_seq_len);
 
-    auto* scores = ctx.Output<Tensor>("Scores");
+    auto* scores = ctx.Output<framework::Tensor>("Scores");
     scores->mutable_data<T>(curr_place);
-    auto* path = ctx.Output<Tensor>("Path");
+    auto* path = ctx.Output<framework::Tensor>("Path");
     path->Resize({batch_size, max_seq_len});
     path->mutable_data<int64_t>(curr_place);
-    Tensor tpath = int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
+    framework::Tensor tpath =
+        int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
     auto batch_path = Unbind(tpath);
     for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
       it->Resize({batch_size});
     }
     // create and init required tensor
-    Tensor input_exp =
+    framework::Tensor input_exp =
         float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
     TransCompute<DeviceContext, T>(3, dev_ctx, *input, &input_exp, {1, 0, 2});
-    auto* transition = ctx.Input<Tensor>("Transition");
-    Tensor trans_exp = float_tensor_buffer.GetBufferBlock({n_labels, n_labels});
+    auto* transition = ctx.Input<framework::Tensor>("Transition");
+    framework::Tensor trans_exp =
+        float_tensor_buffer.GetBufferBlock({n_labels, n_labels});
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
     trans_exp.Resize({1, n_labels, n_labels});
-    Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    Tensor zero = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-    int_functor(dev_ctx, &zero, 0);
-    Tensor one = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-    int_functor(dev_ctx, &one, 1);
-    Tensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});
-    float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
-    Tensor alpha_trn_sum =
-        float_tensor_buffer.GetBufferBlock({batch_size, n_labels, n_labels});
-    Tensor alpha_max =
+    framework::Tensor alpha =
         float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    Tensor alpha_argmax =
+    framework::Tensor zero = int_tensor_buffer.GetBufferBlock({batch_size, 1});
+    int_functor(dev_ctx, &zero, 0);
+    framework::Tensor one = int_tensor_buffer.GetBufferBlock({batch_size, 1});
+    int_functor(dev_ctx, &one, 1);
+    framework::Tensor float_one =
+        float_tensor_buffer.GetBufferBlock({batch_size, 1});
+    float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
+    framework::Tensor alpha_trn_sum =
+        float_tensor_buffer.GetBufferBlock({batch_size, n_labels, n_labels});
+    framework::Tensor alpha_max =
+        float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
+    framework::Tensor alpha_argmax =
         int_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
     auto alpha_argmax_unbind = Unbind(alpha_argmax);
-    Tensor alpha_nxt =
+    framework::Tensor alpha_nxt =
         float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});
-    Tensor zero_len_mask = int_tensor_buffer.GetBufferBlock({batch_size});
-    Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
-    Tensor stop_trans = float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
-    Tensor start_trans = float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
-    Tensor rest_trans =
+    framework::Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});
+    framework::Tensor zero_len_mask =
+        int_tensor_buffer.GetBufferBlock({batch_size});
+    framework::Tensor float_mask =
+        float_tensor_buffer.GetBufferBlock({batch_size, 1});
+    framework::Tensor stop_trans =
+        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
+    framework::Tensor start_trans =
+        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
+    framework::Tensor rest_trans =
         float_tensor_buffer.GetBufferBlock({1, n_labels - 2, n_labels});
-    Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});
-    Tensor last_ids_tmp = int_tensor_buffer.GetBufferBlock({batch_size});
-    Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
-    Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
-    std::vector<const Tensor*> shape{&rest_trans, &stop_trans, &start_trans};
-    std::vector<Tensor*> outputs{&rest_trans, &stop_trans, &start_trans};
+    framework::Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});
+    framework::Tensor last_ids_tmp =
+        int_tensor_buffer.GetBufferBlock({batch_size});
+    framework::Tensor batch_offset =
+        int_tensor_buffer.GetBufferBlock({batch_size});
+    framework::Tensor gather_idx =
+        int_tensor_buffer.GetBufferBlock({batch_size});
+    std::vector<const framework::Tensor*> shape{&rest_trans, &stop_trans,
+                                                &start_trans};
+    std::vector<framework::Tensor*> outputs{&rest_trans, &stop_trans,
+                                            &start_trans};
     math::SplitFunctor<DeviceContext, T> split_functor;
     split_functor(dev_ctx, trans_exp, shape, 1, &outputs);
     stop_trans.Resize({1, n_labels});
@@ -348,9 +364,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     SubInt(dev_ctx, left_length, one, &left_length);
     Argmax<DeviceContext, T, int64_t> argmax;
     for (int64_t i = 1; i < max_seq_len; ++i) {
-      Tensor logit = input_exp.Slice(i, i + 1);
+      framework::Tensor logit = input_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
-      Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
+      framework::Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
       AddFloat(dev_ctx, alpha_exp, trans_exp, &alpha_trn_sum);
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
       alpha_argmax_temp.Resize({batch_size, n_labels});
@@ -397,7 +413,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ++last_ids_index;
       AddInt(dev_ctx, left_length, one, &left_length);
       AddInt(dev_ctx, batch_offset, last_ids, &gather_idx);
-      Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
+      framework::Tensor& last_ids_update =
+          batch_path[actual_len - last_ids_index];
       hist->Resize({batch_size * n_labels});
       gather(dev_ctx, *hist, gather_idx, &last_ids_update);
       GetMask<DeviceContext, phi::funcs::GreaterThanFunctor, int64_t>()(

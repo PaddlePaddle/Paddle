@@ -19,7 +19,8 @@
 #include <vector>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gpu/elementwise.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 

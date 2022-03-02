@@ -17,7 +17,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/elementwise.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
 
@@ -32,9 +32,10 @@ inline void CompareKernelImpl(const Context& ctx,
                               DenseTensor* out) {
   ctx.template Alloc<bool>(out);
   if (x.dims().size() >= y.dims().size()) {
-    ElementwiseCompute<Functor, T, bool>(ctx, x, y, axis, Functor(), out);
+    funcs::ElementwiseCompute<Functor, T, bool>(
+        ctx, x, y, axis, Functor(), out);
   } else {
-    ElementwiseCompute<InverseFunctor, T, bool>(
+    funcs::ElementwiseCompute<InverseFunctor, T, bool>(
         ctx, x, y, axis, InverseFunctor(), out);
   }
 }
@@ -57,7 +58,8 @@ inline void CompareAllKernelImpl(const Context& ctx,
       bool* tmp_data = tmp.data<bool>();
       tmp_data[0] = Functor()(x.data<T>()[0], y.data<T>()[0]);
     } else {
-      ElementwiseCompute<Functor, T, bool>(ctx, x, y, 0, Functor(), &tmp);
+      funcs::ElementwiseCompute<Functor, T, bool>(
+          ctx, x, y, 0, Functor(), &tmp);
     }
     auto tmp_flat = EigenVector<bool>::Flatten(tmp);
     auto out_es = EigenScalar<bool>::From(*out);

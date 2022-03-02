@@ -264,10 +264,10 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       // and different op name cost time,we set two event.
       platform::RecordEvent op_type_record_event(
           Type(), platform::TracerEventType::Operator, 1);
-      // auto op_name = platform::OpName(outputs_, Type());
-      // platform::RecordEvent op_name_record_event(
-      //     op_name, platform::TracerEventType::Operator, 1,
-      //     platform::EventRole::kUniqueOp);
+      auto op_name = platform::OpName(outputs_, Type());
+      platform::RecordEvent op_name_record_event(
+          op_name, platform::TracerEventType::Operator, 10,
+          platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
 
@@ -1210,6 +1210,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
                 << "` not found.";
       }
+    } else {
+      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
     }
 #ifdef PADDLE_WITH_XPU
     bool is_xpu_unsupport =

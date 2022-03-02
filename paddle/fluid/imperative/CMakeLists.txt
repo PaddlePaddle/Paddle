@@ -46,8 +46,12 @@ if(WITH_GLOO)
     endif()
 endif()
 
+if(WITH_MLU)
+    SET(MLU_DEPS mlu_baseop)
+endif()
+
 if(NOT WITH_ASCEND_CL)
-cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows_utils selected_rows_functor var_type_traits layer math_function phi_tensor)
+cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows_utils selected_rows_functor var_type_traits layer math_function phi_tensor ${MLU_DEPS})
 else()
 cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows_utils selected_rows_functor var_type_traits layer math_function npu_op_runner phi_tensor)
 endif()
