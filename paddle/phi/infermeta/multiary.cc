@@ -345,6 +345,47 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                      /*saved_variance=*/nullptr,
                      /*reserve_space=*/nullptr,
                      config);
+void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+                        const MetaTensor& ids,
+                        MetaTensor* out) {
+  PADDLE_ENFORCE_NE(
+      ins.empty(),
+      true,
+      phi::errors::InvalidArgument("MultiInput(X) shouldn't be empty."));
+  auto ids_dim = ids.dims();
+  PADDLE_ENFORCE_EQ(ids_dim.size(),
+                    2,
+                    phi::errors::PreconditionNotMet(
+                        "The index tensor must be a vector with 2 dimensions"));
+  PADDLE_ENFORCE_EQ(
+      ids_dim[1],
+      1,
+      phi::errors::PreconditionNotMet(
+          "The index tensor must be a vector with batchSize x 1."));
+
+  auto ins_dims = GetMetaTensorsDim(ins);
+  auto num_ins = ins_dims.size();
+  PADDLE_ENFORCE_GT(
+      num_ins,
+      1,
+      phi::errors::InvalidArgument("multiplex operator should have more than "
+                                   "one candidate input tensors."));
+
+  auto in_dim = ins_dims[0];
+  PADDLE_ENFORCE_GE(
+      in_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of candidate tensors must be not less than 2."));
+  for (size_t i = 1; i < num_ins; i++) {
+    auto dim = ins_dims[i];
+    PADDLE_ENFORCE_EQ(
+        in_dim,
+        dim,
+        phi::errors::PreconditionNotMet(
+            "All the candidate tensors must have the same size."));
+  }
+  out->set_dims(in_dim);
 }
 
 void BilinearTensorProductInferMeta(const MetaTensor& x,

@@ -104,6 +104,9 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                              MetaTensor* mean_out,
                              MetaTensor* variance_out,
                              MetaConfig config = MetaConfig());
+void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
+                        const MetaTensor& ids,
+                        MetaTensor* out);
 
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
