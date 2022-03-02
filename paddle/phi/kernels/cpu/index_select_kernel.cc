@@ -100,7 +100,7 @@ void IndexSelectKernel(const Context& ctx,
                        DenseTensor* output) {
   auto inputs = x;
   if (dim < 0) {
-    dim += x.dims().size();
+    dim += inputs.dims().size();
   }
   const auto& index_type =
       paddle::framework::TransToProtoVarType(index.dtype());
