@@ -53,6 +53,13 @@ void HuberLossInferMeta(const MetaTensor& input_meta,
                         MetaTensor* residual,
                         MetaConfig config = MetaConfig());
 
+void TriangularSolveInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              bool upper,
+                              bool transpose,
+                              bool unitriangular,
+                              MetaTensor* out);
+
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
