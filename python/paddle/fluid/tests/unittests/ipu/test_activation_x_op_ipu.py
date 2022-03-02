@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 import paddle
+import paddle.nn.functional as F
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import (ExecutionMode,
                                                           IPUOpTest)
@@ -23,23 +24,21 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import (ExecutionMode,
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestBase(IPUOpTest):
+class TestRelu(IPUOpTest):
     def setUp(self):
         self.set_atol()
+        self.set_test_op()
         self.set_training()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_attrs()
 
     @property
     def fp16_enabled(self):
         return True
 
-    def set_atol(self):
-        self.atol = 1e-6
-        self.rtol = 1e-5
-        self.atol_fp16 = 1e-2
-        self.rtol_fp16 = 1e-3
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.relu
+        self.op_attrs = {}
 
     def set_data_feed(self):
         data = np.random.uniform(size=[1, 3, 10, 10])
@@ -49,12 +48,6 @@ class TestBase(IPUOpTest):
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = False
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
 
     def _test_base(self, exec_mode):
         scope = paddle.static.Scope()
@@ -70,9 +63,7 @@ class TestBase(IPUOpTest):
                     shape=self.feed_shape[0],
                     dtype='float32')
 
-                conv1 = paddle.static.nn.conv2d(
-                    x, num_filters=3, filter_size=3, bias_attr=False)
-                out = paddle.fluid.layers.batch_norm(conv1, **self.attrs)
+                out = self.op(x, **self.op_attrs)
 
                 fetch_list = [out.name]
 
@@ -87,6 +78,7 @@ class TestBase(IPUOpTest):
             if exec_mode != ExecutionMode.CPU_FP32:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
+
                 ipu_strategy.set_graph_config(is_training=self.is_training)
                 if exec_mode == ExecutionMode.IPU_POPART_FP16:
                     ipu_strategy.set_precision_config(enable_fp16=True)
@@ -113,32 +105,28 @@ class TestBase(IPUOpTest):
         self.check(output_dict)
 
 
-class TestCase1(TestBase):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
-
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
+class TestTanh(TestRelu):
+    def set_test_op(self):
+        self.op = F.tanh
+        self.op_attrs = {}
 
 
-class TestCase2(TestBase):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
+class TestLog(TestRelu):
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.log
+        self.op_attrs = {}
 
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = True
+
+class TestSigmoid(TestRelu):
+    def set_test_op(self):
+        self.op = F.sigmoid
+        self.op_attrs = {}
+
+
+class TestSqrt(TestRelu):
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.sqrt
+        self.op_attrs = {}
 
 
 if __name__ == "__main__":

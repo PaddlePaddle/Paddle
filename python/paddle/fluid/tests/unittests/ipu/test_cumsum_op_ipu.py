@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (ExecutionMode,
-                                                          IPUOpTest)
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -31,30 +30,23 @@ class TestBase(IPUOpTest):
         self.set_feed_attr()
         self.set_op_attrs()
 
+    # popart unsupport fp16 cumsum
     @property
     def fp16_enabled(self):
-        return True
-
-    def set_atol(self):
-        self.atol = 1e-6
-        self.rtol = 1e-5
-        self.atol_fp16 = 1e-2
-        self.rtol_fp16 = 1e-3
+        return False
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {'in_0': data.astype(np.float32)}
-        self.feed_fp16 = {'in_0': data.astype(np.float16)}
+        x = np.random.uniform(size=[1, 128])
+        self.feed_fp32 = {"x": x.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
         self.attrs = {}
-        self.attrs['is_test'] = False
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
 
     def _test_base(self, exec_mode):
         scope = paddle.static.Scope()
@@ -68,11 +60,9 @@ class TestBase(IPUOpTest):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype='float32')
+                    dtype="float32")
 
-                conv1 = paddle.static.nn.conv2d(
-                    x, num_filters=3, filter_size=3, bias_attr=False)
-                out = paddle.fluid.layers.batch_norm(conv1, **self.attrs)
+                out = paddle.fluid.layers.cumsum(x, **self.attrs)
 
                 fetch_list = [out.name]
 
@@ -108,37 +98,25 @@ class TestBase(IPUOpTest):
         for mode in ExecutionMode:
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
+
             output_dict[mode] = self._test_base(mode).flatten()
 
         self.check(output_dict)
 
 
 class TestCase1(TestBase):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
-
     def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
+        self.attrs = {"exclusive": True, "reverse": False}
 
 
 class TestCase2(TestBase):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
-
     def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = True
+        self.attrs = {"exclusive": False, "reverse": True}
+
+
+class TestCase3(TestBase):
+    def set_op_attrs(self):
+        self.attrs = {"exclusive": True, "reverse": True}
 
 
 if __name__ == "__main__":
