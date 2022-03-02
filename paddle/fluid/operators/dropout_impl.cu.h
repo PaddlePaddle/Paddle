@@ -259,7 +259,7 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
           hipMemcpyAsync(y_data, x_data, sizeof(T) * x_numel,
-                         cudaMemcpyDeviceToDevice, stream));
+                         hipMemcpyDeviceToDevice, stream));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaMemcpyAsync(y_data, x_data, sizeof(T) * x_numel,
