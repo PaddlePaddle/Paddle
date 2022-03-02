@@ -549,7 +549,7 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
     auto score_dims = ctx->GetInputDim("Scores");
     auto score_size = score_dims.size();
     if (score_size == 3) {
-      ctx->SetOutputDim("Index", {box_dims[1], 1});
+      ctx->SetOutputDim("Index", {-1, 1});
     } else {
       ctx->SetOutputDim("Index", {-1, 1});
     }
