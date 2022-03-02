@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    reduce_prod,
-    ops::ReduceCudaKernel<float, kps::MulFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int, kps::MulFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<double, kps::MulFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int64_t, kps::MulFunctor, kps::IdentityFunctor>);
+namespace phi {
+
+KernelSignature BroadcastTensorsGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "broadcast_tensors_grad", {GradVarName("Out")}, {}, {GradVarName("X")});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(broadcast_tensors_grad,
+                           phi::BroadcastTensorsGradOpArgumentMapping);
