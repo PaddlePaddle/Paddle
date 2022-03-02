@@ -53,7 +53,7 @@ using GlooStore = paddle::distributed::ProcessGroupGloo::GlooStore;
 using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
 #endif
 
-static constexpr std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";
+static std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";  // NOLINT
 
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
