@@ -131,7 +131,7 @@ void BindDistributed(py::module *m) {
                  std::vector<Tensor> out_tensors = {out_tensor};
                  return self.AllGather(in_tensors, out_tensors);
                },
-               py::arg("in"), py::arg("out"),
+               // py::arg("in"), py::arg("out"),
                py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL)

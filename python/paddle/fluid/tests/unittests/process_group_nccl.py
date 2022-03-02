@@ -56,7 +56,7 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def config(self):
         self.dtype = "float32"
-        self.shape = (2, 10, 5)
+        self.shape = [2, 10, 5]
 
     def test_create_process_group_nccl(self):
         with _test_eager_guard():
@@ -146,6 +146,7 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             # test allgather
             # rank 0
+            np.random.seed(100)
             x = np.random.random(self.shape).astype(self.dtype)
             y = np.random.random(self.shape).astype(self.dtype)
             tensor_x = paddle.to_tensor(x)
@@ -153,19 +154,26 @@ class TestProcessGroupFp32(unittest.TestCase):
             out_shape = self.shape
             out_shape[0] *= 2
             out = np.random.random(out_shape).astype(self.dtype)
+            tensor_out = paddle.to_tensor(out)
             if pg.rank() == 0:
-                task = pg.all_gather(tensor_x, out)
+                task = pg.all_gather(tensor_x, tensor_out)
                 task.wait()
                 paddle.device.cuda.synchronize()
             # rank 1
             else:
-                task = pg.all_gather(tensor_y, out)
+                task = pg.all_gather(tensor_y, tensor_out)
                 task.wait()
                 paddle.device.cuda.synchronize()
-            out_1 = paddle.slice(out, 0, [0], [out_shape[0] // 2 + 1])
-            out_1 = paddle.slice(out, 0, [0], [out_shape[0] // 2 + 1])
-            out_2 = paddle.slice(out, 0, [out_shape[0] // 2 + 1],
+            out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2 + 1])
+            out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2 + 1],
                                  [out_shape[0]])
+            if pg.rank == 0:
+                print("tensor_x")
+                print(tensor_x)
+                print("tensor_y")
+                print(tensor_y)
+                print("tensor_out")
+                print(tensor_out)
             assert np.array_equal(tensor_x, out_1)
             assert np.array_equal(tensor_y, out_2)
             print("test allgather api ok\n")
@@ -180,7 +188,7 @@ class TestProcessGroupFp16(TestProcessGroupFp32):
 
     def config(self):
         self.dtype = "float16"
-        self.shape = (4, 20, 20)
+        self.shape = [4, 20, 20]
 
 
 if __name__ == "__main__":
