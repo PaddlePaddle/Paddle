@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/Transforms/DialectConversion.h"
+#include <mlir/IR/Builders.h>
+#include <mlir/Transforms/DialectConversion.h>
 #include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/pd_ops.h"
 
@@ -22,12 +22,10 @@ namespace trt {
 
 #include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.cpp.inc"  // NOLINT
 
-using namespace mlir;
-
 void TRTOpConverterPass::runOnOperation() {
   // The first thing to define is the conversion target. This will define the
   // final target for this lowering.
-  ConversionTarget target(getContext());
+  ::mlir::ConversionTarget target(getContext());
 
   // We define the specific operations, or dialects, that are legal targets for
   // this lowering. In our case, we are lowering to TensorRTDialect from
@@ -36,13 +34,13 @@ void TRTOpConverterPass::runOnOperation() {
 
   // Now that the conversion target has been defined, we just need to provide
   // the set of patterns that will lower the TensorRT operations.
-  RewritePatternSet patterns(&getContext());
+  ::mlir::RewritePatternSet patterns(&getContext());
   populateWithGenerated(patterns);
 
   // With the target and rewrite patterns defined, we can now attempt the
   // conversion. The conversion will signal failure if any of our `illegal`
   // operations were not converted successfully.
-  if (failed(
+  if (::mlir::failed(
           applyPartialConversion(getOperation(), target, std::move(patterns))))
     signalPassFailure();
 }
