@@ -12,25 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .line_search import strong_wolfe
 
-def miminize_bfgs(func,
-                  jac,
+
+def miminize_bfgs(f,
                   x0,
-                  dtype='float32',
+                  max_iter=50,
+                  tolerance_grad=1e-8,
+                  tolerance_change=0,
                   H0=None,
-                  epsilon=1e-8,
-                  max_iters=50,
+                  norm_type=np.inf,
+                  line_search_method='strong_wolfe',
                   max_line_search_iters=50,
-                  summary_only=True,
+                  initial_step_length=1.0,
+                  dtype='float32',
                   name=None):
     k = 0
-
-    while norm(gradient_fk) > epsilon:
+    I = paddle.eye(input_dim, dtype=dtype)
+    while paddle.norm(gradient_fk, norm_type) > epsilon and k < max_iters:
         pk = -H_prev * gradient_fk
-        alpha_k = line_search()
+        alpha_k, gradient(x_new) = line_search(func, gradient)
         x_new = x_prev + alpha_k * pk
         sk = x_new - x_prev
         yk = gradient(x_new) - gradient(x_prev)
-        rhok = 1
-        H_new = 1
-        k = k + 1
+        if norm(gradient_new) <= epsilon:
+            break
+
+        rhok = 1. / paddle.dot(yk, sk)
+        Vk_transpose = I - rhok * sk * yk
+        Vk = I - rhok * yk * sk
+        H_k = paddle.dot(paddle.dot(Vk_transpose, H_preve), Vk) + rhok * sk * sk
+        k += 1

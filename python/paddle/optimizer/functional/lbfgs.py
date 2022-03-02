@@ -11,3 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+def miminize_lbfgs(f,
+                  x0,
+                  correction_pairs_num=100,
+                  max_iter=50,
+                  tolerance_grad=1e-8,
+                  tolerance_change=0,
+                  H0=None,
+                  norm_type=np.inf,
+                  line_search_method='strong_wolfe',
+                  max_line_search_iters=50,
+                  initial_step_length=1.0,
+                  dtype='float32',
+                  name=None):
