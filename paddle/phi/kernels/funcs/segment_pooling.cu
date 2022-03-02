@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/segment_pooling.h"
 
@@ -433,11 +433,9 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
                      0,
                      context.stream()>>>(
           mean_grad.data<T>(), summed_ids->data<T>(), len, dim);
-      paddle::operators::GPUGather<T, IndexT>(
-          context, mean_grad, segments, in_grad);
+      phi::funcs::GPUGather<T, IndexT>(context, mean_grad, segments, in_grad);
     } else if (pooltype == "SUM") {
-      paddle::operators::GPUGather<T, IndexT>(
-          context, out_grad, segments, in_grad);
+      phi::funcs::GPUGather<T, IndexT>(context, out_grad, segments, in_grad);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "
