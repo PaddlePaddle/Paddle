@@ -297,6 +297,24 @@ __device__ __forceinline__ void ReadData(T* dst,
 /**
  * @brief Read 1D data from global memory to register. The difference
  * from the above function is that it supports different data types of inputs.
+ *
+ * @template paraments
+ * T: The type of data.
+ * NX: Each thread load NX data from global memory continuously.
+ * NY: Each thread need to load NY rows, only NY = 1 was supported.
+ * ArgsT: The Type if dst, ArgsT can be std::tuple<T> or std::tuple<Args>
+ * Index: The index of data stored in dst.
+ * BlockSize: Identifies the current device thread index method. For GPU,
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
+ * When the number of data processed by this block is less than
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX * NY.
+ * src: The data pointer of the current block.
+ * size: The current block needs to load size data continuously.
  */
 template <typename T,
           int NX,
@@ -714,6 +732,20 @@ __device__ __forceinline__ void ReadDataBc(
   }
 }
 
+/**
+ * @brief Initialize register with data index.
+ *
+ * @template paraments
+ * T: Data type of register.
+ * NX: Number of data to initialize.
+ * NY: Number of data to initialize, NY only can be 1.
+ * BlockSize: Identifies the current device thread index method. For GPU,
+ * threadIdx.x is used as the thread index. Currently only GPU was supported.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX.
+ * init_data: The register pointer of init data, the size is NX.
+ */
 template <typename T, int NX, int NY, int BlockSize>
 __device__ __forceinline__ void InitWithDataIndex(T* dst, int block_offset) {
   int thread_offset = block_offset + threadIdx.x * NX;

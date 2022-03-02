@@ -14,7 +14,22 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
-#include "paddle/phi/kernels/impl/eigh_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/values_vectors_functor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void EighKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const std::string& uplo,
+                DenseTensor* out_w,
+                DenseTensor* out_v) {
+  bool is_lower = (uplo == "L");
+  phi::funcs::MatrixEighFunctor<Context, T> functor;
+  functor(dev_ctx, x, out_w, out_v, is_lower, true);
+}
+
+}  // namespace phi
 
 PD_REGISTER_KERNEL(eigh,
                    GPU,
