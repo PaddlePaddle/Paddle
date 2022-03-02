@@ -15,18 +15,16 @@ limitations under the License. */
 #pragma once
 #include <cstring>
 #include <string>
+#include <unordered_set>
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "unordered_set"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
-namespace paddle {
-namespace operators {
-
-using Tensor = framework::Tensor;
+namespace phi {
+namespace funcs {
 
 /**
   * Return the updated array pointer, use blas or eigen lib to optimize time
@@ -34,24 +32,31 @@ using Tensor = framework::Tensor;
  */
 template <typename T, typename IndexT = int>
 typename std::enable_if<std::is_floating_point<T>::value>::type
-elementwise_inner_add(const framework::ExecutionContext& ctx,
-                      const T* src_pointer, T* dst_pointer, size_t src_index,
-                      IndexT dst_index, size_t slice_size) {
-  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
-  blas.VADD(slice_size, src_pointer + src_index * slice_size,
+elementwise_inner_add(const phi::CPUContext& ctx,
+                      const T* src_pointer,
+                      T* dst_pointer,
+                      size_t src_index,
+                      IndexT dst_index,
+                      size_t slice_size) {
+  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
+  blas.VADD(slice_size,
+            src_pointer + src_index * slice_size,
             dst_pointer + dst_index * slice_size,
             dst_pointer + dst_index * slice_size);
 }
 
 template <typename T, typename IndexT = int>
 typename std::enable_if<!std::is_floating_point<T>::value>::type
-elementwise_inner_add(const framework::ExecutionContext& ctx,
-                      const T* src_pointer, T* dst_pointer, size_t src_index,
-                      IndexT dst_index, size_t slice_size) {
-  using EigenVector = typename framework::EigenTensor<T, 1>::Type;
-  using ConstEigenVector = typename framework::EigenTensor<T, 1>::ConstType;
+elementwise_inner_add(const phi::CPUContext& ctx,
+                      const T* src_pointer,
+                      T* dst_pointer,
+                      size_t src_index,
+                      IndexT dst_index,
+                      size_t slice_size) {
+  using EigenVector = typename phi::EigenTensor<T, 1>::Type;
+  using ConstEigenVector = typename phi::EigenTensor<T, 1>::ConstType;
 
-  framework::EigenDim<1>::Type dim;
+  phi::EigenDim<1>::Type dim;
   dim[0] = slice_size;
 
   ConstEigenVector eigen_src(src_pointer + src_index * slice_size, dim);
@@ -67,22 +72,23 @@ elementwise_inner_add(const framework::ExecutionContext& ctx,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
-                   const Tensor& index, Tensor* output) {
-  PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(ctx.GetPlace()), true,
-      platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
+void ScatterAssign(const phi::CPUContext& ctx,
+                   const DenseTensor& src,
+                   const DenseTensor& index,
+                   DenseTensor* output) {
   // check index of shape 1-D
   if (index.dims().size() == 2) {
-    PADDLE_ENFORCE_EQ(index.dims()[1], 1,
-                      platform::errors::InvalidArgument(
-                          "index.dims()[1] should be 1 when "
-                          "index.dims().size() =2 in scatter_op."
-                          "But received value is [%d]",
-                          index.dims()[1]));
+    PADDLE_ENFORCE_EQ(
+        index.dims()[1],
+        1,
+        phi::errors::InvalidArgument("index.dims()[1] should be 1 when "
+                                     "index.dims().size() =2 in scatter_op."
+                                     "But received value is [%d]",
+                                     index.dims()[1]));
   } else {
-    PADDLE_ENFORCE_EQ(index.dims().size(), 1,
-                      platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(index.dims().size(),
+                      1,
+                      phi::errors::InvalidArgument(
                           "index.dims().size() should be 1 or 2 in scatter_op."
                           "But received value is [%d]",
                           index.dims().size()));
@@ -99,12 +105,16 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
     PADDLE_ENFORCE_EQ(
-        src_dims[i], dst_dims[i],
-        platform::errors::InvalidArgument(
+        src_dims[i],
+        dst_dims[i],
+        phi::errors::InvalidArgument(
             "The dimensions of the source tensor and target tensor should"
             " match, but received source tensor's %d-th dimension is %d,"
             "target tensor's %d-th dimension is %d.",
-            i, src_dims[i], i, dst_dims[i]));
+            i,
+            src_dims[i],
+            i,
+            dst_dims[i]));
 
   // slice size
   size_t slice_size = 1;
@@ -115,8 +125,9 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
   for (int64_t i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
 
-    PADDLE_ENFORCE_GE(index_, 0,
-                      platform::errors::OutOfRange(
+    PADDLE_ENFORCE_GE(index_,
+                      0,
+                      phi::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
@@ -128,20 +139,20 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
 }
 
 template <typename T, typename IndexT = int>
-void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
-                      const Tensor& index, Tensor* output) {
-  PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(ctx.device_context().GetPlace()), true,
-      platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
+void ScatterAssignAdd(const phi::CPUContext& ctx,
+                      const DenseTensor& src,
+                      const DenseTensor& index,
+                      DenseTensor* output) {
   // check index of shape 1-D
   PADDLE_ENFORCE_EQ(
       index.dims().size() == 1 ||
           (index.dims().size() == 2 && index.dims()[1] == 1),
-      true, platform::errors::InvalidArgument(
-                "index's shape is error, "
-                "expect index'dims shape is 1 or 2 and index.dims[1] is 1"
-                "but got index'dims shape is %d",
-                index.dims().size()));
+      true,
+      phi::errors::InvalidArgument(
+          "index's shape is error, "
+          "expect index'dims shape is 1 or 2 and index.dims[1] is 1"
+          "but got index'dims shape is %d",
+          index.dims().size()));
   int64_t index_size = index.dims()[0];
 
   auto src_dims = src.dims();
@@ -155,12 +166,16 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   // check src shape and dst shape should match
   for (int i = 1; i < src_dims.size(); i++)
     PADDLE_ENFORCE_EQ(
-        src_dims[i], dst_dims[i],
-        platform::errors::InvalidArgument(
+        src_dims[i],
+        dst_dims[i],
+        phi::errors::InvalidArgument(
             "The dimensions of the source tensor and target tensor should"
             " match, but received source tensor's %d-th dimension is %d,"
             "target tensor's %d-th dimension is %d.",
-            i, src_dims[i], i, dst_dims[i]));
+            i,
+            src_dims[i],
+            i,
+            dst_dims[i]));
 
   // slice size
   size_t slice_size = 1;
@@ -172,36 +187,40 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   auto max_index = dst_dims[0];
   for (int64_t i = 0; i < index_size; ++i) {
     const IndexT& index_val = p_index[i];
-    PADDLE_ENFORCE_GE(index_val, 0,
-                      platform::errors::OutOfRange(
+    PADDLE_ENFORCE_GE(index_val,
+                      0,
+                      phi::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
                           "be greater than or equal to 0, but received [%d]",
                           index_val));
-    PADDLE_ENFORCE_LT(index_val, max_index,
-                      platform::errors::OutOfRange(
+    PADDLE_ENFORCE_LT(index_val,
+                      max_index,
+                      phi::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
                           "be less than %d, but received %d",
-                          max_index, index_val));
+                          max_index,
+                          index_val));
     memset(p_output + slice_size * index_val, 0, slice_bytes);
   }
 
   // if not in overwrite mode, need to init output data
   for (int64_t i = 0; i < index_size; ++i) {
     const IndexT& index_val = p_index[i];
-    elementwise_inner_add<T, IndexT>(ctx, p_src, p_output, i, index_val,
-                                     slice_size);
+    elementwise_inner_add<T, IndexT>(
+        ctx, p_src, p_output, i, index_val, slice_size);
   }
 }
 
 // The function is only for scatter grad x,
 // however update grad use gather
 template <typename T, typename IndexT = int>
-void CPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
-                        Tensor* output) {
+void CPUScatterGradForX(const phi::CPUContext& ctx,
+                        const DenseTensor& index,
+                        DenseTensor* output) {
   int64_t index_size = index.dims()[0];
   auto dst_dims = output->dims();
   const IndexT* p_index = index.data<IndexT>();
@@ -216,12 +235,10 @@ void CPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
 }
 
 template <typename T, typename IndexT = int>
-void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
-                  const Tensor& index, Tensor* output) {
-  PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(ctx.device_context().GetPlace()), true,
-      platform::errors::PreconditionNotMet("It should be running on the CPU"));
-
+void ScatterNdAdd(const phi::CPUContext& ctx,
+                  const DenseTensor& update,
+                  const DenseTensor& index,
+                  DenseTensor* output) {
   // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
   auto index_dims = index.dims();
   auto index_dims_size = index_dims.size();
@@ -250,21 +267,23 @@ void ScatterNdAdd(const framework::ExecutionContext& ctx, const Tensor& update,
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = p_index[i * end_size + j];
       PADDLE_ENFORCE_EQ(
-          (index_value >= 0 && index_value < output_dims[j]), true,
-          platform::errors::OutOfRange(
+          (index_value >= 0 && index_value < output_dims[j]),
+          true,
+          phi::errors::OutOfRange(
               "The index is out of bounds, "
               "please check whether the dimensions of index and "
               "input meet the requirements. It should "
               "be less than [%d] and greater or equal to 0, but received [%d]",
-              output_dims[j], index_value));
+              output_dims[j],
+              index_value));
 
       index_val += (index_value * temp);
       temp *= output_dims[j];
     }
-    elementwise_inner_add<T, IndexT>(ctx, p_update, p_output, i, index_val,
-                                     slice_size);
+    elementwise_inner_add<T, IndexT>(
+        ctx, p_update, p_output, i, index_val, slice_size);
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

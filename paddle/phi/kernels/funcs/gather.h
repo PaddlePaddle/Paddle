@@ -17,16 +17,13 @@ limitations under the License. */
 #include <cstring>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
-
-using framework::Tensor;
+namespace phi {
+namespace funcs {
 
 /**
  * A thin wrapper for gathering on cpu tensor
@@ -36,22 +33,23 @@ using framework::Tensor;
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
-               const Tensor& index, Tensor* output) {
-  PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(ctx.GetPlace()), true,
-      platform::errors::PreconditionNotMet("It should be running on the CPU."));
+void CPUGather(const phi::CPUContext& ctx,
+               const DenseTensor& src,
+               const DenseTensor& index,
+               DenseTensor* output) {
   // check index of shape 1-D
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
-        index.dims()[1], 1,
-        platform::errors::InvalidArgument(
+        index.dims()[1],
+        1,
+        phi::errors::InvalidArgument(
             "index.dims()[1] should be 1 when index.dims().size() = 2"
             "in gather_op, but received value is [%d].",
             index.dims()[1]));
   } else {
-    PADDLE_ENFORCE_EQ(index.dims().size(), 1,
-                      platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(index.dims().size(),
+                      1,
+                      phi::errors::InvalidArgument(
                           "index.dims().size() should be 1 or 2 in gather_op,"
                           "but received shape's size is [%d].",
                           index.dims().size()));
@@ -74,29 +72,32 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
 
   for (int64_t i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
-    PADDLE_ENFORCE_LT(p_index[i], input_size,
-                      platform::errors::OutOfRange(
+    PADDLE_ENFORCE_LT(p_index[i],
+                      input_size,
+                      phi::errors::OutOfRange(
                           "The element of Index must be less than the size of "
                           "input dim size of axis which is %d, but received "
                           "index element which is %d in the %d index.",
-                          input_size, p_index[i], i));
-    PADDLE_ENFORCE_GE(p_index[i], 0,
-                      platform::errors::OutOfRange(
+                          input_size,
+                          p_index[i],
+                          i));
+    PADDLE_ENFORCE_GE(p_index[i],
+                      0,
+                      phi::errors::OutOfRange(
                           "The element of Index must be greater than or equal "
                           "to 0, but received index element which is %d in the "
                           "%d index.",
-                          p_index[i], i));
+                          p_index[i],
+                          i));
     memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
   }
 }
 
 template <typename T, typename IndexT = int>
-void CPUGatherNd(const platform::DeviceContext& ctx, const Tensor& input,
-                 const Tensor& index, Tensor* output) {
-  PADDLE_ENFORCE_EQ(
-      platform::is_cpu_place(ctx.GetPlace()), true,
-      platform::errors::PreconditionNotMet("It should be running on the CPU."));
-
+void CPUGatherNd(const phi::CPUContext& ctx,
+                 const DenseTensor& input,
+                 const DenseTensor& index,
+                 DenseTensor* output) {
   auto index_dims = index.dims();
   auto index_dims_size = index_dims.size();
   auto input_dims = input.dims();
@@ -124,25 +125,30 @@ void CPUGatherNd(const platform::DeviceContext& ctx, const Tensor& input,
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = p_index[i * end_size + j];
       PADDLE_ENFORCE_LT(
-          index_value, input_dims[j],
-          platform::errors::InvalidArgument(
+          index_value,
+          input_dims[j],
+          phi::errors::InvalidArgument(
               "Input(index[-1)] has wrong value, it is [%d]", index_value));
       PADDLE_ENFORCE_GE(
-          index_value, 0,
-          platform::errors::InvalidArgument(
+          index_value,
+          0,
+          phi::errors::InvalidArgument(
               "The value of Input(index) must be no less than 0"));
 
       index_ += (index_value * temp);
       temp *= input_dims[j];
     }
-    memcpy(p_output + i * slice_size, p_input + index_ * slice_size,
-           slice_bytes);
+    memcpy(
+        p_output + i * slice_size, p_input + index_ * slice_size, slice_bytes);
   }
 }
 
 template <typename T, typename U>
-void GatherV2Function(const Tensor* input, const Tensor* index, int axis,
-                      Tensor* out, const paddle::platform::Place& place) {
+void GatherV2Function(const phi::CPUContext& ctx,
+                      const DenseTensor* input,
+                      const DenseTensor* index,
+                      int axis,
+                      DenseTensor* out) {
   auto* index_data = index->data<U>();
   int64_t index_size = index->numel();
   int64_t input_size = input->numel();
@@ -154,18 +160,23 @@ void GatherV2Function(const Tensor* input, const Tensor* index, int axis,
 
   int64_t input_index_dim_size = input_dim[axis_index];
   for (int64_t i = 0; i < index_size; i++) {
-    PADDLE_ENFORCE_LT(index_data[i], input_index_dim_size,
-                      platform::errors::OutOfRange(
+    PADDLE_ENFORCE_LT(index_data[i],
+                      input_index_dim_size,
+                      phi::errors::OutOfRange(
                           "The element of Index must be less than the size of "
                           "input dim size of axis which is %d, but received "
                           "index element which is %d in the %d index.",
-                          input_index_dim_size, index_data[i], i));
-    PADDLE_ENFORCE_GE(index_data[i], 0,
-                      platform::errors::OutOfRange(
+                          input_index_dim_size,
+                          index_data[i],
+                          i));
+    PADDLE_ENFORCE_GE(index_data[i],
+                      0,
+                      phi::errors::OutOfRange(
                           "The element of Index must be greater than or equal "
                           "to 0, but received index element which is %d in the "
                           "%d index.",
-                          index_data[i], i));
+                          index_data[i],
+                          i));
   }
 
   int64_t inner_dim_size = 1;
@@ -184,7 +195,7 @@ void GatherV2Function(const Tensor* input, const Tensor* index, int axis,
   auto out_dim = phi::make_ddim(out_dim_vec);
 
   out->Resize(out_dim);
-  auto* out_data = out->mutable_data<T>(place);
+  auto* out_data = ctx.Alloc<T>(out);
 
   int out_index = 0;
   for (int64_t i = 0; i < inner_dim_size; i++) {
@@ -200,9 +211,11 @@ void GatherV2Function(const Tensor* input, const Tensor* index, int axis,
 }
 
 template <typename T, typename U>
-void GatherV2GradFunction(const Tensor* input, const Tensor* index,
-                          const int axis, Tensor* out,
-                          const paddle::platform::Place& place) {
+void GatherV2GradFunction(const phi::CPUContext& ctx,
+                          const DenseTensor* input,
+                          const DenseTensor* index,
+                          const int axis,
+                          DenseTensor* out) {
   auto* index_data = index->data<U>();
 
   auto input_dim = input->dims();
@@ -222,11 +235,10 @@ void GatherV2GradFunction(const Tensor* input, const Tensor* index,
     outer_dim_size *= input_dim[i];
   }
 
-  auto* out_data = out->mutable_data<T>(place);
-  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto* out_data = ctx.Alloc<T>(out);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  phi::funcs::set_constant(*dev_ctx, out, 0.0);
+  phi::funcs::set_constant(ctx, out, 0.0);
 
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < input_index_dim_size; j++) {
@@ -239,5 +251,5 @@ void GatherV2GradFunction(const Tensor* input, const Tensor* index,
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

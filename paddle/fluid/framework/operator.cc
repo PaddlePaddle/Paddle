@@ -1210,6 +1210,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
                 << "` not found.";
       }
+    } else {
+      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
     }
 #ifdef PADDLE_WITH_XPU
     bool is_xpu_unsupport =
@@ -2048,7 +2051,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
     // deal with optional here
     if ((it == ctx.inputs.end() || it->second.size() == 0) &&
         (input_defs[i].type_index ==
-         std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
+             std::type_index(
+                 typeid(paddle::optional<const phi::DenseTensor&>)) ||
+         input_defs[i].type_index ==
+             std::type_index(
+                 typeid(paddle::optional<const phi::SelectedRows&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
