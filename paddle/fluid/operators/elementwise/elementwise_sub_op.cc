@@ -76,9 +76,15 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, Sub);
 
 namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(elementwise_sub, ::paddle::operators::ElementwiseOp,
+                  ::paddle::operators::ElementwiseSubOpMaker,
+                  ::paddle::operators::ElementwiseOpInferVarType,
+                  elementwise_subGradMaker<::paddle::framework::OpDesc>,
+                  elementwise_subGradMaker<::paddle::imperative::OpBase>,
+                  ::paddle::operators::ElementwiseOpInplaceInferer);
 
 REGISTER_OPERATOR(
     elementwise_sub_grad, ops::ElementwiseOpGrad,
