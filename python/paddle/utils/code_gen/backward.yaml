@@ -67,7 +67,7 @@
 
 - backward_api : diagonal_grad
   forward : diagonal (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
+  args : (Tensor x, Tensor out_grad, int offset = 0, int axis1 = 0, int axis2 = 1)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
