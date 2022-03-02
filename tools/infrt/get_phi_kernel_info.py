@@ -150,19 +150,19 @@ def gen_dtype(vals: List[str]):
     ir_dtypes, origin_dtypes = [], []
     for val in vals:
         if val == "float":
-            ir_dtypes.append("fp32")
+            ir_dtypes.append("float32")
             origin_dtypes.append("float")
         elif val == "double":
-            ir_dtypes.append("fp64")
+            ir_dtypes.append("float64")
             origin_dtypes.append("double")
         elif val == "float16":
-            ir_dtypes.append("fp16")
+            ir_dtypes.append("float16")
             origin_dtypes.append("paddle::experimental::float16")
         elif val == "bfloat16":
             ir_dtypes.append("bf16")
             origin_dtypes.append("paddle::experimental::bfloat16")
         elif val == "bool":
-            ir_dtypes.append("int1")
+            ir_dtypes.append("bool")
             origin_dtypes.append("bool")
         elif val == "int8_t":
             ir_dtypes.append("int8")
@@ -219,8 +219,8 @@ def gen_register_info(resources: List[List[str]]):
         for ir_dtype, origin_dtype in zip(ir_dtypes, origin_dtypes):
             kernel_func = gen_kernel_func(update_item[3], ctx_name,
                                           origin_dtype)
-            ir_name = '.'.join(
-                [it.lower() for it in update_item[:3]]) + "." + ir_dtype
+            ir_name = 'phi_cpu.' + update_item[0].lower() + '.' + update_item[
+                2].lower() + '.' + ir_dtype
             res += f"""
   registry->AddKernel("{ir_name}","""
 

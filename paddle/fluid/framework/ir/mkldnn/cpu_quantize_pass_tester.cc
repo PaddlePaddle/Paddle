@@ -126,7 +126,7 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
   tensor->mutable_data(place,
-                       framework::TransToPtenDataType(proto::VarType::FP32), 1);
+                       framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
 
 void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,

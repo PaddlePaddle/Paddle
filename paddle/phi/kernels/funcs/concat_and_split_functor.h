@@ -13,19 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <cmath>
-#include <memory>
+
 #include <vector>
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/utils/data_type.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace phi {
 namespace funcs {

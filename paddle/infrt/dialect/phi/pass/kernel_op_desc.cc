@@ -41,26 +41,49 @@ TargetType cvtTargetFromPhi(phi::Backend backend) {
 }
 
 phi::DataType cvtPrecision2Phi(PrecisionType precision) {
+#define CONVERT_PRECISION_TO_PHI(Precision) \
+  case PrecisionType::Precision:            \
+    return phi::DataType::Precision;
+
   switch (precision) {
-    case PrecisionType::FLOAT32:
-      return phi::DataType::FLOAT32;
-      break;
-    case PrecisionType::FLOAT16:
-      return phi::DataType::FLOAT16;
+    CONVERT_PRECISION_TO_PHI(FLOAT32)
+    CONVERT_PRECISION_TO_PHI(FLOAT16)
+    CONVERT_PRECISION_TO_PHI(FLOAT64)
+    CONVERT_PRECISION_TO_PHI(UINT8)
+    CONVERT_PRECISION_TO_PHI(INT8)
+    CONVERT_PRECISION_TO_PHI(INT16)
+    CONVERT_PRECISION_TO_PHI(INT32)
+    CONVERT_PRECISION_TO_PHI(INT64)
+    CONVERT_PRECISION_TO_PHI(COMPLEX64)
+    CONVERT_PRECISION_TO_PHI(COMPLEX128)
+    CONVERT_PRECISION_TO_PHI(BOOL)
     default:
       return phi::DataType::UNDEFINED;
   }
+#undef CONVERT_PRECISION_TO_PHI
 }
 
 PrecisionType cvtPrecisionFromPhi(phi::DataType datatype) {
+#define CONVERT_PRECISION_FROM_PHI(Precision) \
+  case phi::DataType::Precision:              \
+    return PrecisionType::Precision;
+
   switch (datatype) {
-    case phi::DataType::FLOAT32:
-      return PrecisionType::FLOAT32;
-    case phi::DataType::FLOAT16:
-      return PrecisionType::FLOAT16;
+    CONVERT_PRECISION_FROM_PHI(FLOAT32)
+    CONVERT_PRECISION_FROM_PHI(FLOAT16)
+    CONVERT_PRECISION_FROM_PHI(FLOAT64)
+    CONVERT_PRECISION_FROM_PHI(UINT8)
+    CONVERT_PRECISION_FROM_PHI(INT8)
+    CONVERT_PRECISION_FROM_PHI(INT16)
+    CONVERT_PRECISION_FROM_PHI(INT32)
+    CONVERT_PRECISION_FROM_PHI(INT64)
+    CONVERT_PRECISION_FROM_PHI(COMPLEX64)
+    CONVERT_PRECISION_FROM_PHI(COMPLEX128)
+    CONVERT_PRECISION_FROM_PHI(BOOL)
     default:
       return PrecisionType::UNK;
   }
+#undef CONVERT_PRECISION_FROM_PHI
 }
 
 phi::DataLayout cvtLayout2Phi(LayoutType layout) {
@@ -69,6 +92,8 @@ phi::DataLayout cvtLayout2Phi(LayoutType layout) {
       return phi::DataLayout::NCHW;
     case LayoutType::NHWC:
       return phi::DataLayout::NHWC;
+    case LayoutType::ANY:
+      return phi::DataLayout::ANY;
     default:
       return phi::DataLayout::UNDEFINED;
   }
@@ -80,6 +105,8 @@ LayoutType cvtLayoutFromPhi(phi::DataLayout layout) {
       return LayoutType::NCHW;
     case phi::DataLayout::NHWC:
       return LayoutType::NHWC;
+    case phi::DataLayout::ANY:
+      return LayoutType::ANY;
     default:
       return LayoutType::UNK;
   }

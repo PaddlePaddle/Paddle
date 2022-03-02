@@ -20,6 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 
@@ -45,10 +46,10 @@ namespace phi {
       auto x_dims = x.dims();                                               \
       auto y_dims = y.dims();                                               \
       if (x_dims.size() >= y_dims.size()) {                                 \
-        ElementwiseCompute<funcs::name##Functor<T>, T>(                     \
+        funcs::ElementwiseCompute<funcs::name##Functor<T>, T>(              \
             dev_ctx, x, y, axis, funcs::name##Functor<T>(), out);           \
       } else {                                                              \
-        ElementwiseCompute<funcs::Inverse##name##Functor<T>, T>(            \
+        funcs::ElementwiseCompute<funcs::Inverse##name##Functor<T>, T>(     \
             dev_ctx, x, y, axis, funcs::Inverse##name##Functor<T>(), out);  \
       }                                                                     \
     }                                                                       \
@@ -93,10 +94,10 @@ void DivideRawKernel(const Context& dev_ctx,
     auto x_dims = x.dims();
     auto y_dims = y.dims();
     if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<funcs::DivideFunctor<T>, T>(
+      funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
           dev_ctx, x, y, axis, funcs::DivideFunctor<T>(), out);
     } else {
-      ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
+      funcs::ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
           dev_ctx, x, y, axis, funcs::InverseDivideFunctor<T>(), out);
     }
   }
@@ -139,7 +140,8 @@ PD_REGISTER_KERNEL(subtract_raw,
                    int,
                    int64_t,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(divide_raw,
                    CPU,
                    ALL_LAYOUT,
@@ -160,7 +162,8 @@ PD_REGISTER_KERNEL(multiply_raw,
                    int64_t,
                    bool,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(sum_raw,
                    CPU,
                    ALL_LAYOUT,

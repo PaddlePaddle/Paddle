@@ -12,22 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cmath>
-#include <memory>
-#include <vector>
-
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 namespace phi {
 namespace funcs {

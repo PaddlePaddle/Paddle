@@ -55,7 +55,7 @@ class TestDiffOp(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            paddle.disable_static(place)
+            paddle.disable_static()
             x = paddle.to_tensor(self.input, place=place)
             if self.prepend is not None:
                 self.prepend = paddle.to_tensor(self.prepend, place=place)
