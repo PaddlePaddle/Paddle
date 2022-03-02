@@ -122,7 +122,6 @@ namespace phi {
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
               ctx, pargs..., arg);                                           \
     }                                                                        \
-    \                                                                        \
   }
 
 #define PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(attr_type)           \
