@@ -44,7 +44,7 @@
     switch (reshape_size) {
 #define LOWER_SWITCH_REDUCE_DIMS                             \
   default: {                                                 \
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(  \
+    PADDLE_THROW(errors::InvalidArgument(                    \
         "Detected reshape size: %d out of range"             \
         "Minimum value should be larger than reduce size %d" \
         "While maximum supported is: 5",                     \
