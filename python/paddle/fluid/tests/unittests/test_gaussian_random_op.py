@@ -65,6 +65,8 @@ class TestGaussianRandomOp(OpTest):
             "hist: " + str(hist) + " hist2: " + str(hist2))
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
