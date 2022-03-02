@@ -1911,4 +1911,4 @@ REGISTER_ACTIVATION_XPU_KERNEL(hard_sigmoid, CudaHardSigmoidFunctor,
 REGISTER_ACTIVATION_XPU_KERNEL(swish, CudaSwishFunctor, CudaSwishGradFunctor);
 REGISTER_ACTIVATION_XPU_KERNEL(thresholded_relu, CudaThresholdedReluFunctor,
                                CudaThresholdedReluGradFunctor);
-#ifdef  // PADDLE_WITH_XPU_KP
+#endif  // PADDLE_WITH_XPU_KP
