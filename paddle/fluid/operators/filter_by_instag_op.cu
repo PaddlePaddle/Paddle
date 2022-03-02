@@ -50,8 +50,6 @@ __global__ void filter_copy_fuse_kernel(
     size_t* map_lods_data, size_t* out_lods_data, size_t* out_idx_data,
     const T* x1_data, int x1_embed_size, int x1_lods_filled, int x2_lods_filled,
     float* loss_weight_data, float fill_value) {
-#if defined(PADDLE_WITH_CUDA)
-
   // N is instance num
   // one threads for ins_per_thread instances
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
