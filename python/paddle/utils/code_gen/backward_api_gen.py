@@ -56,8 +56,9 @@ class BackwardAPI(BaseAPI):
 
         # check the attributes of backward
         for attr in self.attrs['names']:
-            assert attr in fw_attrs['names'] and self.attrs['attr_info'][attr][0] == fw_attrs['attr_info'][attr][0], \
-                f"{self.api} : Attribute error: The attribute({attr}) of backward isn't consistent with forward api. \
+            assert (attr in fw_attrs['names'] and self.attrs['attr_info'][attr][0] == fw_attrs['attr_info'][attr][0]) or \
+                 self.attrs['attr_info'][attr][1] is not None, \
+                f"{self.api} : Attribute error: The attribute({attr}) of backward isn't consistent with forward api or doesn't have default value. \
                  Please check the args of {self.api} in yaml."
 
         # check the output of backward
