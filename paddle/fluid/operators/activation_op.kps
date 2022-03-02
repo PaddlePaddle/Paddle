@@ -1862,3 +1862,53 @@ REGISTER_OP_CUDA_KERNEL(
           CudaHardSwishGradFunctor);
 FOR_EACH_ACTIVATION_CUDA_OP(REGISTER_ACTIVATION_CUDA_KERNEL)
 // testing
+
+#ifdef PADDLE_WITH_XPU_KP
+#define REGISTER_ACTIVATION_XPU_KERNEL(act_type, functor, grad_functor)        \
+  REGISTER_OP_KERNEL(                                                          \
+      act_type, KP, plat::XPUPlace,                                            \
+      ops::ActivationCudaKernel<plat::XPUDeviceContext, ops::functor<float>>); \
+  REGISTER_OP_KERNEL(act_type##_grad, KP, plat::XPUPlace,                      \
+                     ops::ActivationGradCudaKernel<plat::XPUDeviceContext,     \
+                                                   ops::grad_functor<float>>);
+
+REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu, CudaLeakyReluFunctor,
+                               CudaLeakyReluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(relu, CudaReluFunctor, CudaReluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, CudaSigmoidFunctor,
+                               CudaSigmoidGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(exp, CudaExpFunctor, CudaExpGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(log, CudaLogFunctor, CudaLogGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(reciprocal, CudaReciprocalFunctor,
+                               CudaReciprocalGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(softplus, CudaSoftplusFunctor,
+                               CudaSoftplusGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(hard_swish, CudaHardSwishFunctor,
+                               CudaHardSwishGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(elu, CudaELUFunctor, CudaELUGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(celu, CudaCELUFunctor, CudaCELUGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(sqrt, CudaSqrtFunctor, CudaSqrtGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(square, CudaSquareFunctor,
+                               CudaSquareGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(silu, CudaSiluFunctor, CudaSiluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(logsigmoid, CudaLogSigmoidFunctor,
+                               CudaLogSigmoidGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(softshrink, CudaSoftShrinkFunctor,
+                               CudaSoftShrinkGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(ceil, CudaCeilFunctor, CudaZeroGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(floor, CudaFloorFunctor, CudaZeroGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(log1p, CudaLog1pFunctor, CudaLog1pGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(brelu, CudaBReluFunctor, CudaBReluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(soft_relu, CudaSoftReluFunctor,
+                               CudaSoftReluGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(softsign, CudaSoftsignFunctor,
+                               CudaSoftsignGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(relu6, CudaRelu6Functor, CudaRelu6GradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(hard_shrink, CudaHardShrinkFunctor,
+                               CudaHardShrinkGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(hard_sigmoid, CudaHardSigmoidFunctor,
+                               CudaHardSigmoidGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(swish, CudaSwishFunctor, CudaSwishGradFunctor);
+REGISTER_ACTIVATION_XPU_KERNEL(thresholded_relu, CudaThresholdedReluFunctor,
+                               CudaThresholdedReluGradFunctor);
+#ifdef  // PADDLE_WITH_XPU_KP
