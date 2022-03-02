@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/kernels/slice_kernel.h"
-#include "paddle/pten/kernels/impl/slice_kernel_impl.h"
+#include "paddle/phi/kernels/slice_kernel.h"
+#include "paddle/phi/kernels/impl/slice_kernel_impl.h"
 
-#include "paddle/pten/backends/cpu/cpu_context.h"
-#include "paddle/pten/core/kernel_registry.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-PT_REGISTER_KERNEL(slice,
+PD_REGISTER_KERNEL(slice,
                    CPU,
                    ALL_LAYOUT,
-                   pten::SliceRawKernel,
+                   phi::SliceRawKernel,
                    bool,
                    int,
                    int64_t,
                    float,
                    double,
-                   pten::dtype::complex<float>,
-                   pten::dtype::complex<double>,
-                   pten::dtype::bfloat16) {}
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
+                   phi::dtype::bfloat16) {}

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pten/core/compat/op_utils.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace pten {
+namespace phi {
 
 KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
@@ -32,7 +32,7 @@ KernelSignature SliceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
       {GradVarName("Input")});
 }
 
-}  // namespace pten
+}  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(slice, pten::SliceOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(slice_grad, pten::SliceGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(slice, phi::SliceOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(slice_grad, phi::SliceGradOpArgumentMapping);

@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <paddle/pten/core/ddim.h>
+#include <paddle/phi/core/ddim.h>
 #include <string>
 #include <vector>
 
-namespace pten {
+namespace phi {
 
 template <typename T = int64_t>
-inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
+inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
                                      const std::vector<T>& axes,
                                      std::vector<T>* starts,
                                      std::vector<T>* ends,
@@ -31,7 +31,7 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
     PADDLE_ENFORCE_LT(
         axis,
         in_dims.size(),
-        pten::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The axis value should be less than the rank of input, "
             "but received axes[%d] = %d, rank of input is %d.",
             i,
@@ -49,7 +49,7 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
       PADDLE_ENFORCE_NE(
           step,
           0,
-          pten::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Step should not be 0, but received step = %d.", step));
 
       T start = (*starts)[i] < 0 ? ((*starts)[i] + dim_value) : (*starts)[i];
@@ -65,7 +65,7 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
         PADDLE_ENFORCE_GE(
             end,
             start,
-            pten::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "When step > 0, end should be greater than start, but "
                 "received end = %d, start = %d.",
                 end,
@@ -79,7 +79,7 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
         PADDLE_ENFORCE_GE(
             start,
             end,
-            pten::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "When step < 0, start should be greater than end, but "
                 "received start = %d, end = %d.",
                 start,
@@ -96,14 +96,13 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
 }
 
 template <typename T = int64_t>
-inline pten::framework::DDim GetSliceDims(
-    const pten::framework::DDim in_dims,
-    const std::vector<T>& axes,
-    const std::vector<T>& starts,
-    const std::vector<T>& ends,
-    std::vector<T>* steps = nullptr,
-    std::vector<T>* infer_flags = nullptr) {
-  pten::framework::DDim slice_dims(in_dims);
+inline phi::DDim GetSliceDims(const phi::DDim in_dims,
+                              const std::vector<T>& axes,
+                              const std::vector<T>& starts,
+                              const std::vector<T>& ends,
+                              std::vector<T>* steps = nullptr,
+                              std::vector<T>* infer_flags = nullptr) {
+  phi::DDim slice_dims(in_dims);
 
   for (size_t i = 0; i < axes.size(); ++i) {
     T axis = axes[i];
@@ -126,10 +125,10 @@ inline pten::framework::DDim GetSliceDims(
 }
 
 template <typename T = int64_t>
-inline framework::DDim GetDecreasedDims(const framework::DDim slice_dims,
-                                        const std::vector<T>& decrease_axes,
-                                        std::vector<T>* infer_flags = nullptr) {
-  framework::DDim decreased_dims(slice_dims);
+inline DDim GetDecreasedDims(const DDim slice_dims,
+                             const std::vector<T>& decrease_axes,
+                             std::vector<T>* infer_flags = nullptr) {
+  DDim decreased_dims(slice_dims);
   std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
   if (decrease_axes.size() > 0) {
     for (size_t i = 0; i < decrease_axes.size(); ++i) {
@@ -138,7 +137,7 @@ inline framework::DDim GetDecreasedDims(const framework::DDim slice_dims,
       if (infer_flags && (*infer_flags)[i] != -1) {
         PADDLE_ENFORCE_EQ(decreased_dims[axis],
                           1,
-                          pten::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Decrease dim should be 1, but now received %d",
                               decreased_dims[axis]));
       }
@@ -162,4 +161,4 @@ inline framework::DDim GetDecreasedDims(const framework::DDim slice_dims,
   return decreased_dims;
 }
 
-}  // namespace pten
+}  // namespace phi

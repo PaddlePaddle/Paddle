@@ -19,13 +19,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SliceRawKernel(const Context& ctx,
-                    const DenseTensor& input,
-                    const std::vector<int64_t>& axes,
-                    const std::vector<int64_t>& starts,
-                    const std::vector<int64_t>& ends,
-                    const std::vector<int64_t>& infer_flags,
-                    const std::vector<int64_t>& decrease_axis,
-                    DenseTensor* out);
+void SliceGradRawKernel(const Context& ctx,
+                        const DenseTensor& out_grad,
+                        const std::vector<int64_t>& axes,
+                        const std::vector<int64_t>& starts,
+                        const std::vector<int64_t>& ends,
+                        const std::vector<int64_t>& infer_flags,
+                        const std::vector<int64_t>& decrease_axis,
+                        DenseTensor* input_grad);
 
 }  // namespace phi

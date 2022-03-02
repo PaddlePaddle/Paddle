@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/pten/kernels/funcs/eigen/common.h"
-#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/pten/kernels/funcs/slice_utils.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
-namespace pten {
+namespace phi {
 
 template <typename T, typename Context, size_t D>
 void SliceCompute(const Context& ctx,
@@ -35,11 +35,11 @@ void SliceCompute(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       starts.size(),
       axes.size(),
-      pten::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of starts must be equal to the size of axes."));
   PADDLE_ENFORCE_EQ(ends.size(),
                     axes.size(),
-                    pten::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The size of ends must be equal to the size of axes."));
 
   // Step 2: Compute output
@@ -143,9 +143,9 @@ void SliceRawKernel(const Context& ctx,
           ctx, input, axes, starts, ends, infer_flags, decrease_axis, out);
       break;
     default:
-      PADDLE_THROW(pten::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
 }
 
-}  // namespace pten
+}  // namespace phi
