@@ -41,7 +41,7 @@ def DataTypeCast(date_type):
 
 
 class TestCollectiveAPIRunnerBase(object):
-    def get_model(self, train_prog, startup_prog, rank, data_type, indata=None):
+    def get_model(self, train_prog, startup_prog, rank, indata=None):
         raise NotImplementedError(
             "get model should be implemented by child class.")
 
