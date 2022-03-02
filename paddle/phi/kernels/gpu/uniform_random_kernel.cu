@@ -116,9 +116,9 @@ void UniformRandomRawKernel(const Context& dev_ctx,
   if (generator->GetIsInitPy() && seed_flag) {
     if (FLAGS_use_curand) {
       using MT = typename kps::details::MPTypeTrait<T>::Type;
-      distribution::uniform_distribution<MT> dist;
-      distribution::uniform_transform<MT> trans(min, max);
-      distribution::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+      funcs::uniform_distribution<MT> dist;
+      funcs::uniform_real_transform<MT> trans(min, max);
+      funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
     } else {
       auto seed_offset = generator->IncrementOffset(1);
       int64_t gen_offset = size * seed_offset.second;
