@@ -81,6 +81,7 @@ class Dataset {
   virtual void SetEnablePvMerge(bool enable_pv_merge) = 0;
   virtual bool EnablePvMerge() = 0;
   virtual void SetMergeBySid(bool is_merge) = 0;
+  virtual void SetShuffleByUid(bool enable_shuffle_uid) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(int merge_size) = 0;
   virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns) = 0;
@@ -189,6 +190,7 @@ class DatasetImpl : public Dataset {
   virtual void SetParseLogKey(bool parse_logkey);
   virtual void SetEnablePvMerge(bool enable_pv_merge);
   virtual void SetMergeBySid(bool is_merge);
+  virtual void SetShuffleByUid(bool enable_shuffle_uid);
 
   virtual void SetMergeByInsId(int merge_size);
   virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns);
@@ -307,6 +309,8 @@ class DatasetImpl : public Dataset {
   bool parse_content_;
   bool parse_logkey_;
   bool merge_by_sid_;
+  bool shuffle_by_uid_;
+  bool parse_uid_;
   bool enable_pv_merge_;  // True means to merge pv
   int current_phase_;     // 1 join, 0 update
   size_t merge_size_;

@@ -30,9 +30,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
@@ -40,7 +40,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/pten/include/core.h"
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -115,7 +119,7 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline bool VarIsTensor(const Variable& var) {
-  return var.IsType<LoDTensor>() || var.IsType<SelectedRows>();
+  return var.IsType<LoDTensor>() || var.IsType<phi::SelectedRows>();
 }
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
@@ -409,18 +413,18 @@ class ExecutionContext {
     auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
     auto& deleter = tmp_allocation_ptr.get_deleter();
     auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation = std::shared_ptr<memory::allocation::Allocation>(
-        allocation_ptr, deleter);
+    auto shared_allocation =
+        std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
 
     PADDLE_ENFORCE_GE(
-        allocation_ptr->size(), framework::product(dim) * sizeof(T),
+        allocation_ptr->size(), phi::product(dim) * sizeof(T),
         platform::errors::PreconditionNotMet(
             "The data memory size(%d) is less than the tensor needed memory "
             "size(%d).",
-            allocation_ptr->size(), framework::product(dim) * sizeof(T)));
+            allocation_ptr->size(), phi::product(dim) * sizeof(T)));
 
-    paddle::framework::Tensor temp_tensor(
-        framework::ToDataType(std::type_index(typeid(T))));
+    paddle::framework::Tensor temp_tensor(framework::TransToPhiDataType(
+        framework::ToDataType(std::type_index(typeid(T)))));
     temp_tensor.Resize(dim);
     temp_tensor.ResetHolder(std::move(shared_allocation));
     return temp_tensor;
@@ -438,15 +442,62 @@ class ExecutionContext {
   const RuntimeContext& ctx_;
 };
 
-template <>
-const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const;
+// TODO(chenweihang): split impl based OpProto or Dygraph if needed
+class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
+ public:
+  explicit ExecutionArgumentMappingContext(const ExecutionContext& ctx)
+      : ctx_(ctx) {}
+
+  bool HasInput(const std::string& name) const override {
+    return ctx_.HasInput(name);
+  }
+
+  bool HasOutput(const std::string& name) const override {
+    return ctx_.HasOutput(name);
+  }
+
+  bool HasAttr(const std::string& name) const override {
+    return ctx_.HasAttr(name);
+  }
+
+  paddle::any Attr(const std::string& name) const override {
+    auto& attr = ctx_.GetAttr(name);
+    return GetAttrValue(attr);
+  }
+
+  size_t InputSize(const std::string& name) const override {
+    return ctx_.MultiInputVar(name).size();
+  }
+
+  size_t OutputSize(const std::string& name) const override {
+    return ctx_.MultiOutputVar(name).size();
+  }
+
+  bool IsDenseTensorInput(const std::string& name) const override {
+    return ctx_.InputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsInput(const std::string& name) const override {
+    return ctx_.InputVar(name)->IsType<phi::SelectedRows>();
+  }
+
+  bool IsDenseTensorOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<framework::LoDTensor>();
+  }
+
+  bool IsSelectedRowsOutput(const std::string& name) const override {
+    return ctx_.OutputVar(name)->IsType<phi::SelectedRows>();
+  }
+
+  bool IsForInferShape() const override { return false; }
+
+ private:
+  const ExecutionContext& ctx_;
+};
 
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const;
-
-template <>
-Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const;
 
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
@@ -488,19 +539,28 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  bool IsMKLDNNType() const {
-    return ((this->kernel_type_) && (this->kernel_type_->data_layout_ ==
-                                     framework::DataLayout::kMKLDNN));
+  bool SupportGPU() const override {
+    auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+        phi::TransToPhiKernelName(type_));
+    auto has_phi_kernel =
+        std::any_of(phi_kernels.begin(), phi_kernels.end(),
+                    [](phi::KernelKeyMap::const_reference kern_pair) {
+                      return kern_pair.first.backend() == phi::Backend::GPU;
+                    });
+    if (has_phi_kernel) {
+      return true;
+    } else {
+      auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
+      return std::any_of(
+          op_kernels.begin(), op_kernels.end(),
+          [](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_);
+          });
+    }
   }
 
-  bool SupportGPU() const override {
-    auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
-    return std::any_of(op_kernels.begin(), op_kernels.end(),
-                       [](OpKernelMap::const_reference kern_pair) {
-                         return platform::is_gpu_place(kern_pair.first.place_);
-                       });
-  }
   bool SupportNPU() const override {
+    // TODO(zhiqiu): support phi if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
@@ -508,6 +568,7 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
   bool SupportMLU() const override {
+    // TODO(zhiqiu): support phi if needed?
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
                        [](OpKernelMap::const_reference kern_pair) {
@@ -519,7 +580,7 @@ class OperatorWithKernel : public OperatorBase {
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
-  virtual void InferShape(InferShapeContext* ctx) const = 0;
+  virtual void InferShape(InferShapeContext* ctx) const;
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
@@ -544,16 +605,43 @@ class OperatorWithKernel : public OperatorBase {
     return kernel_type_->place_;
   }
 
-  /* member functions for adapting to pten lib */
+  /* member functions for adapting to phi lib */
   /** In the Tensor calculation library, the new Kernel adopts a clearer and
     * more streamlined design. The arguments of the Kernel and the input and
     * output arguments registered in the original OpMaker do not match in some
     * cases, so we use map to record the arguments required by the kernel.
     * When selecting Kernel during Op execution, select the arguments of the
-    * original Op according to the GetExpectedPtenKernelArgs returned arguments.
+    * original Op according to the GetExpectedPhiKernelArgs returned arguments.
     */
-  virtual KernelSignature GetExpectedPtenKernelArgs(
+  phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
+
+  /* member functions for adapting to phi lib */
+  phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
+
+  /**
+   * Transfer data place for phi kernel
+   * Is this really needed?
+   */
+  Scope* PreparePhiData(const Scope& scope, const phi::Kernel& pt_kernel,
+                        const phi::KernelSignature& pt_kernel_signature,
+                        RuntimeContext* ctx) const;
+
+  void BuildPhiKernelContext(const RuntimeContext& ctx,
+                             platform::DeviceContext* dev_ctx,
+                             phi::KernelContext* pt_kernel_context) const;
+
+  phi::KernelSignature* PhiKernelSignature() const {
+    return pt_kernel_signature_.get();
+  }
+
+  phi::Kernel* PhiKernel() const { return pt_kernel_.get(); }
+
+  void ResetPhiKernel(phi::Kernel* kernel) const {
+    return pt_kernel_.reset(kernel);
+  }
+
+  const OpKernelType* kernel_type() const { return kernel_type_.get(); }
 
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
@@ -595,14 +683,6 @@ class OperatorWithKernel : public OperatorBase {
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
 
-  /* member functions for adapting to pten lib */
-  void ChoosePtenKernel(const ExecutionContext& ctx) const;
-
-  void BuildPtenKernelContext(const RuntimeContext& ctx,
-                              platform::DeviceContext* dev_ctx) const;
-
-  void WriteBackToOutputs(RuntimeContext* ctx) const;
-
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
@@ -614,14 +694,12 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
   // NOTE(chenweihang): Similar op members are used to adapt to
-  // new pten kernel, if there is a better design in the future,
+  // new phi kernel, if there is a better design in the future,
   // we may polish the implementation here
-  mutable bool run_pten_kernel_ = false;
-  mutable std::unique_ptr<KernelSignature> pt_kernel_signature_;
-  mutable std::unique_ptr<pten::Kernel> pt_kernel_;
-  // In order to reduce the compatibility phase
-  // performance overhead, temporarily cache KernelContext
-  mutable std::unique_ptr<pten::KernelContext> pt_kernel_context_;
+  mutable bool run_phi_kernel_ = false;
+  mutable bool run_kp_kernel = false;
+  mutable std::unique_ptr<phi::KernelSignature> pt_kernel_signature_;
+  mutable std::unique_ptr<phi::Kernel> pt_kernel_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

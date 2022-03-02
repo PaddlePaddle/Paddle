@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/buffered_reader.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -41,7 +43,7 @@ BufferedReader::BufferedReader(
   VLOG(1) << "BufferedReader";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_) && !pin_memory) {
-    int dev_idx = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
+    int dev_idx = place_.device;
     compute_stream_ =
         ((platform::CUDADeviceContext *)(platform::DeviceContextPool::Instance()
                                              .Get(place_)))
@@ -56,7 +58,7 @@ BufferedReader::BufferedReader(
 
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place_)) {
-    int dev_idx = BOOST_GET_CONST(platform::NPUPlace, place_).device;
+    int dev_idx = place_.device;
     compute_stream_ =
         ((platform::NPUDeviceContext *)(platform::DeviceContextPool::Instance()
                                             .Get(place_)))
@@ -114,25 +116,25 @@ void BufferedReader::ReadAsync(size_t i) {
         platform::CUDAPinnedPlace cuda_pinned_place;
         std::vector<void *> cuda_pinned_ptrs;
         cuda_pinned_ptrs.reserve(cpu.size());
-        platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+        platform::RecordEvent record_event(
+            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            1);
         // NODE(chenweihang): When we use CUDAPinned Memory, we need call
         // cudaHostAlloc, that is a CUDA API, calling CUDA API need load
         // cuda lib into device, it will cost hundreds of MB of GPU memory.
         // If we don't set Device here, which will use CUDAPlace(0) default.
-        platform::SetDeviceId(
-            BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+        platform::SetDeviceId(place_.device);
         for (size_t i = 0; i < cpu.size(); ++i) {
           if (platform::is_cpu_place(cpu[i].place())) {
             cuda[i].Resize(cpu[i].dims());
             cuda[i].set_layout(cpu[i].layout());
             cuda_pinned_ptrs[i] =
                 cuda[i].mutable_data(cuda_pinned_place, cpu[i].type());
-            auto size =
-                cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
+            auto size = cpu[i].numel() *
+                        paddle::framework::DataTypeSize(cpu[i].dtype());
 
-            memory::Copy(cuda_pinned_place, cuda_pinned_ptrs[i],
-                         BOOST_GET_CONST(platform::CPUPlace, cpu[i].place()),
-                         cpu[i].data<void>(), size);
+            memory::Copy(cuda_pinned_place, cuda_pinned_ptrs[i], cpu[i].place(),
+                         cpu[i].data(), size);
 
             cuda[i].set_lod(cpu[i].lod());
           } else {
@@ -158,8 +160,7 @@ void BufferedReader::ReadAsync(size_t i) {
         // NOTE(zjl): cudaStreamWaitEvent() must be called after all
         // cuda[i].mutable_data() is called, since some ops release
         // cuda memory immediately without waiting cuda kernel ends
-        platform::SetDeviceId(
-            BOOST_GET_CONST(platform::CUDAPlace, place_).device);
+        platform::SetDeviceId(place_.device);
 #ifdef PADDLE_WITH_HIP
         PADDLE_ENFORCE_GPU_SUCCESS(
             hipEventRecord(events_[i].get(), compute_stream_));
@@ -172,33 +173,31 @@ void BufferedReader::ReadAsync(size_t i) {
             cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
 #endif
 
-        platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+        platform::RecordEvent record_event(
+            "BufferedReader:MemoryCopy", platform::TracerEventType::UserDefined,
+            1);
         for (size_t i = 0; i < cpu.size(); ++i) {
           auto cpu_place = cpu[i].place();
-          auto cpu_ptr = cpu[i].data<void>();
+          auto cpu_ptr = cpu[i].data();
           auto gpu_ptr = gpu_ptrs[i];
           auto size =
-              cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
+              cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
           if (platform::is_cuda_pinned_place(cpu_place)) {
-            memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
-                         BOOST_GET_CONST(platform::CUDAPinnedPlace, cpu_place),
-                         cpu_ptr, size, stream_.get());
+            memory::Copy(place_, gpu_ptr, cpu_place, cpu_ptr, size,
+                         stream_.get());
           } else if ((platform::is_gpu_place(cpu_place))) {
-            memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
-                         BOOST_GET_CONST(platform::CUDAPlace, cpu_place),
-                         cpu_ptr, size, stream_.get());
+            memory::Copy(place_, gpu_ptr, cpu_place, cpu_ptr, size,
+                         stream_.get());
           } else {
             platform::CUDAPinnedPlace cuda_pinned_place;
             framework::LoDTensor cuda_pinned_tensor;
             cuda_pinned_tensor.Resize(cpu[i].dims());
             auto cuda_pinned_ptr = cuda_pinned_tensor.mutable_data(
                 cuda_pinned_place, cpu[i].type());
-            memory::Copy(cuda_pinned_place, cuda_pinned_ptr,
-                         BOOST_GET_CONST(platform::CPUPlace, cpu_place),
-                         cpu_ptr, size);
-            memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
-                         cuda_pinned_place, cuda_pinned_ptr, size,
-                         stream_.get());
+            memory::Copy(cuda_pinned_place, cuda_pinned_ptr, cpu_place, cpu_ptr,
+                         size);
+            memory::Copy(place_, gpu_ptr, cuda_pinned_place, cuda_pinned_ptr,
+                         size, stream_.get());
 
             platform::GpuStreamSync(stream_.get());
           }
@@ -231,26 +230,25 @@ void BufferedReader::ReadAsync(size_t i) {
         npu_ptrs.emplace_back(npu[i].mutable_data(place_, cpu[i].type()));
       }
 
-      platform::SetNPUDeviceId(
-          BOOST_GET_CONST(platform::NPUPlace, place_).device);
+      platform::SetNPUDeviceId(place_.device);
       platform::NPUEventRecord(events_[i].get(), compute_stream_);
       platform::NPUStreamWaitEvent(stream_.get(), events_[i].get());
 
-      platform::RecordEvent record_event("BufferedReader:MemoryCopy");
+      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
+                                         platform::TracerEventType::UserDefined,
+                                         1);
       for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
-        auto cpu_ptr = cpu[i].data<void>();
+        auto cpu_ptr = cpu[i].data();
         auto npu_ptr = npu_ptrs[i];
         auto size =
-            cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
+            cpu[i].numel() * paddle::framework::DataTypeSize(cpu[i].dtype());
         if ((platform::is_npu_place(cpu_place))) {
-          memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place_), npu_ptr,
-                       BOOST_GET_CONST(platform::NPUPlace, cpu_place), cpu_ptr,
-                       size, stream_.get());
+          memory::Copy(place_, npu_ptr, cpu_place, cpu_ptr, size,
+                       stream_.get());
         } else {
-          memory::Copy(BOOST_GET_CONST(platform::NPUPlace, place_), npu_ptr,
-                       BOOST_GET_CONST(platform::CPUPlace, cpu_place), cpu_ptr,
-                       size, stream_.get());
+          memory::Copy(place_, npu_ptr, cpu_place, cpu_ptr, size,
+                       stream_.get());
           platform::NPUStreamSync(stream_.get());
         }
         npu[i].set_lod(cpu[i].lod());

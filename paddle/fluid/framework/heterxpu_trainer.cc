@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "io/fs.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
@@ -24,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_XPU) && \
-    (defined PADDLE_WITH_PSLIB)
+    (defined PADDLE_WITH_PSLIB) && (!defined(PADDLE_WITH_HETERPS))
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -117,12 +118,13 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
 #ifdef PADDLE_WITH_CUDA
   auto stream = copy_streams_[num];
   auto event = events_[num];
-  auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+  auto dev_id = place.device;
   platform::CUDADeviceGuard guard(dev_id);
 #endif
 
 #ifdef PADDLE_WITH_XPU
-  xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
+  auto dev_id = place.device;
+  platform::XPUDeviceGuard guard(dev_id);
 #endif
 
   auto& block = program.Block(0);
@@ -135,18 +137,18 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
 
-#define HeterMemcpyFunc(cpp_type, proto_type)                           \
-  do {                                                                  \
-    if (root_tensor->type() == proto_type) {                            \
-      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place, stream); \
-    }                                                                   \
+#define HeterMemcpyFunc(cpp_type, proto_type)                                 \
+  do {                                                                        \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) { \
+      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place, stream);       \
+    }                                                                         \
   } while (0)
 
-#define HeterMemcpyXpuFunc(cpp_type, proto_type)                \
-  do {                                                          \
-    if (root_tensor->type() == proto_type) {                    \
-      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place); \
-    }                                                           \
+#define HeterMemcpyXpuFunc(cpp_type, proto_type)                              \
+  do {                                                                        \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) { \
+      HeterMemCpy<cpp_type>(thread_tensor, root_tensor, place);               \
+    }                                                                         \
   } while (0)
 #ifdef PADDLE_WITH_CUDA
       _ForEachDataType_(HeterMemcpyFunc);
@@ -172,13 +174,11 @@ void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
   if (platform::is_cpu_place(root_tensor->place())) {
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
-                 platform::CPUPlace(), root_ptr,
+    memory::Copy(thread_place, thread_ptr, platform::CPUPlace(), root_ptr,
                  sizeof(T) * root_tensor->numel(), stream);
   } else {
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, thread_place), thread_ptr,
-                 BOOST_GET_CONST(platform::CUDAPlace, root_tensor->place()),
-                 root_ptr, sizeof(T) * root_tensor->numel(), stream);
+    memory::Copy(thread_place, thread_ptr, root_tensor->place(), root_ptr,
+                 sizeof(T) * root_tensor->numel(), stream);
   }
 }
 #endif
@@ -192,13 +192,11 @@ void HeterXpuTrainer::HeterMemCpy(LoDTensor* thread_tensor,
       thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
   T* root_ptr = root_tensor->data<T>();
   if (platform::is_cpu_place(root_tensor->place())) {
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, thread_place), thread_ptr,
-                 platform::CPUPlace(), root_ptr,
+    memory::Copy(thread_place, thread_ptr, platform::CPUPlace(), root_ptr,
                  sizeof(T) * root_tensor->numel());
   } else {
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, thread_place), thread_ptr,
-                 BOOST_GET_CONST(platform::XPUPlace, root_tensor->place()),
-                 root_ptr, sizeof(T) * root_tensor->numel());
+    memory::Copy(thread_place, thread_ptr, root_tensor->place(), root_ptr,
+                 sizeof(T) * root_tensor->numel());
   }
 }
 #endif
@@ -285,7 +283,7 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
         (context->ops_).push_back(local_op_ptr);
       }
 #ifdef PADDLE_WITH_CUDA
-      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+      auto dev_id = place.device;
       platform::CUDADeviceGuard guard(dev_id);
       PADDLE_ENFORCE_GPU_SUCCESS(
           cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));
@@ -321,12 +319,13 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
 //      }
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
-    if (root_tensor->type() == proto_type) {                                   \
-      if (thread_tensor->type() != proto_type) {                               \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \
+      if (framework::TransToProtoVarType(thread_tensor->dtype()) !=            \
+          proto_type) {                                                        \
         VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
                 << "] " << need_merge_var_names_[i]                            \
-                << ", root tensor type=" << root_tensor->type()                \
-                << ", thread tensor type=" << thread_tensor->type();           \
+                << ", root tensor type=" << root_tensor->dtype()               \
+                << ", thread tensor type=" << thread_tensor->dtype();          \
         exit(-1);                                                              \
       }                                                                        \
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
@@ -335,26 +334,32 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
       _ForEachDataType_(MergeCallback);
       if (!platform::is_cpu_place(thread_tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
-        auto dev_id =
-            BOOST_GET_CONST(platform::CUDAPlace, thread_tensor->place()).device;
+        auto dev_id = thread_tensor->place().device;
         platform::CUDADeviceGuard guard(dev_id);
-        cudaMemset(thread_tensor->data<void>(), 0,
-                   thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+        cudaMemset(
+            thread_tensor->data(), 0,
+            thread_tensor->numel() * SizeOfType(framework::TransToProtoVarType(
+                                         thread_tensor->dtype())));
 #endif
 #ifdef PADDLE_WITH_XPU
         auto place = thread_tensor->place();
-        xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
+        auto dev_id = place.device;
+        platform::XPUDeviceGuard guard(dev_id);
         platform::DeviceContextPool& pool =
             platform::DeviceContextPool::Instance();
         platform::DeviceContext* dev_ctx = pool.Get(place);
         const platform::XPUDeviceContext* xpu_ctx =
             reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
-        xpu::memset(xpu_ctx->x_context(), thread_tensor->data<void>(), 0,
-                    thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+        xpu::memset(
+            xpu_ctx->x_context(), thread_tensor->data(), 0,
+            thread_tensor->numel() * SizeOfType(framework::TransToProtoVarType(
+                                         thread_tensor->dtype())));
 #endif
       } else {
-        memset(thread_tensor->data<void>(), 0,
-               thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+        memset(thread_tensor->data(), 0,
+               thread_tensor->numel() *
+                   SizeOfType(
+                       framework::TransToProtoVarType(thread_tensor->dtype())));
       }
     }
     auto* merge_var = response->add_vars();
@@ -362,26 +367,31 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request,
                                merge_var);
     if (!platform::is_cpu_place(root_tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
-      auto dev_id =
-          BOOST_GET_CONST(platform::CUDAPlace, root_tensor->place()).device;
+      auto dev_id = root_tensor->place().device;
       platform::CUDADeviceGuard guard(dev_id);
-      cudaMemset(root_tensor->data<void>(), 0,
-                 root_tensor->numel() * SizeOfType(root_tensor->type()));
+      cudaMemset(
+          root_tensor->data(), 0,
+          root_tensor->numel() *
+              SizeOfType(framework::TransToProtoVarType(root_tensor->dtype())));
 #endif
 #ifdef PADDLE_WITH_XPU
       auto place = root_tensor->place();
-      xpu_set_device(BOOST_GET_CONST(platform::XPUPlace, place).device);
+      auto dev_id = place.device;
+      platform::XPUDeviceGuard guard(dev_id);
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       platform::DeviceContext* dev_ctx = pool.Get(place);
       const platform::XPUDeviceContext* xpu_ctx =
           reinterpret_cast<const platform::XPUDeviceContext*>(dev_ctx);
-      xpu::memset(xpu_ctx->x_context(), root_tensor->data<void>(), 0,
-                  root_tensor->numel() * SizeOfType(root_tensor->type()));
+      xpu::memset(
+          xpu_ctx->x_context(), root_tensor->data(), 0,
+          root_tensor->numel() *
+              SizeOfType(framework::TransToProtoVarType(root_tensor->dtype())));
 #endif
     } else {
-      memset(root_tensor->data<void>(), 0,
-             root_tensor->numel() * SizeOfType(root_tensor->type()));
+      memset(root_tensor->data(), 0,
+             root_tensor->numel() * SizeOfType(framework::TransToProtoVarType(
+                                        root_tensor->dtype())));
     }
   }
   return 0;
@@ -416,7 +426,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
   std::shared_ptr<HeterServiceContext> context = object_pool_.Get();
 
   if (!context->scope_) {
-    int num = rand() % places_.size();
+    int num = rand_r() % places_.size();
     context->place_num_ = num;
     auto place = places_[num];
     context->scope_ = &(place_scopes_[num]->NewScope());
@@ -439,7 +449,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
       (context->ops_).push_back(local_op_ptr);
     }
 #ifdef PADDLE_WITH_CUDA
-    auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    auto dev_id = place.device;
     platform::CUDADeviceGuard guard(dev_id);
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));

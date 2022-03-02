@@ -18,15 +18,15 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
-#include "paddle/fluid/distributed/fleet_executor/global_map.h"
+#include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 
-USE_OP(elementwise_add);
-USE_OP(fill_constant);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(fill_constant);
 
 namespace paddle {
 namespace distributed {
@@ -34,7 +34,7 @@ namespace distributed {
 std::vector<framework::OperatorBase*> GetOps() {
   framework::AttributeMap attrs;
   attrs["dtype"] = framework::proto::VarType::FP32;
-  attrs["shape"] = framework::vectorize<int>({2, 3});
+  attrs["shape"] = phi::vectorize<int>({2, 3});
   attrs["value"] = 1.0f;
 
   auto zero_op = framework::OpRegistry::CreateOp("fill_constant", {},
@@ -62,12 +62,13 @@ TEST(ComputeInterceptor, Compute) {
   std::vector<framework::Scope*> scopes = {scope, scope};
   platform::Place place = platform::CPUPlace();
 
-  Carrier* carrier = GlobalMap<int64_t, Carrier>::Create(0, 0);
-  carrier->Init(0, {{0, 0}, {1, 0}}, {0, 1});
+  std::string carrier_id = "0";
+  Carrier* carrier =
+      GlobalMap<std::string, Carrier>::Create(carrier_id, carrier_id);
+  carrier->Init(0, {{0, 0}, {1, 0}});
 
-  auto msg_bus = std::make_shared<MessageBus>();
+  MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
-  carrier->SetMsgBus(msg_bus);
 
   // FIXME: don't delete, otherwise interceptor will use undefined node
   TaskNode* node_a =

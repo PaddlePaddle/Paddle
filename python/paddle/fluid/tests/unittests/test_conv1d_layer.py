@@ -167,9 +167,18 @@ def add_cases(suite):
             methodName='runTest', filter_size=3, padding='valid'))
     suite.addTest(
         Conv1DTestCase(
+            methodName='runTest', num_filters=512, padding='valid'))
+    suite.addTest(
+        Conv1DTestCase(
+            methodName='runTest', num_filters=512, padding=[1, 2]))
+    suite.addTest(
+        Conv1DTestCase(
             methodName='runTest', padding=2, data_format='NLC'))
     suite.addTest(Conv1DTestCase(methodName='runTest', padding=[1]))
     suite.addTest(Conv1DTestCase(methodName='runTest', padding=[1, 2]))
+    suite.addTest(
+        Conv1DTestCase(
+            methodName='runTest', padding=[1, 2], data_format='NLC'))
     suite.addTest(Conv1DTestCase(methodName='runTest', padding=2))
     suite.addTest(Conv1DTestCase(methodName='runTest'))
     suite.addTest(
@@ -204,6 +213,12 @@ def add_error_cases(suite):
     suite.addTest(
         Conv1DErrorTestCase(
             methodName='runTest', padding=[1, 2, 3, 4, 5]))
+    suite.addTest(
+        Conv1DErrorTestCase(
+            methodName='runTest', padding=[1, 2, 3, 4, 5], data_format='NLC'))
+    suite.addTest(
+        Conv1DErrorTestCase(
+            methodName='runTest', num_filters=512, padding=[1, 2, 3, 4, 5]))
     suite.addTest(Conv1DErrorTestCase(methodName='runTest', dilation=-10))
 
 

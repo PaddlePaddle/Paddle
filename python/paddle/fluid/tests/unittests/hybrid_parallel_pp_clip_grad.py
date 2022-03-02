@@ -31,5 +31,19 @@ class TestPPClipGrad(TestDistPPTraning):
         return scheduler, optimizer
 
 
+class TestPPClipGradParamGroup(TestDistPPTraning):
+    def build_optimizer(self, model):
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(0.5)
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True)
+        optimizer = paddle.optimizer.Momentum(
+            learning_rate=scheduler,
+            grad_clip=grad_clip,
+            parameters=[{
+                "params": model.parameters()
+            }])
+        return scheduler, optimizer
+
+
 if __name__ == "__main__":
     unittest.main()

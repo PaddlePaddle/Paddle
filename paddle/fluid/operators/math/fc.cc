@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/fc.h"
 
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -28,7 +28,7 @@ class FCFunctor<platform::CPUDeviceContext, T> {
                   const int N, const int K, const T* X, const T* W, T* Y,
                   const T* B = nullptr, bool relu = false,
                   bool padding_weights = false) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
     framework::Tensor Y1;
     T* Y1_data = nullptr;
     if (padding_weights) {

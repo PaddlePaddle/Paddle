@@ -17,11 +17,14 @@ limitations under the License. */
 #include <Eigen/Dense>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/fluid/platform/eigen_ext.h"
+#include "paddle/fluid/operators/math/squared_l2_norm.h"
+#include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/algorithm.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
 namespace operators {
@@ -231,7 +234,7 @@ struct SparseLambMomentREGUpdateFunctor {
   inline HOSTDEVICE void operator()(size_t i) const {
     if (skip_update_ && *skip_update_) return;
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        phi::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_]
                        : static_cast<T>(0);
     update(i, g);
@@ -310,7 +313,7 @@ struct SparseLambMomentMENUpdateFunctor {
   inline HOSTDEVICE void operator()(size_t i) const {
     if (skip_update_ && *skip_update_) return;
     auto row_idx =
-        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
+        phi::funcs::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_]
                        : static_cast<T>(0);
     update(i, g);
@@ -383,8 +386,8 @@ struct LambParamUpateFunctor
   inline HOSTDEVICE void operator()(size_t i) const {
     if (skip_update_ && *skip_update_) return;
     MT lr = *lr_;
-    MT pn = *param_norm_;
-    MT tn = *trust_ratio_div_norm_;
+    MT pn = Eigen::numext::sqrt(*param_norm_);
+    MT tn = Eigen::numext::sqrt(*trust_ratio_div_norm_);
 
     MT r = (pn > static_cast<MT>(0) && tn > static_cast<MT>(0))
                ? pn / tn
@@ -488,13 +491,15 @@ class LambOpKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    platform::ForRange<DeviceContext> for_range(dev_ctx, param.numel());
+    auto numel = param.numel();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
     auto trust_ratio_div =
         ctx.AllocateTmpTensor<MT, DeviceContext>(param.dims(), dev_ctx);
+    auto* trust_ratio_div_ptr = trust_ratio_div.template data<MT>();
 
-    const void* param_ptr = param.template data<void>();
+    const void* param_ptr = param.data();
     const void* master_param_ptr =
-        master_param ? master_param->template data<void>() : nullptr;
+        master_param ? master_param->data() : nullptr;
     void* param_out_ptr = param_out.template mutable_data<T>(ctx.GetPlace());
     void* master_param_out_ptr =
         master_param_out
@@ -521,7 +526,7 @@ class LambOpKernel : public framework::OpKernel<T> {
             grad.template data<T>(),
             static_cast<const MT*>(IsMultiPrecision ? master_param_ptr
                                                     : param_ptr),
-            trust_ratio_div.template data<MT>(), skip_update_flag);
+            trust_ratio_div_ptr, skip_update_flag);
         for_range(moment_update_functor);
         beta1_pow_out.template mutable_data<MT>(platform::CPUPlace())[0] =
             beta1 * beta1_pow.template data<MT>()[0];
@@ -545,10 +550,10 @@ class LambOpKernel : public framework::OpKernel<T> {
             grad.template data<T>(),
             static_cast<const MT*>(IsMultiPrecision ? master_param_ptr
                                                     : param_ptr),
-            trust_ratio_div.template data<MT>(), skip_update_flag);
+            trust_ratio_div_ptr, skip_update_flag);
         for_range(moment_update_functor);
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
       PADDLE_ENFORCE_EQ(IsMultiPrecision, false,
                         platform::errors::Unimplemented(
                             "SelectedRows gradient is not supported when "
@@ -558,7 +563,7 @@ class LambOpKernel : public framework::OpKernel<T> {
                         platform::errors::Unimplemented(
                             "SelectedRows gradient is not supported when "
                             "multi_precision=True."));
-      auto& grad = GET_DATA_SAFELY(ctx.Input<framework::SelectedRows>("Grad"),
+      auto& grad = GET_DATA_SAFELY(ctx.Input<phi::SelectedRows>("Grad"),
                                    "Input", "Grad", "Lamb");
       if (grad.rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
@@ -574,8 +579,8 @@ class LambOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::SelectedRows tmp_grad_merge;
-      const framework::SelectedRows* grad_merge_ptr;
+      phi::SelectedRows tmp_grad_merge;
+      const phi::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
         grad_merge_ptr = &grad;
       } else {
@@ -589,7 +594,10 @@ class LambOpKernel : public framework::OpKernel<T> {
       auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
+      auto* grad_merge_rows = &grad_merge.rows();
+      paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(
+          grad_merge_rows);
+      const int64_t* rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
       if (platform::is_gpu_place(ctx.GetPlace()) &&
           beta1_pow.place() == platform::CPUPlace() &&
@@ -638,34 +646,39 @@ class LambOpKernel : public framework::OpKernel<T> {
 
     // Update parameter
     auto p_norm_t = ctx.AllocateTmpTensor<MT, DeviceContext>({1}, dev_ctx);
+    auto* p_norm_ptr = p_norm_t.template data<MT>();
+
     auto trust_ratio_div_norm_t =
         ctx.AllocateTmpTensor<MT, DeviceContext>({1}, dev_ctx);
-
-    auto p_norm = framework::EigenScalar<MT>::From(p_norm_t);
-    auto trust_ratio_div_norm =
-        framework::EigenScalar<MT>::From(trust_ratio_div_norm_t);
-    auto t = framework::EigenVector<MT>::Flatten(trust_ratio_div);
+    auto* trust_ratio_div_norm_ptr = trust_ratio_div_norm_t.template data<MT>();
 
     // TODO(zengjinle): remove the following Eigen operations when
     // *skip_update == true.
-    auto* place = dev_ctx.eigen_device();
-    if (IsMultiPrecision) {
-      auto mp = framework::EigenVector<MT>::Flatten(*master_param);
-      p_norm.device(*place) = mp.square().sum().sqrt();
-    } else {
-      auto p = framework::EigenVector<MT>::Flatten(param);
-      p_norm.device(*place) = p.square().sum().sqrt();
+    memory::Buffer buffer(dev_ctx.GetPlace());
+    math::SquaredL2Norm(
+        dev_ctx, reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
+                                                              : param_ptr),
+        p_norm_ptr, numel, &buffer);
+    math::SquaredL2Norm(dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr,
+                        numel, &buffer);
+
+    if (VLOG_IS_ON(1)) {
+      const auto& name = ctx.GetOp().Input("Param");
+      auto pn = ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
+      auto tn = ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
+      auto dtype =
+          framework::DataTypeToString(framework::DataTypeTrait<T>::DataType());
+      VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
+              << " , tn = " << tn[0];
     }
-    trust_ratio_div_norm.device(*place) = t.square().sum().sqrt();
 
 #define CALL_PADDLE_UPDATE_LAMB_PARAM_FUNC(__should_update_beta_pow)         \
   do {                                                                       \
     LambParamUpateFunctor<T, MT, IsMultiPrecision, __should_update_beta_pow> \
     param_update_functor(                                                    \
         lr.template data<MT>(), static_cast<const T*>(param_ptr),            \
-        static_cast<const MT*>(master_param_ptr),                            \
-        p_norm_t.template data<MT>(), trust_ratio_div.template data<MT>(),   \
-        trust_ratio_div_norm_t.template data<MT>(),                          \
+        static_cast<const MT*>(master_param_ptr), p_norm_ptr,                \
+        trust_ratio_div_ptr, trust_ratio_div_norm_ptr,                       \
         static_cast<T*>(param_out_ptr),                                      \
         static_cast<MT*>(master_param_out_ptr), skip_update_flag);           \
     if (__should_update_beta_pow) {                                          \

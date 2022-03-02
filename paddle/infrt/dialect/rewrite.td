@@ -4,6 +4,7 @@
 include "paddle/infrt/dialect/infrt_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "paddle/infrt/dialect/pd_ops.td"
+include "paddle/infrt/dialect/pd_extra_ops.td"
 
 //===----------------------------------------------------------------------===//
 // This is to fuse the composition: 'Matmul o ElementwiseAdd' into 'PD_FusedFC'.
@@ -15,15 +16,19 @@ include "paddle/infrt/dialect/pd_ops.td"
 // which corresponds to the following computation:
 //   (FusedFC)  out = x * y + bias
 // 
+// while meeting the following attribute constrait:
+// Matmul: transpose_x: false
+//         transpose_y: false
+//
 // Todo:
 //  1. Make the constrait more completely.
 //  2. Consider the case of : out = bias + z
 //===----------------------------------------------------------------------===//
-def FuseMulAdd : Pat<(PD_ElementwiseAdd (PD_MatmulOp $x, $y, $transpose_x, $transpose_y, $alpha), $bias, $axis),
-                     (PD_FusedFC $x, $y, $bias, (INFRT_createI32Attr<"1">)),
-                     [(IsBoolAttrEq<"false"> $transpose_x),(IsBoolAttrEq<"false"> $transpose_y)]>;
+def FuseMulAdd : Pat<(PD_Elementwise_addOp (PD_Matmul_v2Op $x, $y, ConstBoolAttrFalse:$_, ConstBoolAttrFalse:$_), $bias, $axis),
+                     (PD_FusedFC $x, $y, $bias, (INFRT_createI32Attr<"1">))>;
 
 
+/*
 //===----------------------------------------------------------------------===//
 // This is to fuse the composition: 'FusedFC o Relu' into 'FusedRepeatedFCRelu'.
 //
@@ -86,5 +91,5 @@ def FuseBatchNormWithConvPattern: Pat<
                 $coefficientW),
             (INFRT_createI32Attr<"1">)))
 >;
-
+*/
 #endif // INFRT_REWRITE

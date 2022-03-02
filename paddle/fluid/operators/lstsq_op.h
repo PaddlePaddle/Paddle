@@ -18,15 +18,15 @@
 #include <algorithm>
 #include <complex>
 #include "paddle/fluid/operators/eig_op.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 #define EPSILON 1e-6
 
@@ -39,17 +39,17 @@ enum class LapackDriverType : int { Gels, Gelsd, Gelsy, Gelss };
 using DDim = framework::DDim;
 static DDim UDDim(const DDim& x_dim) {
   auto x_vec = vectorize(x_dim);
-  return framework::make_ddim(x_vec);
+  return phi::make_ddim(x_vec);
 }
 
 template <typename DeviceContext, typename T>
 class LstsqCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    using ValueType = math::Real<T>;
+    using ValueType = phi::funcs::Real<T>;
 
     const Tensor& x = *context.Input<Tensor>("X");
-    const Tensor& y = *context.Input<Tensor>("Y");
+    auto y = context.Input<Tensor>("Y");
     auto rcond = context.Attr<float>("rcond");
     auto driver_string = context.Attr<std::string>("driver");
 
@@ -68,13 +68,15 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
         math::DeviceIndependenceTensorOperations<DeviceContext, T>(context);
 
     auto x_dims = x.dims();
-    auto y_dims = y.dims();
+    auto y_dims = y->dims();
     int dim_size = x_dims.size();
     int x_stride = MatrixStride(x);
-    int y_stride = MatrixStride(y);
+    int y_stride = MatrixStride(*y);
     int batch_count = BatchCount(x);
-    auto ori_solution_dim = solution->dims();
+    auto solution_dim = solution->dims();
     int ori_solu_stride = MatrixStride(*solution);
+    int max_solu_stride = std::max(y_stride, ori_solu_stride);
+    int min_solu_stride = std::min(y_stride, ori_solu_stride);
 
     // lapack is a column-major storge, transpose make the input to
     // have a continuous memory layout
@@ -88,13 +90,24 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     Tensor new_x;
     new_x.mutable_data<T>(context.GetPlace(),
                           size_t(batch_count * m * n * sizeof(T)));
+    framework::TensorCopy(x, context.GetPlace(), &new_x);
+
     solution->mutable_data<T>(
         context.GetPlace(),
         size_t(batch_count * std::max(m, n) * nrhs * sizeof(T)));
-    framework::TensorCopy(x, context.GetPlace(), &new_x);
-    framework::TensorCopy(y, context.GetPlace(), solution);
 
-    if (m < n) solution->Resize(UDDim(ori_solution_dim));
+    if (m >= n) {
+      const Tensor& new_y = *context.Input<Tensor>("Y");
+      framework::TensorCopy(new_y, context.GetPlace(), solution);
+    } else {
+      auto* solu_data = solution->data<T>();
+      auto* y_data = y->data<T>();
+      for (auto i = 0; i < batch_count; i++) {
+        for (auto j = 0; j < min_solu_stride; j++) {
+          solu_data[i * max_solu_stride + j] = y_data[i * y_stride + j];
+        }
+      }
+    }
 
     Tensor input_x_trans = dito.Transpose(new_x);
     Tensor input_y_trans = dito.Transpose(*solution);
@@ -129,7 +142,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     Tensor jpvt;
     int* jpvt_data = nullptr;
     if (driver == LapackDriverType::Gelsy) {
-      jpvt.Resize(framework::make_ddim({std::max<int>(1, n)}));
+      jpvt.Resize(phi::make_ddim({std::max<int>(1, n)}));
       jpvt_data = jpvt.mutable_data<int>(context.GetPlace());
     }
 
@@ -140,31 +153,31 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     int iwkopt = 0;
 
     if (driver == LapackDriverType::Gels) {
-      math::lapackGels('N', m, n, nrhs, x_vector, lda, y_vector, ldb, &wkopt,
-                       lwork, &info);
+      phi::funcs::lapackGels('N', m, n, nrhs, x_vector, lda, y_vector, ldb,
+                             &wkopt, lwork, &info);
     } else if (driver == LapackDriverType::Gelsd) {
-      math::lapackGelsd(m, n, nrhs, x_vector, lda, y_vector, ldb, s_working_ptr,
-                        static_cast<ValueType>(rcond), &rank_32, &wkopt, lwork,
-                        &rwkopt, &iwkopt, &info);
+      phi::funcs::lapackGelsd(m, n, nrhs, x_vector, lda, y_vector, ldb,
+                              s_working_ptr, static_cast<ValueType>(rcond),
+                              &rank_32, &wkopt, lwork, &rwkopt, &iwkopt, &info);
     } else if (driver == LapackDriverType::Gelsy) {
-      math::lapackGelsy(m, n, nrhs, x_vector, lda, y_vector, ldb, jpvt_data,
-                        static_cast<ValueType>(rcond), &rank_32, &wkopt, lwork,
-                        &rwkopt, &info);
+      phi::funcs::lapackGelsy(m, n, nrhs, x_vector, lda, y_vector, ldb,
+                              jpvt_data, static_cast<ValueType>(rcond),
+                              &rank_32, &wkopt, lwork, &rwkopt, &info);
     } else if (driver == LapackDriverType::Gelss) {
-      math::lapackGelss(m, n, nrhs, x_vector, lda, y_vector, ldb, s_working_ptr,
-                        static_cast<ValueType>(rcond), &rank_32, &wkopt, lwork,
-                        &rwkopt, &info);
+      phi::funcs::lapackGelss(m, n, nrhs, x_vector, lda, y_vector, ldb,
+                              s_working_ptr, static_cast<ValueType>(rcond),
+                              &rank_32, &wkopt, lwork, &rwkopt, &info);
     }
 
-    lwork = std::max<int>(1, static_cast<int>(math::Real<T>(wkopt)));
+    lwork = std::max<int>(1, static_cast<int>(phi::funcs::Real<T>(wkopt)));
     Tensor work;
-    work.Resize(framework::make_ddim({lwork}));
+    work.Resize(phi::make_ddim({lwork}));
     T* work_data = work.mutable_data<T>(context.GetPlace());
 
     // "rwork" only used for complex inputs and "gelsy/gelsd/gelss" drivers
     Tensor rwork;
     ValueType* rwork_data = nullptr;
-    if (framework::IsComplexType(x.type()) &&
+    if (framework::IsComplexType(framework::TransToProtoVarType(x.dtype())) &&
         driver != LapackDriverType::Gels) {
       int rwork_len = 0;
       if (driver == LapackDriverType::Gelsy) {
@@ -174,7 +187,7 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
       } else if (driver == LapackDriverType::Gelsd) {
         rwork_len = std::max<int>(1, rwkopt);
       }
-      rwork.Resize(framework::make_ddim({rwork_len}));
+      rwork.Resize(phi::make_ddim({rwork_len}));
       rwork_data = rwork.mutable_data<ValueType>(context.GetPlace());
     }
 
@@ -182,32 +195,32 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     Tensor iwork;
     int* iwork_data = nullptr;
     if (driver == LapackDriverType::Gelsd) {
-      iwork.Resize(framework::make_ddim({std::max<int>(1, iwkopt)}));
+      iwork.Resize(phi::make_ddim({std::max<int>(1, iwkopt)}));
       iwork_data = iwork.mutable_data<int>(context.GetPlace());
     }
 
-    int solu_stride = std::max(y_stride, ori_solu_stride);
     for (auto i = 0; i < batch_count; ++i) {
       auto* x_input = &x_vector[i * x_stride];
-      auto* y_input = &y_vector[i * solu_stride];
+      auto* y_input = &y_vector[i * max_solu_stride];
       rank_working_ptr = rank_working_ptr ? &rank_data[i] : nullptr;
       s_working_ptr = s_working_ptr ? &s_data[i * s_stride] : nullptr;
 
       if (driver == LapackDriverType::Gels) {
-        math::lapackGels('N', m, n, nrhs, x_input, lda, y_input, ldb, work_data,
-                         lwork, &info);
+        phi::funcs::lapackGels('N', m, n, nrhs, x_input, lda, y_input, ldb,
+                               work_data, lwork, &info);
       } else if (driver == LapackDriverType::Gelsd) {
-        math::lapackGelsd(m, n, nrhs, x_input, lda, y_input, ldb, s_working_ptr,
-                          static_cast<ValueType>(rcond), &rank_32, work_data,
-                          lwork, rwork_data, iwork_data, &info);
+        phi::funcs::lapackGelsd(m, n, nrhs, x_input, lda, y_input, ldb,
+                                s_working_ptr, static_cast<ValueType>(rcond),
+                                &rank_32, work_data, lwork, rwork_data,
+                                iwork_data, &info);
       } else if (driver == LapackDriverType::Gelsy) {
-        math::lapackGelsy(m, n, nrhs, x_input, lda, y_input, ldb, jpvt_data,
-                          static_cast<ValueType>(rcond), &rank_32, work_data,
-                          lwork, rwork_data, &info);
+        phi::funcs::lapackGelsy(m, n, nrhs, x_input, lda, y_input, ldb,
+                                jpvt_data, static_cast<ValueType>(rcond),
+                                &rank_32, work_data, lwork, rwork_data, &info);
       } else if (driver == LapackDriverType::Gelss) {
-        math::lapackGelss(m, n, nrhs, x_input, lda, y_input, ldb, s_working_ptr,
-                          static_cast<ValueType>(rcond), &rank_32, work_data,
-                          lwork, rwork_data, &info);
+        phi::funcs::lapackGelss(m, n, nrhs, x_input, lda, y_input, ldb,
+                                s_working_ptr, static_cast<ValueType>(rcond),
+                                &rank_32, work_data, lwork, rwork_data, &info);
       }
 
       PADDLE_ENFORCE_EQ(
@@ -221,9 +234,24 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     Tensor tmp_s = dito.Transpose(*solution);
     framework::TensorCopy(tmp_s, solution->place(), solution);
 
-    if (m >= n) solution->Resize(UDDim(ori_solution_dim));
+    if (m > n) {
+      auto* solu_data = solution->data<T>();
+      for (auto i = 1; i < batch_count; i++) {
+        for (auto j = 0; j < min_solu_stride; j++) {
+          solu_data[i * min_solu_stride + j] =
+              solu_data[i * max_solu_stride + j];
+        }
+      }
+    }
+
+    solution->Resize(UDDim(solution_dim));
   }
 };
+
+template <typename DeviceContext, typename T>
+void BatchedOrmqr(const DeviceContext& dev_ctx, bool left, bool transpose,
+                  int batch_size, int m, int n, int k, T* a, int a_stride,
+                  T* tau, int tau_stride, T* other, int other_stride);
 
 }  // namespace operators
 }  // namespace paddle

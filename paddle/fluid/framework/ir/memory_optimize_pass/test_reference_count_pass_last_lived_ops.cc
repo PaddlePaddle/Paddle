@@ -21,10 +21,10 @@
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 
-USE_OP(scale);
+USE_OP_ITSELF(scale);
 USE_OP(elementwise_mul);
-USE_OP(elementwise_add);
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(elementwise_add_grad);
 
 DECLARE_double(eager_delete_tensor_gb);
 

@@ -51,5 +51,25 @@ class TestShape(OpTest):
         self.check_output_with_place(self.place)
 
 
+class TestShape_fp16(TestShape):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestShape_double(TestShape):
+    def init_dtype(self):
+        self.dtype = np.float64
+
+
+class TestShape_int32(TestShape):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestShape_int64(TestShape):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -132,7 +132,7 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        # map_matmul_v2_to_matmul_pass will affect the type of final fused op 
+        # gpu_cpu_map_matmul_v2_to_matmul_pass will affect the type of final fused op 
         fused_op = "matmul_v2"
         input1_dim1 = program_config.inputs["input_data1"].shape[0]
         input2_dim1 = program_config.inputs["input_data2"].shape[0]

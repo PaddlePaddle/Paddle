@@ -22,6 +22,7 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
@@ -132,11 +133,10 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     parallelizer._dist_context = dist_context
 
     # serial forward & backward completion
-    complete_train_program = auto.complete_annotation(train_program,
-                                                      dist_context)
-    parallelizer._apply_serial_forward_pass(complete_train_program,
-                                            startup_program)
-
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program)
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
     params_grads = parallelizer._generate_backward(
         complete_train_program,
         startup_program,
@@ -152,7 +152,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
 
     partitioned_optimize_ops = parallelizer._apply_optimize(
         auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads)
-    return auto_parallel_main_prog, auto_parallel_startup_prog
+    return auto_parallel_main_prog, auto_parallel_startup_prog, dist_params_grads
 
 
 def check_send_recv_result(dist_main_prog, rank_id):
@@ -211,9 +211,10 @@ class TestMLPReshard(unittest.TestCase):
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 2
-        dist_main_prog, dist_startup_prog = get_dist_prog(
+        dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
+        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context,
+                dist_params_grads)
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
@@ -265,12 +266,14 @@ class TestMLPReshard(unittest.TestCase):
         dist_context = DistributedContext()
         dist_strategy = fleet.DistributedStrategy()
         partitioner = Partitioner(dist_context, rank_id)
-        complete_train_program = auto.complete_annotation(train_program,
-                                                          dist_context)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        dist_context.block_state.parse_forward_blocks(complete_train_program)
         partitioned_main_prog, partitioned_startup_prog, partitioned_params_grads = partitioner.partition(
             complete_train_program, startup_program, [])
         reshard(partitioned_main_prog, partitioned_startup_prog, rank_id,
-                dist_context)
+                dist_context, partitioned_params_grads)
         # the x should not be slice
         self.assertTrue(check_allgather(partitioned_main_prog))
 

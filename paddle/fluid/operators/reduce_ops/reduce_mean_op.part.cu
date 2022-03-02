@@ -17,15 +17,9 @@
 
 template <typename T>
 using CUDAReduceMeanGradKernel =
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
-                          ops::MeanGradFunctor, true>;
-
-using FP16CUDAReduceMeanGradKernel =
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
-                          paddle::platform::float16, ops::FP16MeanGradFunctor,
-                          true>;
+    ops::ReduceCudaGradKernel<T, kps::DivideFunctor>;
 
 REGISTER_OP_CUDA_KERNEL(reduce_mean_grad, CUDAReduceMeanGradKernel<bool>,
-                        FP16CUDAReduceMeanGradKernel,
+                        CUDAReduceMeanGradKernel<paddle::platform::float16>,
                         CUDAReduceMeanGradKernel<float>,
                         CUDAReduceMeanGradKernel<double>);

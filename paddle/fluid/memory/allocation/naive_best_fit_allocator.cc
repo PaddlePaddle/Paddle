@@ -20,23 +20,16 @@
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/phi/common/place.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#endif
-#ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#endif
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -153,24 +146,9 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
 #ifdef PADDLE_WITH_XPU
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = nullptr;
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+
+  platform::XPUDeviceGuard gurad(place.device);
+  int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
     std::cout << "xpu memory malloc(" << size << ") failed, try again\n";
     xpu_wait();
@@ -184,12 +162,6 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "xpu memory FLAGS_init_allocated_mem is not implemented."));
   }
-  ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
   VLOG(10) << "  pointer=" << p;
   return p;
 #else
@@ -205,30 +177,9 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place, void *p,
 #ifdef PADDLE_WITH_XPU
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-  int dev_id = -1;
-  int ret = xpu_current_device(&dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
-  if (dev_id >= 64) {
-    // if dev_id >= 64, the device is a simulator device, -64 to get real dev_id
-    dev_id -= 64;
-  }
-  ret = xpu_set_device(place.device);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
+
+  platform::XPUDeviceGuard gurad(place.device);
   xpu_free(p);
-  ret = xpu_set_device(dev_id);
-  PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
-                    platform::errors::External(
-                        "XPU API return wrong value[%d], please check whether "
-                        "Baidu Kunlun Card is properly installed.",
-                        ret));
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
@@ -782,6 +733,136 @@ uint64_t Release<platform::MLUPlace>(const platform::MLUPlace &place) {
 #endif
 }
 
+// For CustomDevice
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class BuddyAllocatorList {
+ private:
+  explicit BuddyAllocatorList(const std::string &device_type)
+      : device_type_(device_type) {
+    auto devices = platform::DeviceManager::GetDeviceList(device_type);
+    for (auto dev_id : devices) {
+      init_flags_[dev_id].reset(new std::once_flag());
+    }
+  }
+
+  static BuddyAllocatorList *CreateNewInstance(const std::string &device_type) {
+    return new BuddyAllocatorList(device_type);
+  }
+
+ public:
+  static BuddyAllocatorList *Instance(const std::string &device_type) {
+    // DeviceType -> AllocatorList
+    static std::unordered_map<std::string, BuddyAllocatorList *> pool;
+    if (pool.find(device_type) == pool.end()) {
+      pool[device_type] = CreateNewInstance(device_type);
+    }
+    return pool[device_type];
+  }
+
+  BuddyAllocator *Get(int dev_id) {
+    PADDLE_ENFORCE_NE(init_flags_.find(dev_id), init_flags_.end(),
+                      platform::errors::OutOfRange(
+                          "Cannot find %s %d, please check visible devices.",
+                          device_type_, dev_id));
+
+    std::call_once(*init_flags_[dev_id], [this, dev_id] {
+      platform::DeviceManager::SetDevice(device_type_, dev_id);
+      platform::CustomPlace place(device_type_, dev_id);
+
+      allocators_[dev_id].reset(new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::CustomAllocator(device_type_, dev_id)),
+          platform::DeviceManager::GetMinChunkSize(place),
+          platform::DeviceManager::GetMaxChunkSize(place),
+          platform::DeviceManager::GetExtraPaddingSize(place), device_type_));
+    });
+
+    return allocators_[dev_id].get();
+  }
+
+ private:
+  std::string device_type_;
+  std::unordered_map<size_t, std::unique_ptr<std::once_flag>> init_flags_;
+  std::unordered_map<size_t, std::unique_ptr<BuddyAllocator>> allocators_;
+};
+
+BuddyAllocator *GetBuddyAllocator(const platform::Place &place) {
+  VLOG(10) << "GetBuddyAllocator place = " << place;
+  if (platform::is_custom_place(place)) {
+    return BuddyAllocatorList::Instance(
+               platform::PlaceHelper::GetDeviceType(place))
+        ->Get(platform::PlaceHelper::GetDeviceId(place));
+  } else {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("place must be CustomPlace"));
+  }
+}
+#endif
+
+template <>
+void *Alloc<platform::CustomPlace>(const platform::CustomPlace &place,
+                                   size_t size) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  auto *buddy_allocator = GetBuddyAllocator(place);
+  auto *ptr = buddy_allocator->Alloc(size);
+
+  if (ptr == nullptr) {
+    platform::DeviceGuard guard(place);
+    size_t avail, total;
+    platform::DeviceManager::MemoryStats(place, &total, &avail);
+    PADDLE_THROW(platform::errors::ResourceExhausted(
+        "Cannot allocate %s in %s:%d, avaliable %s, total %s, used "
+        "%s. ",
+        string::HumanReadableSize(size), place.GetDeviceType(), place.device,
+        string::HumanReadableSize(avail), string::HumanReadableSize(total),
+        string::HumanReadableSize(total - avail)));
+  } else {
+    if (FLAGS_init_allocated_mem) {
+      platform::DeviceManager::GetDeviceWithPlace(place)->MemorySet(ptr, 0xEF,
+                                                                    size);
+    }
+  }
+  VLOG(10) << "  pointer=" << ptr;
+  return ptr;
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void Free<platform::CustomPlace>(const platform::CustomPlace &place, void *p,
+                                 size_t size) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  GetBuddyAllocator(place)->Free(p);
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+uint64_t Release<platform::CustomPlace>(const platform::CustomPlace &place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  return GetBuddyAllocator(place)->Release();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+size_t Used<platform::CustomPlace>(const platform::CustomPlace &place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  return GetBuddyAllocator(place)->Used();
+#else
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CustomPlace' is not supported in CPU only device."));
+#endif
+}
+
 struct AllocVisitor : public boost::static_visitor<void *> {
   inline explicit AllocVisitor(size_t size) : size_(size) {}
 
@@ -840,25 +921,25 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 
 namespace allocation {
 
-Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
-  void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
+phi::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
+  void *ptr = paddle::platform::VisitPlace(place_, legacy::AllocVisitor(size));
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
       static_cast<void *>(tmp_alloc), place_, size);
   return tmp_alloc;
 }
 
-void NaiveBestFitAllocator::FreeImpl(Allocation *allocation) {
-  boost::apply_visitor(
-      legacy::FreeVisitor(allocation->ptr(), allocation->size()),
-      allocation->place());
+void NaiveBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
+  paddle::platform::VisitPlace(
+      allocation->place(),
+      legacy::FreeVisitor(allocation->ptr(), allocation->size()));
   platform::MemEvenRecorder::Instance().PopMemRecord(
       static_cast<void *>(allocation), place_);
   delete allocation;
 }
 
 uint64_t NaiveBestFitAllocator::ReleaseImpl(const platform::Place &place) {
-  return boost::apply_visitor(legacy::ReleaseVisitor(), place);
+  return paddle::platform::VisitPlace(place, legacy::ReleaseVisitor());
 }
 
 }  // namespace allocation

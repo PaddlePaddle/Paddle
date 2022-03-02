@@ -21,11 +21,11 @@ namespace cub = hipcub;
 #endif
 
 #include <algorithm>
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/where_index_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -128,20 +128,18 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     for (int i = rank - 2; i >= 0; i--) {
       h_stride_array[i] = h_stride_array[i + 1] * dims[i + 1];
     }
-    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
-                 d_stride_array, platform::CPUPlace(), h_stride_array,
-                 rank * sizeof(int64_t), dev_ctx.stream());
+    memory::Copy(dev_ctx.GetPlace(), d_stride_array, platform::CPUPlace(),
+                 h_stride_array, rank * sizeof(int64_t), dev_ctx.stream());
 
     // get total ture number and set output size
     // the last element of cub::InclusiveSum is the total number
-    memory::Copy(platform::CPUPlace(), h_total_true_num,
-                 BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
+    memory::Copy(platform::CPUPlace(), h_total_true_num, dev_ctx.GetPlace(),
                  d_true_num_array + numel - 1, sizeof(int64_t),
                  dev_ctx.stream());
     dev_ctx.Wait();
 
     int64_t true_num = *h_total_true_num;
-    out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
+    out->Resize(phi::make_ddim({static_cast<int64_t>(true_num), rank}));
     auto out_data = out->mutable_data<int64_t>(context.GetPlace());
 
     if (true_num == 0) {
@@ -160,6 +158,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(where_index, ops::CUDAWhereIndexKernel<int64_t>,
                         ops::CUDAWhereIndexKernel<int>,
+                        ops::CUDAWhereIndexKernel<int16_t>,
                         ops::CUDAWhereIndexKernel<bool>,
                         ops::CUDAWhereIndexKernel<float>,
                         ops::CUDAWhereIndexKernel<double>);

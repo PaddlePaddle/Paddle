@@ -19,7 +19,22 @@ from .distribution import Distribution
 
 
 class ExponentialFamily(Distribution):
-    """ Base class for exponential family distribution.
+    r""" 
+    ExponentialFamily is the base class for probability distributions belonging 
+    to exponential family, whose probability mass/density function has the 
+    form is defined below
+
+    ExponentialFamily is derived from `paddle.distribution.Distribution`.
+    
+    .. math::
+
+        f_{F}(x; \theta) = \exp(\langle t(x), \theta\rangle - F(\theta) + k(x))
+    
+    where :math:`\theta` denotes the natural parameters, :math:`t(x)` denotes 
+    the sufficient statistic, :math:`F(\theta)` is the log normalizer function 
+    for a given family and :math:`k(x)` is the carrier measure.
+
+    Distribution belongs to exponential family referring to https://en.wikipedia.org/wiki/Exponential_family
     """
 
     @property

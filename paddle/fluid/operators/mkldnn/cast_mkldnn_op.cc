@@ -40,7 +40,7 @@ class CastMKLDNNKernel : public framework::OpKernel<T> {
     dnnl::memory::data_type out_type =
         framework::ToMKLDNNDataType(out_paddle_type);
 
-    auto x_tz = framework::vectorize(x->dims());
+    auto x_tz = phi::vectorize(x->dims());
 
     platform::ReorderMKLDNNHandler reorder_handler(x_tz, x_paddle_type, x_type,
                                                    out_paddle_type, out_type,

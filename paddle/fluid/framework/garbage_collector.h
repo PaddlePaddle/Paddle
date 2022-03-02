@@ -27,12 +27,6 @@
 #endif
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 class GarbageCollector {
@@ -203,6 +197,47 @@ class MLUStreamGarbageCollector : public GarbageCollector {
  private:
   mluStream stream_;
   std::unique_ptr<platform::StreamCallbackManager<mluStream>> callback_manager_;
+};
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class CustomDefaultStreamGarbageCollector : public GarbageCollector {
+ public:
+  CustomDefaultStreamGarbageCollector(const platform::CustomPlace &place,
+                                      size_t max_memory_size);
+
+  void Wait() const override;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class CustomDeviceUnsafeFastGarbageCollector : public GarbageCollector {
+ public:
+  CustomDeviceUnsafeFastGarbageCollector(const platform::CustomPlace &place,
+                                         size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class CustomStreamGarbageCollector : public GarbageCollector {
+ public:
+  CustomStreamGarbageCollector(const platform::CustomPlace &place,
+                               size_t max_memory_size);
+
+  ~CustomStreamGarbageCollector();
+
+  void Wait() const override;
+
+  platform::stream::Stream *stream() const;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+
+ private:
+  std::unique_ptr<platform::stream::Stream> stream_;
+  std::unique_ptr<platform::CallbackManager> callback_manager_;
 };
 #endif
 

@@ -94,18 +94,18 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
 
   for (int64_t i = 0; i < before; ++i) {
     if (platform::is_cpu_place(place)) {
-      auto& cpu_place = BOOST_GET_CONST(platform::CPUPlace, place);
+      auto& cpu_place = place;
       memory::Copy(cpu_place, dst + i * dst_after, cpu_place,
                    src + i * src_after, sizeof(T) * size);
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      auto& gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
+      auto& gpu_place = place;
       auto& cuda_ctx =
           reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
       memory::Copy(gpu_place, dst + i * dst_after, gpu_place,
                    src + i * src_after, sizeof(T) * size, cuda_ctx.stream());
 #elif defined(PADDLE_WITH_ASCEND_CL)
-      auto& npu_place = BOOST_GET_CONST(platform::NPUPlace, place);
+      auto& npu_place = place;
       auto& npu_ctx = reinterpret_cast<const platform::NPUDeviceContext&>(ctx);
       memory::Copy(npu_place, dst + i * dst_after, npu_place,
                    src + i * src_after, sizeof(T) * size, npu_ctx.stream());

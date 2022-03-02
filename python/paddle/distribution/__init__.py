@@ -12,17 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .beta import Beta
 from .categorical import Categorical
 from .dirichlet import Dirichlet
 from .distribution import Distribution
 from .exponential_family import ExponentialFamily
+from .kl import kl_divergence, register_kl
+from .multinomial import Multinomial
 from .normal import Normal
 from .uniform import Uniform
 
-__all__ = [ #noqa
+__all__ = [  # noqa
+    'Beta',
     'Categorical',
+    'Dirichlet',
     'Distribution',
-    'Normal', 'Uniform',
     'ExponentialFamily',
-    'Dirichlet'
+    'Multinomial',
+    'Normal',
+    'Uniform',
+    'kl_divergence',
+    'register_kl',
 ]

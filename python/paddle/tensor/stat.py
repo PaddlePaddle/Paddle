@@ -15,10 +15,9 @@
 # TODO: define statistical functions of a tensor  
 
 import numpy as np
-from ..fluid.framework import Variable
+from ..static import Variable
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import core, in_dygraph_mode
-from ..fluid import layers
+from ..framework import core
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
@@ -88,7 +87,7 @@ def mean(x, axis=None, keepdim=False, name=None):
     if axis is None or len(axis) == 0:
         axis = [0]
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
                                   'reduce_all', reduce_all)
 
@@ -150,7 +149,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
-    if not in_dygraph_mode():
+    if not paddle.in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
 
     u = mean(x, axis, True, name)
@@ -209,7 +208,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.std(x, axis=1)
             # [1.       2.081666]
     """
-    if not in_dygraph_mode():
+    if not paddle.in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
 
     out = var(**locals())
@@ -237,7 +236,7 @@ def numel(x, name=None):
 
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.size(x)
 
     if not isinstance(x, Variable):
@@ -437,17 +436,29 @@ def quantile(x, q, axis=None, keepdim=False):
     indices_upper = paddle.ceil(indices).astype(paddle.int32)
     outputs = []
 
+    def expand_dim(indices, sorted_tensor_shape, axis):
+        assert axis < len(list(sorted_tensor_shape))
+        expanded_shape = [1] * len(list(sorted_tensor_shape))
+        expanded_shape[axis] = len(indices)
+        expanded_shape = tuple(expanded_shape)
+        indices = indices.reshape(expanded_shape)
+        return indices
+
     # TODO(chenjianye): replace the for-loop to directly take elements.
     for i in range(len(indices)):
         if (indices_upper[i] != indices_below[i]):
-            tensor_below = paddle.take_along_axis(sorted_tensor,
-                                                  indices_below[i], axis)
-            tensor_upper = paddle.take_along_axis(sorted_tensor,
-                                                  indices_upper[i], axis)
+            tensor_below = paddle.take_along_axis(
+                sorted_tensor,
+                expand_dim(indices_below[i], sorted_tensor.shape, axis), axis)
+            tensor_upper = paddle.take_along_axis(
+                sorted_tensor,
+                expand_dim(indices_upper[i], sorted_tensor.shape, axis), axis)
             weights = (indices[i] - indices_below[i]).astype(x.dtype)
             out = paddle.lerp(tensor_below, tensor_upper, weights)
         else:
-            out = paddle.take_along_axis(sorted_tensor, indices_below[i], axis)
+            out = paddle.take_along_axis(
+                sorted_tensor,
+                expand_dim(indices_below[i], sorted_tensor.shape, axis), axis)
         if not keepdim:
             out = paddle.squeeze(out, axis=axis)
         else:
