@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_CUDA)
 #include <cooperative_groups.h>
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
+#endif
+
 #include <cstring>
 #include <random>
 #include <string>
