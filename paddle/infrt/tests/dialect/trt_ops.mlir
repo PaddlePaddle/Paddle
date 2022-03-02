@@ -1,3 +1,4 @@
+// RUN: trt-exec %s
 // CHECK-LABEL: @main
 func @main() -> tensor<?xf32> {
   %bias = "pd.feed"() {name="input0"} : () -> tensor<?xf32>
