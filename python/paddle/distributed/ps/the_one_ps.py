@@ -15,10 +15,11 @@
 import warnings
 
 import os
+from paddle.distributed.fleet.proto import ps_pb2
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle.fluid import core
-from .utils.public import *
+from paddle.distributed.ps.utils.public import *
 from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
@@ -29,14 +30,10 @@ from paddle.distributed.fleet.base.private_helper_function import wait_server_re
 from paddle.fluid.communicator import Communicator, HeterClient
 from google.protobuf import text_format
 
-__all__ = []
-
-
-def conv_indent(indent):
-    return "".join([" "] * indent)
-
-
-PSERVER_SAVE_SUFFIX = ".shard"
+__all__ = [
+    'Table', 'SparseTable', 'GeoSparseTable', 'BarrierTable', 'TensorTable',
+    'DenseTable'
+]
 
 
 def get_program_by_id(context, program_id):
@@ -62,129 +59,140 @@ def parse_table_class(varname, program_id, context):
                 return "MemorySparseTable"
 
 
-def get_default_accessor_proto(accessor, varname, program_id, context):
+def check_embedding_dim(accessor_proto, varname, program_id, context):
     main_program, startup_program = get_program_by_id(context, program_id)
     embedding_dim = 0
     for var in main_program.list_vars():
         if var.name == varname:
             embedding_dim = var.shape[1]
+            print('new var: {}, {}, {}'.format(var, embedding_dim,
+                                               accessor_proto.fea_dim))
             break
-
-    if not accessor.HasField("accessor_class"):
-        accessor.accessor_class = "CtrCommonAccessor"
-    if not accessor.HasField("fea_dim"):
-        accessor.fea_dim = embedding_dim + 2
-    if not accessor.HasField("embedx_dim"):
-        accessor.embedx_dim = embedding_dim - 1
-    if not accessor.HasField("embedx_threshold"):
-        accessor.embedx_threshold = 0
-
-    ctr_accessor_param = accessor.ctr_accessor_param
-    if not ctr_accessor_param.HasField("nonclk_coeff"):
-        ctr_accessor_param.nonclk_coeff = 0.1
-    if not ctr_accessor_param.HasField("click_coeff"):
-        ctr_accessor_param.click_coeff = 1.0
-    if not ctr_accessor_param.HasField("base_threshold"):
-        ctr_accessor_param.base_threshold = 0
-    if not ctr_accessor_param.HasField("delta_threshold"):
-        ctr_accessor_param.delta_threshold = 0
-    if not ctr_accessor_param.HasField("delta_keep_days"):
-        ctr_accessor_param.delta_keep_days = 16
-    if not ctr_accessor_param.HasField("show_click_decay_rate"):
-        ctr_accessor_param.show_click_decay_rate = 1
-    if not ctr_accessor_param.HasField("delete_threshold"):
-        ctr_accessor_param.delete_threshold = 0
-    if not ctr_accessor_param.HasField("delete_after_unseen_days"):
-        ctr_accessor_param.delete_after_unseen_days = 30
-    if not ctr_accessor_param.HasField("ssd_unseenday_threshold"):
-        ctr_accessor_param.ssd_unseenday_threshold = 1
-
-    for sgd_param in [accessor.embed_sgd_param, accessor.embedx_sgd_param]:
-        if not sgd_param.HasField("name"):
-            sgd_param.name = "SparseAdaGradSGDRule"
-        if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
-            if not sgd_param.adagrad.HasField("learning_rate"):
-                sgd_param.adagrad.learning_rate = 0.05
-            if not sgd_param.adagrad.HasField("initial_g2sum"):
-                sgd_param.adagrad.initial_g2sum = 3.0
-            if not sgd_param.adagrad.HasField("initial_range"):
-                sgd_param.adagrad.initial_range = 0.0001
-            if len(sgd_param.adagrad.weight_bounds) == 0:
-                sgd_param.adagrad.weight_bounds.extend([-10.0, 10.0])
-        if sgd_param.name == "SparseNaiveSGDRule":
-            if not sgd_param.naive.HasField("learning_rate"):
-                sgd_param.naive.learning_rate = 0.05
-            if not sgd_param.naive.HasField("initial_range"):
-                sgd_param.naive.initial_range = 0.0001
-            if len(sgd_param.naive.weight_bounds) == 0:
-                sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
-        if sgd_param.name == "SparseAdamSGDRule":
-            if not sgd_param.adam.HasField("learning_rate"):
-                sgd_param.adam.learning_rate = 0.001
-            if not sgd_param.adam.HasField("initial_range"):
-                sgd_param.adam.initial_range = 0.0001
-            if not sgd_param.adam.HasField("beta1_decay_rate"):
-                sgd_param.adam.beta1_decay_rate = 0.9
-            if not sgd_param.adam.HasField("beta2_decay_rate"):
-                sgd_param.adam.beta2_decay_rate = 0.999
-            if not sgd_param.adam.HasField("ada_epsilon"):
-                sgd_param.adam.ada_epsilon = 1e-08
-            if len(sgd_param.adam.weight_bounds) == 0:
-                sgd_param.adam.weight_bounds.extend([-10.0, 10.0])
-
-
-def check_embedding_dim(accessor, varname, program_id, context):
-    main_program, startup_program = get_program_by_id(context, program_id)
-    embedding_dim = 0
-    for var in main_program.list_vars():
-        if var.name == varname:
-            embedding_dim = var.shape[1]
-            break
-    fea_dim = accessor.fea_dim
+    fea_dim = accessor_proto.fea_dim
     if fea_dim != embedding_dim + 2:
         raise ValueError(
             "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
             format(embedding_dim + 2, fea_dim))
-    embedx_dim = accessor.embedx_dim
+    embedx_dim = accessor_proto.embedx_dim
     if embedx_dim != embedding_dim - 1:
         raise ValueError(
             "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
             format(embedding_dim - 1, embedx_dim))
 
 
+class Service:
+    def __init__(self):
+        pass
+
+    def _set(self, service_proto):
+        service_proto.server_class = "BrpcPsServer"
+        service_proto.client_class = "BrpcPsClient"
+        service_proto.service_class = "BrpcPsService"
+        service_proto.start_server_port = 0
+        service_proto.server_thread_num = 12
+
+
+class GpuService(Service):
+    def __init__(self):
+        super(GpuService).__init__(self)
+
+    def _set(self, service_proto):
+        super(GpuService)._set(service_proto)
+        service_proto.server_class = 'PsLocalServer'
+        service_proto.client_class = 'PsLocalClient'
+
+
 class Accessor:
     def __init__(self):
         self.accessor_class = ""
         self.optimizer = None
-        self.feature_dim = -1
-        self.embedding_dim = -1
-        self.optimizer = None
+        self.feature_dim = 0
+        self.embedding_dim = 0
 
-    def to_string(self, indent):
-        accessor_str = "{}accessor {{{}\n{}}}"
-        attrs = ""
-        attrs += "accessor_class: \"{}\" ".format(self.accessor_class)
-        attrs += "fea_dim: {} ".format(self.feature_dim)
-        attrs += "embedx_dim: {} ".format(self.embedding_dim)
-        attrs += "\n"
-        if self.optimizer is not None:
-            attrs += self.optimizer.to_string(indent)
-        return accessor_str.format(
-            conv_indent(indent), attrs, conv_indent(indent))
+    # TableAccessorParameter accessor
+    def _set(self, accessor_proto, varname, program_id, context):
+        main_program, startup_program = get_program_by_id(context, program_id)
+        embedding_dim = 0
+        for var in main_program.list_vars():
+            if var.name == varname:
+                embedding_dim = var.shape[1]
+                break
+
+        if not accessor_proto.HasField("accessor_class"):
+            accessor_proto.accessor_class = "CtrCommonAccessor"
+        if not accessor_proto.HasField("fea_dim"):
+            accessor_proto.fea_dim = embedding_dim + 2
+        if not accessor_proto.HasField("embedx_dim"):
+            accessor_proto.embedx_dim = embedding_dim - 1
+        if not accessor_proto.HasField("embedx_threshold"):
+            accessor_proto.embedx_threshold = 0
+
+        ctr_accessor_param = accessor_proto.ctr_accessor_param
+        if not ctr_accessor_param.HasField("nonclk_coeff"):
+            ctr_accessor_param.nonclk_coeff = 0.1
+        if not ctr_accessor_param.HasField("click_coeff"):
+            ctr_accessor_param.click_coeff = 1.0
+        if not ctr_accessor_param.HasField("base_threshold"):
+            ctr_accessor_param.base_threshold = 0
+        if not ctr_accessor_param.HasField("delta_threshold"):
+            ctr_accessor_param.delta_threshold = 0
+        if not ctr_accessor_param.HasField("delta_keep_days"):
+            ctr_accessor_param.delta_keep_days = 16
+        if not ctr_accessor_param.HasField("show_click_decay_rate"):
+            ctr_accessor_param.show_click_decay_rate = 1
+        if not ctr_accessor_param.HasField("delete_threshold"):
+            ctr_accessor_param.delete_threshold = 0
+        if not ctr_accessor_param.HasField("delete_after_unseen_days"):
+            ctr_accessor_param.delete_after_unseen_days = 30
+        if not ctr_accessor_param.HasField("ssd_unseenday_threshold"):
+            ctr_accessor_param.ssd_unseenday_threshold = 1
+
+        for sgd_param in [
+                accessor_proto.embed_sgd_param, accessor_proto.embedx_sgd_param
+        ]:
+            if not sgd_param.HasField("name"):
+                sgd_param.name = "SparseAdaGradSGDRule"
+            if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
+                if not sgd_param.adagrad.HasField("learning_rate"):
+                    sgd_param.adagrad.learning_rate = 0.05
+                if not sgd_param.adagrad.HasField("initial_g2sum"):
+                    sgd_param.adagrad.initial_g2sum = 3.0
+                if not sgd_param.adagrad.HasField("initial_range"):
+                    sgd_param.adagrad.initial_range = 0.0001
+                if len(sgd_param.adagrad.weight_bounds) == 0:
+                    sgd_param.adagrad.weight_bounds.extend([-10.0, 10.0])
+            if sgd_param.name == "SparseNaiveSGDRule":
+                if not sgd_param.naive.HasField("learning_rate"):
+                    sgd_param.naive.learning_rate = 0.05
+                if not sgd_param.naive.HasField("initial_range"):
+                    sgd_param.naive.initial_range = 0.0001
+                if len(sgd_param.naive.weight_bounds) == 0:
+                    sgd_param.naive.weight_bounds.extend([-10.0, 10.0])
+            if sgd_param.name == "SparseAdamSGDRule":
+                if not sgd_param.adam.HasField("learning_rate"):
+                    sgd_param.adam.learning_rate = 0.001
+                if not sgd_param.adam.HasField("initial_range"):
+                    sgd_param.adam.initial_range = 0.0001
+                if not sgd_param.adam.HasField("beta1_decay_rate"):
+                    sgd_param.adam.beta1_decay_rate = 0.9
+                if not sgd_param.adam.HasField("beta2_decay_rate"):
+                    sgd_param.adam.beta2_decay_rate = 0.999
+                if not sgd_param.adam.HasField("ada_epsilon"):
+                    sgd_param.adam.ada_epsilon = 1e-08
+                if len(sgd_param.adam.weight_bounds) == 0:
+                    sgd_param.adam.weight_bounds.extend([-10.0, 10.0])
 
 
-class CommonAccessor:
+class CommonAccessor(Accessor):
     def __init__(self):
-        self.accessor_class = ""
-        self.table_name = None
-        self.entry = None
+        super(CommonAccessor, self).__init__()
+        self.table_name = ''
+        self.entry = 'none'
         self.attrs = []
         self.params = []
         self.dims = []
         self.trainer_num = 0
-        self.sync = "false"
-        self.table_num = None
-        self.table_dim = None
+        self.sync = False
         self.initializers = []
         self.opt_input_map = {}
         self.opt_attr_map = {}
@@ -422,233 +430,361 @@ class CommonAccessor:
         self.initializers = initializers
         self.attrs = attrs
 
-    def to_string(self, indent):
-        accessor_str = "{}common {{{}\n{}}}"
-        attrs = ""
-        attrs += "name: \"{}\" ".format(self.accessor_class)
-
-        if self.table_name:
-            attrs += "table_name: \"{}\" ".format(self.table_name)
-
-        if self.entry:
-            attrs += "entry: \"{}\" ".format(self.entry)
-        attrs += "trainer_num: {} ".format(self.trainer_num)
-        attrs += "sync: {} ".format(self.sync)
-        if self.table_num:
-            attrs += "table_num: {} ".format(self.table_num)
-        if self.table_dim:
-            attrs += "table_dim: {} ".format(self.table_dim)
-
-        for param in self.params:
-            attrs += "params: \"{}\" ".format(param)
-
-        for dim in self.dims:
-            attrs += "dims: {} ".format(dim)
-
-        for initializer in self.initializers:
-            attrs += "initializers: \"{}\" ".format(initializer)
-
-        attrs += "\n"
-        return accessor_str.format(
-            conv_indent(indent), attrs, conv_indent(indent))
+    # CommonAccessorParameter common
+    def _set(self, proto):
+        proto.name = self.accessor_class
+        proto.table_name = self.table_name
+        proto.params.extend(self.params)
+        proto.dims.extend(self.dims)
+        proto.initializers.extend(self.initializers)
+        proto.entry = self.entry
+        proto.trainer_num = self.trainer_num
+        proto.sync = self.sync
+        proto.table_num = self.table_num
+        proto.table_dim = self.table_dim
 
 
 class Tensor:
-    def __init__(self):
-        self.main_program_id = None
-        self.startup_program_id = None
-        self.feed_var_name = None
-        self.fetch_var_name = None
-        self.tensor_table_class = False
+    def __init__(self, tesnor_dcit):
+        self.tensor_dict = tesnor_dcit
 
-    def to_string(self, indent):
-        program_str = "{}tensor {{{}\n{}}}"
-        attrs = ""
-        attrs += "feed_var_name: \"{}\" ".format(str(self.feed_var_name))
-        attrs += "fetch_var_name: \"{}\" ".format(str(self.fetch_var_name))
-        attrs += "startup_program_id: {} ".format(str(self.startup_program_id))
-        attrs += "main_program_id: {} ".format(str(self.main_program_id))
-        attrs += "tensor_table_class: \"{}\" ".format(
-            str(self.tensor_table_class))
-        attrs += "\n"
-        return program_str.format(
-            conv_indent(indent), attrs, conv_indent(indent))
+    def _set(self, tensor_proto):
+        tensor_proto.main_program_id = self.tensor_dict.get("main_program_id",
+                                                            0)
+        tensor_proto.startup_program_id = self.tensor_dict.get(
+            "startup_program_id", 0)
+        tensor_proto.feed_var_name = self.tensor_dict.get("feed_var_name", '')
+        tensor_proto.fetch_var_name = self.tensor_dict.get("fetch_var_name", '')
+        tensor_proto.tensor_table_class = self.tensor_dict.get(
+            "tensor_table_class", '')
 
 
 class Table:
     def __init__(self):
-        self.id = -1
         self.table_class = None
         self.shard_num = -1
         self.type = None
-        self.accessor = None
-        self.common = None
+        self.accessor = Accessor()
+        self.shard_num = 256
+        self.common = CommonAccessor()
         self.tensor = None
-        self.accessor_proto = None
 
-    def to_string(self, indent):
-        # if self.id == 1:
-        #     proto_txt = ''
-        #     with open('./sparse_table.prototxt') as f:
-        #         proto_txt = f.read()
-        #     return proto_txt
-        table_str = "{}downpour_table_param {{{}\n{}}}"
-
-        attrs = ""
-        attrs += "table_id: {} ".format(self.id)
-        attrs += "table_class: \"{}\" ".format(self.table_class)
-        attrs += "shard_num: {} ".format(self.shard_num)
-        attrs += "type: {}".format(self.type)
-        attrs += "\n"
-        indent += 2
-
-        if self.accessor_proto is not None:
-            accessor_str = "{}accessor {{{}\n{}}}"
-            accessor_str = accessor_str.format(
-                conv_indent(indent), self.accessor_proto, conv_indent(indent))
-            attrs += accessor_str + "\n"
-        elif self.accessor is not None:
-            attrs += self.accessor.to_string(indent)
-            attrs += "\n"
-
-        if self.tensor is not None:
-            attrs += self.tensor.to_string(indent)
-            attrs += "\n"
-
-        if self.common is not None:
-            attrs += self.common.to_string(indent)
-            attrs += "\n"
-
-        return table_str.format(conv_indent(indent), attrs, conv_indent(indent))
+    def _set(self, table_proto):
+        pass
 
 
-class Service:
-    def __init__(self):
-        self.server_class = "BrpcPsServer"
-        self.client_class = "BrpcPsClient"
-        self.service_class = "BrpcPsService"
-        self.start_server_port = 0
-        self.server_thread_num = 12
+class BarrierTable(Table):
+    def __init__(self, context, idx):
+        super(BarrierTable, self).__init__()
+        self.type = None
+        self.shard_num = 256
+        self.accessor.accessor_class = 'CommMergeAccessor'
+        self.common.attrs = ""
+        self.common.dims = []
+        self.common.params = []
+        self.is_heter_ps_mode = context['is_heter_ps_mode']
+        self.role_maker = context['role_maker']
+        self.idx = idx
+        self.is_sync = context['is_sync']
 
-    def to_string(self, indent):
-        service_str = "{}service_param {{{}\n{}}}"
+    def _set(self, table_proto):
+        table_proto.table_id = self.idx
+        table_proto.table_class = 'BarrierTable'
+        table_proto.shard_num = 256
+        table_proto.type = ps_pb2.PS_OTHER_TABLE
 
-        attrs = ""
-        attrs += "server_class: \"{}\" ".format(self.server_class)
-        attrs += "client_class: \"{}\" ".format(self.client_class)
-        attrs += "service_class: \"{}\" ".format(self.service_class)
-        attrs += "start_server_port: {} ".format(self.start_server_port)
-        attrs += "server_thread_num: {} ".format(self.server_thread_num)
+        table_proto.accessor.accessor_class = "CommMergeAccessor"
+        table_proto.accessor.fea_dim = 0
+        table_proto.accessor.embedx_dim = 0
 
-        return service_str.format(
-            conv_indent(indent), attrs, conv_indent(indent))
+        table_proto.common.name = ""
+        table_proto.common.table_name = "barrier_table"
+        table_proto.common.sync = self.is_sync
+        table_proto.common.entry = 'none'
+
+        trainer_num = get_trainers(self.role_maker)
+        if self.is_heter_ps_mode:
+            trainer_num += len(self.role_maker._get_heter_worker_endpoints())
+        table_proto.common.trainer_num = trainer_num
 
 
-class DownpourServer:
-    def __init__(self):
-        self.service = None
-        self.tables = []
+class TensorTable(Table):
+    def __init__(self, idx, tensor_dict, role_maker):
+        super(TensorTable, self).__init__()
+        self.idx = idx
+        self.tensor_dict = tensor_dict
+        self.role_maker = role_maker
 
-    def set_service_param(self, service):
-        self.service = service
+    def _set(self, table_proto):
+        table_proto.table_id = self.idx
+        table_proto.type = ps_pb2.PS_OTHER_TABLE
+        table_proto.table_class = self.tensor_dict.get("tensor_table_class", '')
 
-    def append_tables(self, table):
-        if not isinstance(table, Table):
-            raise ValueError("only support instance Table")
-        self.tables.append(table)
+        table_proto.accessor.accessor_class = "CommMergeAccessor"
 
-    def to_string(self, indent):
-        server_str = "{}downpour_server_param {{{}\n{}}}"
+        table_proto.common.table_name = self.tensor_dict.get("feed_var_name",
+                                                             '')
+        table_proto.common.trainer_num = get_trainers(self.role_maker)
 
-        table_strs = ""
-        indent += 2
+        tensor = Tensor(self.tensor_dict)
+        tensor._set(table_proto.tensor)
 
-        table_strs += "\n"
-        table_strs += self.service.to_string(indent)
 
-        for table in self.tables:
-            table_strs += "\n"
-            table_strs += table.to_string(indent)
-        return server_str.format(
-            conv_indent(indent), table_strs, conv_indent(indent))
+class SparseTable(Table):
+    def __init__(self, context, send_ctx):
+        super(SparseTable, self).__init__()
+        self.context = context
+        self.ctx = send_ctx
+        self.type = None
+        self.table_class = 'MemorySparseTable'
+        self.accessor = Accessor()
+
+    def _set(self, table_proto):
+        ctx = self.ctx
+        if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1 or (
+                ctx.is_sparse() == False):
+            return
+        table_proto.table_id = ctx.table_id()
+        table_proto.table_class = self.table_class
+        table_proto.type = ps_pb2.PS_SPARSE_TABLE
+        table_proto.shard_num = self.shard_num
+
+        self.common.table_name = self.context['grad_name_to_param_name'][
+            ctx.origin_varnames()[0]]
+
+        print('new table_name: {}'.format(self.common.table_name))
+        all_table_proto = self.context[
+            "user_defined_strategy"].sparse_table_configs
+        usr_table_proto = all_table_proto.add()
+        for proto in all_table_proto:
+            if proto.table_name == self.common.table_name:
+                usr_table_proto = proto
+                break
+        table_proto.table_class = 'MemorySparseTable'
+        warnings.warn("The PS mode must use MemorySparseTable.")
+        if usr_table_proto.HasField("shard_num"):
+            table_proto.shard_num = usr_table_proto.shard_num
+        else:
+            table_proto.shard_num = 1000
+            warnings.warn(
+                "The shard_num of sparse table is not set, use default value 1000."
+            )
+
+        if usr_table_proto.accessor.ByteSize() == 0:
+            warnings.warn(
+                "The accessor of sparse table is not set, use default value.")
+
+        table_proto.accessor.ParseFromString(
+            usr_table_proto.accessor.SerializeToString())
+        self.accessor._set(table_proto.accessor, self.common.table_name,
+                           ctx.program_id(), self.context)
+
+        check_embedding_dim(table_proto.accessor, self.common.table_name,
+                            ctx.program_id(), self.context)
+
+        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
+        self.common.parse_by_optimizer(ctx, self.context)
+        self.common.parse_entry(self.common.table_name,
+                                ctx.program_id(), self.context)
+        self.common.sync = True if self.context['is_sync'] else False
+
+        self.common._set(table_proto.common)
+
+
+class GeoSparseTable(SparseTable):
+    def __init__(self, context, send_ctx):
+        super(GeoSparseTable, self).__init__(context, send_ctx)
+        self.table_class = "SparseGeoTable"
+        if self.context['ps_mode'] != DistributedMode.GEO:
+            raise ValueError("not geo sparse table!")
+
+    def _set(self, table_proto):
+        ctx = self.ctx
+        if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1 or (
+                ctx.is_sparse() == False):
+            return
+        table_proto.table_id = ctx.table_id()
+        table_proto.table_class = self.table_class
+        table_proto.type = ps_pb2.PS_SPARSE_TABLE
+        table_proto.shard_num = self.shard_num
+
+        table_proto.accessor.accessor_class = 'CommMergeAccessor'
+        table_proto.accessor.fea_dim = ctx.sections()[0]
+        table_proto.accessor.embedx_dim = ctx.sections()[1]
+
+        self.common.table_name = self.context['grad_name_to_param_name'][
+            ctx.origin_varnames()[0]]
+        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
+        self.common.parse_by_optimizer(ctx, self.context)
+        self.common.parse_entry(self.common.table_name,
+                                ctx.program_id(), self.context)
+        self.common.sync = False
+        self.common._set(table_proto.common)
+
+
+class DenseTable(Table):
+    def __init__(self, context, send_ctx):
+        super(DenseTable, self).__init__()
+        self.context = context
+        self.ctx = send_ctx
+        self.accessor = Accessor()
+
+    def _set(self, table_proto):
+        ctx = self.ctx
+        if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1 or (
+                ctx.is_sparse() == True):
+            return
+
+        table_proto.table_id = ctx.table_id()
+
+        table_proto.type = ps_pb2.PS_DENSE_TABLE
+        table_proto.table_class = "CommonDenseTable"
+        table_proto.shard_num = 256
+
+        table_proto.accessor.accessor_class = 'CommMergeAccessor'
+        table_proto.accessor.fea_dim = ctx.sections()[0]
+        table_proto.accessor.embedx_dim = 1
+
+        self.common.table_name = "MergedDense"
+        adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
+        self.common.parse_by_optimizer(ctx, self.context)
+        self.common.parse_entry(self.common.table_name,
+                                ctx.program_id(), self.context)
+        self.common.sync = True if self.context['is_sync'] else False
+
+        self.common._set(table_proto.common)
 
 
 class Server:
     def __init__(self):
-        self.servers = []
+        pass
 
-    def add_server(self, server):
-        if not isinstance(server, DownpourServer):
-            raise ValueError("only support instance DownpourServer")
-        self.servers.append(server)
-
-    def __str__(self):
-        server_str = "server_param {{{}\n}}"
-        indent = 2
-        servers_str = ""
-        for server in self.servers:
-            servers_str += "\n"
-            servers_str += server.to_string(indent)
-
-        return server_str.format(servers_str)
+    def _set(self):
+        pass
 
 
-class DownpourWorker:
+class DownpourServer(Server):
     def __init__(self):
-        self.tables = []
+        super(DownpourServer, self).__init__()
 
-    def append_tables(self, table):
-        if not isinstance(table, Table):
-            raise ValueError("only support instance Table")
-        self.tables.append(table)
-
-    def to_string(self, indent):
-        worker_str = "{}downpour_worker_param {{{}\n{}}}"
-        table_strs = ""
-        indent += 2
-        for table in self.tables:
-            table_strs += "\n"
-            table_strs += table.to_string(indent)
-
-        return worker_str.format(
-            conv_indent(indent), table_strs, conv_indent(indent))
+    def _set(self):
+        pass
 
 
 class Worker:
     def __init__(self):
-        self.workers = []
+        pass
 
-    def add_worker(self, worker):
-        if not isinstance(worker, DownpourWorker):
-            raise ValueError("only support instance DownpourWorker")
-        self.workers.append(worker)
+    def _set(self):
+        pass
 
-    def __str__(self):
-        worker_str = "worker_param {{{}\n}}"
-        indent = 2
-        workers_str = ""
-        for worker in self.workers:
-            workers_str += "\n"
-            workers_str += worker.to_string(indent)
 
-        return worker_str.format(workers_str)
+class DownpourWorker(Worker):
+    def __init__(self):
+        super(DownpourWorker, self).__init__()
+
+    def _set(self):
+        pass
 
 
 class fsClient:
-    def __init__(self, proto):
-        self.proto = proto
-        self.uri = proto.uri
-        self.user = proto.user
-        self.passwd = proto.passwd
-        self.hadoop_bin = proto.hadoop_bin
+    def __init__(self, fs_client_param):
+        self.fs_client_param = fs_client_param
 
-    def to_string(self):
-        proto_txt = text_format.MessageToString(self.proto)
-        if proto_txt:
-            fs_str = "fs_client_param {{\n{}}}"
-            return fs_str.format(proto_txt)
+    def _set(self, proto):
+        if not text_format.MessageToString(self.fs_client_param):
+            return
+        proto.uri = self.fs_client_param.uri
+        proto.user = self.fs_client_param.user
+        proto.passwd = self.fs_client_param.passwd
+        proto.hadoop_bin = self.fs_client_param.hadoop_bin
+
+
+class PsDescBuilder(object):
+    def __init__(self, context):
+        self.context = context
+        self.is_sync = context['is_sync']
+        self.ps_mode = context['ps_mode']
+        self.is_heter_ps_mode = context['is_heter_ps_mode']
+        self.use_ps_gpu = context['use_ps_gpu']
+        self.send_ctx = get_the_one_send_context(
+            self.context,
+            use_origin_program=True,
+            split_dense_table=self.is_heter_ps_mode)
+
+        self.tensor_table_dict = {}  # TODO
+        self._server_sub_program = []
+
+        self.tables = self._get_tables()
+
+        self.service = self._get_service()
+        self.fs_client = self._get_fs_client()
+
+        self.ps_desc = ps_pb2.PSParameter()
+
+    def _get_tensor_tables(self):
+        program_idx = 0
+        if not self.tensor_table_dict:
+            self._server_sub_program.append(Program().desc)
+        tables = []
+        for table_name in self.tensor_table_dict:
+            tables.append(globals()['TensorTable'](len(tables), tensor_dict,
+                                                   self.context['role_maker']))
+            program_idx += 1
+        return tables
+
+    def _get_tables(self):
+        tables = []
+        for idx, (name, ctx) in enumerate(self.send_ctx.items()):
+            print('####### {}\n'.format(ctx.is_sparse()))
+            if ctx.is_sparse():
+                if self.ps_mode == DistributedMode.GEO:
+                    tables.append(globals()['GeoSparseTable'](self.context,
+                                                              ctx))
+                else:
+                    tables.append(globals()['SparseTable'](self.context, ctx))
+            else:
+                tables.append(globals()['DenseTable'](self.context, ctx))
+        self.tensor_tables = self._get_tensor_tables()
+        tables.extend(self.tensor_tables)
+        tables.append(globals()['BarrierTable'](self.context, len(tables)))
+        return tables
+
+    def _get_service(self):
+        if self.use_ps_gpu:
+            return GpuService()
         else:
-            return ""
+            return Service()
+
+    def _get_fs_client(self):
+        return fsClient(self.context["user_defined_strategy"].fs_client_param)
+
+    def build_worker_desc(self):
+        for table in self.tables:
+            table_proto = self.ps_desc.worker_param.downpour_worker_param.downpour_table_param.add(
+            )
+            table._set(table_proto)
+            table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add(
+            )
+            table._set(table_proto)
+        self.service._set(
+            self.ps_desc.server_param.downpour_server_param.service_param)
+        return text_format.MessageToString(self.ps_desc)
+
+    def build_server_desc(self):
+        for table in self.tables:
+            table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add(
+            )
+            table._set(table_proto)
+            self.sparse_table_maps = {}
+            if table_proto.type == ps_pb2.PS_SPARSE_TABLE and table_proto.common is not None:
+                self.sparse_table_maps[
+                    table_proto.common.table_name] = table_proto.table_id
+
+        self.service._set(
+            self.ps_desc.server_param.downpour_server_param.service_param)
+        self.fs_client._set(self.ps_desc.fs_client_param)
+        return text_format.MessageToString(self.ps_desc)
 
 
 class TheOnePSRuntime(RuntimeBase):
@@ -665,8 +801,11 @@ class TheOnePSRuntime(RuntimeBase):
         self.role_maker = context["role_maker"]
 
         self.origin_main_program = context["origin_main_program"]
-        self.origin_main_programs = context["origin_main_programs"]
-
+        self.origin_main_programs = context.get("origin_main_programs",
+                                                [self.origin_main_program])
+        self.context["origin_main_programs"] = self.origin_main_programs
+        self.context["origin_startup_programs"] = context.get(
+            'origin_startup_programs', [context['origin_startup_program']])
         self.context[
             'is_heter_ps_mode'] = self.role_maker._is_heter_parameter_server_mode
         self.is_heter_ps_mode = self.context['is_heter_ps_mode']
@@ -675,15 +814,23 @@ class TheOnePSRuntime(RuntimeBase):
         self.context['ps_mode'] = self.context['trainer'].mode
         self.context['use_ps_gpu'] = context['valid_strategy'].a_sync_configs[
             'use_ps_gpu']
-        self.is_sync = True if self.context[
+        self.context['is_sync'] = True if self.context[
             'ps_mode'] == DistributedMode.SYNC else False
         self.context['grad_name_to_param_name'] = {}
         self.context['tensor_table'] = {}
         build_var_distributed(self.context)
 
+        endpoints = get_ps_endpoints(self.role_maker)
+        self.string_hosts = []
+        for idx, ep in enumerate(endpoints):
+            host, port = ep.split(":")
+            pshost = fluid.core.PSHost(host, int(port), idx)
+            self.string_hosts.append(pshost.serialize_to_string())
+
+        self.ps_desc_builder = PsDescBuilder(self.context)
+
     def _init_worker(self):
-        worker = self._get_fleet_proto(is_server=False, is_sync=self.is_sync)
-        server = self._get_fleet_proto(is_server=True, is_sync=self.is_sync)
+        worker_desc = self.ps_desc_builder.build_worker_desc()
 
         if self.context['use_ps_gpu']:
             main_program = self.context['loss'].block.program
@@ -701,22 +848,10 @@ class TheOnePSRuntime(RuntimeBase):
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
-        proto_txt = str(worker) + "\n" + str(server)
-        with open('proto_txt', 'w') as f:
-            f.write(proto_txt)
-
+        proto_txt = worker_desc + "\n" + server_desc
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-
         if debug:
             print("worker: \n{}".format(proto_txt))
-
-        endpoints = get_ps_endpoints(self.role_maker)
-
-        string_hosts = []
-        for idx, ep in enumerate(endpoints):
-            host, port = ep.split(":")
-            pshost = fluid.core.PSHost(host, int(port), idx)
-            string_hosts.append(pshost.serialize_to_string())
 
         dense_map = get_the_one_recv_context(
             self.context, split_dense_table=self.is_heter_ps_mode)
@@ -741,7 +876,7 @@ class TheOnePSRuntime(RuntimeBase):
         kwargs["trainer_id"] = self.role_maker._role_id()
         kwargs["trainers"] = self.role_maker._worker_num()
 
-        for table in server.servers[0].tables:
+        for table in server.servers[0].tables:  #TODO
             if table.table_class == "BarrierTable":
                 kwargs["barrier_table_id"] = table.id
                 break
@@ -755,7 +890,8 @@ class TheOnePSRuntime(RuntimeBase):
             trainer_config.mode, kwargs,
             trainer_config.get_communicator_flags())
         self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
-                                         string_hosts, fluid.global_scope())
+                                         self.string_hosts,
+                                         fluid.global_scope())
 
         fleet.util.barrier()
         info = self._communicator.get_client_info()
@@ -812,275 +948,16 @@ class TheOnePSRuntime(RuntimeBase):
                                                  previous_trainers,
                                                  self.role_maker._role_id())
 
-    def _push_sparse_param(self,
-                           var_name,
-                           table_id=-1,
-                           scope=fluid.global_scope()):
-        self._communicator.push_sparse_param(var_name, table_id, scope)
-
-    def _get_executor(self):
-        executor = fluid.Executor(fluid.CPUPlace())
-        if self.is_heter_ps_mode:
-            if self.role_maker._is_heter_worker():
-                heter_device_type = self.role_maker._heter_device_type().upper()
-                if heter_device_type not in ["GPU", "XPU", "CPU"]:
-                    raise ValueError("Heter Worker Not Support Device {}".
-                                     format(device_type))
-                if heter_device_type == "GPU":
-                    executor = Executor(
-                        fluid.CUDAPlace(
-                            int(os.getenv("FLAGS_selected_gpus", "0"))))
-                elif heter_device_type == "XPU":
-                    executor = Executor(
-                        fluid.XPUPlace(
-                            int(os.getenv("FLAGS_selected_xpus", "0"))))
-        return executor
-
-    def _get_fleet_proto(self, is_server, is_sync, **kwargs):
-        def _build_merge_accessor(ctx):
-            accessor = Accessor()
-            accessor.accessor_class = "CommMergeAccessor"
-            accessor.optimizer = None
-
-            if ctx.is_sparse():
-                accessor.feature_dim = ctx.sections()[0]
-                accessor.embedding_dim = ctx.sections()[1]
-            else:
-                accessor.feature_dim = ctx.sections()[0]
-                accessor.embedding_dim = 1
-
-            return accessor
-
-        def _build_barrier_table(idx):
-            table = Table()
-            table.id = idx
-            table.type = "PS_OTHER_TABLE"
-            table.table_class = "BarrierTable"
-            table.shard_num = 256
-
-            accessor = Accessor()
-            accessor.accessor_class = "CommMergeAccessor"
-            accessor.optimizer = None
-            accessor.feature_dim = 0
-            accessor.embedding_dim = 0
-            table.accessor = accessor
-
-            common = CommonAccessor()
-            common.table_name = "barrier_table"
-            trainer_num = get_trainers(self.context['role_maker'])
-            if self.is_heter_ps_mode:
-                trainer_num += len(self.role_maker._get_heter_worker_endpoints(
-                ))
-            common.trainer_num = trainer_num
-            common.attrs = ""
-            common.dims = []
-            common.params = []
-            table.common = common
-            return table
-
-        def _build_tensor_table(idx, tensor_dict):
-            table = Table()
-            table.id = idx
-            table.type = "PS_OTHER_TABLE"
-            table.table_class = tensor_dict["tensor_table_class"]
-            table.shard_num = 256
-
-            accessor = Accessor()
-            accessor.accessor_class = "CommMergeAccessor"
-            accessor.optimizer = None
-            accessor.feature_dim = 0
-            accessor.embedding_dim = 0
-            table.accessor = accessor
-
-            common = CommonAccessor()
-            common.table_name = tensor_dict["feed_var_name"]
-            common.trainer_num = get_trainers(self.role_maker)
-            common.attrs = ""
-            common.dims = []
-            common.params = []
-            table.common = common
-
-            tensor = Tensor()
-            tensor.main_program_id = tensor_dict["main_program_id"]
-            tensor.startup_program_id = tensor_dict["startup_program_id"]
-            tensor.feed_var_name = tensor_dict["feed_var_name"]
-            tensor.fetch_var_name = tensor_dict["fetch_var_name"]
-            tensor.tensor_table_class = tensor_dict["tensor_table_class"]
-            table.tensor = tensor
-
-            return table
-
-        def _add_tensor_table(tables):
-            tensor_table_dict = {}
-            program_idx = 0
-            for table_name in tensor_table_dict:
-                if tensor_table_dict[table_name]["startup_program"] != None:
-                    tensor_table_dict[table_name][
-                        "startup_program_id"] = program_idx
-                    self._server_sub_program.append(tensor_table_dict[
-                        table_name]["startup_program"].desc)
-                    program_idx += 1
-                if tensor_table_dict[table_name]["main_program"] != None:
-                    tensor_table_dict[table_name][
-                        "main_program_id"] = program_idx
-                    self._server_sub_program.append(tensor_table_dict[
-                        table_name]["main_program"].desc)
-                    program_idx += 1
-                # Todo: Hard code for lr_decay table apply table id
-                new_table = _build_tensor_table(
-                    len(tables), tensor_table_dict[table_name])
-                tables.append(new_table)
-            return tables
-
-        def _get_tables():
-            send_ctx = get_the_one_send_context(
-                self.context,
-                use_origin_program=True,
-                split_dense_table=self.is_heter_ps_mode)
-
-            tables = []
-            for idx, (name, ctx) in enumerate(send_ctx.items()):
-                print(" wxm python test send_ctx.items-->", idx, (name, ctx))
-                if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1:
-                    continue
-
-                table = Table()
-                table.id = ctx.table_id()
-                common = CommonAccessor()
-
-                if ctx.is_sparse():
-                    table.type = "PS_SPARSE_TABLE"
-                    table.shard_num = 256
-
-                    common.table_name = self.context['grad_name_to_param_name'][
-                        ctx.origin_varnames()[0]]
-
-                    if self.context['ps_mode'] == DistributedMode.GEO:
-                        table.table_class = "SparseGeoTable"
-                    else:
-                        all_table_proto = self.context[
-                            "user_defined_strategy"].sparse_table_configs
-                        table_proto = all_table_proto.add()
-                        for proto in all_table_proto:
-                            if proto.table_name == common.table_name:
-                                table_proto = proto
-                                break
-                        if table_proto.HasField("table_class"):
-                            table.table_class = table_proto.table_class
-                        else:
-                            table.table_class = parse_table_class(
-                                common.table_name,
-                                ctx.program_id(), self.context)
-                        if table.table_class != 'MemorySparseTable':
-                            table.table_class = 'MemorySparseTable'
-                            warnings.warn(
-                                "The PS mode must use MemorySparseTable.")
-
-                        if table_proto.HasField("shard_num"):
-                            table.shard_num = table_proto.shard_num
-                        else:
-                            table.shard_num = 1000
-                            warnings.warn(
-                                "The shard_num of sparse table is not set, use default value 1000."
-                            )
-
-                        if table_proto.accessor.ByteSize() == 0:
-                            warnings.warn(
-                                "The accessor of sparse table is not set, use default value."
-                            )
-                        get_default_accessor_proto(
-                            table_proto.accessor, common.table_name,
-                            ctx.program_id(), self.context)
-                        check_embedding_dim(table_proto.accessor,
-                                            common.table_name,
-                                            ctx.program_id(), self.context)
-                        table.accessor_proto = text_format.MessageToString(
-                            table_proto.accessor)
-                else:
-                    table.type = "PS_DENSE_TABLE"
-                    table.table_class = "CommonDenseTable"
-                    table.shard_num = 256
-                    common.table_name = "MergedDense"
-
-                adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
-                common.parse_by_optimizer(ctx, self.context)
-
-                if ctx.is_sparse():
-                    common.parse_entry(common.table_name,
-                                       ctx.program_id(), self.context)
-
-                if is_sync:
-                    common.sync = "true"
-                else:
-                    common.sync = "false"
-                table.common = common
-
-                if table.table_class != 'MemorySparseTable':
-                    accessor = _build_merge_accessor(ctx)
-                    table.accessor = accessor
-                tables.append(table)
-
-            tensor_table_dict = {}
-            if len(tensor_table_dict) > 0:
-                tables = _add_tensor_table(tables)
-            else:
-                empty_porgram = Program()
-                self._server_sub_program.append(empty_porgram.desc)
-
-            barrier_table = _build_barrier_table(len(tables))
-            tables.append(barrier_table)
-            return tables
-
-        if is_server:
-            server = Server()
-            downpour_server = DownpourServer()
-
-            service = Service()
-            dist_strategy = self.context["valid_strategy"]
-            use_ps_gpu = dist_strategy.a_sync_configs["use_ps_gpu"]
-            if use_ps_gpu:
-                service.server_class = "PsLocalServer"
-                service.client_class = "PsLocalClient"
-            downpour_server.set_service_param(service)
-
-            tables = _get_tables()
-            downpour_server.tables = tables
-            server.add_server(downpour_server)
-            return server
-        else:
-            worker = Worker()
-            downpour_worker = DownpourWorker()
-
-            tables = _get_tables()
-            downpour_worker.tables = tables
-            worker.add_worker(downpour_worker)
-            return worker
-
     def _init_server(self, dirname=None, var_names=None, **kwargs):
+        server_desc = self.ps_desc_builder.build_server_desc()
         role_id = get_role_id(self.role_maker)
-        endpoints = get_ps_endpoints(self.role_maker)
         trainers = get_trainers(self.role_maker)
         if self.is_heter_ps_mode:
             trainers += len(self.role_maker._get_heter_worker_endpoints())
-        server = self._get_fleet_proto(is_server=True, is_sync=self.is_sync)
-        proto_txt = str(server)
-        fs_client = fsClient(self.context["user_defined_strategy"]
-                             .fs_client_param)
-        proto_txt = proto_txt + "\n" + fs_client.to_string()
-
-        debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
-        if debug:
-            print("server: \n{}".format(proto_txt))
-
-        string_hosts = []
-        for idx, ep in enumerate(endpoints):
-            host, port = ep.split(":")
-            pshost = fluid.core.PSHost(host, int(port), idx)
-            string_hosts.append(pshost.serialize_to_string())
 
         self._server = fluid.core.DistFleetWrapper()
-        self._server.init_server(proto_txt, string_hosts, role_id, trainers,
-                                 self._server_sub_program)
+        self._server.init_server(server_desc, self.string_hosts, role_id,
+                                 trainers, self._server_sub_program)
 
         dist_varnames = get_sparse_tablenames(self.origin_main_programs, True)
         sparse_varnames = get_sparse_tablenames(self.origin_main_programs,
@@ -1101,10 +978,7 @@ class TheOnePSRuntime(RuntimeBase):
         if dirname is None or not load_varnames:
             return
 
-        sparse_table_maps = {}
-        for table in server.servers[0].tables:
-            if table.type == "PS_SPARSE_TABLE" and table.common is not None:
-                sparse_table_maps[table.common.table_name] = table.id
+        sparse_table_maps = self.ps_desc_builder.sparse_table_maps
 
         dirname = os.path.normpath(dirname)
         pserver_id = self.role_maker._role_id()
@@ -1186,7 +1060,7 @@ class TheOnePSRuntime(RuntimeBase):
         sparses = get_the_one_recv_context(
             self.context,
             is_dense=False,
-            split_dense_table=self.is_heter_ps_mod,
+            split_dense_table=self.is_heter_ps_mode,
             use_origin_program=True)
 
         sparse_varnames = self._save_sparse_params(executor, dirname, sparses,
@@ -1413,7 +1287,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         fleet.util.barrier()
         if self.role_maker._is_first_worker():
-            sparses = sget_the_one_recv_context(
+            sparses = get_the_one_recv_context(
                 self.context,
                 is_dense=False,
                 split_dense_table=self.role_maker.
