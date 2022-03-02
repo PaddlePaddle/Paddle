@@ -156,7 +156,7 @@ def export_chrome_tracing(dir_name: str,
                 "Can not create directory '{}' for saving profiling results.".
                 format(dir_name))
 
-    def handle_fn(prof: Profiler):
+    def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
             worker_name = "host_{}pid_{}".format(socket.gethostname(),
@@ -199,7 +199,7 @@ def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
                 "Can not create directory '{}' for saving profiling results.".
                 format(dir_name))
 
-    def handle_fn(prof: Profiler):
+    def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
             worker_name = "host_{}pid_{}".format(socket.gethostname(),
