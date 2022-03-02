@@ -14,6 +14,8 @@
 import collections
 from enum import Enum
 
+from paddle.fluid.core import TracerEventType
+
 from .statistic_helper import *
 
 _AllTracerEventType = [

@@ -13,8 +13,6 @@
 # limitations under the License.
 import collections
 
-from paddle.fluid.core import (_RecordEvent, TracerEventType)
-
 
 def sum_ranges(ranges):
     result = 0
