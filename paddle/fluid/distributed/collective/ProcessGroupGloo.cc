@@ -33,49 +33,51 @@ namespace paddle {
 namespace distributed {
 
 #ifdef _WIN32
-#define GENERATE_FUNC(type, func, ...)                                      \
-  switch (type) {                                                           \
-    case experimental::DataType::FLOAT32:                                   \
-      func<float>(__VA_ARGS__);                                             \
-      break;                                                                \
-    case experimental::DataType::FLOAT64:                                   \
-      func<double>(__VA_ARGS__);                                            \
-      break;                                                                \
-    case experimental::DataType::FLOAT16:                                   \
-      func<gloo::float16>(__VA_ARGS__);                                     \
-      break;                                                                \
-    case experimental::DataType::INT32:                                     \
-      func<int32_t>(__VA_ARGS__);                                           \
-      break;                                                                \
-    case experimental::DataType::INT64:                                     \
-      func<int64_t>(__VA_ARGS__);                                           \
-      break;                                                                \
-    default:                                                                \
-      PADDLE_THROW(platform::errors::InvalidArgument("Unknown DataType.")); \
+#define GENERATE_FUNC(type, func, ...)       \
+  switch (type) {                            \
+    case experimental::DataType::FLOAT32:    \
+      func<float>(__VA_ARGS__);              \
+      break;                                 \
+    case experimental::DataType::FLOAT64:    \
+      func<double>(__VA_ARGS__);             \
+      break;                                 \
+    case experimental::DataType::FLOAT16:    \
+      func<gloo::float16>(__VA_ARGS__);      \
+      break;                                 \
+    case experimental::DataType::INT32:      \
+      func<int32_t>(__VA_ARGS__);            \
+      break;                                 \
+    case experimental::DataType::INT64:      \
+      func<int64_t>(__VA_ARGS__);            \
+      break;                                 \
+    default:                                 \
+      VLOG(0) << "Error: Unknown DataType."; \
+      exit(-1);                              \
   }
 
 #define HOST_NAME_MAX 256
 
 #else
-#define GENERATE_FUNC(type, func, args...)                                  \
-  switch (type) {                                                           \
-    case experimental::DataType::FLOAT32:                                   \
-      func<float>(args);                                                    \
-      break;                                                                \
-    case experimental::DataType::FLOAT64:                                   \
-      func<double>(args);                                                   \
-      break;                                                                \
-    case experimental::DataType::FLOAT16:                                   \
-      func<gloo::float16>(args);                                            \
-      break;                                                                \
-    case experimental::DataType::INT32:                                     \
-      func<int32_t>(args);                                                  \
-      break;                                                                \
-    case experimental::DataType::INT64:                                     \
-      func<int64_t>(args);                                                  \
-      break;                                                                \
-    default:                                                                \
-      PADDLE_THROW(platform::errors::InvalidArgument("Unknown DataType.")); \
+#define GENERATE_FUNC(type, func, args...)   \
+  switch (type) {                            \
+    case experimental::DataType::FLOAT32:    \
+      func<float>(args);                     \
+      break;                                 \
+    case experimental::DataType::FLOAT64:    \
+      func<double>(args);                    \
+      break;                                 \
+    case experimental::DataType::FLOAT16:    \
+      func<gloo::float16>(args);             \
+      break;                                 \
+    case experimental::DataType::INT32:      \
+      func<int32_t>(args);                   \
+      break;                                 \
+    case experimental::DataType::INT64:      \
+      func<int64_t>(args);                   \
+      break;                                 \
+    default:                                 \
+      VLOG(0) << "Error: Unknown DataType."; \
+      exit(-1);                              \
   }
 #endif
 
@@ -93,11 +95,12 @@ reduce_func get_function(const ReduceOp& r) {
     case ReduceOp::MAX:
       return reduce_func(&::gloo::max<T>);
     case ReduceOp::AVG:
-      PADDLE_THROW(
-          platform::errors::InvalidArgument("Unsupported ReduceOp::AVG."));
+      VLOG(0) << "Error: Unsupported ReduceOp::AVG.";
+      exit(-1);
   }
 
-  PADDLE_THROW(platform::errors::InvalidArgument("Unknown ReduceOp."));
+  VLOG(0) << "Error: Unknown ReduceOp.";
+  exit(-1);
 }
 
 bool CheckTensorsInCPUPlace(const std::vector<Tensor>& tensors) {
