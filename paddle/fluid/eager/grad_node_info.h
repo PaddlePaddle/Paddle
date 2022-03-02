@@ -133,7 +133,10 @@ class GradNodeBase {
   void AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id);
   void AddEdges(AutogradMeta* meta, size_t slot_id);
 
-  // Use GetGradOutMeta() to fetch adj_edges from GradSlotMeta
+  // adj_edges were moved inside OutputMeta(), so no available direct access
+  // from GradNodeBase.
+  // To access Edges, get GradSlotMeta by calling OutputMeta(), then use
+  // slot_meta.GetEdge()
 
   /**
    * Get Input Meta of current Grad node**/

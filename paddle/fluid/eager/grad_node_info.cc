@@ -282,7 +282,7 @@ GradNodeBase::ApplyGradientHooks(
     if (!out.defined() || !out.initialized()) {
       out = (*hook)(tensors[slot_id][rank]);
     } else {
-      // If more than one hook is registered, the input to the next hook func
+      // If more than one hook is registered, the input to the next hook func
       // should be the output of the previous hook
       out = (*hook)(out);
     }

@@ -32,39 +32,33 @@ namespace paddle {
 namespace experimental {
 
 Tensor copy_to_impl(const Tensor& x, Backend backend, bool blocking) {
-  // 1. Get kernel signature and kernel
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   kernel_key_set.backend_set = kernel_key_set.backend_set | BackendSet(backend);
-  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "copy", kernel_key);
 
-  VLOG(0) << "to API kernel key: " << kernel_key;
-  VLOG(0) << "to API kernel: " << kernel;
+  VLOG(6) << "copy API kernel key: " << kernel_key;
+  VLOG(6) << "copy API kernel: " << kernel;
 
-  // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-  auto kernel_context = phi::KernelContext(dev_ctx);
 
-  // 3. Auto data transform
-  auto dense_x = std::dynamic_pointer_cast<phi::DenseTensor>(x.impl());
-  kernel_context.EmplaceBackInput(dense_x.get());
-  kernel_context.EmplaceBackAttr(blocking);
+  auto dense_x = TensorToDenseTensor(x);
 
-  // 4. Prepare outputs & InferMeta
-  auto dense_out = std::make_shared<phi::DenseTensor>(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPtenPlace(backend)),
-      phi::DenseTensorMeta());
-  phi::MetaTensor meta_out(dense_out.get());
-  phi::UnchangedInferMeta(*dense_x, &meta_out);
-  dense_out->mutable_data(phi::TransToPtenPlace(backend));
-  kernel_context.EmplaceBackOutput(dense_out.get());
   Tensor out;
-  out.set_impl(dense_out);
+  auto kernel_out = SetKernelOutput(kernel_key.backend(), &out);
+  phi::MetaTensor meta_out(kernel_out);
+  phi::UnchangedInferMeta(*dense_x, &meta_out);
 
-  // 5. Call kernel
-  kernel(&kernel_context);
+  using kernel_signature = void (*)(const platform::DeviceContext&,
+                                    const phi::DenseTensor&,
+                                    phi::Place,
+                                    bool,
+                                    phi::DenseTensor*);
+
+  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+  (*kernel_fn)(
+      *dev_ctx, *dense_x, phi::TransToPhiPlace(backend), blocking, kernel_out);
 
   return out;
 }
@@ -73,7 +67,7 @@ std::vector<Tensor> split_impl(const Tensor& x,
                                const ScalarArray& num_or_sections,
                                const Scalar& axis) {
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
 
   Backend kernel_backend = kernel_key.backend();
   DataLayout kernel_layout = kernel_key.layout();
@@ -100,12 +94,16 @@ std::vector<Tensor> split_impl(const Tensor& x,
   std::vector<Tensor> out;
   auto dense_outs = SetKernelOutput(out_number, kernel_backend, &out);
   std::vector<phi::MetaTensor> meta_outs;
+  meta_outs.reserve(out_number);
+  std::vector<phi::MetaTensor*> meta_out_ptrs;
+  meta_out_ptrs.reserve(out_number);
   for (size_t i = 0; i < out_number; ++i) {
     meta_outs.push_back(dense_outs[i]);
+    meta_out_ptrs.push_back(&meta_outs.back());
   }
 
   phi::SplitInferMeta(
-      MakeMetaTensor(*dense_x), num_or_sections, axis, &meta_outs);
+      MakeMetaTensor(*dense_x), num_or_sections, axis, meta_out_ptrs);
 
   using kernel_signature = void (*)(const platform::DeviceContext&,
                                     const phi::DenseTensor&,
