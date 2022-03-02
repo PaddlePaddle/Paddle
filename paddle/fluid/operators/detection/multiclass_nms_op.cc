@@ -545,7 +545,6 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
   void InferShape(framework::InferShapeContext* ctx) const override {
     MultiClassNMSOp::InferShape(ctx);
 
-    auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
     auto score_size = score_dims.size();
     if (score_size == 3) {
