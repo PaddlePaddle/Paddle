@@ -15,7 +15,7 @@
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -49,24 +49,30 @@ int main(int argc, char **argv) {
     if (kernel_signature_map.Has(op_kernel_pair.first)) {
       std::cout << "\"" << op_kernel_pair.first << "\":{";
       auto &args = kernel_signature_map.Get(op_kernel_pair.first).args;
+
       std::cout << "\"inputs\":[";
-      for (auto name : std::get<0>(args)) {
-        std::cout << "\"" << name << "\",";
+      auto inputs_ = std::get<0>(args);
+      if (inputs_.size() > 0) std::cout << inputs_[0];
+      for (size_t i = 1; i < inputs_.size(); i++) {
+        std::cout << ",\"" << inputs_[i] << "\"";
       }
-      if (std::get<0>(args).size() > 0) std::cout << "\b";
+
       std::cout << "],\"attrs\":[";
-      for (auto name : std::get<1>(args)) {
-        std::cout << "\"" << name << "\",";
+      auto attrs_ = std::get<1>(args);
+      if (attrs_.size() > 0) std::cout << attrs_[0];
+      for (size_t i = 1; i < attrs_.size(); i++) {
+        std::cout << ",\"" << attrs_[i] << "\"";
       }
-      if (std::get<1>(args).size() > 0) std::cout << "\b";
+
       std::cout << "],\"outputs\":[";
-      for (auto name : std::get<2>(args)) {
-        std::cout << "\"" << name << "\",";
+      auto outputs_ = std::get<2>(args);
+      for (size_t i = 1; i < outputs_.size(); i++) {
+        std::cout << ",\"" << outputs_[i] << "\"";
       }
-      if (std::get<2>(args).size() > 0) std::cout << "\b";
+
       std::cout << "]},";
     }
   }
-  std::cout << "\b}" << std::endl;
+  std::cout << "}" << std::endl;
   return 0;
 }

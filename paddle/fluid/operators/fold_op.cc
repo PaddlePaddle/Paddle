@@ -13,7 +13,6 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/operators/fold_op.h"
-#include "paddle/fluid/operators/unfold_op.h"
 
 namespace paddle {
 namespace operators {

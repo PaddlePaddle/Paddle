@@ -25,7 +25,8 @@ void EmptyKernel(const Context& dev_ctx,
                  const ScalarArray& shape,
                  DataType dtype,
                  DenseTensor* out) {
-  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
+  out->Resize(phi::make_ddim(shape.GetData()));
+  dev_ctx.template Alloc<T>(out);
 }
 
 template <typename T, typename Context>
@@ -38,7 +39,7 @@ void EmptyLikeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(empty,
+PD_REGISTER_KERNEL(empty,
                    CPU,
                    ALL_LAYOUT,
                    phi::EmptyKernel,
@@ -54,7 +55,7 @@ PT_REGISTER_KERNEL(empty,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(empty_like,
+PD_REGISTER_KERNEL(empty_like,
                    CPU,
                    ALL_LAYOUT,
                    phi::EmptyLikeKernel,
@@ -68,10 +69,12 @@ PT_REGISTER_KERNEL(empty_like,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(empty,
+PD_REGISTER_KERNEL(empty,
                    GPU,
                    ALL_LAYOUT,
                    phi::EmptyKernel,
@@ -86,7 +89,7 @@ PT_REGISTER_KERNEL(empty,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PT_REGISTER_KERNEL(empty_like,
+PD_REGISTER_KERNEL(empty_like,
                    GPU,
                    ALL_LAYOUT,
                    phi::EmptyLikeKernel,
@@ -100,5 +103,7 @@ PT_REGISTER_KERNEL(empty_like,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 #endif

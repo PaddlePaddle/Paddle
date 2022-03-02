@@ -65,9 +65,9 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
 
         # the backward function only filte the gradient with current rank id
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        backward_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.main_block
+        backward_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(backward_op))

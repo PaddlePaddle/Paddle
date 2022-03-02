@@ -23,8 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 namespace framework {
@@ -93,6 +96,17 @@ phi::KernelSignature InferShapeUtilsTestOpArgumentMapping(
       {});
 }
 
+template <typename T, typename Context>
+void InferShapeUtilsTestKernel(
+    const Context& dev_ctx, const phi::DenseTensor& x, bool attr1, int attr2,
+    int64_t attr3, float attr4, const std::string& attr5,
+    const std::vector<bool>& attr6, const std::vector<int>& attr7,
+    const std::vector<int64_t>& attr8, const std::vector<float>& attr9,
+    const std::vector<double>& attr10, const std::vector<std::string>& attr11,
+    phi::DenseTensor* out) {
+  VLOG(6) << "Come into InferShapeUtilsTestKernel";
+}
+
 }  // namespace framework
 }  // namespace paddle
 
@@ -103,6 +117,9 @@ REGISTER_OPERATOR(infer_shape_utils_test,
                   paddle::framework::InferShapeUtilsTestOp,
                   paddle::framework::InferShapeUtilsTestOpMaker,
                   InferShapeUtilsTestInferShapeFunctor);
+
+PD_REGISTER_KERNEL(infer_shape_utils_test, CPU, ALL_LAYOUT,
+                   paddle::framework::InferShapeUtilsTestKernel, int) {}
 
 TEST(InferShapeUtilsTest, ALL) {
   paddle::framework::ProgramDesc prog;

@@ -32,7 +32,7 @@ KernelSignature AbsDoubleGradOpArgumentMapping(
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(abs, phi::AbsOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(abs_grad, phi::AbsGradOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(abs_double_grad,
+PD_REGISTER_ARG_MAPPING_FN(abs, phi::AbsOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(abs_grad, phi::AbsGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(abs_double_grad,
                            phi::AbsDoubleGradOpArgumentMapping);

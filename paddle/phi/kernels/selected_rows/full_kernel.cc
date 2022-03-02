@@ -36,7 +36,7 @@ void FullSR(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(full_sr,
+PD_REGISTER_KERNEL(full_sr,
                    CPU,
                    ALL_LAYOUT,
                    phi::FullSR,
@@ -53,7 +53,7 @@ PT_REGISTER_KERNEL(full_sr,
                    phi::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_REGISTER_KERNEL(full_sr,
+PD_REGISTER_KERNEL(full_sr,
                    GPU,
                    ALL_LAYOUT,
                    phi::FullSR,
