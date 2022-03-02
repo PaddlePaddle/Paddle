@@ -16,7 +16,6 @@
 #include <cooperative_groups.h>
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
-#endif
 
 #include <cstring>
 #include <random>
@@ -637,3 +636,4 @@ REGISTER_OP_CUDA_KERNEL(filter_by_instag_grad,
                         ops::FilterByInstagGradGPUKernel<double>,
                         ops::FilterByInstagGradGPUKernel<int32_t>,
                         ops::FilterByInstagGradGPUKernel<int64_t>);
+#endif
