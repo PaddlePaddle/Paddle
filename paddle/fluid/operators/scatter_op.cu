@@ -44,7 +44,7 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
             "scatter_op Index holds the wrong type, it holds [%s],"
             "but desires to be [%s] or [%s].",
             index_type, phi::DataType::INT32, phi::DataType::INT64));
-    auto &dev_ctx = ctx.template cuda_device_context();
+    auto &dev_ctx = ctx.cuda_device_context();
     if (index_type == phi::DataType::INT32) {
       phi::funcs::GPUScatterAssign<T, int32_t>(dev_ctx, *Updates, *Ids, Out,
                                                overwrite);
@@ -77,7 +77,7 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
             "but desires to be [%s] or [%s]",
             index_type, phi::DataType::INT32, phi::DataType::INT64));
 
-    auto &dev_ctx = ctx.template cuda_device_context();
+    auto &dev_ctx = ctx.cuda_device_context();
     if (dX) {
       framework::TensorCopy(*dOut, ctx.GetPlace(), dX);
       if (index_type == phi::DataType::INT32) {
