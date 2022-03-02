@@ -158,7 +158,7 @@ nbsphinx
             --delete --yes --exclude "${OUTPUTDIR}/zh/${VERSIONSTR}/_sources/"
         ${BCECMD} --conf-path ${BCECMD_CONFIG} bos sync "${OUTPUTDIR}/zh/${VERSIONSTR}" "bos:/${BOSBUCKET}/documentation/zh/${PREVIEW_JOB_NAME}" \
             --delete --yes --exclude "${OUTPUTDIR}/zh/${VERSIONSTR}/_sources/"
-        PREVIEW_URL_PROMPT="ipipe_log_param_preview_url: http://${PREVIEW_JOB_NAME}.${PREVIEW_SITE:-preview.paddlepaddle.org}/documentation/docs/zh/api/index_cn.html"
+        PREVIEW_URL_PROMPT="ipipe_log_param_preview_url: http://${PREVIEW_JOB_NAME}.${PREVIEW_SITE:-paddle.run}/documentation/docs/zh/api/index_cn.html"
     fi
 fi
 
