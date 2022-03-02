@@ -322,16 +322,11 @@ struct ReduceConfig {
 
   // when should_reduce_again is true, we need malloc temp space for temp data
   void SetOutputData(Ty* y_data,
-                     const paddle::platform::Place& place,
+                     const phi::GPUContext& dev_ctx,
                      phi::DenseTensor* tmp) {
     if (should_reduce_again) {
       tmp->ResizeAndAllocate(phi::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
-
-      phi::GPUContext dev_ctx(place);
-      const auto alloc =
-          std::make_unique<paddle::experimental::DefaultAllocator>(place);
-      dev_ctx.SetAllocator(alloc.get());
 
       output_data = dev_ctx.Alloc<Ty>(tmp);
     } else {
@@ -1015,7 +1010,7 @@ CubTensorReduceImpl(const Tx* x_data,
                     Ty* y_data,
                     const TransformOp& transform,
                     int reduce_num,
-                    const paddle::platform::Place& place,
+                    const phi::GPUContext& dev_ctx,
                     gpuStream_t stream) {
   auto reducer = ReduceOp<Ty>();
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
@@ -1029,10 +1024,6 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer,
                             reducer.initial(),
                             stream);
-  phi::GPUContext dev_ctx(place);
-  const auto alloc =
-      std::make_unique<paddle::experimental::DefaultAllocator>(place);
-  dev_ctx.SetAllocator(alloc.get());
   phi::DenseTensor tmp =
       phi::Empty<uint8_t>(dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
 
@@ -1058,7 +1049,7 @@ CubTensorReduceImpl(const Tx* x_data,
                     Ty* y_data,
                     const TransformOp& transform,
                     int reduce_num,
-                    const paddle::platform::Place& place,
+                    const phi::GPUContext& dev_ctx,
                     gpuStream_t stream) {
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
@@ -1098,12 +1089,12 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
     return;
   }
 
-  config.SetOutputData(y_data, x.place(), &tmp);
+  config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
   if (use_cub_reduce) {
     CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
-        x_data, y_data, transform, config.reduce_num, x.place(), stream);
+        x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
     return;
   }
 
