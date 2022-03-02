@@ -1,8 +1,9 @@
 - sparse_api : conv3d
   args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups)
-  output : Tensor(out@SparseCooTensor), Tensor(out@DenseTensor)
+  output : Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor)
   kernel :
     func : sparse_conv3d
+    layout : x
 
 - sparse_api : to_dense
   args : (Tensor x, Backend backend)
