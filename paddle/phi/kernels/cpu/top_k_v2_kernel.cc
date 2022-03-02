@@ -24,7 +24,7 @@ template <typename T, typename Type>
 static void FullTopK(Type input_height,
                      Type input_width,
                      int input_dim,
-                     const framework::Tensor* input,
+                     const DenseTensor* input,
                      T* t_out,
                      Type* t_indices,
                      const int& k,
@@ -40,12 +40,12 @@ static void FullTopK(Type input_height,
     std::vector<std::pair<T, Type>> col_vec;
     col_vec.reserve(input_width);
     if (input_dim == 1) {
-      auto e_input = framework::EigenVector<T>::Flatten(*input);
+      auto e_input = EigenVector<T>::Flatten(*input);
       for (Type j = 0; j < input_width; ++j) {
         col_vec.emplace_back(std::pair<T, Type>(e_input(j), j));
       }
     } else {
-      auto e_input = framework::EigenMatrix<T>::Reshape(*input, input_dim - 1);
+      auto e_input = EigenMatrix<T>::Reshape(*input, input_dim - 1);
       for (Type j = 0; j < input_width; ++j) {
         col_vec.emplace_back(std::pair<T, Type>(e_input(i, j), j));
       }
@@ -129,12 +129,13 @@ void TopkV2Kernel(const Context& dev_ctx,
                   bool sorted,
                   DenseTensor* out,
                   DenseTensor* indices) {
+  const auto* input = &x;
   // Get the top k elements of each row of input tensor
-  const auto& x_dims = x.dims();
+  const auto& in_dims = input->dims();
 
   // axis < 0, cacluate the real axis
   if (axis < 0) {
-    axis += x_dims.size();
+    axis += in_dims.size();
   }
 
   // if K tensor is not null, will the use K tesnor as k
@@ -150,13 +151,13 @@ void TopkV2Kernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
   const auto& out_dims = out->dims();
-  if (axis + 1 == x_dims.size()) {
+  if (axis + 1 == in_dims.size()) {
     const int64_t& input_height =
-        phi::product(phi::slice_ddim(x_dims, 0, x_dims.size() - 1));
-    const int64_t& input_width = x_dims[x_dims.size() - 1];
+        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+    const int64_t& input_width = in_dims[in_dims.size() - 1];
     FullTopK<T, int64_t>(input_height,
                          input_width,
-                         x_dims.size(),
+                         in_dims.size(),
                          input,
                          out_data,
                          indices_data,
@@ -169,24 +170,24 @@ void TopkV2Kernel(const Context& dev_ctx,
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);
     }
-    trans.push_back(x_dims.size() - 1);
-    for (int i = axis + 1; i < x_dims.size() - 1; i++) {
+    trans.push_back(in_dims.size() - 1);
+    for (int i = axis + 1; i < in_dims.size() - 1; i++) {
       trans.emplace_back(i);
     }
     trans.emplace_back(axis);
 
     // get the trans input_dims, out_dims
-    phi::DDim trans_dims(x_dims);
+    phi::DDim trans_dims(in_dims);
     phi::DDim trans_out_dims(out->dims());
     for (size_t i = 0; i < trans.size(); i++) {
-      trans_dims[i] = x_dims[trans[i]];
+      trans_dims[i] = in_dims[trans[i]];
     }
     for (size_t i = 0; i < trans.size(); i++) {
       trans_out_dims[i] = out_dims[trans[i]];
     }
 
     DenseTensor trans_inp;
-    trans_inp->Resize(trans_dims);
+    trans_inp.Resize(trans_dims);
     dev_ctx.template Alloc<T>(trans_inp);
     int ndims = trans.size();
 
@@ -200,15 +201,15 @@ void TopkV2Kernel(const Context& dev_ctx,
     // Allocate the temp tensor to the save the topk indices, values
     DenseTensor tmp_out;
     DenseTensor tmp_indices;
-    tmp_out->Resize(trans_out_dims);
-    tmp_indices->Resize(trans_out_dims);
+    tmp_out.Resize(trans_out_dims);
+    tmp_indices.Resize(trans_out_dims);
     T* t_out = dev_ctx.template Alloc<T>(tmp_out);
     auto* t_ind = dev_ctx.template Alloc<T>(tmp_indices);
 
     // get the TopK value
     FullTopK<T, int64_t>(input_height,
                          input_width,
-                         x_dims.size(),
+                         in_dims.size(),
                          &trans_inp,
                          t_out,
                          t_ind,

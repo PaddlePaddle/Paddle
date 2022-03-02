@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 #include <stdio.h>
@@ -23,7 +23,6 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 #endif
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -31,8 +30,8 @@ limitations under the License. */
 namespace rocprim {
 namespace detail {
 template <>
-struct radix_key_codec_base<paddle::platform::float16>
-    : radix_key_codec_integral<paddle::platform::float16, uint16_t> {};
+struct radix_key_codec_base<dtype::float16>
+    : radix_key_codec_integral<dtype::float16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 namespace cub = hipcub;
@@ -40,16 +39,13 @@ namespace cub = hipcub;
 // set cub base traits in order to handle float16
 namespace cub {
 template <>
-struct NumericTraits<paddle::platform::float16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t,
-                 paddle::platform::float16> {};
+struct NumericTraits<dtype::float16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, dtype::float16> {};
 }  // namespace cub
 #endif
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 struct SegmentOffsetIter {
   EIGEN_DEVICE_FUNC
@@ -133,8 +129,10 @@ struct Pair {
 };
 
 template <typename T>
-__device__ __forceinline__ void AddTo(Pair<T> topk[], const Pair<T>& p,
-                                      int beam_size, const bool& largest) {
+__device__ __forceinline__ void AddTo(Pair<T> topk[],
+                                      const Pair<T>& p,
+                                      int beam_size,
+                                      const bool& largest) {
   for (int k = beam_size - 2; k >= 0; k--) {
     if (largest) {
       if (topk[k] < p) {
@@ -156,8 +154,11 @@ __device__ __forceinline__ void AddTo(Pair<T> topk[], const Pair<T>& p,
 }
 
 template <typename T, int BlockSize>
-__device__ __forceinline__ void GetTopK(Pair<T> topk[], const T* src, int idx,
-                                        int dim, int beam_size,
+__device__ __forceinline__ void GetTopK(Pair<T> topk[],
+                                        const T* src,
+                                        int idx,
+                                        int dim,
+                                        int beam_size,
                                         const bool& largest) {
   while (idx < dim) {
     if (largest) {
@@ -176,9 +177,13 @@ __device__ __forceinline__ void GetTopK(Pair<T> topk[], const T* src, int idx,
 }
 
 template <typename T, int BlockSize>
-__device__ __forceinline__ void GetTopK(Pair<T> topk[], const T* src, int idx,
-                                        int dim, const Pair<T>& max,
-                                        int beam_size, const bool& largest) {
+__device__ __forceinline__ void GetTopK(Pair<T> topk[],
+                                        const T* src,
+                                        int idx,
+                                        int dim,
+                                        const Pair<T>& max,
+                                        int beam_size,
+                                        const bool& largest) {
   while (idx < dim) {
     if (largest) {
       if (topk[beam_size - 1] < src[idx]) {
@@ -200,11 +205,16 @@ __device__ __forceinline__ void GetTopK(Pair<T> topk[], const T* src, int idx,
 }
 
 template <typename T, int MaxLength, int BlockSize>
-__device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
-                                              int beam_size, const T* src,
-                                              bool* firstStep, bool* is_empty,
-                                              Pair<T>* max, int dim,
-                                              const int tid, bool largest) {
+__device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[],
+                                              int* beam,
+                                              int beam_size,
+                                              const T* src,
+                                              bool* firstStep,
+                                              bool* is_empty,
+                                              Pair<T>* max,
+                                              int dim,
+                                              const int tid,
+                                              bool largest) {
   if (*beam > 0) {
     int length = (*beam) < beam_size ? *beam : beam_size;
     if (*firstStep) {
@@ -219,8 +229,8 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         }
       }
       if (!(*is_empty)) {
-        GetTopK<T, BlockSize>(topk + MaxLength - *beam, src, tid, dim, *max,
-                              length, largest);
+        GetTopK<T, BlockSize>(
+            topk + MaxLength - *beam, src, tid, dim, *max, length, largest);
       }
     }
 
@@ -231,10 +241,15 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
 }
 
 template <typename T, int MaxLength, int BlockSize>
-__device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk, int* maxid,
-                                            Pair<T> topk[], T** topVal,
-                                            int64_t** topIds, int* beam, int* k,
-                                            const int tid, const int warp,
+__device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk,
+                                            int* maxid,
+                                            Pair<T> topk[],
+                                            T** topVal,
+                                            int64_t** topIds,
+                                            int* beam,
+                                            int* k,
+                                            const int tid,
+                                            const int warp,
                                             const bool& largest) {
   while (true) {
     __syncthreads();
@@ -307,9 +322,16 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk, int* maxid,
  */
 
 template <typename T, int MaxLength, int BlockSize>
-__global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
-                             const T* src, int lds, int dim, int k,
-                             int grid_dim, int num, bool largest = true) {
+__global__ void KeMatrixTopK(T* output,
+                             int output_stride,
+                             int64_t* indices,
+                             const T* src,
+                             int lds,
+                             int dim,
+                             int k,
+                             int grid_dim,
+                             int num,
+                             bool largest = true) {
   __shared__ Pair<T> sh_topk[BlockSize];
   const int tid = threadIdx.x;
   const int warp = threadIdx.x / 32;
@@ -334,20 +356,39 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
       }
     }
     while (top_num) {
-      ThreadGetTopK<T, MaxLength, BlockSize>(topk, &beam, k, src + i * lds,
-                                             &firststep, &is_empty, &max, dim,
-                                             tid, largest);
+      ThreadGetTopK<T, MaxLength, BlockSize>(topk,
+                                             &beam,
+                                             k,
+                                             src + i * lds,
+                                             &firststep,
+                                             &is_empty,
+                                             &max,
+                                             dim,
+                                             tid,
+                                             largest);
 
       sh_topk[tid] = topk[0];
-      BlockReduce<T, MaxLength, BlockSize>(sh_topk, maxid, topk, &out, &inds,
-                                           &beam, &top_num, tid, warp, largest);
+      BlockReduce<T, MaxLength, BlockSize>(sh_topk,
+                                           maxid,
+                                           topk,
+                                           &out,
+                                           &inds,
+                                           &beam,
+                                           &top_num,
+                                           tid,
+                                           warp,
+                                           largest);
     }
   }
 }
 
 template <typename T, int MaxLength, int BlockSize>
-__global__ void AssignGrad(T* x_grad, const int64_t* indices, const T* out_grad,
-                           size_t rows, size_t cols, size_t k) {
+__global__ void AssignGrad(T* x_grad,
+                           const int64_t* indices,
+                           const T* out_grad,
+                           size_t rows,
+                           size_t cols,
+                           size_t k) {
   for (size_t i = 0; i < rows; ++i) {
     for (size_t j = 0; j < cols; ++j) {
       x_grad[i * cols + j] = 0;
@@ -362,9 +403,13 @@ __global__ void AssignGrad(T* x_grad, const int64_t* indices, const T* out_grad,
 
 // the grad assign with the axis
 template <typename T>
-__global__ void AssignGradWithAxis(const T* grad_out, const int64_t* indices,
-                                   T* grad_in, int pre, int post,
-                                   int raw_height, int k) {
+__global__ void AssignGradWithAxis(const T* grad_out,
+                                   const int64_t* indices,
+                                   T* grad_in,
+                                   int pre,
+                                   int post,
+                                   int raw_height,
+                                   int k) {
   // raw_height is the length of topk axis
   for (int i = blockIdx.x; i < pre; i += gridDim.x) {
     int base_index = i * post * k;
@@ -382,19 +427,22 @@ __global__ void AssignGradWithAxis(const T* grad_out, const int64_t* indices,
 }
 // use the radix sort for the topk
 template <typename T>
-bool SortTopk(const platform::CUDADeviceContext& ctx,
-              const framework::Tensor* input_tensor, const int64_t num_cols,
-              const int64_t num_rows, const int k,
-              framework::Tensor* out_tensor, framework::Tensor* indices_tensor,
+bool SortTopk(const phi::GPUContext& ctx,
+              const DenseTensor* input_tensor,
+              const int64_t num_cols,
+              const int64_t num_rows,
+              const int k,
+              DenseTensor* out_tensor,
+              DenseTensor* indices_tensor,
               bool largest = true) {
   auto cu_stream = ctx.stream();
 
-  Tensor input_indices;
+  DenseTensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
   auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
   // input_indices.Resize(num_rows*num_cols);
-  input_indices.mutable_data<int64_t>(ctx.GetPlace());
+  ctx.template Alloc<int64_t>(input_indices);
   size_t temp_storage_bytes = -1;
 
   auto ComputeBlockSize = [](int col) {
@@ -423,19 +471,20 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   // create iter for counting input
   cub::CountingInputIterator<int64_t> counting_iter(0);
   // segment_offset is used for move to next row
-  cub::TransformInputIterator<int64_t, SegmentOffsetIter,
+  cub::TransformInputIterator<int64_t,
+                              SegmentOffsetIter,
                               cub::CountingInputIterator<int64_t>>
       segment_offsets_t(counting_iter, SegmentOffsetIter(num_cols));
 
   T* sorted_values_ptr;
   int64_t* sorted_indices_ptr;
 
-  Tensor temp_values;
-  Tensor temp_indices;
+  DenseTensor temp_values;
+  DenseTensor temp_indices;
 
   const T* input = input_tensor->data<T>();
   T* values = out_tensor->data<T>();
-  int64_t* indices = indices_tensor->mutable_data<int64_t>(ctx.GetPlace());
+  int64_t* indices = ctx.template Alloc<int64_t>(indices_tensor);
 
   if (k == num_cols) {
     // Doing a full sort.
@@ -444,17 +493,26 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   } else {
     temp_values.Resize(dim);
     temp_indices.Resize(dim);
-    sorted_values_ptr = temp_values.mutable_data<T>(ctx.GetPlace());
-    sorted_indices_ptr = temp_indices.mutable_data<int64_t>(ctx.GetPlace());
+    sorted_values_ptr = ctx.template Alloc<T>(temp_values);
+    sorted_indices_ptr = ctx.template Alloc<int64_t>(temp_indices);
   }
 
   // Get temp storage buffer size, maybe can allocate a fixed buffer to save
   // time.
   if (largest) {
     auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
-        nullptr, temp_storage_bytes, input, sorted_values_ptr,
-        input_indices.data<int64_t>(), sorted_indices_ptr, num_cols * num_rows,
-        num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
+        nullptr,
+        temp_storage_bytes,
+        input,
+        sorted_values_ptr,
+        input_indices.data<int64_t>(),
+        sorted_indices_ptr,
+        num_cols * num_rows,
+        num_rows,
+        segment_offsets_t,
+        segment_offsets_t + 1,
+        0,
+        sizeof(T) * 8,
         cu_stream);
 #ifdef __HIPCC__
     if (err != hipSuccess) {
@@ -476,11 +534,20 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     }
 #endif
   } else {
-    auto err = cub::DeviceSegmentedRadixSort::SortPairs(
-        nullptr, temp_storage_bytes, input, sorted_values_ptr,
-        input_indices.data<int64_t>(), sorted_indices_ptr, num_cols * num_rows,
-        num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
-        cu_stream);
+    auto err =
+        cub::DeviceSegmentedRadixSort::SortPairs(nullptr,
+                                                 temp_storage_bytes,
+                                                 input,
+                                                 sorted_values_ptr,
+                                                 input_indices.data<int64_t>(),
+                                                 sorted_indices_ptr,
+                                                 num_cols * num_rows,
+                                                 num_rows,
+                                                 segment_offsets_t,
+                                                 segment_offsets_t + 1,
+                                                 0,
+                                                 sizeof(T) * 8,
+                                                 cu_stream);
 #ifdef __HIPCC__
     if (err != hipSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
@@ -499,15 +566,24 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     }
 #endif
   }
-  Tensor temp_storage;
-  temp_storage.mutable_data<uint8_t>(ctx.GetPlace(), temp_storage_bytes);
+  DenseTensor temp_storage;
+  ctx.template Alloc<uint8_t>(temp_storage, temp_storage_bytes);
 
   if (largest) {
     auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
-        temp_storage.data<uint8_t>(), temp_storage_bytes, input,
-        sorted_values_ptr, input_indices.data<int64_t>(), sorted_indices_ptr,
-        num_cols * num_rows, num_rows, segment_offsets_t, segment_offsets_t + 1,
-        0, sizeof(T) * 8, cu_stream);
+        temp_storage.data<uint8_t>(),
+        temp_storage_bytes,
+        input,
+        sorted_values_ptr,
+        input_indices.data<int64_t>(),
+        sorted_indices_ptr,
+        num_cols * num_rows,
+        num_rows,
+        segment_offsets_t,
+        segment_offsets_t + 1,
+        0,
+        sizeof(T) * 8,
+        cu_stream);
 #ifdef __HIPCC__
     if (err != hipSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
@@ -530,11 +606,20 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     }
 #endif
   } else {
-    auto err = cub::DeviceSegmentedRadixSort::SortPairs(
-        temp_storage.data<uint8_t>(), temp_storage_bytes, input,
-        sorted_values_ptr, input_indices.data<int64_t>(), sorted_indices_ptr,
-        num_cols * num_rows, num_rows, segment_offsets_t, segment_offsets_t + 1,
-        0, sizeof(T) * 8, cu_stream);
+    auto err =
+        cub::DeviceSegmentedRadixSort::SortPairs(temp_storage.data<uint8_t>(),
+                                                 temp_storage_bytes,
+                                                 input,
+                                                 sorted_values_ptr,
+                                                 input_indices.data<int64_t>(),
+                                                 sorted_indices_ptr,
+                                                 num_cols * num_rows,
+                                                 num_rows,
+                                                 segment_offsets_t,
+                                                 segment_offsets_t + 1,
+                                                 0,
+                                                 sizeof(T) * 8,
+                                                 cu_stream);
 #ifdef __HIPCC__
     if (err != hipSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
@@ -562,16 +647,15 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     // copy sliced data to output.
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, 0};
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, k};
-    auto e_indices =
-        framework::EigenMatrix<int64_t>::From(*indices_tensor, dim);
-    auto e_tmp_indices = framework::EigenMatrix<int64_t>::From(
-        static_cast<const Tensor>(temp_indices));
+    auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
+    auto e_tmp_indices = EigenMatrix<int64_t>::From(
+        static_cast<const DenseTensor>(temp_indices));
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
     auto dim = phi::make_ddim(odims);
-    auto e_values = framework::EigenMatrix<T>::From(*out_tensor, dim);
+    auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
     auto e_tmp_values =
-        framework::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));
+        EigenMatrix<T>::From(static_cast<const DenseTensor>(temp_values));
 
     EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
         dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);
