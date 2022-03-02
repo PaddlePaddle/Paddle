@@ -117,6 +117,33 @@ class ProcessGroup {
         "ProcessGroup%s does not support receive", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<Tensor>& in_tensors /* tensors */,     // NOLINT
+      std::vector<Tensor>& out_tensors /* tensors */) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support AllGather", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<Tensor>& tensors /* tensors */) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support AllToAll", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<Tensor>& tensors /* tensors */,  // NOLINT
+      const ReduceOptions& opts) {                 // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support Reduce", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Scatter(
+      std::vector<Tensor>& tensors /* tensors */,  // NOLINT
+      const ScatterOptions&) {                     // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support Scatter", GetBackendName()));
+  }
+
  protected:
   const int rank_;
   const int size_;

@@ -144,23 +144,31 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             print("test barrier api ok\n")
 
-            # test send/recv
+            # test allgather
             # rank 0
             x = np.random.random(self.shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
             tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            out_shape = self.shape
+            out_shape[0] *= 2
+            out = np.random.random(out_shape).astype(self.dtype)
             if pg.rank() == 0:
-                task = pg.send(tensor_x, dst=1)
+                task = pg.all_gather(tensor_x, out)
                 task.wait()
                 paddle.device.cuda.synchronize()
             # rank 1
             else:
-                y = np.random.random(self.shape).astype(self.dtype)
-                tensor_y = paddle.to_tensor(y)
-                task = pg.recv(tensor_y, src=0)
+                task = pg.all_gather(tensor_y, out)
                 task.wait()
                 paddle.device.cuda.synchronize()
-                assert np.array_equal(tensor_x, tensor_y)
-                print("test send/recv api ok\n")
+            out_1 = paddle.slice(out, 0, [0], [out_shape[0] // 2 + 1])
+            out_1 = paddle.slice(out, 0, [0], [out_shape[0] // 2 + 1])
+            out_2 = paddle.slice(out, 0, [out_shape[0] // 2 + 1],
+                                 [out_shape[0]])
+            assert np.array_equal(tensor_x, out_1)
+            assert np.array_equal(tensor_y, out_2)
+            print("test allgather api ok\n")
 
 
 class TestProcessGroupFp16(TestProcessGroupFp32):

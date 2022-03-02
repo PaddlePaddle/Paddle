@@ -121,6 +121,17 @@ void BindDistributed(py::module *m) {
                  return self.Recv(tensors, src);
                },
                py::arg("tensor"), py::arg("src"),
+               py::call_guard<py::gil_scoped_release>())
+          .def("all_gather",
+               [](distributed::ProcessGroup &self, py::handle py_in_tensor,
+                  py::handle py_out_tensor) {
+                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                 std::vector<Tensor> in_tensors = {in_tensor};
+                 std::vector<Tensor> out_tensors = {out_tensor};
+                 return self.AllGather(in_tensors, out_tensors);
+               },
+               py::arg("in"), py::arg("out"),
                py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL)

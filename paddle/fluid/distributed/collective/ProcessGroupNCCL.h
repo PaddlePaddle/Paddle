@@ -98,6 +98,19 @@ class ProcessGroupNCCL : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Recv(std::vector<Tensor>& tensors,
                                            int src_rank) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<Tensor>& in_tensors,
+      std::vector<Tensor>& out_tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<Tensor>& tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<Tensor>& tensors, const ReduceOptions& opts) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(std::vector<Tensor>& tensors,
+                                              const ScatterOptions&) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
       std::vector<Place> places, int rank, CommType opType,
