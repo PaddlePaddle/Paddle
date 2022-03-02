@@ -1,0 +1,7 @@
+- sparse_api : matmul
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
+  output : Tensor(out@DenseTensor)
+  infer_out :
+    func : MatmulInferOut
+  kernel :
+    func : sparse_matmul

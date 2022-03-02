@@ -20,9 +20,12 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
 namespace paddle {
 namespace experimental {
+
+enum class TensorType { DENSE_TENSOR, SPARSE_CSR, SPARSE_COO };
 
 /* ------------------ for input ----------------------- */
 
@@ -137,6 +140,30 @@ inline phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend,
     return select_rows.get();
   }
   return static_cast<phi::SelectedRows*>(out->impl().get());
+}
+
+phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type) {
+  if (!out->initialized()) {
+    if (type == TensorType::SPARSE_COO) {
+      auto sparse_tensor = std::make_shared<phi::SparseCooTensor>(
+          phi::DenseTensor(), phi::DenseTensor(), phi::DDim{-1});
+      out->set_impl(sparse_tensor);
+      return sparse_tensor.get();
+    } else if (type == TensorType::SPARSE_CSR) {
+      auto sparse_tensor =
+          std::make_shared<phi::SparseCsrTensor>(phi::DenseTensor(),
+                                                 phi::DenseTensor(),
+                                                 phi::DenseTensor(),
+                                                 phi::DDim{-1});
+      out->set_impl(sparse_tensor);
+      return sparse_tensor.get();
+    } else {
+      auto dense_tensor = std::make_shared<phi::DenseTensor>();
+      out->set_impl(dense_tensor);
+      return dense_tensor.get();
+    }
+  }
+  return out->impl().get();
 }
 
 }  // namespace experimental
