@@ -213,8 +213,12 @@ def ParseYamlReturns(string):
 
     returns = [x.strip() for x in string.strip().split(",")]
     for i in range(len(returns)):
-        ret = returns[i]
-        returns_list.append(["", ret, i])
+        ret_type = returns[i]
+
+        assert ret_type in yaml_types_mapping.keys()
+        ret_type = yaml_types_mapping[ret_type]
+
+        returns_list.append(["", ret_type, i])
 
     return returns_list
 
