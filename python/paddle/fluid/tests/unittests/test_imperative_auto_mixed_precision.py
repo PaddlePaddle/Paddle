@@ -1183,21 +1183,37 @@ class TestAmpWithPyLyer(unittest.TestCase):
 
 
 class TestAmpWithHook(unittest.TestCase):
-    def test_hook(self):
-        v = paddle.rand([3, 3])
-        v.stop_gradient = False
+    def test_hook_change_dtype(self):
+        with paddle.fluid.dygraph.guard():
+            v = paddle.rand([3, 3])
+            v.stop_gradient = False
 
-        def foo(grad):
-            print('grad', grad, grad.dtype)  # grad's dtype is float32
-            res = paddle.mm(grad, grad)  # mm runs in fp16
-            print('res', res, res.dtype)  # res's dtype is float16
-            return res
+            def foo(grad):
+                print('grad', grad, grad.dtype)  # grad's dtype is float32
+                res = paddle.mm(grad, grad)  # mm runs in fp16
+                print('res', res, res.dtype)  # res's dtype is float16
+                return res
 
-        v.register_hook(foo)
-        with paddle.amp.auto_cast():
-            a = paddle.mm(v, v)
-            loss = a.sum()
-            self.assertRaises(RuntimeError, loss.backward)
+            v.register_hook(foo)
+            with paddle.amp.auto_cast():
+                a = paddle.mm(v, v)
+                loss = a.sum()
+                self.assertRaises(RuntimeError, loss.backward)
+
+    def test_hook_change_place(self):
+        with paddle.fluid.dygraph.guard():
+            v = paddle.rand([3, 3])
+            v.stop_gradient = False
+
+            def foo(grad):
+                res = grad.cpu()  # change place
+                return res
+
+            v.register_hook(foo)
+            with paddle.amp.auto_cast():
+                a = paddle.mm(v, v)
+                loss = a.sum()
+                self.assertRaises(RuntimeError, loss.backward)
 
 
 if __name__ == '__main__':
