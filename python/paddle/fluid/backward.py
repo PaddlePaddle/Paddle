@@ -1295,7 +1295,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         # If the outputs of grad op is empty, just remove it
         if not outputs:
             ops_to_remove.append(op_idx)
-            ops_to_remove_output.update(outputs)
             continue
         else:
             '''
@@ -1334,11 +1333,15 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                 continue
             grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
 
+        # Note(0x45f): If an op named A is added to `ops_to_remove`, 
+        # and its output is used by a subsequent op named B, 
+        # then an error may be reported when B calls `infer_var_type`. 
+        # So we need to do a check to reset B's input
         for name, arg_names in op_desc.inputs().items():
             arg_names_exist = [
                 var for var in arg_names if var not in ops_to_remove_output
             ]
-            if set(arg_names_exist) != set(arg_names):
+            if len(arg_names_exist) != len(arg_names):
                 op_desc.set_input(name, arg_names_exist)
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
