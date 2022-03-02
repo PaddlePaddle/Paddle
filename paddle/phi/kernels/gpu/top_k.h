@@ -24,14 +24,18 @@
 #endif
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 #ifdef __HIPCC__
 namespace rocprim {
 namespace detail {
 template <>
-struct radix_key_codec_base<dtype::float16>
-    : radix_key_codec_integral<dtype::float16, uint16_t> {};
+struct radix_key_codec_base<phi::dtype::float16>
+    : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 namespace cub = hipcub;
@@ -39,13 +43,25 @@ namespace cub = hipcub;
 // set cub base traits in order to handle float16
 namespace cub {
 template <>
-struct NumericTraits<dtype::float16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, dtype::float16> {};
+struct NumericTraits<phi::dtype::float16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
 }  // namespace cub
 #endif
 
-namespace paddle {
-namespace operators {
+namespace phi {
+
+inline void GetDims(
+    const phi::DDim& dim, int axis, int* pre, int* n, int* post) {
+  *pre = 1;
+  *post = 1;
+  *n = dim[axis];
+  for (int i = 0; i < axis; ++i) {
+    (*pre) *= dim[i];
+  }
+  for (int i = axis + 1; i < dim.size(); ++i) {
+    (*post) *= dim[i];
+  }
+}
 
 struct SegmentOffsetIter {
   EIGEN_DEVICE_FUNC
@@ -305,7 +321,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk,
     CREATE_SHFL_MASK(mask, true);
 
     if (maxid[0] / 32 == warp) {
-      if (platform::CudaShuffleSync(mask, *beam, (maxid[0]) % 32, 32) ==
+      if (paddle::platform::CudaShuffleSync(mask, *beam, (maxid[0]) % 32, 32) ==
           MaxLength)
         break;
     }
@@ -427,7 +443,7 @@ __global__ void AssignGradWithAxis(const T* grad_out,
 }
 // use the radix sort for the topk
 template <typename T>
-bool SortTopk(const phi::GPUContext& ctx,
+bool SortTopk(const GPUContext& ctx,
               const DenseTensor* input_tensor,
               const int64_t num_cols,
               const int64_t num_rows,
@@ -442,7 +458,7 @@ bool SortTopk(const phi::GPUContext& ctx,
   auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
   // input_indices.Resize(num_rows*num_cols);
-  ctx.template Alloc<int64_t>(input_indices);
+  ctx.template Alloc<int64_t>(&input_indices);
   size_t temp_storage_bytes = -1;
 
   auto ComputeBlockSize = [](int col) {
@@ -493,8 +509,8 @@ bool SortTopk(const phi::GPUContext& ctx,
   } else {
     temp_values.Resize(dim);
     temp_indices.Resize(dim);
-    sorted_values_ptr = ctx.template Alloc<T>(temp_values);
-    sorted_indices_ptr = ctx.template Alloc<int64_t>(temp_indices);
+    sorted_values_ptr = ctx.template Alloc<T>(&temp_values);
+    sorted_indices_ptr = ctx.template Alloc<int64_t>(&temp_indices);
   }
 
   // Get temp storage buffer size, maybe can allocate a fixed buffer to save
@@ -567,7 +583,7 @@ bool SortTopk(const phi::GPUContext& ctx,
 #endif
   }
   DenseTensor temp_storage;
-  ctx.template Alloc<uint8_t>(temp_storage, temp_storage_bytes);
+  ctx.template Alloc<uint8_t>(&temp_storage, temp_storage_bytes);
 
   if (largest) {
     auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
@@ -657,12 +673,12 @@ bool SortTopk(const phi::GPUContext& ctx,
     auto e_tmp_values =
         EigenMatrix<T>::From(static_cast<const DenseTensor>(temp_values));
 
-    EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
+    funcs::EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
         dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);
-    EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
+    funcs::EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
         dev, e_values, e_tmp_values, slice_indices, slice_sizes);
   }
   return true;
 }
-}  // namespace operators
-}  // namespace paddle
+
+}  // namespace phi

@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/transpose.h"
 
 namespace phi {
@@ -139,7 +140,7 @@ void TopkV2Kernel(const Context& dev_ctx,
   }
 
   // if K tensor is not null, will the use K tesnor as k
-  if (k_t) {
+  if (k_t.initialized()) {
     k = k_t.data<int>()[0];
     auto out_dims = out->dims();
     // accroding to axis to set K value in the dim
@@ -188,11 +189,12 @@ void TopkV2Kernel(const Context& dev_ctx,
 
     DenseTensor trans_inp;
     trans_inp.Resize(trans_dims);
-    dev_ctx.template Alloc<T>(trans_inp);
+    dev_ctx.template Alloc<T>(&trans_inp);
     int ndims = trans.size();
 
     // transpose the input value
-    TransCompute<phi::CPUContext, T>(ndims, dev_ctx, *input, &trans_inp, trans);
+    funcs::TransCompute<phi::CPUContext, T>(
+        ndims, dev_ctx, *input, &trans_inp, trans);
 
     const int64_t input_height =
         phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
@@ -203,8 +205,8 @@ void TopkV2Kernel(const Context& dev_ctx,
     DenseTensor tmp_indices;
     tmp_out.Resize(trans_out_dims);
     tmp_indices.Resize(trans_out_dims);
-    T* t_out = dev_ctx.template Alloc<T>(tmp_out);
-    auto* t_ind = dev_ctx.template Alloc<T>(tmp_indices);
+    T* t_out = dev_ctx.template Alloc<T>(&tmp_out);
+    auto* t_ind = dev_ctx.template Alloc<int64_t>(&tmp_indices);
 
     // get the TopK value
     FullTopK<T, int64_t>(input_height,
@@ -217,9 +219,10 @@ void TopkV2Kernel(const Context& dev_ctx,
                          largest,
                          sorted);
     // transpose back
-    TransCompute<phi::CPUContext, int64_t>(
+    funcs::TransCompute<phi::CPUContext, int64_t>(
         ndims, dev_ctx, tmp_indices, indices, trans);
-    TransCompute<phi::CPUContext, T>(ndims, dev_ctx, tmp_out, out, trans);
+    funcs::TransCompute<phi::CPUContext, T>(
+        ndims, dev_ctx, tmp_out, out, trans);
   }
 }
 

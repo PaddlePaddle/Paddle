@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gpu/top_k.h"
-#include "paddle/phi/kernels/trace_grad_kernel.h"
+#include "paddle/phi/kernels/top_k_v2_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/trace_grad_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
 
 namespace phi {
 
@@ -32,13 +32,12 @@ void TopkV2GradKernel(const Context& dev_ctx,
                       bool sorted,
                       DenseTensor* x_grad) {
   const auto& in_dims = x.dims();
-  const auto& out_dims = indices->dims();
+  const auto& out_dims = indices.dims();
 
   // get the real the axis and the k
   if (axis < 0) {
     axis += in_dims.size();
   }
-  const int& k = out_dims[axis];
   const int& raw_height = in_dims[axis];
 
   // allocate the cuda memory for the x_grad

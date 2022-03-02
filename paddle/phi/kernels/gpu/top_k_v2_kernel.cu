@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/gpu/top_k.h"
 #include "paddle/phi/kernels/top_k_v2_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
 
 namespace phi {
 
@@ -48,9 +50,9 @@ void TopkV2Kernel(const Context& dev_ctx,
   // calcluate the real axis
   if (axis < 0) axis += in_dims.size();
 
-  if (k_t) {
+  if (k_t.initialized()) {
     DenseTensor k_host;
-    Copy(dev_ctx, k_t, GPUPlace, false, &k_host);
+    Copy(dev_ctx, k_t, CPUPlace(), false, &k_host);
     k = k_host.data<int>()[0];
     phi::DDim out_dims = out->dims();
     out_dims[axis] = k;
@@ -157,9 +159,9 @@ void TopkV2Kernel(const Context& dev_ctx,
     // second step, tranpose the input
     DenseTensor trans_input;
     trans_input.Resize(trans_dims);
-    dev_ctx.template Alloc<T>(trans_input);
+    dev_ctx.template Alloc<T>(&trans_input);
     int ndims = trans.size();
-    TransCompute<phi::GPUContext, T>(
+    funcs::TransCompute<phi::GPUContext, T>(
         ndims, dev_ctx, *input, &trans_input, trans);
     // third step, calcluate the topk
     // allocate the tmp cuda memory for the tmp result
@@ -167,8 +169,8 @@ void TopkV2Kernel(const Context& dev_ctx,
     DenseTensor trans_out;
     trans_ind.Resize(trans_out_dims);
     trans_out.Resize(trans_out_dims);
-    dev_ctx.template Alloc<int64_t>(trans_ind);
-    dev_ctx.template Alloc<T>(trans_out);
+    dev_ctx.template Alloc<int64_t>(&trans_ind);
+    dev_ctx.template Alloc<T>(&trans_out);
 
     const int64_t input_height =
         phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
@@ -188,9 +190,10 @@ void TopkV2Kernel(const Context& dev_ctx,
                       &trans_ind,
                       largest)) {
         // last step, tranpose back the indices and output
-        TransCompute<phi::GPUContext, int64_t>(
+        funcs::TransCompute<phi::GPUContext, int64_t>(
             ndims, dev_ctx, trans_ind, indices, trans);
-        TransCompute<phi::GPUContext, T>(ndims, dev_ctx, trans_out, out, trans);
+        funcs::TransCompute<phi::GPUContext, T>(
+            ndims, dev_ctx, trans_out, out, trans);
         return;
       } else {
         LOG(INFO) << "TopKOP: Some errors happened when use cub sorting, use "
@@ -238,9 +241,10 @@ void TopkV2Kernel(const Context& dev_ctx,
     }
 
     // last step, tranpose back the indices and output
-    TransCompute<phi::GPUContext, int64_t>(
+    funcs::TransCompute<phi::GPUContext, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans);
-    TransCompute<phi::GPUContext, T>(ndims, dev_ctx, trans_out, out, trans);
+    funcs::TransCompute<phi::GPUContext, T>(
+        ndims, dev_ctx, trans_out, out, trans);
   }
 }
 #undef FIXED_BLOCK_DIM_BASE
