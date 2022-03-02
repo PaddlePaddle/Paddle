@@ -15,20 +15,19 @@ limitations under the License. */
 #pragma once
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
-
-using Tensor = framework::Tensor;
+namespace phi {
+namespace funcs {
 
 template <typename T, typename IndexT = int>
-__global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
-                                      size_t index_size, size_t slice_size) {
+__global__ void ScatterInitCUDAKernel(const IndexT* indices,
+                                      T* output,
+                                      size_t index_size,
+                                      size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -47,9 +46,12 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
 }
 
 template <typename T, typename IndexT = int>
-__global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
-                                  T* output, size_t index_size,
-                                  size_t slice_size, bool overwrite) {
+__global__ void ScatterCUDAKernel(const T* params,
+                                  const IndexT* indices,
+                                  T* output,
+                                  size_t index_size,
+                                  size_t slice_size,
+                                  bool overwrite) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -72,9 +74,12 @@ __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
 }
 
 template <typename T, typename IndexT = int>
-__global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
-                                    T* output, const int64_t* output_dims,
-                                    size_t remain_size, size_t slice_size,
+__global__ void ScatterNdCUDAKernel(const T* update,
+                                    const IndexT* indices,
+                                    T* output,
+                                    const int64_t* output_dims,
+                                    size_t remain_size,
+                                    size_t slice_size,
                                     size_t end_size) {
   CUDA_KERNEL_LOOP_TYPE(i, remain_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
@@ -90,7 +95,8 @@ __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
           "be less than [%d] and greater or equal to 0, but received [%d]",
-          output_dims[j], index_value);
+          output_dims[j],
+          index_value);
 
       gather_i += (index_value * temp);
       temp *= output_dims[j];
@@ -109,21 +115,24 @@ __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void GPUScatterAssign(const framework::ExecutionContext& context,
-                      const Tensor& src, const Tensor& index, Tensor* output,
+void GPUScatterAssign(const phi::GPUContext& ctx,
+                      const DenseTensor& src,
+                      const DenseTensor& index,
+                      DenseTensor* output,
                       bool overwrite = true) {
   // check index of shape 1-D
-  const auto& ctx = context.device_context();
   if (index.dims().size() == 2) {
-    PADDLE_ENFORCE_EQ(index.dims()[1], 1,
-                      platform::errors::InvalidArgument(
-                          "index.dims()[1] should be 1 when "
-                          "index.dims().size() = 2 in scatter_op."
-                          "But received value is [%d]",
-                          index.dims()[1]));
+    PADDLE_ENFORCE_EQ(
+        index.dims()[1],
+        1,
+        phi::errors::InvalidArgument("index.dims()[1] should be 1 when "
+                                     "index.dims().size() = 2 in scatter_op."
+                                     "But received value is [%d]",
+                                     index.dims()[1]));
   } else {
-    PADDLE_ENFORCE_EQ(index.dims().size(), 1,
-                      platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(index.dims().size(),
+                      1,
+                      phi::errors::InvalidArgument(
                           "index.dims().size() should be 1 or 2 in scatter_op."
                           "But received value is [%d]",
                           index.dims().size()));
@@ -131,7 +140,7 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
   int64_t index_size = index.dims()[0];
 
   auto src_dims = src.dims();
-  framework::DDim output_dims(src_dims);
+  phi::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
   // slice size
@@ -150,23 +159,20 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
 
   // if not overwrite mode, init data
   if (!overwrite) {
-    ScatterInitCUDAKernel<T, IndexT><<<
-        grid, block, 0,
-        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+    ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
         p_index, p_output, index_size, slice_size);
   }
 
-  ScatterCUDAKernel<T, IndexT><<<
-      grid, block, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+  ScatterCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_src, p_index, p_output, index_size, slice_size, overwrite);
 }
 
 // The function is only for scatter grad x,
 // however update grad use gather
 template <typename T, typename IndexT = int>
-void GPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
-                        Tensor* output) {
+void GPUScatterGradForX(const phi::GPUContext& ctx,
+                        const DenseTensor& index,
+                        DenseTensor* output) {
   int64_t index_size = index.dims()[0];
   auto dst_dims = output->dims();
   // slice size
@@ -181,21 +187,18 @@ void GPUScatterGradForX(const platform::DeviceContext& ctx, const Tensor& index,
   int64_t n = slice_size * index_size;
   int64_t height = (n + block - 1) / block;
 
-  int64_t max_grid_dimx =
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx)
-          .GetCUDAMaxGridDimSize()[0];
+  int64_t max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid = height < max_grid_dimx ? height : max_grid_dimx;
 
-  ScatterInitCUDAKernel<T, IndexT><<<
-      grid, block, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+  ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_index, p_output, index_size, slice_size);
 }
 
-template <typename DeviceContext, typename T, typename IndexT = int>
-void GPUScatterNdAdd(const framework::ExecutionContext& context,
-                     const Tensor& update, const Tensor& index,
-                     Tensor* output) {
+template <typename T, typename IndexT = int>
+void GPUScatterNdAdd(const phi::GPUContext& ctx,
+                     const DenseTensor& update,
+                     const DenseTensor& index,
+                     DenseTensor* output) {
   auto index_dims = index.dims();
   auto index_dims_size = index_dims.size();
 
@@ -219,31 +222,34 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
   const size_t slice_bytes = slice_size * sizeof(T);
   // put output_dims int CUDA
   // gplace and cplace
-  const auto& ctx = context.template device_context<DeviceContext>();
   const auto gplace = ctx.GetPlace();
-  auto cplace = platform::CPUPlace();
+  auto cplace = phi::CPUPlace();
 
   std::vector<int64_t> v_output_dims(output_dims_size);
   for (int i = 0; i < output_dims_size; ++i) {
     v_output_dims[i] = output_dims[i];
   }
-  auto& dev_ctx = context.cuda_device_context();
+
+  phi::DenseTensor out_dims_tensor;
+  out_dims_tensor.Resize({output_dims_size});
+  auto* g_output_dims = ctx.Alloc<int64_t>(&out_dims_tensor);
   int64_t bytes = output_dims_size * sizeof(int64_t);
-  auto output_dims_ptr = memory::Alloc(dev_ctx, bytes);
-  int64_t* g_output_dims = reinterpret_cast<int64_t*>(output_dims_ptr->ptr());
-  memory::Copy(gplace, g_output_dims, cplace, v_output_dims.data(), bytes,
-               ctx.stream());
+  paddle::memory::Copy(
+      gplace, g_output_dims, cplace, v_output_dims.data(), bytes, ctx.stream());
 
   int block = 512;
   int64_t n = slice_size * remain_numel;
   int64_t grid = (n + block - 1) / block;
 
-  ScatterNdCUDAKernel<T, IndexT><<<
-      grid, block, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_update, p_index, p_output, g_output_dims, remain_numel, slice_size,
+  ScatterNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
+      p_update,
+      p_index,
+      p_output,
+      g_output_dims,
+      remain_numel,
+      slice_size,
       end_size);
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace pten

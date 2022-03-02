@@ -21,8 +21,22 @@
 namespace infrt {
 
 enum class TargetType : uint8_t { CPU, GPU, UNK };
-enum class PrecisionType : uint8_t { FLOAT32, FLOAT16, UNK };
-enum class LayoutType : uint8_t { NCHW, NHWC, UNK };
+enum class LayoutType : uint8_t { NCHW, NHWC, ANY, UNK };
+enum class PrecisionType : uint8_t {
+  UINT8,
+  INT8,
+  INT16,
+  INT32,
+  INT64,
+  FLOAT16,
+  BFLOAT16,
+  FLOAT32,
+  FLOAT64,
+  COMPLEX64,
+  COMPLEX128,
+  BOOL,
+  UNK
+};
 
 struct Place {
   TargetType target;

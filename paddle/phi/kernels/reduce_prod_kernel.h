@@ -11,3 +11,19 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void ReduceProdKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const std::vector<int64_t>& dims,
+                      bool keep_dim,
+                      bool reduce_all,
+                      DenseTensor* out);
+
+}  // namespace phi
