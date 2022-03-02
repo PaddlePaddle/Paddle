@@ -26,9 +26,9 @@ class ExponentialKernel<platform::CUDADeviceContext, T>
     auto& dev_cxt = ctx.template device_context<platform::CUDADeviceContext>();
     T lambda = static_cast<T>(ctx.Attr<float>("lambda"));
 
-    phi::distribution::uniform_distribution<T> dist;
-    phi::distribution::exponential_transform<T> trans(lambda);
-    phi::distribution::distribution_and_transform<T>(dev_cxt, out, dist, trans);
+    phi::funcs::uniform_distribution<T> dist;
+    phi::funcs::exponential_transform<T> trans(lambda);
+    phi::funcs::distribution_and_transform<T>(dev_cxt, out, dist, trans);
   }
 };
 

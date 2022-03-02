@@ -82,10 +82,9 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       if (FLAGS_use_curand) {
         using MT = typename details::MPTypeTrait<T>::Type;
-        phi::distribution::normal_distribution<MT> dist;
-        phi::distribution::normal_transform<MT> trans(mean, std);
-        phi::distribution::distribution_and_transform<T>(dev_cxt, tensor, dist,
-                                                         trans);
+        phi::funcs::normal_distribution<MT> dist;
+        phi::funcs::normal_transform<MT> trans(mean, std);
+        phi::funcs::distribution_and_transform<T>(dev_cxt, tensor, dist, trans);
       } else {
         auto seed_offset = gen_cuda->IncrementOffset(1);
         int64_t gen_offset = size * seed_offset.second;

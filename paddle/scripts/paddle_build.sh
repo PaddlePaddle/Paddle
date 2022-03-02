@@ -776,7 +776,9 @@ set +x
             tmpfile=$tmp_dir/$tmpfile_rand
             ctest -R "$UT_list_prec_1" -E "$disable_ut_quickly" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
         fi
-
+        ut_total_endTime_s=`date +%s`
+        echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
+        
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
@@ -2374,7 +2376,7 @@ EOF
     fi
     startTime_s=`date +%s`
     set +e
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto};build_error=$?
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_PYTHON=${WITH_PYTHON:-ON};build_error=$?
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
@@ -2739,7 +2741,9 @@ function main() {
         test_fluid_lib
         ;;
       build_inference_lib)
-        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        if [ "${WITH_PYTHON}" == "OFF" ] ; then
+            python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        fi
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_lib ${parallel_number}
         ;;
@@ -2790,7 +2794,9 @@ function main() {
         ;;
       test_inference)
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
-        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        if [ "${WITH_PYTHON}" == "OFF" ] ; then
+            python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        fi
         gen_fluid_lib ${parallel_number}
         test_fluid_lib
         #test_fluid_lib_train
@@ -2800,7 +2806,9 @@ function main() {
         ;;
       build_inference)
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
-        python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        if [ "${WITH_PYTHON}" == "OFF" ] ; then
+            python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
+        fi
         gen_fluid_lib ${parallel_number}
         ;;
       gpu_inference)

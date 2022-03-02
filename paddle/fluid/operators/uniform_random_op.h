@@ -207,10 +207,9 @@ void UniformRandom(const framework::ExecutionContext& context,
   if (gen_cuda->GetIsInitPy() && seed_flag) {
     if (FLAGS_use_curand) {
       using MT = typename details::MPTypeTrait<T>::Type;
-      phi::distribution::uniform_distribution<MT> dist;
-      phi::distribution::uniform_transform<MT> trans(min, max);
-      phi::distribution::distribution_and_transform<T>(dev_cxt, tensor, dist,
-                                                       trans);
+      phi::funcs::uniform_distribution<MT> dist;
+      phi::funcs::uniform_real_transform<MT> trans(min, max);
+      phi::funcs::distribution_and_transform<T>(dev_cxt, tensor, dist, trans);
     } else {
       auto seed_offset = gen_cuda->IncrementOffset(1);
       int64_t gen_offset = size * seed_offset.second;
