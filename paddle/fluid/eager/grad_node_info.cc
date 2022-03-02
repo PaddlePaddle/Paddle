@@ -38,13 +38,11 @@ namespace egr {
 GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
-  // adj_edges has the same num as backward outputs
-  adj_edges_.resize(bwd_out_slot_num);
 }
 
 void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
   PADDLE_ENFORCE_LT(
-      slot_id, adj_edges_.size(),
+      slot_id, bwd_out_meta_.size(),
       paddle::platform::errors::InvalidArgument(
           "Given slot id is out of range of adj_edges outter size, "
           "adj_edges is designed to has the same size of grad "
@@ -55,47 +53,48 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
     // its pre-ops
     if (meta && !meta->StopGradient()) {
       auto node = meta->GetMutableGradNode();
-      if (node) {
-        adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
-                                         meta->OutRankInfo());
-      } else {
+      if (!node) {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
-        adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
-                                         meta->OutRankInfo());
       }
+
+      auto& out_meta = bwd_out_meta_[slot_id];
+      if (out_meta.size() == 0) {
+        out_meta.resize(1);
+      }
+      out_meta[0].SetEdge(
+          Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
     }
   }
 }
 
 void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
   PADDLE_ENFORCE_LT(
-      slot_id, adj_edges_.size(),
+      slot_id, bwd_out_meta_.size(),
       paddle::platform::errors::InvalidArgument(
           "Given slot id is out of range of adj_edges outter size, "
           "adj_edges is designed to has the same size of grad "
           "inputs's slot num."));
   if (meta && !meta->StopGradient()) {
     auto node = meta->GetMutableGradNode();
-    if (node) {
-      VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
-              << this->name() << " to " << meta->GetMutableGradNode()->name();
-      adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
-                                       meta->OutRankInfo());
-    } else {
+    if (!node) {
       meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
-      VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
-              << this->name() << " to " << meta->GetMutableGradNode()->name();
-      adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
-                                       meta->OutRankInfo());
     }
+    VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
+            << this->name() << " to " << meta->GetMutableGradNode()->name();
+
+    auto& out_meta = bwd_out_meta_[slot_id];
+    if (out_meta.size() == 0) {
+      out_meta.resize(1);
+    }
+    out_meta[0].SetEdge(Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
   }
 }
 
-const std::vector<GradSlotMeta>& GradNodeBase::InputMeta() const {
+const std::vector<std::vector<GradSlotMeta>>& GradNodeBase::InputMeta() const {
   return bwd_in_meta_;
 }
 
-const std::vector<GradSlotMeta>& GradNodeBase::OutputMeta() const {
+const std::vector<std::vector<GradSlotMeta>>& GradNodeBase::OutputMeta() const {
   return bwd_out_meta_;
 }
 
@@ -108,23 +107,21 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
           "Slot Rank should less equal than bwd_in_meta_ size, since "
           "bwd_in_meta_ is designed to hold as same num as backward "
           "inputs."));
-  auto& meta = bwd_in_meta_.at(slot_rank);
-  PADDLE_ENFORCE_EQ(meta.IsInitialized(), false,
-                    paddle::platform::errors::PreconditionNotMet(
-                        "Bwd_in_meta should only be init once, Additional "
-                        "initialization for it is forbidden. If you got this "
-                        "error, it indicates bugs in framework."));
-  // Init stop gradient vector before use to avoid push back
-  VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
-  meta.Init(1);
-  meta.SetStopGradient(0, fwd_out_meta->StopGradient());
+  auto& metas = bwd_in_meta_.at(slot_rank);
+  if (metas.size() == 0) {
+    VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
+    metas.resize(1);
+  }
+
+  auto& meta = metas[0];
+  meta.SetStopGradient(fwd_out_meta->StopGradient());
 
   // Record TensorMeta
   if (phi::DenseTensor::classof(fwd_out.impl().get())) {
     // Only Copy Meta
     phi::DenseTensor* dense_tensor =
         static_cast<phi::DenseTensor*>(fwd_out.impl().get());
-    meta.SetTensorMeta(0, dense_tensor->meta());
+    meta.SetTensorMeta(dense_tensor->meta());
 
     if (paddle::framework::IsComplexType(
             paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
@@ -143,15 +140,11 @@ void GradNodeBase::SetGradInMeta(
           "Slot Rank should less equal than bwd_in_meta_ size, since "
           "bwd_in_meta_ is designed to hold as same num as backward "
           "inputs."));
-  auto& meta = bwd_in_meta_.at(slot_rank);
-  PADDLE_ENFORCE_EQ(meta.IsInitialized(), false,
-                    paddle::platform::errors::PreconditionNotMet(
-                        "Bwd_in_meta should only be init once, addition "
-                        "initialization for it is forbidden. If you got this "
-                        "error, it indicates bugs in framework."));
+  auto& metas = bwd_in_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
-  meta.Init(slot_size);
+  metas.resize(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
+    auto& meta = metas[i];
     const auto& fwd_out_tensor = fwd_out[i];
     auto* fwd_out_meta =
         egr::EagerUtils::nullable_autograd_meta(fwd_out_tensor);
@@ -163,7 +156,7 @@ void GradNodeBase::SetGradInMeta(
     if (fwd_out_meta->StopGradient()) {
       // Set Stop Gradient only when its true or non-initialized autograd_meta,
       // since all default value is false.
-      meta.SetStopGradient(i, fwd_out_meta->StopGradient());
+      meta.SetStopGradient(fwd_out_meta->StopGradient());
     }
 
     // Record TensorMeta
@@ -171,7 +164,7 @@ void GradNodeBase::SetGradInMeta(
       // Only Copy Meta
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(fwd_out_tensor.impl().get());
-      meta.SetTensorMeta(i, dense_tensor->meta());
+      meta.SetTensorMeta(dense_tensor->meta());
       if (paddle::framework::IsComplexType(
               paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
         need_complex_to_real_ = true;
@@ -189,18 +182,14 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
           "Slot Rank should less equal than bwd_out_meta_ size, "
           "since bwd_out_meta_ is designed to hold as same num as "
           "backward outputs."));
-  auto& meta = bwd_out_meta_.at(slot_rank);
-  PADDLE_ENFORCE_EQ(meta.IsInitialized(), false,
-                    paddle::platform::errors::PreconditionNotMet(
-                        "Bwd_out_meta should only be init once. Additional "
-                        "initialization for it is forbidden. If you got this "
-                        "error, it indicates bugs in framework."));
+  auto& metas = bwd_out_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
-  meta.Init(1);
+  metas.resize(1);
+  auto& meta = metas[0];
   if (fwd_in_meta) {
-    meta.SetStopGradient(0, fwd_in_meta->StopGradient());
+    meta.SetStopGradient(fwd_in_meta->StopGradient());
   } else {
-    meta.SetStopGradient(0, true);
+    meta.SetStopGradient(true);
   }
 
   // Record TensorMeta
@@ -209,7 +198,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
       // Only Copy Meta
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(fwd_in.impl().get());
-      meta.SetTensorMeta(0, dense_tensor->meta());
+      meta.SetTensorMeta(dense_tensor->meta());
     }
   }
 }
@@ -223,21 +212,17 @@ void GradNodeBase::SetGradOutMeta(
           "Slot Rank should less equal than bwd_out_meta_ size, "
           "since bwd_out_meta_ is designed to hold as same num as "
           "backward outputs."));
-  auto& meta = bwd_out_meta_.at(slot_rank);
-  PADDLE_ENFORCE_EQ(meta.IsInitialized(), false,
-                    paddle::platform::errors::PreconditionNotMet(
-                        "Bwd_out_meta should only be init once. Additional "
-                        "initialization for it is forbidden. If you got this "
-                        "error, it indicates bugs in framework."));
+  auto& metas = bwd_out_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
-  meta.Init(slot_size);
+  metas.resize(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
     const auto& fwd_in_tensor = fwd_in[i];
+    auto& meta = metas[i];
     auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in_tensor);
     if (fwd_in_meta) {
       // Set Stop Gradient only when its true or non-initialized autograd_meta,
       // since all default value is false.
-      meta.SetStopGradient(i, fwd_in_meta->StopGradient());
+      meta.SetStopGradient(fwd_in_meta->StopGradient());
     }
 
     // Record TensorMeta
@@ -246,7 +231,7 @@ void GradNodeBase::SetGradOutMeta(
         // Only Copy Meta
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
-        meta.SetTensorMeta(i, dense_tensor->meta());
+        meta.SetTensorMeta(dense_tensor->meta());
       }
     }
   }
@@ -259,12 +244,8 @@ void GradNodeBase::SetDefaultGradInOutMeta() {
                      "meta setter, other size of inputs and outputs should "
                      "create with Setter and Getters"));
   // Default stop_gradient is false and slot id is 0, slot size is 1;
-  bwd_out_meta_[0].Init(1);
-  bwd_in_meta_[0].Init(1);
-}
-
-const std::vector<std::vector<Edge>>& GradNodeBase::GetEdges() const {
-  return adj_edges_;
+  bwd_out_meta_[0].resize(1);
+  bwd_in_meta_[0].resize(1);
 }
 
 int64_t GradNodeBase::RegisterGradientHook(
@@ -325,12 +306,20 @@ GradNodeBase::ApplyGradientHooks(
 void GradNodeBase::HandleComplexGradToRealGrad(
     std::vector<std::vector<paddle::experimental::Tensor>>* out_grads) {
   for (size_t slot_id = 0; slot_id < out_grads->size(); slot_id++) {
-    const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id];
     const std::vector<paddle::experimental::Tensor>& slot_out_grads =
         (*out_grads)[slot_id];
     for (size_t rank_id = 0; rank_id < slot_out_grads.size(); rank_id++) {
+      const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id][rank_id];
+
+      PADDLE_ENFORCE(
+          slot_meta.HasTensorMeta() > 0,
+          paddle::platform::errors::Fatal(
+              "We require TensorMeta in GradInputMeta() to obtain forward data "
+              "types."
+              "However, no TensorMeta is detected in bwd_out_meta_."));
+
       auto fwd_data_type = paddle::framework::TransToProtoVarType(
-          slot_meta.GetTensorMeta(rank_id).dtype);
+          slot_meta.GetTensorMeta().dtype);
       const paddle::experimental::Tensor& grad = slot_out_grads[rank_id];
 
       if (paddle::framework::IsComplexType(fwd_data_type)) continue;

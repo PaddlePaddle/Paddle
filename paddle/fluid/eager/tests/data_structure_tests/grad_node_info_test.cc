@@ -24,14 +24,9 @@
 
 TEST(GradNodeInfo, GradSlotMeta) {
   auto grad_slot = egr::GradSlotMeta();
-  CHECK(grad_slot.IsInitialized() == false);
-  VLOG(6) << "Init GradSlotMeta";
-  grad_slot.Init(2);
-  CHECK(grad_slot.IsInitialized() == true);
   VLOG(6) << "Set SetStopGradient";
-  grad_slot.SetStopGradient(0);
-  CHECK(grad_slot.IsStopGradient(0) == true);
-  CHECK_EQ(grad_slot.Size(), 2);
+  grad_slot.SetStopGradient();
+  CHECK(grad_slot.IsStopGradient() == true);
 }
 
 void TestGradNodeBase(bool is_remove_gradient_hook) {
@@ -57,24 +52,25 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
                ->data<float>()[0],
            6.0f);
   VLOG(6) << "Test Add Edges";
-  egr::Edge edge0(grad_test_node1, 1, 2);
-  auto auto_grad0 = std::make_shared<egr::AutogradMeta>(edge0);
+  egr::Edge tmp_edge0(grad_test_node1, 1, 2);
+  auto auto_grad0 = std::make_shared<egr::AutogradMeta>(tmp_edge0);
   auto_grad0->SetStopGradient(false);
-  egr::Edge edge1(grad_test_node1, 3, 4);
-  auto auto_grad1 = std::make_shared<egr::AutogradMeta>(edge1);
+
+  egr::Edge tmp_edge1(grad_test_node1, 3, 4);
+  auto auto_grad1 = std::make_shared<egr::AutogradMeta>(tmp_edge1);
   et1.set_autograd_meta(auto_grad1);
   auto_grad1->SetStopGradient(false);
   grad_test_node0->AddEdges(auto_grad0.get(), 0);
-  CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().first,
-           size_t(1));
-  CHECK_EQ(grad_test_node0->GetEdges()[0][0].GetEdgeRankInfo().second,
-           size_t(2));
+
+  const auto& edge0 = grad_test_node0->OutputMeta()[0][0].GetEdge();
+  CHECK_EQ(edge0.GetEdgeRankInfo().first, size_t(1));
+  CHECK_EQ(edge0.GetEdgeRankInfo().second, size_t(2));
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
+
   grad_test_node0->AddEdges(&metas, 1);
-  CHECK_EQ(grad_test_node0->GetEdges()[1][0].GetEdgeRankInfo().first,
-           size_t(3));
-  CHECK_EQ(grad_test_node0->GetEdges()[1][0].GetEdgeRankInfo().second,
-           size_t(4));
+  const auto& edge1 = grad_test_node0->OutputMeta()[1][0].GetEdge();
+  CHECK_EQ(edge1.GetEdgeRankInfo().first, size_t(3));
+  CHECK_EQ(edge1.GetEdgeRankInfo().second, size_t(4));
 
   VLOG(6) << "Test Set Meta and Get Meta";
   auto_grad1->SetStopGradient(true);
@@ -82,22 +78,26 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   grad_test_node0->SetGradInMeta({et1}, 1);
   grad_test_node0->SetGradOutMeta(et1, 0);
   grad_test_node0->SetGradOutMeta({et1}, 1);
-  CHECK_EQ(grad_test_node0->InputMeta()[0].Size(), 1);
-  CHECK_EQ(grad_test_node0->InputMeta()[1].Size(), 1);
-  CHECK_EQ(grad_test_node0->InputMeta()[0].GetTensorMeta(0).dtype, meta.dtype);
-  CHECK_EQ(grad_test_node0->InputMeta()[1].GetTensorMeta(0).dtype, meta.dtype);
-  CHECK(grad_test_node0->OutputMeta()[0].IsStopGradient(0));
-  CHECK(grad_test_node0->OutputMeta()[1].IsStopGradient(0));
-  CHECK_EQ(grad_test_node0->OutputMeta()[0].GetTensorMeta(0).dtype, meta.dtype);
-  CHECK_EQ(grad_test_node0->OutputMeta()[1].GetTensorMeta(0).dtype, meta.dtype);
+  CHECK_EQ(grad_test_node0->InputMeta()[0].size(), size_t(1));
+  CHECK_EQ(grad_test_node0->InputMeta()[1].size(), size_t(1));
+  CHECK_EQ(grad_test_node0->InputMeta()[0][0].GetTensorMeta().dtype,
+           meta.dtype);
+  CHECK_EQ(grad_test_node0->InputMeta()[1][0].GetTensorMeta().dtype,
+           meta.dtype);
+  CHECK(grad_test_node0->OutputMeta()[0][0].IsStopGradient());
+  CHECK(grad_test_node0->OutputMeta()[1][0].IsStopGradient());
+  CHECK_EQ(grad_test_node0->OutputMeta()[0][0].GetTensorMeta().dtype,
+           meta.dtype);
+  CHECK_EQ(grad_test_node0->OutputMeta()[1][0].GetTensorMeta().dtype,
+           meta.dtype);
 
   VLOG(6) << "Test Default Set Meta and Get Meta";
   auto grad_test_node2 = std::make_shared<eager_test::GradTestNode>(
       /* val */ 5.0, /* in_num */ 1, /* out_num */ 1);
   grad_test_node2->SetDefaultGradInOutMeta();
-  CHECK(grad_test_node2->OutputMeta()[0].IsInitialized());
-  CHECK(grad_test_node2->OutputMeta()[0].IsStopGradient(0) == false);
-  CHECK_EQ(grad_test_node2->OutputMeta()[0].Size(), 1);
+  CHECK_GT(grad_test_node2->OutputMeta()[0].size(), size_t(0));
+  CHECK(grad_test_node2->OutputMeta()[0][0].IsStopGradient() == false);
+  CHECK_EQ(grad_test_node2->OutputMeta()[0].size(), size_t(1));
 
   VLOG(6) << "Test Gradient Hook";
   auto gradient_hook = [](
@@ -166,7 +166,7 @@ TEST(GradNodeInfo, Edge) {
 
   CHECK_EQ(grad_node->InputMeta().size(), size_t(2));
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
-  CHECK(grad_node->InputMeta()[0].IsStopGradient(0) == true);
+  CHECK(grad_node->InputMeta()[0][0].IsStopGradient() == true);
   VLOG(6) << "Test Get/Set Edge Rank Info";
   CHECK_EQ(edge2.GetEdgeRankInfo().first, size_t(1));
   CHECK_EQ(edge2.GetEdgeRankInfo().second, size_t(0));

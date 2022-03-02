@@ -1803,7 +1803,7 @@ static std::string GenerateSingleOpBase(
             !is_op_base_per_duplicable_input) {
           const char* GRAD_OUTS_CONTENT_TEMPLATE =
               "{ \"%s\", egr::EagerUtils::CreateVars( "
-              "this->OutputMeta()[%d].Size() ) },";
+              "this->OutputMeta()[%d].size() ) },";
           outs_contents_str += paddle::string::Sprintf(
               GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
         } else {
@@ -2031,7 +2031,7 @@ static std::string GenerateGradNodeCCContents(
 
   if (is_op_base_per_duplicable_input) {
     const char* OP_BASE_PER_DUP_INPUT_TEMPLATE =
-        "  for(int i = 0; i < this->OutputMeta()[0].Size(); i++) {\n"
+        "  for(size_t i = 0; i < this->OutputMeta()[0].size(); i++) {\n"
         "    %s\n"
         "  }\n";
     generated_grad_function_body = paddle::string::Sprintf(
