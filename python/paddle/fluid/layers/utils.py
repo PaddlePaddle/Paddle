@@ -483,8 +483,6 @@ def rename_op_name_recurrsive(op, old_name, new_name, method):
         return
     if op.type() == "if":
         # set the attr also
-        import pdb
-        pdb.set_trace()
         new_out = op.attr("skip_eager_deletion_vars")
         new_out = [name if name != old_name else new_name for name in new_out]
         op._set_attr("skip_eager_deletion_vars", new_out)

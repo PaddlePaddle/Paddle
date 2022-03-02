@@ -2530,7 +2530,7 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
 
         param_list = get_param_list_from_grad_block(true_grad_block,
                                                     target_block)
-        param_list += get_param_list_from_grad_block(true_grad_block,
+        param_list += get_param_list_from_grad_block(false_grad_block,
                                                      target_block)
         param_list = list(set(param_list))
         output_names = [param + "@GRAD" for param in param_list]
@@ -2549,6 +2549,7 @@ def _build_if(pred, true_output, true_block, false_output, false_block, helper):
                 'is_grad': True,
                 'is_scalar_condition': True,
             })
+
         if_bwd_op.desc._set_attr("skip_eager_deletion_vars", output_names)
         if_bwd_op.desc._set_attr("true_outs", output_names)
         if_bwd_op.desc._set_attr("false_outs", output_names)
@@ -2749,7 +2750,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     check_variable_and_dtype(pred, "pred", ['bool'], "fluid.layers.cond")
     check_type(name, "name", (str, type(None)), "fluid.layers.cond")
 
-    if os.environ.get("FLAGS_new_cond", True):
+    if int(os.environ.get("FLAGS_new_cond", True)):
         return cond_v2(pred, true_fn, false_fn, name)
 
     helper = LayerHelper('cond', **locals())

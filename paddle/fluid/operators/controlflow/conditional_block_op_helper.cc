@@ -25,8 +25,39 @@ class ProgramDesc;
 namespace paddle {
 namespace operators {
 
+static const framework::OperatorBase *GetOperatorBasePointer(
+    const std::unique_ptr<framework::OperatorBase> &x) {
+  return x.get();
+}
+
+static const framework::OperatorBase *GetOperatorBasePointer(
+    const framework::OperatorBase *x) {
+  return x;
+}
+
+template <typename T>
+static void FindAllConditionalOps(T &all_ops,  // NOLINT
+                                  std::vector<OpVariant> *fwd_ops,
+                                  std::vector<OpVariant> *bwd_ops) {
+  for (auto &op : all_ops) {
+    if (op->Type() == "conditional_block" ||
+        (op->Type() == "if" && op->template Attr<bool>("is_grad") == false)) {
+      fwd_ops->emplace_back(GetOperatorBasePointer(op));
+    } else if (op->Type() == "conditional_block_grad" ||
+               (op->Type() == "if" &&
+                op->template Attr<bool>("is_grad") == true)) {
+      bwd_ops->emplace_back(GetOperatorBasePointer(op));
+    }
+  }
+}
+
 static bool IsMatchedConditionalBlockOpAndConditionalBlockGradOp(
     const OpVariant &fwd_op, const OpVariant &bwd_op) {
+  if (fwd_op.Type() == "if") {
+    // NOTE(xiongkun): the backward of if is the same as if foward.
+    return fwd_op.Outputs().at(ConditionalOp::kScope) ==
+           bwd_op.Outputs().at(ConditionalOp::kScope);
+  }
   return fwd_op.Outputs().at(ConditionalOp::kScope) ==
          bwd_op.Inputs().at(ConditionalOp::kScope);
 }
@@ -45,9 +76,13 @@ static void FindAllConditionalBlockAndConditionalBlockGradOp(
     auto &block = program.Block(i);
     for (size_t j = 0; j < block.OpSize(); ++j) {
       auto *op = block.Op(j);
-      if (op->Type() == "conditional_block") {
+      if (op->Type() == "conditional_block" ||
+          (op->Type() == "if" &&
+           op->GetAttrIfExists<bool>("is_grad") == false)) {
         fwd_ops->emplace_back(op);
-      } else if (op->Type() == "conditional_block_grad") {
+      } else if (op->Type() == "conditional_block_grad" ||
+                 (op->Type() == "if" &&
+                  op->GetAttrIfExists<bool>("is_grad") == true)) {
         bwd_ops->emplace_back(op);
       }
     }
@@ -62,35 +97,56 @@ static void FindAllConditionalBlockAndConditionalBlockGradOp(
           fwd_ops->size(), bwd_ops->size()));
 }
 
-static void SetSkipVarsForConditionalBlockOp(OpVariant *fwd_op,
-                                             OpVariant *bwd_op) {
-  auto *grad_block = bwd_op->Attr<framework::BlockDesc *>("sub_block");
-  auto is_skippable_in_fwd = [grad_block](const std::string &var_name) {
-    return var_name != framework::kEmptyVarName &&
-           !grad_block->HasVar(var_name);
+static void CollectSkipVarsFromBackwardBlock(
+    const framework::BlockDesc &grad_block,
+    std::unordered_set<std::string> *forward_skip_vars) {
+  auto is_skippable_in_fwd = [&grad_block](const std::string &var_name) {
+    return var_name != framework::kEmptyVarName && !grad_block.HasVar(var_name);
   };
 
-  std::unordered_set<std::string> forward_skip_vars;
-  for (auto *op_desc : grad_block->AllOps()) {
+  for (auto *op_desc : grad_block.AllOps()) {
     for (auto &in_arg_name : op_desc->InputArgumentNames()) {
       if (is_skippable_in_fwd(in_arg_name)) {
-        forward_skip_vars.insert(in_arg_name);
+        forward_skip_vars->insert(in_arg_name);
       }
     }
 
     for (auto &out_arg_name : op_desc->OutputArgumentNames()) {
       if (is_skippable_in_fwd(out_arg_name)) {
-        forward_skip_vars.insert(out_arg_name);
+        forward_skip_vars->insert(out_arg_name);
       }
     }
   }
+}
 
+static void SetSkipVarsForIfOp(OpVariant *fwd_op, OpVariant *bwd_op) {
   auto &fwd_attrs = const_cast<framework::AttributeMap &>(fwd_op->Attrs());
+  auto *true_grad_block = bwd_op->Attr<framework::BlockDesc *>("true_block");
+  auto *false_grad_block = bwd_op->Attr<framework::BlockDesc *>("false_block");
+  auto &raw_skips = bwd_op->Attr<std::vector<std::string>>(
+      ConditionalOp::kSkipEagerDeletionVars);
+  std::unordered_set<std::string> forward_skip_vars(raw_skips.begin(),
+                                                    raw_skips.end());
+  CollectSkipVarsFromBackwardBlock(*true_grad_block, &forward_skip_vars);
+  CollectSkipVarsFromBackwardBlock(*false_grad_block, &forward_skip_vars);
   std::vector<std::string> skip_vars_vec(forward_skip_vars.begin(),
                                          forward_skip_vars.end());
   VLOG(2) << "Prepare to skip " << skip_vars_vec.size()
           << " var(s): " << string::join_strings(skip_vars_vec, ' ');
   fwd_attrs[ConditionalOp::kSkipEagerDeletionVars] = std::move(skip_vars_vec);
+}
+
+static void SetSkipVarsForConditionalBlockOp(OpVariant *fwd_op,
+                                             OpVariant *bwd_op) {
+  auto *grad_block = bwd_op->Attr<framework::BlockDesc *>("sub_block");
+  std::unordered_set<std::string> forward_skip_vars;
+  CollectSkipVarsFromBackwardBlock(*grad_block, &forward_skip_vars);
+  std::vector<std::string> skip_vars_vec(forward_skip_vars.begin(),
+                                         forward_skip_vars.end());
+  auto &fwd_attrs = const_cast<framework::AttributeMap &>(fwd_op->Attrs());
+  VLOG(2) << "Prepare to skip " << skip_vars_vec.size()
+          << " var(s): " << string::join_strings(skip_vars_vec, ' ');
+  fwd_attrs[ConditionalOp::kSkipEagerDeletionVars] = skip_vars_vec;
 }
 
 static void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
@@ -126,8 +182,11 @@ static void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
         platform::errors::PreconditionNotMet(
             "Cannot find matched forward conditional_block op."));
 
-    SetSkipVarsForConditionalBlockOp(const_cast<OpVariant *>(matched_fwd_op),
-                                     &bwd_op);
+    if (matched_fwd_op->Type() == "if")
+      SetSkipVarsForIfOp(const_cast<OpVariant *>(matched_fwd_op), &bwd_op);
+    else
+      SetSkipVarsForConditionalBlockOp(const_cast<OpVariant *>(matched_fwd_op),
+                                       &bwd_op);
     ifelse_op_set.erase(*matched_fwd_op);
   }
 }
@@ -147,14 +206,7 @@ void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
   if (block_id != 0) return;
 
   std::vector<OpVariant> fwd_ops, bwd_ops;
-  for (auto &op : all_ops) {
-    if (op->Type() == "conditional_block") {
-      fwd_ops.emplace_back(op.get());
-    } else if (op->Type() == "conditional_block_grad") {
-      bwd_ops.emplace_back(op.get());
-    }
-  }
-
+  FindAllConditionalOps(all_ops, &fwd_ops, &bwd_ops);
   PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
       program, &fwd_ops, &bwd_ops);
 }
@@ -173,14 +225,7 @@ void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
   if (block_id != 0) return;
 
   std::vector<OpVariant> fwd_ops, bwd_ops;
-  for (auto *op : all_ops) {
-    if (op->Type() == "conditional_block") {
-      fwd_ops.emplace_back(op);
-    } else if (op->Type() == "conditional_block_grad") {
-      bwd_ops.emplace_back(op);
-    }
-  }
-
+  FindAllConditionalOps(all_ops, &fwd_ops, &bwd_ops);
   PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
       program, &fwd_ops, &bwd_ops);
 }

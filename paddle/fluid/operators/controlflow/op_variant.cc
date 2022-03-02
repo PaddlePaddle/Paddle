@@ -33,6 +33,13 @@ struct OutputsVisitor
   }
 };
 
+struct TypeVisitor : public boost::static_visitor<std::string> {
+  template <typename OpType>
+  std::string operator()(const OpType *op) const {
+    return op->Type();
+  }
+};
+
 struct AttributeMapVisitor
     : public boost::static_visitor<const framework::AttributeMap *> {
   const framework::AttributeMap *operator()(const framework::OpDesc *op) const {
@@ -62,6 +69,10 @@ const framework::VariableNameMap &OpVariant::Outputs() const {
 
 const framework::AttributeMap &OpVariant::Attrs() const {
   return *boost::apply_visitor(AttributeMapVisitor(), op_);
+}
+
+std::string OpVariant::Type() const {
+  return boost::apply_visitor(TypeVisitor(), op_);
 }
 
 const void *OpVariant::RawPointer() const {

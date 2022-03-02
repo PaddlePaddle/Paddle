@@ -73,6 +73,9 @@ class IfOp : public IfBaseOp {
             "Expected scopes.size() == 1, but received %d .", scopes->size()));
     auto &cur_scope = *scopes->front();
 
+    if (is_grad) {
+      VLOG(5) << "If curscope is : " << GenScopeTreeDebugInfo(&cur_scope);
+    }
     // Step 3. Prepare Executor and Execute it.
     framework::Executor exec(place);
     exec.Run(*block->Program(), &cur_scope, block->ID(), false, true, skip_vars,

@@ -44,6 +44,8 @@ class OpVariant {
 
   const framework::AttributeMap &Attrs() const;
 
+  std::string Type() const;
+
   const void *RawPointer() const;
 
   template <typename AttrType>

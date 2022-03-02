@@ -154,11 +154,14 @@ class IfBaseOp : public framework::OperatorBase {
     for (size_t i = 0; i < out_var_names.size(); ++i) {
       if (out_var_names[i] == framework::kEmptyVarName) continue;
       auto *out_var = outer_scope->FindVar(out_var_names[i]);
-      PADDLE_ENFORCE_NOT_NULL(
-          out_var, platform::errors::InvalidArgument(
-                       "out_var : %s is null, which is not expected. we should "
-                       "ensure @GRAD is created in the most_outer_scope",
-                       out_var_names[i]));
+
+      // NOTE(xiongkun): the output may don't exist in outer scope. for example,
+      // append backwards in the subblock.
+      if (out_var == nullptr) continue;
+
+      VLOG(3) << "out_var :`" << out_var_names[i]
+              << "` is null."
+                 "ensure @GRAD is created in the most_outer_scope";
       // Don't use tensor->IsInitialized, use tensor->numel() != 0 instead.
       // because initialized don't mean data is valid, if the numel()==0, the
       // grad is still invalid.
