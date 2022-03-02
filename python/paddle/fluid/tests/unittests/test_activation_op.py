@@ -2276,7 +2276,7 @@ class TestSquareBF16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.1)
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.5)
 
 
 class TestPow(TestActivation):
