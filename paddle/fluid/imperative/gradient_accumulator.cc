@@ -732,6 +732,7 @@ void GradientAccumulator::CallGradientHooks() {
             << var_->GetVariableWrapperHooks().size();
     for (const auto& hook_pair : var_->GetVariableWrapperHooks()) {
       tmp_var = (*hook_pair.second)(tmp_var);
+      CheckVar(inner_var_, tmp_var);
     }
     inner_var_ = tmp_var;
   }
