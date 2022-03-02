@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.core import (_RecordEvent, TracerEventType)
+from paddle.fluid.core import (_RecordEvent, TracerEventType,
+                               LoadProfilerResult)
 from typing import Any
 from warnings import warn
 import functools
@@ -46,14 +47,19 @@ _AllowedEventTypeList = [
 
 
 class RecordEvent(ContextDecorator):
-    '''
-  Interface for recording a time range.
-  Examples:
-    .. code-block:: python
-    import paddle.profiler as profiler
-    with profiler.RecordEvent(name='op1'):
-      op1()
-  '''
+    r"""
+    Interface for recording a time range.
+
+    Parameters:
+    name(str): Name of the record event
+    event_type(TracerEventType): Type of the record event, can be used for statistics.
+
+    Examples:
+        .. code-block:: python
+        import paddle.profiler as profiler
+        with profiler.RecordEvent(name='op1', event_type=TracerEventType=TracerEventType.UserDefined):
+            op1()
+    """
 
     def __init__(self,
                  name: str,

@@ -28,8 +28,6 @@
 
 DECLARE_int64(host_trace_level);
 
-DECLARE_int64(host_trace_level);
-
 namespace paddle {
 namespace platform {
 

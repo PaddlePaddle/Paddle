@@ -30,9 +30,9 @@ _CommunicationOpName = ['reduce', 'broadcast', 'rpc']
 
 
 class SortedKeys(Enum):
-    '''
-  Sorted keys for printing op summary table.
-  '''
+    r"""
+    Sorted keys for printing op summary table.
+    """
     OpTotal = 0
     OpAvg = 1
     OpMax = 2
@@ -44,9 +44,9 @@ class SortedKeys(Enum):
 
 
 class TimeRangeSummary:
-    '''
+    r"""
     Analyse time ranges for each TracerEventType, and summarize the time.
-    '''
+    """
 
     def __init__(self):
         self.CPUTimeRange = collections.defaultdict(list)
@@ -58,9 +58,9 @@ class TimeRangeSummary:
             lambda: collections.defaultdict(int))
 
     def parse(self, nodetrees):
-        '''
-    Analysis node trees in profiler result, and get time range for different tracer event type
-    '''
+        r"""
+        Analysis node trees in profiler result, and get time range for different tracer event type.
+        """
         thread2hostnodes = traverse_tree(nodetrees)
         for threadid, hostnodes in thread2hostnodes.items():
             CPUTimeRange = collections.defaultdict(list)
@@ -136,9 +136,9 @@ class TimeRangeSummary:
 
 
 class EventSummary:
-    '''
+    r"""
     Analyse operator event in profiling data, correlate with its device event.
-    '''
+    """
 
     class DeviceItem:
         def __init__(self, name):
@@ -309,9 +309,9 @@ class EventSummary:
             dict)  # for userdefined
 
     def parse(self, nodetrees):
-        '''
-    Analysis operator event in the nodetress.
-    '''
+        r"""
+        Analysis operator event in the nodetress.
+        """
         thread2hostnodes = traverse_tree(nodetrees)
         for threadid, hostnodes in thread2hostnodes.items():
             for hostnode in hostnodes[1:]:  #skip root node
@@ -352,9 +352,9 @@ class EventSummary:
 
 
 class StatisticData:
-    '''
+    r"""
     Hold all analysed results.
-    '''
+    """
 
     def __init__(self, node_trees, extra_info):
         self.node_trees = node_trees
@@ -393,20 +393,9 @@ def _build_table(statistic_data,
     total_time = statistic_data.time_range_summary.get_cpu_range_sum(
         TracerEventType.ProfileStep)
     ###### Print Device Summary ######
-    headers = ['Device', 'Process Utilization (%)']
-    device_names = ['CPU']
-    device_names.extend([
-        'GPU{}'.format(key)
-        for key in statistic_data.time_range_summary.GPUTimeRange.keys()
-    ])
-    MAX_NAME_COLUMN_WIDTH = 50
-    name_column_width = max(
-        [len(device_name) for device_name in device_names]) + 4
-    name_column_width = max(len(headers[0]), name_column_width)
-    name_column_width = min(name_column_width, MAX_NAME_COLUMN_WIDTH)
-
+    headers = ['Device', 'Utilization (%)']
+    name_column_width = 30
     DEFAULT_COLUMN_WIDTH = 20
-
     add_column(name_column_width)
     for _ in headers[1:]:
         add_column(DEFAULT_COLUMN_WIDTH)
@@ -423,9 +412,9 @@ def _build_table(statistic_data,
         result.append('\n')
 
     def format_time(time, unit='ms', indent=0):
-        '''
-      Transform time in ns to time in unit.
-      '''
+        r"""
+        Transform time in ns to time in unit.
+        """
         if time == float('inf'):
             return '-'
         else:
@@ -439,9 +428,9 @@ def _build_table(statistic_data,
             return '{}{:.2f}'.format(' ' * indent, result)
 
     def format_ratio(ratio, indent=0):
-        '''
-      Transform ratio within [0, 1] to percentage presentation.
-      '''
+        r"""
+        Transform ratio within [0, 1] to percentage presentation.
+        """
         return '{}{:.2f}'.format(' ' * indent, ratio * 100)
 
     append(add_title(line_length, "Device Summary"))
@@ -449,13 +438,16 @@ def _build_table(statistic_data,
     append(header_sep)
     append(row_format.format(*headers))
     append(header_sep)
-    row_values = []
-    row_values.extend([
-        'CPU', format_ratio(
+    row_values = [
+        'CPU(Process)', format_ratio(
             float(statistic_data.extra_info['Process Cpu Utilization']))
-    ])
+    ]
     append(row_format.format(*row_values))
-
+    row_values = [
+        'CPU(System)', format_ratio(
+            float(statistic_data.extra_info['System Cpu Utilization']))
+    ]
+    append(row_format.format(*row_values))
     for gpu_name in statistic_data.time_range_summary.get_gpu_devices():
         gpu_time = float(
             statistic_data.time_range_summary.get_gpu_range_sum(
@@ -466,8 +458,9 @@ def _build_table(statistic_data,
 
     append(header_sep)
     append(
-        "Note:\nCPU Utilization = process CPU time over all cpu cores / elapsed time, so max utilization can be reached 100% * number of cpu cores.\n"
-        "GPU Utilization = process GPU time / elapsed time")
+        "Note:\nCPU(Process) Utilization = Current process CPU time over all cpu cores / elapsed time, so max utilization can be reached 100% * number of cpu cores.\n"
+        "CPU(System) Utilization = All processes CPU time over all cpu cores(busy time) / (busy time + idle time).\n"
+        "GPU Utilization = Current process GPU time / elapsed time")
     append('-' * line_length)
     append('')
     append('')
