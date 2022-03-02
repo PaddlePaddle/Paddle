@@ -93,11 +93,11 @@ class TestGeneratorSeed(unittest.TestCase):
 
         fluid.enable_dygraph()
 
-        gen = paddle.seed(12312321111)
+        paddle.seed(12312321111)
         x = paddle.randint(low=10, shape=[10], dtype="int32")
-        st1 = gen.get_state()
+        st1 = paddle.get_cuda_rng_state()
         x1 = paddle.randint(low=10, shape=[10], dtype="int32")
-        gen.set_state(st1)
+        paddle.set_cuda_rng_state(st1)
         x2 = paddle.randint(low=10, shape=[10], dtype="int32")
         paddle.seed(12312321111)
         x3 = paddle.randint(low=10, shape=[10], dtype="int32")
