@@ -16,15 +16,15 @@
 
 namespace phi {
 
-KernelSignature TopkV2OpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("top_k_v2",
+KernelSignature TopkOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("top_k",
                          {"X", "K"},
                          {"k", "axis", "largest", "sorted"},
                          {"Out", "Indices"});
 }
 
-KernelSignature TopkV2GradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("top_k_v2_grad",
+KernelSignature TopkGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("top_k_grad",
                          {GradVarName("Out"), "X", "Indices"},
                          {"k", "axis", "largest", "sorted"},
                          {GradVarName("X")});
@@ -32,5 +32,5 @@ KernelSignature TopkV2GradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(top_k_v2, phi::TopkV2OpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(top_k_v2_grad, phi::TopkV2GradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(top_k, phi::TopkOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(top_k_grad, phi::TopkGradOpArgumentMapping);
