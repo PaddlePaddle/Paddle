@@ -66,7 +66,7 @@ template <
 DenseTensor Real(const Context& dev_ctx, const DenseTensor& x) {
   auto dense_out = phi::Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
-  UnchangedInferMeta(x, &meta_out);
+  RealAndImagInferMeta(x, &meta_out);
   RealKernel<T>(dev_ctx, x, &dense_out);
   return dense_out;
 }
@@ -92,7 +92,7 @@ template <
 DenseTensor Imag(const Context& dev_ctx, const DenseTensor& x) {
   auto dense_out = phi::Empty<T, Context>(dev_ctx);
   MetaTensor meta_out(&dense_out);
-  UnchangedInferMeta(x, &meta_out);
+  RealAndImagInferMeta(x, &meta_out);
   ImagKernel<T>(dev_ctx, x, &dense_out);
   return dense_out;
 }

@@ -99,11 +99,11 @@ DenseTensor DiagFill(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor BatchDiag(const Context& dev_ctx, const DenseTensor& x, int batch) {
   DenseTensor out;
-  auto* x_data = x.data<phi::funcs::Real<T>>();
+  auto* x_data = x.data<phi::dtype::Real<T>>();
   auto numel = x.numel();
   out.Resize(x.dims());
-  auto* out_data = dev_ctx.template HostAlloc<phi::funcs::Real<T>>(
-      &out, static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
+  auto* out_data = dev_ctx.template HostAlloc<phi::dtype::Real<T>>(
+      &out, static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
 
   auto x_dims = x.dims();
   int num_dims = x_dims.size();

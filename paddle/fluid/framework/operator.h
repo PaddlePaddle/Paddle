@@ -489,6 +489,8 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     return ctx_.OutputVar(name)->IsType<phi::SelectedRows>();
   }
 
+  bool IsForInferShape() const override { return false; }
+
  private:
   const ExecutionContext& ctx_;
 };
