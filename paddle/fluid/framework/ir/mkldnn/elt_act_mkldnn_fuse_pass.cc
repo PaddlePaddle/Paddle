@@ -28,8 +28,7 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::string> act_types = {
       "relu", "tanh", "leaky_relu", "swish", "hardswish", "sqrt",
       "abs",  "clip", "gelu",       "relu6", "sigmoid"};
-  std::vector<std::string> elt_types = {"elementwise_add",
-                                        "elementwise_sub",
+  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub",
                                         "elementwise_mul"};
 
   for (const auto &elt_type : elt_types)
