@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
+#pragma once
 
-REGISTER_OP_CUDA_KERNEL(
-    reduce_prod,
-    ops::ReduceCudaKernel<float, kps::MulFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int, kps::MulFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<double, kps::MulFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int64_t, kps::MulFunctor, kps::IdentityFunctor>);
+#include "paddle/phi/core/dense_tensor.h"
+namespace phi {
+
+template <typename T, typename Context>
+void GatherTreeKernel(const Context &dev_ctx,
+                      const DenseTensor &ids,
+                      const DenseTensor &parents,
+                      DenseTensor *out);
+
+}  // namespace phi
