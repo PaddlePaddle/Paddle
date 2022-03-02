@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (ExecutionMode,
-                                                          IPUOpTest)
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMode
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -29,32 +28,19 @@ class TestBase(IPUOpTest):
         self.set_training()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_attrs()
 
     @property
     def fp16_enabled(self):
         return True
 
-    def set_atol(self):
-        self.atol = 1e-6
-        self.rtol = 1e-5
-        self.atol_fp16 = 1e-2
-        self.rtol_fp16 = 1e-3
-
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
+        data = np.random.uniform(size=[2, 3, 1])
         self.feed_fp32 = {'in_0': data.astype(np.float32)}
         self.feed_fp16 = {'in_0': data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
-
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = False
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
 
     def _test_base(self, exec_mode):
         scope = paddle.static.Scope()
@@ -70,9 +56,8 @@ class TestBase(IPUOpTest):
                     shape=self.feed_shape[0],
                     dtype='float32')
 
-                conv1 = paddle.static.nn.conv2d(
-                    x, num_filters=3, filter_size=3, bias_attr=False)
-                out = paddle.fluid.layers.batch_norm(conv1, **self.attrs)
+                assign = paddle.assign(x)
+                out = paddle.fluid.layers.elementwise_add(assign, assign)
 
                 fetch_list = [out.name]
 
@@ -111,34 +96,6 @@ class TestBase(IPUOpTest):
             output_dict[mode] = self._test_base(mode).flatten()
 
         self.check(output_dict)
-
-
-class TestCase1(TestBase):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
-
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
-
-
-class TestCase2(TestBase):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
-
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = True
 
 
 if __name__ == "__main__":

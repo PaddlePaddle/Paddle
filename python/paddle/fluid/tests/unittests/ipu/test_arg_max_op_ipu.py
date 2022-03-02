@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,26 +35,18 @@ class TestBase(IPUOpTest):
     def fp16_enabled(self):
         return True
 
-    def set_atol(self):
-        self.atol = 1e-6
-        self.rtol = 1e-5
-        self.atol_fp16 = 1e-2
-        self.rtol_fp16 = 1e-3
-
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {'in_0': data.astype(np.float32)}
-        self.feed_fp16 = {'in_0': data.astype(np.float16)}
+        data = np.random.uniform(size=[10, 1000])
+        self.feed_fp32 = {"in_0": data.astype(np.float32)}
+        self.feed_fp16 = {"in_0": data.astype(np.float16)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
 
     def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = False
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
+        self.attrs = {"axis": -1}
 
     def _test_base(self, exec_mode):
         scope = paddle.static.Scope()
@@ -70,11 +62,9 @@ class TestBase(IPUOpTest):
                     shape=self.feed_shape[0],
                     dtype='float32')
 
-                conv1 = paddle.static.nn.conv2d(
-                    x, num_filters=3, filter_size=3, bias_attr=False)
-                out = paddle.fluid.layers.batch_norm(conv1, **self.attrs)
+                out = paddle.fluid.layers.argmax(x, **self.attrs)
 
-                fetch_list = [out.name]
+            fetch_list = [out.name]
 
             if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
@@ -101,44 +91,26 @@ class TestBase(IPUOpTest):
                 feed = self.feed_fp16
 
             result = exe.run(program, feed=feed, fetch_list=fetch_list)
-            return result[0]
+            return result[0].astype(np.int32)
 
-    def test(self):
-        output_dict = {}
+    def test_base(self):
+        output_dict_fp32 = {}
+        output_dict_fp16 = {}
         for mode in ExecutionMode:
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
-            output_dict[mode] = self._test_base(mode).flatten()
 
-        self.check(output_dict)
+            if mode > ExecutionMode.IPU_FP32:
+                output_dict_fp16[mode] = self._test_base(mode).flatten()
+            else:
+                output_dict_fp32[mode] = self._test_base(mode).flatten()
+
+        self.check(output_dict_fp32)
 
 
 class TestCase1(TestBase):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
-
     def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = False
-
-
-class TestCase2(TestBase):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-6
-        self.atol_fp16 = 1e-3
-        self.rtol_fp16 = 1e-3
-
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['is_test'] = True
-        self.attrs['data_layout'] = 'NCHW'
-        self.attrs['in_place'] = True
+        self.attrs = {"axis": 0}
 
 
 if __name__ == "__main__":
