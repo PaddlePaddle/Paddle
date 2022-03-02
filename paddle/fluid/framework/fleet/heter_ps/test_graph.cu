@@ -102,9 +102,27 @@ TEST(TEST_FLEET, graph_comm) {
   res = new int64_t[9];
   cudaMemcpy(res, neighbor_sample_res->val, 72, cudaMemcpyDeviceToHost);
   int64_t expected_sample_val[] = {28, 29, 30, 0, -1, -1, 21, 22, 23};
-  for (int i = 0; i < 9; i++) {
-    if (expected_sample_val[i] != -1) {
-      ASSERT_EQ(res[i], expected_sample_val[i]);
+  std::vector<std::vector<int64_t>> neighbors_;
+  std::vector<int64_t> neighbors_7 = {28, 29, 30, 31, 32, 33, 34, 35};
+  std::vector<int64_t> neighbors_0 = {0};
+  std::vector<int64_t> neighbors_6 = {21, 22, 23, 24, 25, 26, 27};
+  neighbors_.push_back(neighbors_7);
+  neighbors_.push_back(neighbors_0);
+  neighbors_.push_back(neighbors_6);
+  for (int i = 0; i < 3; i++) {
+    for (int j = i * 3; j < i * 3 + 3; j++) {
+      bool flag = false;
+      if (expected_sample_val[j] != -1) {
+        for (int k = 0; k < neighbors_[i].size(); k++) {
+          if (expected_sample_val[j] == neighbors_[i][k]) {
+            flag = true;
+            break;
+          }
+        }
+      } else {
+        flag = true;
+      }
+      ASSERT_EQ(flag, true);
     }
   }
   delete[] res;

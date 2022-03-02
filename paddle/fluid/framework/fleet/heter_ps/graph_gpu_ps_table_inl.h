@@ -13,9 +13,16 @@
 // limitations under the License.
 
 #pragma once
+
+#include <cuda_runtime.h>
+#include <curand_kernel.h>
+
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {
+
+constexpr int WARP_SIZE = 32;
+
 /*
 comment 0
 this kernel just serves as an example of how to sample nodes' neighbors.
@@ -28,20 +35,56 @@ sample_size;
 
 */
 
-__global__ void neighbor_sample_example(GpuPsCommGraph graph, int* index,
-                                        int* actual_size,
-                                        int64_t* sample_result, int sample_size,
-                                        int len) {
-  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < len) {
+template <int BLOCK_WARPS, int TILE_SIZE>
+__global__ void neighbor_sample(const uint64_t rand_seed, GpuPsCommGraph graph,
+                                int sample_size, int* index, int len,
+                                int* actual_size, int64_t* sample_result,
+                                int* output_idx) {
+  assert(blockDim.x == WARP_SIZE);
+  assert(blockDim.y == BLOCK_WARPS);
+
+  int i = blockIdx.x * TILE_SIZE + threadIdx.y;
+  const int last_idx = min(static_cast<int>(blockIdx.x + 1) * TILE_SIZE, len);
+  curandState rng;
+  curand_init(rand_seed * gridDim.x + blockIdx.x,
+              threadIdx.y * WARP_SIZE + threadIdx.x, 0, &rng);
+
+  while (i < last_idx) {
     auto node_index = index[i];
-    actual_size[i] = graph.node_list[node_index].neighbor_size < sample_size
-                         ? graph.node_list[node_index].neighbor_size
-                         : sample_size;
-    int offset = graph.node_list[node_index].neighbor_offset;
-    for (int j = 0; j < actual_size[i]; j++) {
-      sample_result[sample_size * i + j] = graph.neighbor_list[offset + j];
+    int degree = graph.node_list[node_index].neighbor_size;
+    actual_size[i] = degree <= sample_size ? degree : sample_size;
+    const int offset = graph.node_list[node_index].neighbor_offset;
+
+    if (degree <= sample_size) {
+      // Just copy
+      for (int j = threadIdx.x; j < degree; j += WARP_SIZE) {
+        sample_result[sample_size * i + j] = graph.neighbor_list[offset + j];
+      }
+    } else {
+      for (int j = threadIdx.x; j < degree; j += WARP_SIZE) {
+        output_idx[sample_size * i + j] = j;
+      }
+
+      __syncwarp();
+
+      for (int j = sample_size + threadIdx.x; j < degree; j += WARP_SIZE) {
+        const int num = curand(&rng) % (j + 1);
+        if (num < sample_size) {
+          atomicMax(reinterpret_cast<unsigned int*>(output_idx +
+                                                    sample_size * i + num),
+                    static_cast<unsigned int>(j));
+        }
+      }
+
+      __syncwarp();
+
+      for (int j = threadIdx.x; j < sample_size; j += WARP_SIZE) {
+        const int perm_idx = output_idx[sample_size * i + j] + offset;
+        sample_result[sample_size * i + j] = graph.neighbor_list[perm_idx];
+      }
     }
+
+    i += BLOCK_WARPS;
   }
 }
 
@@ -335,10 +378,19 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
     int* res_array = reinterpret_cast<int*>(node.val_storage);
     int* actual_size_array = res_array + shard_len;
     int64_t* sample_array = (int64_t*)(res_array + shard_len * 2);
-    neighbor_sample_example<<<grid_size, block_size_, 0,
-                              resource_->remote_stream(i, gpu_id)>>>(
-        graph, res_array, actual_size_array, sample_array, sample_size,
-        shard_len);
+
+    int* output_idx;
+    cudaMalloc(&output_idx, shard_len * sample_size * sizeof(int));
+    constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
+    constexpr int TILE_SIZE = BLOCK_WARPS * 16;
+    const dim3 block_(WARP_SIZE, BLOCK_WARPS);
+    const dim3 grid_((shard_len + TILE_SIZE - 1) / TILE_SIZE);
+    neighbor_sample<
+        BLOCK_WARPS,
+        TILE_SIZE><<<grid_, block_, 0, resource_->remote_stream(i, gpu_id)>>>(
+        0, graph, sample_size, res_array, shard_len, actual_size_array,
+        sample_array, output_idx);
+    cudaFree(output_idx);
   }
 
   for (int i = 0; i < total_gpu; ++i) {
