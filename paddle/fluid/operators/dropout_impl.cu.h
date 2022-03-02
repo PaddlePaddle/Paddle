@@ -185,14 +185,15 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                               const Tensor* seed, Tensor* mask, Tensor* y) {
   auto& place = *dev_ctx.eigen_device();
 
+  int64_t x_numel = x.numel();
+  auto stream = dev_ctx.stream();
+  auto* x_data = x.data<T>();
+  auto* y_data = y->data<T>();
+
   if (!is_test) {
-    int64_t x_numel = x.numel();
-    auto stream = dev_ctx.stream();
     auto* mask_data = mask->data<uint8_t>();
     size_t size = phi::product(mask->dims());
 
-    auto* x_data = x.data<T>();
-    auto* y_data = y->data<T>();
     if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -254,12 +255,24 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     }
 #endif
   } else {
-    auto X = EigenMatrix<T>::Reshape(x, 1);
-    auto Y = EigenMatrix<T>::Reshape(*y, 1);
     if (upscale_in_train) {
-      Y.device(place) = X;
+// todo: can y share with data with x directly?
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipMemcpyAsync(y_data, x_data, sizeof(T) * x_numel,
+                         cudaMemcpyDeviceToDevice, stream));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemcpyAsync(y_data, x_data, sizeof(T) * x_numel,
+                          cudaMemcpyDeviceToDevice, stream));
+#endif
     } else {
-      Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+      T factor = static_cast<T>(1.0f - dropout_prob);
+      std::vector<const framework::Tensor*> ins = {&x};
+      std::vector<framework::Tensor*> outs = {y};
+      auto functor = phi::funcs::ScaleFunctor<T>(factor);
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
+                                                                &outs, functor);
     }
   }
 }
@@ -271,38 +284,32 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                                 const Tensor& mask, int64_t size,
                                 Tensor* grad_x, bool is_test = false) {
   using MT = typename details::MPTypeTrait<T>::Type;
-  auto stream = dev_ctx.stream();
-  MT factor;
+  auto dX = EigenVector<T>::Flatten(*grad_x);
+  auto dY = EigenVector<T>::Flatten(grad_y);
+
+  auto& place = *dev_ctx.eigen_device();
   if (is_test) {
     if (dropout_implementation == "upscale_in_train") {
-      factor = static_cast<MT>(1.0f);
+      dX.device(place) = static_cast<T>(1) * dY;
     } else {
-      factor = static_cast<MT>(1.0f - dropout_prob);
+      dX.device(place) = dY * static_cast<T>(1.0f - dropout_prob);
     }
-    std::vector<const framework::Tensor*> ins = {&grad_y};
-    std::vector<framework::Tensor*> outs = {grad_x};
-    auto functor = phi::funcs::ScaleFunctor<T>(factor);
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(dev_ctx, ins,
-                                                              &outs, functor);
   } else {
-    std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
-    std::vector<framework::Tensor*> outs = {grad_x};
+    auto M = EigenVector<uint8_t>::Flatten(mask);
     if (dropout_implementation == "upscale_in_train") {
       if (dropout_prob == 1.0f) {
-#ifdef PADDLE_WITH_HIP
-        hipMemset(grad_x->data<T>(), 0, size * sizeof(T));
-#else
-        cudaMemset(grad_x->data<T>(), 0, size * sizeof(T));
-#endif
+        dX.device(place) = static_cast<T>(0) * dY;
       } else {
-        factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
+        auto factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
+        auto stream = dev_ctx.stream();
+        std::vector<const framework::Tensor*> ins = {&grad_y, &mask};
+        std::vector<framework::Tensor*> outs = {grad_x};
+        auto functor = CudaDropoutGradFunctor<T, uint8_t>(factor);
         paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-            dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
+            dev_ctx, ins, &outs, functor);
       }
     } else {
-      factor = static_cast<MT>(1.0f);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-          dev_ctx, ins, &outs, CudaDropoutGradFunctor<T, uint8_t>(factor));
+      dX.device(place) = dY * M.cast<T>();
     }
   }
 }
