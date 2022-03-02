@@ -25,9 +25,9 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
 #include "paddle/fluid/operators/gather.cu.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -121,7 +121,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     Tensor sub_lod_list;
     sub_lod_list.Resize({num_level, lod_size});
     int* sub_lod_list_data = sub_lod_list.mutable_data<int>(dev_ctx.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, int> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, int> set_zero;
     set_zero(dev_ctx, &sub_lod_list, static_cast<int>(0));
 
     Tensor target_lvls;
@@ -135,7 +135,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         roi_num, fpn_rois->data<T>(), lod_size, refer_level, refer_scale,
         max_level, min_level, roi_batch_id_list_gpu.data<int>(),
         sub_lod_list_data, target_lvls_data, pixel_offset);
-    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
+    auto place = dev_ctx.GetPlace();
 
     Tensor index_in_t;
     int* idx_in = index_in_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
@@ -200,7 +200,8 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
       }
       if (multi_rois_num.size() > 0) {
         Tensor* rois_num_t = multi_rois_num[i];
-        TensorCopySync(sub_lod, dev_ctx.GetPlace(), rois_num_t);
+        paddle::framework::TensorCopySync(sub_lod, dev_ctx.GetPlace(),
+                                          rois_num_t);
         rois_num_t->Resize({lod_size});
       }
       framework::LoD lod;

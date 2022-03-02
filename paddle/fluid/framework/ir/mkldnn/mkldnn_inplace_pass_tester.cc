@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP(leaky_relu);
 USE_OP_DEVICE_KERNEL(leaky_relu, MKLDNN);

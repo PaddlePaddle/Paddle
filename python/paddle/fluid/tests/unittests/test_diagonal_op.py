@@ -22,6 +22,7 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.tensor as tensor
+from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -33,10 +34,10 @@ class TestDiagonalOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out')
+        self.check_grad(['Input'], 'Out', check_eager=True)
 
     def init_config(self):
         self.case = np.random.randn(10, 5, 2).astype('float64')
@@ -79,7 +80,8 @@ class TestDiagonalOpCase2(TestDiagonalOp):
             ['Input'],
             'Out',
             user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True)
 
 
 class TestDiagonalOpCase3(TestDiagonalOp):
@@ -121,6 +123,10 @@ class TestDiagonalAPI(unittest.TestCase):
         out_ref = np.diagonal(self.x)
         self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
         paddle.enable_static()
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_api_dygraph()
 
 
 if __name__ == '__main__':

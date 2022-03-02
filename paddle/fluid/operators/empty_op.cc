@@ -61,13 +61,13 @@ class EmptyOp : public framework::OperatorWithKernel {
         num_ele *= shape_dims[i];
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
-      context->SetOutputDim("Out", framework::make_ddim(vec_dims));
+      context->SetOutputDim("Out", phi::make_ddim(vec_dims));
     } else if (context->HasInputs("ShapeTensorList")) {
       std::vector<int> out_dims;
       auto dims_list = context->GetInputsDim("ShapeTensorList");
       for (size_t i = 0; i < dims_list.size(); ++i) {
         auto& dims = dims_list[i];
-        PADDLE_ENFORCE_EQ(dims, framework::make_ddim({1}),
+        PADDLE_ENFORCE_EQ(dims, phi::make_ddim({1}),
                           platform::errors::InvalidArgument(
                               "The shape of Tensor in list must be [1]. "
                               "But received the shape is [%s]",
@@ -76,7 +76,7 @@ class EmptyOp : public framework::OperatorWithKernel {
         out_dims.push_back(-1);
       }
 
-      context->SetOutputDim("Out", framework::make_ddim(out_dims));
+      context->SetOutputDim("Out", phi::make_ddim(out_dims));
     } else {
       auto& shape = context->Attrs().Get<std::vector<int64_t>>("shape");
       for (size_t i = 0; i < shape.size(); ++i) {
@@ -85,9 +85,9 @@ class EmptyOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be no less "
                 "than 0. But recieved: shape[%u] = %d; shape = [%s].",
-                i, shape[i], framework::make_ddim(shape)));
+                i, shape[i], phi::make_ddim(shape)));
       }
-      context->SetOutputDim("Out", framework::make_ddim(shape));
+      context->SetOutputDim("Out", phi::make_ddim(shape));
     }
   }
 
@@ -108,20 +108,6 @@ class EmptyOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         framework::proto::VarType::Type(context.Attr<int>("dtype")),
         context.GetPlace());
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    std::string shape;
-    if (ctx.HasInput("ShapeTensor")) {
-      shape = "ShapeTensor";
-    } else if (ctx.MultiInput<framework::Tensor>("ShapeTensorList").size()) {
-      shape = "ShapeTensorList";
-    } else {
-      shape = "shape";
-    }
-
-    return framework::KernelSignature("empty", {}, {shape}, {"Out"});
   }
 };
 

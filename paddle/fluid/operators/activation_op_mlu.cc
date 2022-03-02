@@ -15,12 +15,12 @@ limitations under the Licnse. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/platform/device/mlu/device_context.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -39,9 +39,9 @@ class ActivationMLUKernel : public framework::OpKernel<T> {
 
     MLUCnnlActivationDesc act_desc(act_mode, alpha);
     MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_ARRAY,
-                                 ToCnnlDataType(input->type()));
+                                 ToCnnlDataType(input->dtype()));
     MLUCnnlTensorDesc output_desc(*output, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(output->type()));
+                                  ToCnnlDataType(output->dtype()));
 
     MLUCnnl::Active(ctx, act_desc.get(), input_desc.get(),
                     reinterpret_cast<const void*>(input->data<T>()),
@@ -62,11 +62,11 @@ class ActivationGradMLUKernel : public framework::OpKernel<T> {
     dx->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc dout_desc(*dout, CNNL_LAYOUT_ARRAY,
-                                ToCnnlDataType(dout->type()));
+                                ToCnnlDataType(dout->dtype()));
     MLUCnnlTensorDesc out_desc(*out, CNNL_LAYOUT_ARRAY,
-                               ToCnnlDataType(out->type()));
+                               ToCnnlDataType(out->dtype()));
     MLUCnnlTensorDesc dx_desc(*dx, CNNL_LAYOUT_ARRAY,
-                              ToCnnlDataType(dx->type()));
+                              ToCnnlDataType(dx->dtype()));
     MLUCnnlActivationDesc act_desc(act_mode, alpha);
     MLUCnnl::ActiveGrad(
         ctx, act_desc.get(), nullptr, nullptr, nullptr, nullptr,

@@ -15,10 +15,10 @@
 # TODO: define the common classes to build a neural network
 import paddle
 from ...fluid.dygraph import Flatten  # noqa: F401
-from ...fluid.framework import in_dygraph_mode
 from .. import functional as F
 from ...fluid.framework import _dygraph_tracer
 from paddle.nn import Layer
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -359,8 +359,9 @@ class Upsample(Layer):
         ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
                     'trilinear', 'bicubic', or 'nearest' currently.
         ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
+        ValueError: 'bilinear' and 'bicubic'  only support 4-D tensor.
         ValueError: 'trilinear' only support 5-D tensor.
+        ValueError: 'nearest' only support 4-D or 5-D tensor.
         ValueError: One of size and scale_factor must not be None.
         ValueError: size length should be 1 for input 3-D tensor.
         ValueError: size length should be 2 for input 4-D tensor.
@@ -1455,7 +1456,7 @@ class Embedding(Layer):
             dtype=self._dtype,
             is_bias=False)
 
-        if in_dygraph_mode() and padding_idx != -1:
+        if in_dynamic_mode() and padding_idx != -1:
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
@@ -1553,7 +1554,7 @@ class Unfold(Layer):
 
 
 class Fold(Layer):
-    """
+    r"""
 
     This Op is used to combines an array of sliding local blocks into a large containing
     tensor. also known as col2im when operated on batched 2D image tensor. Fold calculates each 

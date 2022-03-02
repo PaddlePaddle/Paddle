@@ -42,7 +42,7 @@ class FlattenOp : public framework::OperatorWithKernel {
             "The axis should be less than or equal to input tensor's rank."));
 
     const auto &out_dims = GetOutputShape(axis, in_dims);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -103,12 +103,14 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
     AddComment(R"DOC(
 Flatten Operator
 
@@ -190,7 +192,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
             "The axis should be less than or equal to input tensor's rank"));
 
     const auto &out_dims = FlattenOp::GetOutputShape(axis, in_dims);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -203,7 +205,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
     for (int i = 0; i < in_dims.size(); ++i) {
       xshape_dims[i + 1] = in_dims[i];
     }
-    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
     ctx->ShareLoD("X", "XShape");
   }
 
@@ -251,7 +253,7 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "Flatten2Grad");
     auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }
@@ -291,7 +293,7 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
 
     const auto &out_dims =
         GetOutputShape(real_start_axis, real_stop_axis, in_dims);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -304,7 +306,7 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
     for (int i = 0; i < in_dims.size(); ++i) {
       xshape_dims[i + 1] = in_dims[i];
     }
-    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
     ctx->ShareLoD("X", "XShape");
   }
 
@@ -332,18 +334,6 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
     }
 
     return out_shape;
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    if (ctx.HasOutput("XShape")) {
-      return framework::KernelSignature("flatten_with_xshape", {"X"},
-                                        {"start_axis", "stop_axis"},
-                                        {"Out", "XShape"});
-    } else {
-      return framework::KernelSignature("flatten", {"X"},
-                                        {"start_axis", "stop_axis"}, {"Out"});
-    }
   }
 };
 
@@ -419,7 +409,7 @@ class FlattenContiguousRangeGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "FlattenContiguousRangeGrad");
     auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }

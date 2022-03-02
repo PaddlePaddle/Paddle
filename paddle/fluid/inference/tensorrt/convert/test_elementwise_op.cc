@@ -103,5 +103,5 @@ TEST(elementwise_op, plugin) {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP(elementwise_mul);

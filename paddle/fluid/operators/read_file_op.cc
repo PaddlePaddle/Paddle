@@ -38,7 +38,7 @@ class CPUReadFileKernel : public framework::OpKernel<T> {
 
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     std::vector<int64_t> out_shape = {file_size};
-    out->Resize(framework::make_ddim(out_shape));
+    out->Resize(phi::make_ddim(out_shape));
 
     uint8_t* data = out->mutable_data<T>(ctx.GetPlace());
 
@@ -56,7 +56,7 @@ class ReadFileOp : public framework::OperatorWithKernel {
                           "Output(Out) of ReadFileOp is null."));
 
     auto out_dims = std::vector<int>(1, -1);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
   }
 
  protected:

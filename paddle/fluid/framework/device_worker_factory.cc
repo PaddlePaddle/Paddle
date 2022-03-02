@@ -70,7 +70,7 @@ REGISTER_DEVICE_WORKER_CLASS(DownpourWorkerOpt);
 REGISTER_DEVICE_WORKER_CLASS(HeterSectionWorker);
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
 #endif
 

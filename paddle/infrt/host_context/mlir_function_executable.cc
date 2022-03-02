@@ -15,6 +15,7 @@
 #include "paddle/infrt/host_context/mlir_function_executable.h"
 
 #include <glog/logging.h>
+#include <mlir/IR/BuiltinOps.h>
 
 #include <string>  // NOLINT
 

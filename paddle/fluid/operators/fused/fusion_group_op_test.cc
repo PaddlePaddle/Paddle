@@ -33,7 +33,7 @@ framework::Tensor* CreateTensor(framework::Scope* scope,
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   if (shape.size() > 0) {
-    tensor->mutable_data<T>(framework::make_ddim(shape), place);
+    tensor->mutable_data<T>(phi::make_ddim(shape), place);
   }
   return tensor;
 }
@@ -45,8 +45,7 @@ void SetupRandomCPUTensor(framework::Tensor* tensor,
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
-  T* ptr = tensor->mutable_data<T>(framework::make_ddim(shape),
-                                   platform::CPUPlace());
+  T* ptr = tensor->mutable_data<T>(phi::make_ddim(shape), platform::CPUPlace());
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
   }
@@ -110,7 +109,8 @@ void CheckOutputs(framework::Scope* scope,
   for (size_t j = 0; j < output_names.size(); ++j) {
     auto* var = scope->Var(output_names[j]);
     const auto& dev_tensor = var->Get<framework::LoDTensor>();
-    TensorCopySync(dev_tensor, platform::CPUPlace(), &(cpu_outputs[j]));
+    paddle::framework::TensorCopySync(dev_tensor, platform::CPUPlace(),
+                                      &(cpu_outputs[j]));
 
     cpu_tensors->at(num_inputs + j)
         .mutable_data<float>(dev_tensor.dims(), platform::CPUPlace());
@@ -159,7 +159,7 @@ void TestMain(const std::vector<std::string>& input_names,
     SetupRandomCPUTensor<float>(&(cpu_tensors[i]), input_shapes[i]);
     framework::Tensor* dev_tensor =
         CreateTensor<float>(&scope, place, input_names[i], input_shapes[i]);
-    TensorCopySync(cpu_tensors[i], place, dev_tensor);
+    paddle::framework::TensorCopySync(cpu_tensors[i], place, dev_tensor);
   }
   // Create output tensors.
   std::vector<int64_t> empty_shape;

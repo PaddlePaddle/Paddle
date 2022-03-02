@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 DECLARE_bool(cudnn_deterministic);
 DECLARE_uint64(conv_workspace_size_limit);
@@ -65,7 +65,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
 
     bool exhaustive_search =
-        FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
+        FLAGS_cudnn_exhaustive_search || (ctx.HasAttr("exhaustive_search") &&
+                                          ctx.Attr<bool>("exhaustive_search"));
     bool deterministic = FLAGS_cudnn_deterministic;
     auto exhaustive_deterministic = exhaustive_search && deterministic;
     PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
@@ -134,16 +135,15 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (compute_format == DataLayout::kNCHW) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-      filter_data_dims =
-          framework::slice_ddim(filter_dims, 2, filter_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+      filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
       filter_data_dims =
-          framework::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+          phi::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
     }
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -184,8 +184,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
         }
       }
-      framework::DDim new_input_shape(
-          framework::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_input.Resize(new_input_shape);
       auto& dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
@@ -386,7 +385,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
 
     bool exhaustive_search =
-        FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
+        FLAGS_cudnn_exhaustive_search || (ctx.HasAttr("exhaustive_search") &&
+                                          ctx.Attr<bool>("exhaustive_search"));
     bool deterministic = FLAGS_cudnn_deterministic;
     auto exhaustive_deterministic = exhaustive_search && deterministic;
     PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
@@ -437,7 +437,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             ctx, input_grad, &transformed_input_grad_channel);
         // NOTE(zhiqiu): If inplace_addto strategy is enabled, we need to copy
         // the data of input_grad to transformed_input_grad_channel.
-        if (ctx.Attr<bool>("use_addto")) {
+        if (ctx.HasAttr("use_addto") && ctx.Attr<bool>("use_addto")) {
           TransToChannelFirst<platform::CUDADeviceContext, T>(
               ctx, input_grad, &transformed_input_grad_channel);
         }
@@ -474,15 +474,14 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     framework::DDim in_data_dims;
     framework::DDim filter_data_dims;
     if (compute_format == DataLayout::kNCHW) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-      filter_data_dims =
-          framework::slice_ddim(filter_dims, 2, filter_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+      filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
       filter_data_dims =
-          framework::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+          phi::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
     }
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -525,8 +524,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
           input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
         }
       }
-      framework::DDim new_input_shape(
-          framework::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_input.Resize(new_input_shape);
 
       transformed_input_grad.Resize(new_input_shape);
@@ -636,7 +634,10 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdFilterAlgo_t filter_algo =
         static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
 #endif
-    size_t workspace_size = 0;
+    // input data workspace_size
+    size_t workspace_size_d = 0;
+    // weight workspace_size
+    size_t workspace_size_w = 0;
     int iwo_groups = groups;
     int c_groups = 1;
 
@@ -659,16 +660,16 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
 #ifdef PADDLE_WITH_HIP
       using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
-      workspace_size =
-          std::max(workspace_size, search1::GetWorkspaceSize(args1));
+      workspace_size_d =
+          std::max(workspace_size_d, search1::GetWorkspaceSize(args1));
       data_algo = search1::Find<T>(args1, exhaustive_search, deterministic,
-                                   workspace_size, ctx);
+                                   workspace_size_d, ctx);
 #else
       using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
       data_algo =
           search1::Find<T>(args1, exhaustive_search, deterministic, ctx);
-      workspace_size =
-          std::max(workspace_size, search1::GetWorkspaceSize(args1, data_algo));
+      workspace_size_d = std::max(workspace_size_d,
+                                  search1::GetWorkspaceSize(args1, data_algo));
 #endif
     }
 
@@ -684,16 +685,16 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                       platform::AllowTF32Cudnn(), c_groups);
 #ifdef PADDLE_WITH_HIP
       using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
-      workspace_size =
-          std::max(workspace_size, search2::GetWorkspaceSize(args2));
+      workspace_size_w =
+          std::max(workspace_size_w, search2::GetWorkspaceSize(args2));
       filter_algo = search2::Find<T>(args2, exhaustive_search, deterministic,
-                                     workspace_size, ctx);
+                                     workspace_size_w, ctx);
 #else
       using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
       filter_algo =
           search2::Find<T>(args2, exhaustive_search, deterministic, ctx);
-      workspace_size = std::max(workspace_size,
-                                search2::GetWorkspaceSize(args2, filter_algo));
+      workspace_size_w = std::max(
+          workspace_size_w, search2::GetWorkspaceSize(args2, filter_algo));
 #endif
     }
 
@@ -703,15 +704,17 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     // MIOPEN ONLY support beta to be 0.0f
     ScalingParamType<T> beta = 0.0f;
 #else
-    ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+    ScalingParamType<T> beta =
+        (ctx.HasAttr("use_addto") && ctx.Attr<bool>("use_addto")) ? 1.0f : 0.0f;
 #endif
-    VLOG(4) << "Conv_grad: use_addto = " << ctx.Attr<bool>("use_addto");
+    VLOG(4) << "Conv_grad: use_addto = "
+            << (ctx.HasAttr("use_addto") && ctx.Attr<bool>("use_addto"));
 
     if (input_grad) {
 // When beta is 0, it is unnecessary to reset input_grad.
 // When beta is 1, the output cannot be reset since addt strategy used.
 #ifdef PADDLE_WITH_HIP
-      if (ctx.Attr<bool>("use_addto")) {
+      if (ctx.HasAttr("use_addto") && ctx.Attr<bool>("use_addto")) {
         Tensor temp_tensor(transformed_input_grad.type());
         temp_tensor.Resize(transformed_input_grad.dims());
         T* temp_tensor_data = temp_tensor.mutable_data<T>(ctx.GetPlace());
@@ -722,9 +725,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                       handle, &alpha, args1.odesc.desc(), output_grad_data,
                       args1.wdesc.desc(), filter_data, args1.cdesc.desc(),
                       data_algo, &beta, args1.idesc.desc(), temp_tensor_data,
-                      cudnn_workspace_ptr, workspace_size));
+                      cudnn_workspace_ptr, workspace_size_d));
             },
-            workspace_size);
+            workspace_size_d);
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenOpTensor(
             handle, miopenTensorOpAdd, &alpha, args1.idesc.desc(),
             transformed_input_grad_data, &alpha, args1.idesc.desc(),
@@ -739,9 +742,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                       args1.wdesc.desc(), filter_data, args1.cdesc.desc(),
                       data_algo, &beta, args1.idesc.desc(),
                       transformed_input_grad_data, cudnn_workspace_ptr,
-                      workspace_size));
+                      workspace_size_d));
             },
-            workspace_size);
+            workspace_size_d);
       }
 
 #else
@@ -754,10 +757,10 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                       filter_data + i * group_offset_filter, args1.odesc.desc(),
                       output_grad_data + i * group_offset_out,
                       args1.cdesc.desc(), data_algo, cudnn_workspace_ptr,
-                      workspace_size, &beta, args1.idesc.desc(),
+                      workspace_size_d, &beta, args1.idesc.desc(),
                       transformed_input_grad_data + i * group_offset_in));
             },
-            workspace_size);
+            workspace_size_d);
       }
 #endif
       if (!is_sys_pad) {
@@ -800,9 +803,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                     handle, &alpha, args2.odesc.desc(), output_grad_data,
                     args2.idesc.desc(), input_data, args2.cdesc.desc(),
                     filter_algo, &beta, args2.wdesc.desc(), filter_grad_data,
-                    cudnn_workspace_ptr, workspace_size));
+                    cudnn_workspace_ptr, workspace_size_w));
           },
-          workspace_size);
+          workspace_size_w);
 #else
       for (int i = 0; i < groups; i++) {
         workspace_handle.RunFunc(
@@ -813,10 +816,10 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                       input_data + i * group_offset_in, args2.odesc.desc(),
                       output_grad_data + i * group_offset_out,
                       args2.cdesc.desc(), filter_algo, cudnn_workspace_ptr,
-                      workspace_size, &beta_filter, args2.wdesc.desc(),
+                      workspace_size_w, &beta_filter, args2.wdesc.desc(),
                       filter_grad_data + i * group_offset_filter));
             },
-            workspace_size);
+            workspace_size_w);
       }
 #endif
 
@@ -854,7 +857,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     auto dX = ctx.Output<Tensor>("DInput");
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
-      math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+      phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
       set_zero(dev_ctx, ddO, static_cast<T>(0));
     }
     if (dW) {
@@ -878,7 +881,8 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     int groups = ctx.Attr<int>("groups");
 
     bool exhaustive_search =
-        FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
+        FLAGS_cudnn_exhaustive_search || (ctx.HasAttr("exhaustive_search") &&
+                                          ctx.Attr<bool>("exhaustive_search"));
     bool deterministic = FLAGS_cudnn_deterministic;
     auto exhaustive_deterministic = exhaustive_search && deterministic;
     PADDLE_ENFORCE_EQ(exhaustive_deterministic, false,
@@ -944,11 +948,10 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
 
     auto in_dims = transformed_X_channel.dims();
     auto filter_dims = W->dims();
-    framework::DDim in_data_dims =
-        framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -977,8 +980,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
         input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
-      framework::DDim new_input_shape(
-          framework::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_X.Resize(new_input_shape);
       transformed_ddX.Resize(new_input_shape);
       transformed_dX.Resize(new_input_shape);

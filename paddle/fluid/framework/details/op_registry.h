@@ -275,10 +275,8 @@ struct OpInfoFiller<T, kVarTypeInference> {
 template <typename T>
 struct OpInfoFiller<T, kShapeInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    PADDLE_ENFORCE_EQ(
-        info->infer_shape_, nullptr,
-        platform::errors::AlreadyExists(
-            "Duplicate InferShapeFN of %s has been registered", op_type));
+    // Note: if fill InferShapeFN by this Filler, the infershape here
+    // will overwrite the op->InferShape func registered in kOperator Filler
     info->infer_shape_ = [](InferShapeContext* ctx) {
       T inference;
       inference(ctx);

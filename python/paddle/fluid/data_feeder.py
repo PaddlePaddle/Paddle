@@ -67,6 +67,9 @@ def convert_dtype(dtype):
             # however, jointly supporting python2 and python3, (as well as python4 maybe)
             # may still be a long-lasting problem.
             return str(dtype)
+        # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
+        if dtype in ['bfloat16']:
+            return 'uint16'
 
     raise TypeError(
         "dtype must be any of [bool, float16, uint16, float32, float64, int8, int16, "
@@ -104,14 +107,14 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         expected_type += (core.VarBase, )
         #  TODO(jiabin): uncomment it when we support declarative mode in eager
         # if _in_eager_mode():
-        #     expected_type += (core.eager.EagerTensor, )
+        #     expected_type += (core.eager.Tensor, )
     elif isinstance(input, core.VarBase):
         raise TypeError(
             "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
             "Because received '{}' in {} is a imperative Variable.".format(
                 input_name, op_name))
     elif hasattr(core, "eager"):
-        if isinstance(input, core.eager.EagerTensor):
+        if isinstance(input, core.eager.Tensor):
             raise TypeError(
                 "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
                 "Because received '{}' in {} is a imperative Variable.".format(

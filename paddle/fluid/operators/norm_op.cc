@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/norm_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -115,7 +115,3 @@ REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker,
                   ops::NormOpGradOpMaker<paddle::framework::OpDesc>,
                   ops::NormOpGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(norm_grad, ops::NormOpGrad);
-REGISTER_OP_CPU_KERNEL(norm, ops::NormKernel<CPU, float>,
-                       ops::NormKernel<CPU, double>);
-REGISTER_OP_CPU_KERNEL(norm_grad, ops::NormGradKernel<CPU, float>,
-                       ops::NormGradKernel<CPU, double>);

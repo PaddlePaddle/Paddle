@@ -203,7 +203,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             if fluid.framework._in_eager_mode():
                 var_base = paddle.to_tensor(np.array([3, 4, 5]))
-                self.assertTrue(isinstance(var_base, core.eager.EagerTensor))
+                self.assertTrue(isinstance(var_base, core.eager.Tensor))
             else:
                 var_base = paddle.to_tensor(np.array([3, 4, 5]))
                 self.assertTrue(isinstance(var_base, core.VarBase))
@@ -221,13 +221,13 @@ class TestImperative(unittest.TestCase):
         t.set(x, fluid.CPUPlace())
         if _in_eager_mode():
             # TODO(jiabin): Support Kwargs and uncomment these tests
-            # egr_tmp = fluid.core.eager.EagerTensor(value=x, place=fluid.core.CPUPlace())
-            egr_tmp2 = fluid.core.eager.EagerTensor(y, fluid.core.CPUPlace())
+            # egr_tmp = fluid.core.eager.Tensor(value=x, place=fluid.core.CPUPlace())
+            egr_tmp2 = fluid.core.eager.Tensor(y, fluid.core.CPUPlace())
             egr_tmp3 = paddle.to_tensor(x)
-            egr_tmp4 = fluid.core.eager.EagerTensor(y)
-            # egr_tmp5 = fluid.core.eager.EagerTensor(value=x)
+            egr_tmp4 = fluid.core.eager.Tensor(y)
+            # egr_tmp5 = fluid.core.eager.Tensor(value=x)
             # TODO(jiabin): Support it when we merge LoDTensor with DenseTensor
-            egr_tmp6 = fluid.core.eager.EagerTensor(t)
+            egr_tmp6 = fluid.core.eager.Tensor(t)
 
             # self.assertTrue(np.array_equal(x, egr_tmp.numpy()))
             self.assertTrue(np.array_equal(y, egr_tmp2.numpy()))
@@ -321,7 +321,7 @@ class TestImperative(unittest.TestCase):
                 with paddle.set_grad_enabled(True):
                     self.assertTrue(paddle.is_grad_enabled())
 
-    def test_sum_op(self):
+    def func_sum_op(self):
         x = np.ones([2, 2], np.float32)
         with fluid.dygraph.guard():
             inputs = []
@@ -338,7 +338,7 @@ class TestImperative(unittest.TestCase):
                 tmp = paddle.to_tensor(x)
                 tmp.stop_gradient = False
                 inputs2.append(tmp)
-            ret2 = fluid.layers.sums(inputs2)
+            ret2 = paddle.add_n(inputs2)
             loss2 = fluid.layers.reduce_sum(ret2)
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             loss2.backward()
@@ -348,6 +348,11 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(np.allclose(ret2.numpy(), x * 10))
             a = inputs2[0].gradient()
             self.assertTrue(np.allclose(inputs2[0].gradient(), x))
+
+    def test_sum_op(self):
+        with _test_eager_guard():
+            self.func_sum_op()
+        self.func_sum_op()
 
     def func_empty_var(self):
         with fluid.dygraph.guard():
@@ -948,7 +953,7 @@ class TestMetaclass(unittest.TestCase):
         self.assertNotEqual(type(MyLayer).__name__, 'pybind11_type')
         if core._in_eager_mode():
             self.assertEqual(
-                type(paddle.fluid.core.eager.EagerTensor).__name__, 'type')
+                type(paddle.fluid.core.eager.Tensor).__name__, 'type')
         else:
             self.assertEqual(
                 type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')

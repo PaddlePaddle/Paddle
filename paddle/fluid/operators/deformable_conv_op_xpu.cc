@@ -57,7 +57,7 @@ class DeformableConvXPUKernel : public framework::OpKernel<T> {
                           "in deformable_conv op."));
 
     const int batch_size = static_cast<int>(input->dims()[0]);
-    std::vector<int64_t> output_shape_vec(framework::vectorize(output->dims()));
+    std::vector<int64_t> output_shape_vec(phi::vectorize(output->dims()));
 
     const T* input_ptr = input->data<T>();
     const T* filter_ptr = filter.data<T>();
@@ -162,8 +162,7 @@ class DeformableConvGradXPUKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     const int batch_size = static_cast<int>(input->dims()[0]);
-    std::vector<int64_t> output_shape_vec(
-        framework::vectorize(output_grad->dims()));
+    std::vector<int64_t> output_shape_vec(phi::vectorize(output_grad->dims()));
     const T* output_grad_ptr = output_grad->data<T>();
     const T* input_ptr = input->data<T>();
     const T* filter_ptr = filter.data<T>();

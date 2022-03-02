@@ -83,7 +83,7 @@ class BroadcastTensorsOp : public framework::OperatorWithKernel {
     // 3. Set Output Dim
     std::vector<DDim> output_ddims;
     for (size_t i = 0; i < input_dims.size(); i++) {
-      output_ddims.emplace_back(framework::make_ddim(target_dims));
+      output_ddims.emplace_back(phi::make_ddim(target_dims));
     }
     ctx->SetOutputsDim("Out", output_ddims);
     ctx->ShareAllLoD("X", /*->*/ "Out");

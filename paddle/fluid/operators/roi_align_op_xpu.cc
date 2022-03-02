@@ -32,6 +32,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
+    auto aligned = ctx.Attr<bool>("aligned");
 
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
@@ -48,7 +49,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto xplace = BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace());
+    auto xplace = ctx.GetPlace();
     int rois_batch_size = 0;
     int* cpu_lod = nullptr;
     if (ctx.HasInput("RoisNum")) {
@@ -117,7 +118,7 @@ class XPUROIAlignOpKernel : public framework::OpKernel<T> {
         dev_ctx.x_context(), in->data<T>(),
         out->mutable_data<T>(ctx.GetPlace()), rois->data<T>(), roi_id_data,
         batch_size, channels, height, width, out->dims()[0], pooled_height,
-        pooled_width, spatial_scale, sampling_ratio, true);
+        pooled_width, spatial_scale, sampling_ratio, true, aligned);
     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
                       platform::errors::External(
                           "The roi_align XPU OP return wrong value[%d %s]", r,
@@ -143,6 +144,7 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
     auto sampling_ratio = ctx.Attr<int>("sampling_ratio");
+    auto aligned = ctx.Attr<bool>("aligned");
 
     int rois_num = rois->dims()[0];
     int channels = in->dims()[1];
@@ -157,7 +159,7 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto xplace = BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace());
+    auto xplace = ctx.GetPlace();
 
     int rois_batch_size = 0;
     int* cpu_lod = nullptr;
@@ -197,7 +199,7 @@ class XPUROIAlignGradOpKernel : public framework::OpKernel<T> {
           dev_ctx.x_context(), out_grad->data<T>(), in_grad->data<T>(),
           rois->data<T>(), roi_id_data, in->dims()[0], channels, height, width,
           out_grad->dims()[0], pooled_height, pooled_width, spatial_scale,
-          sampling_ratio, true);
+          sampling_ratio, true, aligned);
       PADDLE_ENFORCE_EQ(
           r, xpu::Error_t::SUCCESS,
           platform::errors::External(

@@ -31,20 +31,10 @@ ElementwiseDivGrad(const framework::ExecutionContext& ctx,
   const auto& dev_ctx = ctx.template device_context<DeviceContext>();
   const auto place = ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, out, y};
     GetGradXAndYOut<ElementwiseType::kTernary, T>(
         dev_ctx, place, axis, ins, dout, dx, dy, DivGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
-    dx->mutable_data<T>(place);
-    if (dx->IsSharedBufferWith(*dout)) {
-      dx->clear();
-      dx->mutable_data<T>(x->dims(), place);
-    }
     std::vector<const framework::Tensor*> ins = {dout, y};
     GetGradXOrYOut<ElementwiseType::kBinary, T>(dev_ctx, place, axis, ins, dout,
                                                 dx, DivGradXFunctor<T>());
@@ -63,6 +53,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
                               paddle::platform::float16>,
+    ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::bfloat16>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseDivKernel<paddle::platform::CUDADeviceContext, int64_t>,
@@ -75,6 +67,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
                                   paddle::platform::float16>,
+    ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::bfloat16>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseDivGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
@@ -88,6 +82,8 @@ REGISTER_OP_CUDA_KERNEL(
                                         float>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         paddle::platform::float16>,
+    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                        paddle::platform::bfloat16>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                         double>,
     ops::ElementwiseDivDoubleGradKernel<paddle::platform::CUDADeviceContext,

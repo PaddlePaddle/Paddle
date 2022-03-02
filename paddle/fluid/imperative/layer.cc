@@ -14,15 +14,18 @@
 
 #include "paddle/fluid/imperative/layer.h"
 
+#include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -90,7 +93,7 @@ static std::string DebugString(
       ss << "NULL";
       continue;
     }
-    ss << vars[i]->Name() << "[";
+    ss << GetNameFromVar(vars[i]) << "[";
     const framework::Variable& var = vars[i]->Var();
     if (!var.IsInitialized()) {
       ss << "NOT_INITED_VAR";
@@ -98,20 +101,24 @@ static std::string DebugString(
       auto& tensor = var.Get<framework::LoDTensor>();
       ss << "LoDTensor<";
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << framework::DataTypeToString(
+                  framework::TransToProtoVarType(tensor.dtype()))
+           << ", ";
         ss << tensor.place() << ", ";
         ss << "(" << tensor.dims() << ")";
       } else {
         ss << "NOT_INITED";
       }
       ss << ">";
-    } else if (var.IsType<framework::SelectedRows>()) {
+    } else if (var.IsType<phi::SelectedRows>()) {
       ss << "SelectedRows<";
-      auto& selected_rows = var.Get<framework::SelectedRows>();
+      auto& selected_rows = var.Get<phi::SelectedRows>();
       auto& tensor = selected_rows.value();
       auto& rows = selected_rows.rows();
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << framework::DataTypeToString(
+                  framework::TransToProtoVarType(tensor.dtype()))
+           << ", ";
         ss << tensor.place() << ", ";
         ss << "height(" << selected_rows.height() << "), rows(";
         std::for_each(rows.cbegin(), rows.cend(),
@@ -169,6 +176,34 @@ std::string LayerDebugString(const std::string& op_type,
   return LayerDebugStringImpl<VariableWrapper>(op_type, ins, outs);
 }
 
+std::string LayerDebugString(const std::string& op_type,
+                             const NameVarMap<egr::EagerVariable>& ins,
+                             const NameVarMap<egr::EagerVariable>& outs) {
+  return LayerDebugStringImpl<egr::EagerVariable>(op_type, ins, outs);
+}
+
+template <typename VarType>
+static void SetForwardDataTypeOfGradVars(const NameVarMap<VarType>& outs) {
+  for (auto& var_pair : outs) {
+    for (auto& var : var_pair.second) {
+      // NOTE(zhiqu): The ouput may be NULL because of pruning.
+      if (var) {
+        SetForwardDataTypeOfGradVar(var);
+      }
+    }
+  }
+}
+template <>
+void SetForwardDataTypeOfGradVars<egr::EagerVariable>(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  // In eager mode we don't need this.
+}
+
+void TestSetForwardDataTypeOfGradVarsEager(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  SetForwardDataTypeOfGradVars<egr::EagerVariable>(outs);
+}
+
 VarBase::VarBase(const std::shared_ptr<VariableWrapper>& var)
     : var_(var), grad_node_(var->GetGradNode()) {
   if (auto grad_var = var_->GetGradVar()) {
@@ -188,30 +223,30 @@ size_t VarBase::GradOpNum() const {
 void VarBase::ClearGradient(bool set_to_zero) {
   VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
-    if (grad_var_->Var().IsType<framework::SelectedRows>()) {
-      auto* grad_t =
-          grad_var_->MutableVar()->GetMutable<framework::SelectedRows>();
+    if (grad_var_->Var().IsType<phi::SelectedRows>()) {
+      auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
 #ifdef PADDLE_WITH_MKLDNN
-        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
         grad_t->mutable_rows()->clear();
         grad_t->mutable_value()->clear();
       }
     } else {
-      platform::RecordEvent record_event("ClearGradient");
+      platform::RecordEvent record_event(
+          "ClearGradient", platform::TracerEventType::UserDefined, 2);
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
         if (set_to_zero) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
-          operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+          phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
         } else {
           grad_t->clear();
         }
 #ifdef PADDLE_WITH_MKLDNN
-        if (FLAGS_use_mkldnn) ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
 #endif
       }
     }
@@ -248,7 +283,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
   PADDLE_ENFORCE_EQ(
       Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
-                                Var().IsType<framework::SelectedRows>()),
+                                Var().IsType<phi::SelectedRows>()),
       true, platform::errors::InvalidArgument(
                 "Variable is not initialized or Variable's type is not "
                 "LoDTensor or SelectedRows when getting numpy tensor"));
@@ -277,12 +312,12 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
             << dst_place;
     return new_var;
   } else {
-    auto& src_selected_rows = Var().Get<framework::SelectedRows>();
+    auto& src_selected_rows = Var().Get<phi::SelectedRows>();
     auto new_var = std::make_shared<VarBase>(
         false, "Itmp" + std::to_string(copied_counter_++));
     new_var->SetType(framework::proto::VarType::SELECTED_ROWS);
     auto* dst_selected_rows =
-        new_var->MutableVar()->GetMutable<framework::SelectedRows>();
+        new_var->MutableVar()->GetMutable<phi::SelectedRows>();
 
     framework::TensorCopy(src_selected_rows.value(), dst_place,
                           dst_selected_rows->mutable_value());
@@ -346,10 +381,9 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
       dst_tensor->Resize(src_tensor.dims());
     }
     framework::TensorCopy(src_tensor, place, dst_tensor);
-  } else if (src.Var().IsType<framework::SelectedRows>()) {
-    auto& src_selected_rows = src.Var().Get<framework::SelectedRows>();
-    auto* dst_selected_rows =
-        MutableVar()->GetMutable<framework::SelectedRows>();
+  } else if (src.Var().IsType<phi::SelectedRows>()) {
+    auto& src_selected_rows = src.Var().Get<phi::SelectedRows>();
+    auto* dst_selected_rows = MutableVar()->GetMutable<phi::SelectedRows>();
     dst_selected_rows->set_height(src_selected_rows.height());
     dst_selected_rows->set_rows(src_selected_rows.rows());
 
@@ -409,8 +443,6 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   }
 }
 
-pten::KernelContext OpBase::pt_kernel_context_;
-
 void OpBase::SetType(const std::string& type) {
   op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
 }
@@ -426,8 +458,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const NameVarMap<VarType>& outs,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs,
-                          const platform::Place& place,
-                          pten::KernelContext* pt_kernel_context) {
+                          const platform::Place& place) {
   auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel, platform::errors::PermissionDenied(
@@ -443,7 +474,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
       if (var) {
-        InitializeVariable(var->MutableVar(), var->Type());
+        InitializeVariable(var->MutableVar(), GetType(var));
       }
     }
   }
@@ -468,8 +499,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * after the execution of op, but the original input is directly
    * overwritten in the previous dynamic graph implemention.
    */
-  auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs,
-                                         default_attrs, pt_kernel_context);
+  auto prepared_op =
+      PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
   auto tmp_ins_ptr =
       PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
   if (tmp_ins_ptr == nullptr) {
@@ -481,14 +512,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 
   // set the output var
-  for (auto& var_pair : outs) {
-    for (auto& var : var_pair.second) {
-      // NOTE(zhiqu): The ouput may be NULL because of pruning.
-      if (var) {
-        SetForwardDataTypeOfGradVar(var);
-      }
-    }
-  }
+  SetForwardDataTypeOfGradVars<VarType>(outs);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -497,8 +521,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place,
-                         &pt_kernel_context_);
+  OpBaseRunImpl<VarBase>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -507,8 +530,16 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place,
-                                 &pt_kernel_context_);
+  OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, default_attrs, place);
+}
+
+void OpBase::Run(const framework::OperatorBase& op,
+                 const NameVarMap<egr::EagerVariable>& ins,
+                 const NameVarMap<egr::EagerVariable>& outs,
+                 const framework::AttributeMap& attrs,
+                 const framework::AttributeMap& default_attrs,
+                 const platform::Place& place) {
+  OpBaseRunImpl<egr::EagerVariable>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {
@@ -569,6 +600,15 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   } else {
     return nullptr;
   }
+}
+
+std::shared_ptr<GradOpNode> CreateGradOpNode(
+    const framework::OperatorBase& op, const NameTensorMap& ins,
+    const NameTensorMap& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const std::map<std::string, std::string>& inplace_map) {
+  // Do Nothing in Eager Mode.
+  return nullptr;
 }
 
 }  // namespace imperative

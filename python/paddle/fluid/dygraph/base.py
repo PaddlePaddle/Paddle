@@ -721,10 +721,9 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
                 value = value.astype(dtype)
 
         if _in_eager_mode():
-            return core.eager.EagerTensor(value,
-                                          framework._current_expected_place(),
-                                          False, zero_copy, name
-                                          if name else None, True)
+            return core.eager.Tensor(value,
+                                     framework._current_expected_place(), False,
+                                     zero_copy, name if name else None, True)
         else:
             py_var = core.VarBase(
                 value=value,
