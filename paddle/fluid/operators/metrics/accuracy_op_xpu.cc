@@ -15,6 +15,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
