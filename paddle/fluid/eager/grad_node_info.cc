@@ -47,7 +47,13 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
           "Given slot id is out of range of adj_edges outter size, "
           "adj_edges is designed to has the same size of grad "
           "inputs's slot num."));
-  for (const auto& meta : *metas) {
+  auto& out_meta = bwd_out_meta_[slot_id];
+  if (out_meta.size() == 0) {
+    out_meta.resize(metas->size());
+  }
+
+  for (size_t i = 0; i < metas->size(); i++) {
+    const auto& meta = (*metas)[i];
     // adj_edges has as same rank as fwd inputs, and record it's output rank
     // from
     // its pre-ops
@@ -57,11 +63,7 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
       }
 
-      auto& out_meta = bwd_out_meta_[slot_id];
-      if (out_meta.size() == 0) {
-        out_meta.resize(1);
-      }
-      out_meta[0].SetEdge(
+      out_meta[i].SetEdge(
           Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
     }
   }
