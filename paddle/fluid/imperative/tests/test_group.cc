@@ -182,7 +182,7 @@ TEST(TestGroup, TestXPUConcatSplit) {
 }
 #endif
 
-#if defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_CNCL)
 TEST(TestGroup, TestMLUConcatSplit) {
   platform::MLUPlace mlu_place(0);
   platform::CPUPlace cpu_place;
