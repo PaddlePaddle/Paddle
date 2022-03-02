@@ -275,7 +275,8 @@ std::shared_ptr<::gloo::transport::Device>
 ProcessGroupGloo::createDefaultDevice() {
   std::array<char, HOST_NAME_MAX> hostname{};
   auto ret = ::gethostname(hostname.data(), HOST_NAME_MAX);
-  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::Fatal("Get hostname error."));
+  PADDLE_ENFORCE_EQ(ret, 0, platform::errors::Fatal(
+                                "Get hostname error for createDefaultDevice."));
   ::addrinfo* result;
   result = tcputils::get_addr_info(hostname.data(), "", 0, AF_UNSPEC);
   ::addrinfo* cur;

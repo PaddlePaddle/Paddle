@@ -158,8 +158,8 @@ void MasterDaemon::run() {
           _do_stop(fds[i].fd);
           break;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Unknow command: %d", static_cast<int>(command)));
+          VLOG(0) << "Unknow command: " << static_cast<int>(command);
+          exit(-1);
       }
     }
   }
