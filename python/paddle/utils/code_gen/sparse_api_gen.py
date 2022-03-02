@@ -149,16 +149,16 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
             kernel_output_names)
 
         return f"""
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+  auto phi_kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
   VLOG(6) << "{self.api} api sparse kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
-  VLOG(6) << "{self.api} api sparse kernel: " << kernel;
+  VLOG(6) << "{self.api} api sparse kernel: " << phi_kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
   auto kernel_context = phi::KernelContext(dev_ctx);
 {output_create}
 {kernel_context_code}
-  kernel(&kernel_context);
+  phi_kernel(&kernel_context);
 
   return out;"""
 
@@ -190,11 +190,11 @@ def source_include(header_file_path):
 
 #include "glog/logging.h"
 
-#include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_registry.h"
-#include "paddle/phi/api/lib/api_utils.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/declarations.h"
 """
@@ -267,7 +267,7 @@ def main():
     parser.add_argument(
         '--api_source_path',
         help='output of generated api source code file',
-        default='paddle/phi/api/lib/sparse_gen_api.cc')
+        default='paddle/phi/api/lib/sparse_api.cc')
 
     options = parser.parse_args()
 

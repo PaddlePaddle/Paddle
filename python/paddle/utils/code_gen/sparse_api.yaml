@@ -1,7 +1,20 @@
-- sparse_api : matmul
-  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
-  output : Tensor(out@DenseTensor)
-  infer_out :
-    func : MatmulInferOut
+- sparse_api : conv3d
+  args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups)
+  output : Tensor(out@SparseCooTensor), Tensor(out@DenseTensor)
   kernel :
-    func : sparse_matmul
+    func : sparse_conv3d
+
+- sparse_api : to_dense
+  args : (Tensor x, Backend backend)
+  output : Tensor(out@DenseTensor)
+  invoke : to_dense_impl(x, backend)
+
+- sparse_api : to_sparse_coo
+  args : (Tensor x, Backend backend, int64_t sparse_dim)
+  output : Tensor(out@SparseCooTensor)
+  invoke : to_sparse_coo_impl(x, backend, sparse_dim)
+
+- sparse_api : to_sparse_csr
+  args : (Tensor x, Backend backend)
+  output : Tensor(out@SparseCsrTensor)
+  invoke : to_sparse_csr_impl(x, backend)
