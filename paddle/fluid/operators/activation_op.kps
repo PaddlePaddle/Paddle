@@ -1861,3 +1861,4 @@ REGISTER_OP_CUDA_KERNEL(
   __macro(hard_swish, HardSwish, CudaHardSwishFunctor,                        \
           CudaHardSwishGradFunctor);
 FOR_EACH_ACTIVATION_CUDA_OP(REGISTER_ACTIVATION_CUDA_KERNEL)
+// testing
