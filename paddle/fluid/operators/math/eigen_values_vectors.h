@@ -68,9 +68,10 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
     using ValueType = phi::funcs::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
-    auto &dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto &orig_dev_ctx =
+        ctx.template device_context<platform::CPUDeviceContext>();
     auto &dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
-        platform::CPUDeviceContext>::TYPE &>(dev_ctx);
+        platform::CPUDeviceContext>::TYPE &>(orig_dev_ctx);
 
     Tensor input_trans;
     // lapack is a column-major storge, transpose make the input to
@@ -156,9 +157,10 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
     using ValueType = phi::funcs::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto &orig_dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
     auto &dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
-        platform::CUDADeviceContext>::TYPE &>(dev_ctx);
+        platform::CUDADeviceContext>::TYPE &>(orig_dev_ctx);
 
     Tensor input_trans;
     input_trans = phi::funcs::TransposeLast2Dims<T>(dev_ctx, input);

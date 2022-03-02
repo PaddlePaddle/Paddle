@@ -178,7 +178,7 @@ template <typename DeviceContext, typename T>
 class DeterminantGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& orig_dev_ctx = context.template device_context<DeviceContext>();
     const auto* input = context.Input<framework::Tensor>("Input");
     const auto* det = context.Input<framework::Tensor>("Out");
     const auto* grad =
@@ -214,7 +214,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
       ddet->Resize(input->dims());
       ddet->mutable_data<T>(context.GetPlace());
       phi::funcs::SetConstant<DeviceContext, T> zero;
-      zero(dev_ctx, ddet, static_cast<T>(0.0f));
+      zero(orig_dev_ctx, ddet, static_cast<T>(0.0f));
       return;
     }
 
@@ -223,10 +223,9 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     // Ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
     // we set d|A| = unsqueeze(dA * |A|, [-1, -2]) * inverse(A).transpose(-2,
     // -1)
-    auto& dev_ctx = context.template device_context<DeviceContext>();
     auto& dev_ctx = static_cast<
         const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
-        dev_ctx);
+        orig_dev_ctx);
 
     // First: inverse(A)
     framework::Tensor inverse_A;
@@ -235,7 +234,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     inverse_A.mutable_data<T>(context.GetPlace());
 
     math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
-    mat_inv(dev_ctx, *input, &inverse_A);
+    mat_inv(orig_dev_ctx, *input, &inverse_A);
 
     VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
@@ -341,7 +340,7 @@ template <typename DeviceContext, typename T>
 class SlogDeterminantGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& orig_dev_ctx = context.template device_context<DeviceContext>();
     const auto* input = context.Input<framework::Tensor>("Input");
     const auto* slogdet = context.Input<framework::Tensor>("Out");
     const auto* grad =
@@ -373,7 +372,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
       dslogdet->Resize(input->dims());
       dslogdet->mutable_data<T>(context.GetPlace());
       phi::funcs::SetConstant<DeviceContext, T> zero;
-      zero(dev_ctx, dslogdet, std::numeric_limits<T>::quiet_NaN());
+      zero(orig_dev_ctx, dslogdet, std::numeric_limits<T>::quiet_NaN());
       return;
     }
 
@@ -383,10 +382,9 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     // we set dsl|A| = unsqueeze(dslA, [-1, -2]) *
     // inverse(A).conj().transpose(-2, -1)
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
     auto& dev_ctx = static_cast<
         const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
-        dev_ctx);
+        orig_dev_ctx);
 
     // First: inverse(A)
     framework::Tensor inverse_A;
@@ -395,7 +393,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     inverse_A.mutable_data<T>(context.GetPlace());
 
     math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
-    mat_inv(dev_ctx, *input, &inverse_A);
+    mat_inv(orig_dev_ctx, *input, &inverse_A);
 
     VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
@@ -406,7 +404,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     auto* conj_data = conj_inverse_A.mutable_data<T>(context.GetPlace(),
                                                      size_t(numel * sizeof(T)));
 
-    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    platform::ForRange<DeviceContext> for_range(orig_dev_ctx, numel);
     phi::funcs::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
     for_range(functor);
 

@@ -30,7 +30,7 @@ template <typename T>
 class SvdGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto& dev_ctx =
+    auto& orig_dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
     const Tensor* x = context.Input<Tensor>("X");
@@ -57,10 +57,10 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     // Must Copy X once, because the gesvdj will change the origin input matrix
     Tensor x_tmp;
     paddle::framework::TensorCopy(*x, context.GetPlace(), &x_tmp);
-    auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_count);
+    auto info = memory::Alloc(orig_dev_ctx, sizeof(int) * batch_count);
     int* info_ptr = reinterpret_cast<int*>(info->ptr());
 
-    GesvdjBatched(dev_ctx, batch_count, n, m, std::min(m, n),
+    GesvdjBatched(orig_dev_ctx, batch_count, n, m, std::min(m, n),
                   x_tmp.mutable_data<T>(context.GetPlace()), vh_data, u_data,
                   s_data, info_ptr, !full_matrices);
 
@@ -68,13 +68,12 @@ class SvdGPUKernel : public framework::OpKernel<T> {
     std::swap(UT_dim[rank - 1], UT_dim[rank - 2]);  // Get the dim of UT_dim
     U->Resize(UT_dim);                              // U is entirely UT
 
-    auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
     auto& dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
-        platform::CUDADeviceContext>::TYPE&>(dev_ctx);
+        platform::CUDADeviceContext>::TYPE&>(orig_dev_ctx);
     auto tmp_U = phi::funcs::TransposeLast2Dims<T>(dev_ctx, *U);
     U->ShareDataWith(tmp_U);  // U becomse UT, aka VT
   }
+
   void GesvdjBatched(const platform::CUDADeviceContext& dev_ctx, int batchSize,
                      int m, int n, int k, T* A, T* U, T* V, T* S, int* info,
                      int thin_UV = 1) const;

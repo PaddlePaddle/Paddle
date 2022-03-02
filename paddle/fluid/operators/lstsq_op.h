@@ -64,10 +64,10 @@ class LstsqCPUKernel : public framework::OpKernel<T> {
     auto* rank = context.Output<Tensor>("Rank");
     auto* singular_values = context.Output<Tensor>("SingularValues");
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& orig_dev_ctx = context.template device_context<DeviceContext>();
     auto& dev_ctx = static_cast<
         const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
-        dev_ctx);
+        orig_dev_ctx);
 
     auto x_dims = x.dims();
     auto y_dims = y->dims();

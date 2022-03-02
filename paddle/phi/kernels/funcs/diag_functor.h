@@ -17,6 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 // TODO(paddle-dev): Remove this file when we can call related Kernel directly
@@ -71,7 +72,7 @@ struct DiagAndFillFunctor {
   T* output_;
 };
 
-template <typename Context, typename T, typename ValueType>
+template <typename T, typename ValueType, typename Context>
 DenseTensor DiagFill(const Context& dev_ctx,
                      const int m,
                      const int n,
@@ -96,49 +97,13 @@ DenseTensor DiagFill(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-DenseTensor Diag(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 int offset = 0,
-                 int padding_value = 0) {
-  PADDLE_ENFORCE_EQ(
-      padding_value,
-      0,
-      errors::InvalidArgument("Current diag only support padding_value = 0"));
-  PADDLE_ENFORCE_EQ(
-      offset,
-      0,
-      errors::InvalidArgument("Current diag only support offset = 0,"
-                              "you can use DiagOp instead(not recommend)"));
-
-  DenseTensor ret;
-  int x_rank = x.dims().size();
-  std::vector<int> out_shape;
-  if (x_rank == 2) {
-    PADDLE_THROW(errors::InvalidArgument(
-        "Current diag only support vector"
-        "-> diagonalized matrix, not support matrix -> vector,"
-        " Use DiagOp instead."));
-  } else if (x_rank == 1) {
-    out_shape.push_back(x.dims()[0]);
-    out_shape.push_back(x.dims()[0]);
-  } else {
-    PADDLE_THROW(errors::InvalidArgument("Rank must less or equal than 2"));
-  }
-  ret = phi::Fill<T, Context>(dev_ctx, {out_shape[0], out_shape[0]}, 0.0);
-  T* output = ret.data<T>();
-  auto for_range = ForRange<Context>(dev_ctx, x.numel());
-  for_range(DiagFunctor<T>(x.data<T>(), x.numel(), output));
-  return ret;
-}
-
-template <typename T, typename Context>
 DenseTensor BatchDiag(const Context& dev_ctx, const DenseTensor& x, int batch) {
-  Tensor out;
+  DenseTensor out;
   auto* x_data = x.data<phi::funcs::Real<T>>();
   auto numel = x.numel();
   out.Resize(x.dims());
   auto* out_data = dev_ctx.template HostAlloc<phi::funcs::Real<T>>(
-      out, static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
+      &out, static_cast<size_t>(numel * sizeof(phi::funcs::Real<T>)));
 
   auto x_dims = x.dims();
   int num_dims = x_dims.size();

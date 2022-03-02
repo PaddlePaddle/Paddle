@@ -37,10 +37,10 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
     const Tensor& y = *context.Input<Tensor>("Y");
     auto* solution = context.Output<Tensor>("Solution");
 
-    auto& dev_ctx =
+    auto& orig_dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
     auto& dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
-        platform::CUDADeviceContext>::TYPE&>(dev_ctx);
+        platform::CUDADeviceContext>::TYPE&>(orig_dev_ctx);
 
     auto x_dims = x.dims();
     auto y_dims = y.dims();
@@ -79,13 +79,13 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
       auto y_data = tmp_y.mutable_data<T>(context.GetPlace());
 
       // step 1, compute QR factorization using geqrf
-      BatchedGeqrf<DeviceContext, T>(dev_ctx, batch_count, m, n, x_data, m,
+      BatchedGeqrf<DeviceContext, T>(orig_dev_ctx, batch_count, m, n, x_data, m,
                                      tau_data, x_stride, tau_stride);
 
       // Step 2, Y <- Q^H Y
-      BatchedOrmqr<DeviceContext, T>(dev_ctx, true, true, batch_count, m, n, k,
-                                     x_data, x_stride, tau_data, tau_stride,
-                                     y_data, y_stride);
+      BatchedOrmqr<DeviceContext, T>(orig_dev_ctx, true, true, batch_count, m,
+                                     n, k, x_data, x_stride, tau_data,
+                                     tau_stride, y_data, y_stride);
 
       Tensor trans_r = phi::funcs::TransposeLast2Dims<T>(dev_ctx, tmp_x);
       Tensor slice_r =
@@ -110,28 +110,27 @@ class LstsqCUDAKernel : public framework::OpKernel<T> {
           phi::funcs::Slice<T>(dev_ctx, trans_y, {-2}, {0}, {min_mn});
 
       // Step 3, solve R X = Y
-      triangular_solve<DeviceContext, T>(dev_ctx, res_r, slice_y, solution,
+      triangular_solve<DeviceContext, T>(orig_dev_ctx, res_r, slice_y, solution,
                                          true, false, false);
     } else {
       auto x_data = new_x.mutable_data<T>(context.GetPlace());
       auto y_data = new_y.mutable_data<T>(context.GetPlace());
 
       // step 1, compute QR factorization using geqrf
-      BatchedGeqrf<DeviceContext, T>(dev_ctx, batch_count, n, m, x_data, n,
+      BatchedGeqrf<DeviceContext, T>(orig_dev_ctx, batch_count, n, m, x_data, n,
                                      tau_data, x_stride, tau_stride);
 
       // Step 2, solve R^H Z = Y
       Tensor trans_r = phi::funcs::TransposeLast2Dims<T>(dev_ctx, new_x);
-      triangular_solve<DeviceContext, T>(dev_ctx, trans_r, new_y, solution,
+      triangular_solve<DeviceContext, T>(orig_dev_ctx, trans_r, new_y, solution,
                                          true, true, false);
 
       // Step 3, X <- Q Z
-      BatchedOrgqr<DeviceContext, T>(dev_ctx, batch_count, n, n, min_mn, x_data,
-                                     n, tau_data, x_stride, tau_stride);
+      BatchedOrgqr<DeviceContext, T>(orig_dev_ctx, batch_count, n, n, min_mn,
+                                     x_data, n, tau_data, x_stride, tau_stride);
       Tensor trans_q = phi::funcs::TransposeLast2Dims<T>(dev_ctx, new_x);
       Tensor slice_q = phi::funcs::Slice<T>(dev_ctx, trans_q, {-1}, {0}, {m});
-      Tensor solu_tensor =
-          phi::Matmul<T>(dev_ctx, slice_q, *solution, false, false);
+      Tensor solu_tensor = phi::Matmul<T>(dev_ctx, slice_q, *solution);
       framework::TensorCopy(solu_tensor, solution->place(), solution);
     }
   }

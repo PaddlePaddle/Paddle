@@ -22,7 +22,7 @@
 namespace phi {
 namespace funcs {
 
-const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
+inline const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims
   DenseTensor out(x);
   std::vector<int> out_shape = phi::vectorize<int>(x.dims());

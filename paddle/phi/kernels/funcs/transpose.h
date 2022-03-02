@@ -23,11 +23,11 @@
 namespace phi {
 namespace funcs {
 
-#define RANSPOSE_RANK_CASE(N)                         \
-  case N: {                                           \
-    phi::funcs::Transpose<DeviceContext, T, N> trans; \
-    trans(dev_ctx, x, &ret, axis);                    \
-    break;                                            \
+#define RANSPOSE_RANK_CASE(N)                   \
+  case N: {                                     \
+    phi::funcs::Transpose<Context, T, N> trans; \
+    trans(dev_ctx, x, &ret, axis);              \
+    break;                                      \
   }
 
 template <typename T, typename Context>
@@ -45,7 +45,7 @@ DenseTensor TransposeLast2Dims(const Context& dev_ctx, const DenseTensor& x) {
   }
   std::swap(axis[rank - 1], axis[rank - 2]);
   ret.Resize(phi::make_ddim(x_vec));
-  ctx.template Alloc<T>(&ret);
+  dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     RANSPOSE_RANK_CASE(2);
     RANSPOSE_RANK_CASE(3);

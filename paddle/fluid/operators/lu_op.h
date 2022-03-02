@@ -488,7 +488,7 @@ class LUGradKernel : public framework::OpKernel<T> {
     dx->mutable_data<T>(ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto& dev_ctx = static_cast<
+    auto& phi_dev_ctx = static_cast<
         const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
         dev_ctx);
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
@@ -565,7 +565,7 @@ class LUGradKernel : public framework::OpKernel<T> {
         Tensor_narrow<DeviceContext, T>(ctx, dout, &U_grad_complement, 0, k, k,
                                         n);
         framework::Tensor U_complement_mH =
-            phi::funcs::TransposeLast2Dims<T>(dev_ctx, U_complement);
+            phi::funcs::TransposeLast2Dims<T>(phi_dev_ctx, U_complement);
 
         Tensor_Conj<DeviceContext, T>(dev_ctx, U_complement_mH,
                                       &U_complement_mH);
@@ -607,12 +607,13 @@ class LUGradKernel : public framework::OpKernel<T> {
 
       framework::Tensor psi_principal, phi_mH, psi_tmp;
       Tensor_Conj<DeviceContext, T>(dev_ctx, phi, &phi_mH);
-      phi_mH = phi::funcs::TransposeLast2Dims<T>(dev_ctx, phi_mH);
+      phi_mH = phi::funcs::TransposeLast2Dims<T>(phi_dev_ctx, phi_mH);
       triangular_solve<DeviceContext, T>(dev_ctx, U_narrow, phi_mH,
                                          &psi_principal, true, false, false);
 
       Tensor_Conj<DeviceContext, T>(dev_ctx, psi_principal, &psi_principal);
-      psi_principal = phi::funcs::TransposeLast2Dims<T>(dev_ctx, psi_principal);
+      psi_principal =
+          phi::funcs::TransposeLast2Dims<T>(phi_dev_ctx, psi_principal);
       slice_starts[0] = 0;
       slice_starts[1] = 0;
       slice_ends[0] = k;
@@ -639,7 +640,7 @@ class LUGradKernel : public framework::OpKernel<T> {
       Tensor_narrow<DeviceContext, T>(ctx, dout, &L_grad_complement, k, m, 0,
                                       k);
       framework::Tensor L_complement_mH =
-          phi::funcs::TransposeLast2Dims<T>(dev_ctx, L_complement);
+          phi::funcs::TransposeLast2Dims<T>(phi_dev_ctx, L_complement);
       Tensor_Conj<DeviceContext, T>(dev_ctx, L_complement_mH, &L_complement_mH);
 
       auto mat_dim_g = phi::funcs::CreateMatrixDescriptor(
@@ -696,12 +697,12 @@ class LUGradKernel : public framework::OpKernel<T> {
       auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(psi.dims(), 0, false);
       blas.MatMul(Pmat, mat_dim_p, psi, mat_dim_b, static_cast<T>(1), &psi_tmp,
                   static_cast<T>(0));
-      psi_tmp = phi::funcs::TransposeLast2Dims<T>(dev_ctx, psi_tmp);
+      psi_tmp = phi::funcs::TransposeLast2Dims<T>(phi_dev_ctx, psi_tmp);
 
       Tensor_Conj<DeviceContext, T>(dev_ctx, U_narrow, &U_narrow_mH);
       triangular_solve<DeviceContext, T>(dev_ctx, U_narrow_mH, psi_tmp, &psi,
                                          true, false, false);
-      *dx = phi::funcs::TransposeLast2Dims<T>(dev_ctx, psi);
+      *dx = phi::funcs::TransposeLast2Dims<T>(phi_dev_ctx, psi);
     }
   }
 };

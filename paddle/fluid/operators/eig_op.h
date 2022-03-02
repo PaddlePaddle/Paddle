@@ -27,6 +27,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/funcs/transpose.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 
@@ -221,10 +222,10 @@ class EigKernel : public framework::OpKernel<T> {
       ApplyEigKernel<DeviceContext, phi::funcs::Real<T>>(
           *x, &real_values, &real_vectors, context);
 
-      auto& dev_ctx = context.template device_context<DeviceContext>();
+      auto& orig_dev_ctx = context.template device_context<DeviceContext>();
       auto& dev_ctx = static_cast<
           const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
-          dev_ctx);
+          orig_dev_ctx);
 
       // 1. extract real part & imag part from real_values
       Tensor real_part =
@@ -263,15 +264,15 @@ class EigKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename Tout>
+template <typename DeviceContext, typename T>
 void ComputeBackwardForComplexInput(
     const Tensor& V, const Tensor& L, const Tensor& gL, const Tensor& gV,
-    Tout* x_grad_data, int batch_count, int order,
+    T* x_grad_data, int batch_count, int order,
     const framework::ExecutionContext& context) {
-  auto& dev_ctx = context.template device_context<DeviceContext>();
+  auto& orig_dev_ctx = context.template device_context<DeviceContext>();
   auto& dev_ctx = static_cast<
       const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
-      dev_ctx);
+      orig_dev_ctx);
 
   Tensor trans_v = phi::funcs::TransposeLast2Dims<T>(dev_ctx, V);
   Tensor Vh = phi::Conj<T>(dev_ctx, trans_v);
@@ -286,23 +287,24 @@ void ComputeBackwardForComplexInput(
   // turn diag_unsqueezed into complex
   auto numel = diag_unsqueezed.numel();
   Tensor diag_unsqueezed_complex;
-  auto* data_diag_un = diag_unsqueezed.data<phi::funcs::Real<Tout>>();
-  auto* data_diag_un_com = diag_unsqueezed_complex.mutable_data<Tout>(
+  auto* data_diag_un = diag_unsqueezed.data<phi::funcs::Real<T>>();
+  auto* data_diag_un_com = diag_unsqueezed_complex.mutable_data<T>(
       diag_unsqueezed.dims(), context.GetPlace(),
-      static_cast<size_t>(numel * sizeof(Tout)));
-  auto& dev_ctx = context.template device_context<DeviceContext>();
-  platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-  phi::funcs::RealToComplexFunctor<Tout> functor(data_diag_un, data_diag_un_com,
-                                                 numel);
+      static_cast<size_t>(numel * sizeof(T)));
+
+  platform::ForRange<DeviceContext> for_range(orig_dev_ctx, numel);
+  phi::funcs::RealToComplexFunctor<T> functor(data_diag_un, data_diag_un_com,
+                                              numel);
   for_range(functor);
   // real tensor multiply complex tensor in broadcast manner
   Tensor res1 = phi::Multiply<T>(dev_ctx, V, diag_unsqueezed_complex);
   Tensor res2 = phi::Matmul<T>(dev_ctx, Vh, res1);
   Tensor result = phi::Subtract<T>(dev_ctx, VhgV, res2);
 
-  result.mutable_data<Tout>(V.dims(), context.GetPlace());
+  result.mutable_data<T>(V.dims(), context.GetPlace());
   result = phi::Divide<T>(dev_ctx, result, Econj);
-  result = phi::funcs::DiagFill(dev_ctx, order, order, order, 0, gL, result);
+  result =
+      phi::funcs::DiagFill<T, T>(dev_ctx, order, order, order, 0, gL, result);
   Tensor rhs = phi::Matmul<T>(dev_ctx, result, Vh);
 
   // solve linear system
@@ -312,10 +314,10 @@ void ComputeBackwardForComplexInput(
   // x_grad: out
   int m = Vh.dims()[Vh.dims().size() - 1];
   int k = rhs.dims()[rhs.dims().size() - 1];
-  auto* matrix_data = Vh.data<Tout>();
-  auto* rhs_data = rhs.data<Tout>();
-  math::SolveLinearSystem<Tout>(matrix_data, rhs_data, x_grad_data, m, k,
-                                batch_count);
+  auto* matrix_data = Vh.data<T>();
+  auto* rhs_data = rhs.data<T>();
+  math::SolveLinearSystem<T>(matrix_data, rhs_data, x_grad_data, m, k,
+                             batch_count);
 }
 
 template <typename DeviceContext, typename T, typename Tout>

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
-#include "paddle/phi/kernels/funcs/transpose_function.h"
+#include "paddle/phi/kernels/funcs/transpose.h"
 #include "paddle/phi/kernels/math_kernel.h"
 
 namespace paddle {

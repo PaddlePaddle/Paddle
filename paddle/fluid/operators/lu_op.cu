@@ -100,10 +100,10 @@ class LUCUDAKernel : public framework::OpKernel<T> {
     auto* InfoT = ctx.Output<framework::Tensor>("Infos");
     auto pivots = ctx.Attr<bool>("pivots");
 
-    auto& dev_ctx =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& orig_dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
     auto& dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
-        platform::CUDADeviceContext>::TYPE&>(dev_ctx);
+        platform::CUDADeviceContext>::TYPE&>(orig_dev_ctx);
     *out = phi::funcs::TransposeLast2Dims<T>(dev_ctx, *xin);
 
     auto outdims = out->dims();

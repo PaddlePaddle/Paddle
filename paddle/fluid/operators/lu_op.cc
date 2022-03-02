@@ -111,10 +111,10 @@ class LUKernel : public framework::OpKernel<T> {
                           "lu without pivoting is not implemented on the CPU, "
                           "but got pivots=False"));
 
-    auto &dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
+    auto &orig_dev_ctx =
+        ctx.template device_context<platform::CPUDeviceContext>();
     auto &dev_ctx = static_cast<const typename framework::ConvertToPhiContext<
-        platform::CPUDeviceContext>::TYPE &>(dev_ctx);
+        platform::CPUDeviceContext>::TYPE &>(orig_dev_ctx);
     *out = phi::funcs::TransposeLast2Dims<T>(dev_ctx, *xin);
 
     auto outdims = out->dims();

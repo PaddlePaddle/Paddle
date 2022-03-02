@@ -60,10 +60,10 @@ void EigenSliceWrapper(const Context& dev_ctx,
       extents_32bit);
 }
 
-#define SLICE_RANK_CASE(N)                           \
-  case N: {                                          \
-    EigenSliceWrapper<N>(&x, offset, extends, &ret); \
-    break;                                           \
+#define SLICE_RANK_CASE(N)                                                \
+  case N: {                                                               \
+    EigenSliceWrapper<Context, T, N>(dev_ctx, &x, offset, extends, &ret); \
+    break;                                                                \
   }
 
 template <typename T, typename Context>

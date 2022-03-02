@@ -18,6 +18,7 @@
 #include "paddle/fluid/operators/math/eigen_values_vectors.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/transpose.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -57,10 +58,10 @@ class EigvalshGradKernel : public framework::OpKernel<T> {
     auto& output_w_grad =
         *ctx.Input<Tensor>(framework::GradVarName("Eigenvalues"));
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& orig_dev_ctx = ctx.template device_context<DeviceContext>();
     auto& dev_ctx = static_cast<
         const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
-        dev_ctx);
+        orig_dev_ctx);
 
     auto tV = phi::funcs::TransposeLast2Dims<T>(
         dev_ctx, phi::Conj<T>(dev_ctx, output_v));

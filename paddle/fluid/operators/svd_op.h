@@ -18,9 +18,13 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/diag_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/eigen/svd.h"
 #include "paddle/phi/kernels/funcs/pow.h"
 #include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 
@@ -58,7 +62,8 @@ class SvdCPUKernel : public framework::OpKernel<T> {
     auto* S_out = S->mutable_data<phi::funcs::Real<T>>(
         context.GetPlace(), size_t(batches * k * sizeof(phi::funcs::Real<T>)));
     /*SVD Use the Eigen Library*/
-    math::BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches, full);
+    phi::funcs::BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches,
+                            full);
   }
 };
 
@@ -81,10 +86,10 @@ class SvdGradKernel : public framework::OpKernel<T> {
     int n = dX.dims()[dX.dims().size() - 1];
     int k = S.dims()[S.dims().size() - 1];
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& orig_dev_ctx = ctx.template device_context<DeviceContext>();
     auto& dev_ctx = static_cast<
         const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
-        dev_ctx);
+        orig_dev_ctx);
     framework::Tensor U, VH, dU, dV, dVH;
     if (full) {
       // if full_matrices is set, slice the U and VT to k columns
@@ -100,16 +105,15 @@ class SvdGradKernel : public framework::OpKernel<T> {
     }
     auto s_inverse = phi::funcs::Pow<T>(dev_ctx, S, -1);
     auto s_square = phi::funcs::Pow<T>(dev_ctx, S, 2);
-    auto F =
-        phi::Subtract<ValueType>(dev_ctx, phi::funcs::Unsqueeze(s_square, -2),
-                                 phi::funcs::Unsqueeze(s_square, -1));
-    F = phi::Add<ValueType>(
+    auto F = phi::Subtract<T>(dev_ctx, phi::funcs::Unsqueeze(s_square, -2),
+                              phi::funcs::Unsqueeze(s_square, -1));
+    F = phi::Add<T>(
         dev_ctx, F,
-        phi::funcs::Diag<T>(
-            dev_ctx,
-            phi::Full<T>(
-                dev_ctx, {k},
-                static_cast<T>(std::numeric_limits<double>::infinity()))));
+        phi::Diag<T>(dev_ctx,
+                     phi::Full<T>(dev_ctx, {k},
+                                  static_cast<T>(
+                                      std::numeric_limits<double>::infinity())),
+                     0, 0.0));
     F = phi::funcs::Pow<T>(dev_ctx, F, -1);
     Tensor sigma_term;
     Tensor u_term;
@@ -133,7 +137,7 @@ class SvdGradKernel : public framework::OpKernel<T> {
       if (m > k) {
         auto project = phi::Subtract<T>(
             dev_ctx,
-            phi::funcs::Diag<T>(dev_ctx, phi::Full<T>(dev_ctx, {m}, 1)),
+            phi::Diag<T>(dev_ctx, phi::Full<T>(dev_ctx, {m}, 1), 0, 0.0),
             phi::Matmul<T>(dev_ctx, U, U, false, true));
         u_term = phi::Add<T>(
             dev_ctx, u_term,
@@ -151,22 +155,20 @@ class SvdGradKernel : public framework::OpKernel<T> {
           dev_ctx,
           phi::Matmul<T>(
               dev_ctx,
-              phi::Multiply<T>(dev_ctx, phi::Subtract<T>(dev_ctx, UTG, GTU), F,
-                               false, false),
+              phi::Multiply<T>(dev_ctx, phi::Subtract<T>(dev_ctx, UTG, GTU), F),
               VH),
           phi::funcs::Unsqueeze(S, -1));
       if (n > k) {
         auto project = phi::Subtract<T>(
             dev_ctx,
-            phi::funcs::Diag<T>(dev_ctx, phi::Full<T>(dev_ctx, {m}, 1)),
+            phi::Diag<T>(dev_ctx, phi::Full<T>(dev_ctx, {m}, 1), 0, 0.0),
             phi::Matmul<T>(dev_ctx, VH, VH, true, false));
         v_term = phi::Add<T>(
             dev_ctx, v_term,
-            phi::Multiply<T>(
-                dev_ctx, phi::Matmul<T>(dev_ctx, dVH, project, false, false),
-                phi::funcs::Unsqueeze(s_inverse, -1)));
+            phi::Multiply<T>(dev_ctx, phi::Matmul<T>(dev_ctx, dVH, project),
+                             phi::funcs::Unsqueeze(s_inverse, -1)));
       }
-      v_term = phi::Matmul<T>(dev_ctx, U, v_term, false, false);
+      v_term = phi::Matmul<T>(dev_ctx, U, v_term);
     }
 
     dX.ShareDataWith(

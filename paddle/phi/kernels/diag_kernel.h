@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
 
@@ -24,5 +25,22 @@ void DiagKernel(const Context& dev_ctx,
                 int offset,
                 float padding_value,
                 DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Diag(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 int offset,
+                 float padding_value) {
+  // TODO(paddle-dev): use InferMeta func when it is ready
+  PADDLE_ENFORCE_EQ(
+      x.dims().size(),
+      1UL,
+      errors::InvalidArgument(
+          "The dimension of 'diagonal' must be 1, but now it is %d.",
+          x.dims().size()));
+  auto dense_out = Empty<T, Context>(dev_ctx, {x.dims()[0], x.dims()[0]});
+  DiagKernel<T, Context>(dev_ctx, x, offset, padding_value, &dense_out);
+  return dense_out;
+}
 
 }  // namespace phi
