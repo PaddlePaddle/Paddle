@@ -2960,13 +2960,15 @@ All parameter, weight, gradient are variables in Paddle.
              profiler->Prepare();
            })
       .def("Start", &paddle::platform::Profiler::Start)
-      .def("Stop", &paddle::platform::Profiler::Stop,
+      .def("Stop",
+           [](paddle::platform::Profiler *profiler) {
+             platform::DisableHostEventRecorder();
+             return profiler->Stop();
+           },
            py::return_value_policy::automatic_reference);
 
   py::class_<paddle::platform::ProfilerOptions>(m, "ProfilerOptions")
       .def(py::init<>())
-      .def_readwrite("trace_level",
-                     &paddle::platform::ProfilerOptions::trace_level)
       .def_readwrite("trace_switch",
                      &paddle::platform::ProfilerOptions::trace_switch);
 
