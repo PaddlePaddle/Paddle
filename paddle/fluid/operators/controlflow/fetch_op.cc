@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -40,11 +39,6 @@ static void DataCopy(const framework::LoDTensor &src_item,
                                  : paddle::platform::MKLDNNDeviceContext::tls()
                                        .get_cur_paddle_data_layout(),
           src_item, &out, platform::CPUPlace());
-      paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
-    } else if (src_item.dtype() == paddle::experimental::DataType::FLOAT16) {
-      framework::Tensor out;
-      paddle::framework::TransDataType(src_item,
-                                       framework::proto::VarType::FP32, &out);
       paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
       paddle::framework::TensorCopySync(src_item, platform::CPUPlace(),
