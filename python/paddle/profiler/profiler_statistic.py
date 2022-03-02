@@ -482,6 +482,9 @@ def _build_table(statistic_data,
     header_sep = header_sep_list[0]
     line_length = line_length_list[0]
 
+    if total_time == 0:
+        return
+
     # construct table string
     append(add_title(line_length, "Overview Summary"))
     append('Time unit: {}'.format(time_unit))
