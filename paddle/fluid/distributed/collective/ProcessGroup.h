@@ -125,7 +125,8 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<Tensor>& tensors /* tensors */) {  // NOLINT
+      std::vector<Tensor>& in /* tensors */,     // NOLINT
+      std::vector<Tensor>& out /* tensors */) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support AllToAll", GetBackendName()));
   }
@@ -138,8 +139,9 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<Tensor>& tensors /* tensors */,  // NOLINT
-      const ScatterOptions&) {                     // NOLINT
+      std::vector<Tensor>& in_tensors /* tensors */,   // NOLINT
+      std::vector<Tensor>& out_tensors /* tensors */,  // NOLINT
+      const ScatterOptions&) {                         // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support Scatter", GetBackendName()));
   }

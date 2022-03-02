@@ -103,12 +103,13 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<Tensor>& out_tensors) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<Tensor>& tensors) override;
+      std::vector<Tensor>& in, std::vector<Tensor>& out) override;
 
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<Tensor>& tensors, const ReduceOptions& opts) override;
 
-  std::shared_ptr<ProcessGroup::Task> Scatter(std::vector<Tensor>& tensors,
+  std::shared_ptr<ProcessGroup::Task> Scatter(std::vector<Tensor>& in_tensors,
+                                              std::vector<Tensor>& out_tensors,
                                               const ScatterOptions&) override;
 
  protected:

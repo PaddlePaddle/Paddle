@@ -64,6 +64,11 @@ void BindDistributed(py::module *m) {
       .def(py::init<>())
       .def_readwrite("place_ids", &distributed::BarrierOptions::place_ids);
 
+  py::class_<distributed::ReduceOptions>(*m, "ReduceOptions")
+      .def(py::init<>())
+      .def_readwrite("reduce_op", &distributed::ReduceOptions::reduce_op)
+      .def_readwrite("source_root", &distributed::ReduceOptions::root_rank);
+
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
                  std::shared_ptr<distributed::ProcessGroup>>(*m, "ProcessGroup")
@@ -122,6 +127,7 @@ void BindDistributed(py::module *m) {
                },
                py::arg("tensor"), py::arg("src"),
                py::call_guard<py::gil_scoped_release>())
+
           .def("all_gather",
                [](distributed::ProcessGroup &self, py::handle py_in_tensor,
                   py::handle py_out_tensor) {
@@ -131,7 +137,47 @@ void BindDistributed(py::module *m) {
                  std::vector<Tensor> out_tensors = {out_tensor};
                  return self.AllGather(in_tensors, out_tensors);
                },
-               // py::arg("in"), py::arg("out"),
+               py::arg("in"), py::arg("out"),
+               py::call_guard<py::gil_scoped_release>())
+
+          .def("alltoall",
+               [](distributed::ProcessGroup &self, py::handle py_in_tensor,
+                  py::handle py_out_tensor) {
+                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                 std::vector<Tensor> in_tensors = {in_tensor};
+                 std::vector<Tensor> out_tensors = {out_tensor};
+                 return self.AllToAll(in_tensors, out_tensors);
+               },
+               py::arg("in"), py::arg("out"),
+               py::call_guard<py::gil_scoped_release>())
+
+          .def("reduce",
+               [](distributed::ProcessGroup &self, py::handle py_in_tensor,
+                  int dst, distributed::ReduceOp op) {
+                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                 distributed::ReduceOptions opts;
+                 opts.reduce_op = op;
+                 opts.root_rank = dst;
+                 std::vector<Tensor> tensors = {in_tensor};
+                 return self.Reduce(tensors, opts);
+               },
+               py::arg("tensor"), py::arg("dst"),
+               py::arg("op") = distributed::ReduceOp::SUM,
+               py::call_guard<py::gil_scoped_release>())
+
+          .def("scatter",
+               [](distributed::ProcessGroup &self, py::handle py_in_tensor,
+                  py::handle py_out_tensor, int src) {
+                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                 distributed::ScatterOptions opts;
+                 opts.root_rank = src;
+                 std::vector<Tensor> in_tensors = {in_tensor};
+                 std::vector<Tensor> out_tensors = {out_tensor};
+                 return self.Scatter(in_tensors, out_tensors, opts);
+               },
+               py::arg("in"), py::arg("out"), py::arg("src"),
                py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL)
