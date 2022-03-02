@@ -33,14 +33,16 @@ function update_pd_ops() {
    rm -rf ${PADDLE_ROOT}/build && mkdir -p ${PADDLE_ROOT}/build
    cd ${PADDLE_ROOT}/build
    cmake .. -DWITH_PYTHON=ON -DWITH_GPU=OFF -DPYTHON_EXECUTABLE=`which python3` -DWITH_XBYAK=OFF -DWITH_NCCL=OFF -DWITH_RCCL=OFF -DWITH_CRYPTO=OFF
-   make -j8 paddle_python
+   make -j8 paddle_python print_pten_kernels
    cd ${PADDLE_ROOT}/build
+   ./paddle/phi/tools/print_pten_kernels > ../tools/infrt/kernels.json
    cd python/dist/
    python3 -m pip uninstall -y paddlepaddle
    python3 -m pip install  *whl
    # update pd_ops.td
    cd ${PADDLE_ROOT}/tools/infrt/
    python3 generate_pd_op_dialect_from_paddle_op_maker.py
+   python3 generate_phi_kernel_dialect.py ./kernels.json
 }
 
 function init() {
