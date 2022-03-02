@@ -20,30 +20,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GraphSendRecvGradKernelWithSum(const Context& ctx,
-                                    const DenseTensor& out_grad,
-                                    const DenseTensor& src_index,
-                                    const DenseTensor& dst_index,
-                                    const std::string& pool_type,
-                                    DenseTensor* x_grad);
-
-template <typename T, typename Context>
-void GraphSendRecvGradKernelWithMean(const Context& ctx,
-                                     const DenseTensor& out_grad,
-                                     const DenseTensor& src_index,
-                                     const DenseTensor& dst_index,
-                                     const DenseTensor& dst_count,
-                                     const std::string& pool_type,
-                                     DenseTensor* x_grad);
-
-template <typename T, typename Context>
-void GraphSendRecvGradKernelWithMinMax(const Context& ctx,
-                                       const DenseTensor& out_grad,
-                                       const DenseTensor& x,
-                                       const DenseTensor& out,
-                                       const DenseTensor& src_index,
-                                       const DenseTensor& dst_index,
-                                       const std::string& pool_type,
-                                       DenseTensor* x_grad);
+void GraphSendRecvKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& src_index,
+                         const DenseTensor& dst_index,
+                         const std::string& pool_type,
+                         DenseTensor* out,
+                         DenseTensor* dst_count);
 
 }  // namespace phi
