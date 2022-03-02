@@ -372,6 +372,7 @@ packages=['paddle',
           'paddle.device',
           'paddle.device.cuda',
           'paddle.version',
+          'paddle.profiler'
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
