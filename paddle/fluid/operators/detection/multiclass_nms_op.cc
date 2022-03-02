@@ -93,7 +93,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     // Here the box_dims[0] is not the real dimension of output.
     // It will be rewritten in the computing kernel.
     if (score_size == 3) {
-      ctx->SetOutputDim("Out", {box_dims[1], box_dims[2] + 2});
+      ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     } else {
       ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     }
