@@ -1004,16 +1004,14 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-static
-    typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value &&
-                                !std::is_same<Tx, phi::dtype::bfloat16>::value,
-                            void>::type
-    CubTensorReduceImpl(const Tx* x_data,
-                        Ty* y_data,
-                        const TransformOp& transform,
-                        int reduce_num,
-                        const paddle::platform::Place& place,
-                        gpuStream_t stream) {
+static typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value,
+                               void>::type
+CubTensorReduceImpl(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const paddle::platform::Place& place,
+                    gpuStream_t stream) {
   auto reducer = ReduceOp<Ty>();
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
                                                                   transform);
@@ -1049,19 +1047,16 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-static
-    typename std::enable_if<std::is_same<Tx, phi::dtype::float16>::value ||
-                                std::is_same<Tx, phi::dtype::bfloat16>::value,
-                            void>::type
-    CubTensorReduceImpl(const Tx* x_data,
-                        Ty* y_data,
-                        const TransformOp& transform,
-                        int reduce_num,
-                        const paddle::platform::Place& place,
-                        gpuStream_t stream) {
-  PADDLE_THROW(
-      phi::errors::InvalidArgument("Tx should not be float16 or bfloat16 when "
-                                   "using cub::DeviceReduce::Reduce()."));
+static typename std::enable_if<std::is_same<Tx, phi::dtype::float16>::value,
+                               void>::type
+CubTensorReduceImpl(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const paddle::platform::Place& place,
+                    gpuStream_t stream) {
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
 
 template <typename Tx,
@@ -1102,8 +1097,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
 
   config.SetOutputData(y_data, x.place(), &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
-  constexpr bool kIsTxBF16 = std::is_same<Tx, phi::dtype::bfloat16>::value;
-  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16;
+  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
   if (use_cub_reduce) {
     CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
         x_data, y_data, transform, config.reduce_num, x.place(), stream);
