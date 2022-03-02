@@ -264,10 +264,10 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       // and different op name cost time,we set two event.
       platform::RecordEvent op_type_record_event(
           Type(), platform::TracerEventType::Operator, 1);
-      // auto op_name = platform::OpName(outputs_, Type());
-      // platform::RecordEvent op_name_record_event(
-      //     op_name, platform::TracerEventType::Operator, 1,
-      //     platform::EventRole::kUniqueOp);
+      auto op_name = platform::OpName(outputs_, Type());
+      platform::RecordEvent op_name_record_event(
+          op_name, platform::TracerEventType::Operator, 10,
+          platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
 
@@ -1210,6 +1210,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
                 << "` not found.";
       }
+    } else {
+      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
     }
 #ifdef PADDLE_WITH_XPU
     bool is_xpu_unsupport =
@@ -2048,7 +2051,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
     // deal with optional here
     if ((it == ctx.inputs.end() || it->second.size() == 0) &&
         (input_defs[i].type_index ==
-         std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
+             std::type_index(
+                 typeid(paddle::optional<const phi::DenseTensor&>)) ||
+         input_defs[i].type_index ==
+             std::type_index(
+                 typeid(paddle::optional<const phi::SelectedRows&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2074,6 +2081,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
     }
     pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
+  VLOG(4) << "Done inputs";
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto it = ctx.outputs.find(output_names[i]);
@@ -2107,17 +2115,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
             "Unsupported output `%s` type when call pt kernel.",
             framework::ToTypeName(var->Type())));
       }
-
-      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
-                                                      output_defs.at(i));
-      SetAllocationForOutputTenosr(
-          tensor_out, phi::TransToPhiPlace(output_defs.at(i).backend));
-
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
 
     pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
+  VLOG(4) << "Done outputs";
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
     if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
@@ -2247,6 +2250,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       }
     }
   }
+  VLOG(4) << "Done attributes";
 }
 
 }  // namespace framework
