@@ -451,7 +451,20 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
         param_code = ""
         for param in infer_meta_params:
             if param in input_names:
-                if param in self.optional_vars:
+                if self.inputs['input_info'][param] == "const Tensor&":
+                    param_code = param_code + "MakeMetaTensor(*" + PREFIX_TENSOR_NAME + param + "), "
+                elif self.inputs['input_info'][
+                        param] == "const std::vector<Tensor>&":
+                    meta_tensor_code = meta_tensor_code + f"""
+{code_indent}  auto {param}_meta_vec = MakeMetaTensor(*{PREFIX_TENSOR_NAME}{param});
+{code_indent}  std::vector<phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
+{code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
+{code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
+{code_indent}  }}
+"""
+
+                    param_code = param_code + param + "_metas, "
+                elif param in self.optional_vars:
                     meta_tensor_code = meta_tensor_code + f"""
 {code_indent}  paddle::optional<const phi::MetaTensor&> {PREFIX_TENSOR_NAME}meta_ref_{param}(paddle::none);
 {code_indent}  auto {PREFIX_TENSOR_NAME}meta_{param} = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
@@ -461,7 +474,9 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
 
                     param_code = param_code + f"{PREFIX_TENSOR_NAME}meta_ref_{param}, "
                 else:
-                    param_code = param_code + "MakeMetaTensor(*" + PREFIX_TENSOR_NAME + param + "), "
+                    raise ValueError(
+                        f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
+                    )
             elif param in kernel_output_names:
                 meta_tensor_code = meta_tensor_code + code_indent + "  phi::MetaTensor " + param.replace(
                     'kernel_', PREFIX_META_TENSOR_NAME) + "(" + param + ");\n"
