@@ -137,6 +137,7 @@ REGISTER_OP_CUDA_KERNEL(gather, ops::GatherOpCUDAKernel<float>,
                         ops::GatherOpCUDAKernel<int64_t>,
                         ops::GatherOpCUDAKernel<int>,
                         ops::GatherOpCUDAKernel<int16_t>,
+                        ops::GatherOpCUDAKernel<plat::float16>,
                         ops::GatherOpCUDAKernel<plat::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>,
                         ops::GatherGradOpCUDAKernel<double>,
