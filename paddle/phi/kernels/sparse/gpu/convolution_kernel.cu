@@ -41,6 +41,16 @@ __global__ void InitByIndexKernel(const int n, int* out1, int* out2) {
   }
 }
 
+/**
+ * @brief: update the out index and indices
+ * unique_keys: save the index of the output feature list
+ * unique_values: indiates the index of key before deduplication
+ * out_indexs: indicates the position of the output index in the rulebook
+ * rulebook_len: indicates the length of rulebook
+ * out_dims: indicates the output dims
+ * out_indices: the indices of output, out_indices = IndexToPoint(unique_keys)
+ * rulebook_out_indexs: the output index in rulebook
+**/
 __global__ void UpdateIndexKernel(const int* unique_keys,
                                   const int* unique_values,
                                   const int* out_indexs,
@@ -70,6 +80,22 @@ __global__ void UpdateIndexKernel(const int* unique_keys,
   }
 }
 
+/**
+ * @brief product rulebook
+ * for input_i in x_indices:
+ *   if input_i participate in the convolution calculation:
+ *       infer the output_i by input_i and kernel_i
+ *       save output_i
+ *
+ * x_indices: the indices of input features
+ * x_dims: the input dims
+ * kernel_dims: the kernel dims
+ * out_dims: the output dims
+ * non_zero_num: the number of input features
+ * rulebook: the rulebook to save the kernel index, input index and output index
+ * counter: save the number of times each location in the kernel participates in
+ *the caculation
+**/
 __global__ void ProductRuleBookKernel(const int* x_indices,
                                       const Dims4D x_dims,
                                       const Dims4D kernel_dims,
@@ -133,6 +159,15 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
 
 // TODO(zhangkaihuo): After the GatherCUDAKernel is migrated to phi, replace
 // this kernel with phi::GatherCUDAKernel;
+// Vectorization can be used to improve read and write bandwidth
+/**
+ * brief: gather data from params according to indices
+ * params: the inputs
+ * indices: the indices you want to gather
+ * output: the outputs
+ * index_size: the size of indices
+ * slice_size: slice size corresponding to each index, here is the channel size
+**/
 template <typename T, typename IndexT = int>
 __global__ void GatherKernel(const T* params,
                              const IndexT* indices,
@@ -148,6 +183,16 @@ __global__ void GatherKernel(const T* params,
   }
 }
 
+/**
+ * brief: scatter add
+ * input: the inputs
+ * unique_value: refer to UpdateIndexKernel notes
+ * out_index: the output feature index
+ * non_zero_num: the number of output features
+ * rulebook_len: the length of rulebook
+ * channels: the output channel size
+ * out: the outputs
+**/
 template <typename T>
 __global__ void ScatterKernel(const T* input,
                               const int* unique_value,
@@ -174,6 +219,7 @@ __global__ void ScatterKernel(const T* input,
   }
 }
 
+// brief: calculation the distance between start and end
 __global__ void DistanceKernel(const int* start,
                                const int* end,
                                int* distance) {
@@ -186,8 +232,8 @@ __global__ void DistanceKernel(const int* start,
 // the second paper
 // example:
 // 1. the rulebook:
-//  the kernel_index:               0, 0, 0, 1, 1, 1, 2, 2, ....
-//  the out_index(key):                  20, 30, 33, 30, 33, 20, 25
+//  the kernel_index:                       0, 0, 0, 1, 1, 1, 2, 2, ....
+//  the out_index(key):                     20, 30, 33, 30, 33, 20, 25
 // 2. mark the index of out_index(value):   0, 1, 2, 3, 4, 5, 6, ....
 // 3. sorted the (key, value)
 // 4. unique the (key, value):
