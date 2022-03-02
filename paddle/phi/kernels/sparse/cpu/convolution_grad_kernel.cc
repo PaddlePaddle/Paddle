@@ -21,10 +21,12 @@ namespace sparse {
 
 // rulebook:
 //[
-//  [counter],
+//  [kernel_index],
 //  [in_i],
 //  [out_i],
 //]
+// x_grad = out_grad * transpose(kenrel)
+// kernel_grad = transpose(x) * out_grad
 template <typename T, typename Context>
 void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
@@ -85,24 +87,26 @@ void Conv3dGradKernel(const Context& dev_ctx,
             out_grad_features_ptr);
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  std::vector<int> offsets(kernel_size + 1);
-  const int* counter_ptr = rulebook_ptr;
+  std::vector<int> offsets(kernel_size + 1), counter(kernel_size, 0);
+  for (int i = 0; i < rulebook_len; i++) {
+    counter[rulebook_ptr[i]] += 1;
+  }
   int offset = 0;
   for (int i = 0; i < kernel_size; i++) {
     offsets[i] = offset;
-    offset += counter_ptr[i];
+    offset += counter[i];
   }
   offsets[kernel_size] = offset;
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
-    if (counter_ptr[i] <= 0) {
+    if (counter[i] <= 0) {
       continue;
     }
 
-    const int M = counter_ptr[i];
-    const int K = in_channels;   // in_channels
-    const int N = out_channels;  // out_channels
+    const int M = counter[i];
+    const int K = in_channels;
+    const int N = out_channels;
     T* tmp_in_ptr = in_features_ptr + offsets[i] * in_channels;
     T* tmp_out_grad_ptr = out_grad_features_ptr + offsets[i] * out_channels;
     const T* tmp_kernel_ptr = kernel_ptr + i * in_channels * out_channels;
