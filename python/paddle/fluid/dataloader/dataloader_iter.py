@@ -256,6 +256,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             event_type=profiler.TracerEventType.Dataloader)
         trace_event.begin()
         try:
+            paddle.utils.benchmark().check_if_same_event(self)
+            paddle.utils.benchmark().before_reader()
             if in_dygraph_mode():
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0])
@@ -708,6 +710,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             event_type=profiler.TracerEventType.Dataloader)
         trace_event.begin()
         try:
+            paddle.utils.benchmark().check_if_same_event(self)
+            paddle.utils.benchmark().before_reader()
             # _batches_outstanding here record the total batch data number
             # in 'from after _try_put_indices to beforeoutput data', this
             # value should be _outstanding_capacity if data is not drained,
@@ -750,7 +754,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     else:
                         data = self._reader.read_next()
             self._on_output_batch()
-            paddle.utils.benchmark().step_begin()
+            paddle.utils.benchmark().after_reader()
             return data
         except StopIteration:
             if not self._persistent_workers:

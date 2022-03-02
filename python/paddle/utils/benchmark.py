@@ -19,6 +19,23 @@ from collections import OrderedDict
 __all__ = ['benchmark']
 
 
+class Stack(object):
+    def __init__(self):
+        self.items = []
+
+    def push(self, item):
+        self.items.append(item)
+
+    def pop(self):
+        return self.items.pop()
+
+    def is_empty(self):
+        return len(self.items) == 0
+
+    def peek(self):
+        return self.items[len(self.items) - 1]
+
+
 class Hook:
     def begin(self, benchmark):
         pass
@@ -26,7 +43,10 @@ class Hook:
     def end(self, benchmark):
         pass
 
-    def before_step(self, benchmark):
+    def before_reader(self, benchmark):
+        pass
+
+    def after_reader(self, benchmark):
         pass
 
     def after_step(self, benchmark):
@@ -35,140 +55,190 @@ class Hook:
 
 class Benchmark(object):
     def __init__(self):
-        self.log_info = dict()
-        self.perf_summary = dict()
-        self.perf_iter = dict()
-        self.iter = 0
         self.num_samples = 1
         self.hooks = self.register_hooks()
+        self.current_event = None
+        self.events = Stack()
+        self.previous_reader = None
 
     def step(self, num_samples):
         self.num_samples = num_samples
-        self.iter += 1
-        self.step_end()
+        self.after_step()
 
-    def stats(self):
-        pass
-
-    def step_stats(self):
-        self.perf_iter.update({
-            "reader_cost":
-            self.hooks['benchmark_hook'].reader_cost_averager.get_average(),
-            "batch_cost":
-            self.hooks['benchmark_hook'].batch_cost_averager.get_average(),
-            "ips":
-            self.hooks['benchmark_hook'].batch_cost_averager.get_ips_average()
-        })
-        self.hooks['benchmark_hook'].reader_cost_averager.reset()
-        self.hooks['benchmark_hook'].batch_cost_averager.reset()
-
+    def step_info(self):
         message = ''
-        message += ' reader_cost: %.3f s' % (self.perf_iter['reader_cost'])
-        message += ' batch_cost: %.3f s' % (self.perf_iter['batch_cost'])
-        message += ' ips: %.3f ' % (self.perf_iter['ips'])
+        reader_average = self.current_event.reader_average()
+        batch_average = self.current_event.batch_average()
+        ips_average = self.current_event.ips_average()
+        if reader_average:
+            message += ' reader_cost: %.5f s' % (reader_average)
+        if batch_average:
+            message += ' batch_cost: %.5f s' % (batch_average)
+        if ips_average:
+            message += ' ips: %.5f samples/s' % (ips_average)
+        self.current_event.reset()
         return message
 
     def begin(self):
-        self.call_hook_begin()
-
-    def step_begin(self):
-        self.call_hook_before_step()
-
-    def step_end(self):
-        self.call_hook_after_step()
-
-    def end(self):
-        self.call_hook_end()
-
-    def register_hooks(self):
-        hooks = OrderedDict(benchmark_hook=BenchmarkHook(), log_hook=LogHook())
-        return hooks
-
-    def call_hook_begin(self):
         for hook in self.hooks.values():
             hook.begin(self)
 
-    def call_hook_end(self):
+    def before_reader(self):
         for hook in self.hooks.values():
-            hook.end(self)
+            hook.before_reader(self)
 
-    def call_hook_before_step(self):
+    def after_reader(self):
         for hook in self.hooks.values():
-            hook.before_step(self)
+            hook.after_reader(self)
 
-    def call_hook_after_step(self):
+    def after_step(self):
         for hook in self.hooks.values():
             hook.after_step(self)
 
+    def end(self):
+        for hook in self.hooks.values():
+            hook.end(self)
+
+    def register_hooks(self):
+        hooks = OrderedDict(timer_hook=TimerHook(), log_hook=LogHook())
+        return hooks
+
+    def check_if_same_event(self, reader):
+        if self.previous_reader and self.previous_reader != reader:
+            self.hooks['timer_hook'].start_time = time.time()
+        self.previous_reader = reader
+
+    def get_current_reader(self):
+        return self.current_reader
+
 
 class LogHook(Hook):
-    def end(self):
-        benchmark.logger.info("========= Benchmark Perf Summary =========")
-        benchmark.logger.info('summary iter range: ' + str(
-            benchmark.summary_range))
-        benchmark.logger.info('[ips        ]\t' + self.get_message(
-            benchmark.perf_summary['ips_summary']))
-        benchmark.logger.info('[reader_cost]\t' + self.get_message(
-            benchmark.perf_summary['reader_summary']))
-        benchmark.logger.info('[batch_cost ]\t' + self.get_message(
-            benchmark.perf_summary['batch_summary']))
-        benchmark.logger.info('reader_ratio ' + '%3.f' % (
-            benchmark.perf_summary['reader_ratio']) + '%')
+    def end(self, benchmark):
+        summary = benchmark.current_event.get_summary()
+        print("========= Benchmark Perf Summary =========")
+        print('[ips        ]\t' + self.get_message(summary['ips_summary']))
+        print('[reader_cost]\t' + self.get_message(summary['reader_summary']))
+        print('[batch_cost ]\t' + self.get_message(summary['batch_summary']))
+        print('reader_ratio ' + '%5.f' % (summary['reader_ratio']) + '%')
 
     def get_message(self, message_dict):
         message = ''
         for k, v in message_dict.items():
-            message += '%s: %.3f ' % (k, v)
+            message += '%s: %.3e ' % (k, v)
         return message
 
 
-class BenchmarkHook(Hook):
+class TimerHook(Hook):
     def __init__(self):
-        self.reader_cost_averager = TimeAverager()
-        self.batch_cost_averager = TimeAverager()
-        self.summary_reader_cost_list = []
-        self.summary_batch_cost_list = []
-        self.summary_ips_list = []
         self.start_time = time.time()
+        self.start_reader = time.time()
+        self.skip_iter = 10
 
     def begin(self, benchmark):
+        benchmark.events.push(Event())
+        benchmark.current_event = benchmark.events.peek()
         self.start_time = time.time()
 
-    def before_step(self, benchmark):
-        reader_cost = time.time() - self.start_time
-        self.reader_cost_averager.record(reader_cost)
-        self.summary_reader_cost_list.append(reader_cost)
+    def before_reader(self, benchmark):
+        self.start_reader = time.time()
+
+    def after_reader(self, benchmark):
+        if benchmark.current_event is None:
+            return
+        reader_cost = time.time() - self.start_reader
+        benchmark.current_event.record_reader(reader_cost)
+        if benchmark.current_event.total_iters >= self.skip_iter:
+            benchmark.current_event.update_records(
+                reader_cost, benchmark.current_event.reader_records)
 
     def after_step(self, benchmark):
+        if benchmark.current_event is None:
+            return
         batch_cost = time.time() - self.start_time
-        self.batch_cost_averager.record(batch_cost, benchmark.num_samples)
-        self.summary_batch_cost_list.append(batch_cost)
-        self.summary_ips_list.append(float(benchmark.num_samples) / batch_cost)
+        benchmark.current_event.record_bacth(batch_cost, benchmark.num_samples)
+        if benchmark.current_event.total_iters >= self.skip_iter:
+            benchmark.current_event.update_records(
+                batch_cost, benchmark.current_event.batch_records)
+            current_ips = float(benchmark.num_samples) / batch_cost
+            benchmark.current_event.update_records(
+                current_ips, benchmark.current_event.ips_records)
         self.start_time = time.time()
 
     def end(self, benchmark):
-        self.get_perf_summary(benchmark)
+        if benchmark.events.is_empty():
+            return
+        benchmark.events.pop()
+        self.start_time = time.time()
 
-    def get_perf_summary(self, benchmark):
-        reader_summary = self.get_stats(self.summary_reader_cost_list)
-        batch_summary = self.get_stats(self.summary_batch_cost_list)
-        ips_summary = self.get_stats(self.summary_ips_list)
 
-        reader_ratio = reader_summary["avg"] / batch_summary["avg"] * 100
+class Event(object):
+    def __init__(self):
+        self.reader_cost_averager = TimeAverager()
+        self.batch_cost_averager = TimeAverager()
+        self.total_samples = 0
+        self.total_iters = 0
+        self.reader_records = dict(max=0, min=float('inf'), total=0)
+        self.batch_records = dict(max=0, min=float('inf'), total=0)
+        self.ips_records = dict(max=0, min=float('inf'))
 
-        benchmark.perf_summary.update({
-            "reader_summary": reader_summary,
-            "batch_summary": batch_summary,
-            "ips_summary": ips_summary,
-            "reader_ratio": reader_ratio
-        })
+    def reset(self):
+        self.reader_cost_averager.reset()
+        self.batch_cost_averager.reset()
 
-    def get_stats(self, data_list):
-        res = dict(
-            avg=sum(data_list) / len(data_list),
-            max=max(data_list),
-            min=min(data_list))
-        return res
+    def record_reader(self, usetime):
+        self.reader_cost_averager.record(usetime)
+
+    def record_bacth(self, usetime, num_samples=None):
+        self.batch_cost_averager.record(usetime, num_samples)
+        self.total_iters += 1
+        if num_samples:
+            self.total_samples += num_samples
+
+    def reader_average(self):
+        return self.reader_cost_averager.get_average()
+
+    def batch_average(self):
+        return self.batch_cost_averager.get_average()
+
+    def ips_average(self):
+        return self.batch_cost_averager.get_ips_average()
+
+    def update_records(self, current_record, records):
+        if current_record > records['max']:
+            records['max'] = current_record
+        elif current_record < records['min']:
+            records['min'] = current_record
+        if 'total' in records.keys():
+            records['total'] += current_record
+
+    def get_summary(self):
+        reader_avg = 0
+        batch_avg = 0
+        ips_avg = 0
+        if self.total_iters:
+            reader_avg = self.reader_records['total'] / float(self.total_iters)
+            batch_avg = self.batch_records['total'] / float(self.total_iters)
+            ips_avg = float(self.total_samples) / self.batch_records['total']
+        reader_summary = dict(
+            max=self.reader_records['max'],
+            min=self.reader_records['min'],
+            avg=reader_avg)
+        batch_summary = dict(
+            max=self.batch_records['max'],
+            min=self.batch_records['min'],
+            avg=batch_avg)
+        ips_summary = dict(
+            max=self.ips_records['max'],
+            min=self.ips_records['min'],
+            avg=ips_avg)
+        reader_ratio = (reader_avg / batch_avg) * 100
+        summary = dict(
+            reader_summary=reader_summary,
+            batch_summary=batch_summary,
+            ips_summary=ips_summary,
+            reader_ratio=reader_ratio)
+
+        return summary
 
 
 class TimeAverager(object):
