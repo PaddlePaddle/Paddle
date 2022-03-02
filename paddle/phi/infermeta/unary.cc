@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
@@ -49,6 +50,12 @@ void UnchangedInferMetaCheckAxis(const MetaTensor& x,
           axis,
           rank));
   out->share_meta(x);
+}
+
+void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype::ToReal(x.dtype()));
+  out->set_layout(x.layout());
 }
 
 void FlattenInferMeta(const MetaTensor& x,
