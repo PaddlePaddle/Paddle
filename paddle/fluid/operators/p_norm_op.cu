@@ -39,6 +39,11 @@ __device__ __forceinline__ int sgn(T val) {
 __device__ __forceinline__ platform::float16 inline_abs(platform::float16 x) {
   return static_cast<platform::float16>(abs(static_cast<float>(x)));
 }
+
+__device__ __forceinline__ platform::bfloat16 inline_abs(platform::bfloat16 x) {
+  return static_cast<platform::bfloat16>(abs(static_cast<float>(x)));
+}
+
 __device__ __forceinline__ float inline_abs(float x) { return abs(x); }
 __device__ __forceinline__ double inline_abs(double x) { return abs(x); }
 
@@ -51,6 +56,11 @@ __device__ __forceinline__ int inline_sign(double x) { return sgn<double>(x); }
 __device__ __forceinline__ platform::float16 inline_pow(
     platform::float16 base, platform::float16 exponent) {
   return static_cast<platform::float16>(
+      pow(static_cast<float>(base), static_cast<float>(exponent)));
+}
+__device__ __forceinline__ platform::bfloat16 inline_pow(
+    platform::bfloat16 base, platform::bfloat16 exponent) {
+  return static_cast<platform::bfloat16>(
       pow(static_cast<float>(base), static_cast<float>(exponent)));
 }
 __device__ __forceinline__ float inline_pow(float base, float exponent) {
@@ -202,9 +212,11 @@ using CUDA = paddle::platform::CUDADeviceContext;
 
 REGISTER_OP_CUDA_KERNEL(p_norm,
                         ops::PnormCUDAKernel<CUDA, paddle::platform::float16>,
+                        ops::PnormCUDAKernel<CUDA, paddle::platform::bfloat16>,
                         ops::PnormCUDAKernel<CUDA, float>,
                         ops::PnormCUDAKernel<CUDA, double>);
 REGISTER_OP_CUDA_KERNEL(
     p_norm_grad, ops::PnormGradCUDAKernel<CUDA, paddle::platform::float16>,
+    ops::PnormGradCUDAKernel<CUDA, paddle::platform::bfloat16>,
     ops::PnormGradCUDAKernel<CUDA, float>,
     ops::PnormGradCUDAKernel<CUDA, double>);

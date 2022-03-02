@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/grid_sampler_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
@@ -292,15 +293,12 @@ class GridSampleOpCUDAKernel : public framework::OpKernel<T> {
     auto* output_data = output->mutable_data<T>(ctx.GetPlace());
     VLOG(3) << "out dims: " << output->dims()[0] << "; " << output->dims()[1]
             << "; " << output->dims()[2] << "; " << output->dims()[3];
-    phi::funcs::SetConstant<paddle::platform::CUDADeviceContext, T>()(
-        dev_ctx, output, static_cast<T>(0));
     int count = static_cast<int>(n * out_h * out_w);
     auto cu_stream = dev_ctx.stream();
-    int block_size = 512;
-    int grid_size = (count + block_size - 1) / block_size;
-    VLOG(3) << "cuda launch - grid dims: " << grid_size << "; block dims"
-            << block_size;
-    grid_sample_cuda_kernel<T><<<grid_size, block_size, 0, cu_stream>>>(
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(dev_ctx, count);
+    grid_sample_cuda_kernel<
+        T><<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
         count, n, c, out_h, out_w, in_h, in_w, input->data<T>(),
         grid->data<T>(), output_data, mode, padding_mode, align_corners);
   }
@@ -467,19 +465,14 @@ class GridSampleGradOpCUDAKernel : public framework::OpKernel<T> {
     if (ctx.HasOutput(framework::GradVarName("Grid"))) {
       auto* grid_grad = ctx.Output<Tensor>(framework::GradVarName("Grid"));
       grid_grad_data = grid_grad->mutable_data<T>(ctx.GetPlace());
-      phi::funcs::SetConstant<paddle::platform::CUDADeviceContext, T>()(
-          ctx.template device_context<paddle::platform::CUDADeviceContext>(),
-          grid_grad, static_cast<T>(0));
     }
 
     int count = static_cast<int>(n * out_h * out_w);
     auto cu_stream = dev_ctx.stream();
-    int block_size = 512;
-    int grid_size = (count + block_size - 1) / block_size;
-    VLOG(3) << "cuda launch grad kernel - grid dims: " << grid_size
-            << "; block dims" << block_size << "; count: " << count;
+    platform::GpuLaunchConfig config =
+        platform::GetGpuLaunchConfig1D(dev_ctx, count);
     grid_sampler_cuda_backward_kernel<
-        T><<<grid_size, block_size, 0, cu_stream>>>(
+        T><<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
         count, output_grad->data<T>(), input->data<T>(), grid->data<T>(), n, c,
         out_h, out_w, in_h, in_w, input_grad->data<T>(), grid_grad_data, mode,
         padding_mode, align_corners);

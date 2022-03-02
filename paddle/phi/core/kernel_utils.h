@@ -23,9 +23,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_context.h"
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/selected_rows.h"
-#endif
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/type_defs.h"
@@ -222,9 +220,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
-#endif
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
@@ -245,6 +241,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
@@ -258,9 +255,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRows);
-#endif
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCooTensor);
