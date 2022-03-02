@@ -31,7 +31,9 @@ yaml_types_mapping = {
   'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
-    'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>'
+    'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
+    'Scalar' : 'Scalar',
+    'ScalarArray' : 'ScalarArray'
 }
 
 
