@@ -345,7 +345,7 @@ if load_noavx:
         from .core_noavx import _device_synchronize
         from .core_noavx import _get_current_stream
         from .core_noavx import _set_current_stream
-        from .core_avx import _Profiler, _ProfilerResult, _RecordEvent
+        from .core_noavx import _Profiler, _ProfilerResult, _RecordEvent
         if sys.platform != 'win32':
             from .core_noavx import _set_process_pids
             from .core_noavx import _erase_process_pids
