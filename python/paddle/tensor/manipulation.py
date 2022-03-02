@@ -2419,8 +2419,7 @@ def tensordot(x, y, axes=2, name=None):
     axes_y = []
     if np.issubdtype(type(axes), np.integer):
         assert axes >= 0, (
-            "The 'axes' in " + op_type +
-            f" should not be negative, but received axes={axes}.")
+            "The 'axes' in " + op_type + " should not be negative, but received axes={axes}.")
         axes_x = range(x.ndim - axes, x.ndim)
         axes_y = range(axes)
     else:
@@ -2737,9 +2736,10 @@ def moveaxis(x, source, destination, name=None):
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 
-    check_variable_and_dtype(
-        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        'moveaxis')
+    check_variable_and_dtype(x, 'x', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
+        'complex128'
+    ], 'moveaxis')
 
     helper = LayerHelper('moveaxis', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
