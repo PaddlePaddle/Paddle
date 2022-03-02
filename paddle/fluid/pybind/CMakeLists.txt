@@ -245,7 +245,7 @@ if(WITH_PYTHON)
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file} ${impl_file}
       COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
       DEPENDS ${OP_IMPL_DEPS})
-    if(NOT ON_INFER)
+    if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
       add_custom_command(OUTPUT ${eager_impl_file}
         COMMAND ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_op_function_generator_retry.bat
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file} ${eager_impl_file}
@@ -279,7 +279,7 @@ if(WITH_PYTHON)
           COMMENT "copy_if_different ${tmp_impl_file} to ${impl_file}"
           DEPENDS ${OP_IMPL_DEPS}
           VERBATIM)
-    if(NOT ON_INFER)
+    if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
       add_custom_command(OUTPUT ${eager_impl_file}
             COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
                 "${CMAKE_CURRENT_BINARY_DIR}/eager_op_function_generator"
@@ -291,7 +291,7 @@ if(WITH_PYTHON)
       endif()
   endif(WIN32)
   add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
-  if(NOT ON_INFER)
+  if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_custom_target(eager_op_function_generator_cmd ALL DEPENDS ${eager_impl_file})
   endif()
 
@@ -299,7 +299,7 @@ if(WITH_PYTHON)
   cc_library(op_function_common SRCS op_function_common.cc DEPS ${PYBIND_DEPS})
   list(APPEND PYBIND_DEPS op_function_common)
 
-  if(NOT ON_INFER)
+  if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     cc_library(paddle_eager
     SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
     DEPS eager_api autograd_meta backward grad_node_info phi op_function_common final_dygraph_function final_dygraph_node dygraph_function dygraph_node accumulation_node global_utils utils python)
