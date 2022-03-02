@@ -19,9 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/distribution_helper.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
-#include "paddle/fluid/operators/index_impl.cu.h"
+
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 DECLARE_bool(use_curand);
 
@@ -81,20 +82,20 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     if (gen_cuda->GetIsInitPy() && seed_flag) {
       if (FLAGS_use_curand) {
         using MT = typename details::MPTypeTrait<T>::Type;
-        distribution::normal_distribution<MT> dist;
-        distribution::normal_transform<MT> trans(mean, std);
-        distribution::distribution_and_transform<T>(dev_cxt, tensor, dist,
-                                                    trans);
+        phi::distribution::normal_distribution<MT> dist;
+        phi::distribution::normal_transform<MT> trans(mean, std);
+        phi::distribution::distribution_and_transform<T>(dev_cxt, tensor, dist,
+                                                         trans);
       } else {
         auto seed_offset = gen_cuda->IncrementOffset(1);
         int64_t gen_offset = size * seed_offset.second;
         auto func =
             GaussianGenerator<T>(mean, std, seed_offset.first, gen_offset);
-        IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
+        phi::IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
       }
     } else {
       auto func = GaussianGenerator<T>(mean, std, seed);
-      IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
+      phi::IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
     }
   }
 };
@@ -126,10 +127,10 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
       int64_t gen_offset = size * seed_offset.second;
       auto func = GaussianGenerator<T>(mean, std, seed_offset.first,
                                        seed_offset.second);
-      IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
+      phi::IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
     } else {
       auto func = GaussianGenerator<T>(mean, std, seed);
-      IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
+      phi::IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
     }
   }
 };

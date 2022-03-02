@@ -493,16 +493,14 @@ void BroadcastKernelForDifferentVecSize(
               "%d-th output tensor`s shape is not.",
               i));
       out_vec_size = std::min(
-          paddle::platform::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()),
-          out_vec_size);
+          phi::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()), out_vec_size);
     }
   } else {
-    out_vec_size =
-        paddle::platform::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>());
+    out_vec_size = phi::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>());
   }
 
   for (auto *in : ins) {
-    auto temp_size = paddle::platform::GetVectorizedSize<InT>(in->data<InT>());
+    auto temp_size = phi::GetVectorizedSize<InT>(in->data<InT>());
     in_vec_size = in->dims() == (*outs)[0]->dims()
                       ? std::min(temp_size, in_vec_size)
                       : in_vec_size;

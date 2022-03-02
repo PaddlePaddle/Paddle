@@ -89,9 +89,9 @@ __global__ void BroadcastKernelBinary(
 template <typename T>
 void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
                            const T* in0, const T* in1, T* out) {
-  int in_vec_size = std::min(platform::GetVectorizedSize<T>(in0),
-                             platform::GetVectorizedSize<T>(in1));
-  int out_vec_size = std::min(4, platform::GetVectorizedSize<T>(out));
+  int in_vec_size =
+      std::min(phi::GetVectorizedSize<T>(in0), phi::GetVectorizedSize<T>(in1));
+  int out_vec_size = std::min(4, phi::GetVectorizedSize<T>(out));
   int vec_size = std::min(out_vec_size, in_vec_size);
 
   int numel = m * n;

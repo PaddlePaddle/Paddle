@@ -22,9 +22,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
-#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 #define HOSTDEVICE __host__ __device__
@@ -498,9 +498,8 @@ struct VecSizeGetter {
                                const ArgsT &args,
                                int *vec_size) {
     using Type = std::tuple_element_t<Index, ArgsT>;
-    *vec_size = std::min<int>(
-        *vec_size,
-        paddle::platform::GetVectorizedSize(ins[Index]->data<Type>()));
+    *vec_size = std::min<int>(*vec_size,
+                              phi::GetVectorizedSize(ins[Index]->data<Type>()));
   }
 };
 
@@ -515,8 +514,8 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
   // The Arg VecSize=1 is to match the Unroller template.
   Unroller<VecSizeGetter, 1, Arity>::step(ins, arg, &vec_size);
   for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
-    vec_size = std::min<int>(
-        vec_size, paddle::platform::GetVectorizedSize((*iter)->data<OutT>()));
+    vec_size =
+        std::min<int>(vec_size, phi::GetVectorizedSize((*iter)->data<OutT>()));
   }
   return vec_size;
 }

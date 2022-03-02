@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/bernoulli_kernel.h"
+
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #ifdef __NVCC__
@@ -28,10 +30,9 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/bernoulli_kernel.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/distribution_helper.h"
 #include "paddle/fluid/platform/transform.h"
 
 DECLARE_bool(use_curand);
@@ -77,7 +78,7 @@ __global__ void bernoulli_cuda_kernel(
 
   size_t total_thread = gridDim.x * blockDim.x;
   for (size_t i = 4 * thread_idx; i < size; i += total_thread * 4) {
-    paddle::distribution::uniform_distribution<float> dist;
+    distribution::uniform_distribution<float> dist;
     float4 rand = dist(&state);
 #pragma unroll
     for (size_t j = 0; j < 4; j++) {
