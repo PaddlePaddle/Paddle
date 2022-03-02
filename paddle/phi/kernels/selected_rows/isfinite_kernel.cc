@@ -31,7 +31,7 @@ inline void IsfiniteSRImpl(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(isinf,
+PD_REGISTER_KERNEL(isinf_sr,
                    CPU,
                    ALL_LAYOUT,
                    phi::IsinfSR,
@@ -41,7 +41,7 @@ PD_REGISTER_KERNEL(isinf,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(isnan,
+PD_REGISTER_KERNEL(isnan_sr,
                    CPU,
                    ALL_LAYOUT,
                    phi::IsnanSR,
@@ -51,7 +51,7 @@ PD_REGISTER_KERNEL(isnan,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(isfinite,
+PD_REGISTER_KERNEL(isfinite_sr,
                    CPU,
                    ALL_LAYOUT,
                    phi::IsfiniteSR,
@@ -62,7 +62,7 @@ PD_REGISTER_KERNEL(isfinite,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(isinf,
+PD_REGISTER_KERNEL(isinf_sr,
                    GPU,
                    ALL_LAYOUT,
                    phi::IsinfSR,
@@ -72,7 +72,7 @@ PD_REGISTER_KERNEL(isinf,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(isnan,
+PD_REGISTER_KERNEL(isnan_sr,
                    GPU,
                    ALL_LAYOUT,
                    phi::IsnanSR,
@@ -82,7 +82,7 @@ PD_REGISTER_KERNEL(isnan,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(isfinite,
+PD_REGISTER_KERNEL(isfinite_sr,
                    GPU,
                    ALL_LAYOUT,
                    phi::IsfiniteSR,
