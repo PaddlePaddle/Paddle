@@ -116,11 +116,11 @@ struct SigmoidBwdFunctor {
 
 template <typename T>
 struct DivFunctor {
-  const T *norm_;
-  HOSTDEVICE inline DivFunctor(const T *norm) : norm_(norm) {}
+  const T norm_;
+  HOSTDEVICE inline DivFunctor(const T norm) : norm_(norm) {}
 
   HOSTDEVICE inline T operator()(T loss) {
-    loss /= norm_[0];
+    loss /= norm_;
     return loss;
   }
 };
@@ -162,7 +162,6 @@ class GPUSigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
     counts_tensor->mutable_data<T>(context.GetPlace(),
                                    Labels->numel() * sizeof(T));
     counts_tensor->Resize(Out->dims());
-
     int limit = Out->numel();
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
@@ -174,15 +173,33 @@ class GPUSigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
                                                               &outs, functor);
     if (normalize) {
       T *counts = counts_tensor->mutable_data<T>(context.GetPlace());
-      auto norm_ptr = memory::Alloc(dev_ctx, sizeof(T));
-      T *norm = reinterpret_cast<T *>(norm_ptr->ptr());
-      Sum<T, kNumCUDAThreads><<<1, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
-          counts, limit, static_cast<T>(1e-5), norm);
+      Tensor *norm_tensor = new Tensor();
+      norm_tensor->mutable_data<T>(context.GetPlace(), sizeof(T));
+      auto dims = phi::vectorize(counts_tensor->dims());
+      std::vector<int> reduce_dim = {};
+      for (int i = 0; i < dims.size(); i++) {
+        reduce_dim.push_back(i);
+      }
+
+      TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+          context.cuda_device_context(), *counts_tensor, norm_tensor,
+          NonzeroFunctor<T>(), reduce_dim, dev_ctx.stream());
+      T *norm = norm_tensor->mutable_data<T>(context.GetPlace());
+      auto norm_cpu_mem = memory::Alloc(platform::CPUPlace(), sizeof(T));
+      T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
+      memory::Copy(platform::CPUPlace(), norm_cpu_ptr, dev_ctx.GetPlace(), norm,
+                   sizeof(T), dev_ctx.stream());
+      auto eps = static_cast<T>(1e-5);
+      *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
+
       std::vector<const framework::Tensor *> div_ins = {Out};
       std::vector<framework::Tensor *> div_outs = {Out};
-      auto div_functor = DivFunctor<T>(norm);
+      auto div_functor = DivFunctor<T>(*norm_cpu_ptr);
       phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs,
                                        div_functor);
+
+      delete norm_tensor;
+      delete counts_tensor;
     }
   }
 };
@@ -222,14 +239,26 @@ class GPUSigmoidCrossEntropyWithLogitsGradKernel
       T *counts = counts_tensor->mutable_data<T>(context.GetPlace());
       Tensor *norm_tensor = new Tensor();
       norm_tensor->mutable_data<T>(context.GetPlace(), sizeof(T));
-      const std::vector<int> reduce_dim = {1};
+      auto dims = phi::vectorize(counts_tensor->dims());
+      std::vector<int> reduce_dim = {};
+      for (int i = 0; i < dims.size(); i++) {
+        reduce_dim.push_back(i);
+      }
+
       TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
           context.cuda_device_context(), *counts_tensor, norm_tensor,
           NonzeroFunctor<T>(), reduce_dim, dev_ctx.stream());
       T *norm = norm_tensor->mutable_data<T>(context.GetPlace());
+      auto norm_cpu_mem = memory::Alloc(platform::CPUPlace(), sizeof(T));
+      T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
+      memory::Copy(platform::CPUPlace(), norm_cpu_ptr, dev_ctx.GetPlace(), norm,
+                   sizeof(T), dev_ctx.stream());
+      auto eps = static_cast<T>(1e-5);
+      *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
+
       std::vector<const framework::Tensor *> div_ins = {dX};
       std::vector<framework::Tensor *> div_outs = {dX};
-      auto div_functor = DivFunctor<T>(norm);
+      auto div_functor = DivFunctor<T>(*norm_cpu_ptr);
       phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs,
                                        div_functor);
       delete norm_tensor;
