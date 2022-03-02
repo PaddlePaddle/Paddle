@@ -89,6 +89,7 @@ if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
     fi
 
     # install requirements
+    export no_proxy=mirror.baidu.com,${no_proxy}
     apt-get install -y --no-install-recommends doxygen jq
     echo 'beautifulsoup4
 Markdown
