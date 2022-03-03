@@ -139,11 +139,6 @@ void GraphSendRecvKernel(const Context& ctx,
   } else if (index_type == phi::DataType::INT64) {
     GraphSendRecvOpKernelLaunchHelper<Context, T, int64_t>(
         ctx, x, src_index, dst_index, pool_type, out, dst_count);
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported Src_index or Dst_index dtype, expected int, int64, but "
-        "got %s.",
-        index_type));
   }
 }
 

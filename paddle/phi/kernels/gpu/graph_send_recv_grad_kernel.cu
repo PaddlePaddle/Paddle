@@ -101,51 +101,6 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
 }
 
 template <typename T, typename Context>
-void GraphSendRecvGradKernelWithSum(const Context& ctx,
-                                    const DenseTensor& out_grad,
-                                    const DenseTensor& src_index,
-                                    const DenseTensor& dst_index,
-                                    const std::string& pool_type,
-                                    DenseTensor* x_grad) {
-  auto index_type = src_index.dtype();
-  if (index_type == phi::DataType::INT32) {
-    GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
-        ctx, out_grad, src_index, dst_index, pool_type, x_grad);
-  } else if (index_type == phi::DataType::INT64) {
-    GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
-        ctx, out_grad, src_index, dst_index, pool_type, x_grad);
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported Src_index or Dst_index type, Expected int, int64, but "
-        "got %s.",
-        index_type));
-  }
-}
-
-template <typename T, typename Context>
-void GraphSendRecvGradKernelWithMean(const Context& ctx,
-                                     const DenseTensor& out_grad,
-                                     const DenseTensor& src_index,
-                                     const DenseTensor& dst_index,
-                                     const DenseTensor& dst_count,
-                                     const std::string& pool_type,
-                                     DenseTensor* x_grad) {
-  auto index_type = src_index.dtype();
-  if (index_type == phi::DataType::INT32) {
-    GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
-        ctx, out_grad, src_index, dst_index, pool_type, x_grad, &dst_count);
-  } else if (index_type == phi::DataType::INT64) {
-    GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
-        ctx, out_grad, src_index, dst_index, pool_type, x_grad, &dst_count);
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported Src_index or Dst_index type, Expected int, int64, but "
-        "got %s.",
-        index_type));
-  }
-}
-
-template <typename T, typename Context>
 void GraphSendRecvGradKernel(const Context& ctx,
                              const DenseTensor& out_grad,
                              paddle::optional<const DenseTensor&> x,
@@ -178,11 +133,6 @@ void GraphSendRecvGradKernel(const Context& ctx,
         dst_count.get_ptr(),
         x.get_ptr(),
         out.get_ptr());
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported Src_index or Dst_index type, Expected int, int64, but "
-        "got %s.",
-        index_type));
   }
 }
 

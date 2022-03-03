@@ -18,8 +18,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -161,11 +159,6 @@ void GraphSendRecvGradKernel(const Context& ctx,
         dst_count.get_ptr(),
         x.get_ptr(),
         out.get_ptr());
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported Src_index or Dst_index type, Expected int, int64, but "
-        "got %s.",
-        index_type));
   }
 }
 
