@@ -115,6 +115,18 @@ struct BroadcastConfig {
   }
 };
 
+/*
+* @brief WriteData for thread
+*/
+template <typename T>
+__device__ __forceinline__ void WriteData(T* dst,
+                                          T* __restrict__ src,
+                                          int num) {
+  for (int i = 0; i < num; i++) {
+    dst[i] = src[i];
+  }
+}
+
 #undef INT_BITS
 }  // namespace details
 

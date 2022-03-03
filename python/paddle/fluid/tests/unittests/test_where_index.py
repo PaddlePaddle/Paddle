@@ -90,6 +90,16 @@ class TestRank3(TestWhereIndexOp):
         }
 
 
+class TestRank2LargeCase(TestWhereIndexOp):
+    def init_config(self):
+        input_ = np.ones((1044, 2, 512), dtype=bool)
+        index_ = np.argwhere(input_ == True)
+        index_int64 = np.array(index_, dtype='int64')
+        self.inputs = {'Condition': input_, }
+
+        self.outputs = {'Out': index_int64}
+
+
 class TestWhereOpError(unittest.TestCase):
     def test_api(self):
         with program_guard(Program(), Program()):
