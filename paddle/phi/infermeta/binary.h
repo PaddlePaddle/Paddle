@@ -68,4 +68,8 @@ void BCELossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
+
+void GatherTreeMeta(const MetaTensor& ids,
+                    const MetaTensor& parents,
+                    MetaTensor* out);
 }  // namespace phi
