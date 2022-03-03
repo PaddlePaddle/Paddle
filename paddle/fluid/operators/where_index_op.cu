@@ -301,7 +301,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     // 1.2 alloc tmp data for CoutBlock
     int size_count_block = need_grids + 1;
     auto count_mem = memory::Alloc(dev_ctx, size_count_block * sizeof(int64_t));
-    int64_t *count_data = count_mem->ptr();
+    int64_t *count_data = reinterpret_cast<int64_t *>(count_mem->ptr());
     // 1.3 launch CountKernl
     GetBlockCountKernel<T, int64_t, VecSize><<<grid, block, 0, stream>>>(
         cond_data, count_data, numel, main_offset);
@@ -310,7 +310,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     // 2.1 alloc cumsum data for CoutBlock prefix
     auto cumsum_mem =
         memory::Alloc(dev_ctx, size_count_block * sizeof(int64_t));
-    int64_t *cumsum_data = cumsum_mem->ptr();
+    int64_t *cumsum_data = reinterpret_cast<int64_t *>(cumsum_mem->ptr());
     // 2.2 get prefix of count_data for real out_index
     int block_c = 256;
     int main_offset_c = size_count_block / (2 * block_c) * (2 * block_c);
