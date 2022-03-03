@@ -48,12 +48,16 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
     }
     visited.insert(node);
 
+    PADDLE_ENFORCE_NOT_NULL(
+        node,
+        paddle::platform::errors::Fatal(
+            "We got null node when we traverse the backward graph, and this "
+            "should not happened please check your code and contact us."));
     // Find and append next nodes
     const std::vector<std::vector<Edge>>& edges = node->GetEdges();
     for (const auto& edge_list : edges) {
       for (const Edge& edge : edge_list) {
         GradNodeBase* next_node = edge.GetMutableGradNode().get();
-
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs
@@ -67,7 +71,6 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
       }
     }
   }
-
   return node_in_degree_map;
 }
 
