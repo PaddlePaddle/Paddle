@@ -23,9 +23,9 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "thrust/device_vector.h"
 #endif
@@ -389,8 +389,9 @@ class FFTR2CGradKernel : public framework::OpKernel<T> {
       std::vector<int> pads(rank * 2, 0);
       pads[axes.back() * 2 + 1] = zero_length;
 
-      paddle::operators::math::PaddingFunctor<DeviceContext, C>(
-          rank, ctx, pads, static_cast<C>(0), *dy, &full_dy);
+      phi::funcs::PaddingFunctor<DeviceContext, C>(
+          rank, ctx.template device_context<DeviceContext>(), pads,
+          static_cast<C>(0), *dy, &full_dy);
       fft_c2c_func(dev_ctx, &full_dy, &complex_dx, axes, normalization,
                    !forward);
     }
