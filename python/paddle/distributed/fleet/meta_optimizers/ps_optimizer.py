@@ -108,6 +108,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                       no_grad_set=None):
         self.inner_opt.minimize(loss, startup_program, parameter_list,
                                 no_grad_set)
+        if startup_program == None:
+            startup_program = paddle.static.default_startup_program()
         print("program after inner optimizer minimize:",
               str(loss.block.program))
         self._set_origin_programs([loss])
