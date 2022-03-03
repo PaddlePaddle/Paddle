@@ -474,11 +474,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_1024_kernel(
     for (int it = 0; it < LDGS; it++) {
 #pragma unroll
       for (int jt = 0; jt < VecSize; jt++) {
-        U x_tmp = x[it][jt];
+        U x_tmp = static_cast<U>(x[it][jt]);
         U y_tmp = var_cur_row * (x_tmp - mean_cur_row);
         U dy_tmp = static_cast<U>(gamma[it][jt]) *
-                   static_cast<U>(dout[it][jt]);  // scale * dy
-        U dout_tmp = dout[it][jt];                // dy
+                   static_cast<U>(dout[it][jt]);    // scale * dy
+        U dout_tmp = static_cast<U>(dout[it][jt]);  // dy
 
         // used for get dx (row reduction)
         sum_loss1 += dy_tmp;          // scale * dy, sum_1

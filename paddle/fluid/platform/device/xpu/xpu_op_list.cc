@@ -23,12 +23,9 @@ namespace paddle {
 namespace platform {
 
 bool is_xpu_support_op(const std::string& op_name, const pOpKernelType& type) {
-  auto& ops = get_kl1_ops();
   auto v = get_xpu_version(type.place_.device);
-  if (v == phi::backends::xpu::XPUVersion::XPU2) {
-    ops = get_kl2_ops();
-  }
-
+  auto& ops = (v == phi::backends::xpu::XPUVersion::XPU1) ? get_kl1_ops()
+                                                          : get_kl2_ops();
   if (ops.find(op_name) != ops.end() &&
       ops[op_name].find(type) != ops[op_name].end()) {
     return true;
@@ -78,12 +75,9 @@ bool is_in_xpu_black_list(const std::string& op_name) {
 #ifdef PADDLE_WITH_XPU_KP
 bool is_xpu_kp_support_op(const std::string& op_name,
                           const pOpKernelType& type) {
-  auto& ops = get_kl1_ops();
   auto v = get_xpu_version(type.place_.device);
-  if (v == phi::backends::xpu::XPUVersion::XPU2) {
-    ops = get_kp_ops();
-  }
-
+  auto& ops = (v == phi::backends::xpu::XPUVersion::XPU1) ? get_kl1_ops()
+                                                          : get_kp_ops();
   if (ops.find(op_name) != ops.end() &&
       ops[op_name].find(type) != ops[op_name].end()) {
     return true;

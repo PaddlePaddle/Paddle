@@ -314,20 +314,17 @@ void BuildDygraphPhiKernelContext(
 
       phi::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset]->MutableVar();
-      if (var->template IsType<phi::DenseTensor>()) {
-        tensor_out = var->template GetMutable<phi::DenseTensor>();
-      } else if (var->template IsType<phi::SelectedRows>()) {
-        tensor_out = var->template GetMutable<phi::SelectedRows>();
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported output `%s` type when call pt kernel.",
-            framework::ToTypeName(var->Type())));
+      if (var) {
+        if (var->template IsType<phi::DenseTensor>()) {
+          tensor_out = var->template GetMutable<phi::DenseTensor>();
+        } else if (var->template IsType<phi::SelectedRows>()) {
+          tensor_out = var->template GetMutable<phi::SelectedRows>();
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported output `%s` type when call pt kernel.",
+              framework::ToTypeName(var->Type())));
+        }
       }
-
-      experimental::ResetTensorDtypeAndLayoutByArgDef(tensor_out,
-                                                      output_defs.at(i));
-      framework::SetAllocationForOutputTenosr(
-          tensor_out, phi::TransToPhiPlace(output_defs.at(i).backend));
 
       kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
