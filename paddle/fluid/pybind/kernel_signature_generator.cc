@@ -47,28 +47,33 @@ int main(int argc, char **argv) {
   std::string kernel_signature_map_str{"{"};
   for (const auto &op_kernel_pair : kernel_factory.kernels()) {
     if (kernel_signature_map.Has(op_kernel_pair.first)) {
-      kernel_signature_map_str = kernel_signature_map_str + "\"" + op_kernel_pair.first + "\":{";
+      kernel_signature_map_str =
+          kernel_signature_map_str + "\"" + op_kernel_pair.first + "\":{";
       auto &args = kernel_signature_map.Get(op_kernel_pair.first).args;
+
       kernel_signature_map_str += "\"inputs\":[";
       auto inputs_ = std::get<0>(args);
       for (size_t i = 0; i < inputs_.size(); i++) {
-        kernel_signature_map_str = kernel_signature_map_str + "\"" + inputs_[i] + "\",";
+        kernel_signature_map_str =
+            kernel_signature_map_str + "\"" + inputs_[i] + "\",";
       }
       if (inputs_.size()) kernel_signature_map_str.pop_back();
 
       kernel_signature_map_str += "],\"attrs\":[";
       auto attrs_ = std::get<1>(args);
       for (size_t i = 0; i < attrs_.size(); i++) {
-        kernel_signature_map_str = kernel_signature_map_str + "\"" + attrs_[i] + "\",";
+        kernel_signature_map_str =
+            kernel_signature_map_str + "\"" + attrs_[i] + "\",";
       }
       if (attrs_.size()) kernel_signature_map_str.pop_back();
       kernel_signature_map_str += "],\"outputs\":[";
       auto outputs_ = std::get<2>(args);
       for (size_t i = 0; i < outputs_.size(); i++) {
-        kernel_signature_map_str = kernel_signature_map_str + "\"" + outputs_[i] + "\",";
+        kernel_signature_map_str =
+            kernel_signature_map_str + "\"" + outputs_[i] + "\",";
       }
 
-      if(outputs_.size()) kernel_signature_map_str.pop_back();
+      if (outputs_.size()) kernel_signature_map_str.pop_back();
       kernel_signature_map_str += "]},";
     }
   }

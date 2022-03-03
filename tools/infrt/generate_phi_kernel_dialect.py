@@ -17,7 +17,12 @@ import sys
 import os
 
 #TODO @DannyIsFunny: more attr types need to be supported.
-attr_type_converter = {"i": 'SI32Attr', "b": 'BoolAttr', "l": 'SI64Attr', "f":'F32Attr'}
+attr_type_converter = {
+    "i": 'SI32Attr',
+    "b": 'BoolAttr',
+    "l": 'SI64Attr',
+    "f": 'F32Attr'
+}
 
 target_type_converter = {"CPU": "CPU", "GPU": "GPU"}
 layout_type_converter = {
@@ -41,15 +46,19 @@ precision_type_converter = {
 }
 
 kernel_types_info_file = "./kernels.json"
-kernel_signature_info_file = "./kernel_signature.json" 
+kernel_signature_info_file = "./kernel_signature.json"
+
 
 def generate_kernel_name(op_name, place_str):
     [target_, layout_, precision_] = place_str[1:-1].split(',')
     target_ = target_type_converter[target_.strip()]
     layout_ = layout_type_converter[layout_.strip()]
     precision_ = precision_type_converter[precision_.strip()]
-    class_name_ = "{}{}".format(op_name.replace("_","").title(), "".join(
-        [target_.strip().title(), layout_.strip().title(), precision_.strip().title()]))
+    class_name_ = "{}{}".format(
+        op_name.replace("_", "").title(), "".join([
+            target_.strip().title(), layout_.strip().title(), precision_.strip()
+            .title()
+        ]))
     alias_ = "{}.{}".format(op_name, ".".join(
         [target_.strip(), layout_.strip(), precision_.strip()]))
     return alias_, class_name_
@@ -87,7 +96,8 @@ def generate_arguments_info(op_name, input_info, attr_info):
     input_args = generate_inputs_info(input_info)
     attr_args = generate_attrs_info(op_name, attr_info)
     context_args = "Context:$dev_ctx"
-    argument_list = [context_args] + input_args.split(",") + attr_args.split(",")
+    argument_list = [context_args] + input_args.split(",") + attr_args.split(
+        ",")
     while ("" in argument_list):
         argument_list.remove("")
     argument_ = ",".join(argument_list)
@@ -156,9 +166,7 @@ def generate_cpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
         3]
 
     header = 'def {kernel_name} : PDTCPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
-        kernel_name= class_name,
-        name=dialect_name.lower(),
-        left_brace="{")
+        kernel_name=class_name, name=dialect_name.lower(), left_brace="{")
 
     inputs_ = kernel_info["input"]
     attributes = kernel_info["attribute"]
@@ -185,9 +193,7 @@ def generate_gpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
         3]
 
     header = 'def {kernel_name} : PDTGPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
-        kernel_name= class_name,
-        name=dialect_name.lower(),
-        left_brace="{")
+        kernel_name=class_name, name=dialect_name.lower(), left_brace="{")
     inputs_ = kernel_info["input"]
     attributes = kernel_info["attribute"]
     arguments = generate_arguments_info(op_name, inputs_, attributes)
@@ -240,7 +246,6 @@ def main():
         supported_kernels = generate_supported_kernel_list(load_dict)
         print("Supported kernels:")
         print(supported_kernels)
-
         for op_name in load_dict:
             if op_name not in supported_kernels:
                 continue
@@ -271,8 +276,11 @@ def main():
 
 if __name__ == '__main__':
     if not os.path.exists(kernel_types_info_file):
-        print("Error: '{file_name}' not exist!".format(file_name=kernel_types_info_file))
+        print("Error: '{file_name}' not exist!".format(
+            file_name=kernel_types_info_file))
     if not os.path.exists(kernel_signature_info_file):
-        print("Error: '{file_name}' not exist!".format(file_name=kernel_signature_info_file))
-    if os.path.exists(kernel_types_info_file) and os.path.exists(kernel_signature_info_file):
+        print("Error: '{file_name}' not exist!".format(
+            file_name=kernel_signature_info_file))
+    if os.path.exists(kernel_types_info_file) and os.path.exists(
+            kernel_signature_info_file):
         main()
