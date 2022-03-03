@@ -53,4 +53,9 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& updates,
                            MetaTensor* out);
 
+void LerpInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   const MetaTensor& weight,
+                   MetaTensor* out);
+
 }  // namespace phi

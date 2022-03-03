@@ -13,10 +13,59 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/binary.h"
+
+#include <algorithm>
+#include <vector>
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
+
+void CompareInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      int axis,
+                      MetaTensor* out) {
+  auto dim_x = x.dims();
+  auto dim_y = y.dims();
+
+  if (dim_x == dim_y) {
+    out->share_meta(x);
+  } else {
+    int max_dim = std::max(dim_x.size(), dim_y.size());
+    int axis = std::abs(dim_x.size() - dim_y.size());
+    std::vector<int> x_dims_array(max_dim);
+    std::vector<int> y_dims_array(max_dim);
+    std::vector<int> out_dims_array(max_dim);
+    funcs::GetBroadcastDimsArrays(dim_x,
+                                  dim_y,
+                                  x_dims_array.data(),
+                                  y_dims_array.data(),
+                                  out_dims_array.data(),
+                                  max_dim,
+                                  axis);
+
+    out->set_dims(make_ddim(out_dims_array));
+    out->share_lod(x);
+  }
+
+  out->set_dtype(DataType::BOOL);
+}
+
+void CompareAllInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out) {
+  auto dim_x = x.dims();
+  auto dim_y = y.dims();
+  PADDLE_ENFORCE_GE(
+      dim_x.size(),
+      dim_y.size(),
+      errors::InvalidArgument(
+          "The size of dim_y should not be greater than dim_x's."));
+  out->share_lod(x);
+  out->set_dims(make_ddim({1}));
+  out->set_dtype(DataType::BOOL);
+}
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_dims = x.dims();
