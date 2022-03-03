@@ -37,9 +37,9 @@ void ConcatCase1(DeviceContext* context) {
   paddle::framework::Tensor input_b;
   paddle::framework::Tensor out;
 
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({3, 3, 4});
-  auto dim_out = paddle::framework::make_ddim({5, 3, 4});
+  auto dim_a = phi::make_ddim({2, 3, 4});
+  auto dim_b = phi::make_ddim({3, 3, 4});
+  auto dim_out = phi::make_ddim({5, 3, 4});
 
   input_a.mutable_data<int>(dim_a, Place());
   input_b.mutable_data<int>(dim_b, Place());
@@ -136,9 +136,9 @@ void ConcatCase2(DeviceContext* context) {
   paddle::framework::Tensor input_b;
   paddle::framework::Tensor out;
 
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({2, 4, 4});
-  auto dim_out = paddle::framework::make_ddim({2, 7, 4});
+  auto dim_a = phi::make_ddim({2, 3, 4});
+  auto dim_b = phi::make_ddim({2, 4, 4});
+  auto dim_out = phi::make_ddim({2, 7, 4});
 
   input_a.mutable_data<int>(dim_a, Place());
   input_b.mutable_data<int>(dim_b, Place());
@@ -239,9 +239,9 @@ void ConcatCase3(DeviceContext* context) {
   paddle::framework::Tensor input_b;
   paddle::framework::Tensor out;
 
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({2, 3, 5});
-  auto dim_out = paddle::framework::make_ddim({2, 3, 9});
+  auto dim_a = phi::make_ddim({2, 3, 4});
+  auto dim_b = phi::make_ddim({2, 3, 5});
+  auto dim_out = phi::make_ddim({2, 3, 9});
 
   input_a.mutable_data<int>(dim_a, Place());
   input_b.mutable_data<int>(dim_b, Place());
@@ -344,9 +344,9 @@ void ConcatCase4(DeviceContext* context) {
   paddle::framework::Tensor input_b;
   paddle::framework::Tensor out;
 
-  auto dim_a = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_b = paddle::framework::make_ddim({2, 3, 4});
-  auto dim_out = paddle::framework::make_ddim({2, 6, 4});
+  auto dim_a = phi::make_ddim({2, 3, 4});
+  auto dim_b = phi::make_ddim({2, 3, 4});
+  auto dim_out = phi::make_ddim({2, 6, 4});
 
   input_a.mutable_data<int>(dim_a, Place());
   input_b.mutable_data<int>(dim_b, Place());

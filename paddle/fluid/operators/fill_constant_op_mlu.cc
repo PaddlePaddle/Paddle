@@ -73,7 +73,7 @@ class FillConstantMLUKernel : public framework::OpKernel<T> {
     auto shape = GetShape(ctx);
     out_var->mutable_data<T>(shape, ctx.GetPlace());
     MLUCnnlTensorDesc output_desc(*out_var, CNNL_LAYOUT_ARRAY,
-                                  ToCnnlDataType(out_var->type()));
+                                  ToCnnlDataType(out_var->dtype()));
     MLUCnnl::Fill(ctx, value, output_desc.get(), GetBasePtr(out_var));
   }
 };

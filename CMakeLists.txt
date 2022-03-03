@@ -238,10 +238,21 @@ option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
-option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
+option(NEW_RELEASE_PYPI   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
+option(NEW_RELEASE_ALL   "PaddlePaddle next-level release strategy for all arches cubin package"             OFF)
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
+option(WITH_RECORD_BUILDTIME    "Compile PaddlePaddle with record all targets build time"       OFF)
+option(WITH_CUSTOM_DEVICE "Compile with custom device support"    OFF)
+
+if(WITH_RECORD_BUILDTIME)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CMAKE_CURRENT_SOURCE_DIR}/tools/get_build_time.sh")
+else()            
+    include(ccache) # set ccache for compilation ; if WITH_RECORD_BUILDTIME=ON can't use ccache
+endif()
+unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -254,6 +265,10 @@ set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
   message("Choose the correct type of sanitizer")
   return()
+endif()
+
+if (LINUX AND NOT WITH_CUSTOM_DEVICE AND NOT ON_INFER)
+set(WITH_CUSTOM_DEVICE ON)
 endif()
 
 if(WIN32)
@@ -315,6 +330,7 @@ if(WITH_BRPC_RDMA)
         message(FATAL_ERROR "Can't use brpc rdma in no distribute env.")
     endif()
 endif()
+
 
 if(WITH_GPU)
     include(cuda)
@@ -382,7 +398,6 @@ if(WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
-include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage

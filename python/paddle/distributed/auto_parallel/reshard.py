@@ -1013,17 +1013,17 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
     assert isinstance(dist_context, DistributedContext), "The type of dist_context should be DistributedContext, " \
                                          "but got {}.".format(type(dist_context))
 
+    def _is_special_op(op):
+        global _g_special_ops
+        if op.type in _g_special_ops:
+            return True
+        return False
+
     block = auto_parallel_main_prog.global_block()
     idx = 0
     while idx < len(block.ops):
         pre_op_count = len(block.ops)
         op = block.ops[idx]
-
-        def _is_special_op(op):
-            global _g_special_ops
-            if op.type in _g_special_ops:
-                return True
-            return False
 
         if _is_special_op(op):
             idx += 1
@@ -1053,6 +1053,7 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
     # insert send and recv op if output process mesh is different from tensor process mesh
     idx = 0
     skip_ops = ["create_py_reader", "create_double_buffer_reader", "read"]
+    skip_ops += _g_special_ops
     while idx < len(block.ops):
         pre_op_count = len(block.ops)
         op = block.ops[idx]

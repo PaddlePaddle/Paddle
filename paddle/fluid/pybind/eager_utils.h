@@ -11,10 +11,12 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/dense_tensor.h"
+
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-
 namespace paddle {
 namespace pybind {
 
@@ -22,7 +24,7 @@ typedef struct {
   PyObject_HEAD paddle::experimental::Tensor tensor;
 } TensorObject;
 
-int TensorDtype2NumpyDtype(pten::DataType dtype);
+int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
@@ -33,6 +35,8 @@ int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
+std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
+                                                       ssize_t arg_pos);
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj, ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
@@ -65,15 +69,15 @@ PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 
 template <typename Tuple, size_t N>
-struct TupleEagerTensorResult {
+struct TupleTensorResult {
   static void Run(const Tuple& out, PyObject* result) {
-    TupleEagerTensorResult<Tuple, N - 1>::Run(out, result);
+    TupleTensorResult<Tuple, N - 1>::Run(out, result);
     PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
   }
 };
 
 template <typename Tuple>
-struct TupleEagerTensorResult<Tuple, 1> {
+struct TupleTensorResult<Tuple, 1> {
   static void Run(const Tuple& out, PyObject* result) {
     PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
   }
@@ -84,25 +88,42 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
   auto len = sizeof...(Args);
   PyObject* result = PyTuple_New(len);
 
-  TupleEagerTensorResult<decltype(out), sizeof...(Args)>::Run(out, result);
+  TupleTensorResult<decltype(out), sizeof...(Args)>::Run(out, result);
 
   return result;
 }
+
+paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
+                                              const std::string& op_type,
+                                              ssize_t arg_pos);
+
+paddle::experimental::ScalarArray CastPyArg2ScalarArray(
+    PyObject* obj, const std::string& op_type, ssize_t arg_pos);
+
+paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable = false);
 
 paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 const std::string& arg_name,
                                                 PyObject* args, ssize_t arg_idx,
                                                 bool dispensable = false);
+
 std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
 
-paddle::experimental::Tensor* GetEagerTensorPtrFromArgs(
+paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
+                                                   const std::string& arg_name,
+                                                   PyObject* args,
+                                                   ssize_t arg_idx,
+                                                   bool dispensable = false);
+
+std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
-std::vector<paddle::experimental::Tensor*> GetEagerTensorPtrListFromArgs(
-    const std::string& op_type, const std::string& arg_name, PyObject* args,
-    ssize_t arg_idx, bool dispensable = false);
+
+// end of Slice related methods
 
 }  // namespace pybind
 }  // namespace paddle

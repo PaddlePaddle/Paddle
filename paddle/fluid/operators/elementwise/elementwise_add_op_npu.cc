@@ -96,7 +96,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         if (!reduce_axes.empty()) {
           Tensor tmp;
           tmp.ShareDataWith(*dx);
-          tmp.Resize(framework::make_ddim(dst_dims_vec));
+          tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
               NpuOpRunner("ReduceSumD", {*dout}, {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
@@ -126,7 +126,7 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
         if (!reduce_axes.empty()) {
           Tensor tmp;
           tmp.ShareDataWith(*dy);
-          tmp.Resize(framework::make_ddim(dst_dims_vec));
+          tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
               NpuOpRunner("ReduceSumD", {*dout}, {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});

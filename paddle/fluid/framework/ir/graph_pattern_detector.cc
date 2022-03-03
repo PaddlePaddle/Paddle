@@ -2516,6 +2516,15 @@ PDNode *patterns::DuplicatedInputs::operator()() {
   return op;
 }
 
+PDNode *patterns::DuplicatedOutputs::operator()() {
+  auto op = pattern->NewNode(op_repr())->assert_is_ops({"split"});
+  op->assert_more([&](Node *node) {
+    return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
+           "bfloat16";
+  });
+  return op;
+}
+
 PDNode *patterns::MKLDNNInPlace::operator()() {
   const std::unordered_set<std::string> &supported_op_types = {
       "abs", "gelu", "leaky_relu", "relu", "softmax", "sqrt", "swish", "tanh"};

@@ -91,6 +91,7 @@ if "%WITH_PYTHON%" == "ON" (
     where pip
     pip install wheel --user
     pip install pyyaml --user
+    pip install wget --user
     pip install -r %work_dir%\python\requirements.txt --user
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
@@ -175,19 +176,20 @@ rem -------Caching strategy 1: End --------------------------------
 
 
 rem -------Caching strategy 2: sccache decorate compiler-----------
+if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
 if "%WITH_SCCACHE%"=="ON" (
-    del D:\sccache\sccache_log.txt
     cmd /C sccache -V || call :install_sccache
     sccache --stop-server 2> NUL
+    del %SCCACHE_ROOT%\sccache_log.txt
 
     :: Localy storage on windows
-    if not exist D:\sccache mkdir D:\sccache
-    set SCCACHE_DIR=D:\sccache\.cache
+    if not exist %SCCACHE_ROOT% mkdir %SCCACHE_ROOT%
+    set SCCACHE_DIR=%SCCACHE_ROOT%\.cache
     
     :: Sccache will shut down if a source file takes more than 10 mins to compile
     set SCCACHE_IDLE_TIMEOUT=0
     set SCCACHE_CACHE_SIZE=100G
-    set SCCACHE_ERROR_LOG=D:\sccache\sccache_log.txt
+    set SCCACHE_ERROR_LOG=%SCCACHE_ROOT%\sccache_log.txt
     set SCCACHE_LOG=quiet
 
     :: Distributed storage on windows
@@ -208,7 +210,7 @@ if "%WITH_SCCACHE%"=="ON" (
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
-xcopy sccache.exe %PYTHON_ROOT%\Scripts\ /Y
+xcopy sccache.exe %PYTHON_ROOT%\ /Y
 goto:eof
 rem -------Caching strategy 2: End --------------------------------
 

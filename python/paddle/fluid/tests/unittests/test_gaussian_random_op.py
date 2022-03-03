@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 import paddle
@@ -21,7 +22,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
 
 
@@ -293,11 +294,11 @@ class TestRandomValue(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        # Note(zhouwei): The Number of threads is determined by 
-        # 'multiProcessorCount * maxThreadsPerMultiProcessor'. So, different 
-        # GPU have different number of threads, which result in different 
-        # random value. Only test on V100 GPU here.
+        # Different GPU generatte different random value. Only test V100 here.
         if not "V100" in paddle.device.cuda.get_device_name():
+            return
+
+        if os.getenv("FLAGS_use_curand", None) in ('0', 'False', None):
             return
 
         def _check_random_value(dtype, expect, expect_mean, expect_std):

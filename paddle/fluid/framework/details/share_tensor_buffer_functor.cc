@@ -30,9 +30,9 @@ class MemOptVarInfo;
 }  // namespace framework
 }  // namespace paddle
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {

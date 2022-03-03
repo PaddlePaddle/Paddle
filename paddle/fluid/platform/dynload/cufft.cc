@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/cufft.h"
-#include "paddle/pten/backends/dynload/cufft.h"
+#include "paddle/phi/backends/dynload/cufft.h"
 
 namespace paddle {
 namespace platform {
@@ -23,7 +23,7 @@ namespace dynload {
 
 CUFFT_FFT_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasCUFFT() { return pten::dynload::HasCUFFT(); }
+bool HasCUFFT() { return phi::dynload::HasCUFFT(); }
 
 }  // namespace dynload
 }  // namespace platform

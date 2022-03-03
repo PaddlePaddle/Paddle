@@ -59,10 +59,13 @@ class IscloseKernel : public framework::OpKernel<T> {
           rtol->numel(), 1,
           platform::errors::InvalidArgument(
               "Input(Rtol) size must be 1, but get %d.", rtol->numel()));
-      PADDLE_ENFORCE_EQ(rtol->type(), framework::proto::VarType::FP64,
-                        platform::errors::InvalidArgument(
-                            "Input(Rtol) type must be double, but get %s.",
-                            framework::DataTypeToString(rtol->type())));
+      PADDLE_ENFORCE_EQ(
+          framework::TransToProtoVarType(rtol->dtype()),
+          framework::proto::VarType::FP64,
+          platform::errors::InvalidArgument(
+              "Input(Rtol) type must be double, but get %s.",
+              framework::DataTypeToString(
+                  framework::TransToProtoVarType(rtol->dtype()))));
       rtol_v = get_tensor_value(dev_ctx, *rtol);
     }
     if (ctx.HasInput("Atol")) {
@@ -71,10 +74,13 @@ class IscloseKernel : public framework::OpKernel<T> {
           atol->numel(), 1,
           platform::errors::InvalidArgument(
               "Input(Atol) size must be 1, but get %d", atol->numel()));
-      PADDLE_ENFORCE_EQ(atol->type(), framework::proto::VarType::FP64,
-                        platform::errors::InvalidArgument(
-                            "Input(Atol) type must be double, but get %s",
-                            framework::DataTypeToString(atol->type())));
+      PADDLE_ENFORCE_EQ(
+          framework::TransToProtoVarType(atol->dtype()),
+          framework::proto::VarType::FP64,
+          platform::errors::InvalidArgument(
+              "Input(Atol) type must be double, but get %s",
+              framework::DataTypeToString(
+                  framework::TransToProtoVarType(atol->dtype()))));
       atol_v = get_tensor_value(dev_ctx, *atol);
     }
 

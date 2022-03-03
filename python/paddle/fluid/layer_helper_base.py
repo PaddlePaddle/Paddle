@@ -85,10 +85,9 @@ class LayerHelperBase(object):
             assert in_dygraph_mode(
             ), "to_variable could only be called in dygraph mode"
             if _in_eager_mode():
-                return core.eager.EagerTensor(value,
-                                              _current_expected_place(), False,
-                                              False, name
-                                              if name else None, True)
+                return core.eager.Tensor(value,
+                                         _current_expected_place(), False,
+                                         False, name if name else None, True)
             else:
                 py_var = core.VarBase(
                     value=value,

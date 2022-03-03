@@ -10,10 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/gru_gpu_kernel.h"
 #include "paddle/fluid/operators/math/detail/gru_kernel.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -77,7 +77,7 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
       threads = dim3(32, 32);
       grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
     }
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
     if (value.prev_out_value) {
       blas.GEMM(false, false, batch_size, frame_size * 2, frame_size, 1,
                 value.prev_out_value, frame_size, value.gate_weight,
@@ -162,7 +162,7 @@ struct GRUUnitGradFunctor<platform::CUDADeviceContext, T> {
           grad.output_grad, frame_size, batch_size, active_node, origin_mode);
     }
 
-    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context);
 
     if (value.prev_out_value && grad.prev_out_grad) {
       blas.GEMM(false, true, batch_size, frame_size, frame_size, 1,

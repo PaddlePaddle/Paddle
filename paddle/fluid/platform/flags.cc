@@ -433,8 +433,9 @@ PADDLE_DEFINE_EXPORTED_double(
 
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||      \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 
 /**
  * Memory related FLAG
@@ -760,3 +761,15 @@ DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file, false,
             "enable parser ins file , default false");
+
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: nccl_blocking_wait
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: nccl blocking wait.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
+#endif

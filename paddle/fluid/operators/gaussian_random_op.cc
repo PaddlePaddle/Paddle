@@ -26,27 +26,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-template <typename T>
-class CPUGaussianRandomKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    float mean = context.Attr<float>("mean");
-    float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
-
-    std::normal_distribution<T> dist(mean, std);
-    auto shape = GetShape(context);
-    tensor->Resize(shape);
-    int64_t size = tensor->numel();
-    T* data = tensor->mutable_data<T>(context.GetPlace());
-    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
-
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = dist(*engine);
-    }
-  }
-};  // namespace operators
 
 template <typename T>
 class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
@@ -91,7 +70,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
         num_ele *= shape_dims[i];
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(vec_dims));
+      ctx->SetOutputDim("Out", phi::make_ddim(vec_dims));
 
       return;
     }
@@ -104,7 +83,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
               shape.size()));
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(temp));
+    ctx->SetOutputDim("Out", phi::make_ddim(temp));
   }
 
  protected:
@@ -194,8 +173,6 @@ Used to initialize tensors with gaussian random generator.
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(gaussian_random, ops::GaussianRandomOp,
                              ops::GaussianRandomOpMaker);
-REGISTER_OP_CPU_KERNEL(gaussian_random, ops::CPUGaussianRandomKernel<float>,
-                       ops::CPUGaussianRandomKernel<double>);
 REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<float>,
                        ops::CPUGaussianRandomBatchSizeLikeKernel<double>);
