@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/stream.h"
-#include "paddle/fluid/platform/device/device_guard.h"
+#include "paddle/phi/backends/stream.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device/event.h"
+#include "paddle/phi/backends/device_guard.h"
+#include "paddle/phi/backends/event.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 namespace stream {
 
 Stream::~Stream() { Destroy(); }
@@ -30,15 +29,16 @@ void Stream::set_stream(stream_t stream) { stream_ = stream; }
 // For compatiable
 Stream::Stream(const Place& place, stream_t stream)
     : place_(place),
-      device_(platform::DeviceManager::GetDeviceWithPlace(place)),
+      device_(phi::DeviceManager::GetDeviceWithPlace(place)),
       stream_(stream),
       callback_manager_(new CallbackManager(this)),
       own_data_(false) {}
 
-bool Stream::Init(const Place& place, const Priority& priority,
+bool Stream::Init(const Place& place,
+                  const Priority& priority,
                   const Flag& flag) {
   place_ = place;
-  device_ = platform::DeviceManager::GetDeviceWithPlace(place);
+  device_ = phi::DeviceManager::GetDeviceWithPlace(place);
   DeviceGuard guard(place_);
   device_->CreateStream(this, priority, flag);
 
@@ -92,5 +92,4 @@ void Stream::Synchronize() const { device_->SynchronizeStream(this); }
 const Place& Stream::GetPlace() const { return place_; }
 
 }  // namespace stream
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

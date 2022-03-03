@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/callback_manager.h"
+#include "paddle/phi/backends/callback_manager.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 CallbackManager::CallbackManager(stream::Stream *stream)
     : stream_(stream), thread_pool_(1) {}
@@ -32,12 +31,12 @@ void CallbackManager::AddCallback(std::function<void()> callback) const {
     });
   });
 
-  platform::DeviceManager::GetDeviceWithPlace(stream_->GetPlace())
+  phi::DeviceManager::GetDeviceWithPlace(stream_->GetPlace())
       ->AddCallback(stream_, func);
 }
 
 void CallbackManager::Wait() const {
-  platform::DeviceManager::GetDeviceWithPlace(stream_->GetPlace())
+  phi::DeviceManager::GetDeviceWithPlace(stream_->GetPlace())
       ->SynchronizeStream(stream_);
 
   {
@@ -48,5 +47,4 @@ void CallbackManager::Wait() const {
   }
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

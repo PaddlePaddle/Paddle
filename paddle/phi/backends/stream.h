@@ -14,11 +14,10 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device/callback_manager.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/callback_manager.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 class Device;
 
@@ -49,7 +48,8 @@ class Stream {
   ~Stream();
   const stream_t& raw_stream() const;
   void set_stream(stream_t stream);
-  bool Init(const Place& place, const Priority& priority = Priority::kNormal,
+  bool Init(const Place& place,
+            const Priority& priority = Priority::kNormal,
             const Flag& flag = Flag::kDefaultFlag);
   template <typename Callback>
   void AddCallback(Callback&& callback) const {
@@ -75,5 +75,4 @@ class Stream {
 };
 
 }  // namespace stream
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
