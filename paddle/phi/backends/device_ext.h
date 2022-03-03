@@ -40,7 +40,9 @@ typedef struct C_Stream_st* C_Stream;
 
 typedef struct C_Event_st* C_Event;
 
-typedef void (*C_Callback)(C_Device device, C_Stream stream, void* user_data,
+typedef void (*C_Callback)(C_Device device,
+                           C_Stream stream,
+                           void* user_data,
                            C_Status* status);
 
 struct C_DeviceInterface {
@@ -124,8 +126,10 @@ struct C_DeviceInterface {
    * @param[C_Callback] callback
    * @param[void*]      user_data
    */
-  C_Status (*stream_add_callback)(const C_Device device, C_Stream stream,
-                                  C_Callback callback, void* user_data);
+  C_Status (*stream_add_callback)(const C_Device device,
+                                  C_Stream stream,
+                                  C_Callback callback,
+                                  void* user_data);
 
   /**
    * @brief Create an event
@@ -142,7 +146,8 @@ struct C_DeviceInterface {
    * @param[C_Stream]   stream
    * @param[C_Event]    event
    */
-  C_Status (*record_event)(const C_Device device, C_Stream stream,
+  C_Status (*record_event)(const C_Device device,
+                           C_Stream stream,
                            C_Event event);
 
   /**
@@ -191,7 +196,8 @@ struct C_DeviceInterface {
    * @param[C_Stream]   stream
    * @param[C_Event]    event
    */
-  C_Status (*stream_wait_event)(const C_Device device, C_Stream stream,
+  C_Status (*stream_wait_event)(const C_Device device,
+                                C_Stream stream,
                                 C_Event event);
 
   void* reserved_dev_api[8];
@@ -207,7 +213,8 @@ struct C_DeviceInterface {
    * @param[void**]     ptr        Plugin allocate an address and fill it
    * @param[size_t]     size
    */
-  C_Status (*device_memory_allocate)(const C_Device device, void** ptr,
+  C_Status (*device_memory_allocate)(const C_Device device,
+                                     void** ptr,
                                      size_t size);
 
   /**
@@ -217,7 +224,8 @@ struct C_DeviceInterface {
    * @param[void*]      ptr
    * @param[size_t]     size
    */
-  C_Status (*device_memory_deallocate)(const C_Device device, void* ptr,
+  C_Status (*device_memory_deallocate)(const C_Device device,
+                                       void* ptr,
                                        size_t size);
 
   /**
@@ -228,8 +236,10 @@ struct C_DeviceInterface {
    * @param[unsigned char] value
    * @param[size_t]     size
    */
-  C_Status (*device_memory_set)(const C_Device device, void* ptr,
-                                unsigned char value, size_t size);
+  C_Status (*device_memory_set)(const C_Device device,
+                                void* ptr,
+                                unsigned char value,
+                                size_t size);
 
   /**
    * @brief Host memory allocate
@@ -238,7 +248,8 @@ struct C_DeviceInterface {
    * @param[void**]     ptr        Plugin allocate an address and fill it
    * @param[size_t]     size
    */
-  C_Status (*host_memory_allocate)(const C_Device device, void** ptr,
+  C_Status (*host_memory_allocate)(const C_Device device,
+                                   void** ptr,
                                    size_t size);
 
   /**
@@ -248,7 +259,8 @@ struct C_DeviceInterface {
    * @param[void*]      ptr
    * @param[size_t]     size
    */
-  C_Status (*host_memory_deallocate)(const C_Device device, void* ptr,
+  C_Status (*host_memory_deallocate)(const C_Device device,
+                                     void* ptr,
                                      size_t size);
 
   /**
@@ -258,7 +270,8 @@ struct C_DeviceInterface {
    * @param[void**]     ptr        Plugin allocate an address and fill it
    * @param[size_t]     size
    */
-  C_Status (*unified_memory_allocate)(const C_Device device, void** ptr,
+  C_Status (*unified_memory_allocate)(const C_Device device,
+                                      void** ptr,
                                       size_t size);
 
   /**
@@ -268,7 +281,8 @@ struct C_DeviceInterface {
    * @param[void*]      ptr
    * @param[size_t]     size
    */
-  C_Status (*unified_memory_deallocate)(const C_Device device, void* ptr,
+  C_Status (*unified_memory_deallocate)(const C_Device device,
+                                        void* ptr,
                                         size_t size);
 
   /**
@@ -279,7 +293,9 @@ struct C_DeviceInterface {
    * @param[void*]      src
    * @param[size_t]     size
    */
-  C_Status (*memory_copy_h2d)(const C_Device device, void* dst, const void* src,
+  C_Status (*memory_copy_h2d)(const C_Device device,
+                              void* dst,
+                              const void* src,
                               size_t size);
 
   /**
@@ -290,7 +306,9 @@ struct C_DeviceInterface {
    * @param[void*]      src
    * @param[size_t]     size
    */
-  C_Status (*memory_copy_d2h)(const C_Device device, void* dst, const void* src,
+  C_Status (*memory_copy_d2h)(const C_Device device,
+                              void* dst,
+                              const void* src,
                               size_t size);
 
   /**
@@ -301,7 +319,9 @@ struct C_DeviceInterface {
    * @param[void*]      src
    * @param[size_t]     size
    */
-  C_Status (*memory_copy_d2d)(const C_Device device, void* dst, const void* src,
+  C_Status (*memory_copy_d2d)(const C_Device device,
+                              void* dst,
+                              const void* src,
                               size_t size);
 
   /**
@@ -314,8 +334,10 @@ struct C_DeviceInterface {
    * @param[size_t]     size
    */
   C_Status (*memory_copy_p2p)(const C_Device dst_device,
-                              const C_Device src_device, void* dst,
-                              const void* src, size_t size);
+                              const C_Device src_device,
+                              void* dst,
+                              const void* src,
+                              size_t size);
 
   /**
    * @brief Asynchonrize memory copy from host to device
@@ -326,8 +348,11 @@ struct C_DeviceInterface {
    * @param[void*]      src
    * @param[size_t]     size
    */
-  C_Status (*async_memory_copy_h2d)(const C_Device device, C_Stream stream,
-                                    void* dst, const void* src, size_t size);
+  C_Status (*async_memory_copy_h2d)(const C_Device device,
+                                    C_Stream stream,
+                                    void* dst,
+                                    const void* src,
+                                    size_t size);
 
   /**
    * @brief Asynchonrize memory copy from device to host
@@ -338,8 +363,11 @@ struct C_DeviceInterface {
    * @param[void*]      src
    * @param[size_t]     size
    */
-  C_Status (*async_memory_copy_d2h)(const C_Device device, C_Stream stream,
-                                    void* dst, const void* src, size_t size);
+  C_Status (*async_memory_copy_d2h)(const C_Device device,
+                                    C_Stream stream,
+                                    void* dst,
+                                    const void* src,
+                                    size_t size);
 
   /**
    * @brief Asynchonrize memory copy from device to device
@@ -350,8 +378,11 @@ struct C_DeviceInterface {
    * @param[void*]      src
    * @param[size_t]     size
    */
-  C_Status (*async_memory_copy_d2d)(const C_Device device, C_Stream stream,
-                                    void* dst, const void* src, size_t size);
+  C_Status (*async_memory_copy_d2d)(const C_Device device,
+                                    C_Stream stream,
+                                    void* dst,
+                                    const void* src,
+                                    size_t size);
 
   /**
    * @brief Peer asynchonrize memory copy from host to device
@@ -363,8 +394,11 @@ struct C_DeviceInterface {
    * @param[size_t]     size
    */
   C_Status (*async_memory_copy_p2p)(const C_Device dst_device,
-                                    const C_Device src_device, C_Stream stream,
-                                    void* dst, const void* src, size_t size);
+                                    const C_Device src_device,
+                                    C_Stream stream,
+                                    void* dst,
+                                    const void* src,
+                                    size_t size);
 
   void* reserved_mem_api[8];
 
@@ -394,7 +428,8 @@ struct C_DeviceInterface {
    * @param[size_t*]    free_memory
    * @param[size_t*]    used_memory
    */
-  C_Status (*device_memory_stats)(const C_Device device, size_t* total_memory,
+  C_Status (*device_memory_stats)(const C_Device device,
+                                  size_t* total_memory,
                                   size_t* free_memory);
 
   /**

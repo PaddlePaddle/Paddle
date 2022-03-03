@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/phi/backends/device_manager.h"
 
 #if !defined(_WIN32)
 #include <dirent.h>
@@ -24,8 +24,7 @@
 #include <functional>
 #include <regex>
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 void Device::CreateStream(stream::Stream* stream,
                           const stream::Stream::Priority& priority,
@@ -76,23 +75,32 @@ void Device::StreamWaitEvent(const stream::Stream* stream,
   impl_->StreamWaitEvent(dev_id_, stream, event);
 }
 
-void Device::MemoryCopyH2D(void* dst, const void* src, size_t size,
+void Device::MemoryCopyH2D(void* dst,
+                           const void* src,
+                           size_t size,
                            const stream::Stream* stream) {
   impl_->MemoryCopyH2D(dev_id_, dst, src, size, stream);
 }
 
-void Device::MemoryCopyD2H(void* dst, const void* src, size_t size,
+void Device::MemoryCopyD2H(void* dst,
+                           const void* src,
+                           size_t size,
                            const stream::Stream* stream) {
   impl_->MemoryCopyD2H(dev_id_, dst, src, size, stream);
 }
 
-void Device::MemoryCopyD2D(void* dst, const void* src, size_t size,
+void Device::MemoryCopyD2D(void* dst,
+                           const void* src,
+                           size_t size,
                            const stream::Stream* stream) {
   impl_->MemoryCopyD2D(dev_id_, dst, src, size, stream);
 }
 
-void Device::MemoryCopyP2P(const Place& dst_place, void* dst, const void* src,
-                           size_t size, const stream::Stream* stream) {
+void Device::MemoryCopyP2P(const Place& dst_place,
+                           void* dst,
+                           const void* src,
+                           size_t size,
+                           const stream::Stream* stream) {
   impl_->MemoryCopyP2P(dst_place, dst, dev_id_, src, size, stream);
 }
 
@@ -173,7 +181,7 @@ DeviceInterface* DeviceManager::GetDeviceInterfaceWithType(
   } else {
     LOG(ERROR) << "GetDeviceInterfaceWithType - " << device_type << " Failed\n";
     PADDLE_THROW(
-        platform::errors::Fatal("Unregistered device type %s.", device_type));
+        phi::errors::Fatal("Unregistered device type %s.", device_type));
     return nullptr;
   }
 }
@@ -182,17 +190,21 @@ Device* DeviceManager::GetDeviceWithPlace(const Place& place) {
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
 
   auto& dev_map = Instance().device_map_;
-  auto dev_type = PlaceHelper::GetDeviceType(place);
-  auto dev_id = PlaceHelper::GetDeviceId(place);
-  PADDLE_ENFORCE_NE(dev_map.find(dev_type), dev_map.end(),
-                    platform::errors::NotFound(
-                        "Unable to find Device with type %s.", dev_type));
+  auto dev_type = place.GetDeviceType();
+  auto dev_id = place.GetDeviceId();
+  PADDLE_ENFORCE_NE(
+      dev_map.find(dev_type),
+      dev_map.end(),
+      phi::errors::NotFound("Unable to find Device with type %s.", dev_type));
   auto& dev_vec = dev_map[dev_type];
   PADDLE_ENFORCE_LT(
-      dev_id, dev_vec.size(),
-      platform::errors::OutOfRange(
+      dev_id,
+      dev_vec.size(),
+      phi::errors::OutOfRange(
           "The visible devices count of type %s is %d, but dev_id is %d.",
-          dev_type, dev_vec.size(), dev_id));
+          dev_type,
+          dev_vec.size(),
+          dev_id));
   return dev_vec[dev_id].get();
 }
 
@@ -277,22 +289,22 @@ void DeviceManager::Finalize(const std::string& device_type) {
 }
 
 void DeviceManager::SynchronizeDevice(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->SynchronizeDevice(device_id);
 }
 
 void DeviceManager::InitDevice(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->InitDevice(device_id);
 }
 
 void DeviceManager::DeInitDevice(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->DeInitDevice(device_id);
 }
@@ -304,8 +316,8 @@ void DeviceManager::SetDevice(const std::string& device_type,
 }
 
 void DeviceManager::SetDevice(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   DeviceManager::SetDevice(device_type, device_id);
 }
 
@@ -315,51 +327,52 @@ int DeviceManager::GetDevice(const std::string& device_type) {
 }
 
 size_t DeviceManager::GetMinChunkSize(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   return dev_impl->GetMinChunkSize(device_id);
 }
 
 size_t DeviceManager::GetMaxChunkSize(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   return dev_impl->GetMaxChunkSize(device_id);
 }
 
 size_t DeviceManager::GetMaxAllocSize(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   return dev_impl->GetMaxAllocSize(device_id);
 }
 
 size_t DeviceManager::GetInitAllocSize(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   return dev_impl->GetInitAllocSize(device_id);
 }
 
 size_t DeviceManager::GetReallocSize(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   return dev_impl->GetReallocSize(device_id);
 }
 
 size_t DeviceManager::GetExtraPaddingSize(const Place& place) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   return dev_impl->GetExtraPaddingSize(device_id);
 }
 
-void DeviceManager::MemoryStats(const Place& place, size_t* total,
+void DeviceManager::MemoryStats(const Place& place,
+                                size_t* total,
                                 size_t* free) {
-  auto device_type = PlaceHelper::GetDeviceType(place);
-  auto device_id = PlaceHelper::GetDeviceId(place);
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   dev_impl->MemoryStats(device_id, total, free);
 }
@@ -393,8 +406,8 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   } else {
     while ((ptr = readdir(dir)) != nullptr) {
       std::string filename(ptr->d_name);
-      if (std::regex_match(filename.begin(), filename.end(), results,
-                           express)) {
+      if (std::regex_match(
+              filename.begin(), filename.end(), results, express)) {
         libraries.push_back(library_dir + '/' + filename);
         VLOG(4) << "Found lib: " << libraries.back();
       }
@@ -405,6 +418,5 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   return libraries;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
 #endif

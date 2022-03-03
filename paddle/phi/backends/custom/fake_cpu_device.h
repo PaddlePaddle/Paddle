@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/platform/device/device_ext.h"
+#include "paddle/phi/backends/device_ext.h"
 
 constexpr size_t global_total_memory = 1024 * 1024UL;
 static size_t global_free_memory = global_total_memory;
@@ -43,14 +43,19 @@ C_Status GetDevicesList(size_t *device) {
   return C_SUCCESS;
 }
 
-C_Status MemCpy(const C_Device device, void *dst, const void *src,
+C_Status MemCpy(const C_Device device,
+                void *dst,
+                const void *src,
                 size_t size) {
   memcpy(dst, src, size);
   return C_SUCCESS;
 }
 
-C_Status AsyncMemCpy(const C_Device device, C_Stream stream, void *dst,
-                     const void *src, size_t size) {
+C_Status AsyncMemCpy(const C_Device device,
+                     C_Stream stream,
+                     void *dst,
+                     const void *src,
+                     size_t size) {
   memcpy(dst, src, size);
   return C_SUCCESS;
 }
@@ -100,14 +105,16 @@ C_Status SyncStream(const C_Device device, C_Stream stream) {
 
 C_Status SyncEvent(const C_Device device, C_Event event) { return C_SUCCESS; }
 
-C_Status StreamWaitEvent(const C_Device device, C_Stream stream,
+C_Status StreamWaitEvent(const C_Device device,
+                         C_Stream stream,
                          C_Event event) {
   return C_SUCCESS;
 }
 
 C_Status VisibleDevices(size_t *devices) { return C_SUCCESS; }
 
-C_Status DeviceMemStats(const C_Device device, size_t *total_memory,
+C_Status DeviceMemStats(const C_Device device,
+                        size_t *total_memory,
                         size_t *free_memory) {
   *total_memory = global_total_memory;
   *free_memory = global_free_memory;
@@ -139,7 +146,8 @@ void InitFakeCPUDevice(CustomRuntimeParams *params) {
   params->version.minor = PADDLE_CUSTOM_RUNTIME_MINOR_VERSION;
   params->version.patch = PADDLE_CUSTOM_RUNTIME_PATCH_VERSION;
 
-  memset(reinterpret_cast<void *>(params->interface), 0,
+  memset(reinterpret_cast<void *>(params->interface),
+         0,
          sizeof(C_DeviceInterface));
 
   params->interface->initialize = Init;
