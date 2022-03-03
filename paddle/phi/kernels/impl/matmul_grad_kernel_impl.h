@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 #endif
 
 namespace phi {

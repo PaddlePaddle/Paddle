@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/funcs/reduce_function.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 // See Note [ Why still include the fluid headers? ]
