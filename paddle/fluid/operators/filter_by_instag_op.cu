@@ -91,27 +91,30 @@ __global__ void filter_copy_fuse_kernel(
 
   if (N < ins_end) ins_end = N;
 
-  if (!x1_lods_filled) {
-    for (int p = ins_start; p < ins_end; p++) {
-      x1_lods_data[p] = p;
+  /*
+    if (!x1_lods_filled) {
+      for (int p = ins_start; p < ins_end; p++) {
+        x1_lods_data[p] = p;
+      }
+      if (idx == 0) {
+        x1_lods_data[N] = N;
+      }
     }
-    if (idx == 0) {
-      x1_lods_data[N] = N;
-    }
-  }
 
-  if (!x2_lods_filled) {
-    for (int p = ins_start; p < ins_end; p++) {
-      x2_lods_data[p] = p;
+    if (!x2_lods_filled) {
+      for (int p = ins_start; p < ins_end; p++) {
+        x2_lods_data[p] = p;
+      }
+      if (idx == 0) {
+        x2_lods_data[N] = N;
+      }
     }
-    if (idx == 0) {
-      x2_lods_data[N] = N;
-    }
-  }
 
-  if (!x1_lods_filled || !x2_lods_filled) {
-    b.sync();
-  }
+    if (!x1_lods_filled || !x2_lods_filled) {
+      b.sync();
+    }
+
+  */
 
   int flag_data[5];
   int prefix_sum_data[5];
@@ -408,7 +411,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     paddle::framework::MixVector<size_t> mixv_x2_lods(&x2_lods);
 
     size_t* x2_lods_data = mixv_x2_lods.CUDAMutableData(gpu_place);
-    const size_t x2_lods_size = mixv_x2_lods.size() - 1;
+    const size_t x2_lods_size = x2_lods.size() - 1;
 
     // Vector, in GPU
     int x1_lods_filled = 1;
@@ -453,7 +456,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     int out_first = x1->dims()[0];
     if (x1_lods_filled) {
-      out_first = mixv_x1_lods.back();
+      out_first = x1_lods.back();
     }
 
     out->Resize(phi::make_ddim({(int64_t)out_first, (int64_t)x1_embed_size}));
