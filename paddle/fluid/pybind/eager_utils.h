@@ -11,6 +11,9 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -98,6 +101,14 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
 
 paddle::experimental::ScalarArray CastPyArg2ScalarArray(
     PyObject* obj, const std::string& op_type, ssize_t arg_pos);
+
+paddle::experimental::Backend CastPyArg2Backend(PyObject* obj,
+                                                const std::string& op_type,
+                                                ssize_t arg_pos);
+
+paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
+                                                  const std::string& op_type,
+                                                  ssize_t arg_pos);
 
 paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,

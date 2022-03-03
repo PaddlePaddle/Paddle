@@ -20,16 +20,20 @@ atype_to_parsing_function = {
     "bool": "CastPyArg2Boolean",
     "int": "CastPyArg2Int",
     "long": "CastPyArg2Long",
+    "int64_t": "CastPyArg2Long",
     "float": "CastPyArg2Float",
     "string": "CastPyArg2String",
-    "bool[]": "CastPyArg2Booleans",
-    "int[]": "CastPyArg2Ints",
-    "long[]": "CastPyArg2Longs",
-    "float[]": "CastPyArg2Floats",
-    "double[]": "CastPyArg2Float64s",
-    "string[]": "CastPyArg2Strings",
+    "std::vector<bool>": "CastPyArg2Booleans",
+    "std::vector<int>": "CastPyArg2Ints",
+    "std::vector<long>": "CastPyArg2Longs",
+    "std::vector<int64_t>": "CastPyArg2Longs",
+    "std::vector<float>": "CastPyArg2Floats",
+    "std::vector<double>": "CastPyArg2Float64s",
+    "std::vector<std::string>": "CastPyArg2Strings",
     "Scalar": "CastPyArg2Scalar",
-    "ScalarArray": "CastPyArg2ScalarArray"
+    "ScalarArray": "CastPyArg2ScalarArray",
+    "Backend": "CastPyArg2Backend",
+    "DataType": "CastPyArg2DataType",
 }
 
 
@@ -43,15 +47,9 @@ def ParseArguments():
     return args
 
 
-def GetCxxType(atype):
-    if atype not in yaml_types_mapping.keys():
-        assert False
-
-    return yaml_types_mapping[atype]
-
-
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
+        print(f"Unable to find {atype} in atype_to_parsing_function.")
         assert False
 
     return atype_to_parsing_function[atype]
@@ -86,11 +84,10 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
     # Get Attributes
     for name, atype, _, pos in forward_attrs_list:
         parsing_function = FindParsingFunctionFromAttributeType(atype)
-        cxx_type = GetCxxType(atype)
         key = f"{name}"
 
         parse_attributes_str += f"    PyObject* {name}_obj = PyTuple_GET_ITEM(args, {pos});\n"
-        parse_attributes_str += f"    {cxx_type} {name} = {parsing_function}({name}_obj, \"{fwd_api_name}\", {pos});\n"
+        parse_attributes_str += f"    {atype} {name} = {parsing_function}({name}_obj, \"{fwd_api_name}\", {pos});\n"
 
         dygraph_function_call_list[pos] = f"{name}"
     dygraph_function_call_str = ",".join(dygraph_function_call_list)
@@ -131,7 +128,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
         fwd_function_name = fwd_api_name
     else:
         fwd_function_name = GetForwardFunctionName(fwd_api_name)
-        
+
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
         fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,
         fwd_function_name, dygraph_function_call_str)
