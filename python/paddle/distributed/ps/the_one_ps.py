@@ -711,6 +711,7 @@ class PsDescBuilder(object):
         self.ps_mode = context['ps_mode']
         self.is_heter_ps_mode = context['is_heter_ps_mode']
         self.use_ps_gpu = context['use_ps_gpu']
+        self.barrier_table_id = None
         self.send_ctx = get_the_one_send_context(
             self.context,
             use_origin_program=True,
@@ -771,6 +772,8 @@ class PsDescBuilder(object):
             table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add(
             )
             table._set(table_proto)
+            if type(table) == BarrierTable and self.barrier_table_id is None:
+                self.barrier_table_id = table.idx
         self.service._set(
             self.ps_desc.server_param.downpour_server_param.service_param)
         return text_format.MessageToString(self.ps_desc)
@@ -824,9 +827,9 @@ class TheOnePSRuntime(RuntimeBase):
         self.context['tensor_table'] = {}
         build_var_distributed(self.context)
 
-        endpoints = get_ps_endpoints(self.role_maker)
+        self.endpoints = get_ps_endpoints(self.role_maker)
         self.string_hosts = []
-        for idx, ep in enumerate(endpoints):
+        for idx, ep in enumerate(self.endpoints):
             host, port = ep.split(":")
             pshost = fluid.core.PSHost(host, int(port), idx)
             self.string_hosts.append(pshost.serialize_to_string())
@@ -852,7 +855,7 @@ class TheOnePSRuntime(RuntimeBase):
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
-        proto_txt = worker_desc + "\n" + server_desc
+        proto_txt = worker_desc
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("worker: \n{}".format(proto_txt))
@@ -863,7 +866,7 @@ class TheOnePSRuntime(RuntimeBase):
             self.context,
             split_dense_table=self.is_heter_ps_mode,
             use_origin_program=self.is_heter_ps_mode,
-            ep_list=endpoints)
+            ep_list=self.endpoints)
         trainer_config = self.context['trainer']
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
@@ -880,10 +883,7 @@ class TheOnePSRuntime(RuntimeBase):
         kwargs["trainer_id"] = self.role_maker._role_id()
         kwargs["trainers"] = self.role_maker._worker_num()
 
-        for table in server.servers[0].tables:  #TODO
-            if table.table_class == "BarrierTable":
-                kwargs["barrier_table_id"] = table.id
-                break
+        kwargs["barrier_table_id"] = self.ps_desc_builder.barrier_table_id
 
         if self.context['ps_mode'] == DistributedMode.SYNC:
             sync_kwargs = sync_strategy_envs()

@@ -136,6 +136,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             ps_builder = PsProgramBuilderFactory()._create_ps_program_builder(
                 self.pass_ctx)
             ps_builder._build_programs()
+            startup_program[idx] = self.pass_ctx._attrs['cloned_startup']
         return None, None
 
     def _can_apply_geo(self, program):
