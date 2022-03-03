@@ -17,15 +17,14 @@ limitations under the License. */
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 
-#include "glog/logging.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
+#include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
 namespace phi {
 namespace sparse {
@@ -96,7 +95,7 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
           int in_z = x_indices[i + non_zero_num];
           int in_y = x_indices[i + 2 * non_zero_num];
           int in_x = x_indices[i + 3 * non_zero_num];
-          int in_i = -1, out_index = -1;
+          int in_i = -1, out_index = -1, kernel_i = -1;
           if (Check(x_dims,
                     kernel_dims,
                     paddings,
@@ -115,9 +114,11 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
             out_index =
                 PointToIndex<Dims4D>(batch, out_x, out_y, out_z, out_dims);
             atomicAdd(&counter_buf[kernel_index], 1);
+            kernel_i = kernel_index;
           }
-          rulebook[kernel_index * non_zero_num + i] = in_i;
-          rulebook[kernel_index * non_zero_num + offset + i] = out_index;
+          rulebook[kernel_index * non_zero_num + i] = kernel_i;
+          rulebook[kernel_index * non_zero_num + offset + i] = in_i;
+          rulebook[kernel_index * non_zero_num + offset * 2 + i] = out_index;
           ++kernel_index;
         }
       }
@@ -126,49 +127,6 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
   __syncthreads();
   for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
     atomicAdd(&counter[i], counter_buf[i]);
-  }
-}
-
-// TODO(zhangkaihuo): After the GatherCUDAKernel is migrated to phi, replace
-// this kernel with phi::GatherCUDAKernel;
-template <typename T, typename IndexT = int>
-__global__ void GatherKernel(const T* params,
-                             const IndexT* indices,
-                             T* output,
-                             size_t index_size,
-                             size_t slice_size) {
-  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
-    int64_t indices_i = i / slice_size;
-    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
-    IndexT gather_i = indices[indices_i];
-    int64_t params_i = gather_i * slice_size + slice_i;
-    *(output + i) = *(params + params_i);
-  }
-}
-
-template <typename T>
-__global__ void ScatterKernel(const T* input,
-                              const int* unique_value,
-                              const int* out_index,
-                              const int non_zero_num,
-                              const int rulebook_len,
-                              const int channels,
-                              T* out) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int i = tid; i < non_zero_num * channels; i += gridDim.x * blockDim.x) {
-    int indices_i = i / channels;
-    int channels_i = i - indices_i * channels;
-
-    int start = unique_value[indices_i];
-    int end = indices_i == non_zero_num - 1 ? rulebook_len
-                                            : unique_value[indices_i + 1];
-    // max(end-start) = kernel_size
-    T sum = static_cast<T>(0);
-    for (int j = start; j < end; j++) {
-      const int out_feature_i = out_index[j];
-      sum += input[out_feature_i * channels + channels_i];
-    }
-    out[indices_i * channels + channels_i] = sum;
   }
 }
 
@@ -217,7 +175,9 @@ int ProductRuleBook(const Context& dev_ctx,
                 sizeof(int) * offsets_per_kernel->numel());
   int* offsets_ptr = offsets_per_kernel->data<int>();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  rulebook->ResizeAndAllocate({2, kernel_size * non_zero_num});
+  const int rulebook_rows = 3;
+  const int rulebook_cols = kernel_size * non_zero_num;
+  rulebook->ResizeAndAllocate({rulebook_rows, rulebook_cols});
   dev_ctx.Alloc(rulebook, rulebook->dtype(), sizeof(int) * rulebook->numel());
   int* rulebook_ptr = rulebook->data<int>();
 
@@ -252,7 +212,7 @@ int ProductRuleBook(const Context& dev_ctx,
   // 2. remove -1
   int* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
                              rulebook_ptr,
-                             rulebook_ptr + 2 * kernel_size * non_zero_num,
+                             rulebook_ptr + 3 * rulebook_cols,
                              -1);
   thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
                          counter_ptr,
@@ -272,6 +232,7 @@ int ProductRuleBook(const Context& dev_ctx,
   dev_ctx.Wait();
   int rulebook_len =
       (*h_counter)[kernel_size - 1] + (*h_offsets)[kernel_size - 1];
+  rulebook->Resize({rulebook_rows, rulebook_len});
 
   // 3. sorted or merge the out index
   out_index->ResizeAndAllocate({rulebook_len});
@@ -295,13 +256,11 @@ int ProductRuleBook(const Context& dev_ctx,
       rulebook_len, out_index_ptr, unique_value_ptr);
 
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(unique_key_ptr,
-                                             rulebook_ptr + rulebook_len,
+                                             rulebook_ptr + 2 * rulebook_len,
                                              sizeof(int) * rulebook_len,
                                              cudaMemcpyDeviceToDevice,
                                              dev_ctx.stream()));
 
-  // compared with thrust::sort_by_key, thrust::merge_by_key may achieved higher
-  // performance, but thrust::merge_by_key limited by data size
   thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
                       unique_key_ptr,
                       unique_key_ptr + rulebook_len,
@@ -341,7 +300,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                           rulebook_len,
                                           d_out_dims,
                                           out_indices_ptr,
-                                          rulebook_ptr + rulebook_len);
+                                          rulebook_ptr + 2 * rulebook_len);
   out->SetMember(out_indices, out_values, out_dims, true);
   return rulebook_len;
 }
@@ -407,6 +366,7 @@ void Conv3dKernel(const Context& dev_ctx,
 
   const int* counter_ptr = counter_per_kernel.data<int>();
   const int* offsets_ptr = counter_per_kernel.data<int>();
+  const int* rulebook_ptr = rulebook->data<int>();
 
   // 2. gather
   DenseTensorMeta in_features_meta(
@@ -430,7 +390,7 @@ void Conv3dKernel(const Context& dev_ctx,
                          config.thread_per_block.x,
                          0,
                          dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                                             rulebook->data<int>(),
+                                             rulebook_ptr + n,
                                              in_features_ptr,
                                              n,
                                              in_channels);

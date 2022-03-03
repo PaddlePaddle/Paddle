@@ -105,6 +105,13 @@ void TestConv3dBase(const std::vector<int>& indices,
       &kernel_tensor, kernel_tensor.dtype(), kernel_tensor.numel() * sizeof(T));
   memcpy(kernel_tensor.data<T>(), kernel.data(), kernel.size() * sizeof(T));
 
+  auto f_verify = [&](const T* real_data, const std::vector<T>& correct_data) {
+    for (uint64_t i = 0; i < correct_data.size(); i++) {
+      float tmp = std::fabs(static_cast<float>(correct_data[i] - real_data[i]));
+      ASSERT_LT(tmp, diff);
+    }
+  };
+
   if (!std::is_same<T, phi::dtype::float16>::value) {
     DenseTensor rulebook = phi::Empty<int, phi::CPUContext>(dev_ctx_cpu);
     SparseCooTensor out = sparse::Conv3d<T>(dev_ctx_cpu,
@@ -126,15 +133,6 @@ void TestConv3dBase(const std::vector<int>& indices,
                              out.non_zero_indices().data<int>(),
                              correct_out_indices.size() * sizeof(int));
     ASSERT_EQ(cmp_indices, 0);
-
-    auto f_verify = [&](const T* real_data,
-                        const std::vector<T>& correct_data) {
-      for (uint64_t i = 0; i < correct_data.size(); i++) {
-        float tmp =
-            std::fabs(static_cast<float>(correct_data[i] - real_data[i]));
-        ASSERT_LT(tmp, diff);
-      }
-    };
 
     f_verify(out.non_zero_elements().data<T>(), correct_out_features);
 
@@ -247,10 +245,29 @@ void TestConv3dBase(const std::vector<int>& indices,
             phi::CPUPlace(),
             true,
             &h_features_tensor);
-  for (uint64_t i = 0; i < correct_out_features.size(); i++) {
-    float tmp = std::fabs(static_cast<float>(correct_out_features[i] -
-                                             h_features_tensor.data<T>()[i]));
-    ASSERT_LT(tmp, diff);
+  f_verify(h_features_tensor.data<T>(), correct_out_features);
+
+  if (backward) {
+    std::vector<DenseTensor> grads = sparse::Conv3dGrad<T>(dev_ctx_gpu,
+                                                           d_x_tensor,
+                                                           d_rulebook,
+                                                           d_kernel_tensor,
+                                                           d_out,
+                                                           paddings,
+                                                           dilations,
+                                                           strides,
+                                                           1);
+    DenseTensor h_features_grad = phi::Empty(
+        dev_ctx_cpu,
+        DenseTensorMeta(grads[0].dtype(), grads[0].dims(), grads[0].layout()));
+    phi::Copy(dev_ctx_gpu, grads[0], phi::CPUPlace(), true, &h_features_grad);
+    f_verify(h_features_grad.data<T>(), features_grad);
+
+    DenseTensor h_kernel_grad = phi::Empty(
+        dev_ctx_cpu,
+        DenseTensorMeta(grads[1].dtype(), grads[1].dims(), grads[1].layout()));
+    phi::Copy(dev_ctx_gpu, grads[1], phi::CPUPlace(), true, &h_kernel_grad);
+    f_verify(h_kernel_grad.data<T>(), kernel_grad);
   }
 #endif
 }
