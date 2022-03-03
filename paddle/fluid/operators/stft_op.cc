@@ -75,14 +75,18 @@ class StftOp : public framework::OperatorWithKernel {
 class StftOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "");
-    AddOutput("Out", "");
-    AddAttr<int>("n_fft", "");
-    AddAttr<int>("hop_length", "");
-    AddAttr<bool>("normalized", "");
-    AddAttr<bool>("onesided", "");
+    AddInput("X", "Input waveforms with shape (N, T)");
+    AddOutput("Out",
+              "The complex STFT output tensor with shape (N, n_fft, "
+              "num_frames) or (N, n_fft/2 + 1, num_frames)");
+    AddAttr<int>("n_fft", "The number of input samples to perform FFT");
+    AddAttr<int>("hop_length", "Number of samples between adjacent frames");
+    AddAttr<bool>("normalized",
+                  "Control whether to scale the output by 1/sqrt(n_fft)");
+    AddAttr<bool>("onesided",
+                  "Control whether to return half of the FFT output");
     AddComment(R"DOC(
-      Stft Op.
+      Short-time Fourier transform (STFT).
     )DOC");
   }
 };
