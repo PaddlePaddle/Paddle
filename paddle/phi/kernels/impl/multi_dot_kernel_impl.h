@@ -51,7 +51,13 @@ inline DenseTensor MatMul(const Context& ctx,
   auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_dim, 0, false);
   auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_dim, 0, false);
   const T alpha = static_cast<T>(1.0);
-  blas.MatMul(matrix_a, mat_dim_a, matrix_b, mat_dim_b, alpha, &matrix_c, T(0));
+  blas.MatMul(matrix_a.data<T>(),
+              mat_dim_a,
+              matrix_b.data<T>(),
+              mat_dim_b,
+              alpha,
+              matrix_c.data<T>(),
+              T(0));
   return matrix_c;
 }
 
@@ -213,17 +219,18 @@ void MultiDotKernel(const Context& ctx,
     auto mat_dim_c = phi::funcs::CreateMatrixDescriptor(ins_dims[2], 0, false);
     if (cost1 < cost2) {
       DenseTensor tmp_out;
-      // tmp_out.mutable_data<T>(place, Ma * Nb * sizeof(T));
-      ctx.template Alloc<T>(&tmp_out, Ma * Nb * sizeof(T));
       phi::DDim tmp_dim = phi::make_ddim({Ma, Nb});
+      tmp_out.Resize(tmp_dim);
+      ctx.template Alloc<T>(&tmp_out);
       blas.MatMul(ins[0], mat_dim_a, ins[1], mat_dim_b, scale, &tmp_out, T(0));
       auto mat_dim_tmp = phi::funcs::CreateMatrixDescriptor(tmp_dim, 0, false);
       blas.MatMul(tmp_out, mat_dim_tmp, ins[2], mat_dim_c, scale, out, T(0));
     } else {
       DenseTensor tmp_out;
-      // tmp_out.mutable_data<T>(place, Ka * Nc * sizeof(T));
-      ctx.template Alloc<T>(&tmp_out, Ka * Nc * sizeof(T));
       phi::DDim tmp_dim = phi::make_ddim({Ka, Nc});
+      tmp_out.Resize(tmp_dim);
+      ctx.template Alloc<T>(&tmp_out);
+      std::cout << tmp_out << std::endl;
       blas.MatMul(ins[1], mat_dim_b, ins[2], mat_dim_c, scale, &tmp_out, T(0));
       auto mat_dim_tmp = phi::funcs::CreateMatrixDescriptor(tmp_dim, 0, false);
       blas.MatMul(ins[0], mat_dim_a, tmp_out, mat_dim_tmp, scale, out, T(0));
