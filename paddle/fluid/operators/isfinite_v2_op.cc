@@ -14,9 +14,9 @@
 
 #include <string>
 
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -51,6 +51,7 @@ class OverflowV2Op : public framework::OperatorWithKernel {
                const framework::VariableNameMap &outputs,
                const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -142,4 +143,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     IsfiniteInferShapeFunctor);
-
