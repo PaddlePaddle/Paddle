@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/gather_op.h"
-#include "paddle/fluid/operators/scatter.cu.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/scatter.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -49,11 +49,14 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
     }
     const auto &place = ctx.GetPlace();
     const auto &index_type = framework::TransToProtoVarType(index->dtype());
+    const auto &dev_ctx = ctx.cuda_device_context();
     if (axis != 0) {
       if (index_type == framework::proto::VarType::INT32) {
-        GatherV2CUDAFunction<T, int32_t>(x, index, axis, output, place, ctx);
+        phi::funcs::GatherV2CUDAFunction<T, int32_t>(x, index, axis, output,
+                                                     dev_ctx);
       } else if (index_type == framework::proto::VarType::INT64) {
-        GatherV2CUDAFunction<T, int64_t>(x, index, axis, output, place, ctx);
+        phi::funcs::GatherV2CUDAFunction<T, int64_t>(x, index, axis, output,
+                                                     dev_ctx);
       }
       return;
     }
@@ -61,9 +64,9 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
     if (index_type == framework::proto::VarType::INT32) {
-      GPUGather<T, int>(ctx.device_context(), *x, *index, output);
+      phi::funcs::GPUGather<T, int>(dev_ctx, *x, *index, output);
     } else if (index_type == framework::proto::VarType::INT64) {
-      GPUGather<T, int64_t>(ctx.device_context(), *x, *index, output);
+      phi::funcs::GPUGather<T, int64_t>(dev_ctx, *x, *index, output);
     }
   }
 };
@@ -93,14 +96,15 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
       }
     }
 
+    const auto &dev_ctx = ctx.cuda_device_context();
     const auto &index_type = framework::TransToProtoVarType(index->dtype());
     if (axis != 0) {
       if (index_type == framework::proto::VarType::INT32) {
-        GatherV2GradCUDAFunction<T, int32_t>(dO, index, axis, dX,
-                                             ctx.GetPlace(), ctx);
+        phi::funcs::GatherV2GradCUDAFunction<T, int32_t>(dO, index, axis, dX,
+                                                         dev_ctx);
       } else if (index_type == framework::proto::VarType::INT64) {
-        GatherV2GradCUDAFunction<T, int64_t>(dO, index, axis, dX,
-                                             ctx.GetPlace(), ctx);
+        phi::funcs::GatherV2GradCUDAFunction<T, int64_t>(dO, index, axis, dX,
+                                                         dev_ctx);
       }
       return;
     }
@@ -112,11 +116,11 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
     if (index_type == framework::proto::VarType::INT32) {
-      GPUScatterAssign<T, int>(ctx, *dO, *index, dX,
-                               ctx.Attr<bool>("overwrite"));
+      phi::funcs::GPUScatterAssign<T, int>(dev_ctx, *dO, *index, dX,
+                                           ctx.Attr<bool>("overwrite"));
     } else if (index_type == framework::proto::VarType::INT64) {
-      GPUScatterAssign<T, int64_t>(ctx, *dO, *index, dX,
-                                   ctx.Attr<bool>("overwrite"));
+      phi::funcs::GPUScatterAssign<T, int64_t>(dev_ctx, *dO, *index, dX,
+                                               ctx.Attr<bool>("overwrite"));
     }
   }
 };

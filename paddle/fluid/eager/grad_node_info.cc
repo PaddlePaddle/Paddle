@@ -36,6 +36,7 @@
 namespace egr {
 
 GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
+  VLOG(6) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
 }
