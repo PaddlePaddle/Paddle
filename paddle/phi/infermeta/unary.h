@@ -140,6 +140,12 @@ void DiagInferMeta(const MetaTensor& x,
 
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void ArgsortInferMeta(const MetaTensor& input,
+                      int axis,
+                      bool descending,
+                      MetaTensor* output,
+                      MetaTensor* indices);
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,

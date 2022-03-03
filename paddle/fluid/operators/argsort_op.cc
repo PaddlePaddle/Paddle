@@ -12,8 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/argsort_op.h"
 #include <memory>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -122,18 +126,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ArgsortGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DELCARE_INFER_SHAPE_FUNCTOR(argsort, ArgsortInferShapeFunctor,
+                            PT_INFER_META(phi::ArgsortInferMeta));
 REGISTER_OPERATOR(argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
                   ops::ArgsortGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ArgsortGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ArgsortGradOpMaker<paddle::imperative::OpBase>,
+                  ArgsortInferShapeFunctor);
 REGISTER_OPERATOR(argsort_grad, ops::ArgsortGradOp,
                   ops::ArgsortGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(argsort,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, float>,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, double>,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, int>,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    argsort_grad, ops::ArgsortGradientKernel<paddle::platform::CPUPlace, float>,
-    ops::ArgsortGradientKernel<paddle::platform::CPUPlace, double>,
-    ops::ArgsortGradientKernel<paddle::platform::CPUPlace, int>,
-    ops::ArgsortGradientKernel<paddle::platform::CPUPlace, int64_t>);
