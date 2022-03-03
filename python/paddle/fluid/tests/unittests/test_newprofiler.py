@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import unittest
-import os
 import numpy as np
 import gc
 
@@ -25,43 +24,11 @@ import paddle.profiler as profiler
 
 class TestProfiler(unittest.TestCase):
     def test_profiler(self):
-        repeat = 20
-        #test_profiler_cpu
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.CPU], scheduler=[10, 20])
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        #test_profiler_gpu
-        prof = None
-        gc.enable()
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU], scheduler=[10, 20])
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        prof.summary()
-
+        repeat = 5
         #test_profiler_both
-        prof = None
-        gc.enable()
         prof = profiler.Profiler(
             targets=[profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU],
-            scheduler=[10, 20])
+            scheduler=[1, 3])
         prof.start()
         x_value = np.random.randn(2, 3, 3)
         x = paddle.to_tensor(x_value, stop_gradient=False)
@@ -77,57 +44,20 @@ class TestProfiler(unittest.TestCase):
         # test_profiler_sheduler
         prof = None
         gc.enable()
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU],
-            scheduler=profiler.make_scheduler(
-                closed=1, ready=1, record=3, repeat=1))
-        prof.start()
         x_value = np.random.randn(2, 3, 3)
         x = paddle.to_tensor(x_value, stop_gradient=False)
         y = x / 2.0
         ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        prof.summary()
-
-        # test_profiler_logger
-        prof = None
-        gc.enable()
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU],
-            scheduler=profiler.make_scheduler(
-                closed=1, ready=1, record=3, repeat=1),
-            on_trace_ready=profiler.export_chrome_tracing('./test_profiler'))
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        prof.summary()
-        prof = None
-        gc.enable()
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU],
-            scheduler=profiler.make_scheduler(
-                closed=1, ready=1, record=3, repeat=1), )
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
+        with profiler.Profiler(
+                targets=[
+                    profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU
+                ],
+                scheduler=profiler.make_scheduler(
+                    closed=0, ready=1, record=2, repeat=1)) as prof:
+            for i in range(repeat):
+                y = x / 2.0
+                paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
+                prof.step()
         prof.export(path='./test_profiler_pb.pb', format='pb')
         prof.summary()
         result = profiler.utils.LoadProfilerResult('./test_profiler_pb.pb')
