@@ -370,7 +370,7 @@ def _compute_complete_shape(slice_shape, process_shape, dims_mapping):
     return complete_shape
 
 
-def find_op_desc_seq(dist_tensor, dist_op, actual_process_mesh):
+def find_op_desc_seq(dist_tensor, dist_op, actual_process_mesh, batch_size):
     """
     Find the op description sequence to reshard the source tensor for matching the op requirement.
 
@@ -396,6 +396,11 @@ def find_op_desc_seq(dist_tensor, dist_op, actual_process_mesh):
     target_dims_mapping = op_dist_attr.get_input_dims_mapping(tensor_name)
     target_process_group = target_process_mesh.processes
     target_process_shape = target_process_mesh.topology
+
+    if source_tensor.shape[0] < 0:
+        new_shape = list(source_tensor.shape)
+        new_shape[0] = batch_size
+        source_tensor.desc.set_shape(new_shape)
 
     complete_shape = _compute_complete_shape(
         source_tensor.shape, source_process_shape, source_dims_mapping)
@@ -545,7 +550,7 @@ def find_op_desc_seq(dist_tensor, dist_op, actual_process_mesh):
     return op_desc_seq
 
 
-def _insert_send_op(block, idx, tensor, dst):
+def _insert_send_op(block, idx, tensor, dst, op_role):
     """Insert send op into block at the given index."""
     op_type = 'send_v2'
     block._insert_op(
@@ -556,10 +561,11 @@ def _insert_send_op(block, idx, tensor, dst):
             'ring_id': 0,
             'peer': dst,
             'use_calc_stream': True,
+            'op_role': op_role
         })
 
 
-def _insert_recv_op(block, idx, tensor, src):
+def _insert_recv_op(block, idx, tensor, src, op_role):
     """Insert recv op into block at the given index."""
     op_type = 'recv_v2'
     block._insert_op(
@@ -573,14 +579,16 @@ def _insert_recv_op(block, idx, tensor, src):
             'out_shape': tensor.shape,
             'dtype': tensor.dtype,
             'use_calc_stream': True,
+            'op_role': op_role
         })
 
 
-def _insert_concat_op(block, idx, tensors, axis):
+def _insert_concat_op(block, idx, tensors, axis, op_role):
     """Insert concat op into block at the given block."""
     inputs = {'X': tensors}
     attrs = {}
     attrs['axis'] = axis
+    attrs['op_role'] = op_role
     helper = LayerHelper('concat', **locals())
     with paddle.static.program_guard(block.program):
         out = helper.create_variable_for_type_inference(
@@ -590,7 +598,8 @@ def _insert_concat_op(block, idx, tensors, axis):
     return out
 
 
-def _insert_slice_op(block, idx, tensor, starts, ends, axes, new_var_name):
+def _insert_slice_op(block, idx, tensor, starts, ends, axes, new_var_name,
+                     op_role):
     """Insert slice op into block at the given block."""
     inputs = {'Input': tensor}
     infer_flags = list(1 for i in range(len(axes)))
@@ -598,7 +607,8 @@ def _insert_slice_op(block, idx, tensor, starts, ends, axes, new_var_name):
         "axes": axes,
         "starts": starts,
         "ends": ends,
-        "infer_flags": infer_flags
+        "infer_flags": infer_flags,
+        'op_role': op_role
     }
     helper = LayerHelper('slice', **locals())
     out = block.create_var(
@@ -608,12 +618,12 @@ def _insert_slice_op(block, idx, tensor, starts, ends, axes, new_var_name):
     return out
 
 
-def _insert_split_op(block, idx, tensor, num_or_sections):
+def _insert_split_op(block, idx, tensor, num_or_sections, op_role):
     """Insert split op into block at the given index."""
     helper = LayerHelper('split', **locals())
     input_shape = tensor.shape
     inputs = {'X': tensor}
-    attrs = {'num': num_or_sections, "axis": 0}
+    attrs = {'num': num_or_sections, 'axis': 0, 'op_role': op_role}
     with paddle.static.program_guard(block.program):
         outs = [
             helper.create_variable_for_type_inference(
@@ -624,7 +634,7 @@ def _insert_split_op(block, idx, tensor, num_or_sections):
     return outs
 
 
-def _insert_allgather_op(block, idx, tensor, ranks):
+def _insert_allgather_op(block, idx, tensor, ranks, op_role):
     """Insert allgather op into block at the given index."""
 
     def _insert_fill_constant_op(block, idx):
@@ -637,6 +647,7 @@ def _insert_allgather_op(block, idx, tensor, ranks):
         attrs['str_value'] = str(int("1"))
         attrs['value'] = int("1")
         attrs['dtype'] = out.dtype
+        attrs['op_role'] = op_role
         utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=[0], op_type='fill_constant')
         block._insert_op(
@@ -665,14 +676,16 @@ def _insert_allgather_op(block, idx, tensor, ranks):
             inputs={'X': [fill_constant_out]},
             outputs={'Out': [fill_constant_out]},
             attrs={'ring_id': 0,
-                   'use_calc_stream': True})
+                   'use_calc_stream': True,
+                   'op_role': op_role})
 
         # insert c_sync_calc_stream op
         block._insert_op(
             idx + 2,
             type="c_sync_calc_stream",
             inputs={'X': [fill_constant_out]},
-            outputs={'Out': [fill_constant_out]})
+            outputs={'Out': [fill_constant_out]},
+            attrs={'op_role': op_role})
         idx_offset = 3
 
     # insert c_allgather op
@@ -689,20 +702,21 @@ def _insert_allgather_op(block, idx, tensor, ranks):
         attrs={
             'ring_id': group.id,
             'use_calc_stream': True,
-            'nranks': group.nranks
+            'nranks': group.nranks,
+            'op_role': op_role
         })
     idx_offset += 1
 
     # insert split op
     split_out = _insert_split_op(block, idx + idx_offset, allgather_out,
-                                 group.nranks)
+                                 group.nranks, op_role)
     idx_offset += 1
     tensor_list.extend(split_out)
     return tensor_list, idx_offset
 
 
 def _concat_partitions_with_op(partition_tensor_list, tensor, partition_index,
-                               block, idx):
+                               block, idx, op_role):
     """Concat the tensors and insert concat op."""
     if not partition_tensor_list:
         partition_tensor_list.append((tensor, partition_index))
@@ -714,13 +728,13 @@ def _concat_partitions_with_op(partition_tensor_list, tensor, partition_index,
                 partition_tensor_list[i][1], partition_index)
             if concat_axis != -1:
                 has_concat = True
-                _ = _insert_concat_op(block, idx[0], [partition_tensor_list[i][0], tensor], concat_axis) \
+                _ = _insert_concat_op(block, idx[0], [partition_tensor_list[i][0], tensor], concat_axis, op_role) \
                     if first_order == 0 else \
-                    _insert_concat_op(block, idx[0], [tensor, partition_tensor_list[i][0]], concat_axis)
+                    _insert_concat_op(block, idx[0], [tensor, partition_tensor_list[i][0]], concat_axis, op_role)
                 partition_tensor_list.pop(i)
                 idx[0] += 1
                 _concat_partitions_with_op(partition_tensor_list, _,
-                                           new_partition, block, idx)
+                                           new_partition, block, idx, op_role)
                 break
             i += 1
         if not has_concat:
@@ -800,7 +814,8 @@ def parse_op_desc(block, rank_id, op_desc_seq, var_name, reshard_op,
             if not HAS_ALLGATHER[var_name] or op_desc.group not in list(
                     map(lambda x: x[0], HAS_ALLGATHER[var_name])):
                 tensor_list, idx_offset = _insert_allgather_op(
-                    block, idx, source_tensor, op_desc.group)
+                    block, idx, source_tensor, op_desc.group,
+                    reshard_op.attr('op_role'))
                 idx += idx_offset
                 tensor_name_list = [var.name for var in tensor_list]
                 HAS_ALLGATHER[var_name].append(
@@ -819,7 +834,8 @@ def parse_op_desc(block, rank_id, op_desc_seq, var_name, reshard_op,
             if var_name not in HAS_SENT.keys():
                 HAS_SENT[var_name] = []
             if op_desc.dst not in HAS_SENT[var_name]:
-                _insert_send_op(block, idx, source_tensor, op_desc.dst)
+                _insert_send_op(block, idx, source_tensor, op_desc.dst,
+                                reshard_op.attr('op_role'))
                 idx += 1
                 HAS_SENT[var_name].append(op_desc.dst)
 
@@ -836,7 +852,8 @@ def parse_op_desc(block, rank_id, op_desc_seq, var_name, reshard_op,
                     shape=shape,
                     dtype=source_tensor.dtype,
                     type=source_tensor.type)
-                _insert_recv_op(block, idx, recv_tensor, op_desc.src)
+                _insert_recv_op(block, idx, recv_tensor, op_desc.src,
+                                reshard_op.attr('op_role'))
                 tensor_list.append(recv_tensor)
                 idx += 1
                 HAS_RECV[var_name][op_desc.src] = recv_tensor
@@ -849,7 +866,7 @@ def parse_op_desc(block, rank_id, op_desc_seq, var_name, reshard_op,
             for index, tensor in enumerate(tensor_list):
                 _concat_partitions_with_op(partition_tensor_list, tensor,
                                            partition_index_list[index], block,
-                                           idx_list)
+                                           idx_list, reshard_op.attr('op_role'))
             idx = idx_list[0]
 
         elif isinstance(op_desc, SliceOpDesc):
@@ -864,7 +881,8 @@ def parse_op_desc(block, rank_id, op_desc_seq, var_name, reshard_op,
                 starts=op_desc.starts,
                 ends=op_desc.ends,
                 axes=op_desc.axes,
-                new_var_name=new_name)
+                new_var_name=new_name,
+                op_role=reshard_op.attr('op_role'))
 
             tensor_attr = TensorDistributedAttribute()
             process_mesh = actual_process_mesh
@@ -1208,8 +1226,12 @@ def _get_op_process_meshes(op, dist_context):
     return process_meshes
 
 
-def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
-            dist_context, dist_params_grads):
+def reshard(auto_parallel_main_prog,
+            auto_parallel_startup_prog,
+            rank_id,
+            dist_context,
+            dist_params_grads,
+            batch_size=None):
     """
     Reshard tensor in the program according to its distributed attribute and corresponding op distributed attribute.
 
@@ -1319,7 +1341,7 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
                                 dist_tensor, dist_op, process_mesh,
                                 auto_parallel_main_prog, dist_context):
                             reshard_op_desc = find_op_desc_seq(
-                                dist_tensor, dist_op, process_mesh)
+                                dist_tensor, dist_op, process_mesh, batch_size)
                             parse_op_desc(block, rank_id, reshard_op_desc,
                                           var_name, op, dist_context,
                                           auto_parallel_main_prog, process_mesh)
@@ -1355,9 +1377,11 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
                             recv_rank = dist_tensor.dist_attr.process_mesh.processes[
                                 index]
                             if rank_id == item:
-                                _insert_send_op(block, idx + 1, var, recv_rank)
+                                _insert_send_op(block, idx + 1, var, recv_rank,
+                                                op.attr('op_role'))
                             if rank_id == recv_rank:
-                                _insert_recv_op(block, idx + 1, var, item)
+                                _insert_recv_op(block, idx + 1, var, item,
+                                                op.attr('op_role'))
                         cur_op_count = len(block.ops)
                         idx_offset = idx_offset + cur_op_count - pre_op_count
                         pre_op_count = cur_op_count
