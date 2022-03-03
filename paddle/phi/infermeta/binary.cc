@@ -361,4 +361,47 @@ void GatherTreeMeta(const MetaTensor& ids,
   out->set_dims(ids_dims);
 }
 
+void IndexSelectInferMeta(const MetaTensor& x,
+                          const MetaTensor& index,
+                          int dim,
+                          MetaTensor* output) {
+  auto input_dim = x.dims();
+  auto index_dim = index.dims();
+
+  PADDLE_ENFORCE_EQ(
+      dim < input_dim.size() && dim >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+
+  PADDLE_ENFORCE_EQ(
+      index_dim.size() == 1 || (index_dim.size() == 2 && index_dim[1] == 1),
+      true,
+      phi::errors::InvalidArgument(
+          "The 'shape' of Input(Index) must be 1-D tensor. "
+          "But received: the 'shape' of Input(Index) is [%s], "
+          "the dimension of Input(Index) is [%d].",
+          index_dim,
+          index_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      index_dim[0] != 0,
+      true,
+      phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
+
+  auto output_dim = phi::vectorize(input_dim);
+  if (dim < 0) {
+    dim += input_dim.size();
+  }
+  output_dim[dim] = index_dim[0];
+  output->set_dims(phi::make_ddim(output_dim));
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
 }  // namespace phi
