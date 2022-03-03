@@ -52,7 +52,7 @@ final_state_name_mapping = {
         "axis1": "axis1",
         "axis2": "axis2",
         "out": "Out",
-    },
+    }
 }
 
 
