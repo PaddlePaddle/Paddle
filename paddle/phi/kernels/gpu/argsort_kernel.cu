@@ -90,7 +90,7 @@ void ArgFullSort(const phi::GPUContext& ctx,
   const std::vector<IndType> dims = {num_rows, num_cols};
   auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
-  input_indices.mutable_data<IndType>(ctx.GetPlace());
+  ctx.template Alloc<IndType>(&input_indices);
   size_t temp_storage_bytes = -1;
 
   auto ComputeBlockSize = [](IndType col) {
@@ -117,9 +117,8 @@ void ArgFullSort(const phi::GPUContext& ctx,
   T* sorted_out_ptr;
   IndType* sorted_indices_ptr;
   const T* inp = input->data<T>();
-  T* out = output->mutable_data<T>(ctx.GetPlace());
-  IndType* ind = indices->mutable_data<IndType>(ctx.GetPlace());
-
+  T* out = ctx.template Alloc<T>(output);
+  IndType* ind = ctx.template Alloc<IndType>(indices);
   sorted_out_ptr = out;
   sorted_indices_ptr = ind;
 
@@ -166,7 +165,9 @@ void ArgFullSort(const phi::GPUContext& ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(err);
 
   DenseTensor temp_storage;
-  temp_storage.mutable_data<uint8_t>(ctx.GetPlace(), temp_storage_bytes);
+  int64_t temp_size = temp_storage_bytes;
+  temp_storage.Resize({temp_size});
+  ctx.template Alloc<uint8_t>(&temp_storage);
 
   if (descending) {
     err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
@@ -212,7 +213,6 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
-
   const T* in_data = input.data<T>();
   auto size = input.numel();
   T* out_data = dev_ctx.template Alloc<T>(output);
