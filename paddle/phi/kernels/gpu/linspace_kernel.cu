@@ -55,12 +55,11 @@ void LinspaceKernel(const Context& ctx,
   DenseTensor n_start;
   DenseTensor n_stop;
   DenseTensor n_num;
-  auto place = ctx.GetPlace();
-  phi::Copy(ctx, start_t, place, false, &n_start);
+  phi::Copy(ctx, start_t, phi::CPUPlace(), false, &n_start);
   T start_data = n_start.data<T>()[0];
-  phi::Copy(ctx, stop_t, place, false, &n_stop);
+  phi::Copy(ctx, stop_t, phi::CPUPlace(), false, &n_stop);
   T stop_data = n_stop.data<T>()[0];
-  phi::Copy(ctx, number, place, false, &n_num);
+  phi::Copy(ctx, number, phi::CPUPlace(), false, &n_num);
   int64_t num = static_cast<int64_t>(n_num.data<int32_t>()[0]);
 
   PADDLE_ENFORCE_GT(
