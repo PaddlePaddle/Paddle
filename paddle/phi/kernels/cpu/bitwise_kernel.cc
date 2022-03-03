@@ -13,25 +13,26 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/bitwise_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/funcs/bitwise_functors.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/transform.h"
 
 namespace phi {
 
-#define DEFINE_BITWISE_KERNEL(op_type)                             \
-  template <typename T, typename Context>                          \
-  void Bitwise##op_type##Kernel(const Context& dev_ctx,            \
-                                const DenseTensor& x,              \
-                                const DenseTensor& y,              \
-                                DenseTensor* out) {                \
-    funcs::Bitwise##op_type##Functor<T> func;                      \
-    ElementwiseCompute<funcs::Bitwise##op_type##Functor<T>, T, T>( \
-        dev_ctx, x, y, -1, func, out);                             \
+#define DEFINE_BITWISE_KERNEL(op_type)                                    \
+  template <typename T, typename Context>                                 \
+  void Bitwise##op_type##Kernel(const Context& dev_ctx,                   \
+                                const DenseTensor& x,                     \
+                                const DenseTensor& y,                     \
+                                DenseTensor* out) {                       \
+    funcs::Bitwise##op_type##Functor<T> func;                             \
+    funcs::ElementwiseCompute<funcs::Bitwise##op_type##Functor<T>, T, T>( \
+        dev_ctx, x, y, -1, func, out);                                    \
   }
 
 DEFINE_BITWISE_KERNEL(And)

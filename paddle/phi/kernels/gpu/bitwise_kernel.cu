@@ -12,15 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/phi/kernels/bitwise_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/bitwise_kernel.h"
 #include "paddle/phi/kernels/funcs/bitwise_functors.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/gpu/elementwise.h"
-
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 namespace phi {
 
 #define DEFINE_BITWISE_KERNEL(op_type)                      \
