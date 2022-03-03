@@ -29,7 +29,7 @@
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
 #include <cooperative_groups.h>
 namespace cg = cooperative_groups;
 #endif
@@ -46,6 +46,8 @@ using Vector = framework::Vector<T>;
 
 #define WARP_SIZE 32
 #define MAX_WARP_NUM 32
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
 
 template <typename T>
 __global__ void filter_copy_fuse_kernel(
@@ -347,10 +349,14 @@ __global__ void copy_grad_kernel(const size_t N, const int ins_per_thread,
   }
 }
 
+#endif
+
 template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
+
     auto gpu_place = context.GetPlace();
 
     gpuStream_t current_stream = context.cuda_device_context().stream();
@@ -563,9 +569,12 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         thrust::fill(out_data_ptr, out_data_ptr + out->numel(),
                      static_cast<double>(out_val_if_empty));
       }
+
       thrust::device_ptr<float> loss_weight_data_ptr(loss_weight_data);
       loss_weight_data_ptr[0] = 0;
     }
+
+#endif
   }
 };
 
@@ -573,6 +582,8 @@ template <typename T>
 class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
+
     auto gpu_place = context.GetPlace();
     gpuStream_t current_stream = context.cuda_device_context().stream();
     auto max_thread_num_per_block = 1024;
@@ -618,6 +629,8 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
 
       cudaStreamSynchronize(current_stream);
     }
+
+#endif
   }
 };
 
