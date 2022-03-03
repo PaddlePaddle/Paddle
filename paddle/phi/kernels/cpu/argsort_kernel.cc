@@ -72,7 +72,6 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
-
   T* out_data = dev_ctx.template Alloc<T>(output);
 
   // Do full sort
@@ -80,7 +79,6 @@ void ArgsortKernel(const Context& dev_ctx,
     const int64_t input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
-
     int64_t* ids_data = dev_ctx.template Alloc<int64_t>(indices);
     FullSort<T, int64_t>(input_height,
                          input_width,
@@ -122,7 +120,6 @@ void ArgsortKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(output);
 
     DenseTensor tmp_indices;
-
     tmp_indices.Resize(trans_dims);
     auto* t_ind = dev_ctx.template Alloc<int64_t>(&tmp_indices);
 

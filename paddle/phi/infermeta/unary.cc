@@ -922,7 +922,6 @@ void ArgsortInferMeta(const MetaTensor& input,
                       MetaTensor* output,
                       MetaTensor* indices) {
   auto in_dims = input.dims();
-
   auto num_dims = in_dims.size();
   PADDLE_ENFORCE_GE(
       axis,

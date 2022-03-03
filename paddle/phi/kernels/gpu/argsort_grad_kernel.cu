@@ -141,10 +141,8 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        DenseTensor* in_grad) {
   dev_ctx.template Alloc<T>(in_grad);
   if (out_grad.numel() == 0) return;
-
   auto in_dims = in_grad->dims();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
-
   int64_t size = in_grad->numel();
 
   // Parallel acceleration when the input size is equal to the length of the

@@ -86,14 +86,11 @@ void ArgFullSort(const phi::GPUContext& ctx,
                  const IndType num_cols,
                  const bool descending) {
   auto cu_stream = ctx.stream();
-
   DenseTensor input_indices;
-
   const std::vector<IndType> dims = {num_rows, num_cols};
   auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
   input_indices.mutable_data<IndType>(ctx.GetPlace());
-
   size_t temp_storage_bytes = -1;
 
   auto ComputeBlockSize = [](IndType col) {
@@ -110,7 +107,6 @@ void ArgFullSort(const phi::GPUContext& ctx,
   };
 
   int block_size = ComputeBlockSize(num_cols);
-
   int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
   // actually, int num_rows < max_grid_size
   int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
@@ -120,7 +116,6 @@ void ArgFullSort(const phi::GPUContext& ctx,
 
   T* sorted_out_ptr;
   IndType* sorted_indices_ptr;
-
   const T* inp = input->data<T>();
   T* out = output->mutable_data<T>(ctx.GetPlace());
   IndType* ind = indices->mutable_data<IndType>(ctx.GetPlace());
