@@ -8,9 +8,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/dropout_op.h"
+
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
 namespace operators {

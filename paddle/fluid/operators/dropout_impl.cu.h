@@ -32,10 +32,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/dropout_impl_util.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 
 namespace paddle {
@@ -177,12 +176,13 @@ __global__ void DropoutGradCUDAKernel(
 }
 
 template <typename T>
-void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
-                              bool is_test,
+void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx, bool is_test,
                               const std::string dropout_implementation,
                               float dropout_prob, bool upscale_in_train,
-                              bool is_fix_seed, int seed_val, const Tensor& x,
-                              const Tensor* seed, Tensor* mask, Tensor* y) {
+                              bool is_fix_seed, int seed_val,
+                              const framework::Tensor& x,
+                              const framework::Tensor* seed,
+                              framework::Tensor* mask, framework::Tensor* y) {
   auto& place = *dev_ctx.eigen_device();
   int64_t x_numel = x.numel();
   auto stream = dev_ctx.stream();
@@ -220,7 +220,8 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     // VectorizedRandomGenerator use curand_uniform4, so we only support
     // vec_size is 4;
     int vec_size = (platform::GetVectorizedSize<T>(x_data) == 4) ? 4 : 1;
-    auto gpu_config = GetGpuLaunchConfig1D(dev_ctx, x_numel, vec_size);
+    auto gpu_config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, vec_size);
     auto offset =
         ((x_numel - 1) / (gpu_config.GetThreadNum() * vec_size) + 1) * vec_size;
 
@@ -277,11 +278,13 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
 }
 
 template <typename T>
-void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
+void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
                                 const std::string dropout_implementation,
-                                float dropout_prob, const Tensor& grad_y,
-                                const Tensor& mask, int64_t size,
-                                Tensor* grad_x, bool is_test = false) {
+                                float dropout_prob,
+                                const framework::Tensor& grad_y,
+                                const framework::Tensor& mask, int64_t size,
+                                framework::Tensor* grad_x,
+                                bool is_test = false) {
   using MT = typename details::MPTypeTrait<T>::Type;
   auto stream = dev_ctx.stream();
   MT factor;
