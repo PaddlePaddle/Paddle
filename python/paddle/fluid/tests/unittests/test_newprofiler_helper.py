@@ -51,10 +51,26 @@ class TestStatisticHelper(unittest.TestCase):
         self.assertEqual(dst, [(1, 2), (4, 15)])
         dst = statistic_helper.merge_ranges(src1, src2, True)
         self.assertEqual(dst, [(1, 2), (4, 15)])
+        src1 = []
+        src2 = []
+        dst = statistic_helper.merge_ranges(src1, src2, True)
+        self.assertEqual(dst, [])
+        src1 = [(1, 2), (3, 5)]
+        src2 = []
+        dst = statistic_helper.merge_ranges(src1, src2, True)
+        self.assertEqual(dst, src1)
+        src1 = []
+        src2 = [(1, 2), (3, 5)]
+        dst = statistic_helper.merge_ranges(src1, src2, True)
+        self.assertEqual(dst, src2)
 
     def test_merge_ranges_case2(self):
-        src1 = [(5, 7), (1, 2), (9, 14)]
-        src2 = [(4, 9), (1, 2), (13, 15)]
+        src1 = [(3, 4), (1, 2), (9, 14)]
+        src2 = [(6, 9), (13, 15)]
+        dst = statistic_helper.merge_ranges(src1, src2)
+        self.assertEqual(dst, [(1, 2), (3, 4), (6, 15)])
+        src2 = [(9, 14), (1, 2), (5, 7)]
+        src1 = [(4, 9), (1, 2), (13, 15)]
         dst = statistic_helper.merge_ranges(src1, src2)
         self.assertEqual(dst, [(1, 2), (4, 15)])
 
@@ -67,28 +83,32 @@ class TestStatisticHelper(unittest.TestCase):
         self.assertEqual(dst, [(3, 7), (10, 12), (15, 18)])
 
     def test_intersection_ranges_case2(self):
-        src1 = [(9, 12), (1, 7), (14, 18)]
-        src2 = [(10, 13), (3, 8), (15, 19)]
+        src2 = [(9, 12), (1, 7), (14, 18)]
+        src1 = [(10, 13), (3, 8), (15, 19), (20, 22)]
         dst = statistic_helper.intersection_ranges(src1, src2)
         self.assertEqual(dst, [(3, 7), (10, 12), (15, 18)])
-        src1 = [(1, 7), (14, 18)]
-        src2 = [(6, 9), (10, 13)]
+        src2 = [(1, 7), (14, 18), (21, 23)]
+        src1 = [(6, 9), (10, 13)]
         dst = statistic_helper.intersection_ranges(src1, src2, True)
         self.assertEqual(dst, [(6, 7)])
 
     def test_subtract_ranges_case1(self):
         src1 = [(1, 10), (12, 15)]
         src2 = [(3, 7), (9, 11)]
-        dst = statistic_helper.subtract_ranges(src1, src2)
-        self.assertEqual(dst, [(1, 3), (7, 9), (12, 15)])
         dst = statistic_helper.subtract_ranges(src1, src2, True)
         self.assertEqual(dst, [(1, 3), (7, 9), (12, 15)])
+        src1 = [(1, 10), (12, 15)]
+        src2 = []
+        dst = statistic_helper.subtract_ranges(src1, src2, True)
+        self.assertEqual(dst, src1)
+        dst = statistic_helper.subtract_ranges(src2, src1, True)
+        self.assertEqual(dst, src2)
 
     def test_subtract_ranges_case2(self):
-        src1 = [(12, 15), (1, 10)]
-        src2 = [(9, 11), (3, 7)]
+        src2 = [(12, 15), (1, 10)]
+        src1 = [(9, 11), (3, 7)]
         dst = statistic_helper.subtract_ranges(src1, src2)
-        self.assertEqual(dst, [(1, 3), (7, 9), (12, 15)])
+        self.assertEqual(dst, [(10, 11)])
 
 
 if __name__ == '__main__':

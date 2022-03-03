@@ -223,17 +223,3 @@ def subtract_ranges(range_list1, range_list2, is_sorted=False):
             if indx1 != len1:
                 range1 = range_list1[indx1]
     return result_range
-
-
-def traverse_tree(nodetrees):
-    results = collections.defaultdict(list)
-    for thread_id, rootnode in nodetrees.items():
-        stack = []
-        stack.append(rootnode)
-        threadlist = results[thread_id]
-        while stack:
-            current_node = stack.pop()
-            threadlist.append(current_node)
-            for childnode in current_node.children_node:
-                stack.append(childnode)
-    return results
