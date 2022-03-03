@@ -81,12 +81,6 @@ class TestFullOpError(unittest.TestCase):
                 x=input_data,
                 fill_value=2,
                 dtype='uint4')
-            self.assertRaises(
-                TypeError,
-                paddle.full_like,
-                x=input_data,
-                fill_value=2,
-                dtype='int16')
 
 
 if __name__ == "__main__":

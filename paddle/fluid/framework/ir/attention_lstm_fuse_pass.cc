@@ -260,12 +260,12 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
                     platform::errors::InvalidArgument(
                         "Tensor attention bias dimension size(%d) must be 1.",
                         attention_bias_t->dims().size()));
-  attention_bias_t->Resize(make_ddim({1, attention_bias_t->dims()[0]}));
+  attention_bias_t->Resize(phi::make_ddim({1, attention_bias_t->dims()[0]}));
 
   auto* attention_scalar_bias_t =
       scope.FindVar(param.AttentionScalarBias)->GetMutable<LoDTensor>();
   attention_scalar_bias_t->Resize(
-      make_ddim({1, attention_scalar_bias_t->dims()[0]}));
+      phi::make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
   PrepareLSTMWeight(W_forget_w0_t, W_forget_w1_t, W_input_w0_t, W_input_w1_t,
                     W_output_w0_t, W_output_w1_t, W_c_w0_t, W_c_w1_t,
@@ -283,7 +283,7 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
                        const LoDTensor& W_cell_w1, LoDTensor* out) {
   int D = W_forget_w0.dims()[0];
   int M = W_forget_w1.dims()[0];
-  out->Resize(make_ddim({D + M, 4 * D}));
+  out->Resize(phi::make_ddim({D + M, 4 * D}));
   VLOG(3) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
@@ -323,7 +323,7 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                         "Tensor B forget dimension size(%d) must be 1.",
                         B_forget.dims().size()));
   int D = B_forget.dims()[0];
-  out->Resize(make_ddim({1, 4 * D}));
+  out->Resize(phi::make_ddim({1, 4 * D}));
   auto* out_data = out->mutable_data<float>(platform::CPUPlace());
   for (size_t i = 0; i < tensors.size(); i++) {
     memcpy(out_data + D * i, tensors[i], D * sizeof(float));

@@ -21,10 +21,10 @@
 
 TEST(TensorWrapper, Basic) {
   VLOG(6) << "Test Full reserved";
-  egr::EagerTensor et1;
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  paddle::experimental::Tensor et1;
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -48,10 +48,10 @@ TEST(TensorWrapper, Basic) {
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et1).second,
            egr::EagerUtils::OutRankInfo(et1).second);
   VLOG(6) << "Test reconstruct";
-  egr::EagerTensor et2;
-  pten::DenseTensorMeta meta2 = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 2}));
-  std::shared_ptr<pten::DenseTensor> dt2 = std::make_shared<pten::DenseTensor>(
+  paddle::experimental::Tensor et2;
+  phi::DenseTensorMeta meta2 =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+  std::shared_ptr<phi::DenseTensor> dt2 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
@@ -74,7 +74,7 @@ TEST(TensorWrapper, Basic) {
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et2).second,
            egr::EagerUtils::OutRankInfo(et2).second);
   // Test Raw recover
-  egr::EagerTensor et3;
+  paddle::experimental::Tensor et3;
   auto tw2 = egr::TensorWrapper(et3, true);
   CHECK(
       tw2.recover(std::make_shared<eager_test::GradTestNode>()).initialized() ==

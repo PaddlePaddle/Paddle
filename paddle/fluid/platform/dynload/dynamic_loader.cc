@@ -16,60 +16,60 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "gflags/gflags.h"
-#include "paddle/pten/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/backends/dynload/dynamic_loader.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
 void SetPaddleLibPath(const std::string& py_site_pkg_path) {
-  pten::dynload::SetPaddleLibPath(py_site_pkg_path);
+  phi::dynload::SetPaddleLibPath(py_site_pkg_path);
 }
 
-void* GetCublasDsoHandle() { return pten::dynload::GetCublasDsoHandle(); }
+void* GetCublasDsoHandle() { return phi::dynload::GetCublasDsoHandle(); }
 
-void* GetCublasLtDsoHandle() { return pten::dynload::GetCublasLtDsoHandle(); }
+void* GetCublasLtDsoHandle() { return phi::dynload::GetCublasLtDsoHandle(); }
 
-void* GetCUDNNDsoHandle() { return pten::dynload::GetCUDNNDsoHandle(); }
+void* GetCUDNNDsoHandle() { return phi::dynload::GetCUDNNDsoHandle(); }
 
-void* GetCUPTIDsoHandle() { return pten::dynload::GetCUPTIDsoHandle(); }
+void* GetCUPTIDsoHandle() { return phi::dynload::GetCUPTIDsoHandle(); }
 
-void* GetCurandDsoHandle() { return pten::dynload::GetCurandDsoHandle(); }
+void* GetCurandDsoHandle() { return phi::dynload::GetCurandDsoHandle(); }
 
 #ifdef PADDLE_WITH_HIP
-void* GetROCFFTDsoHandle() { return pten::dynload::GetROCFFTDsoHandle(); }
+void* GetROCFFTDsoHandle() { return phi::dynload::GetROCFFTDsoHandle(); }
 #endif
 
-void* GetNvjpegDsoHandle() { return pten::dynload::GetNvjpegDsoHandle(); }
+void* GetNvjpegDsoHandle() { return phi::dynload::GetNvjpegDsoHandle(); }
 
-void* GetCusolverDsoHandle() { return pten::dynload::GetCusolverDsoHandle(); }
+void* GetCusolverDsoHandle() { return phi::dynload::GetCusolverDsoHandle(); }
 
-void* GetCusparseDsoHandle() { return pten::dynload::GetCusparseDsoHandle(); }
+void* GetCusparseDsoHandle() { return phi::dynload::GetCusparseDsoHandle(); }
 
-void* GetNVRTCDsoHandle() { return pten::dynload::GetNVRTCDsoHandle(); }
+void* GetNVRTCDsoHandle() { return phi::dynload::GetNVRTCDsoHandle(); }
 
-void* GetCUDADsoHandle() { return pten::dynload::GetCUDADsoHandle(); }
+void* GetCUDADsoHandle() { return phi::dynload::GetCUDADsoHandle(); }
 
-void* GetWarpCTCDsoHandle() { return pten::dynload::GetWarpCTCDsoHandle(); }
+void* GetWarpCTCDsoHandle() { return phi::dynload::GetWarpCTCDsoHandle(); }
 
-void* GetNCCLDsoHandle() { return pten::dynload::GetNCCLDsoHandle(); }
-void* GetHCCLDsoHandle() { return pten::dynload::GetHCCLDsoHandle(); }
+void* GetNCCLDsoHandle() { return phi::dynload::GetNCCLDsoHandle(); }
+void* GetHCCLDsoHandle() { return phi::dynload::GetHCCLDsoHandle(); }
 
-void* GetTensorRtDsoHandle() { return pten::dynload::GetTensorRtDsoHandle(); }
+void* GetTensorRtDsoHandle() { return phi::dynload::GetTensorRtDsoHandle(); }
 
-void* GetMKLMLDsoHandle() { return pten::dynload::GetMKLMLDsoHandle(); }
+void* GetMKLMLDsoHandle() { return phi::dynload::GetMKLMLDsoHandle(); }
 
-void* GetLAPACKDsoHandle() { return pten::dynload::GetLAPACKDsoHandle(); }
+void* GetLAPACKDsoHandle() { return phi::dynload::GetLAPACKDsoHandle(); }
 
 void* GetOpDsoHandle(const std::string& dso_name) {
-  return pten::dynload::GetOpDsoHandle(dso_name);
+  return phi::dynload::GetOpDsoHandle(dso_name);
 }
 
-void* GetNvtxDsoHandle() { return pten::dynload::GetNvtxDsoHandle(); }
+void* GetNvtxDsoHandle() { return phi::dynload::GetNvtxDsoHandle(); }
 
-void* GetCUFFTDsoHandle() { return pten::dynload::GetCUFFTDsoHandle(); }
+void* GetCUFFTDsoHandle() { return phi::dynload::GetCUFFTDsoHandle(); }
 
-void* GetMKLRTDsoHandle() { return pten::dynload::GetMKLRTDsoHandle(); }
+void* GetMKLRTDsoHandle() { return phi::dynload::GetMKLRTDsoHandle(); }
 
 }  // namespace dynload
 }  // namespace platform

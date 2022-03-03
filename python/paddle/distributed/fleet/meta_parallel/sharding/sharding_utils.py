@@ -131,14 +131,15 @@ class ShardingClipGrad:
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
         for p, g in params_grads:
-            if g is None:
+            if getattr(p, 'need_clip', True) is False or g is None:
                 continue
-            if getattr(p, 'need_clip', True) is False:
-                continue
+            origin_state = g.stop_gradient
+            g.stop_gradient = True
             if p.dtype == paddle.float16:
                 g.scale_(clip_var_fp16)
             else:
                 g.scale_(clip_var)
+            g.stop_gradient = origin_state
             p._reset_grad_inplace_version(True)
 
         return params_grads

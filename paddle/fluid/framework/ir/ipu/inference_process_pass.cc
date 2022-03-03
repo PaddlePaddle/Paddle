@@ -51,11 +51,11 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   if (num_ipus > 1) {
     ipu_strategy_instance_->need_avg_shard = true;
     ipu_strategy_instance_->popart_options.virtualGraphMode =
-        platform::ipu::VirtualGraphMode::Manual;
+        popart::VirtualGraphMode::Manual;
   } else {
     ipu_strategy_instance_->need_avg_shard = false;
     ipu_strategy_instance_->popart_options.virtualGraphMode =
-        platform::ipu::VirtualGraphMode::Off;
+        popart::VirtualGraphMode::Off;
   }
   // total num IPUs = num_ipus * replica_num
   ipu_strategy_instance_->num_ipus = num_ipus * replica_num;

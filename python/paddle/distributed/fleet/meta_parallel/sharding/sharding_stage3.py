@@ -72,7 +72,6 @@ class ShardingStage3(nn.Layer):
                  device="gpu",
                  segment_size=2**15,
                  pertrain_sync_models=True,
-                 accumulate_grads=False,
                  offload=False,
                  sync_comm=False):
         super().__init__()
@@ -82,11 +81,10 @@ class ShardingStage3(nn.Layer):
         self._layer = layer
         self._default_device = device
         self.__sync_buffers = sync_buffers
-        self._accumulate_grads = accumulate_grads
         self._offload = offload
         self._sync_comm = sync_comm
         # segmentation size
-        self._segment_size = segment_size if not offload else 0
+        self._segment_size = segment_size
 
         global DEV
         DEV = "cpu" if paddle.get_device() == "cpu" else paddle.get_device(
@@ -103,7 +101,8 @@ class ShardingStage3(nn.Layer):
         self._world_size_scaling = 1.0 / self._group.nranks
         assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1."
         self._rank = self._group.rank
-        self._global_root_rank = 0  # picking rank 0 as the reference
+        self._global_root_rank = self._group.ranks[
+            0]  # picking rank 0 as the reference
         self._global_ranks = self._group.ranks
 
         # Parameter segmentation for global ranks
@@ -190,9 +189,25 @@ class ShardingStage3(nn.Layer):
             param.fw_storage.clear_gradient(False)
             param.fw_storage._gradient_set_empty(False)
             param.bw_storage._clear()
+            param.bw_storage = None
         # 2.Handle unslice param
-        for grad_storage in self._grad_storages.values():
-            grad_storage.buffer.zero_()
+        if not self._offload:
+            for grad_storage in self._grad_storages.values():
+                grad_storage.buffer.zero_()
+        else:
+            for param in list(self._unslice_params):
+                param.clear_gradient(False)
+                param._gradient_set_empty(False)
+                tmp_var = param.cuda(DEV_ID)
+                param._clear()
+                if tmp_var.dtype == Type.fp32.value and param2dtype[
+                        param.name] == Type.fp16.value:
+                    tmp_var = paddle.cast(tmp_var, Type.fp16.value)
+                tmp_var._share_buffer_to(param)
+                tmp_var._clear()
+            for grad_storage in self._grad_storages.values():
+                grad_storage.manumal_relase()
+                grad_storage.rebuild()
 
     # Update param memery slice
     def _update_params_slice(self):
@@ -431,13 +446,12 @@ class ShardingStage3(nn.Layer):
                 param,
                 "fw_storage"), "Find {} don't have fw_storage attribute".format(
                     param.name)
-
-            if self._accumulate_grads:
-                if self._offload:
-                    with device_guard(device="cpu"):
-                        param.bw_storage.scale_(scale=self._world_size_scaling)
-                else:
+            # Gradient average
+            if self._offload:
+                with device_guard(device="cpu"):
                     param.bw_storage.scale_(scale=self._world_size_scaling)
+            else:
+                param.bw_storage.scale_(scale=self._world_size_scaling)
             param.fw_storage = _VarBaseWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
@@ -454,6 +468,21 @@ class ShardingStage3(nn.Layer):
                 tensor=grad_storage.buffer,
                 group=self._group,
                 use_calc_stream=True)
+
+        if self._offload:
+            for param in list(self._unslice_params):
+                tmp_var = _device2cpu(param, convert_dtype=True)
+                tmp_var._share_buffer_to(param)
+                tmp_var._clear()
+
+            for grad_storage in self._grad_storages.values():
+                for p in grad_storage._params:
+                    tmp_g = _device2cpu(p.grad, convert_dtype=True)
+                    p.clear_gradient(False)
+                    p._gradient_set_empty(False)
+                    p._copy_gradient_from(tmp_g)
+                    tmp_g._clear()
+                grad_storage.buffer._clear()
 
         return update_list
 
@@ -496,8 +525,6 @@ class ShardingStage3(nn.Layer):
         def reduce(*_):
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
-                if not self._accumulate_grads:
-                    full_grad.scale_(scale=self._world_size_scaling)
                 # Only support sync allreduce current rank's layer now
                 dist.all_reduce(
                     tensor=full_grad, group=self._group, use_calc_stream=True)
@@ -505,8 +532,7 @@ class ShardingStage3(nn.Layer):
                     tensor=full_grad, group=self._group, use_calc_stream=True)
 
                 start, end = self._param2buffer[param.name][self._rank]
-                if not self._accumulate_grads or param.bw_storage is None or not param.bw_storage.value(
-                ).get_tensor()._is_initialized():
+                if param.bw_storage is None:
                     param.bw_storage = core.VarBase(
                         full_grad._slice(start, end)).detach().clone()
                     if self._offload:

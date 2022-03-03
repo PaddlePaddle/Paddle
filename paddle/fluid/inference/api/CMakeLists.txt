@@ -31,7 +31,7 @@ cc_library(paddle_infer_contrib SRCS paddle_infer_contrib.cc DEPS zero_copy_tens
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 set(paddle_inference_api_deps lod_tensor scope reset_tensor_array
-    analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto custom_operator custom_kernel)
+    analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto custom_operator phi_custom_kernel)
 
 if(WITH_CRYPTO)
     list(APPEND paddle_inference_api_deps paddle_crypto)
@@ -56,8 +56,10 @@ cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 
 if(WITH_TESTING)
   if (NOT APPLE AND NOT WIN32)
-    inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS paddle_inference_shared
-      ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
+    if (WITH_GPU)
+      inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS paddle_inference_shared
+        ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
+    endif()
   elseif(WIN32)
     inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
       ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})

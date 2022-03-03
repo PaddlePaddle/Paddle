@@ -54,6 +54,7 @@ template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...)> {
   static const size_t arity = sizeof...(Args);
   static const bool has_pointer_args = IsPointerArgs<arity, Args...>::value;
+  using ArgsTuple = std::tuple<Args...>;
 };
 
 }  // namespace platform

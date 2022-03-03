@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -25,6 +26,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, plat::float16>,
+    ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, plat::bfloat16>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ConcatGradKernel<paddle::platform::CUDADeviceContext, uint8_t>,

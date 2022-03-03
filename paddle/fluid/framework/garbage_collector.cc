@@ -18,6 +18,7 @@
 #endif
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 
 DECLARE_double(eager_delete_tensor_gb);
 DECLARE_double(memory_fraction_of_eager_deletion);
@@ -197,6 +198,58 @@ mluStream MLUStreamGarbageCollector::stream() const { return stream_; }
 void MLUStreamGarbageCollector::Wait() const { callback_manager_->Wait(); }
 
 void MLUStreamGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback_manager_->AddCallback(callback);
+}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+CustomDefaultStreamGarbageCollector::CustomDefaultStreamGarbageCollector(
+    const platform::CustomPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void CustomDefaultStreamGarbageCollector::Wait() const {
+  static_cast<platform::CustomDeviceContext *>(this->dev_ctx_)
+      ->WaitStreamCallback();
+}
+
+void CustomDefaultStreamGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  static_cast<platform::CustomDeviceContext *>(this->dev_ctx_)
+      ->AddStreamCallback(callback);
+}
+
+CustomDeviceUnsafeFastGarbageCollector::CustomDeviceUnsafeFastGarbageCollector(
+    const platform::CustomPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+
+void CustomDeviceUnsafeFastGarbageCollector::ClearCallback(
+    const std::function<void()> &callback) {
+  callback();
+}
+
+CustomStreamGarbageCollector::CustomStreamGarbageCollector(
+    const platform::CustomPlace &place, size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {
+  phi::DeviceGuard guard(place);
+  stream_.reset(new phi::stream::Stream);
+  stream_->Init(place);
+  callback_manager_.reset(new phi::CallbackManager(stream_.get()));
+}
+
+CustomStreamGarbageCollector::~CustomStreamGarbageCollector() {
+  phi::DeviceGuard guard(this->dev_ctx_->GetPlace());
+  stream_->Synchronize();
+  stream_->Destroy();
+}
+
+phi::stream::Stream *CustomStreamGarbageCollector::stream() const {
+  return stream_.get();
+}
+
+void CustomStreamGarbageCollector::Wait() const { callback_manager_->Wait(); }
+
+void CustomStreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
   callback_manager_->AddCallback(callback);
 }

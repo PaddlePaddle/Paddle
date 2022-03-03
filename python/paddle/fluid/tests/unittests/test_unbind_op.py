@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid as fluid
 import paddle.tensor as tensor
 from paddle.fluid import compiler, Program, program_guard, core
@@ -152,6 +152,32 @@ class TestUnbindOp4(TestUnbindOp):
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
         self.out[1] = self.out[1].reshape((3, 2))
+
+
+class TestUnbindBF16Op(OpTest):
+    def setUp(self):
+        self._set_op_type()
+        self.dtype = self.get_dtype()
+        self.axis = 0
+        self.num = 3
+        x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
+        self.out = np.split(x, self.num, self.axis)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'axis': self.axis}
+        self.outputs = {'Out': [('out%d' % i, convert_float_to_uint16(self.out[i])) \
+            for i in range(len(self.out))]}
+
+    def get_dtype(self):
+        return np.uint16
+
+    def _set_op_type(self):
+        self.op_type = "unbind"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        pass
 
 
 class TestUnbindAxisError(unittest.TestCase):

@@ -9,11 +9,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/controlflow/logical_op.h"
 #include <algorithm>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
@@ -109,7 +109,7 @@ class BinaryLogicalOp : public LogicalOp {
       GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
                              y_dims_array.data(), out_dims_array.data(),
                              max_dim, axis);
-      context->SetOutputDim("Out", framework::make_ddim(out_dims_array));
+      context->SetOutputDim("Out", phi::make_ddim(out_dims_array));
     }
     context->ShareLoD("X", "Out");
   }
@@ -145,15 +145,7 @@ class BinaryLogicalOp : public LogicalOp {
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_BINARY_LOGICAL_OP(logical_and, "$$Out = X \\&\\& Y$$");
-REGISTER_BINARY_LOGICAL_KERNEL(logical_and, CPU,
-                               paddle::operators::LogicalAndFunctor);
 REGISTER_BINARY_LOGICAL_OP(logical_or, "$$Out = X || Y$$");
-REGISTER_BINARY_LOGICAL_KERNEL(logical_or, CPU,
-                               paddle::operators::LogicalOrFunctor);
 REGISTER_UNARY_LOGICAL_OP(logical_not, "$$Out = !X$$");
-REGISTER_UNARY_LOGICAL_KERNEL(logical_not, CPU,
-                              paddle::operators::LogicalNotFunctor);
 REGISTER_BINARY_LOGICAL_OP(logical_xor,
                            "$$Out = (X || Y) \\&\\& !(X \\&\\& Y)$$");
-REGISTER_BINARY_LOGICAL_KERNEL(logical_xor, CPU,
-                               paddle::operators::LogicalXorFunctor);

@@ -50,7 +50,7 @@ class HashOp : public framework::OperatorWithKernel {
     int num_hash = ctx->Attrs().Get<int>("num_hash");
     HashOutputSize(dims, out_dims, num_hash);
 
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };

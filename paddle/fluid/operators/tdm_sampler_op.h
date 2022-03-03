@@ -244,7 +244,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
     auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
 
-    const auto &input_type = input_tensor.type();
+    const auto &input_type =
+        framework::TransToProtoVarType(input_tensor.dtype());
     bool input_type_match = input_type == framework::proto::VarType::INT32 ||
                             input_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(input_type_match, true,
@@ -257,7 +258,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
 
-    const auto &travel_type = travel_lod_tensor.type();
+    const auto &travel_type =
+        framework::TransToProtoVarType(travel_lod_tensor.dtype());
     bool travel_type_match = travel_type == framework::proto::VarType::INT32 ||
                              travel_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
@@ -271,7 +273,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
             paddle::framework::DataTypeToString(
                 framework::proto::VarType::INT64)));
 
-    const auto &layer_type = layer_lod_tensor.type();
+    const auto &layer_type =
+        framework::TransToProtoVarType(layer_lod_tensor.dtype());
     bool layer_type_match = layer_type == framework::proto::VarType::INT32 ||
                             layer_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(layer_type_match, true,

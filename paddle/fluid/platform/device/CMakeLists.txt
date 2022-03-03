@@ -1,3 +1,6 @@
+
+set(DEV_LIBS custom_device)
+
 # GPU
 IF(WITH_GPU OR WITH_ROCM)
   add_subdirectory(gpu)

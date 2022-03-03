@@ -15,9 +15,8 @@
 import itertools
 import re
 
-from ..fluid.layers import reshape, transpose
-from .linalg import matmul
-from .manipulation import squeeze, unsqueeze
+from .linalg import matmul, transpose
+from .manipulation import squeeze, unsqueeze, reshape
 from .math import multiply
 from .math import sum as paddle_sum
 
@@ -792,10 +791,10 @@ def einsum(equation, *operands):
                 - For any free label which is not present for the output, it's lowered to
                 a dummy label.
         - Examples
-            - '...ij, ...jk'，where i and k are free labels, j is dummy. The output label
+            - '...ij, ...jk', where i and k are free labels, j is dummy. The output label
             string is '...ik'
             - 'ij -> i', where i is a free label and j is a dummy label. 
-            - '...ij, ...jk -> ...ijk'，where i, j and k are all free labels.
+            - '...ij, ...jk -> ...ijk', where i, j and k are all free labels.
             - '...ij, ...jk -> ij', an invalid equation since `...` is not present for
             the output.
 

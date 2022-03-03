@@ -27,10 +27,10 @@ namespace cub = hipcub;
 #include <string>
 #include <typeinfo>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -152,7 +152,7 @@ struct VisitDataCudaArgMinMaxFunctor {
 
     framework::DDim input_dims;
     if (flatten) {
-      input_dims = framework::make_ddim({input->numel()});
+      input_dims = phi::make_ddim({input->numel()});
       // if flatten, the axis just as 0
       axis = 0;
     } else {

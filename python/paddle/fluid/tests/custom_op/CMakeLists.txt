@@ -20,6 +20,7 @@ py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
 py_test(test_custom_concat SRCS test_custom_concat.py)
 py_test(test_custom_conj SRCS test_custom_conj.py)
 py_test(test_custom_linear SRCS test_custom_linear.py)
+py_test(test_custom_simple_slice SRCS test_custom_simple_slice.py)
 
 # other tests
 py_test(test_sysconfig SRCS test_sysconfig.py)

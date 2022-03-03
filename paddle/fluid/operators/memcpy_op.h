@@ -19,9 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -75,7 +75,7 @@ class MemcpyFunctor {
     out_tensor.set_lod(lod_tensor.lod());
   }
 
-  void operator()(const pten::SelectedRows &rows) const {
+  void operator()(const phi::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
     PADDLE_THROW(platform::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));

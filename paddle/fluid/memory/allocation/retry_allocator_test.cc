@@ -98,12 +98,12 @@ class DummyAllocator : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  pten::Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "Here is a test exception, always BadAlloc."));
   }
 
-  void FreeImpl(pten::Allocation *) override {}
+  void FreeImpl(phi::Allocation *) override {}
 };
 
 TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {

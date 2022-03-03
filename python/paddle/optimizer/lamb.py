@@ -20,6 +20,7 @@ from ..fluid import layers
 from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
 from paddle import _C_ops
+from paddle.fluid.executor import global_scope
 
 __all__ = []
 
@@ -131,8 +132,24 @@ class Lamb(Optimizer):
             'exclude_from_weight_decay_fn': exclude_from_weight_decay_fn,
         }
         self._master_weights = {}
+        self._used_master_weights = {}
         # TODO(zengjinle): expose API as soon as possible
         self._multi_precision = False
+
+    def _get_parameter(self, name, scope=None):
+        if scope is None:
+            scope = global_scope()
+
+        p_t = scope.find_var(name).get_tensor()
+
+        master_name = self._used_master_weights.get(name)
+        if master_name is not None:
+            master_p_t = scope.find_var(master_name).get_tensor()
+            assert master_p_t._dtype() != p_t._dtype()
+            assert master_p_t.shape() == p_t.shape()
+        else:
+            master_p_t = None
+        return p_t, master_p_t
 
     def _create_master_weight(self, param):
         assert self._multi_precision
@@ -243,8 +260,12 @@ class Lamb(Optimizer):
 
         find_master = self._multi_precision and param_and_grad[
             0].dtype == core.VarDesc.VarType.FP16
-        master_weight = self._master_weights[param_and_grad[0]
-                                             .name] if find_master else None
+        p_name = param_and_grad[0].name
+        if find_master:
+            master_weight = self._master_weights[p_name]
+            self._used_master_weights[p_name] = master_weight.name
+        else:
+            master_weight = None
         found_inf = self._get_auxiliary_var('found_inf')
 
         if framework.in_dygraph_mode():

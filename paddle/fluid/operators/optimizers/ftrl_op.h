@@ -180,16 +180,18 @@ class FTRLOpKernel : public framework::OpKernel<T> {
       }
 
       s_acc_out.device(place) = sq_accum + g * g;
-    } else if (grad_var->IsType<pten::SelectedRows>()) {
-      auto grad = ctx.Input<pten::SelectedRows>("Grad");
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
+      auto grad = ctx.Input<phi::SelectedRows>("Grad");
 
-      pten::SelectedRows tmp_merged_grad;
-      pten::SelectedRows* merged_grad = &tmp_merged_grad;
+      phi::SelectedRows tmp_merged_grad;
+      phi::SelectedRows* merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);
 
-      const int64_t* rows = merged_grad->rows().Data(ctx.GetPlace());
+      auto* merged_rows = merged_grad->mutable_rows();
+      paddle::framework::MixVector<int64_t> mixv_merged_rows(merged_rows);
+      const int64_t* rows = mixv_merged_rows.Data(ctx.GetPlace());
       auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
       auto row_height = static_cast<int64_t>(merged_grad->rows().size());
 
