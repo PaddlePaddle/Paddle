@@ -21,13 +21,13 @@ namespace paddle {
 namespace experimental {
 namespace sparse {
 
-PADDLE_API Tensor to_sparse_coo(const Tensor& x,
-                                Backend backend,
-                                const int64_t sparse_dim);
+Tensor to_dense_impl(const Tensor& x, Backend backend);
 
-PADDLE_API Tensor to_sparse_csr(const Tensor& x, Backend backend);
+Tensor to_sparse_coo_impl(const Tensor& x,
+                          Backend backend,
+                          const int64_t sparse_dim);
 
-PADDLE_API Tensor to_dense(const Tensor& x, Backend backend);
+Tensor to_sparse_csr_impl(const Tensor& x, Backend backend);
 
 }  // namespace sparse
 }  // namespace experimental

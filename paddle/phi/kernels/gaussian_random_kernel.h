@@ -13,37 +13,20 @@
 // limitations under the License.
 
 #pragma once
-#include <chrono>
-#include <cstdint>
-#include <vector>
 
-namespace paddle {
-namespace distributed {
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
-// TODO(shenliang03): To support AVG for reduce
-enum class ReduceOp : std::uint8_t { SUM = 0, AVG, MAX, MIN, PRODUCT };
+namespace phi {
 
-struct AllreduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-};
+template <typename T, typename Context>
+void GaussianRandomKernel(const Context& ctx,
+                          const ScalarArray& shape,
+                          float mean,
+                          float std,
+                          int seed,
+                          DataType dtype,
+                          DenseTensor* out);
 
-struct BroadcastOptions {
-  int source_rank = 0;
-  int source_root = 0;
-};
-
-struct BarrierOptions {
-  std::vector<int> place_ids;
-};
-
-struct ReduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-  int root_rank = 0;
-};
-
-struct ScatterOptions {
-  int root_rank = 0;
-};
-
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace phi
