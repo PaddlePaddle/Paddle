@@ -33,7 +33,7 @@ namespace p = paddle::platform;
 
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, NPU);
-USE_OP(elementwise_sub);
+USE_OP_ITSELF(elementwise_sub);
 USE_OP_DEVICE_KERNEL(elementwise_sub, NPU);
 
 template <typename T>
