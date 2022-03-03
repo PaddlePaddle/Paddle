@@ -43,7 +43,7 @@ DenseTensor Scale(const Context& dev_ctx,
                   const Scalar& scale,
                   float bias,
                   bool bias_after_scale) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(x, &meta_out);
   ScaleKernel<T, Context>(

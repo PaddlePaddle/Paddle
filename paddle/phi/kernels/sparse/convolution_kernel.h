@@ -136,8 +136,8 @@ SparseCooTensor Conv3d(const Context& dev_ctx,
                        const std::vector<int>& strides,
                        const int groups,
                        DenseTensor* rulebook) {
-  DenseTensor indices = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor values = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor indices;
+  DenseTensor values;
   SparseCooTensor coo(indices, values, x.dims());
   Conv3dKernel<T, Context>(
       dev_ctx, x, kernel, paddings, dilations, strides, groups, &coo, rulebook);

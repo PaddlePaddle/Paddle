@@ -32,7 +32,7 @@ template <
                          std::is_same<T, phi::dtype::complex<double>>::value,
                      bool> = true>
 DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(x, &meta_out);
   ConjKernel<T>(dev_ctx, x, &dense_out);

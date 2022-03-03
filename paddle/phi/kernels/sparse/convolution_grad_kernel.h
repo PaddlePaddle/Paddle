@@ -43,8 +43,8 @@ std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
                                     const std::vector<int>& dilations,
                                     const std::vector<int>& strides,
                                     const int groups) {
-  DenseTensor x_grad = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor kernel_grad = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor x_grad;
+  DenseTensor kernel_grad;
   Conv3dGradKernel<T, Context>(dev_ctx,
                                x,
                                rulebook,

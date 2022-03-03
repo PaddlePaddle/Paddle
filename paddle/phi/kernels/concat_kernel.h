@@ -38,7 +38,7 @@ DenseTensor Concat(const Context& dev_ctx,
     meta_x_ptr.push_back(&meta_x.back());
   }
 
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   ConcatInferMeta(meta_x_ptr, axis.to<int>(), &meta_out, /*is_runtime=*/true);
   ConcatKernel<T, Context>(dev_ctx, x, axis, &dense_out);
