@@ -26,10 +26,10 @@
 #include "paddle/fluid/operators/conv_cudnn_helper.h"
 #endif
 
-#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"

@@ -26,10 +26,10 @@
 #include "paddle/fluid/operators/conv_cudnn_helper.h"
 #endif
 
-#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
@@ -166,8 +166,7 @@ void ConvCudnnGradKernel(const Context& ctx,
   // cuDNN only supports padding the same amount on every dimension.
   // So we create a new padded input tensor.
   int data_dim = strides.size();  // 2d or 3d
-  bool is_sys_pad =
-      paddle::operators::math::IsSymmetricPadding(paddings, data_dim);
+  bool is_sys_pad = funcs::IsSymmetricPadding(paddings, data_dim);
   Tensor transformed_input(input.type());
   Tensor transformed_input_grad(input.type());
   std::vector<int> padding_common(data_dim, 0);
@@ -217,20 +216,18 @@ void ConvCudnnGradKernel(const Context& ctx,
     T pad_value(0.0);
     switch (rank) {
       case 4: {
-        paddle::operators::math::PadFunction<Context, T, 4>(
-            ctx,
-            input_pad,
-            transformed_input_channel,
-            pad_value,
-            &transformed_input);
+        funcs::PadFunction<Context, T, 4>(ctx,
+                                          input_pad,
+                                          transformed_input_channel,
+                                          pad_value,
+                                          &transformed_input);
       } break;
       case 5: {
-        paddle::operators::math::PadFunction<Context, T, 5>(
-            ctx,
-            input_pad,
-            transformed_input_channel,
-            pad_value,
-            &transformed_input);
+        funcs::PadFunction<Context, T, 5>(ctx,
+                                          input_pad,
+                                          transformed_input_channel,
+                                          pad_value,
+                                          &transformed_input);
       } break;
       default:
         PADDLE_THROW(phi::errors::InvalidArgument(

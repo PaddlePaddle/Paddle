@@ -25,10 +25,10 @@
 #include "paddle/fluid/operators/conv_cudnn_helper.h"
 #endif
 
-#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
@@ -157,8 +157,7 @@ void ConvCudnnGradGradKernel(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
   int data_dim = strides.size();  // 2d or 3d
-  bool is_sys_pad =
-      paddle::operators::math::IsSymmetricPadding(paddings, data_dim);
+  bool is_sys_pad = funcs::IsSymmetricPadding(paddings, data_dim);
   DenseTensor transformed_X(X->type());
   DenseTensor transformed_ddX(X->type());
 
@@ -201,27 +200,25 @@ void ConvCudnnGradGradKernel(
     T pad_value(0.0);
     switch (rank) {
       case 4: {
-        paddle::operators::math::PadFunction<Context, T, 4>(
+        funcs::PadFunction<Context, T, 4>(
             ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
         if (ddX) {
-          paddle::operators::math::PadFunction<Context, T, 4>(
-              ctx,
-              input_pad,
-              transformed_ddX_channel,
-              pad_value,
-              &transformed_ddX);
+          funcs::PadFunction<Context, T, 4>(ctx,
+                                            input_pad,
+                                            transformed_ddX_channel,
+                                            pad_value,
+                                            &transformed_ddX);
         }
       } break;
       case 5: {
-        paddle::operators::math::PadFunction<Context, T, 5>(
+        funcs::PadFunction<Context, T, 5>(
             ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
         if (ddX) {
-          paddle::operators::math::PadFunction<Context, T, 5>(
-              ctx,
-              input_pad,
-              transformed_ddX_channel,
-              pad_value,
-              &transformed_ddX);
+          funcs::PadFunction<Context, T, 5>(ctx,
+                                            input_pad,
+                                            transformed_ddX_channel,
+                                            pad_value,
+                                            &transformed_ddX);
         }
       } break;
       default:

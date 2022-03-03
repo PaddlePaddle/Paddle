@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 #include <utility>
 #include <vector>
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
 namespace funcs {
@@ -133,5 +133,18 @@ void PaddingGradFunctor(int rank,
   }
 }
 
+inline bool IsSymmetricPadding(const std::vector<int>& pads,
+                               const int data_dim) {
+  bool is_sys_pad = true;
+  if (static_cast<int>(pads.size()) == data_dim * 2) {
+    for (int i = 0; i < data_dim; ++i) {
+      if (pads[2 * i] != pads[2 * i + 1]) {
+        is_sys_pad = false;
+        return is_sys_pad;
+      }
+    }
+  }
+  return is_sys_pad;
+}
 }  // namespace funcs
 }  // namespace phi
