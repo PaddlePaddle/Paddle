@@ -30,9 +30,6 @@ namespace tensorrt {
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
-#if IS_TRT_VERSION_GE(7130)
-    teller_set.insert("group_norm");
-#endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
@@ -173,7 +170,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_layernorm",
       "slice",
       "fused_preln_embedding_eltwise_layernorm",
-      "preln_skip_layernorm"};
+      "preln_skip_layernorm",
+      "group_norm"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -427,22 +425,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
-      if (has_attrs == false) {
+      if (!has_attrs) {
         VLOG(3) << "The required attribute of group_norm op was not found.";
-        return false;
-      }
-
-      auto registry = GetPluginRegistry();
-      if (registry == nullptr) {
-        VLOG(3) << "The group_norm plugin registration failed.";
         return false;
       }
 
       std::string layout =
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout"));
-      if (layout == "NHWC") {
-        VLOG(3)
-            << "The group_norm op do not supported NHWC layout in tensorrt.";
+      if (layout != "NCHW") {
+        VLOG(3) << "The group_norm op only supports NCHW layout in tensorrt.";
         return false;
       }
     }
