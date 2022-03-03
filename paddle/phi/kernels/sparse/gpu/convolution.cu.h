@@ -20,6 +20,7 @@ limitations under the License. */
 #include <thrust/unique.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
@@ -29,6 +30,15 @@ namespace sparse {
 
 // TODO(zhangkaihuo): After the GatherCUDAKernel is migrated to phi, replace
 // this kernel with phi::GatherCUDAKernel;
+// Vectorization can be used to improve read and write bandwidth
+/**
+ * brief: gather data from params according to indices
+ * params: the inputs
+ * indices: the indices you want to gather
+ * output: the outputs
+ * index_size: the size of indices
+ * slice_size: slice size corresponding to each index, here is the channel size
+**/
 template <typename T, typename IndexT = int>
 __global__ void GatherKernel(const T* params,
                              const IndexT* indices,
@@ -44,6 +54,16 @@ __global__ void GatherKernel(const T* params,
   }
 }
 
+/**
+ * brief: scatter add
+ * input: the inputs
+ * unique_value: refer to UpdateIndexKernel notes
+ * out_index: the output feature index
+ * non_zero_num: the number of output features
+ * rulebook_len: the length of rulebook
+ * channels: the output channel size
+ * out: the outputs
+**/
 template <typename T>
 __global__ void ScatterKernel(const T* input,
                               const int* unique_value,
@@ -71,7 +91,7 @@ __global__ void ScatterKernel(const T* input,
 }
 
 template <typename Context>
-inline void SortedAndUniqueIndex(const Context& dev_ctx,
+inline int* SortedAndUniqueIndex(const Context& dev_ctx,
                                  const int* rulebook_ptr,
                                  const int len,
                                  DenseTensor* out_index,
@@ -82,24 +102,37 @@ inline void SortedAndUniqueIndex(const Context& dev_ctx,
   phi::IndexKernel<int, kps::IdentityFunctor<int>>(
       dev_ctx, unique_value, kps::IdentityFunctor<int>());
 
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(unique_key->data<int>(),
-                                             // rulebook_ptr + rulebook_len,
-                                             rulebook_ptr,
-                                             sizeof(int) * len,
-                                             cudaMemcpyDeviceToDevice,
-                                             dev_ctx.stream()));
-  // compared with thrust::sort_by_key, thrust::merge_by_key may achieved higher
-  // performance, but thrust::merge_by_key limited by data size
+  phi::backends::gpu::GpuMemcpyAsync(unique_key->data<int>(),
+                                     rulebook_ptr,
+                                     sizeof(int) * len,
+#ifdef PADDLE_WITH_HIP
+                                     hipMemcpyDeviceToDevice,
+#else
+                                     cudaMemcpyDeviceToDevice,
+#endif
+                                     dev_ctx.stream());
+// compared with thrust::sort_by_key, thrust::merge_by_key may achieved higher
+// performance, but thrust::merge_by_key limited by data size
+#ifdef PADDLE_WITH_HIP
+  thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                       unique_key->data<int>(),
                       unique_key->data<int>() + len,
                       out_index->data<int>());
 
   // 4. unique
-  thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-                        unique_key->data<int>(),
-                        unique_key->data<int>() + len,
-                        unique_value->data<int>());
+  thrust::pair<int*, int*> new_end =
+#ifdef PADDLE_WITH_HIP
+      thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#else
+      thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
+                            unique_key->data<int>(),
+                            unique_key->data<int>() + len,
+                            unique_value->data<int>());
+  return new_end.first;
 }
 
 }  // namespace sparse

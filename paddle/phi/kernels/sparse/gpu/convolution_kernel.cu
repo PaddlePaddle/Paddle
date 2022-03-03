@@ -19,10 +19,13 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
@@ -38,6 +41,16 @@ __global__ void InitByIndexKernel(const int n, int* out1, int* out2) {
   }
 }
 
+/**
+ * @brief: update the out index and indices
+ * unique_keys: save the index of the output feature list
+ * unique_values: indiates the index of key before deduplication
+ * out_indexs: indicates the position of the output index in the rulebook
+ * rulebook_len: indicates the length of rulebook
+ * out_dims: indicates the output dims
+ * out_indices: the indices of output, out_indices = IndexToPoint(unique_keys)
+ * rulebook_out_indexs: the output index in rulebook
+**/
 __global__ void UpdateIndexKernel(const int* unique_keys,
                                   const int* unique_values,
                                   const int* out_indexs,
@@ -67,6 +80,22 @@ __global__ void UpdateIndexKernel(const int* unique_keys,
   }
 }
 
+/**
+ * @brief product rulebook
+ * for input_i in x_indices:
+ *   if input_i participate in the convolution calculation:
+ *       infer the output_i by input_i and kernel_i
+ *       save output_i
+ *
+ * x_indices: the indices of input features
+ * x_dims: the input dims
+ * kernel_dims: the kernel dims
+ * out_dims: the output dims
+ * non_zero_num: the number of input features
+ * rulebook: the rulebook to save the kernel index, input index and output index
+ * counter: save the number of times each location in the kernel participates in
+ *the caculation
+**/
 __global__ void ProductRuleBookKernel(const int* x_indices,
                                       const Dims4D x_dims,
                                       const Dims4D kernel_dims,
@@ -130,12 +159,21 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
   }
 }
 
+// brief: calculation the distance between start and end
+__global__ void DistanceKernel(const int* start,
+                               const int* end,
+                               int* distance) {
+  if (threadIdx.x == 0) {
+    *distance = end - start;
+  }
+}
+
 // the basic algorithm can refer to convolution_kernel.cc or
 // the second paper
 // example:
 // 1. the rulebook:
-//  the kernel_index:               0, 0, 0, 1, 1, 1, 2, 2, ....
-//  the out_index(key):                  20, 30, 33, 30, 33, 20, 25
+//  the kernel_index:                       0, 0, 0, 1, 1, 1, 2, 2, ....
+//  the out_index(key):                     20, 30, 33, 30, 33, 20, 25
 // 2. mark the index of out_index(value):   0, 1, 2, 3, 4, 5, 6, ....
 // 3. sorted the (key, value)
 // 4. unique the (key, value):
@@ -190,8 +228,8 @@ int ProductRuleBook(const Context& dev_ctx,
   Dims4D d_dilations(1, dilations[2], dilations[1], dilations[0]);
 
   // 1. product rule book
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-      counter_ptr, 0, sizeof(int) * kernel_size, dev_ctx.stream()));
+  phi::funcs::SetConstant<Context, int> set_zero;
+  set_zero(dev_ctx, counter_per_kernel, 0);
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
@@ -209,26 +247,48 @@ int ProductRuleBook(const Context& dev_ctx,
                                               rulebook_ptr,
                                               counter_ptr);
 
-  // 2. remove -1
+// 2. remove -1
+#ifdef PADDLE_WITH_HIP
+  int* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
+#else
   int* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                              rulebook_ptr,
-                             rulebook_ptr + 3 * rulebook_cols,
+                             rulebook_ptr + rulebook_rows * rulebook_cols,
                              -1);
+
+#ifdef PADDLE_WITH_HIP
+  thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                          counter_ptr,
                          counter_ptr + kernel_size,
                          offsets_ptr);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&(*h_counter)[0],
-                                             counter_ptr,
-                                             kernel_size * sizeof(int),
-                                             cudaMemcpyDeviceToHost,
-                                             dev_ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&(*h_offsets)[0],
-                                             offsets_ptr,
-                                             kernel_size * sizeof(int),
-                                             cudaMemcpyDeviceToHost,
-                                             dev_ctx.stream()));
+#ifdef PADDLE_WITH_HIP
+  phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
+                                     counter_ptr,
+                                     kernel_size * sizeof(int),
+                                     hipMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
+                                     offsets_ptr,
+                                     kernel_size * sizeof(int),
+                                     hipMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+#else
+  phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
+                                     counter_ptr,
+                                     kernel_size * sizeof(int),
+                                     cudaMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+  phi::backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
+                                     offsets_ptr,
+                                     kernel_size * sizeof(int),
+                                     cudaMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+#endif
   dev_ctx.Wait();
   int rulebook_len =
       (*h_counter)[kernel_size - 1] + (*h_offsets)[kernel_size - 1];
@@ -248,32 +308,35 @@ int ProductRuleBook(const Context& dev_ctx,
       unique_key, unique_key->dtype(), sizeof(int) * unique_key->numel());
   int* unique_key_ptr = unique_key->data<int>();
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-  InitByIndexKernel<<<config.block_per_grid.x,
-                      config.thread_per_block.x,
-                      0,
-                      dev_ctx.stream()>>>(
-      rulebook_len, out_index_ptr, unique_value_ptr);
-
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(unique_key_ptr,
-                                             rulebook_ptr + 2 * rulebook_len,
-                                             sizeof(int) * rulebook_len,
-                                             cudaMemcpyDeviceToDevice,
-                                             dev_ctx.stream()));
-
-  thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-                      unique_key_ptr,
-                      unique_key_ptr + rulebook_len,
-                      out_index_ptr);
-
-  // 4. unique
-  thrust::pair<int*, int*> new_end =
-      thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-                            unique_key_ptr,
-                            unique_key_ptr + rulebook_len,
-                            unique_value_ptr);
+  int* new_end = SortedAndUniqueIndex(dev_ctx,
+                                      rulebook_ptr + 2 * rulebook_len,
+                                      rulebook_len,
+                                      out_index,
+                                      unique_key,
+                                      unique_value);
+  // thrust::distance doesn't support stream parameters
+  // const int out_non_zero_num = thrust::distance(unique_key_ptr,
+  // new_end.first);
+  DistanceKernel<<<1, 1>>>(unique_key_ptr,
+                           new_end,
+                           rulebook_ptr + rulebook_rows * rulebook_cols - 1);
+  int out_non_zero_num = 0;
+#ifdef PADDLE_WITH_HIP
+  phi::backends::gpu::GpuMemcpyAsync(
+      &out_non_zero_num,
+      rulebook_ptr + rulebook_rows * rulebook_cols - 1,
+      sizeof(int),
+      hipMemcpyDeviceToHost,
+      dev_ctx.stream());
+#else
+  phi::backends::gpu::GpuMemcpyAsync(
+      &out_non_zero_num,
+      rulebook_ptr + rulebook_rows * rulebook_cols - 1,
+      sizeof(int),
+      cudaMemcpyDeviceToHost,
+      dev_ctx.stream());
+#endif
   dev_ctx.Wait();
-  const int out_non_zero_num = thrust::distance(unique_key_ptr, new_end.first);
 
   // 5. update out_indices and rulebook by unique_value_ptr
   const int64_t sparse_dim = 4;
