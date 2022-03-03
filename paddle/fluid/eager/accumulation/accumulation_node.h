@@ -24,11 +24,14 @@ class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
   explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {
+    VLOG(6) << "Construct GradNodeAccumulation";
     weak_grad_ = meta->WeakGrad();
     SetDefaultGradInOutMeta();
   }
 
-  ~GradNodeAccumulation() override = default;
+  ~GradNodeAccumulation() override {
+    VLOG(6) << "Destruct GradNodeAccumulation";
+  }
 
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
