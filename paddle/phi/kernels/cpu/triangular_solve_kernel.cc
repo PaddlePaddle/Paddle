@@ -21,8 +21,6 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
-// See Note [ Why still include the fluid headers? ]
-
 namespace phi {
 
 template <typename T, typename Context>
