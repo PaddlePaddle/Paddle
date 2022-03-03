@@ -68,7 +68,7 @@ def merge_ranges(range_list1, range_list2, is_sorted=False):
             range2 = range_list2[indx2]
             if range1[0] < range2[0]:
                 if range1[1] > merged_ranges[-1][1]:
-                    if range1[0] < merged_ranges[-1][1]:
+                    if range1[0] <= merged_ranges[-1][1]:
                         merged_ranges[-1] = (merged_ranges[-1][0], range1[1])
                     else:
                         merged_ranges.append((range1[0], range1[1]))
@@ -77,7 +77,7 @@ def merge_ranges(range_list1, range_list2, is_sorted=False):
                     indx1 += 1
             else:
                 if range2[1] > merged_ranges[-1][1]:
-                    if range2[0] < merged_ranges[-1][1]:
+                    if range2[0] <= merged_ranges[-1][1]:
                         merged_ranges[-1] = (merged_ranges[-1][0], range2[1])
                     else:
                         merged_ranges.append((range2[0], range2[1]))
@@ -85,10 +85,25 @@ def merge_ranges(range_list1, range_list2, is_sorted=False):
                 else:
                     indx2 += 1
 
-        if indx1 == len1:
-            merged_ranges.extend(range_list2[indx2:])
-        else:
-            merged_ranges.extend(range_list1[indx1:])
+        while indx1 < len1:
+            range1 = range_list1[indx1]
+            if range1[1] > merged_ranges[-1][1]:
+                if range1[0] <= merged_ranges[-1][1]:
+                    merged_ranges[-1] = (merged_ranges[-1][0], range1[1])
+                else:
+                    merged_ranges.append((range1[0], range1[1]))
+                indx1 += 1
+            else:
+                indx1 += 1
+        while indx2 < len2:
+            if range2[1] > merged_ranges[-1][1]:
+                if range2[0] <= merged_ranges[-1][1]:
+                    merged_ranges[-1] = (merged_ranges[-1][0], range2[1])
+                else:
+                    merged_ranges.append((range2[0], range2[1]))
+                indx2 += 1
+            else:
+                indx2 += 1
     return merged_ranges
 
 
