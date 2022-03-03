@@ -137,6 +137,7 @@ if(WITH_MKLDNN)
     pass_library(multi_gru_fuse_pass inference DIR mkldnn)
     pass_library(multi_gru_seq_fuse_pass inference DIR mkldnn)
     pass_library(quant_dequant_mkldnn_fuse_pass inference DIR mkldnn)
+    pass_library(requant_mkldnn_fuse_pass inference DIR mkldnn)
 endif()
 
 if(WITH_IPU)
