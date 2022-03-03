@@ -65,11 +65,6 @@ void CrossInferMeta(const MetaTensor& x,
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
-void BCELossInferMeta(const MetaTensor& input,
-                      const MetaTensor& label,
-                      MetaTensor* out,
-                      MetaConfig config = MetaConfig());
-
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,
                           const std::string& pooltype,
@@ -77,4 +72,12 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* summed_ids,
                           MetaConfig config = MetaConfig());
 
+void BCELossInferMeta(const MetaTensor& input,
+                      const MetaTensor& label,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
+void GatherTreeMeta(const MetaTensor& ids,
+                    const MetaTensor& parents,
+                    MetaTensor* out);
 }  // namespace phi

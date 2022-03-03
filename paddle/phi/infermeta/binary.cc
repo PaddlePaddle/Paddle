@@ -309,6 +309,25 @@ void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_meta(x);
 }
 
+void SegmentPoolInferMeta(const MetaTensor& x,
+                          const MetaTensor& segment_ids,
+                          const std::string& pooltype,
+                          MetaTensor* out,
+                          MetaTensor* summed_ids,
+                          MetaConfig config) {
+  auto dims = x.dims();
+  dims[0] = -1;
+  out->set_dims(dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+
+  if (pooltype == "MEAN") {
+    summed_ids->set_dims({-1, 1});
+    summed_ids->set_dtype(x.dtype());
+    summed_ids->set_layout(x.layout());
+  }
+}
+
 void BCELossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       MetaTensor* out,
@@ -348,23 +367,17 @@ void BCELossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
-void SegmentPoolInferMeta(const MetaTensor& x,
-                          const MetaTensor& segment_ids,
-                          const std::string& pooltype,
-                          MetaTensor* out,
-                          MetaTensor* summed_ids,
-                          MetaConfig config) {
-  auto dims = x.dims();
-  dims[0] = -1;
-  out->set_dims(dims);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-
-  if (pooltype == "MEAN") {
-    summed_ids->set_dims({-1, 1});
-    summed_ids->set_dtype(x.dtype());
-    summed_ids->set_layout(x.layout());
-  }
+void GatherTreeMeta(const MetaTensor& ids,
+                    const MetaTensor& parents,
+                    MetaTensor* out) {
+  auto ids_dims = ids.dims();
+  auto parents_dims = parents.dims();
+  PADDLE_ENFORCE_EQ(ids_dims == parents_dims,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The shape of Input(Parents) must be same with the "
+                        "shape of Input(Ids)."));
+  out->set_dims(ids_dims);
 }
 
 }  // namespace phi

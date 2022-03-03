@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 
 #include <memory>
 #include "glog/logging.h"
@@ -20,31 +20,14 @@ limitations under the License. */
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/infermeta/unary.h"
-
-PD_DECLARE_KERNEL(dense_to_sparse_coo, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sparse_csr_to_coo, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(dense_to_sparse_csr, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sparse_coo_to_csr, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sparse_coo_to_dense, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sparse_csr_to_dense, CPU, ALL_LAYOUT);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(dense_to_sparse_coo, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sparse_csr_to_coo, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(dense_to_sparse_csr, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sparse_coo_to_csr, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sparse_coo_to_dense, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sparse_csr_to_dense, GPU, ALL_LAYOUT);
-#endif
 
 namespace paddle {
 namespace experimental {
 namespace sparse {
 
-PADDLE_API Tensor to_sparse_coo(const Tensor& x,
-                                Backend backend,
-                                const int64_t sparse_dim) {
+Tensor to_sparse_coo_impl(const Tensor& x,
+                          Backend backend,
+                          const int64_t sparse_dim) {
   if (x.layout() == phi::DataLayout::SPARSE_COO) {
     return x;
   }
@@ -105,7 +88,7 @@ PADDLE_API Tensor to_sparse_coo(const Tensor& x,
   return out;
 }
 
-PADDLE_API Tensor to_sparse_csr(const Tensor& x, Backend backend) {
+Tensor to_sparse_csr_impl(const Tensor& x, Backend backend) {
   if (x.layout() == phi::DataLayout::SPARSE_CSR) {
     return x;
   }
@@ -171,7 +154,7 @@ PADDLE_API Tensor to_sparse_csr(const Tensor& x, Backend backend) {
   return out;
 }
 
-PADDLE_API Tensor to_dense(const Tensor& x, Backend backend) {
+Tensor to_dense_impl(const Tensor& x, Backend backend) {
   if (x.layout() != phi::DataLayout::SPARSE_CSR &&
       x.layout() != phi::DataLayout::SPARSE_COO) {
     return x;
