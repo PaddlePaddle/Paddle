@@ -46,7 +46,7 @@ class MeshgridOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < inputs_num; i++) {
       out_shape[i] = inputs_dims[i][0];
     }
-    auto out_dims = framework::make_ddim(std::vector<int>(out_shape));
+    auto out_dims = phi::make_ddim(std::vector<int>(out_shape));
     std::vector<framework::DDim> outs_dims(outputs_num, out_dims);
     ctx->SetOutputsDim("Out", outs_dims);
   }

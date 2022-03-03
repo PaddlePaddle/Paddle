@@ -16,9 +16,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
-#include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/gather.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -281,22 +281,22 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
 
   Tensor fg_boxes, bg_boxes, fg_labels, bg_labels;
   fg_boxes.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
-  CPUGather<T>(context, boxes, fg_inds_t, &fg_boxes);
+  phi::funcs::CPUGather<T>(context, boxes, fg_inds_t, &fg_boxes);
   bg_boxes.mutable_data<T>({bg_num, kBoxDim}, context.GetPlace());
-  CPUGather<T>(context, boxes, bg_inds_t, &bg_boxes);
+  phi::funcs::CPUGather<T>(context, boxes, bg_inds_t, &bg_boxes);
   Concat<T>(context, fg_boxes, bg_boxes, sampled_boxes);
-  CPUGather<T>(context, gt_boxes, gt_box_inds_t, sampled_gts);
+  phi::funcs::CPUGather<T>(context, gt_boxes, gt_box_inds_t, sampled_gts);
   fg_labels.mutable_data<int>({fg_num}, context.GetPlace());
-  CPUGather<int>(context, gt_classes, gt_label_inds_t, &fg_labels);
+  phi::funcs::CPUGather<int>(context, gt_classes, gt_label_inds_t, &fg_labels);
   bg_labels.mutable_data<int>({bg_num}, context.GetPlace());
-  pten::funcs::set_constant(context, &bg_labels, 0);
+  phi::funcs::set_constant(context, &bg_labels, 0);
   Concat<int>(context, fg_labels, bg_labels, sampled_labels);
 
   Tensor fg_max_overlap, bg_max_overlap;
   fg_max_overlap.mutable_data<T>({fg_num}, context.GetPlace());
-  CPUGather<T>(context, max_overlap, fg_inds_t, &fg_max_overlap);
+  phi::funcs::CPUGather<T>(context, max_overlap, fg_inds_t, &fg_max_overlap);
   bg_max_overlap.mutable_data<T>({bg_num}, context.GetPlace());
-  CPUGather<T>(context, max_overlap, bg_inds_t, &bg_max_overlap);
+  phi::funcs::CPUGather<T>(context, max_overlap, bg_inds_t, &bg_max_overlap);
   Concat<T>(context, fg_max_overlap, bg_max_overlap, sampled_max_overlap);
 }
 
@@ -328,13 +328,13 @@ std::vector<Tensor> SampleRoisForOneImage(
     Tensor roi_filter;
     // Tensor box_filter;
     if (keep.numel() == 0) {
-      pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
       roi_filter.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
       set_zero(context, &roi_filter, static_cast<T>(0));
     } else {
       proposals_num = keep.numel();
       roi_filter.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
-      CPUGather<T>(context, rpn_rois, keep, &roi_filter);
+      phi::funcs::CPUGather<T>(context, rpn_rois, keep, &roi_filter);
     }
     T* roi_filter_dt = roi_filter.data<T>();
     memcpy(rpn_rois_dt, roi_filter_dt, roi_filter.numel() * sizeof(T));
@@ -403,9 +403,9 @@ std::vector<Tensor> SampleRoisForOneImage(
   bbox_targets.mutable_data<T>(bbox_expand_dim, context.GetPlace());
   bbox_inside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
   bbox_outside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
-  pten::funcs::set_constant(context, &bbox_targets, 0.0);
-  pten::funcs::set_constant(context, &bbox_inside_weights, 0.0);
-  pten::funcs::set_constant(context, &bbox_outside_weights, 0.0);
+  phi::funcs::set_constant(context, &bbox_targets, 0.0);
+  phi::funcs::set_constant(context, &bbox_inside_weights, 0.0);
+  phi::funcs::set_constant(context, &bbox_outside_weights, 0.0);
 
   auto* bbox_targets_single_data = bbox_targets_single.data<T>();
   auto* sampled_labels_data = sampled_labels.data<int>();

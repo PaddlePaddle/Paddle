@@ -260,10 +260,10 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
     //  c_y = (h+offset)*step_h - 0.5*step_average + 0.5*shifts + di*shifts
     Tensor c_x(_type);
     Tensor c_y(_type);
-    auto dim0 = framework::make_ddim(
-        {1, layer_w, ratios_size * num_priors_per_ratio, 1});
-    auto dim1 = framework::make_ddim(
-        {layer_h, 1, ratios_size * num_priors_per_ratio, 1});
+    auto dim0 =
+        phi::make_ddim({1, layer_w, ratios_size * num_priors_per_ratio, 1});
+    auto dim1 =
+        phi::make_ddim({layer_h, 1, ratios_size * num_priors_per_ratio, 1});
     c_x.mutable_data<T>(dim0, place);
     c_y.mutable_data<T>(dim1, place);
     F.Adds(&w, offset, &w);
@@ -329,7 +329,7 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
       F.Maximum(&outbox3, &zero_t, &outbox3);
     }
 
-    auto out_dim = framework::make_ddim(
+    auto out_dim = phi::make_ddim(
         {layer_h, layer_w, ratios_size * num_priors_per_ratio, 4});
     boxes->mutable_data<T>(place);
     vars->mutable_data<T>(place);

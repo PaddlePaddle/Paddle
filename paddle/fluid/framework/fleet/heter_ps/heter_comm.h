@@ -173,16 +173,18 @@ class HeterComm {
   void walk_to_src(int start_index, int gpu_num, int* h_left, int* h_right,
                    ValType* src_val);
 
- private:
+ protected:
   using Table = HashTable<KeyType, ValType>;
-  int block_size_{256};
-  float load_factor_{0.75};
   std::vector<Table*> tables_;
   std::shared_ptr<HeterPsResource> resource_;
+  std::vector<std::vector<Path>> path_;
+  float load_factor_{0.75};
+  int block_size_{256};
+
+ private:
+  std::vector<LocalStorage> storage_;
   CustomGradMerger merger_;
   int topo_aware_{0};
-  std::vector<std::vector<Path>> path_;
-  std::vector<LocalStorage> storage_;
   int feanum_{1800 * 2048};
   int multi_node_{0};
   std::vector<ncclComm_t> nccl_inner_comms_;

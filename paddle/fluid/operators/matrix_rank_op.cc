@@ -28,12 +28,12 @@ using DDim = framework::DDim;
 
 namespace detail {
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
-  auto x_vec = framework::vectorize(dim_x);
+  auto x_vec = phi::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return framework::make_ddim({1});
+    return phi::make_ddim({1});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
-  return framework::make_ddim(x_vec);
+  return phi::make_ddim(x_vec);
 }
 }  // namespace detail
 
@@ -72,7 +72,7 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
         GetBroadcastDimsArrays(dim_x_batch, dim_tol, x_batch_dims_array.data(),
                                tol_dims_array.data(), out_dims_array.data(),
                                max_dim, axis);
-        ctx->SetOutputDim("Out", framework::make_ddim(out_dims_array));
+        ctx->SetOutputDim("Out", phi::make_ddim(out_dims_array));
       }
     } else {
       ctx->SetOutputDim("Out", dim_x_batch);
@@ -202,8 +202,8 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
     auto dito_T =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
             context);
-    std::vector<int> max_eigenvalue_shape = framework::vectorize<int>(
-        detail::RemoveLastDim(eigenvalue_tensor.dims()));
+    std::vector<int> max_eigenvalue_shape =
+        phi::vectorize<int>(detail::RemoveLastDim(eigenvalue_tensor.dims()));
     Tensor max_eigenvalue_tensor =
         dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
 
@@ -237,7 +237,7 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext,
                                                  int64_t>(context);
-    std::vector<int> result_shape = framework::vectorize<int>(dim_out);
+    std::vector<int> result_shape = phi::vectorize<int>(dim_out);
     Tensor result = dito_int.ReduceSum(compare_result, result_shape);
     out->ShareDataWith(result);
   }

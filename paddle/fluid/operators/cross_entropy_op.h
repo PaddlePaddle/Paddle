@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -40,10 +40,10 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     Tensor labels_2d, y_2d;
     if (label_dims.size() < rank) {
       labels_2d.ShareDataWith(*labels);
-      labels_2d.Resize({framework::product(label_dims), 1});
+      labels_2d.Resize({phi::product(label_dims), 1});
 
       y_2d.ShareDataWith(*y);
-      y_2d.Resize({framework::product(y->dims()), 1});
+      y_2d.Resize({phi::product(y->dims()), 1});
 
     } else {
       labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
@@ -234,7 +234,7 @@ class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
 
     auto& x_dims = x->dims();
     auto feature_size = x_dims[x_dims.size() - 1];
-    auto batch_size = framework::product(x->dims()) / feature_size;
+    auto batch_size = phi::product(x->dims()) / feature_size;
 
     auto* p_x = x->data<T>();
     auto* p_label = label->data<int64_t>();
@@ -267,7 +267,7 @@ class CrossEntropyGradientOpKernel2 : public framework::OpKernel<T> {
     int64_t ignore_index = ctx.Attr<int>("ignore_index");
     int rank = dx->dims().size();
     int64_t feature_size = dx->dims()[rank - 1];
-    int64_t batch_size = framework::product(dx->dims()) / feature_size;
+    int64_t batch_size = phi::product(dx->dims()) / feature_size;
 
     platform::ForRange<DeviceContext> for_range(
         ctx.template device_context<DeviceContext>(),

@@ -20,12 +20,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
 #include "paddle/fluid/operators/jit/kernels.h"
 #endif
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace platform {
@@ -57,11 +57,11 @@ class RowwiseMean2D<platform::CUDADeviceContext, T> {
       : left_(left), right_(right) {
     framework::DDim ones_dim({right_});
     divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
-    pten::funcs::set_constant(dev_ctx, &divisor_, 1.0 / right);
+    phi::funcs::set_constant(dev_ctx, &divisor_, 1.0 / right);
   }
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, framework::Tensor* out) {
-    pten::funcs::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
+    phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
         false, left_, right_, 1., input.data<T>(), divisor_.data<T>(), 0.,
         out->data<T>());
   }
@@ -84,7 +84,7 @@ class RowwiseMean2D<platform::CPUDeviceContext, T> {
   }
 
  private:
-  pten::funcs::RowwiseMean<platform::CPUDeviceContext, T> row_mean_;
+  phi::funcs::RowwiseMean<platform::CPUDeviceContext, T> row_mean_;
 };
 
 template <typename DeviceContext, typename T>
@@ -103,12 +103,12 @@ class ColwiseSum2D<platform::CUDADeviceContext, T> {
       : left_(left), right_(right) {
     framework::DDim ones_dim({left_});
     divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
-    pten::funcs::set_constant(dev_ctx, &divisor_, 1.0);
+    phi::funcs::set_constant(dev_ctx, &divisor_, 1.0);
   }
 
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input, framework::Tensor* out) {
-    pten::funcs::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
+    phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
         true, left_, right_, 1., input.data<T>(), divisor_.data<T>(), 0.,
         out->data<T>());
   }
@@ -131,7 +131,7 @@ class ColwiseSum2D<platform::CPUDeviceContext, T> {
   }
 
  private:
-  pten::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_wise_;
+  phi::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_wise_;
 };
 
 template <typename T>
@@ -192,7 +192,7 @@ class LayerNormKernel : public framework::OpKernel<T> {
     mean->mutable_data<T>(ctx.GetPlace());
     var->mutable_data<T>(ctx.GetPlace());
 
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     framework::DDim matrix_shape({left, right});
@@ -282,7 +282,7 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
     auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     const auto& x_dims = x.dims();
-    auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+    auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     framework::DDim matrix_shape({left, right});

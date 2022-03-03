@@ -62,7 +62,7 @@ class PadGradNPUKernel : public framework::OpKernel<T> {
     d_x->mutable_data<T>(context.GetPlace());
 
     auto d_x_dims = d_x->dims();
-    auto size = paddle::framework::vectorize(d_x_dims);
+    auto size = phi::vectorize(d_x_dims);
     std::vector<int> offsets(0);
     int i = 0;
     for (auto iter = paddings.begin(); iter < paddings.end(); ++iter, ++i) {

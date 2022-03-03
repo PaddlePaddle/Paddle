@@ -135,7 +135,7 @@ struct MatrixBitCodeFunctorMul : public boost::static_visitor<void> {
 
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(
         platform::CPUDeviceContext());
     size_t num_samples = tmat_->dims()[0];
     size_t tmat_width = tmat_->dims()[1];
@@ -183,7 +183,7 @@ struct MatrixBitCodeFunctorMulGradWeight : public boost::static_visitor<void> {
       : tmat_(tmat), weight_(weight), input_(input) {}
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(
         platform::CPUDeviceContext());
     size_t num_samples = tmat_.dims()[0];
     size_t input_width = input_.dims()[1];
@@ -227,17 +227,17 @@ template <typename T>
 struct MatrixBitCodeFunctorMulGradWeightSR
     : public boost::static_visitor<void> {
   const framework::Tensor &tmat_;
-  pten::SelectedRows *weight_;
+  phi::SelectedRows *weight_;
   const framework::Tensor &input_;
 
   MatrixBitCodeFunctorMulGradWeightSR(const framework::Tensor &tmat,
-                                      pten::SelectedRows *weight,
+                                      phi::SelectedRows *weight,
                                       const framework::Tensor &input)
       : tmat_(tmat), weight_(weight), input_(input) {}
 
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
-    auto blas = pten::funcs::GetBlas<platform::CPUDeviceContext, T>(
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(
         platform::CPUDeviceContext());
     size_t num_samples = tmat_.dims()[0];
     size_t input_width = input_.dims()[1];
@@ -274,7 +274,7 @@ struct MatrixBitCodeFunctorMulGradWeightSR
 
 template <typename T>
 void MatrixBitCodeFunctor<T>::MulGradWeight(const framework::Tensor &tmat,
-                                            pten::SelectedRows *weight,
+                                            phi::SelectedRows *weight,
                                             const framework::Tensor &input) {
   MatrixBitCodeFunctorMulGradWeightSR<T> func(tmat, weight, input);
   code_table_.apply_visitor(func);

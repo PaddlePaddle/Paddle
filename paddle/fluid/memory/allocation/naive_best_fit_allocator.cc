@@ -27,7 +27,7 @@
 
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
-#include "paddle/pten/common/place.h"
+#include "paddle/phi/common/place.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -921,7 +921,7 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 
 namespace allocation {
 
-pten::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
+phi::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
   void *ptr = paddle::platform::VisitPlace(place_, legacy::AllocVisitor(size));
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   platform::MemEvenRecorder::Instance().PushMemRecord(
@@ -929,7 +929,7 @@ pten::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
   return tmp_alloc;
 }
 
-void NaiveBestFitAllocator::FreeImpl(pten::Allocation *allocation) {
+void NaiveBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   paddle::platform::VisitPlace(
       allocation->place(),
       legacy::FreeVisitor(allocation->ptr(), allocation->size()));

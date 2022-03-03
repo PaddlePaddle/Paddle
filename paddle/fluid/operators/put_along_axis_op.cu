@@ -15,10 +15,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/put_along_axis_op.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

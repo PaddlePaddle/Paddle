@@ -64,7 +64,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
           platform::dynload::ncclBcast(out->mutable_data<T>(place), numel,
                                        dtype, root, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. recieved "
-              << framework::product(out->dims());
+              << phi::product(out->dims());
     }
 
     out->Resize(x->dims());

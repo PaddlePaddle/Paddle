@@ -106,7 +106,7 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
     }
 
     auto version = platform::get_xpu_version(context.GetPlace().GetDeviceId());
-    if (version == pten::backends::xpu::XPUVersion::XPU1) {
+    if (version == phi::backends::xpu::XPUVersion::XPU1) {
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       XPUType* mask_new = RAII_GUARD.alloc_l3_or_gm<XPUType>(mask->numel());
       float scale =

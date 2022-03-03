@@ -40,7 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
-#include "paddle/pten/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -380,11 +380,11 @@ void EmptyCache(void) {
 }
 
 bool IsGPUManagedMemorySupported(int dev_id) {
-  return pten::backends::gpu::IsGPUManagedMemorySupported(dev_id);
+  return phi::backends::gpu::IsGPUManagedMemorySupported(dev_id);
 }
 
 bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
-  return pten::backends::gpu::IsGPUManagedMemoryOversubscriptionSupported(
+  return phi::backends::gpu::IsGPUManagedMemoryOversubscriptionSupported(
       dev_id);
 }
 
@@ -392,90 +392,88 @@ void *GetGpuBasePtr(void *ptr, int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->GetBasePtr(ptr);
 }
 
-int DnnVersion() { return pten::backends::gpu::DnnVersion(); }
+int DnnVersion() { return phi::backends::gpu::DnnVersion(); }
 
-int GetGPUDeviceCount() { return pten::backends::gpu::GetGPUDeviceCount(); }
+int GetGPUDeviceCount() { return phi::backends::gpu::GetGPUDeviceCount(); }
 
 int GetGPUComputeCapability(int id) {
-  return pten::backends::gpu::GetGPUComputeCapability(id);
+  return phi::backends::gpu::GetGPUComputeCapability(id);
 }
 
 int GetGPURuntimeVersion(int id) {
-  return pten::backends::gpu::GetGPURuntimeVersion(id);
+  return phi::backends::gpu::GetGPURuntimeVersion(id);
 }
 
 int GetGPUDriverVersion(int id) {
-  return pten::backends::gpu::GetGPUDriverVersion(id);
+  return phi::backends::gpu::GetGPUDriverVersion(id);
 }
 
-bool TensorCoreAvailable() {
-  return pten::backends::gpu::TensorCoreAvailable();
-}
+bool TensorCoreAvailable() { return phi::backends::gpu::TensorCoreAvailable(); }
 
 int GetGPUMultiProcessors(int id) {
-  return pten::backends::gpu::GetGPUMultiProcessors(id);
+  return phi::backends::gpu::GetGPUMultiProcessors(id);
 }
 
 int GetGPUMaxThreadsPerMultiProcessor(int id) {
-  return pten::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(id);
+  return phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(id);
 }
 
 int GetGPUMaxThreadsPerBlock(int id) {
-  return pten::backends::gpu::GetGPUMaxThreadsPerBlock(id);
+  return phi::backends::gpu::GetGPUMaxThreadsPerBlock(id);
 }
 
-int GetCurrentDeviceId() { return pten::backends::gpu::GetCurrentDeviceId(); }
+int GetCurrentDeviceId() { return phi::backends::gpu::GetCurrentDeviceId(); }
 
 std::array<int, 3> GetGpuMaxGridDimSize(int id) {
-  return pten::backends::gpu::GetGpuMaxGridDimSize(id);
+  return phi::backends::gpu::GetGpuMaxGridDimSize(id);
 }
 
 std::vector<int> GetSelectedDevices() {
-  return pten::backends::gpu::GetSelectedDevices();
+  return phi::backends::gpu::GetSelectedDevices();
 }
 
 const gpuDeviceProp &GetDeviceProperties(int id) {
-  return pten::backends::gpu::GetDeviceProperties(id);
+  return phi::backends::gpu::GetDeviceProperties(id);
 }
 
-void SetDeviceId(int device_id) { pten::backends::gpu::SetDeviceId(device_id); }
+void SetDeviceId(int device_id) { phi::backends::gpu::SetDeviceId(device_id); }
 
-gpuError_t GpuGetLastError() { return pten::backends::gpu::GpuGetLastError(); }
+gpuError_t GpuGetLastError() { return phi::backends::gpu::GpuGetLastError(); }
 
 void GpuStreamSync(gpuStream_t stream) {
-  pten::backends::gpu::GpuStreamSync(stream);
+  phi::backends::gpu::GpuStreamSync(stream);
 }
 
 void GpuDestroyStream(gpuStream_t stream) {
-  pten::backends::gpu::GpuDestroyStream(stream);
+  phi::backends::gpu::GpuDestroyStream(stream);
 }
 
-void GpuDeviceSync() { pten::backends::gpu::GpuDeviceSync(); }
+void GpuDeviceSync() { phi::backends::gpu::GpuDeviceSync(); }
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     gpuMemcpyKind kind, gpuStream_t stream) {
-  pten::backends::gpu::GpuMemcpyAsync(dst, src, count, kind, stream);
+  phi::backends::gpu::GpuMemcpyAsync(dst, src, count, kind, stream);
 }
 
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    gpuMemcpyKind kind) {
-  pten::backends::gpu::GpuMemcpySync(dst, src, count, kind);
+  phi::backends::gpu::GpuMemcpySync(dst, src, count, kind);
 }
 
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
                         int src_device, size_t count, gpuStream_t stream) {
-  pten::backends::gpu::GpuMemcpyPeerAsync(dst, dst_device, src, src_device,
-                                          count, stream);
+  phi::backends::gpu::GpuMemcpyPeerAsync(dst, dst_device, src, src_device,
+                                         count, stream);
 }
 
 void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
                        int src_device, size_t count) {
-  pten::backends::gpu::GpuMemcpyPeerSync(dst, dst_device, src, src_device,
-                                         count);
+  phi::backends::gpu::GpuMemcpyPeerSync(dst, dst_device, src, src_device,
+                                        count);
 }
 
 void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream) {
-  pten::backends::gpu::GpuMemsetAsync(dst, value, count, stream);
+  phi::backends::gpu::GpuMemsetAsync(dst, value, count, stream);
 }
 
 }  // namespace platform

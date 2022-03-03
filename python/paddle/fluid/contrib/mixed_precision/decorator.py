@@ -108,6 +108,9 @@ class OptimizerWithMixedPrecision(object):
         """
         return self._scaled_loss
 
+    def _supports_check_nan_inf(self):
+        return getattr(self._optimizer, "_supports_check_nan_inf", False)
+
     def _init_amp_var(self):
         self._loss_scaling = layers.create_global_var(
             name=unique_name.generate("loss_scaling"),
@@ -202,7 +205,33 @@ class OptimizerWithMixedPrecision(object):
             params_grads = self._optimizer.backward(
                 self._scaled_loss, startup_program, parameter_list, no_grad_set,
                 callbacks)
+            if self._supports_check_nan_inf():
+                self._add_cast_ops_to_startup_program(startup_program)
         return params_grads
+
+    def _add_cast_ops_to_startup_program(self, startup_program):
+        names = list(self._to_fp16_var_names) if self._to_fp16_var_names else []
+        names.sort()
+        startup_program = default_startup_program(
+        ) if startup_program is None else startup_program
+        block = startup_program.global_block()
+        param_names = [p.name for p in block.all_parameters()]
+        for name in names:
+            if name not in param_names:
+                continue
+
+            tmp = block.create_var(dtype=core.VarDesc.VarType.FP32)
+            block.append_op(
+                type='assign', inputs={'X': [name]}, outputs={'Out': [tmp]})
+            block.append_op(
+                type='cast',
+                inputs={'X': [tmp]},
+                outputs={'Out': [name]},
+                attrs={
+                    'in_dtype': core.VarDesc.VarType.FP32,
+                    'out_dtype': core.VarDesc.VarType.FP16,
+                })
+        self._to_fp16_var_names = None
 
     def amp_init(self,
                  place,
@@ -297,13 +326,47 @@ class OptimizerWithMixedPrecision(object):
         if not self._use_dynamic_loss_scaling and self._init_loss_scaling == 1.0:
             return self._optimizer.apply_gradients(params_grads)
 
+        if self._supports_check_nan_inf():
+            self._optimizer._set_scale(self._loss_scaling)
+            optimize_ops = self._optimizer.apply_gradients(params_grads)
+            found_inf = self._optimizer._found_inf
+            self._add_dynamic_loss_scaling(params_grads, found_inf)
+            return optimize_ops
+
+        found_inf = self._check_finite_and_unscale(params_grads)
+        if self._use_dynamic_loss_scaling:
+            self._add_dynamic_loss_scaling(params_grads, found_inf)
+
+        # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
+        # With fleet, optimizers are nested and the real optimizer set by user is the inner most one.
+        real_optimizer = self._optimizer
+        while hasattr(real_optimizer, "inner_opt"):
+            real_optimizer = real_optimizer.inner_opt
+        if isinstance(real_optimizer, (paddle.fluid.optimizer.Adam,
+                                       paddle.optimizer.AdamW)):
+            # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we
+            # copy it in advance to avoid multiple time copies.
+            with self._train_program._optimized_guard([]):
+                found_inf = paddle.tensor.creation._memcpy(found_inf,
+                                                           paddle.CPUPlace())
+            real_optimizer._set_auxiliary_var('found_inf', found_inf)
+        elif hasattr(real_optimizer, "_set_auxiliary_var"):
+            real_optimizer._set_auxiliary_var('found_inf', found_inf)
+        optimize_ops = self._optimizer.apply_gradients(params_grads)
+        return optimize_ops
+
+    def _split_grads(self, params_grads):
         grads = [g for _, g in params_grads]
         fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
         fp16_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP16]
         assert len(fp32_grads) + len(fp16_grads) == len(grads), \
             "Data types of all grads must be either fp16 or fp32."
+        return grads, fp32_grads, fp16_grads
 
+    def _check_finite_and_unscale(self, params_grads):
+        grads, fp32_grads, fp16_grads = self._split_grads(params_grads)
         found_infs = []
+
         if self._is_distributed:
             # if distributed, split check_finite_and_unscale to overlap
             # unscale with communication
@@ -349,46 +412,37 @@ class OptimizerWithMixedPrecision(object):
                     name="find_infinite_scale",
                     float_status=self._float_status)
 
-        if self._use_dynamic_loss_scaling:
-            if self._is_distributed or self._use_pure_fp16:
-                with self._train_program._optimized_guard([]):
-                    all_infs = layers.concat(found_infs)
-                    found_inf = layers.reduce_any(all_infs)
+        if self._is_distributed or self._use_pure_fp16:
+            with self._train_program._optimized_guard([]):
+                all_infs = layers.concat(found_infs)
+                found_inf = layers.reduce_any(all_infs)
 
-            if self._use_pure_fp16:
-                stop_update = False
-                with self._train_program._optimized_guard([]):
-                    if fp32_grads:
-                        update_loss_scaling(
-                            fp32_grads,
-                            found_inf,
-                            self._loss_scaling,
-                            self._num_good_steps,
-                            self._num_bad_steps,
-                            self._incr_every_n_steps,
-                            self._decr_every_n_nan_or_inf,
-                            self._incr_ratio,
-                            self._decr_ratio,
-                            stop_update=stop_update,
-                            name="update_loss_scaling_fp32")
-                        stop_update = True
-                    if fp16_grads:
-                        update_loss_scaling(
-                            fp16_grads,
-                            found_inf,
-                            self._loss_scaling,
-                            self._num_good_steps,
-                            self._num_bad_steps,
-                            self._incr_every_n_steps,
-                            self._decr_every_n_nan_or_inf,
-                            self._incr_ratio,
-                            self._decr_ratio,
-                            stop_update=stop_update,
-                            name="update_loss_scaling_fp16")
-            else:
-                with self._train_program._optimized_guard([]):
+        return found_inf
+
+    def _add_dynamic_loss_scaling(self, params_grads, found_inf):
+        if self._supports_check_nan_inf():
+            with self._train_program._optimized_guard([]):
+                update_loss_scaling(
+                    [],
+                    found_inf,
+                    self._loss_scaling,
+                    self._num_good_steps,
+                    self._num_bad_steps,
+                    self._incr_every_n_steps,
+                    self._decr_every_n_nan_or_inf,
+                    self._incr_ratio,
+                    self._decr_ratio,
+                    stop_update=False,
+                    name="update_loss_scaling")
+            return
+
+        grads, fp32_grads, fp16_grads = self._split_grads(params_grads)
+        if self._use_pure_fp16:
+            stop_update = False
+            with self._train_program._optimized_guard([]):
+                if fp32_grads:
                     update_loss_scaling(
-                        grads,
+                        fp32_grads,
                         found_inf,
                         self._loss_scaling,
                         self._num_good_steps,
@@ -397,24 +451,35 @@ class OptimizerWithMixedPrecision(object):
                         self._decr_every_n_nan_or_inf,
                         self._incr_ratio,
                         self._decr_ratio,
-                        name="update_loss_scaling")
-        # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
-        # With fleet, optimizers are nested and the real optimizer set by user is the inner most one.
-        real_optimizer = self._optimizer
-        while hasattr(real_optimizer, "inner_opt"):
-            real_optimizer = real_optimizer.inner_opt
-        if isinstance(real_optimizer, (paddle.fluid.optimizer.Adam,
-                                       paddle.optimizer.AdamW)):
-            # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we 
-            # copy it in advance to avoid multiple time copies.
+                        stop_update=stop_update,
+                        name="update_loss_scaling_fp32")
+                    stop_update = True
+                if fp16_grads:
+                    update_loss_scaling(
+                        fp16_grads,
+                        found_inf,
+                        self._loss_scaling,
+                        self._num_good_steps,
+                        self._num_bad_steps,
+                        self._incr_every_n_steps,
+                        self._decr_every_n_nan_or_inf,
+                        self._incr_ratio,
+                        self._decr_ratio,
+                        stop_update=stop_update,
+                        name="update_loss_scaling_fp16")
+        else:
             with self._train_program._optimized_guard([]):
-                found_inf = paddle.tensor.creation._memcpy(found_inf,
-                                                           paddle.CPUPlace())
-            real_optimizer._set_auxiliary_var('found_inf', found_inf)
-        elif hasattr(real_optimizer, "_set_auxiliary_var"):
-            real_optimizer._set_auxiliary_var('found_inf', found_inf)
-        optimize_ops = self._optimizer.apply_gradients(params_grads)
-        return optimize_ops
+                update_loss_scaling(
+                    grads,
+                    found_inf,
+                    self._loss_scaling,
+                    self._num_good_steps,
+                    self._num_bad_steps,
+                    self._incr_every_n_steps,
+                    self._decr_every_n_nan_or_inf,
+                    self._incr_ratio,
+                    self._decr_ratio,
+                    name="update_loss_scaling")
 
     def apply_optimize(self, loss, startup_program, params_grads):
         program = loss.block.program

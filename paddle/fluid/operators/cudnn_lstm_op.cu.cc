@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/cudnn_lstm_cache.h"
 #endif
@@ -366,7 +366,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     }
 
     Tensor weight_grad;
-    pten::funcs::SetConstant<paddle::platform::CUDADeviceContext, T> zero;
+    phi::funcs::SetConstant<paddle::platform::CUDADeviceContext, T> zero;
     weight_grad.mutable_data<T>({weight_numel}, ctx.GetPlace());
     zero(dev_ctx, &weight_grad, static_cast<T>(0.0));
     T *weight_grad_data = weight_grad.data<T>();

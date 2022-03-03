@@ -55,7 +55,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<Tensor>("Input");
     auto* out = ctx.Output<Tensor>("Out");
 
-    auto x_vec_dims = framework::vectorize(x->dims());
+    auto x_vec_dims = phi::vectorize(x->dims());
 
     auto axes_int = ctx.Attr<std::vector<int>>("axes");
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
@@ -95,7 +95,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
       slice_dims[axes[i]] = ends[i] - starts[i];
     }
 
-    out->Resize(framework::make_ddim(slice_dims));
+    out->Resize(phi::make_ddim(slice_dims));
 
     dnnl::memory::data_type x_type =
         framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
@@ -132,7 +132,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     }
 
     astream.wait();
-    out->Resize(framework::make_ddim(new_out_dims));
+    out->Resize(phi::make_ddim(new_out_dims));
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(platform::GetMKLDNNFormat(
         reorder_dst_memory_p->get_desc().reshape(new_out_dims)));
@@ -153,8 +153,8 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("Input"));
 
-    auto dx_vec_dims = framework::vectorize(dx->dims());
-    auto dout_vec_dims = framework::vectorize(dout->dims());
+    auto dx_vec_dims = phi::vectorize(dx->dims());
+    auto dout_vec_dims = phi::vectorize(dout->dims());
 
     auto axes_int = ctx.Attr<std::vector<int>>("axes");
     auto starts_int = ctx.Attr<std::vector<int>>("starts");

@@ -110,7 +110,7 @@ void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
   Tensor input_indices;
 
   const std::vector<IndType> dims = {num_rows, num_cols};
-  auto dim = framework::make_ddim(dims);
+  auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
   input_indices.mutable_data<IndType>(ctx.GetPlace());
 
@@ -272,8 +272,8 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
 
     // Special case for full sort, speedup ~190x.
     if (axis == -1 || axis + 1 == in_dims.size()) {
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t input_height =
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t input_width = in_dims[in_dims.size() - 1];
       const auto& dev_ctx = ctx.cuda_device_context();
       ArgFullSort<T, int64_t>(dev_ctx, input, output, indices, input_height,
@@ -302,8 +302,8 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
       TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, *input,
                                                    &trans_inp, trans);
 
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+      const int64_t input_height =
+          phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
       Tensor tmp_out;
@@ -357,8 +357,8 @@ class ArgsortGradOpCUDAKernel : public framework::OpKernel<T> {
 
     // Special case for full sort, speedup ~190x.
     if (axis == -1 || axis + 1 == in_dims.size()) {
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t input_height =
+          phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t input_width = in_dims[in_dims.size() - 1];
       ArgFullAssign<T, int64_t>(dev_ctx, dO, indices, dX, input_height,
                                 input_width);
@@ -389,8 +389,8 @@ class ArgsortGradOpCUDAKernel : public framework::OpKernel<T> {
       TransCompute<platform::CUDADeviceContext, int64_t>(
           ndims, dev_ctx, *indices, &trans_ind, trans);
 
-      const int64_t input_height = framework::product(
-          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+      const int64_t input_height =
+          phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
       Tensor tmp_out;

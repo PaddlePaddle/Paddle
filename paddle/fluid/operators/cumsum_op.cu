@@ -320,5 +320,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     cumsum, ops::CumCUDAKernel<paddle::platform::CUDADeviceContext, float>,
     ops::CumCUDAKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::CumCUDAKernel<paddle::platform::CUDADeviceContext, int16_t>,
     ops::CumCUDAKernel<paddle::platform::CUDADeviceContext, int>,
     ops::CumCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>);

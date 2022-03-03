@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "Eigen/Core"
 #include "Eigen/LU"
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

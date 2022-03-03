@@ -18,7 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/isfinite_op.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

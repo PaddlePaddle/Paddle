@@ -16,7 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
-#include "paddle/pten/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

@@ -18,13 +18,13 @@ limitations under the License. */
 #include <iostream>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
 #include "paddle/fluid/operators/math/sampler.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

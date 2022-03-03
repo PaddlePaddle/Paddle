@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/pten/common/backend.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/common/layout.h"
-#include "paddle/pten/core/tensor_meta.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/data_type.h"
@@ -32,7 +32,7 @@ namespace framework {
 using DataType = paddle::experimental::DataType;
 using DataLayout = paddle::experimental::DataLayout;
 
-DataType TransToPtenDataType(
+DataType TransToPhiDataType(
     const paddle::framework::proto::VarType::Type& dtype);
 
 paddle::framework::proto::VarType::Type TransToProtoVarType(

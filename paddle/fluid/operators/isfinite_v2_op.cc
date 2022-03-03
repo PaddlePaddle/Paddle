@@ -63,9 +63,9 @@ class OverflowV2Op : public framework::OperatorWithKernel {
     if (x_var->IsType<framework::LoDTensor>()) {
       dtype = framework::TransToProtoVarType(
           x_var->Get<framework::LoDTensor>().dtype());
-    } else if (x_var->IsType<pten::SelectedRows>()) {
+    } else if (x_var->IsType<phi::SelectedRows>()) {
       dtype = framework::TransToProtoVarType(
-          x_var->Get<pten::SelectedRows>().value().dtype());
+          x_var->Get<phi::SelectedRows>().value().dtype());
     } else {
       PADDLE_THROW(plat::errors::InvalidArgument(
           "Cannot find the input data type by all input data"));
