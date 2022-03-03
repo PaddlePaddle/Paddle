@@ -52,8 +52,8 @@ namespace trt {
  *  "pd.fetch" %d, %f
  * }
  */
-class trtGraphFusePass
-    : public mlir::PassWrapper<trtGraphFusePass, mlir::FunctionPass> {
+class TRTGraphFusePass
+    : public mlir::PassWrapper<TRTGraphFusePass, mlir::FunctionPass> {
  public:
   ::llvm::StringRef getName() const override { return "trtGraphFusePass"; }
   void runOnFunction() override;

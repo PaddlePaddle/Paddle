@@ -24,4 +24,4 @@ void DigammaGradKernel(const Context& ctx,
                        const DenseTensor& x,
                        DenseTensor* x_grad);
 
-}  // namepsace pten
+}  // namepsace phi
