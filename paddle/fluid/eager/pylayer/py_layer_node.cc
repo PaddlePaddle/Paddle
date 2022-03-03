@@ -85,6 +85,13 @@ operator()(
 
   size_t outputs_size = PyTuple_GET_SIZE(outputs_tuple);
 
+  if (outputs_size > ctx->forward_input_tensor_is_duplicable.size()) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "The number of outputs of `PyLayer.backward` should be %d, but "
+        "received %d.",
+        ctx->forward_input_tensor_is_duplicable.size(), outputs_size));
+  }
+
   std::vector<std::vector<paddle::experimental::Tensor>> grad_out;
   grad_out.reserve(ctx->forward_input_tensor_is_duplicable.size());
   for (size_t i = 0; i < ctx->forward_input_tensor_is_duplicable.size(); i++) {

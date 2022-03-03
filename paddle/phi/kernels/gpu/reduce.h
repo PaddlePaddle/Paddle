@@ -178,6 +178,8 @@ struct IndexCalculator {
       : dim(dim) {
     dims = details::VectorToArray<int, kMaxRank>(cal_dims);
     strides = details::VectorToArray<int, kMaxRank>(full_strides);
+    reduce_strides = details::VectorToArray<int, kMaxRank>(cal_strides);
+#ifndef PADDLE_WITH_XPU_KP
     std::vector<paddle::platform::FastDivMod> cal_divmoders;
     // fast divmod
     for (auto i : cal_strides) {
@@ -185,9 +187,22 @@ struct IndexCalculator {
     }
     divmoders = details::VectorToArray<paddle::platform::FastDivMod, kMaxRank>(
         cal_divmoders);
+#endif
   }
 
   __device__ inline int operator()(int offset) const {
+#ifdef PADDLE_WITH_XPU_KP
+    int index = 0;
+#pragma unroll
+    for (int i = 0; i < kMaxRank; ++i) {
+      if (i == dim) {
+        break;
+      }
+      index += (offset / reduce_strides[i]) * strides[dims[i]];
+      offset = offset % reduce_strides[i];
+    }
+    return index;
+#else
     int index = 0;
 #pragma unroll
     for (int i = 0; i < kMaxRank; ++i) {
@@ -199,12 +214,16 @@ struct IndexCalculator {
       offset = divmod.val[1];
     }
     return index;
+#endif
   }
 
   int dim;
   phi::Array<int, kMaxRank> dims;
   phi::Array<int, kMaxRank> strides;
+  phi::Array<int, kMaxRank> reduce_strides;
+#ifndef PADDLE_WITH_XPU2
   phi::Array<paddle::platform::FastDivMod, kMaxRank> divmoders;
+#endif
 };
 
 template <bool ReduceLastDim = false>
@@ -247,7 +266,7 @@ struct ReduceIndexMapping {
 
   __device__ __forceinline__ int BlockDimY() {
 #ifdef PADDLE_WITH_XPU2
-    return dim.deal_size_y;
+    return 1;
 #else
     return blockDim.y;
 #endif
@@ -454,10 +473,14 @@ struct ReduceConfig {
     bool is_last_dim =
         (rank == 2) && (reduce_rank == 1) && (reduce_dim[0] == 1);
     if (rank == reduce_rank || is_last_dim) {
+#ifdef PADDLE_WITH_XPU_KP
+      reduce_type = static_cast<int>(ReduceType::kReduceAny);
+#else
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
+#endif
     } else if (reduce_rank == 1) {
 // ReduceFirstDim and reduceSecondDim
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
       if (reduce_dim[0] == 0) {
         reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
       } else {
@@ -471,6 +494,7 @@ struct ReduceConfig {
     }
   }
 
+#ifndef PADDLE_WITH_XPU_KP
   void SetBlockDimForReduceAny(dim3* block_dim, dim3* grid_dim) {
     constexpr int min_reduce_num_per_thread = 16;
     constexpr int max_reduce_num_per_thread = 256;
@@ -569,6 +593,7 @@ struct ReduceConfig {
       grid_dim->y = details::AlignUp(reduce_num, blocking_size);
     }
   }
+#endif
 
   void SetBlockDim() {
     // init
@@ -577,14 +602,14 @@ struct ReduceConfig {
     dim3 block_dim(block_num, 1, 1);
     dim3 grid_dim(left_num, 1, 1);
     blocking_size = reduce_num;
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     if (reduce_last_dim) {
-      block_dim.x = 128;
+      block_dim.x = 64;
       block_dim.y = reduce_num;
-      grid_dim.x = 8;
-      grid_dim.y = 1;
+      grid_dim.x = 1;
+      grid_dim.y = 8;
     } else {
-      block_dim.x = 128;
+      block_dim.x = 64;
       block_dim.y = left_num;
       grid_dim.x = 8;
       grid_dim.y = 1;
@@ -661,7 +686,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
     store_offset = block.BlockIdY() * left_num + left_idx;
     loop_left = min(block.GetLoopSize(), left_num - left_idx);
     stride_left = 1;
-    tid = threadIdx.x;
+    tid = THREAD_ID_X;
   } else {
     auto block = ReduceIndexMapping<false>(dim);
     input_idx = block.BlockIdY() * block.BlockDimY();
@@ -672,18 +697,20 @@ __global__ void ReduceAnyKernel(const Tx* x,
     loop_left = min(block.GetLoopSize(), left_num - left_idx);
     stride_left = block.BlockDimX() * block.GridDimX();
     store_offset = block.BlockIdY() * left_num + left_idx;
-    tid = threadIdx.y;
+    tid = THREAD_ID_Y;
   }
   // calculate the offset, means the addr where each thread really start.
   // 1. reduce for each thread
   MPType input_compute[REDUCE_VEC_SIZE];
   Tx input_reg[REDUCE_VEC_SIZE];
+  int input_idx_tmp = input_idx;
   for (int i = 0; i < loop_left; i += stride_left) {
     int input_offset = left_index_calculator(left_idx + i);
-    const Tx* input = x + input_offset;
+    const _ptr_ Tx* input = x + input_offset;
     MPType reduce_var = init;
     // load REDUCE_VEC_SIZE data once, and then compute
     int bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
+    input_idx = input_idx_tmp;
     for (; input_idx + block_size < bound;
          input_idx += REDUCE_VEC_SIZE * stride) {
       kps::ReadDataReduce<Tx,
@@ -775,7 +802,7 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
   int loop_size = min(reduce_num - idy, blocking_size);
   int store_offset = block.BlockIdY() * left_num + idz * block.GridDimY();
   int block_offset = idy * left_num + idz * reduce_num;
-  const Tx* input = x + block_offset;
+  const _ptr_ Tx* input = x + block_offset;
   Tx reduce_input;
   for (; idx < size; idx += stride) {
     MPType reduce_var = init;
@@ -838,7 +865,7 @@ static void LaunchReduceKernel(const Tx* x_data,
                                const ReduceOp& reducer,
                                const TransformOp& transform,
                                MPType init,
-                               gpuStream_t stream,
+                               KPStream stream,
                                ReduceConfig<Ty> config) {
   if (config.reduce_type == kReduceLastDim) {
     int stride_reduce = 1;
@@ -855,23 +882,24 @@ static void LaunchReduceKernel(const Tx* x_data,
                                         0);
     dim.SetRem(config.reduce_num % config.block.x, 0, 0);
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     ReduceAnyKernel<Tx,
                     Ty,
                     MPType,
                     ReduceOp,
                     TransformOp,
-                    OneDimIndexCal><<<8, 128, stream>>>(x_data,
-                                                        config.output_data,
-                                                        reducer,
-                                                        transform,
-                                                        init,
-                                                        config.reduce_num,
-                                                        config.left_num,
-                                                        config.reduce_last_dim,
-                                                        reduce_index_calculator,
-                                                        left_index_calculator,
-                                                        dim);
+                    OneDimIndexCal><<<8, 64, 0, stream>>>(
+        x_data,
+        config.output_data,
+        reducer,
+        transform,
+        init,
+        config.reduce_num,
+        config.left_num,
+        config.reduce_last_dim,
+        reduce_index_calculator,
+        left_index_calculator,
+        dim);
 #else
     ReduceAnyKernel<Tx,
                     Ty,
@@ -910,13 +938,13 @@ static void LaunchReduceKernel(const Tx* x_data,
                                         0);
     dim.SetRem(config.reduce_num % config.block.x, 0, 0);
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     ReduceAnyKernel<Tx,
                     Ty,
                     MPType,
                     ReduceOp,
                     TransformOp,
-                    IndexCalculator><<<8, 128, stream>>>(
+                    IndexCalculator><<<8, 64, 0, stream>>>(
         x_data,
         config.output_data,
         reducer,
@@ -965,12 +993,13 @@ static void LaunchReduceKernel(const Tx* x_data,
     kps::DimConfig dim =
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
     dim.SetRem(config.left_num % block.x, 0, 0);
-#ifdef PADDLE_WITH_XPU2
-    ReduceHigherDimKernel<Ty,
-                          Ty,
-                          MPType,
-                          ReduceOp,
-                          kps::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
+#ifdef PADDLE_WITH_XPU_KP
+    ReduceHigherDimKernel<
+        Ty,
+        Ty,
+        MPType,
+        ReduceOp,
+        kps::IdentityFunctor<Ty, MPType>><<<8, 64, 0, stream>>>(
         config.output_data,
         y_data,
         reducer,
@@ -1011,7 +1040,7 @@ CubTensorReduceImpl(const Tx* x_data,
                     const TransformOp& transform,
                     int reduce_num,
                     const paddle::platform::Place& place,
-                    gpuStream_t stream) {
+                    KPStream stream) {
   auto reducer = ReduceOp<Ty>();
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
                                                                   transform);
@@ -1054,7 +1083,7 @@ CubTensorReduceImpl(const Tx* x_data,
                     const TransformOp& transform,
                     int reduce_num,
                     const paddle::platform::Place& place,
-                    gpuStream_t stream) {
+                    KPStream stream) {
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
@@ -1068,7 +1097,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       phi::DenseTensor* y,
                       const TransformOp& transform,
                       const std::vector<int>& origin_reduce_dims,
-                      gpuStream_t stream) {
+                      KPStream stream) {
   y->mutable_data<Ty>(x.place());
 
   auto x_dim = phi::vectorize<int>(x.dims());
@@ -1098,11 +1127,13 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
   config.SetOutputData(y_data, x.place(), &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
+#ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
     CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
         x_data, y_data, transform, config.reduce_num, x.place(), stream);
     return;
   }
+#endif
 
   using MPType = typename kps::details::MPTypeTrait<Ty>::Type;
   auto reducer = ReduceOp<MPType>();
@@ -1124,20 +1155,21 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                config.reduce_num % config.blocking_size,
                0);
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
     ReduceHigherDimKernel<Tx,
                           Ty,
                           MPType,
                           ReduceOp<MPType>,
-                          TransformOp><<<8, 128, stream>>>(x_data,
-                                                           config.output_data,
-                                                           reducer,
-                                                           transform,
-                                                           reducer.initial(),
-                                                           config.reduce_num,
-                                                           config.left_num,
-                                                           config.blocking_size,
-                                                           dim);
+                          TransformOp><<<8, 64, 0, stream>>>(
+        x_data,
+        config.output_data,
+        reducer,
+        transform,
+        reducer.initial(),
+        config.reduce_num,
+        config.left_num,
+        config.blocking_size,
+        dim);
 #else
     ReduceHigherDimKernel<
         Tx,
@@ -1163,13 +1195,13 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
           kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
       dim2.SetRem(config.left_num % config.block.x, 0, 0);
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
       ReduceHigherDimKernel<
           Ty,
           Ty,
           MPType,
           ReduceOp<MPType>,
-          kps::IdentityFunctor<Ty, MPType>><<<8, 128, stream>>>(
+          kps::IdentityFunctor<Ty, MPType>><<<8, 64, 0, stream>>>(
           config.output_data,
           y_data,
           reducer,
@@ -1212,7 +1244,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
 template <typename T,
           template <typename> class ReduceOp,
           template <typename, typename> class TransformOp>
-void Reduce(const GPUContext& dev_ctx,
+void Reduce(const KPDevice& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
             const std::vector<int64_t>& dims,
@@ -1227,7 +1259,7 @@ void Reduce(const GPUContext& dev_ctx,
     reduce_num *= (x.dims())[i];
   }
 
-  gpuStream_t stream = dev_ctx.stream();
+  KPStream stream = dev_ctx.stream();
 
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);

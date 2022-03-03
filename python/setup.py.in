@@ -571,16 +571,15 @@ def find_files(pattern, root, recursive=False):
 headers = (
     # paddle level api headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api')) +  # pten unify api header
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api')) +  # phi unify api header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/ext')) +  # custom op api
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # pten api
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/common')) +  # pten common headers
-    # pten level api headers (low level api)
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # pten core headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # pten backends headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # phi api
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/common')) +  # phi common headers
+    # phi level api headers (low level api)
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
     # utila api headers
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)) +  # paddle utils headers
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/device/device_ext.h'])
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)))  # paddle utils headers
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
@@ -625,8 +624,6 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-            if 'device_ext.h' in header:
-                install_dir = "paddle/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

@@ -75,7 +75,7 @@ void EmptyTensorInitializer(TensorObject* self, const std::string& name,
     std::shared_ptr<phi::DenseTensor> dense_tensor =
         std::make_shared<phi::DenseTensor>(
             phi::make_intrusive<paddle::experimental::SharedStorage>(place),
-            phi::DenseTensorMeta(paddle::framework::TransToPtenDataType(dtype),
+            phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
                                  ddims));
     if (phi::product(ddims) > 0) {
       dense_tensor->mutable_data(place);
@@ -133,7 +133,7 @@ void InitTensorWithTensor(TensorObject* self,
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
     self->tensor.set_impl(
-        src.copy_to(phi::TransToPtenBackend(place), true).impl());
+        src.copy_to(phi::TransToPhiBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   if (src.get_autograd_meta()) {
@@ -157,7 +157,7 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
     auto temp =
         paddle::experimental::Tensor(std::make_shared<phi::DenseTensor>(src));
     self->tensor.set_impl(
-        temp.copy_to(phi::TransToPtenBackend(place), true).impl());
+        temp.copy_to(phi::TransToPhiBackend(place), true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
   egr::EagerUtils::autograd_meta(&(self->tensor))->SetPersistable(false);

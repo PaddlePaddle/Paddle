@@ -110,12 +110,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             "'place' must be any of paddle.Place, paddle.CPUPlace, paddle.CUDAPinnedPlace, paddle.CUDAPlace, paddle.NPUPlace, paddle.XPUPlace, paddle.CustomPlace"
         )
 
-    #Todo(zhouwei): Support allocate tensor on any other specified card
-    if isinstance(place, core.CUDAPlace) and isinstance(
-            _current_expected_place(), core.CUDAPlace) and place._get_device_id(
-            ) != _current_expected_place()._get_device_id():
-        place = _current_expected_place()
-
     if not isinstance(data, np.ndarray):
 
         def _handle_dtype(data, dtype):
@@ -139,7 +133,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             data.stop_gradient = stop_gradient
             return data
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
-            # Note(zhouwei25): should't expose it to users, just for internal use.
+            # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to VarBase first
             # Currenly, there is no copy when places are same
             data = paddle.Tensor(data)
@@ -152,15 +146,20 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             raise TypeError(
                 "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|numpy.ndarray|paddle.Tensor".
                 format(type(data)))
-        if not dtype and data.dtype in [
-                'float16', 'float32', 'float64', 'complex64', 'complex128'
-        ]:
-            default_type = paddle.get_default_dtype()
-            if np.iscomplexobj(data):
-                default_type = 'complex64' if default_type in [
-                    'float16', 'float32'
-                ] else 'complex128'
-            data = data.astype(default_type)
+        if not dtype:
+            if data.dtype in [
+                    'float16', 'float32', 'float64', 'complex64', 'complex128'
+            ]:
+                default_type = paddle.get_default_dtype()
+                if np.iscomplexobj(data):
+                    default_type = 'complex64' if default_type in [
+                        'float16', 'float32'
+                    ] else 'complex128'
+                data = data.astype(default_type)
+            # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
+            if data.dtype in ['int32']:
+                default_type = "int64"
+                data = data.astype(default_type)
 
     if dtype and convert_dtype(dtype) != data.dtype:
         data = data.astype(convert_dtype(dtype))

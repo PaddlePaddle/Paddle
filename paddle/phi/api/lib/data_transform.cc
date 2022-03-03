@@ -38,7 +38,7 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
                                const TransformFlag& transform_flag) {
   bool ret = transform_flag.need_trans_backend() &&
              target != Backend::ALL_BACKEND &&
-             !platform::is_same_place(input, phi::TransToPtenPlace(target));
+             !platform::is_same_place(input, phi::TransToPhiPlace(target));
   return ret;
 }
 
@@ -168,10 +168,10 @@ phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
           out.place(), target_args_def.backend, transform_flag)) {
     phi::DenseTensor result(
         phi::make_intrusive<paddle::experimental::SharedStorage>(
-            phi::TransToPtenPlace(target_args_def.backend)),
+            phi::TransToPhiPlace(target_args_def.backend)),
         {out.dtype(), out.dims(), out.layout()});
     framework::TransDataDevice(
-        out, phi::TransToPtenPlace(target_args_def.backend), &result);
+        out, phi::TransToPhiPlace(target_args_def.backend), &result);
     out = result;
   }
   return out;

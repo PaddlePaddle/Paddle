@@ -185,12 +185,32 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       outputs_autograd_meta.push_back({egr::EagerUtils::autograd_meta(
           &(reinterpret_cast<TensorObject*>(obj)->tensor))});
       ctx->forward_output_tensor_is_duplicable.push_back(false);
-    } else if ((PyList_Check(obj) && IsEagerTensor(PyList_GetItem(obj, 0))) ||
-               (PyTuple_Check(obj) && IsEagerTensor(PyTuple_GetItem(obj, 0)))) {
-      auto tensors = GetTensorPtrListFromPyObject(obj);
-      outputs_tensor.push_back(tensors);
-      outputs_autograd_meta.push_back(egr::EagerUtils::autograd_meta(&tensors));
-      ctx->forward_output_tensor_is_duplicable.push_back(true);
+    } else if (PyList_Check(obj)) {
+      std::vector<paddle::experimental::Tensor*> tensors;
+      Py_ssize_t len = PyList_Size(obj);
+      for (Py_ssize_t i = 0; i < len; i++) {
+        tensors.push_back(
+            &(reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor));
+      }
+      if (!tensors.empty()) {
+        outputs_tensor.push_back(tensors);
+        outputs_autograd_meta.push_back(
+            egr::EagerUtils::autograd_meta(&tensors));
+        ctx->forward_output_tensor_is_duplicable.push_back(true);
+      }
+    } else if (PyTuple_Check(obj)) {
+      std::vector<paddle::experimental::Tensor*> tensors;
+      Py_ssize_t len = PyTuple_Size(obj);
+      for (Py_ssize_t i = 0; i < len; i++) {
+        tensors.push_back(&(
+            reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))->tensor));
+      }
+      if (!tensors.empty()) {
+        outputs_tensor.push_back(tensors);
+        outputs_autograd_meta.push_back(
+            egr::EagerUtils::autograd_meta(&tensors));
+        ctx->forward_output_tensor_is_duplicable.push_back(true);
+      }
     }
   }
 
