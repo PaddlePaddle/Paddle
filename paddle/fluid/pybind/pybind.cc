@@ -79,12 +79,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
+#include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/imperative.h"
+#include "paddle/fluid/pybind/io.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
-#ifndef PADDLE_ON_INFERENCE
-#include "paddle/fluid/pybind/eager.h"
-#endif
-#include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
@@ -103,7 +102,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
-#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
@@ -529,9 +527,8 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
-#ifndef PADDLE_ON_INFERENCE
+  BindImperative(&m);
   BindEager(&m);
-#endif
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -744,8 +741,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
-
-  BindImperative(&m);
 
   py::class_<framework::Tensor> framework_tensor(m, "Tensor",
                                                  py::buffer_protocol());
@@ -3919,6 +3914,8 @@ All parameter, weight, gradient are variables in Paddle.
              }
              return res;
            })
+      .def("get_all_option_names",
+           &platform::ipu::IpuStrategy::GetAllOptionNames)
       .def("enable_pattern", &platform::ipu::IpuStrategy::EnablePattern)
       .def("disable_pattern", &platform::ipu::IpuStrategy::DisablePattern)
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);

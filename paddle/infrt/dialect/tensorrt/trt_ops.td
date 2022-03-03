@@ -7,25 +7,14 @@ include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/tensorrt/trt_op_base.td"
 
-def TRT_FetchOp : TRT_Op<"fetch", [Terminator]> {
-  let summary = "TensorRT engine return operation";
-  let description = [{
-    The `trt.fetch` operation terminates and returns values for the
-    `trt.graph` operation.
-    }];
-
-  let arguments = (ins Variadic<TRT_Tensor>:$inputs);
-}
-
-def TRT_GraphOp : TRT_Op<"graph", [SingleBlockImplicitTerminator<"FetchOp">]> {
+def TRT_CreateEngineOp : TRT_Op<"create_engine", [SingleBlockImplicitTerminator<"::infrt::dialect::ReturnOp">]> {
   let summary = "trt Graph Op";
   let description = [{
     Describe a tensorrt subgraph.
   }];
   let regions = (region SizedRegion<1>:$body);
-  let arguments = (ins Variadic<TRT_Tensor>:$inputs);
+  let arguments = (ins Variadic<TRT_Tensor>:$inputs, DefaultValuedAttr<BoolAttr, "true">:$run_once);
   let results = (outs Variadic<TRT_Tensor>:$outputs);
-
 }
 
 def TRT_ActivationOp : TRT_Op<"Activation", [NoSideEffect]> {

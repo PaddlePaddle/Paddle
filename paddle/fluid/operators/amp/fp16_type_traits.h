@@ -33,12 +33,6 @@ class MPTypeTrait<platform::float16> {
   using Type = float;
 };
 
-template <>
-class MPTypeTrait<platform::bfloat16> {
- public:
-  using Type = float;
-};
-
 }  // namespace details
 }  // namespace operators
 }  // namespace paddle
