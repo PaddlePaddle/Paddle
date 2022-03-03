@@ -317,6 +317,7 @@ static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
         auto tmp_var = var;
         for (const auto& hook_pair : var->GetVariableWrapperHooks()) {
           tmp_var = (*hook_pair.second)(tmp_var);
+          CheckVar(var, tmp_var);
         }
         (*tmp_ins_ptr)[pair.first][i] = tmp_var;
       }

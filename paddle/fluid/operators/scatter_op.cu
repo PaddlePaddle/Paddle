@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/gather_op.h"
-#include "paddle/fluid/operators/scatter.cu.h"
 #include "paddle/fluid/operators/scatter_op.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/scatter.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -35,23 +35,22 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     framework::TensorCopy(*X, ctx.GetPlace(), Out);
     // use template class to support int32_t and int64_t
-    const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
+    auto index_type = Ids->dtype();
+    bool index_type_match = index_type == phi::DataType::INT32 ||
+                            index_type == phi::DataType::INT64;
     PADDLE_ENFORCE_EQ(
         index_type_match, true,
         platform::errors::InvalidArgument(
             "scatter_op Index holds the wrong type, it holds [%s],"
             "but desires to be [%s] or [%s].",
-            paddle::framework::DataTypeToString(index_type),
-            paddle::framework::DataTypeToString(
-                framework::proto::VarType::INT32),
-            paddle::framework::DataTypeToString(
-                framework::proto::VarType::INT64)));
-    if (index_type == framework::proto::VarType::INT32) {
-      GPUScatterAssign<T, int32_t>(ctx, *Updates, *Ids, Out, overwrite);
+            index_type, phi::DataType::INT32, phi::DataType::INT64));
+    auto &dev_ctx = ctx.cuda_device_context();
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::GPUScatterAssign<T, int32_t>(dev_ctx, *Updates, *Ids, Out,
+                                               overwrite);
     } else {
-      GPUScatterAssign<T, int64_t>(ctx, *Updates, *Ids, Out, overwrite);
+      phi::funcs::GPUScatterAssign<T, int64_t>(dev_ctx, *Updates, *Ids, Out,
+                                               overwrite);
     }
   }
 };
@@ -68,36 +67,33 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *Ids = ctx.Input<Tensor>("Ids");
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
-    const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
+    auto index_type = Ids->dtype();
+    bool index_type_match = index_type == phi::DataType::INT32 ||
+                            index_type == phi::DataType::INT64;
     PADDLE_ENFORCE_EQ(
         index_type_match, true,
         platform::errors::InvalidArgument(
             "scatter_op index holds the wrong type, it holds [%s],"
             "but desires to be [%s] or [%s]",
-            paddle::framework::DataTypeToString(index_type),
-            paddle::framework::DataTypeToString(
-                framework::proto::VarType::INT32),
-            paddle::framework::DataTypeToString(
-                framework::proto::VarType::INT64)));
+            index_type, phi::DataType::INT32, phi::DataType::INT64));
 
+    auto &dev_ctx = ctx.cuda_device_context();
     if (dX) {
       framework::TensorCopy(*dOut, ctx.GetPlace(), dX);
-      if (index_type == framework::proto::VarType::INT32) {
-        GPUScatterGradForX<T, int32_t>(ctx.device_context(), *Ids, dX);
+      if (index_type == phi::DataType::INT32) {
+        phi::funcs::GPUScatterGradForX<T, int32_t>(dev_ctx, *Ids, dX);
       } else {
-        GPUScatterGradForX<T, int64_t>(ctx.device_context(), *Ids, dX);
+        phi::funcs::GPUScatterGradForX<T, int64_t>(dev_ctx, *Ids, dX);
       }
     }
 
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());
       // Gradient by Gather: dUpdates = dO[Ids]
-      if (index_type == framework::proto::VarType::INT32) {
-        GPUGather<T, int32_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+      if (index_type == phi::DataType::INT32) {
+        phi::funcs::GPUGather<T, int32_t>(dev_ctx, *dOut, *Ids, dUpdates);
       } else {
-        GPUGather<T, int64_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+        phi::funcs::GPUGather<T, int64_t>(dev_ctx, *dOut, *Ids, dUpdates);
       }
     }
   }

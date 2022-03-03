@@ -49,7 +49,6 @@ int main(int argc, char **argv) {
     if (kernel_signature_map.Has(op_kernel_pair.first)) {
       kernel_signature_map_str = kernel_signature_map_str + "\"" + op_kernel_pair.first + "\":{";
       auto &args = kernel_signature_map.Get(op_kernel_pair.first).args;
-
       kernel_signature_map_str += "\"inputs\":[";
       auto inputs_ = std::get<0>(args);
       for (size_t i = 0; i < inputs_.size(); i++) {

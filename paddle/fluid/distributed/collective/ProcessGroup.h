@@ -96,7 +96,54 @@ class ProcessGroup {
       std::vector<Tensor>& /* tensors */,
       const BroadcastOptions& = BroadcastOptions()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support allreduce", GetBackendName()));
+        "ProcessGroup%s does not support broadcast", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Barrier(
+      const BarrierOptions& = BarrierOptions()) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support barrier", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<Tensor>& tensors /* tensors */, int dst_rank) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<Tensor>& tensors /* tensors */, int src_rank) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support receive", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<Tensor>& in_tensors /* tensors */,     // NOLINT
+      std::vector<Tensor>& out_tensors /* tensors */) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support AllGather", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<Tensor>& in /* tensors */,     // NOLINT
+      std::vector<Tensor>& out /* tensors */) {  // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support AllToAll", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<Tensor>& tensors /* tensors */,  // NOLINT
+      const ReduceOptions& opts) {                 // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support Reduce", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Scatter(
+      std::vector<Tensor>& in_tensors /* tensors */,   // NOLINT
+      std::vector<Tensor>& out_tensors /* tensors */,  // NOLINT
+      const ScatterOptions&) {                         // NOLINT
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support Scatter", GetBackendName()));
   }
 
  protected:

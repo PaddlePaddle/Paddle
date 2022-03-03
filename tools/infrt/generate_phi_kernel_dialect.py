@@ -240,6 +240,7 @@ def main():
         supported_kernels = generate_supported_kernel_list(load_dict)
         print("Supported kernels:")
         print(supported_kernels)
+
         for op_name in load_dict:
             if op_name not in supported_kernels:
                 continue
