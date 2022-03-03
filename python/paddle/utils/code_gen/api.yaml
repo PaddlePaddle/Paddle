@@ -193,3 +193,12 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+- api : diagonal
+  args : (Tensor x, int offset, int axis1, int axis2)
+  output : Tensor
+  infer_meta :
+    func : DiagonalInferMeta
+  kernel :
+    func : diagonal
+  backward : diagonal_grad

@@ -522,11 +522,18 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
         set_attribute_methods_str += SET_ATTR_METHOD_TEMPLATE.format(
             aname, GetConstReference(atype), aname, saved_attr_name, aname)
 
-        ATTRIBUTE_MEMBER_TEMPLATE = """
-   {} {} = {};
-"""
-        attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
-            RemoveConstAndReference(atype), saved_attr_name, default_val)
+        if default_val:
+            ATTRIBUTE_MEMBER_TEMPLATE = """
+       {} {} = {};
+    """
+            attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
+                RemoveConstAndReference(atype), saved_attr_name, default_val)
+        else:
+            ATTRIBUTE_MEMBER_TEMPLATE = """
+       {} {};
+    """
+            attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
+                RemoveConstAndReference(atype), saved_attr_name)
     # End: SetAttributes & Attribute Members
 
     grad_node_name = GetGradNodeName(fwd_api_name)
