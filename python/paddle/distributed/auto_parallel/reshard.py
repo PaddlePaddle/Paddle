@@ -1191,15 +1191,14 @@ def _is_condition_replicative(op, program, dist_context):
     return True
 
 
-def _get_array_op_process_meshes(op, dist_context):
-    assert op.type in ["write_to_array", "read_from_array"]
+def _get_op_process_meshes(op, dist_context):
     process_meshes = []
     dist_op = dist_context.get_dist_op_for_program(op)
     op_process_mesh = dist_op.dist_attr.process_mesh
     for process_mesh in dist_context.process_meshes:
         if set(process_mesh.processes) & (
                 set(op_process_mesh.processes)
-        ) and len(process_mesh.processes) != len(op_process_mesh.processes):
+        ) and len(process_mesh.processes) <= len(op_process_mesh.processes):
             process_meshes.append(process_mesh)
 
     # it means the process mesh is not a union when process meshes is null
@@ -1301,11 +1300,8 @@ def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id,
                     while_block_info[op.attr("sub_block").id][
                         "actual_process_mesh"] = _get_while_op_actual_process_mesh(
                             op, auto_parallel_main_prog, rank_id, dist_context)
-                if op.type in ["write_to_array", "read_from_array"]:
-                    process_meshes = _get_array_op_process_meshes(op,
-                                                                  dist_context)
                 else:
-                    process_meshes.append(dist_op.dist_attr.process_mesh)
+                    process_meshes = _get_op_process_meshes(op, dist_context)
                 input_vars = None
                 if op.type == "while":
                     input_var_names = op.input("X")
