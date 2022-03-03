@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cooperative_groups.h>
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
 #include <cstring>
@@ -29,10 +30,10 @@
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
-#include <cooperative_groups.h>
+// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
+// #include <cooperative_groups.h>
 namespace cg = cooperative_groups;
-#endif
+// #endif
 
 namespace paddle {
 namespace operators {
@@ -47,14 +48,13 @@ using Vector = framework::Vector<T>;
 #define WARP_SIZE 32
 #define MAX_WARP_NUM 32
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
+// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
 
 template <typename T>
 __global__ void filter_copy_fuse_kernel(
-    const size_t N, const int ins_per_thread, size_t* x1_lods_data,
-    size_t* x2_lods_data, const int64_t* x2_data, const int64_t* x3_data,
-    int64_t filter_tag_size, T* out_data, int64_t* map_data,
-    size_t* map_lods_data, size_t* out_lods_data, size_t* out_idx_data,
+    const size_t N, const int ins_per_thread, const int64_t* x2_data,
+    const int64_t* x3_data, int64_t filter_tag_size, T* out_data,
+    int64_t* map_data, size_t* out_lods_data, size_t* out_idx_data,
     const T* x1_data, int x1_embed_size, int x1_lods_filled, int x2_lods_filled,
     float* loss_weight_data, float fill_value) {
   // N is instance num
@@ -125,17 +125,21 @@ __global__ void filter_copy_fuse_kernel(
   __shared__ int shr3[MAX_WARP_NUM];
 
   for (int p = ins_start; p < ins_end; p++) {
-    int ins_tag_start = x2_lods_data[p];
-    int ins_tag_end = x2_lods_data[p + 1];
+    int ins_tag_start = p;
+    int ins_tag_end = p + 1;
+
     flag_data[p - ins_start] = 0;
+
     // filter logic
     int i = ins_tag_start;
     for (; i < ins_tag_end; i++) {
       int64_t ins_tag = x2_data[i];
+
       int j = 0;
       for (; j < filter_tag_size; j++) {
         if (x3_data[j] == ins_tag) break;
       }
+
       // if ins_tag in filter tag
       if (j < filter_tag_size) {
         flag_data[p - ins_start] = 1;
@@ -161,9 +165,7 @@ __global__ void filter_copy_fuse_kernel(
         previous = prefix_sum_data[p - ins_start - 1];
       }
 
-      prefix_sum_data[p - ins_start] =
-          previous +
-          flag_data[p - ins_start] * (x1_lods_data[p + 1] - x1_lods_data[p]);
+      prefix_sum_data[p - ins_start] = previous + flag_data[p - ins_start];
     }
 
     local_addr = prefix_sum_data[ins_end - 1 - ins_start];
@@ -177,8 +179,7 @@ __global__ void filter_copy_fuse_kernel(
     sum_flag = local_flag;
 
     for (int p = ins_start; p < ins_end; p++) {
-      local_out_lods +=
-          flag_data[p - ins_start] * (x1_lods_data[p + 1] - x1_lods_data[p]);
+      local_out_lods += flag_data[p - ins_start];
     }
 
     sum_out_lods = local_out_lods;
@@ -246,15 +247,13 @@ __global__ void filter_copy_fuse_kernel(
         prefix_sum_data2[p - ins_start] = p_addr;
       } else {
         prefix_sum_data2[p - ins_start] =
-            prefix_sum_data2[p - ins_start - 1] +
-            flag_data[p - ins_start - 1] *
-                (x1_lods_data[p] - x1_lods_data[p - 1]);
+            prefix_sum_data2[p - ins_start - 1] + flag_data[p - ins_start - 1];
       }
     }
 
     if (gid == 0 && g.thread_rank() == group_num - 1) {
       *out_idx_data = (sum_flag2 + 1);
-      map_lods_data[sum_flag2] = sum_flag2;
+      // map_lods_data[sum_flag2] = sum_flag2;
     }
   }
 
@@ -269,7 +268,7 @@ __global__ void filter_copy_fuse_kernel(
       if (flag_data[p - ins_start] == 1) {
         // batch_len = 2
         // batch_len = 4
-        size_t batch_len = x1_lods_data[p + 1] - x1_lods_data[p];
+        size_t batch_len = 1;
         // t = 0
         // t = 1
         int t = out_lods_idx - 1;
@@ -284,8 +283,8 @@ __global__ void filter_copy_fuse_kernel(
         }
 
         map_data[t * 3] = (int64_t)previous;
-        map_data[t * 3 + 1] = x1_lods_data[p];
-        map_lods_data[t] = t;
+        map_data[t * 3 + 1] = p;
+        // map_lods_data[t] = t;
         out_lods_data[out_lods_idx] = previous + batch_len;
         map_data[t * 3 + 2] = batch_len;
         out_lods_idx++;
@@ -311,8 +310,8 @@ __global__ void filter_copy_fuse_kernel(
         auto output_start_idx = prefix_sum_data2[p - ins_start];
         T* dst = out_data + output_start_idx * x1_embed_size;
 
-        const T* src_start = x1_data + x1_lods_data[p] * x1_embed_size;
-        const T* src_end = x1_data + x1_lods_data[p + 1] * x1_embed_size;
+        const T* src_start = x1_data + p * x1_embed_size;
+        const T* src_end = x1_data + (p + 1) * x1_embed_size;
 
         // optimized
         for (const T *j = src_start; j != src_end; dst++, j++) {
@@ -352,13 +351,13 @@ __global__ void copy_grad_kernel(const size_t N, const int ins_per_thread,
   }
 }
 
-#endif
+// #endif
 
 template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
+    // #if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
 
     auto gpu_place = context.GetPlace();
 
@@ -390,74 +389,86 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     const Tensor* x3 = context.Input<Tensor>("Filter_tag");
     const int64_t* x3_data = x3->data<int64_t>();
 
-    int x2_lods_filled = 1;
+    /*
+     int x2_lods_filled = 1;
 
-    Vector<size_t> x2_lods;
-    // Vector, in GPU
-    if (x2->lod().size() != 0) {  // lod_level = 1
-      x2_lods = x2->lod()[0];
-      x2_lods_filled = 1;
+     Vector<size_t> x2_lods;
+     // Vector, in GPU
+     if (x2->lod().size() != 0) {  // lod_level = 1
+       x2_lods = x2->lod()[0];
+       x2_lods_filled = 1;
 
-    } else {  // lod_level = 0
-      const size_t x2_lods_size = x2->dims()[0];
-      // x2_lods.resize(x2->dims()[0] + 1);
-      // move to cuda
-      x2_lods.push_back(0);
-      for (size_t i = 0; i < x2_lods_size; i++) {
-        x2_lods.push_back(i + 1);
-      }
-    }
+     } else {  // lod_level = 0
+       const size_t x2_lods_size = x2->dims()[0];
+       // x2_lods.resize(x2->dims()[0] + 1);
+       // move to cuda
+       x2_lods.push_back(0);
+       for (size_t i = 0; i < x2_lods_size; i++) {
+         x2_lods.push_back(i + 1);
+       }
+     }
 
-    paddle::framework::MixVector<size_t> mixv_x2_lods(&x2_lods);
+     paddle::framework::MixVector<size_t> mixv_x2_lods(&x2_lods);
 
-    size_t* x2_lods_data = mixv_x2_lods.CUDAMutableData(gpu_place);
-    const size_t x2_lods_size = x2_lods.size() - 1;
+     size_t* x2_lods_data = mixv_x2_lods.CUDAMutableData(gpu_place);
 
-    // Vector, in GPU
-    int x1_lods_filled = 1;
-    Vector<size_t> x1_lods;
+    */
 
-    if (!is_x1_lod) {
-      // move to cuda
-      // x1_lods.resize(x1->dims()[0] + 1);
-      x1_lods.push_back(0);
-      for (int i = 0; i < x1->dims()[0]; i++) {
-        x1_lods.push_back(i + 1);
-      }
-    } else {
-      // x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
-      // new: lod_level=0 => lod() return {}
-      if (x1->lod().size() != 0) {  // lod_level = 1
-        x1_lods_filled = 1;
-        x1_lods = x1->lod()[0];
+    // const size_t x2_lods_size = x2_lods.size() - 1;
+    const size_t x2_lods_size = x2->dims()[0] - 1;
 
-      } else {  // lod_level = 0
-        // x1_lods.resize(x1->dims()[0] + 1);
-        // move to cuda
-        x1_lods.push_back(0);
-        for (int i = 0; i < x1->dims()[0]; i++) {
-          x1_lods.push_back(i + 1);
+    /*
+
+        // Vector, in GPU
+        int x1_lods_filled = 1;
+        Vector<size_t> x1_lods;
+
+        if (!is_x1_lod) {
+          // move to cuda
+          // x1_lods.resize(x1->dims()[0] + 1);
+          x1_lods.push_back(0);
+          for (int i = 0; i < x1->dims()[0]; i++) {
+            x1_lods.push_back(i + 1);
+          }
+        } else {
+          // x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
+          // new: lod_level=0 => lod() return {}
+          if (x1->lod().size() != 0) {  // lod_level = 1
+            x1_lods_filled = 1;
+            x1_lods = x1->lod()[0];
+
+          } else {  // lod_level = 0
+            // x1_lods.resize(x1->dims()[0] + 1);
+            // move to cuda
+            x1_lods.push_back(0);
+            for (int i = 0; i < x1->dims()[0]; i++) {
+              x1_lods.push_back(i + 1);
+            }
+          }
         }
-      }
-    }
 
-    paddle::framework::MixVector<size_t> mixv_x1_lods(&x1_lods);
+        paddle::framework::MixVector<size_t> mixv_x1_lods(&x1_lods);
 
-    size_t* x1_lods_data = mixv_x1_lods.CUDAMutableData(gpu_place);
+        size_t* x1_lods_data = mixv_x1_lods.CUDAMutableData(gpu_place);
+
+        */
+
     auto* x1_data = x1->data<T>();
 
     // set output value
     // for those whose ins been dropout, set 0 for whole lines.
     // otherwise, copy whole line
     // Dim [local fc count, batch size, embedding size]
+
     LoDTensor* out = context.Output<LoDTensor>("Out");
     LoDTensor* map = context.Output<LoDTensor>("IndexMap");
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
     int out_first = x1->dims()[0];
-    if (x1_lods_filled) {
-      out_first = x1_lods.back();
-    }
+
+    // if (x1_lods_filled) {
+    //  out_first = x1_lods.back();
+    // }
 
     out->Resize(phi::make_ddim({(int64_t)out_first, (int64_t)x1_embed_size}));
     map->Resize(phi::make_ddim({(int64_t)x2_lods_size, 3}));
@@ -473,10 +484,10 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     dim3 grid_dim(1);
 
     Vector<size_t> out_lods(x2_lods_size + 1, 0);
-    Vector<size_t> map_lods(x2_lods_size + 1, 0);
+    // Vector<size_t> map_lods(x2_lods_size + 1, 0);
 
     paddle::framework::MixVector<size_t> mixv_out_lods(&out_lods);
-    paddle::framework::MixVector<size_t> mixv_map_lods(&map_lods);
+    // paddle::framework::MixVector<size_t> mixv_map_lods(&map_lods);
 
     // thrust::device_vector<size_t> out_idx(1);
     Vector<size_t> out_idx(1, 0);
@@ -485,15 +496,14 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     size_t* out_idx_data = mixv_out_idx.CUDAMutableData(gpu_place);
 
     size_t* out_lods_data = mixv_out_lods.CUDAMutableData(gpu_place);
-    size_t* map_lods_data = mixv_map_lods.CUDAMutableData(gpu_place);
+    // size_t* map_lods_data = mixv_map_lods.CUDAMutableData(gpu_place);
 
     float fill_value = 1.0;
 
     filter_copy_fuse_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
-        x2_lods_size, ins_per_thread, x1_lods_data, x2_lods_data, x2_data,
-        x3_data, x3->numel(), out_data, map_data, map_lods_data, out_lods_data,
-        out_idx_data, x1_data, x1_embed_size, x1_lods_filled, x2_lods_filled,
-        loss_weight_data, fill_value);
+        x2_lods_size, ins_per_thread, x2_data, x3_data, x3->numel(), out_data,
+        map_data, out_lods_data, out_idx_data, x1_data, x1_embed_size,
+        x1_lods_filled, x2_lods_filled, loss_weight_data, fill_value);
 
     platform::GpuStreamSync(current_stream);
 
@@ -514,24 +524,24 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     }
 
     if (mixv_out_lods.size() - 1 > 0) {
-      map_lods.resize(mixv_out_lods.size());
+      // map_lods.resize(mixv_out_lods.size());
 
-      mixv_map_lods.CopyToCPU();
+      // mixv_map_lods.CopyToCPU();
 
-      std::vector<Vector<size_t>> map_lod_info;
-      map_lod_info.emplace_back(map_lods);
+      // std::vector<Vector<size_t>> map_lod_info;
+      // map_lod_info.emplace_back(map_lods);
 
-      map->set_lod(map_lod_info);
-      loss_weight->set_lod(map_lod_info);
+      // map->set_lod(map_lod_info);
+      // loss_weight->set_lod(map_lod_info);
 
-      mixv_out_lods.CopyToCPU();
-      std::vector<Vector<size_t>> out_lod_info;
-      out_lod_info.emplace_back(out_lods);
-      out->set_lod(out_lod_info);
+      // mixv_out_lods.CopyToCPU();
+      // std::vector<Vector<size_t>> out_lod_info;
+      // out_lod_info.emplace_back(out_lods);
+      // out->set_lod(out_lod_info);
 
     } else {
-      Vector<size_t> map_lods(2, 0);
-      paddle::framework::MixVector<size_t> mixv_map_lods(&map_lods);
+      // Vector<size_t> map_lods(2, 0);
+      // paddle::framework::MixVector<size_t> mixv_map_lods(&map_lods);
 
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
 
@@ -539,22 +549,22 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       map_data_ptr[1] = 1;
       map_data_ptr[2] = 1;
 
-      mixv_map_lods[0] = 0;
-      mixv_map_lods[1] = 1;
-      mixv_out_lods.push_back(1);
+      // mixv_map_lods[0] = 0;
+      // mixv_map_lods[1] = 1;
+      // mixv_out_lods.push_back(1);
 
-      mixv_map_lods.CopyToCPU();
-      mixv_out_lods.CopyToCPU();
+      // mixv_map_lods.CopyToCPU();
+      // mixv_out_lods.CopyToCPU();
 
-      std::vector<Vector<size_t>> map_lod_info;
-      map_lod_info.emplace_back(map_lods);
-      map->set_lod(map_lod_info);
+      // std::vector<Vector<size_t>> map_lod_info;
+      // map_lod_info.emplace_back(map_lods);
+      // map->set_lod(map_lod_info);
 
-      loss_weight->set_lod(map_lod_info);
+      // loss_weight->set_lod(map_lod_info);
 
-      std::vector<Vector<size_t>> out_lod_info;
-      out_lod_info.emplace_back(out_lods);
-      out->set_lod(out_lod_info);
+      // std::vector<Vector<size_t>> out_lod_info;
+      // out_lod_info.emplace_back(out_lods);
+      // out->set_lod(out_lod_info);
 
       thrust::device_ptr<T> out_data_ptr(out_data);
 
@@ -577,21 +587,24 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       loss_weight_data_ptr[0] = 0;
     }
 
-#endif
+    // #endif
   }
 };
 
+// (zhangminxu): grad kernel don't need out lod & loss_weight & index map
+// information
 template <typename T>
 class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
+    // #if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
 
     auto gpu_place = context.GetPlace();
     gpuStream_t current_stream = context.cuda_device_context().stream();
     auto max_thread_num_per_block = 1024;
     auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
+
     auto* loss_weight = context.Input<LoDTensor>("LossWeight");
     auto* mmap = context.Input<LoDTensor>("IndexMap");
     auto* x1 = context.Input<LoDTensor>("Ins");
@@ -633,7 +646,7 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
       cudaStreamSynchronize(current_stream);
     }
 
-#endif
+    // #endif
   }
 };
 
