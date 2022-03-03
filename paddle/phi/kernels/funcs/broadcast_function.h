@@ -25,6 +25,8 @@ namespace kps = phi::kps;
 namespace phi {
 namespace funcs {
 
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+
 struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
   typedef void (*MergeFunctor)(
@@ -182,8 +184,6 @@ struct DimensionsTransform {
     std::swap(in_dims[min_idx], in_dims[0]);
   }
 };
-
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 template <typename T, int VecSize, int Rank, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
@@ -576,6 +576,20 @@ void BroadcastKernel(const KPDevice &ctx,
     BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, axis, func);
   }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+void ElementwiseCompute(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        int axis,
+                        Functor func,
+                        DenseTensor *z) {
+  std::vector<const DenseTensor *> ins = {&x, &y};
+  std::vector<DenseTensor *> outs = {z};
+  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  BroadcastKernel<ElementwiseType::kBinary, T, OutType, Functor, 1>(
+      dev_ctx, ins, &outs, axis, func);
 }
 
 #endif

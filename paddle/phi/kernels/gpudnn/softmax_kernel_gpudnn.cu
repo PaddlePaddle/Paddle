@@ -37,7 +37,18 @@ PD_REGISTER_KERNEL(softmax,
                    ALL_LAYOUT,
                    phi::SoftmaxRawGPUDNNKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(softmax,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::SoftmaxRawGPUDNNKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(softmax,
                    GPUDNN,
@@ -46,4 +57,5 @@ PD_REGISTER_KERNEL(softmax,
                    float,
                    double,
                    phi::dtype::float16) {}
+#endif
 #endif

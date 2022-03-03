@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/gather.h"
-#include "paddle/fluid/operators/scatter.h"
+#include "paddle/phi/kernels/funcs/gather.h"
+#include "paddle/phi/kernels/funcs/scatter.h"
 
 namespace paddle {
 namespace operators {
@@ -37,23 +37,21 @@ class ScatterNdAddOpKernel : public framework::OpKernel<T> {
 
     // In place output: Out = X
     framework::TensorCopySync(*X, ctx.GetPlace(), Out);
-    const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Index holds the wrong type, it holds [%s], but "
-                          "desires to be [%s] or [%s].",
-                          paddle::framework::DataTypeToString(index_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
+    const auto &index_type = Ids->dtype();
+    bool index_type_match = index_type == phi::DataType::INT32 ||
+                            index_type == phi::DataType::INT64;
+    PADDLE_ENFORCE_EQ(
+        index_type_match, true,
+        platform::errors::InvalidArgument(
+            "Index holds the wrong type, it holds [%s], but "
+            "desires to be [%s] or [%s].",
+            index_type, phi::DataType::INT32, phi::DataType::INT64));
 
-    if (index_type == framework::proto::VarType::INT32) {
-      ScatterNdAdd<T, int32_t>(ctx, *Updates, *Ids, Out);
+    auto &dev_ctx = ctx.template device_context<phi::CPUContext>();
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::ScatterNdAdd<T, int32_t>(dev_ctx, *Updates, *Ids, Out);
     } else {
-      ScatterNdAdd<T, int64_t>(ctx, *Updates, *Ids, Out);
+      phi::funcs::ScatterNdAdd<T, int64_t>(dev_ctx, *Updates, *Ids, Out);
     }
   }
 };
@@ -76,11 +74,12 @@ class ScatterNdAddGradientOpKernel : public framework::OpKernel<T> {
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());
       // Gradient by Gather: dUpdates = dO[Ids]
-      const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
-      if (index_type == framework::proto::VarType::INT32) {
-        CPUGatherNd<T, int32_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+      const auto &index_type = Ids->dtype();
+      auto &dev_ctx = ctx.template device_context<phi::CPUContext>();
+      if (index_type == phi::DataType::INT32) {
+        phi::funcs::CPUGatherNd<T, int32_t>(dev_ctx, *dOut, *Ids, dUpdates);
       } else {
-        CPUGatherNd<T, int64_t>(ctx.device_context(), *dOut, *Ids, dUpdates);
+        phi::funcs::CPUGatherNd<T, int64_t>(dev_ctx, *dOut, *Ids, dUpdates);
       }
     }
   }
