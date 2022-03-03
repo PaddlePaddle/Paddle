@@ -20,7 +20,6 @@ limitations under the License. */
 
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-
 namespace paddle {
 namespace pybind {
 
@@ -39,6 +38,8 @@ int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
+std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
+                                                       ssize_t arg_pos);
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj, ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
@@ -132,6 +133,8 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
+
+// end of Slice related methods
 
 }  // namespace pybind
 }  // namespace paddle

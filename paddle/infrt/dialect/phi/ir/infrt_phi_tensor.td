@@ -34,6 +34,14 @@ class FillDenseTensorOp<Attr attr_type, string dtype> :
       attr_type:$value
   );
   let results = (outs);
+  let assemblyFormat = "`(` $input `:` type($input) `)` attr-dict";
+}
+
+class PrintDenseTensorOp:
+      PDT_Op<"print_tensor"> {
+  let arguments = (ins DenseTensor:$input);
+  let results = (outs);
+  let assemblyFormat = "`(` $input `:` type($input) `)` attr-dict";
 }
 
 class CreateCPUAllocatorOp
@@ -44,7 +52,7 @@ class CreateCPUAllocatorOp
 
 class CreateCPUContextOp
       : PDT_Op<"create_context." # "cpu", [NoSideEffect]> {
-  let arguments = (ins);
+  let arguments = (ins CPU_Allocator:$input);
   let results = (outs CPU_Context:$output);
 }
 
@@ -52,6 +60,7 @@ def PDT_CreateDenseTensorOp_cpu_f32_nchw : CreateDenseTensorOp<"cpu", "f32", "nc
 def PDT_FillDenseTensorOp_f32 : FillDenseTensorOp<F32ArrayAttr, "f32">;
 def PDT_CreateAllocatorOp_cpu : CreateCPUAllocatorOp;
 def PDT_CreateContextOp_cpu : CreateCPUContextOp;
+def PDT_PrintDenseTensor_cpu : PrintDenseTensorOp;
 
 def FakeKernelOp : PDT_Op<"fake_phi_kernel"> {
   let arguments = (ins CPU_Context:$dev_ctx, DenseTensor:$x, DenseTensor:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
