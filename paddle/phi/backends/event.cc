@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/event.h"
-#include "paddle/fluid/platform/device/device_guard.h"
+#include "paddle/phi/backends/event.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device/stream.h"
+#include "paddle/phi/backends/device_guard.h"
+#include "paddle/phi/backends/stream.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 namespace event {
 
 event_t Event::raw_event() const { return event_; }
@@ -27,7 +26,7 @@ void Event::set_event(event_t event) { event_ = event; }
 
 Event::Event(const Place& place, event_t event)
     : place_(place),
-      device_(platform::DeviceManager::GetDeviceWithPlace(place)),
+      device_(phi::DeviceManager::GetDeviceWithPlace(place)),
       event_(event),
       own_data_(false) {}
 
@@ -60,5 +59,4 @@ void Event::Synchonrize() const { device_->SynchronizeEvent(this); }
 const Place& Event::GetPlace() const { return place_; }
 
 }  // namespace event
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
