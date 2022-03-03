@@ -66,10 +66,6 @@ framework::proto::VarType::Type ConvertONNXType(
   }
 }
 
-/*
-bool CheckConvertToONNX(const AnalysisConfig &config) { return true; }
-*/
-
 bool CheckConvertToONNX(const AnalysisConfig &config) {
   if (!config.model_dir().empty()) {
     LOG(ERROR) << "Paddle2ONNX not support model_dir config";
@@ -104,11 +100,14 @@ bool ONNXRuntimePredictor::Init() {
                       config_.model_from_memory());
 
   Ort::SessionOptions session_options;
-  // Turn optimization off first, and then turn it on when it's stabl
+  // Turn optimization off first, and then turn it on when it's stable
   // session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
   // session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
   // session_options.EnableCpuMemArena();
   // session_options.EnableMemPattern();
+  // session_options.SetInterOpNumThreads(config_.cpu_math_library_num_threads());
+  session_options.SetIntraOpNumThreads(config_.cpu_math_library_num_threads());
+  VLOG(2) << "ONNXRuntime threads " << config_.cpu_math_library_num_threads();
   if (config_.profile_enabled()) {
     LOG(WARNING) << "ONNXRuntime Profiler is activated, which might affect the "
                     "performance";
@@ -122,10 +121,6 @@ bool ONNXRuntimePredictor::Init() {
                "will be "
                "generated.";
   }
-  // session_options.SetInterOpNumThreads(config_.cpu_math_library_num_threads());
-  session_options.SetIntraOpNumThreads(config_.cpu_math_library_num_threads());
-  VLOG(2) << "ONNXRuntime threads " << config_.cpu_math_library_num_threads();
-  // session_ = {env_, config_.prog_file().c_str(), session_options};
   session_ = {env_, onnx_proto.data(), onnx_proto.size(), session_options};
 
   auto memory_info =

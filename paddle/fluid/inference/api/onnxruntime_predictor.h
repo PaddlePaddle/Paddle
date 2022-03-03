@@ -28,11 +28,9 @@
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/string/printf.h"
 
-#ifdef PADDLE_WITH_ONNXRUNTIME
 #include "onnxruntime_c_api.h"    // NOLINT
 #include "onnxruntime_cxx_api.h"  // NOLINT
 #include "paddle2onnx/converter.h"
-#endif
 
 ///
 /// \file onnxruntime_predictor.h
@@ -51,9 +49,7 @@ bool CheckConvertToONNX(const AnalysisConfig &config);
 struct ONNXDesc {
   std::string name;
   std::vector<int64_t> shape;
-#ifdef PADDLE_WITH_ONNXRUNTIME
   ONNXTensorElementDataType dtype;
-#endif
 };
 
 ///
@@ -95,9 +91,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   explicit ONNXRuntimePredictor(const AnalysisConfig &config)
       : config_(config) {
     predictor_id_ = inference::GetUniqueId();
-#ifdef PADDLE_WITH_ONNXRUNTIME
     env_ = Ort::Env(ORT_LOGGING_LEVEL_VERBOSE, "onnx");
-#endif
   }
   ///
   /// \brief Destroy the ONNXRuntime Predictor object
@@ -181,7 +175,6 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   std::shared_ptr<framework::Scope> scope_;
 
  private:
-#ifdef PADDLE_WITH_ONNXRUNTIME
   ///
   /// \brief get the Ort Value(input Tensor).
   ///
@@ -203,16 +196,13 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   /// \return get a Ort::Value
   ///
   void AsTensor(const Ort::Value &value, const ONNXDesc &desc);
-#endif
 
  private:
   AnalysisConfig config_;
 
-#ifdef PADDLE_WITH_ONNXRUNTIME
   // ONNXRuntime
   Ort::Env env_;
   Ort::Session session_{nullptr};
-#endif
 
   platform::Place place_;
   framework::Scope *sub_scope_{nullptr};

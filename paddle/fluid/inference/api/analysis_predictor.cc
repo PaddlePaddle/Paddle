@@ -36,7 +36,6 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
@@ -55,6 +54,10 @@
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#endif
+
+#ifdef PADDLE_WITH_ONNXRUNTIME
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
 
 #if PADDLE_WITH_TENSORRT
@@ -1495,8 +1498,8 @@ Predictor::Predictor(const Config &config) {
   if (config.use_onnxruntime()) {
 #ifdef PADDLE_WITH_ONNXRUNTIME
     if (config.use_gpu()) {
-      LOG(WARNING) << "ONNXRuntime not support gpu for now， fall back to "
-                      "using Paddle Inference.";
+      LOG(WARNING) << "The current ONNXRuntime backend doesn't support GPU,"
+                      "and it falls back to use Paddle Inference.";
     } else if (!paddle::CheckConvertToONNX(config)) {
       LOG(WARNING)
           << "Paddle2ONNX do't support convert the Model， fall back to using "
