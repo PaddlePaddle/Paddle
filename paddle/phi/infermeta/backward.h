@@ -45,4 +45,23 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
                                 int axis,
                                 MetaTensor* dx);
+
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad);
+
+void ScatterGradInferMeta(const MetaTensor& index,
+                          const MetaTensor& updates,
+                          const MetaTensor& out_grad,
+                          bool overwrite,
+                          MetaTensor* x_grad,
+                          MetaTensor* updates_grad);
+
+void ScatterNdAddGradInferMeta(const MetaTensor& index,
+                               const MetaTensor& updates,
+                               const MetaTensor& out_grad,
+                               MetaTensor* x_grad,
+                               MetaTensor* updates_grad);
+
 }  // namespace phi

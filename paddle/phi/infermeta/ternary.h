@@ -48,22 +48,9 @@ void ScatterInferMeta(const MetaTensor& x,
                       bool overwrite,
                       MetaTensor* out);
 
-void ScatterGradInferMeta(const MetaTensor& index,
-                          const MetaTensor& updates,
-                          const MetaTensor& out_grad,
-                          bool overwrite,
-                          MetaTensor* x_grad,
-                          MetaTensor* updates_grad);
-
 void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& updates,
                            MetaTensor* out);
-
-void ScatterNdAddGradInferMeta(const MetaTensor& index,
-                               const MetaTensor& updates,
-                               const MetaTensor& out_grad,
-                               MetaTensor* x_grad,
-                               MetaTensor* updates_grad);
 
 }  // namespace phi

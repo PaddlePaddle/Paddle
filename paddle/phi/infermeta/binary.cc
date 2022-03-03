@@ -378,6 +378,7 @@ void GatherNdInferMeta(const MetaTensor& x,
 
   out->set_dims(phi::make_ddim(result_dims));
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void GatherTreeMeta(const MetaTensor& ids,

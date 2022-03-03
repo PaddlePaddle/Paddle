@@ -89,14 +89,6 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
-void GatherNdGradInferMeta(const MetaTensor& x,
-                           const MetaTensor& index,
-                           const MetaTensor& out_grad,
-                           MetaTensor* x_grad) {
-  x_grad->set_dims(x.dims());
-  x_grad->share_lod(x);
-}
-
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,
@@ -132,21 +124,7 @@ void ScatterInferMeta(const MetaTensor& x,
           index_dims[0]));
   out->set_dims(ref_dims);
   out->share_lod(x);
-}
-
-void ScatterGradInferMeta(const MetaTensor& index,
-                          const MetaTensor& updates,
-                          const MetaTensor& out_grad,
-                          bool overwrite,
-                          MetaTensor* x_grad,
-                          MetaTensor* updates_grad) {
-  if (updates_grad) {
-    updates_grad->set_dims(updates.dims());
-  }
-
-  if (x_grad) {
-    x_grad->set_dims(out_grad.dims());
-  }
+  out->set_dtype(x.dtype());
 }
 
 void ScatterNdAddInferMeta(const MetaTensor& x,
@@ -211,20 +189,7 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   }
   out->set_dims(ref_dims);
   out->share_lod(x);
-}
-
-void ScatterNdAddGradInferMeta(const MetaTensor& index,
-                               const MetaTensor& updates,
-                               const MetaTensor& out_grad,
-                               MetaTensor* x_grad,
-                               MetaTensor* updates_grad) {
-  if (updates_grad) {
-    updates_grad->set_dims(updates.dims());
-  }
-
-  if (x_grad) {
-    x_grad->set_dims(out_grad.dims());
-  }
+  out->set_dtype(x.dtype());
 }
 
 }  // namespace phi
