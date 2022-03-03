@@ -99,18 +99,19 @@ def param_guard(parameters):
         yield
 
 
-def _convert_into_variable(var_base):
+def _convert_into_variable(tensor):
     """
     Convert Varbase into Variable.
     """
-    if isinstance(var_base, core.VarBase):
+    if isinstance(tensor, (core.eager.Tensor, core.VarBase)):
         # Check whether has been created before.
-        new_var = var_base.block._find_var_recursive(var_base.name)
+        new_var = tensor.block._find_var_recursive(tensor.name)
         if new_var is not None:
             assert isinstance(new_var, framework.Variable)
         # Convert ParamBase into Parameter with same attributes in dy2stat.
-        elif isinstance(var_base, framework.ParamBase):
-            new_var = var_base._to_static_var(to_parameter=True)
+        elif isinstance(tensor,
+                        (framework.EagerParamBase, framework.ParamBase)):
+            new_var = tensor._to_static_var(to_parameter=True)
         else:
             # Note(Aurelius84): Convert VarBase in self._buffers into Variable with
             # same attributes and set persistable=True to allow saving this var.
@@ -120,13 +121,13 @@ def _convert_into_variable(var_base):
 
             # But if its shape is empty while created from `create_variable()`, we consider this buffer
             # non-persistable. See case of `drop_state` in lstm api.
-            is_persistable = len(var_base.shape) > 0
+            is_persistable = len(tensor.shape) > 0
 
-            new_var = var_base._to_static_var(
+            new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable)
         return new_var
     else:
-        return var_base
+        return tensor
 
 
 def enabled():
