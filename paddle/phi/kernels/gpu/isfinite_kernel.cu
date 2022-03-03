@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/isfinite_kernel_impl.h"
 #include "paddle/phi/kernels/isfinite_kernel.h"
