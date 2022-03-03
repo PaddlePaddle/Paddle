@@ -15,25 +15,25 @@
 #pragma once
 
 #include "paddle/phi/kernels/funcs/isfinite_functor.h"
-#include "paddle/phi/kernels/isfinite_kernel.h"
+#include "paddle/phi/kernels/selected_rows/isfinite_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context, typename Functor>
-inline void IsfiniteKernelImpl(const Context& ctx,
-                               const DenseTensor& x,
-                               DenseTensor* out);
+inline void IsfiniteSRImpl(const Context& ctx,
+                           const SelectedRows& x,
+                           SelectedRows* out);
 
-#define DEFINE_ISFINITE_KERNEL(isfinite_kernel, functor)            \
-  template <typename T, typename Context>                           \
-  void isfinite_kernel(                                             \
-      const Context& ctx, const DenseTensor& x, DenseTensor* out) { \
-    IsfiniteKernelImpl<T, Context, functor>(ctx, x, out);           \
+#define DEFINE_ISFINITE_SR(isfinite_sr, functor)                      \
+  template <typename T, typename Context>                             \
+  void isfinite_sr(                                                   \
+      const Context& ctx, const SelectedRows& x, SelectedRows* out) { \
+    IsfiniteSRImpl<T, Context, functor>(ctx, x, out);                 \
   }
 
-DEFINE_ISFINITE_KERNEL(IsinfKernel, funcs::InfinityV2Functor)
-DEFINE_ISFINITE_KERNEL(IsnanKernel, funcs::NANV2Functor)
-DEFINE_ISFINITE_KERNEL(IsfiniteKernel, funcs::IsfiniteV2Functor)
-#undef DEFINE_ISFINITE_KERNEL
+DEFINE_ISFINITE_SR(IsinfSR, funcs::InfinityV2Functor)
+DEFINE_ISFINITE_SR(IsnanSR, funcs::NANV2Functor)
+DEFINE_ISFINITE_SR(IsfiniteSR, funcs::IsfiniteV2Functor)
+#undef DEFINE_ISFINITE_SR
 
 }  // namespace phi

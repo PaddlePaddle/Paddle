@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/isfinite_kernel.h"
+#include "paddle/phi/kernels/selected_rows/isfinite_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -20,7 +20,7 @@
 #endif
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/isfinite_kernel_impl.h"
+#include "paddle/phi/kernels/selected_rows/isfinite_kernel_impl.h"
 
 namespace phi {
 

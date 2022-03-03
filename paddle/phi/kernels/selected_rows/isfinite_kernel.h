@@ -14,18 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
 
-#define DEFINE_ISFINITE_KERNEL(isfinite_kernel) \
-  template <typename T, typename Context>       \
-  void isfinite_kernel(                         \
-      const Context& ctx, const DenseTensor& x, DenseTensor* out);
+#define DEFINE_ISFINITE_SR(isfinite_sr)   \
+  template <typename T, typename Context> \
+  void isfinite_sr(                       \
+      const Context& ctx, const SelectedRows& x, SelectedRows* out);
 
-DEFINE_ISFINITE_KERNEL(IsinfKernel)
-DEFINE_ISFINITE_KERNEL(IsnanKernel)
-DEFINE_ISFINITE_KERNEL(IsfiniteKernel)
-#undef DEFINE_ISFINITE_KERNEL
+DEFINE_ISFINITE_SR(IsinfSR)
+DEFINE_ISFINITE_SR(IsnanSR)
+DEFINE_ISFINITE_SR(IsfiniteSR)
+#undef DEFINE_ISFINITE_SR
 
 }  // namespace phi
