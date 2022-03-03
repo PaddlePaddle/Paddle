@@ -26,7 +26,6 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -200,12 +199,12 @@ class DftiDescriptor {
   std::unique_ptr<DFTI_DESCRIPTOR, DftiDescriptorDeleter> desc_;
 };
 
-static DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
-                             const framework::proto::VarType::Type& out_dtype,
-                             const framework::DDim& in_strides,
-                             const framework::DDim& out_strides,
-                             const std::vector<int>& signal_sizes,
-                             FFTNormMode normalization, bool forward) {
+static DftiDescriptor _plan_mkl_fft(
+    const framework::proto::VarType::Type& in_dtype,
+    const framework::proto::VarType::Type& out_dtype,
+    const framework::DDim& in_strides, const framework::DDim& out_strides,
+    const std::vector<int>& signal_sizes, FFTNormMode normalization,
+    bool forward) {
   const DFTI_CONFIG_VALUE precision = [&] {
     switch (in_dtype) {
       case framework::proto::VarType::FP32:

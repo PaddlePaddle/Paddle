@@ -119,10 +119,11 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
             f'Unexpected hop_length: {hop_length}. It should be an positive integer.'
         )
 
-    if frame_length > x.shape[axis]:
-        raise ValueError(
-            f'Attribute frame_length should be less equal than sequence length, '
-            f'but got ({frame_length}) > ({x.shape[axis]}).')
+    if in_dygraph_mode():
+        if frame_length > x.shape[axis]:
+            raise ValueError(
+                f'Attribute frame_length should be less equal than sequence length, '
+                f'but got ({frame_length}) > ({x.shape[axis]}).')
 
     op_type = 'frame'
 
@@ -306,8 +307,7 @@ def stft(x,
             y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
     """
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'complex64', 'complex128'],
-        'stft')
+        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'stft')
 
     x_rank = len(x.shape)
     assert x_rank in [1, 2], \
@@ -325,8 +325,9 @@ def stft(x,
     if win_length is None:
         win_length = n_fft
 
-    assert 0 < n_fft <= x.shape[-1], \
-        f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
+    if in_dygraph_mode():
+        assert 0 < n_fft <= x.shape[-1], \
+            f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
 
     assert 0 < win_length <= n_fft, \
         f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
@@ -359,7 +360,7 @@ def stft(x,
     x_frames = x_frames.transpose(
         perm=[0, 2,
               1])  # switch n_fft to last dim, egs: (batch, num_frames, n_fft)
-    x_frames = x_frames * window
+    x_frames = paddle.multiply(x_frames, window)
 
     norm = 'ortho' if normalized else 'backward'
     if is_complex(x_frames):
@@ -495,12 +496,13 @@ def istft(x,
     n_frames = x.shape[-1]
     fft_size = x.shape[-2]
 
-    if onesided:
-        assert (fft_size == n_fft // 2 + 1), \
-            'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(n_fft // 2 + 1, fft_size)
-    else:
-        assert (fft_size == n_fft), \
-            'fft_size should be equal to n_fft({}) when onesided is False, but got {}.'.format(n_fft, fft_size)
+    if in_dygraph_mode():
+        if onesided:
+            assert (fft_size == n_fft // 2 + 1), \
+                'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(n_fft // 2 + 1, fft_size)
+        else:
+            assert (fft_size == n_fft), \
+                'fft_size should be equal to n_fft({}) when onesided is False, but got {}.'.format(n_fft, fft_size)
 
     if window is not None:
         assert len(window.shape) == 1 and len(window) == win_length, \
@@ -535,14 +537,15 @@ def istft(x,
         out = fft_c2r(x=x, n=None, axis=-1, norm=norm, forward=False, name=None)
 
     out = overlap_add(
-        x=(out * window).transpose(
+        x=paddle.multiply(out, window).transpose(
             perm=[0, 2, 1]),  # (batch, n_fft, num_frames)
         hop_length=hop_length,
         axis=-1)  # (batch, seq_length)
 
     window_envelop = overlap_add(
         x=paddle.tile(
-            x=window * window, repeat_times=[n_frames, 1]).transpose(
+            x=paddle.multiply(window, window),
+            repeat_times=[n_frames, 1]).transpose(
                 perm=[1, 0]),  # (n_fft, num_frames)
         hop_length=hop_length,
         axis=-1)  # (seq_length, )

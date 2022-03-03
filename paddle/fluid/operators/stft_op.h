@@ -136,8 +136,9 @@ class StftGradKernel : public framework::OpKernel<T> {
       std::vector<int> pads(rank * 2, 0);
       pads[axes.back() * 2 + 1] = zero_length;
 
-      paddle::operators::math::PaddingFunctor<DeviceContext, C>(
-          rank, ctx, pads, static_cast<C>(0), *dy, &full_dy);
+      phi::funcs::PaddingFunctor<DeviceContext, C>(
+          rank, ctx.template device_context<DeviceContext>(), pads,
+          static_cast<C>(0), *dy, &full_dy);
       fft_c2c_func(dev_ctx, &full_dy, &complex_d_frames, axes, normalization,
                    false);
     }

@@ -930,6 +930,10 @@ REGISTER_OPERATOR(pad3d_grad, ops::Pad3dOpGrad,
                   ops::Pad3dOpGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(pad3d, ops::Pad3dCPUKernel<float>,
                        ops::Pad3dCPUKernel<double>, ops::Pad3dCPUKernel<int>,
-                       ops::Pad3dCPUKernel<int64_t>);
-REGISTER_OP_CPU_KERNEL(pad3d_grad, ops::Pad3dGradCPUKernel<float>,
-                       ops::Pad3dGradCPUKernel<double>);
+                       ops::Pad3dCPUKernel<int64_t>,
+                       ops::Pad3dCPUKernel<paddle::platform::complex<float>>,
+                       ops::Pad3dCPUKernel<paddle::platform::complex<double>>);
+REGISTER_OP_CPU_KERNEL(
+    pad3d_grad, ops::Pad3dGradCPUKernel<float>, ops::Pad3dGradCPUKernel<double>,
+    ops::Pad3dGradCPUKernel<paddle::platform::complex<float>>,
+    ops::Pad3dGradCPUKernel<paddle::platform::complex<double>>);
