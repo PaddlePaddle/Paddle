@@ -33,6 +33,7 @@ class TestActivationOPBase(XPUOpTest):
         self.place = paddle.XPUPlace(0)
         self.init_dtype()
         self.set_case()
+        self.set_xpu()
 
     def set_case(self):
         self.op_type = 'exp'
@@ -41,6 +42,10 @@ class TestActivationOPBase(XPUOpTest):
         self.attrs = {'use_xpu': True}
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
+
+    def set_xpu(self):
+        self.__class__.use_xpu = True
+        self.__class__.no_need_check_grad = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -53,7 +58,7 @@ class TestActivationOPBase(XPUOpTest):
     def test_check_grad(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
-            self.check_grad_with_place(self.place, ['X'], 'Out')
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class XPUTestExpOP(XPUOpTestWrapper):
@@ -64,15 +69,9 @@ class XPUTestExpOP(XPUOpTestWrapper):
     class XPUTestExp(TestActivationOPBase):
         def setUp(self):
             self.op_type = 'exp'
-            self.set_xpu()
             self.set_shape()
-            self.place = paddle.XPUPlace(0)
             self.init_dtype()
             self.set_case()
-
-        def set_xpu(self):
-            self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -139,16 +138,10 @@ class XPUTestTanhOP(XPUOpTestWrapper):
 
     class XPUTestTanh(TestActivationOPBase):
         def setUp(self):
-            self.op_type = 'exp'
-            self.set_xpu()
+            self.op_type = 'tanh'
             self.set_shape()
-            self.place = paddle.XPUPlace(0)
             self.init_dtype()
             self.set_case()
-
-        def set_xpu(self):
-            self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -196,10 +189,8 @@ class XPUTestSqrtOP(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = "sqrt"
             self.dtype = self.in_type
-
             x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
             out = np.sqrt(x)
-
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
@@ -227,7 +218,6 @@ class XPUTestAbsOP(XPUOpTestWrapper):
             # we should avoid this
             x[np.abs(x) < 0.005] = 0.02
             out = np.abs(x)
-
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
@@ -246,15 +236,9 @@ class XPUTestReluOP(XPUOpTestWrapper):
     class XPUTestRelu(TestActivationOPBase):
         def setUp(self):
             self.op_type = 'relu'
-            self.set_xpu()
             self.set_shape()
-            self.place = paddle.XPUPlace(0)
             self.init_dtype()
             self.set_case()
-
-        def set_xpu(self):
-            self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -263,12 +247,10 @@ class XPUTestReluOP(XPUOpTestWrapper):
             self.shape = (11)
 
         def set_case(self):
-
             x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             # The same reason with TestAbs
             x[np.abs(x) < 0.005] = 0.02
             out = np.maximum(x, 0)
-
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': x}
             self.outputs = {'Out': out}
@@ -304,15 +286,9 @@ class XPUTestGeluOP(XPUOpTestWrapper):
     class XPUTestGelu(TestActivationOPBase):
         def setUp(self):
             self.op_type = 'gelu'
-            self.set_xpu()
             self.set_shape()
-            self.place = paddle.XPUPlace(0)
             self.init_dtype()
             self.set_case()
-
-        def set_xpu(self):
-            self.__class__.use_xpu = True
-            self.__class__.no_need_check_grad = True
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -323,11 +299,9 @@ class XPUTestGeluOP(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = "gelu"
             self.dtype = self.in_type
-
             approximate = False
             x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             out = gelu(x, approximate)
-
             self.inputs = {'X': x}
             self.outputs = {'Out': out}
             self.attrs = {"approximate": approximate, 'use_xpu': True}
