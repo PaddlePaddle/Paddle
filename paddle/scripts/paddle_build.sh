@@ -945,13 +945,21 @@ function generate_upstream_develop_api_spec() {
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     startTime_firstBuild=`date +%s`
-    cmake_gen $1
-    build $2
+
+    dev_commit=`git log -1|head -1|awk '{print $2}'`
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
+    if [ "$url_return" == '200' ];then
+        mkdir ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
+    else
+        cmake_gen $1
+        build $2
+    fi
+
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
     
-
     git checkout $cur_branch
     generate_api_spec "$1" "DEV"
     git branch -D develop_base_pr
