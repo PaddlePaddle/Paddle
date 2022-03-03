@@ -15,8 +15,7 @@
 #pragma once
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 class Device;
 
@@ -57,5 +56,4 @@ class Event {
 };
 }  // namespace event
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

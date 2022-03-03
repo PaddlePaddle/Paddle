@@ -13,17 +13,16 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/platform/device/device_manager.h"
+#include "paddle/phi/backends/device_manager.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 class DeviceGuard {
  public:
   explicit inline DeviceGuard(const Place& place)
-      : dev_type_(PlaceHelper::GetDeviceType(place)) {
+      : dev_type_(place.GetDeviceType()) {
     prev_id = DeviceManager::GetDevice(dev_type_);
-    cur_id = PlaceHelper::GetDeviceId(place);
+    cur_id = place.GetDeviceId();
 
     if (cur_id != prev_id) {
       DeviceManager::SetDevice(dev_type_, cur_id);
@@ -44,5 +43,4 @@ class DeviceGuard {
   std::string dev_type_;
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
