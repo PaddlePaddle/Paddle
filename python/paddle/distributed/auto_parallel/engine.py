@@ -303,7 +303,8 @@ class Engine:
             for out_name in new_op.output_arg_names:
                 if out_name not in dist_main_block.vars:
                     out_var = serial_main_block._var_recursive(out_name)
-                    dist_main_block._clone_variable(out_var, out_var.persistable)
+                    dist_main_block._clone_variable(out_var,
+                                                    out_var.persistable)
             dist_op = DistributedOperator(new_op)
             dist_context.add_dist_op_for_program(dist_op)
         for _ in range(new_op_size - op_size):
