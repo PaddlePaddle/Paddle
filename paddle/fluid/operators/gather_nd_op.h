@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/gather.h"
-#include "paddle/fluid/operators/scatter.h"
+#include "paddle/phi/kernels/funcs/gather.h"
+#include "paddle/phi/kernels/funcs/scatter.h"
 
 namespace paddle {
 namespace operators {
@@ -38,22 +38,20 @@ class GatherNdOpKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
 
-    const auto &index_type = framework::TransToProtoVarType(index->dtype());
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Index holds the wrong type, it holds [%s],"
-                          "but desires to be [%s] or [%s]",
-                          paddle::framework::DataTypeToString(index_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
-    if (index_type == framework::proto::VarType::INT32) {
-      CPUGatherNd<T, int>(ctx.device_context(), *x, *index, output);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      CPUGatherNd<T, int64_t>(ctx.device_context(), *x, *index, output);
+    auto index_type = index->dtype();
+    bool index_type_match = index_type == phi::DataType::INT32 ||
+                            index_type == phi::DataType::INT64;
+    PADDLE_ENFORCE_EQ(
+        index_type_match, true,
+        platform::errors::InvalidArgument(
+            "Index holds the wrong type, it holds [%s],"
+            "but desires to be [%s] or [%s]",
+            index_type, phi::DataType::INT32, phi::DataType::INT64));
+    auto &dev_ctx = ctx.template device_context<phi::CPUContext>();
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::CPUGatherNd<T, int>(dev_ctx, *x, *index, output);
+    } else if (index_type == phi::DataType::INT64) {
+      phi::funcs::CPUGatherNd<T, int64_t>(dev_ctx, *x, *index, output);
     }
   }
 };
@@ -65,6 +63,7 @@ class GatherNdGradOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
+
     auto *index = ctx.Input<Tensor>("Index");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
@@ -75,22 +74,21 @@ class GatherNdGradOpKernel : public framework::OpKernel<T> {
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
 
-    const auto &index_type = framework::TransToProtoVarType(index->dtype());
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Index holds the wrong type, it holds [%s],"
-                          "but desires to be [%s] or [%s]",
-                          paddle::framework::DataTypeToString(index_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
-    if (index_type == framework::proto::VarType::INT32) {
-      ScatterNdAdd<T, int32_t>(ctx, *dO, *index, dX);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      ScatterNdAdd<T, int64_t>(ctx, *dO, *index, dX);
+    auto index_type = index->dtype();
+    bool index_type_match = index_type == phi::DataType::INT32 ||
+                            index_type == phi::DataType::INT64;
+    PADDLE_ENFORCE_EQ(
+        index_type_match, true,
+        platform::errors::InvalidArgument(
+            "Index holds the wrong type, it holds [%s],"
+            "but desires to be [%s] or [%s]",
+            index_type, phi::DataType::INT32, phi::DataType::INT64));
+
+    auto &dev_ctx = ctx.template device_context<phi::CPUContext>();
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::ScatterNdAdd<T, int32_t>(dev_ctx, *dO, *index, dX);
+    } else if (index_type == phi::DataType::INT64) {
+      phi::funcs::ScatterNdAdd<T, int64_t>(dev_ctx, *dO, *index, dX);
     }
   }
 };

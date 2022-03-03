@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/gather_nd_op.h"
-#include "paddle/fluid/operators/scatter.cu.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/scatter.cu.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class GatherNdOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -33,27 +33,25 @@ class GatherNdOpCUDAKernel : public framework::OpKernel<T> {
 
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
-    const auto &index_type = framework::TransToProtoVarType(index->dtype());
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Index holds the wrong type, it holds [%s], but "
-                          "desires to be [%s] or [%s].",
-                          paddle::framework::DataTypeToString(index_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
-    if (index_type == framework::proto::VarType::INT32) {
-      GPUGatherNd<DeviceContext, T, int>(ctx, *x, *index, output);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      GPUGatherNd<DeviceContext, T, int64_t>(ctx, *x, *index, output);
+    const auto &index_type = index->dtype();
+    bool index_type_match = index_type == phi::DataType::INT32 ||
+                            index_type == phi::DataType::INT64;
+    PADDLE_ENFORCE_EQ(
+        index_type_match, true,
+        platform::errors::InvalidArgument(
+            "Index holds the wrong type, it holds [%s], but "
+            "desires to be [%s] or [%s].",
+            index_type, phi::DataType::INT32, phi::DataType::INT64));
+    auto &dev_ctx = ctx.cuda_device_context();
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::GPUGatherNd<T, int>(dev_ctx, *x, *index, output);
+    } else if (index_type == phi::DataType::INT64) {
+      phi::funcs::GPUGatherNd<T, int64_t>(dev_ctx, *x, *index, output);
     }
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class GatherNdGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -71,24 +69,22 @@ class GatherNdGradOpCUDAKernel : public framework::OpKernel<T> {
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
 
-    const auto &index_type = framework::TransToProtoVarType(index->dtype());
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
+    const auto &index_type = index->dtype();
+    bool index_type_match = index_type == phi::DataType::INT32 ||
+                            index_type == phi::DataType::INT64;
 
-    PADDLE_ENFORCE_EQ(index_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Index holds the wrong type, it holds [%s],"
-                          "but desires to be [%s] or [%s].",
-                          paddle::framework::DataTypeToString(index_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
+    PADDLE_ENFORCE_EQ(
+        index_type_match, true,
+        platform::errors::InvalidArgument(
+            "Index holds the wrong type, it holds [%s],"
+            "but desires to be [%s] or [%s].",
+            index_type, phi::DataType::INT32, phi::DataType::INT64));
 
-    if (index_type == framework::proto::VarType::INT32) {
-      GPUScatterNdAdd<DeviceContext, T, int>(ctx, *dO, *index, dX);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      GPUScatterNdAdd<DeviceContext, T, int64_t>(ctx, *dO, *index, dX);
+    auto &dev_ctx = ctx.cuda_device_context();
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::GPUScatterNdAdd<T, int>(dev_ctx, *dO, *index, dX);
+    } else if (index_type == phi::DataType::INT64) {
+      phi::funcs::GPUScatterNdAdd<T, int64_t>(dev_ctx, *dO, *index, dX);
     }
   }
 };
@@ -98,18 +94,16 @@ class GatherNdGradOpCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-using CUDA = paddle::platform::CUDADeviceContext;
-REGISTER_OP_CUDA_KERNEL(gather_nd, ops::GatherNdOpCUDAKernel<CUDA, float>,
-                        ops::GatherNdOpCUDAKernel<CUDA, double>,
-                        ops::GatherNdOpCUDAKernel<CUDA, int64_t>,
-                        ops::GatherNdOpCUDAKernel<CUDA, int>,
-                        ops::GatherNdOpCUDAKernel<CUDA, int16_t>,
-                        ops::GatherNdOpCUDAKernel<CUDA, bool>,
-                        ops::GatherNdOpCUDAKernel<CUDA, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(gather_nd, ops::GatherNdOpCUDAKernel<float>,
+                        ops::GatherNdOpCUDAKernel<double>,
+                        ops::GatherNdOpCUDAKernel<int64_t>,
+                        ops::GatherNdOpCUDAKernel<int>,
+                        ops::GatherNdOpCUDAKernel<int16_t>,
+                        ops::GatherNdOpCUDAKernel<bool>,
+                        ops::GatherNdOpCUDAKernel<plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(gather_nd_grad,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, float>,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, double>,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, int64_t>,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, int>,
-                        ops::GatherNdGradOpCUDAKernel<CUDA, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(gather_nd_grad, ops::GatherNdGradOpCUDAKernel<float>,
+                        ops::GatherNdGradOpCUDAKernel<double>,
+                        ops::GatherNdGradOpCUDAKernel<int64_t>,
+                        ops::GatherNdGradOpCUDAKernel<int>,
+                        ops::GatherNdGradOpCUDAKernel<plat::float16>);

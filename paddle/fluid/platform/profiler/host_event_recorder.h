@@ -189,7 +189,10 @@ struct ThreadEventSection {
 
 class ThreadEventRecorder {
  public:
-  ThreadEventRecorder() { thread_id_ = GetCurrentThreadSysId(); }
+  ThreadEventRecorder() {
+    thread_id_ = GetCurrentThreadSysId();
+    thread_name_ = GetCurrentThreadName();
+  }
 
   DISABLE_COPY_AND_ASSIGN(ThreadEventRecorder);
 
@@ -202,7 +205,7 @@ class ThreadEventRecorder {
 
   ThreadEventSection GatherEvents() {
     ThreadEventSection thr_sec;
-    thr_sec.thread_name = GetCurrentThreadName();
+    thr_sec.thread_name = thread_name_;
     thr_sec.thread_id = thread_id_;
     thr_sec.events = std::move(base_evt_cntr_.Reduce());
     return thr_sec;
@@ -210,6 +213,7 @@ class ThreadEventRecorder {
 
  private:
   uint64_t thread_id_;
+  std::string thread_name_;
   EventContainer<CommonEvent> base_evt_cntr_;
 };
 
