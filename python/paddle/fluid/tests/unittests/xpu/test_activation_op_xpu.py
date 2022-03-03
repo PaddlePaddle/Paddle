@@ -50,10 +50,10 @@ class TestActivationOPBase(XPUOpTest):
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
 
-    # def test_check_grad(self):
-    #    if paddle.is_compiled_with_xpu():
-    #        place = paddle.XPUPlace(0)
-    #        self.check_grad_with_place(self.place, ['X'], 'Out')
+    def test_check_grad(self):
+        if paddle.is_compiled_with_xpu():
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class XPUTestExpOP(XPUOpTestWrapper):
