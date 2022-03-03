@@ -43,11 +43,11 @@ BuddyAllocator::BuddyAllocator(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (!dev_type.empty()) {
     init_allocate_size_func_ = [dev_type]() {
-      return platform::DeviceManager::GetInitAllocSize(
+      return phi::DeviceManager::GetInitAllocSize(
           platform::PlaceHelper::CreatePlace(dev_type));
     };
     re_allocate_size_func_ = [dev_type]() {
-      return platform::DeviceManager::GetReallocSize(
+      return phi::DeviceManager::GetReallocSize(
           platform::PlaceHelper::CreatePlace(dev_type));
     };
   } else {

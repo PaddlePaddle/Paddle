@@ -903,7 +903,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 CustomDeviceContext::CustomDeviceContext(CustomPlace place)
     : phi::CustomContext(place) {
   Init();
-  stream_.reset(new platform::stream::Stream(place, stream()));
+  stream_.reset(new phi::stream::Stream(place, stream()));
 }
 
 CustomDeviceContext::~CustomDeviceContext() {}

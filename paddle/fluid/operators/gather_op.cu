@@ -45,6 +45,8 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
         axis = static_cast<int>(cpu_axis.data<int32_t>()[0]);
       } else if (axis_type == framework::proto::VarType::INT64) {
         axis = static_cast<int>(cpu_axis.data<int64_t>()[0]);
+      } else if (axis_type == framework::proto::VarType::INT16) {
+        axis = static_cast<int>(cpu_axis.data<int16_t>()[0]);
       }
     }
     const auto &place = ctx.GetPlace();
@@ -57,6 +59,9 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
       } else if (index_type == framework::proto::VarType::INT64) {
         phi::funcs::GatherV2CUDAFunction<T, int64_t>(x, index, axis, output,
                                                      dev_ctx);
+      } else if (index_type == framework::proto::VarType::INT16) {
+        phi::funcs::GatherV2CUDAFunction<T, int16_t>(x, index, axis, output,
+                                                     dev_ctx);
       }
       return;
     }
@@ -67,6 +72,8 @@ class GatherOpCUDAKernel : public framework::OpKernel<T> {
       phi::funcs::GPUGather<T, int>(dev_ctx, *x, *index, output);
     } else if (index_type == framework::proto::VarType::INT64) {
       phi::funcs::GPUGather<T, int64_t>(dev_ctx, *x, *index, output);
+    } else if (index_type == framework::proto::VarType::INT16) {
+      phi::funcs::GPUGather<T, int16_t>(dev_ctx, *x, *index, output);
     }
   }
 };
@@ -134,6 +141,7 @@ REGISTER_OP_CUDA_KERNEL(gather, ops::GatherOpCUDAKernel<float>,
                         ops::GatherOpCUDAKernel<double>,
                         ops::GatherOpCUDAKernel<int64_t>,
                         ops::GatherOpCUDAKernel<int>,
+                        ops::GatherOpCUDAKernel<int16_t>,
                         ops::GatherOpCUDAKernel<plat::float16>,
                         ops::GatherOpCUDAKernel<plat::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>,
