@@ -381,6 +381,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         plugin_inputs.push_back(input_bias_qk);
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
         if (enable_int8) {
           with_fp16 = 1;
         }
