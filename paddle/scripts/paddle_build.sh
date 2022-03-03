@@ -2634,8 +2634,9 @@ function build_pr_and_develop() {
         git checkout -b develop_base_pr upstream/$BRANCH
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         generate_api_spec "$1" "DEV"
-        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
+
+    mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
 }
 
 function build_develop() {
