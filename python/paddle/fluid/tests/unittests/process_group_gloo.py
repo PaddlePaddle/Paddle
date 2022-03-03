@@ -104,13 +104,9 @@ class TestProcessGroupFp32(unittest.TestCase):
             broadcast_result = paddle.assign(tensor_x)
             if rank == 0:
                 task = pg.broadcast(tensor_x, 0)
-                task.synchronize()
-                assert task.is_completed()
                 assert np.array_equal(broadcast_result, tensor_x)
             else:
                 task = pg.broadcast(tensor_y, 0)
-                task.synchronize()
-                assert task.is_completed()
                 assert np.array_equal(broadcast_result, tensor_y)
             print("test broadcast api ok")
 
@@ -144,7 +140,6 @@ class TestProcessGroupFp32(unittest.TestCase):
             else:
                 task = pg.all_gather(tensor_y, tensor_out)
                 task.wait()
-                paddle.device.cuda.synchronize()
             out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
             out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
                                  [out_shape[0]])
@@ -162,12 +157,10 @@ class TestProcessGroupFp32(unittest.TestCase):
             if pg.rank() == 0:
                 task = pg.reduce(tensor_x, 0)
                 task.wait()
-                paddle.device.cuda.synchronize()
             # rank 1
             else:
                 task = pg.reduce(tensor_y, 0)
                 task.wait()
-                paddle.device.cuda.synchronize()
             if pg.rank() == 0:
                 assert np.array_equal(tensor_x, sum_result)
             print("test reduce sum api ok\n")
@@ -183,12 +176,10 @@ class TestProcessGroupFp32(unittest.TestCase):
             if pg.rank() == 0:
                 task = pg.scatter(tensor_x, tensor_y, 0)
                 task.wait()
-                paddle.device.cuda.synchronize()
             # rank 1
             else:
                 task = pg.scatter(tensor_x, tensor_y, 0)
                 task.wait()
-                paddle.device.cuda.synchronize()
             out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
             out2 = paddle.slice(tensor_x, [0], [self.shape[0]],
                                 [self.shape[0] * 2])

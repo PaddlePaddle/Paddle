@@ -146,6 +146,22 @@ void set_inputs(P& opts, const std::vector<Tensor>& tensors) {  // NOLINT
   opts.setInputs(get_multi_data<T>(tensors), tensors[0].numel());
 }
 
+template <typename T, typename P>
+void set_inputs_for_scatter(P& opts,                             // NOLINT
+                            const std::vector<Tensor>& tensors,  // NOLINT
+                            int nranks) {
+  std::vector<T*> ret(nranks);
+  auto raw_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(tensors[0].impl());
+  T* raw_pointer = reinterpret_cast<T*>(raw_tensor->data());
+  size_t offset = 0;
+  for (int i = 0; i < nranks; i++) {
+    ret[i] = raw_pointer + offset;
+    offset += tensors[0].numel() / nranks;
+  }
+  opts.setInputs(ret, tensors[0].numel() / nranks);
+}
+
 ProcessGroupGloo::GlooTask::GlooTask(int rank,
                                      const std::vector<Tensor>& inputs,
                                      CommType comm_type)
@@ -390,12 +406,13 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
   ScatterGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
                   std::vector<Tensor>& inputs,   // NOLINT
                   std::vector<Tensor>& outputs,  // NOLINT
-                  int src, uint32_t tag)
+                  int src, int size, uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::SCATTER),
         _context(context),
         _inputs(inputs),
         _outputs(outputs),
         _src(src),
+        _size(size),
         _tag(tag) {}
 
   void Run() override { _do_scatter(_inputs, _outputs, _src); }
@@ -405,13 +422,16 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
   std::vector<Tensor> _inputs;
   std::vector<Tensor> _outputs;
   int _src;
+  int _size;
   uint32_t _tag;
 
   void _do_scatter(std::vector<Tensor>& in, std::vector<Tensor>& out,  // NOLINT
-                   int src) {                                          // NOLINT
+                   int src) {
     const auto& dtype = in[0].type();
     gloo::ScatterOptions opts(_context);
-    GENERATE_FUNC(dtype, set_inputs, opts, in);
+    if (rank_ == src) {
+      GENERATE_FUNC(dtype, set_inputs_for_scatter, opts, in, _size);
+    }
     GENERATE_FUNC(dtype, set_output, opts, out[0]);
     opts.setRoot(src);
     opts.setTag(_tag);
@@ -425,8 +445,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
   std::shared_ptr<ScatterGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
-  task = std::make_shared<ScatterGlooTask>(rank_, context, in_tensors,
-                                           out_tensors, opts.root_rank, tag);
+  task = std::make_shared<ScatterGlooTask>(
+      rank_, context, in_tensors, out_tensors, opts.root_rank, size_, tag);
   task->Run();
   return task;
 }
