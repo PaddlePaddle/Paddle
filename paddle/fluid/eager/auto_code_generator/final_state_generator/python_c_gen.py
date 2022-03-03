@@ -14,7 +14,7 @@
 
 import os
 import argparse
-from eager_gen import ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+from eager_gen import yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
 
 atype_to_parsing_function = {
     "bool": "CastPyArg2Boolean",
@@ -27,21 +27,9 @@ atype_to_parsing_function = {
     "long[]": "CastPyArg2Longs",
     "float[]": "CastPyArg2Floats",
     "double[]": "CastPyArg2Float64s",
-    "string[]": "CastPyArg2Strings"
-}
-
-atype_to_cxx_type = {
-    "bool": "bool",
-    "int": "int",
-    "long": "long",
-    "float": "float",
-    "string": "std::string",
-    "bool[]": "std::vector<bool>",
-    "int[]": "std::vector<int>",
-    "long[]": "std::vector<long>",
-    "float[]": "std::vector<float>",
-    "double[]": "std::vector<double>",
-    "string[]": "std::vector<std::string>"
+    "string[]": "CastPyArg2Strings",
+    "Scalar": "CastPyArg2Scalar",
+    "ScalarArray": "CastPyArg2ScalarArray"
 }
 
 
@@ -56,10 +44,10 @@ def ParseArguments():
 
 
 def GetCxxType(atype):
-    if atype not in atype_to_cxx_type.keys():
+    if atype not in yaml_types_mapping.keys():
         assert False
 
-    return atype_to_cxx_type[atype]
+    return yaml_types_mapping[atype]
 
 
 def FindParsingFunctionFromAttributeType(atype):

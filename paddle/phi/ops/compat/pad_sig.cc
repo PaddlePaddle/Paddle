@@ -1,3 +1,4 @@
+
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,38 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <chrono>
-#include <cstdint>
-#include <vector>
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace paddle {
-namespace distributed {
+namespace phi {
 
-// TODO(shenliang03): To support AVG for reduce
-enum class ReduceOp : std::uint8_t { SUM = 0, AVG, MAX, MIN, PRODUCT };
+KernelSignature PadGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("pad_grad",
+                         {GradVarName("Out")},
+                         {"paddings", "pad_value"},
+                         {GradVarName("X")});
+}
 
-struct AllreduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-};
-
-struct BroadcastOptions {
-  int source_rank = 0;
-  int source_root = 0;
-};
-
-struct BarrierOptions {
-  std::vector<int> place_ids;
-};
-
-struct ReduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-  int root_rank = 0;
-};
-
-struct ScatterOptions {
-  int root_rank = 0;
-};
-
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace phi
+PD_REGISTER_ARG_MAPPING_FN(pad_grad, phi::PadGradOpArgumentMapping);

@@ -14,13 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/backend.h"
 
 namespace paddle {
-namespace framework {
+namespace experimental {
+namespace sparse {
 
-// Load custom kernel lib and register
-void LoadCustomKernelLib(const std::string& dso_lib_path, void* dso_handle);
+Tensor to_dense_impl(const Tensor& x, Backend backend);
 
-}  // namespace framework
+Tensor to_sparse_coo_impl(const Tensor& x,
+                          Backend backend,
+                          const int64_t sparse_dim);
+
+Tensor to_sparse_csr_impl(const Tensor& x, Backend backend);
+
+}  // namespace sparse
+}  // namespace experimental
 }  // namespace paddle
