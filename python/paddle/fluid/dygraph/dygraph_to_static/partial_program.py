@@ -61,7 +61,8 @@ class NestSequence(object):
     def _get_var_ids(self):
         var_ids = []
         for idx, var in enumerate(self.__input_list):
-            if isinstance(var, (framework.Variable, core.VarBase)):
+            if isinstance(var, (framework.Variable, core.VarBase,
+                                core.eager.Tensor)):
                 var_ids.append(idx)
 
         return var_ids
@@ -73,7 +74,8 @@ class NestSequence(object):
         if need_check:
             warning_types = set()
             for var in self.__input_list:
-                if not isinstance(var, (framework.Variable, core.VarBase)):
+                if not isinstance(var, (framework.Variable, core.VarBase,
+                                        core.eager.Tensor)):
                     warning_types.add(type(var))
             if warning_types:
                 logging_utils.warn(
@@ -301,10 +303,17 @@ class PartialProgramLayer:
             for name in block.vars:
                 if "@GRAD" in name:
                     var_desc = block.vars[name].desc
-                    var_base = core.VarBase(var_desc.dtype(),
-                                            var_desc.shape(),
-                                            var_desc.name(),
-                                            var_desc.type(), False)
+                    var_base = None
+                    if not core._in_eager_mode():
+                        var_base = core.VarBase(var_desc.dtype(),
+                                                var_desc.shape(),
+                                                var_desc.name(),
+                                                var_desc.type(), False)
+                    else:
+                        var_base = core.eager.Tensor(var_desc.dtype(),
+                                                     var_desc.shape(),
+                                                     var_desc.name(),
+                                                     var_desc.type(), False)
                     double_grads.append(var_base)
         return self._valid_vars(double_grads)
 
@@ -386,13 +395,22 @@ class PartialProgramLayer:
         expected_place = framework._current_expected_place()
         for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
-                var = core.VarBase(
-                    value=value,
-                    name=self._inputs[i].desc.name(),
-                    persistable=False,
-                    place=expected_place,
-                    zero_copy=True)
-            elif isinstance(value, core.VarBase):
+                var = None
+                if not core._in_eager_mode():
+                    var = core.VarBase(
+                        value=value,
+                        name=self._inputs[i].desc.name(),
+                        persistable=False,
+                        place=expected_place,
+                        zero_copy=True)
+                else:
+                    var = core.eager.Tensor(
+                        value=value,
+                        name=self._inputs[i].desc.name(),
+                        persistable=False,
+                        place=expected_place,
+                        zero_copy=True)
+            elif isinstance(value, (core.VarBase, core.eager.Tensor)):
                 # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
                 # into CUDAPlace when it's as input of multi Ops. so we move it in advance
                 # to avoid this problem.
@@ -411,9 +429,16 @@ class PartialProgramLayer:
             var = self._outputs[var_id]
             assert isinstance(var, framework.Variable)
             var_desc = var.desc
-            var_base = core.VarBase(var_desc.dtype(),
-                                    var_desc.shape(),
-                                    var_desc.name(), var_desc.type(), False)
+            varbase = None
+            if not core._in_eager_mode():
+                var_base = core.VarBase(var_desc.dtype(),
+                                        var_desc.shape(),
+                                        var_desc.name(), var_desc.type(), False)
+            else:
+                var_base = core.eager.Tensor(var_desc.dtype(),
+                                             var_desc.shape(),
+                                             var_desc.name(),
+                                             var_desc.type(), False)
             return var_base
 
         # Create VarBase to receive output data.
@@ -423,12 +448,19 @@ class PartialProgramLayer:
 
     def _create_scope_vec(self):
         # Hold forward variables
-        tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
-                                     "program_out_scope",
-                                     core.VarDesc.VarType.STEP_SCOPES, True)
+        tmp_scope_vec = None
+        if not core._in_eager_mode():
+            tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
+                                         "program_out_scope",
+                                         core.VarDesc.VarType.STEP_SCOPES, True)
+            # TODO(jiabin): Support this later.
+            # else:
+            #     tmp_scope_vec = core.eager.Tensor(core.VarDesc.VarType.FP32, [],
+            #                                 "program_out_scope",
+            #                                 core.VarDesc.VarType.STEP_SCOPES, True)
 
-        inner_scope = core.Scope()
-        tmp_scope_vec.value().set_scope(inner_scope)
+            inner_scope = core.Scope()
+            tmp_scope_vec.value().set_scope(inner_scope)
         return tmp_scope_vec
 
     def _restore_out(self, out_vars):
@@ -450,7 +482,8 @@ class PartialProgramLayer:
         return main_program.clone(for_test=True)
 
     def _is_no_value(self, var):
-        if isinstance(var, core.VarBase) and var.shape == [1]:
+        if isinstance(var,
+                      (core.VarBase, core.eager.Tensor)) and var.shape == [1]:
             # NOTE: .numpy() will insert MemcpySync operation, it hits performance.
             if var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
                 return True
@@ -460,7 +493,7 @@ class PartialProgramLayer:
         """
         Removes invalid value for various-length return statement
         """
-        if isinstance(out_vars, core.VarBase):
+        if isinstance(out_vars, (core.VarBase, core.eager.Tensor)):
             if self._is_no_value(out_vars):
                 return None
             return out_vars
@@ -527,7 +560,7 @@ class PartialProgramLayer:
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
             # self._params constains parameters and buffers with persistable=True.
-            if not isinstance(var, core.VarBase):
+            if not isinstance(var, (core.VarBase, core.eager.Tensor)):
                 raise TypeError(
                     'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.
                     format(i, type(var)))
@@ -559,10 +592,18 @@ def _create_fake_var():
     """
     Create a fake_var (force on CPU) to handle empty input or output
     """
-    return [
-        core.VarBase(core.VarDesc.VarType.FP32, [], "Fake_var",
-                     core.VarDesc.VarType.RAW, False)
-    ]
+    if not core._in_eager_mode():
+        return [
+            core.VarBase(core.VarDesc.VarType.FP32, [], "Fake_var",
+                         core.VarDesc.VarType.RAW, False)
+        ]
+    else:
+        return []
+        # TODO(jiabin): Support this later
+        # return [
+        #     core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
+        #                 core.VarDesc.VarType.RAW, False)
+        # ]
 
 
 def partial_program_from(concrete_program):
