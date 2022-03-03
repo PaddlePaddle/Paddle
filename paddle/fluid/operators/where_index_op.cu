@@ -305,8 +305,6 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     // 1.3 launch CountKernl
     GetBlockCountKernel<T, int64_t, VecSize><<<grid, block, 0, stream>>>(
         cond_data, count_data, numel, main_offset);
-    memory::Copy(platform::CPUPlace(), h_stride_array, dev_ctx.GetPlace(),
-                 count_data, sizeof(int64_t), dev_ctx.stream());
     // 2.1 alloc cumsum data for CoutBlock prefix
     auto cumsum_mem =
         memory::Alloc(dev_ctx, size_count_block * sizeof(int64_t));
@@ -318,14 +316,15 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
                    2><<<1, block_c, 0, stream>>>(
         count_data, cumsum_data, size_count_block, main_offset_c,
         kps::AddFunctor<int64_t>());
+    dev_ctx.Wait();
     // 3.1 set temp ptr for in;
     // 3.1 alloc for out
     // 3.1.1 get true_num for gpu place the last cumsum is the true_num
-    memory::Copy(platform::CPUPlace(), h_stride_array + 1, dev_ctx.GetPlace(),
+    memory::Copy(platform::CPUPlace(), h_stride_array, dev_ctx.GetPlace(),
                  cumsum_data + need_grids, sizeof(int64_t), dev_ctx.stream());
     // 3.1.2 allock for out with total_true_num
     out->Resize(
-        phi::make_ddim({static_cast<int64_t>(h_stride_array[1]), rank}));
+        phi::make_ddim({static_cast<int64_t>(h_stride_array[0]), rank}));
     auto out_data = out->mutable_data<int64_t>(context.GetPlace());
     // 3.2 get true data's index according to cond_data and cumsum_data
     int64_t *tmp_in = nullptr;
