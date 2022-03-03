@@ -90,10 +90,10 @@ class TrilTriuGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-DELCARE_INFER_SHAPE_FUNCTOR(tril_triu, TriuTrilInferShapeFunctor,
-                            PT_INFER_META(phi::TriuTrilInferMeta));
+DELCARE_INFER_SHAPE_FUNCTOR(tril_triu, TrilTriuInferShapeFunctor,
+                            PT_INFER_META(phi::TrilTriuInferMeta));
 REGISTER_OPERATOR(tril_triu, ops::TrilTriuOp, ops::TrilTriuOpMaker,
                   ops::TrilTriuGradOpMaker<paddle::framework::OpDesc>,
                   ops::TrilTriuGradOpMaker<paddle::imperative::OpBase>,
-                  TriuTrilInferShapeFunctor);
+                  TrilTriuInferShapeFunctor);
 REGISTER_OPERATOR(tril_triu_grad, ops::TrilTriuGradOp);
