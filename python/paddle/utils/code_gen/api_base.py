@@ -43,7 +43,9 @@ class BaseAPI(object):
             self.is_base_api = False
             self.invoke = api_item_yaml['invoke']
         else:
-            self.infer_meta = self.parse_infer_meta(api_item_yaml['infer_meta'])
+            if 'infer_meta' in api_item_yaml:
+                self.infer_meta = self.parse_infer_meta(api_item_yaml[
+                    'infer_meta'])
             self.kernel = self.parse_kernel(api_item_yaml['kernel'])
             self.support_selected_rows_kernel = False if len(self.kernel[
                 'func']) == 1 else True
@@ -182,9 +184,9 @@ class BaseAPI(object):
                 'Tensor': 'Tensor',
                 'Tensor[]': 'std::vector<Tensor>'
             }
-            if re.search(r'\(\w*\)', output_item):
+            if re.search(r'\([a-zA-Z0-9_@]*\)', output_item):
                 result = re.search(
-                    r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*\((?P<name>\w+)\)",
+                    r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*\((?P<name>[a-zA-Z0-9_@]+)\)",
                     output_item)
                 out_type = result.group('out_type')
                 assert out_type in output_type_map, \
@@ -499,10 +501,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
     def get_kernel_args(self, code_indent):
         input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
-            'const Tensor &': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&':
-            'const std::vector<phi::DenseTensor>&',
-            'const std::vector<Tensor> &':
             'const std::vector<phi::DenseTensor>&',
             'const paddle::optional<Tensor>&':
             'paddle::optional<const phi::DenseTensor&>',
@@ -592,7 +591,6 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
     def get_selected_rows_kernel_args(self, code_indent):
         input_trans_map = {
             'const Tensor&': 'const phi::SelectedRows&',
-            'const Tensor &': 'const phi::SelectedRows&',
             'const paddle::optional<Tensor>&':
             'paddle::optional<const phi::SelectedRows&>'
         }
