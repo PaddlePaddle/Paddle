@@ -16,6 +16,8 @@ import os
 import argparse
 from eager_gen import yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
 
+skipped_fwd_api_names = set(["scale"])
+
 atype_to_parsing_function = {
     "bool": "CastPyArg2Boolean",
     "int": "CastPyArg2Int",
@@ -30,10 +32,10 @@ atype_to_parsing_function = {
     "std::vector<float>": "CastPyArg2Floats",
     "std::vector<double>": "CastPyArg2Float64s",
     "std::vector<std::string>": "CastPyArg2Strings",
-    "Scalar": "CastPyArg2Scalar",
-    "ScalarArray": "CastPyArg2ScalarArray",
-    "Backend": "CastPyArg2Backend",
-    "DataType": "CastPyArg2DataType",
+    "paddle::experimental::Scalar": "CastPyArg2Scalar",
+    "paddle::experimental::ScalarArray": "CastPyArg2ScalarArray",
+    "paddle::experimental::Backend": "CastPyArg2Backend",
+    "paddle::experimental::DataType": "CastPyArg2DataType",
 }
 
 
@@ -215,9 +217,13 @@ def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
 #pragma once
 
 #include  "pybind11/detail/common.h"
+#include  "paddle/phi/api/all.h"
+#include  "paddle/phi/common/backend.h"
+#include  "paddle/phi/common/data_type.h"
+#include  "paddle/phi/common/scalar.h"
+#include  "paddle/phi/common/scalar_array.h"
 #include  "paddle/fluid/pybind/op_function_common.h"
 #include  "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include  "paddle/phi/api/all.h"
 #include  "paddle/fluid/pybind/exception.h"
 #include  <Python.h>
 
@@ -254,6 +260,7 @@ if __name__ == "__main__":
     python_c_function_list = []
     python_c_function_reg_list = []
     for fwd_api in fwd_api_list:
+
         # We only generate Ops with grad
         is_forward_only = False
         if 'backward' not in fwd_api.keys():
@@ -266,6 +273,9 @@ if __name__ == "__main__":
         fwd_api_name = fwd_api['api']
         fwd_args_str = fwd_api['args']
         fwd_returns_str = fwd_api['output']
+
+        if fwd_api_name in skipped_fwd_api_names:
+            continue
 
         # Parse Dispensable Inputs
         optional_inputs = []

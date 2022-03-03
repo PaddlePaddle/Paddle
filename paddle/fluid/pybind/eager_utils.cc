@@ -851,7 +851,7 @@ paddle::experimental::Backend CastPyArg2Backend(PyObject* obj,
     return phi::TransToPhiBackend(place);
   }
 
-  return {0};
+  return paddle::experimental::Backend::CPU;
 }
 
 paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
