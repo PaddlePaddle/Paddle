@@ -330,7 +330,7 @@ function check_style() {
 
     # pre-commit use python3.8.0 
     OLD_PATH=$PATH
-    export PATH=export PATH=/usr/local/python3.8.0/bin:/usr/local/python3.8.0/include:/usr/local/bin:${PATH}
+    export PATH=/usr/local/python3.8.0/bin:/usr/local/python3.8.0/include:/usr/local/bin:${PATH}
 
     pre-commit install
     clang-format --version
