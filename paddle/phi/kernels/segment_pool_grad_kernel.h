@@ -24,7 +24,7 @@ void SegmentPoolGradKernel(const Context& ctx,
                            const DenseTensor& x,
                            const DenseTensor& segment_ids,
                            const DenseTensor& out,
-                           const DenseTensor& summed_ids,
+                           paddle::optional<const DenseTensor&> summed_ids,
                            const DenseTensor& out_grad,
                            const std::string& pooltype,
                            DenseTensor* x_grad);

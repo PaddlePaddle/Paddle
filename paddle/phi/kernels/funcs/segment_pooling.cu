@@ -415,14 +415,15 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  const DenseTensor* summed_ids = nullptr,
+                  paddle::optional<const DenseTensor&> summed_ids,
                   const std::string pooltype = "SUM") {
     if (pooltype == "MAX" || pooltype == "MIN") {
       SegmentPoolCUDAGradFunctor<T, IndexT>(
           context, input, segments, output, out_grad, in_grad, pooltype);
     } else if (pooltype == "MEAN") {
       DenseTensor mean_grad;
-      mean_grad.mutable_data<T>(input.dims(), context.GetPlace());
+      mean_grad.Resize(input.dims());
+      context.template Alloc<T>(&mean_grad);
       paddle::framework::TensorCopy(
           out_grad, context.GetPlace(), context, &mean_grad);
       int len = output.dims()[0];

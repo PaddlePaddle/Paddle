@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/segment_pooling.h"
 #include <string>
 #include "paddle/phi/backends/cpu/cpu_context.h"
-
-#include "paddle/fluid/framework/eigen.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 namespace funcs {
@@ -55,9 +54,8 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
       Tensor in_t = input.Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
-      auto in_e =
-          paddle::framework::EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));
-      auto out_e = paddle::framework::EigenVector<T>::Flatten(out_t);
+      auto in_e = EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));
+      auto out_e = EigenVector<T>::Flatten(out_t);
 
       auto reduce_dim = Eigen::array<int, 1>({{0}});
       if (pooltype == "MEAN") {
@@ -90,7 +88,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  const DenseTensor* index = nullptr,
+                  paddle::optional<const DenseTensor&> index,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
     auto& place = *context.eigen_device();
@@ -115,8 +113,8 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
       Tensor in_g_t = in_grad->Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
-      auto in_g_e = paddle::framework::EigenMatrix<T>::From(in_g_t, {h, w});
-      auto out_g_e = paddle::framework::EigenMatrix<T>::From(out_g_t, {1, w});
+      auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
+      auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
       Eigen::DSizes<int, 2> bcast(h, 1);
 
       if (pooltype == "MEAN") {
@@ -126,8 +124,8 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
       } else if (pooltype == "MAX" || pooltype == "MIN") {
         Tensor out_t = output.Slice(curent_id, curent_id + 1);
         Tensor in_t = input.Slice(last_idx, idx);
-        auto in_e = paddle::framework::EigenMatrix<T>::From(in_t, {h, w});
-        auto out_e = paddle::framework::EigenMatrix<T>::From(out_t, {1, w});
+        auto in_e = EigenMatrix<T>::From(in_t, {h, w});
+        auto out_e = EigenMatrix<T>::From(out_t, {1, w});
         in_g_e.device(place) =
             (in_e == out_e.broadcast(bcast)).template cast<T>() *
             out_g_e.broadcast(bcast);

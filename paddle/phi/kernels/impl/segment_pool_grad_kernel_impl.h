@@ -27,7 +27,7 @@ void SegmentPoolGradKernel(const Context& context,
                            const DenseTensor& x,
                            const DenseTensor& segment_ids,
                            const DenseTensor& out,
-                           const DenseTensor& summed_ids,
+                           paddle::optional<const DenseTensor&> summed_ids,
                            const DenseTensor& out_grad,
                            const std::string& pooltype,
                            DenseTensor* x_grad) {
@@ -38,10 +38,10 @@ void SegmentPoolGradKernel(const Context& context,
   auto index_type = paddle::framework::TransToProtoVarType(segment_ids.type());
   if (index_type == paddle::framework::proto::VarType::INT32) {
     phi::funcs::SegmentPoolGradFunctor<Context, T, int> pool;
-    pool(context, x, out, out_grad, segment_ids, x_grad, &summed_ids, pooltype);
+    pool(context, x, out, out_grad, segment_ids, x_grad, summed_ids, pooltype);
   } else if (index_type == paddle::framework::proto::VarType::INT64) {
     phi::funcs::SegmentPoolGradFunctor<Context, T, int64_t> pool;
-    pool(context, x, out, out_grad, segment_ids, x_grad, &summed_ids, pooltype);
+    pool(context, x, out, out_grad, segment_ids, x_grad, summed_ids, pooltype);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupported index type, Expected int, int64, but got %s.",
