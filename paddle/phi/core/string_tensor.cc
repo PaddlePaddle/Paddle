@@ -35,6 +35,18 @@ StringTensor::StringTensor(const StringTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
 }
 
+StringTensor& StringTensor::operator=(const StringTensor& other) {
+  meta_ = other.meta();
+  holder_ = other.holder_;
+  return *this;
+}
+
+StringTensor& StringTensor::operator=(StringTensor&& other) {
+  meta_ = std::move(other.meta_);
+  std::swap(holder_, other.holder_);
+  return *this;
+}
+
 int64_t StringTensor::numel() const {
   if (meta_.is_scalar) {
     return 1;
@@ -43,7 +55,7 @@ int64_t StringTensor::numel() const {
 }
 
 bool StringTensor::IsSharedWith(const StringTensor& b) const {
-  return holder_ && holder_ == b.Holder();
+  return holder_ && holder_ == b.holder_;
 }
 
 const Place& StringTensor::place() const {
@@ -55,6 +67,15 @@ const Place& StringTensor::place() const {
 }
 
 const dtype::pstring* StringTensor::data() const {
+  PADDLE_ENFORCE_NOT_NULL(
+      holder_,
+      paddle::platform::errors::PreconditionNotMet(
+          "The storage must be valid when call the mutable data function."));
+  return reinterpret_cast<const dtype::pstring*>(
+      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
+}
+
+dtype::pstring* StringTensor::data() {
   PADDLE_ENFORCE_NOT_NULL(
       holder_,
       paddle::platform::errors::PreconditionNotMet(

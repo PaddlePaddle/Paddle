@@ -51,6 +51,10 @@ class StringTensor : public TensorBase,
 
   StringTensor(const StringTensor& other);
 
+  /// \brief StringTensor shallow copy assignment.
+  StringTensor& operator=(const StringTensor& other);
+
+  StringTensor& operator=(StringTensor&& other);
   /// \brief Destroy the tensor object and release exclusive resources.
   virtual ~StringTensor() = default;
 
@@ -81,7 +85,7 @@ class StringTensor : public TensorBase,
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept override { return DataLayout::STRINGS; }
+  DataLayout layout() const noexcept override { return DataLayout::STRING; }
 
   /// \brief Sets the meta information of the tensor. Only when the original
   /// attribute of Tensor is incomplete, can it be reset.
@@ -102,8 +106,6 @@ class StringTensor : public TensorBase,
   /// \return Whether the storage is shared with other objects.
   bool IsSharedWith(const StringTensor& b) const;
 
-  const std::shared_ptr<phi::Allocation>& Holder() const { return holder_; }
-
   StringTensor& Resize(const DDim& dims);
 
   /// \brief Returns the actual storage size occupied by tensor, may be larger
@@ -114,6 +116,7 @@ class StringTensor : public TensorBase,
   /// \brief Get the const data pointer value of pstring type.
   /// \return The const data pointer value of pstring type.
   const dtype::pstring* data() const;
+  dtype::pstring* data();
 
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
