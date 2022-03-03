@@ -48,6 +48,11 @@ class Pipeline:
         self._init_programs()
 
         self.is_shutdown = False
+        
+        if paddle.distributed.ParallelEnv().nranks > 1:
+            paddle.set_device('gpu:%d' % 
+                        paddle.distributed.ParallelEnv().dev_id)
+            paddle.distributed.init_parallel_env()
 
     def _init_programs(self):
         self._main_program = fluid.Program()
@@ -138,6 +143,8 @@ class Pipeline:
         except:
             raise StopIteration
 
+        if paddle.distributed.ParallelEnv().nranks > 1:
+            paddle.distributed.barrier()
         return {k: v for k, v in zip(self._out_names, self._output_vars)}
 
     # Python 2 compatable
