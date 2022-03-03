@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <iostream>
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -24,6 +23,15 @@
 
 namespace details {
 using Tensor = paddle::experimental::Tensor;
+
+static std::vector<Tensor> DereferenceTensors(
+    const std::vector<Tensor *> &tensor_ptr) {
+  std::vector<Tensor> res;
+  for (auto *t : tensor_ptr) {
+    res.emplace_back(*t);
+  }
+  return res;
+}
 
 static std::vector<std::string> GetTensorsName(const std::vector<Tensor> &ins) {
   std::vector<std::string> in_names;
@@ -253,6 +261,99 @@ inline void RunProgramAPI(
   // #endif
 }
 
+inline void RunProgramGradAPI(
+    const std::vector<paddle::experimental::Tensor> &x,
+    const std::vector<paddle::experimental::Tensor> &params,
+    const std::vector<paddle::experimental::Tensor> &out_grad,
+    const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
+    const paddle::framework::AttributeMap &attrs,
+    std::vector<paddle::experimental::Tensor *> &x_grad,      // NOLINT
+    std::vector<paddle::experimental::Tensor *> &params_grad  // NOLINT
+    ) {
+  VLOG(2) << "RunProgramGradOpKernel Compute";
+  // if all output vars are set to stop_gradient, grad op no need to executed
+  if (x_grad.empty() && params_grad.empty()) return;
+
+  auto *global_block =
+      BOOST_GET_CONST(paddle::framework::BlockDesc *, attrs.at("global_block"));
+  auto orig_end_op_index = BOOST_GET_CONST(int64_t, attrs.at("end_op_index"));
+
+  auto program_id = BOOST_GET_CONST(int64_t, attrs.at("program_id"));
+  // NOTE: skip `shape` and `fill_constant` op created by
+  // fluid.backward.gradients, one forward output will generate one `shape`
+  // and `fill_constant`
+  int64_t start_op_index = orig_end_op_index + (out_grad.size() * 2);
+  int64_t end_op_index = global_block->OpSize();
+
+  auto *out_scope_vec = &step_scope;
+  PADDLE_ENFORCE_EQ(
+      out_scope_vec->size(), 1,
+      paddle::platform::errors::InvalidArgument(
+          "The OutScope of RunProgramGradOp should only hold one scope."));
+
+  paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
+  auto sub_scope_num = global_inner_scope->kids().size();
+  VLOG(2) << "The number of sub scopes before backward: " << sub_scope_num;
+  PADDLE_ENFORCE_GT(sub_scope_num, 0,
+                    paddle::platform::errors::InvalidArgument(
+                        "The OutScope of RunProgramGradOp should hold at "
+                        "least one sub scope."));
+
+  auto &scope = *(global_inner_scope->kids().front());
+  const auto &place = egr::Controller::Instance().GetExpectedPlace();
+
+  if (end_op_index > start_op_index) {
+    auto out_grad_names = details::GetTensorsName(out_grad);
+    // NOTE: after PR22939 [Add double grad] merged, the grad op maker's
+    //   SetOutput will set to None if the input var stop_gradient=True,
+    //   it will cause an NotFound error when ctx.OutputNames() is called
+    std::vector<std::string> x_grad_names;
+    std::vector<std::string> param_grad_names;
+    if (!x_grad.empty()) {
+      x_grad_names = details::GetTensorsName(x_grad);
+    }
+    if (!params_grad.empty()) {
+      param_grad_names = details::GetTensorsName(params_grad);
+    }
+
+    // Step 2. prepare executor and scope
+    auto *program = global_block->Program();
+    auto cache_info = paddle::framework::GetExecutorInfoFromCache(
+        *program, place, start_op_index, end_op_index,
+        /*is_grad*/ true, program_id, &scope);
+    auto &parallel_executor = cache_info.first;
+
+    auto &skip_eager_delete_vars =
+        paddle::framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
+            program_id, true);
+    if (cache_info.second /*is_new_created*/) {
+      parallel_executor->SkipMemoryReuse(/*scope_idx=*/0, out_grad_names);
+
+      skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
+                                    x_grad_names.begin(), x_grad_names.end());
+      paddle::framework::details::AppendSkipDeletionVars(
+          param_grad_names, &skip_eager_delete_vars);
+    }
+
+    details::ShareTensorsIntoScope(out_grad, &scope);
+    // Debug info: scope info when run end
+    VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
+
+    // Step 3. run ops
+    parallel_executor->RunWithoutFetch(
+        /*skip_eager_delete_vars=*/skip_eager_delete_vars);
+  }
+
+  // Step 4. get outputs
+  details::ShareTensorsFromScope(x_grad, *global_block, &scope);
+  details::ShareTensorsFromScope(params_grad, *global_block, &scope);
+
+  // Step5. drop current scope
+  global_inner_scope->DeleteScope(&scope);
+  VLOG(2) << "The number of sub scopes after backward: "
+          << global_inner_scope->kids().size();
+}
+
 class GradNodeRunProgram : public egr::GradNodeBase {
  public:
   GradNodeRunProgram(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
@@ -263,18 +364,70 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>> &grads)
       override {
-    std::cout << "grads.size() : " << grads.size() << std::endl;
-    if (grads.size() > 0) {
-      std::cout << "grads[0].size() : " << grads[0].size() << std::endl;
-    }
-    paddle::experimental::Tensor out;
-    // TODO(dev): Add RunProgramGradAPI
+    VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
+    PADDLE_ENFORCE_GT(
+        grads.size(), 1,
+        paddle::platform::errors::InvalidArgument(
+            "The out_grads.size() of RunProgramGradOp should be equal to 1."));
 
-    return {{out}};
+    VLOG(3) << "out_grads[0].size() : " << grads[0].size();
+    std::vector<paddle::experimental::Tensor> x_grad(x_.size());
+    std::vector<paddle::experimental::Tensor> params_grad(params_.size());
+
+    auto x_grad_ptr = ConstructGradTensors(x_, &x_grad);
+    auto params_grad_ptr = ConstructGradTensors(params_, &params_grad);
+
+    RunProgramGradAPI(x_, params_, grads[0], step_scope_, attrs_, x_grad_ptr,
+                      params_grad_ptr);
+    VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
+    return {x_grad, params_grad};
   }
 
-  void SetTensorWrappers_X(
+  // SetAttrMap
+  void SetAttrMap(const paddle::framework::AttributeMap &attrs) {
+    attrs_ = attrs_;
+  }
+
+  void SetTensor_X(const std::vector<paddle::experimental::Tensor> &tensors) {
+    //  for(const auto& t : tensors) {
+    //       x_.emplace_back(egr::TensorWrapper(t, true /*full_reserved*/) );
+    //   }
+    x_ = tensors;
+  }
+
+  void SetTensor_Params(
       const std::vector<paddle::experimental::Tensor> &tensors) {
-    std::cout << "GradNodeRunProgram::SetTensorWrappers_X" << std::endl;
+    //  for(const auto& t : tensors) {
+    //       params_.emplace_back(egr::TensorWrapper(t, true /*full_reserved*/)
+    //       );
+    //   }
+    params_ = tensors;
   }
+
+  void SetStepScope(const std::vector<paddle::framework::Scope *> &scopes) {
+    step_scope_ = scopes;
+  }
+
+ protected:
+  std::vector<paddle::experimental::Tensor *> ConstructGradTensors(
+      const std::vector<paddle::experimental::Tensor> &fwd_tensors,
+      std::vector<paddle::experimental::Tensor> *grad_tensors) {
+    std::vector<paddle::experimental::Tensor *> res;
+    for (auto &fwd_t : fwd_tensors) {
+      grad_tensors->emplace_back();
+      auto &grad_t = grad_tensors->back();
+      grad_t.set_name(fwd_t.name() + "@GRAD");
+      res.emplace_back(&grad_t);
+    }
+    return res;
+  }
+
+ private:
+  // TensorWrappers
+  std::vector<paddle::experimental::Tensor> x_;
+  std::vector<paddle::experimental::Tensor> params_;
+  std::vector<paddle::framework::Scope *> step_scope_;
+
+  // Attribute Map
+  paddle::framework::AttributeMap attrs_;
 };

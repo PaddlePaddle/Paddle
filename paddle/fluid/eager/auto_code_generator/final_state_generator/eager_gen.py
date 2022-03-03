@@ -1006,7 +1006,7 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
-#include "paddle/fluid/eager/api/to_static/run_program_op_node.h"
+#include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
 """
     file_contents += node_definition_str
@@ -1049,7 +1049,7 @@ def GenerateForwardHFile(filepath, forward_function_declaration_str):
 #include "paddle/phi/api/all.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/eager/api/to_static/run_program_op_func.h"
+#include "paddle/fluid/eager/to_static/run_program_op_func.h"
 
 """
     file_contents += GenerateCoreOpInfoDeclaration()

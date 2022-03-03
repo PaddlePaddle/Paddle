@@ -52,7 +52,10 @@ class TestRunProgram(unittest.TestCase):
             _C_ops.run_program([x_t, y_t], [fake_var], [out_t], [scope],
                                [fake_var], *attrs)
 
+            out_t.backward()
+
             print(out_t)
+            print(x_t.grad)
 
 
 if __name__ == '__main__':

@@ -41,8 +41,8 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
     }
     std::cout << "ThrowExceptionToPython" << std::endl;
     ThrowExceptionToPython(std::current_exception());
-    Py_RETURN_NONE;
   }
+  Py_RETURN_NONE;
 }
 
 static PyMethodDef CustomEagerFinalStateMethods[] = {
