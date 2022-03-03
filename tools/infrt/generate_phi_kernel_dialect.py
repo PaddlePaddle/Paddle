@@ -86,7 +86,7 @@ def generate_inputs_info(input_info):
 def generate_arguments_info(op_name, input_info, attr_info):
     input_args = generate_inputs_info(input_info)
     attr_args = generate_attrs_info(op_name, attr_info)
-    context_args = "CPU_Context:$dev_ctx"
+    context_args = "Context:$dev_ctx"
     argument_list = [context_args] + input_args.split(",") + attr_args.split(",")
     while ("" in argument_list):
         argument_list.remove("")
