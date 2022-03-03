@@ -70,7 +70,7 @@ paddle::optional<phi::MetaTensor> MakeMetaTensor(
   return {paddle::none};
 }
 
-inline std::vector<phi::MetaTensor> MakeMetaTensor(
+std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<const phi::DenseTensor*>& tensors) {
   std::vector<phi::MetaTensor> meta_tensors;
   meta_tensors.reserve(tensors.size());
