@@ -215,8 +215,12 @@ def ParseYamlReturns(string):
 
     returns = [x.strip() for x in string.strip().split(",")]
     for i in range(len(returns)):
-        ret = returns[i]
-        returns_list.append(["", ret, i])
+        ret_type = returns[i]
+
+        assert ret_type in yaml_types_mapping.keys()
+        ret_type = yaml_types_mapping[ret_type]
+
+        returns_list.append(["", ret_type, i])
 
     return returns_list
 
@@ -536,7 +540,7 @@ class {} : public egr::GradNodeBase {{
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads) override;
-  
+  std::string name() override {{ return \" {} \"; }}
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
   // SetAttributes
@@ -551,8 +555,9 @@ class {} : public egr::GradNodeBase {{
 """
     node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
         grad_node_name, grad_node_name, grad_node_name, grad_node_name,
-        set_tensor_wrapper_methods_str, set_attribute_methods_str,
-        tensor_wrapper_members_str, attribute_members_str)
+        grad_node_name, set_tensor_wrapper_methods_str,
+        set_attribute_methods_str, tensor_wrapper_members_str,
+        attribute_members_str)
 
     return node_declaration_str
 
