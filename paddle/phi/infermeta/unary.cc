@@ -872,11 +872,11 @@ void UnfoldInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
-void OneHotInferMeta(const MetaTensor& x,
-                     int32_t depth,
-                     int dtype,
-                     bool allow_out_of_range,
-                     MetaTensor* out) {
+void OneHotRawInferMeta(const MetaTensor& x,
+                        int32_t depth,
+                        int dtype,
+                        bool allow_out_of_range,
+                        MetaTensor* out) {
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(
       x_dims.size(),
@@ -888,6 +888,22 @@ void OneHotInferMeta(const MetaTensor& x,
   auto out_dims = phi::make_ddim(out_dims_vec);
   out->set_dims(out_dims);
   out->share_lod(x);
+  // when we need include protobuf when we convert int dtype to phi::DataType
+}
+
+void OneHotInferMeta(const MetaTensor& x, int32_t depth, MetaTensor* out) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      1,
+      phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
+
+  auto out_dims_vec = phi::vectorize(x_dims);
+  out_dims_vec.push_back(depth);
+  auto out_dims = phi::make_ddim(out_dims_vec);
+  out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(phi::DataType::FLOAT32);
 }
 
 void DiagInferMeta(const MetaTensor& x,

@@ -297,7 +297,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
 
   auto& input_names = std::get<0>(signature.args);
   auto& attr_names = std::get<1>(signature.args);
-  // auto& output_names = std::get<2>(signature.args);
+  auto& output_names = std::get<2>(signature.args);
 
   auto kernels_map =
       phi::KernelFactory::Instance().SelectKernelMap(signature.name);
@@ -507,6 +507,26 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
         PADDLE_THROW(platform::errors::Unimplemented(
             "Get value from variable only support int yet"));
       }
+    }
+  }
+
+  for (auto& out_name : output_names) {
+    if (ctx->HasOutputs(out_name)) {
+      auto output_var = ctx->GetOutputVarPtrs(out_name);
+      if (output_var.size() == 1) {
+        infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
+            output_var[0], ctx->IsRuntime()));
+      } else {
+        paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs;
+        outputs.reserve(output_var.size());
+        for (const auto& out : output_var) {
+          outputs.emplace_back(
+              std::make_shared<CompatMetaTensor>(out, ctx->IsRuntime()));
+        }
+        infer_meta_context.EmplaceBackOutputs(std::move(outputs));
+      }
+    } else {
+      infer_meta_context.EmplaceBackOutput({nullptr});
     }
   }
 

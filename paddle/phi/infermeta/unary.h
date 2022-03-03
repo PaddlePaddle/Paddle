@@ -133,11 +133,14 @@ void UnfoldInferMeta(const MetaTensor& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
-void OneHotInferMeta(const MetaTensor& x,
-                     int32_t depth,
-                     int dtype,
-                     bool allow_out_of_range,
-                     MetaTensor* out);
+void OneHotRawInferMeta(const MetaTensor& x,
+                        int32_t depth,
+                        int dtype,
+                        bool allow_out_of_range,
+                        MetaTensor* out);
+
+void OneHotInferMeta(const MetaTensor& x, int32_t depth, MetaTensor* out);
+
 void DiagInferMeta(const MetaTensor& x,
                    int offset,
                    float padding_value,

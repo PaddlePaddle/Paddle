@@ -100,7 +100,7 @@ Out is a LoDTensor:
 namespace ops = paddle::operators;
 
 DELCARE_INFER_SHAPE_FUNCTOR(one_hot_v2, OneHotInferShapeFunctor,
-                            PT_INFER_META(phi::OneHotInferMeta));
+                            PT_INFER_META(phi::OneHotRawInferMeta));
 
 REGISTER_OPERATOR(
     one_hot_v2, ops::OneHotV2Op, ops::OneHotV2OpMaker,

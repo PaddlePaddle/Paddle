@@ -22,9 +22,15 @@ namespace phi {
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int32_t depth,
-                  int dtype,
-                  bool allow_out_of_range,
+                  int32_t num_classes,
                   DenseTensor* out);
+
+template <typename T, typename Context>
+void OneHotRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     int32_t depth,
+                     int dtype,
+                     bool allow_out_of_range,
+                     DenseTensor* out);
 
 }  // namespace phi

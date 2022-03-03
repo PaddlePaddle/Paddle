@@ -24,27 +24,28 @@ import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.framework import Program, program_guard
 
-# class TestOneHotOp(OpTest):
-#     def setUp(self):
-#         self.op_type = 'one_hot_v2'
-#         depth = 10
-#         depth_np = np.array(10).astype('int32')
-#         dimension = 12
-#         x_lod = [[4, 1, 3, 3]]
-#         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
-#         x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-#         out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
+class TestOneHotOp(OpTest):
+    def setUp(self):
+        self.op_type = 'one_hot_v2'
+        depth = 10
+        depth_np = np.array(10).astype('int32')
+        dimension = 12
+        x_lod = [[4, 1, 3, 3]]
+        x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
+        x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-#         for i in range(np.product(x.shape)):
-#             out[i, x[i]] = 1.0
+        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
 
-#         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
-#         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
-#         self.outputs = {'Out': (out, x_lod)}
+        for i in range(np.product(x.shape)):
+            out[i, x[i]] = 1.0
 
-#     def test_check_output(self):
-#         self.check_output(check_dygraph=False)
+        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.outputs = {'Out': (out, x_lod)}
+
+    def test_check_output(self):
+        self.check_output()
 
 
 class TestOneHotOp_attr(OpTest):
@@ -67,151 +68,157 @@ class TestOneHotOp_attr(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
-# class TestOneHotOp_default_dtype(OpTest):
-#     def setUp(self):
-#         self.op_type = 'one_hot_v2'
-#         depth = 10
-#         depth_np = np.array(10).astype('int32')
-#         dimension = 12
-#         x_lod = [[4, 1, 3, 3]]
-#         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
-#         x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
+class TestOneHotOp_default_dtype(OpTest):
+    def setUp(self):
+        self.op_type = 'one_hot_v2'
+        depth = 10
+        depth_np = np.array(10).astype('int32')
+        dimension = 12
+        x_lod = [[4, 1, 3, 3]]
+        x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
+        x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-#         out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
+        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
 
-#         for i in range(np.product(x.shape)):
-#             out[i, x[i]] = 1.0
+        for i in range(np.product(x.shape)):
+            out[i, x[i]] = 1.0
 
-#         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
-#         self.attrs = {}
-#         self.outputs = {'Out': (out, x_lod)}
+        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
+        self.attrs = {}
+        self.outputs = {'Out': (out, x_lod)}
 
-#     def test_check_output(self):
-#         self.check_output(check_dygraph=False)
+    def test_check_output(self):
+        self.check_output()
 
-# class TestOneHotOp_default_dtype_attr(OpTest):
-#     def setUp(self):
-#         self.op_type = 'one_hot_v2'
-#         depth = 10
-#         dimension = 12
-#         x_lod = [[4, 1, 3, 3]]
-#         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
-#         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-#         out = np.zeros(shape=(np.product(x.shape[:-1]), 1,
-#                               depth)).astype('float32')
+class TestOneHotOp_default_dtype_attr(OpTest):
+    def setUp(self):
+        self.op_type = 'one_hot_v2'
+        depth = 10
+        dimension = 12
+        x_lod = [[4, 1, 3, 3]]
+        x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
+        x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-#         for i in range(np.product(x.shape)):
-#             out[i, 0, x[i]] = 1.0
+        out = np.zeros(shape=(np.product(x.shape[:-1]), 1,
+                              depth)).astype('float32')
 
-#         self.inputs = {'X': (x, x_lod)}
-#         self.attrs = {'depth': depth}
-#         self.outputs = {'Out': (out, x_lod)}
+        for i in range(np.product(x.shape)):
+            out[i, 0, x[i]] = 1.0
 
-#     def test_check_output(self):
-#         self.check_output(check_dygraph=False)
+        self.inputs = {'X': (x, x_lod)}
+        self.attrs = {'depth': depth}
+        self.outputs = {'Out': (out, x_lod)}
 
-# class TestOneHotOp_out_of_range(OpTest):
-#     def setUp(self):
-#         self.op_type = 'one_hot_v2'
-#         depth = 10
-#         x_lod = [[4, 1, 3, 3]]
-#         x = [np.random.choice([-1, depth]) for i in range(sum(x_lod[0]))]
-#         x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
+    def test_check_output(self):
+        self.check_output()
 
-#         out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
 
-#         self.inputs = {'X': (x, x_lod)}
-#         self.attrs = {'depth': depth, 'allow_out_of_range': True}
-#         self.outputs = {'Out': (out, x_lod)}
+class TestOneHotOp_out_of_range(OpTest):
+    def setUp(self):
+        self.op_type = 'one_hot_v2'
+        depth = 10
+        x_lod = [[4, 1, 3, 3]]
+        x = [np.random.choice([-1, depth]) for i in range(sum(x_lod[0]))]
+        x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-#     def test_check_output(self):
-#         self.check_output(check_dygraph=False)
+        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
 
-# class TestOneHotOp_exception(unittest.TestCase):
-#     def setUp(self):
-#         self.op_type = 'one_hot_v2'
-#         self.depth = 10
-#         self.place = core.CPUPlace()
-#         self.dimension = 12
-#         self.x = core.LoDTensor()
-#         x_lod = [[4, 1, 3, 3]]
-#         data = [np.random.randint(11, 20) for i in range(sum(x_lod[0]))]
-#         data = np.array(data).astype('int').reshape([sum(x_lod[0]), 1])
-#         self.x.set(data, self.place)
-#         self.x.set_recursive_sequence_lengths(x_lod)
+        self.inputs = {'X': (x, x_lod)}
+        self.attrs = {'depth': depth, 'allow_out_of_range': True}
+        self.outputs = {'Out': (out, x_lod)}
 
-#     def test_check_output(self):
-#         program = Program()
-#         with program_guard(program):
-#             x = fluid.layers.data(
-#                 name='x', shape=[self.dimension], dtype='float32', lod_level=1)
-#             block = program.current_block()
-#             one_hot_out = block.create_var(
-#                 name="one_hot_out",
-#                 type=core.VarDesc.VarType.LOD_TENSOR,
-#                 dtype='float32')
-#             block.append_op(
-#                 type='one_hot',
-#                 inputs={'X': x},
-#                 attrs={'depth': self.depth},
-#                 outputs={'Out': one_hot_out})
-#             exe = fluid.Executor(self.place)
+    def test_check_output(self):
+        self.check_output()
 
-#             def run():
-#                 exe.run(feed={'x': self.x},
-#                         fetch_list=[one_hot_out],
-#                         return_numpy=False)
 
-#             self.assertRaises(ValueError, run)
+class TestOneHotOp_exception(unittest.TestCase):
+    def setUp(self):
+        self.op_type = 'one_hot_v2'
+        self.depth = 10
+        self.place = core.CPUPlace()
+        self.dimension = 12
+        self.x = core.LoDTensor()
+        x_lod = [[4, 1, 3, 3]]
+        data = [np.random.randint(11, 20) for i in range(sum(x_lod[0]))]
+        data = np.array(data).astype('int').reshape([sum(x_lod[0]), 1])
+        self.x.set(data, self.place)
+        self.x.set_recursive_sequence_lengths(x_lod)
 
-# class TestOneHotOpApi(unittest.TestCase):
-#     def test_api(self):
-#         depth = 10
-#         self._run(depth)
+    def test_check_output(self):
+        program = Program()
+        with program_guard(program):
+            x = fluid.layers.data(
+                name='x', shape=[self.dimension], dtype='float32', lod_level=1)
+            block = program.current_block()
+            one_hot_out = block.create_var(
+                name="one_hot_out",
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                dtype='float32')
+            block.append_op(
+                type='one_hot',
+                inputs={'X': x},
+                attrs={'depth': self.depth},
+                outputs={'Out': one_hot_out})
+            exe = fluid.Executor(self.place)
 
-#     def test_api_with_depthTensor(self):
-#         depth = fluid.layers.assign(input=np.array([10], dtype=np.int32))
-#         self._run(depth)
+            def run():
+                exe.run(feed={'x': self.x},
+                        fetch_list=[one_hot_out],
+                        return_numpy=False)
 
-#     def test_api_with_dygraph(self):
-#         depth = 10
-#         label = np.array([np.random.randint(0, depth - 1)
-#                           for i in range(6)]).reshape([6, 1])
-#         with fluid.dygraph.guard():
-#             one_hot_label = fluid.one_hot(
-#                 input=fluid.dygraph.to_variable(label), depth=depth)
+            self.assertRaises(ValueError, run)
 
-#     def _run(self, depth):
-#         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-#         one_hot_label = fluid.one_hot(input=label, depth=depth)
 
-#         place = fluid.CPUPlace()
-#         label_data = np.array([np.random.randint(0, 10 - 1)
-#                                for i in range(6)]).reshape([6, 1])
+class TestOneHotOpApi(unittest.TestCase):
+    def test_api(self):
+        depth = 10
+        self._run(depth)
 
-#         exe = fluid.Executor(place)
-#         exe.run(fluid.default_startup_program())
-#         ret = exe.run(feed={'label': label_data, },
-#                       fetch_list=[one_hot_label],
-#                       return_numpy=False)
+    def test_api_with_depthTensor(self):
+        depth = fluid.layers.assign(input=np.array([10], dtype=np.int32))
+        self._run(depth)
 
-# class BadInputTestOnehotV2(unittest.TestCase):
-#     def test_error(self):
-#         with fluid.program_guard(fluid.Program()):
+    def test_api_with_dygraph(self):
+        depth = 10
+        label = np.array([np.random.randint(0, depth - 1)
+                          for i in range(6)]).reshape([6, 1])
+        with fluid.dygraph.guard():
+            one_hot_label = fluid.one_hot(
+                input=fluid.dygraph.to_variable(label), depth=depth)
 
-#             def test_bad_x():
-#                 label = fluid.layers.data(
-#                     name="label",
-#                     shape=[4],
-#                     append_batch_size=False,
-#                     dtype="float32")
-#                 one_hot_label = fluid.one_hot(input=label, depth=4)
+    def _run(self, depth):
+        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        one_hot_label = fluid.one_hot(input=label, depth=depth)
 
-#             self.assertRaises(TypeError, test_bad_x)
+        place = fluid.CPUPlace()
+        label_data = np.array([np.random.randint(0, 10 - 1)
+                               for i in range(6)]).reshape([6, 1])
+
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(feed={'label': label_data, },
+                      fetch_list=[one_hot_label],
+                      return_numpy=False)
+
+
+class BadInputTestOnehotV2(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_bad_x():
+                label = fluid.layers.data(
+                    name="label",
+                    shape=[4],
+                    append_batch_size=False,
+                    dtype="float32")
+                one_hot_label = fluid.one_hot(input=label, depth=4)
+
+            self.assertRaises(TypeError, test_bad_x)
+
 
 if __name__ == '__main__':
     paddle.enable_static()

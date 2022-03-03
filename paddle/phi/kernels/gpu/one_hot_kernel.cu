@@ -50,7 +50,7 @@ struct OneHotV2OpCUDAFunctor {
   void apply() const {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
-    auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
+    auto* p_out_data = ctx_.template Alloc<OutT>(out_);
     auto stream = ctx_.stream();
     funcs::set_constant(ctx_, out_, 0.0);
 
@@ -63,24 +63,41 @@ struct OneHotV2OpCUDAFunctor {
 };
 
 template <typename T, typename Context>
-void OneHotKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int32_t depth,
-                  int dtype,
-                  bool allow_out_of_range,
-                  DenseTensor* out) {
+void OneHotRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     int32_t depth,
+                     int dtype,
+                     bool allow_out_of_range,
+                     DenseTensor* out) {
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
     out_dims[out_dims.size() - 1] = depth;
     out->Resize(out_dims);
   }
-  dev_ctx.template Alloc<T>(out);
+
   paddle::framework::VisitDataType(
       static_cast<paddle::framework::proto::VarType::Type>(dtype),
       OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
 }
 
+template <typename T, typename Context>
+void OneHotKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int32_t num_classes,
+                  DenseTensor* out) {
+  auto out_dims = out->dims();
+  if (out_dims[out_dims.size() - 1] == -1) {
+    out_dims[out_dims.size() - 1] = num_classes;
+    out->Resize(out_dims);
+  }
+
+  OneHotV2OpCUDAFunctor<Context, T> one_hot_func(&x, out, num_classes, dev_ctx);
+  one_hot_func.template apply<float>();
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    one_hot_raw, GPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}
+    one_hot_raw, GPU, ALL_LAYOUT, phi::OneHotRawKernel, int, int64_t) {}
+
+PD_REGISTER_KERNEL(one_hot, GPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}
