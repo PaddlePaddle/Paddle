@@ -18,24 +18,11 @@ namespace phi {
 
 KernelSignature GraphSendRecvGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  std::string pool_type = paddle::any_cast<std::string>(ctx.Attr("pool_type"));
-  if (pool_type == "Mean") {
-    return KernelSignature(
-        "graph_send_recv_grad_mean",
-        {GradVarName("Out"), "Src_index", "Dst_index", "Dst_count"},
-        {"pool_type"},
-        {GradVarName("X")});
-  } else if (pool_type == "MAX" || pool_type == "MIN") {
-    return KernelSignature(
-        "graph_send_recv_grad_minmax",
-        {GradVarName("Out"), "X", "Out", "Src_index", "Dst_index"},
-        {"pool_type"},
-        {GradVarName("X")});
-  }
-  return KernelSignature("graph_send_recv_grad_sum",
-                         {GradVarName("Out"), "Src_index", "Dst_index"},
-                         {"pool_type"},
-                         {GradVarName("X")});
+  return KernelSignature(
+      "graph_send_recv_grad",
+      {GradVarName("Out"), "X", "Out", "Src_index", "Dst_index", "Dst_count"},
+      {"pool_type"},
+      {GradVarName("X")});
 }
 
 }  // namespace phi

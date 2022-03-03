@@ -69,7 +69,7 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
   for (int i = 1; i < src_dims.size(); ++i) {
     slice_size *= src_dims[i];
   }
-  const T* p_src = out->data<T>();
+  const T* p_src = x.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
 
@@ -128,8 +128,8 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
                                     IndexT>><<<grid, block, 0, ctx.stream()>>>(
         p_src, s_index, d_index, p_output, index_size, slice_size, functor);
 
-    ctx.template Alloc<T>(dst_count);
-    int* p_dst_count = dst_count->data<int>();
+    ctx.template Alloc<int32_t>(dst_count);
+    int32_t* p_dst_count = dst_count->data<int32_t>();
 
 #ifdef PADDLE_WITH_HIP
     hipMemset(p_dst_count, 0, input_size * sizeof(int));
@@ -171,30 +171,6 @@ void GraphSendRecvKernel(const Context& ctx,
         index_type));
   }
 }
-
-/*
-template <typename T, typename Context>
-void GraphSendRecvKernelOfMean(const Context& ctx,
-              const DenseTensor& x,
-              const DenseTensor& src_index,
-              const DenseTensor& dst_index,
-              const std::string& pool_type,
-              DenseTensor* out,
-              DenseTensor* dst_out) {
-   auto index_dtype = src_index->dtype();
-   if (index_type == phi::DataType::INT32) {
-     GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int>(
-         ctx, x, src_index, dst_index, pool_type, out, dst_count);
-   } else if (index_type == phi::DataType::INT64) {
-     GraphSendRecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(
-         ctx, x, src_index, dst_index, pool_type, out, dst_count);
-   } else {
-     PADDLE_THROW(platform::errors::InvalidArgument(
-         "Unsupported Src_index or Dst_index dtype, expected int, int64, but "
-         "got %s.",
-         index_type));
-   }
-}*/
 
 }  // namespace phi
 

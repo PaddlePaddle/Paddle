@@ -35,7 +35,7 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
     const DenseTensor* dst_count = nullptr,
     const DenseTensor* x = nullptr,
     const DenseTensor* out = nullptr) {
-  const int& index_size = src_index.dims()[0];
+  const int& index_size = dst_index.dims()[0];
 
   ctx.template Alloc<T>(x_grad);
   T* p_output = x_grad->data<T>();
@@ -80,18 +80,18 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
         IndexT,
         GraphSendRecvSumCUDAFunctor<T,
                                     IndexT>><<<grid, block, 0, ctx.stream()>>>(
-        p_src, s_index, d_index, p_output, index_size, slice_size, functor);
+        p_src, d_index, s_index, p_output, index_size, slice_size, functor);
   } else if (pool_type == "MEAN") {
-    const int* s_count = dst_count->data<int>();
+    const int32_t* s_count = dst_count->data<int32_t>();
     ManipulateMeanGradCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-        p_src, s_index, d_index, p_output, index_size, slice_size, s_count);
+        p_src, d_index, s_index, p_output, index_size, slice_size, s_count);
   } else if (pool_type == "MAX" || pool_type == "MIN") {
     const T* ptr_input = x->data<T>();
     const T* ptr_output = out->data<T>();
     ManipulateMinMaxGradCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
         p_src,
-        s_index,
         d_index,
+        s_index,
         p_output,
         index_size,
         slice_size,
@@ -146,35 +146,38 @@ void GraphSendRecvGradKernelWithMean(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void GraphSendRecvGradKernelWithMinMax(const Context& ctx,
-                                       const DenseTensor& out_grad,
-                                       const DenseTensor& x,
-                                       const DenseTensor& out,
-                                       const DenseTensor& src_index,
-                                       const DenseTensor& dst_index,
-                                       const std::string& pool_type,
-                                       DenseTensor* x_grad) {
+void GraphSendRecvGradKernel(const Context& ctx,
+                             const DenseTensor& out_grad,
+                             paddle::optional<const DenseTensor&> x,
+                             paddle::optional<const DenseTensor&> out,
+                             const DenseTensor& src_index,
+                             const DenseTensor& dst_index,
+                             paddle::optional<const DenseTensor&> dst_count,
+                             const std::string& pool_type,
+                             DenseTensor* x_grad) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
-    GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(ctx,
-                                                                   out_grad,
-                                                                   src_index,
-                                                                   dst_index,
-                                                                   pool_type,
-                                                                   x_grad,
-                                                                   nullptr,
-                                                                   &x,
-                                                                   &out);
+    GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
+        ctx,
+        out_grad,
+        src_index,
+        dst_index,
+        pool_type,
+        x_grad,
+        dst_count.get_ptr(),
+        x.get_ptr(),
+        out.get_ptr());
   } else if (index_type == phi::DataType::INT64) {
-    GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(ctx,
-                                                                   out_grad,
-                                                                   src_index,
-                                                                   dst_index,
-                                                                   pool_type,
-                                                                   x_grad,
-                                                                   nullptr,
-                                                                   &x,
-                                                                   &out);
+    GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
+        ctx,
+        out_grad,
+        src_index,
+        dst_index,
+        pool_type,
+        x_grad,
+        dst_count.get_ptr(),
+        x.get_ptr(),
+        out.get_ptr());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupported Src_index or Dst_index type, Expected int, int64, but "
@@ -185,28 +188,10 @@ void GraphSendRecvGradKernelWithMinMax(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_send_recv_grad_sum,
+PD_REGISTER_KERNEL(graph_send_recv_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GraphSendRecvGradKernelWithSum,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(graph_send_recv_grad_mean,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::GraphSendRecvGradKernelWithMean,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(graph_send_recv_grad_minmax,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::GraphSendRecvGradKernelWithMinMax,
+                   phi::GraphSendRecvGradKernel,
                    float,
                    double,
                    int,

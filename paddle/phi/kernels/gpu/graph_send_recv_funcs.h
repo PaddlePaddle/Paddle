@@ -101,7 +101,7 @@ __global__ void InputResetMinCUDAKernel(T* output,
 
 // Get dst_count
 template <typename T, typename IndexT>
-__global__ void ComputeCountCUDAKernel(int* count,
+__global__ void ComputeCountCUDAKernel(int32_t* count,
                                        const IndexT* dst_indices,
                                        size_t index_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size, int64_t) {
@@ -113,7 +113,7 @@ __global__ void ComputeCountCUDAKernel(int* count,
 // For forward mean
 template <typename T>
 __global__ void ManipulateMeanCUDAKernel(T* output,
-                                         int* count,
+                                         int32_t* count,
                                          size_t input_size,
                                          size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, input_size * slice_size, int64_t) {
@@ -132,7 +132,7 @@ __global__ void ManipulateMeanGradCUDAKernel(const T* params,
                                              T* output,
                                              size_t index_size,
                                              size_t slice_size,
-                                             const int* dst_count) {
+                                             const int32_t* dst_count) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;
