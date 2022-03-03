@@ -3,7 +3,7 @@ if(WITH_GPU OR WITH_ROCM)
   add_subdirectory(gpu)
 endif()
 
-cc_library(unicode SRCS unicode.cc)
+cc_library(unicode SRCS unicode.cc DEPS utf8proc)
 set_property(GLOBAL PROPERTY STRING_KERNELS "")
 
 set(STRING_KERNEL_DEPS string_tensor kernel_context kernel_factory arg_map_context convert_utils lod_utils)

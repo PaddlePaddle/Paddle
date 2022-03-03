@@ -13,14 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/strings/unicode.h"
+#include <utf8proc.h>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/kernels/strings/charcases_flag.h"
 #include "paddle/phi/kernels/strings/unicode_flag.h"
 
 namespace phi {
 namespace strings {
+
+static uint16_t CHARCASES_MAP[65537] = {0};
+static uint16_t* get_charcases_map() {
+  if (CHARCASES_MAP[65536] == 0) {
+    CHARCASES_MAP[65536] = 1;
+    for (uint32_t i = 0; i < 65536; ++i) {
+      if (utf8proc_islower(i)) {
+        CHARCASES_MAP[i] = utf8proc_toupper(i);
+      } else if (utf8proc_isupper(i)) {
+        CHARCASES_MAP[i] = utf8proc_tolower(i);
+      }
+    }
+  }
+  return CHARCASES_MAP;
+}
 
 template class UnicodeFlagMap<CPUContext, uint8_t>;
 template class UnicodeFlagMap<CPUContext, uint16_t>;
@@ -30,7 +45,7 @@ UnicodeFlagMap<CPUContext, uint8_t>
     UnicodeFlagMap<CPUContext, uint8_t>::m_instance(UNIFLAG_MAP);
 template <>
 UnicodeFlagMap<CPUContext, uint16_t>
-    UnicodeFlagMap<CPUContext, uint16_t>::m_instance(CHARCASES_MAP);
+    UnicodeFlagMap<CPUContext, uint16_t>::m_instance(get_charcases_map());
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
@@ -89,7 +104,7 @@ UnicodeFlagMap<GPUContext, uint8_t>
     UnicodeFlagMap<GPUContext, uint8_t>::m_instance(UNIFLAG_MAP);
 template <>
 UnicodeFlagMap<GPUContext, uint16_t>
-    UnicodeFlagMap<GPUContext, uint16_t>::m_instance(CHARCASES_MAP);
+    UnicodeFlagMap<GPUContext, uint16_t>::m_instance(get_charcases_map());
 #endif
 
 }  // namespace strings
