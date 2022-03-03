@@ -564,64 +564,67 @@ void SplitInferMeta(const MetaTensor& x,
     }
   } else {
     // num_or_sections is a sections
-    const int unknow_dim_val = -1;
-    int unknow_dim_idx = -1;
-    int num_of_unknow = 0;
-    int sum_of_section = 0;
     std::vector<int64_t> sections = num_or_sections_data;
 
-    for (size_t i = 0; i < num_or_sections_data.size(); ++i) {
-      if (num_or_sections_data[i] == unknow_dim_val) {
-        num_of_unknow++;
-        unknow_dim_idx = i;
-      } else {
-        sum_of_section += num_or_sections_data[i];
+    if (config.is_runtime || input_axis_dim > 0) {
+      const int unknow_dim_val = -1;
+      int unknow_dim_idx = -1;
+      int num_of_unknow = 0;
+      int sum_of_section = 0;
+
+      for (size_t i = 0; i < num_or_sections_data.size(); ++i) {
+        if (num_or_sections_data[i] == unknow_dim_val) {
+          num_of_unknow++;
+          unknow_dim_idx = i;
+        } else {
+          sum_of_section += num_or_sections_data[i];
+        }
       }
-    }
 
-    if (config.is_runtime) {
-      PADDLE_ENFORCE_LE(num_of_unknow,
-                        1,
-                        phi::errors::InvalidArgument(
-                            "Only one dimension value of Attr(num_or_sections) "
-                            "in SplitOp can be -1. "
-                            "But received Attr(num_or_sections) = [%s].",
-                            phi::make_ddim(num_or_sections_data)));
-    }
+      if (!num_or_sections.FromTensor()) {
+        PADDLE_ENFORCE_LE(
+            num_of_unknow,
+            1,
+            phi::errors::InvalidArgument(
+                "Only one dimension value of Attr(num_or_sections) "
+                "in SplitOp can be -1. "
+                "But received Attr(num_or_sections) = [%s].",
+                phi::make_ddim(num_or_sections_data)));
+      }
 
-    if (unknow_dim_idx != -1) {
-      // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
-      // input_axis_dim = 5, sum_of_sections = 5.
-      // the following check will fail.
-      PADDLE_ENFORCE_LT(
-          sum_of_section,
-          input_axis_dim,
-          phi::errors::InvalidArgument(
-              "Sum of Attr(num_or_sections) other than unknown section "
-              "must be less than the input's "
-              "size "
-              "along the split dimension. But received Attr(num_or_sections) "
-              "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              phi::make_ddim(num_or_sections_data),
-              x.dims(),
-              axis_value));
+      if (unknow_dim_idx != -1) {
+        // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
+        // input_axis_dim = 5, sum_of_sections = 5.
+        // the following check will fail.
+        PADDLE_ENFORCE_LT(
+            sum_of_section,
+            input_axis_dim,
+            phi::errors::InvalidArgument(
+                "Sum of Attr(num_or_sections) other than unknown section "
+                "must be less than the input's "
+                "size "
+                "along the split dimension. But received Attr(num_or_sections) "
+                "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+                phi::make_ddim(num_or_sections_data),
+                x.dims(),
+                axis_value));
 
-      if (config.is_runtime) {
         sections[unknow_dim_idx] = input_axis_dim - sum_of_section;
+      } else {
+        PADDLE_ENFORCE_EQ(
+            sum_of_section,
+            input_axis_dim,
+            phi::errors::InvalidArgument(
+                "Sum of Attr(num_or_sections) must be equal to the input's "
+                "size "
+                "along the split dimension. But received Attr(num_or_sections)"
+                " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+                phi::make_ddim(num_or_sections_data),
+                x.dims(),
+                axis_value));
       }
-    } else {
-      PADDLE_ENFORCE_EQ(
-          sum_of_section,
-          input_axis_dim,
-          phi::errors::InvalidArgument(
-              "Sum of Attr(num_or_sections) must be equal to the input's "
-              "size "
-              "along the split dimension. But received Attr(num_or_sections)"
-              " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              phi::make_ddim(num_or_sections_data),
-              x.dims(),
-              axis_value));
     }
+
     for (size_t i = 0; i < out_dims.size(); ++i) {
       out_dims[i][axis_value] = sections[i];
     }
