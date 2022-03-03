@@ -30,6 +30,7 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
@@ -47,6 +48,14 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/utils/string/split.h"
+
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor_desc.pb.h"
+#include "paddle/fluid/distributed/fleet_executor/task_node.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
@@ -70,6 +79,8 @@ using inference::tensorrt::TRTInt8Calibrator;
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
 #endif
+
+int AnalysisPredictor::clone_num_ = 1;
 
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
@@ -186,13 +197,13 @@ bool AnalysisPredictor::Init(
     return false;
   }
 
+  // Get the feed_target_names and fetch_target_names
+  PrepareFeedFetch();
+
   // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
     return true;
   }
-
-  // Get the feed_target_names and fetch_target_names
-  PrepareFeedFetch();
 
   return true;
 }
@@ -359,6 +370,13 @@ static void DisablePrepareDataOpt(
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (config_.dist_config().use_dist_model()) {
+    VLOG(3) << "use_dist_model is enabled, will init FleetExecutor.";
+    return PrepareFleetExecutor();
+  }
+#endif
   DisablePrepareDataOpt(inference_program_, 0, false);
 
   executor_->Prepare(sub_scope_, *inference_program_, 0,
@@ -370,6 +388,226 @@ bool AnalysisPredictor::PrepareExecutor() {
 
   return true;
 }
+
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+bool AnalysisPredictor::PrepareFleetExecutor() {
+  VLOG(3) << "AnalysisPredictor::PrepareFleetExecutor()";
+  if (config_.dist_config().nranks() > 1 && !CommInit()) {
+    return false;
+  }
+  task_node_.reset(new distributed::TaskNode(inference_program_.get(),
+                                             config_.dist_config().rank()));
+  // With auto cut, there is no concept of pp, no need to add dependency.
+  task_node_->SetType("Compute");
+  task_node_->Init(config_.use_feed_fetch_ops_enabled());
+  executor_desc_ = distributed::FleetExecutorDesc();
+  executor_desc_.set_cur_rank(config_.dist_config().rank());
+  std::unordered_map<int64_t, int64_t> id_to_rank;
+  for (int i = 0; i < config_.dist_config().nranks(); ++i) {
+    distributed::RankInfo *rank_info = executor_desc_.add_cluster_info();
+    rank_info->set_rank(i);
+    rank_info->set_ip_port(config_.dist_config().trainer_endpoints()[i]);
+    id_to_rank.insert({i, i});
+  }
+  fleet_exe_.reset(new distributed::FleetExecutor(executor_desc_));
+  // NOTE: Vars of feed fetch ops are not persistable,
+  // which will result in that those vars will be created in
+  // the subscope (microscope) in fleet executor. This will
+  // cause that the GetInputTensor/GetOutputTensor funct
+  // in analysis predictor cannot find those vars in the scope
+  // returned by the DistModel, since DistModel only return the
+  // root scope. So, those vars must  to be created in the root
+  // scope instead of in the microscope
+  std::vector<std::string> feed_fetch_vars;
+  for (auto pair : idx2feeds_) {
+    feed_fetch_vars.emplace_back(pair.second);
+  }
+  for (auto pair : idx2fetches_) {
+    feed_fetch_vars.emplace_back(pair.second);
+  }
+  fleet_exe_->Init(config_.dist_config().carrier_id(),
+                   *(inference_program_.get()), scope_.get(), place_, 1,
+                   {task_node_.get()}, id_to_rank, feed_fetch_vars);
+  return true;
+}
+
+bool AnalysisPredictor::CommInit() {
+  std::map<int64_t, std::vector<int64_t>> ring_id_to_ranks{};
+  std::map<int64_t, std::vector<int64_t>> rank_to_ring_ids{};
+  if (!LoadConverterConfig(&ring_id_to_ranks, &rank_to_ring_ids)) {
+    VLOG(3) << "Load converter config failed, DistModel init failed.";
+    return false;
+  }
+  std::unique_ptr<framework::ProgramDesc> comm_init_program(
+      new framework::ProgramDesc());
+  framework::BlockDesc *comm_init_block = comm_init_program->MutableBlock(0);
+  std::vector<int64_t> &ring_ids =
+      rank_to_ring_ids[config_.dist_config().rank()];
+  int64_t order = 0;
+  std::string var_name_base = "comm_init_";
+  for (int64_t ring_id : ring_ids) {
+    VLOG(3) << "Init comm for ring id: " << ring_id;
+    int64_t ranks_in_group = ring_id_to_ranks[ring_id].size();
+    int64_t rank_in_group = 0;
+    std::vector<int64_t> &ranks = ring_id_to_ranks[ring_id];
+    for (int64_t rank : ranks) {
+      if (config_.dist_config().rank() == rank) {
+        break;
+      }
+      rank_in_group += 1;
+    }
+    std::vector<std::string> peer_endpoints;
+    for (int64_t rank : ranks) {
+      if (config_.dist_config().rank() == rank) {
+        continue;
+      }
+      peer_endpoints.emplace_back(
+          config_.dist_config().trainer_endpoints()[rank]);
+    }
+    InsertCommOp(var_name_base + std::to_string(order), ranks_in_group,
+                 rank_in_group, peer_endpoints, comm_init_block, ring_id);
+    order += 1;
+  }
+  framework::NaiveExecutor e(place_);
+  e.CreateVariables(*comm_init_program, 0, true, scope_.get());
+  e.Prepare(scope_.get(), *comm_init_program, 0, false);
+  e.Run();
+  VLOG(3) << "Comm init successful.";
+  return true;
+}
+
+void AnalysisPredictor::InsertCommOp(
+    std::string tmp_var_name, int nranks, int rank,
+    const std::vector<std::string> &peer_endpoints, framework::BlockDesc *block,
+    int ring_id) {
+  /*
+   * tmp_var_name: the var name for var comm_id
+   * nranks: number of total ranks
+   * rank: the rank of local rank in the comm group
+   * peer_endpoints: peer's endpoints
+   * block: the block where to insert the comm ops
+   * ring_id: the ring_id to be inited
+   */
+  const std::string &endpoint = config_.dist_config().current_endpoint();
+  std::stringstream ss;
+  ss << "Init comm with tmp var: " << tmp_var_name
+     << ". The ring id is: " << ring_id << ". The group has: " << nranks
+     << " ranks. Current rank in the group is: " << rank
+     << ". The endpoint is: " << endpoint << ". Peer endpoints are: ";
+  for (auto ep : peer_endpoints) {
+    ss << ep << ", ";
+  }
+  VLOG(3) << ss.str();
+  if (config_.use_gpu()) {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_nccl_id_op = block->AppendOp();
+    gen_nccl_id_op->SetType("c_gen_nccl_id");
+    gen_nccl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_nccl_id_op->SetAttr("rank", rank);
+    gen_nccl_id_op->SetAttr("endpoint",
+                            config_.dist_config().current_endpoint());
+    gen_nccl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_nccl_id_op->SetAttr("ring_id", ring_id);
+    gen_nccl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_nccl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
+  } else {
+    LOG(WARNING) << "DistModelInf doesn't init comm.";
+    // TODO(fleet exe dev): comm init for more devices
+  }
+}
+
+bool AnalysisPredictor::LoadConverterConfig(
+    std::map<int64_t, std::vector<int64_t>> *ring_id_to_ranks,
+    std::map<int64_t, std::vector<int64_t>> *rank_to_ring_ids) {
+  VLOG(3) << "Going to load converter config from: "
+          << config_.dist_config().comm_init_config() << "\n";
+  std::ifstream fin(config_.dist_config().comm_init_config(), std::ios::in);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fin.is_open()), true,
+      platform::errors::NotFound(
+          "Cannot open file %s, please confirm whether the file is normal.",
+          config_.dist_config().comm_init_config()));
+  std::string line;
+  bool ring_to_rank{true};
+  // Reading config from file, the config file should like these format
+  //  [ring_id -> ranks]
+  //  0,0,1,2,3
+  //  1,0,1
+  //  2,2,3
+  //  21,0,1
+  //  22,1,2
+  //  23,2,3
+  //  [rank -> ring_ids]
+  //  0,0,1,21
+  //  1,0,1,21,22
+  //  2,0,2,22,23
+  //  3,0,2,23
+  while (std::getline(fin, line)) {
+    std::vector<std::string> one_line = paddle::string::Split(line, ',');
+    if (one_line.size() == 1) {
+      // start a new section of the config
+      if (line == "[ring_id -> ranks]") {
+        ring_to_rank = true;
+      } else if (line == "[rank -> ring_ids]") {
+        ring_to_rank = false;
+      }
+    } else {
+      // parse key - values pairs in one section
+      int64_t key = std::stoll(one_line[0]);
+      for (size_t i = 1; i < one_line.size(); ++i) {
+        int64_t val = std::stoll(one_line[i]);
+        if (ring_to_rank) {
+          if (ring_id_to_ranks->find(key) == ring_id_to_ranks->end()) {
+            ring_id_to_ranks->insert({key, std::vector<int64_t>()});
+          }
+          ring_id_to_ranks->at(key).emplace_back(val);
+        } else {
+          if (rank_to_ring_ids->find(key) == rank_to_ring_ids->end()) {
+            rank_to_ring_ids->insert({key, std::vector<int64_t>()});
+          }
+          rank_to_ring_ids->at(key).emplace_back(val);
+        }
+        // NOTE: add more configuration sections here
+      }
+    }
+  }
+  std::stringstream ss;
+  ss << "Loaded the following converter config:\n";
+  ss << "ring_id_to_ranks:\n";
+  for (auto pair : *ring_id_to_ranks) {
+    int64_t key = pair.first;
+    ss << "\t" << key << "\t->\t";
+    for (auto value : pair.second) {
+      ss << value << "\t";
+    }
+    ss << "\n";
+  }
+  ss << "rank_to_ring_ids:\n";
+  for (auto pair : *rank_to_ring_ids) {
+    int64_t key = pair.first;
+    ss << "\t" << key << "\t->\t";
+    for (auto value : pair.second) {
+      ss << value << "\t";
+    }
+    ss << "\n";
+  }
+  VLOG(3) << ss.str();
+  return true;
+}
+#endif
 
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -946,13 +1184,24 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
+  framework::Scope *scope;
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (config_.dist_config().use_dist_model()) {
+    scope = scope_.get();
+  } else {
+    scope = executor_->scope();
+  }
+#else
+  scope = executor_->scope();
+#endif
   PADDLE_ENFORCE_NOT_NULL(
-      executor_->scope()->FindVar(name),
+      scope->FindVar(name),
       platform::errors::PreconditionNotMet(
-          "The variable named %s is not found in the scope of the exector.",
+          "The variable named %s is not found in the scope of the executor.",
           name));
   std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+      new ZeroCopyTensor(static_cast<void *>(scope)));
   res->input_or_output_ = true;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -985,13 +1234,24 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
+  framework::Scope *scope;
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (config_.dist_config().use_dist_model()) {
+    scope = scope_.get();
+  } else {
+    scope = executor_->scope();
+  }
+#else
+  scope = executor_->scope();
+#endif
   PADDLE_ENFORCE_NOT_NULL(
-      executor_->scope()->FindVar(name),
+      scope->FindVar(name),
       platform::errors::PreconditionNotMet(
-          "he variable named %s is not found in the scope of the exector.",
+          "The variable named %s is not found in the scope of the executor.",
           name));
   std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+      new ZeroCopyTensor(static_cast<void *>(scope)));
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -1023,6 +1283,18 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 }
 
 bool AnalysisPredictor::ZeroCopyRun() {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
+    !defined(PADDLE_WITH_ASCEND_CL)
+  if (config_.dist_config().use_dist_model()) {
+    VLOG(3) << "ZeroCopyRun will use the fleet executor.";
+    inference::Timer timer;
+    timer.tic();
+    fleet_exe_->Run(config_.dist_config().carrier_id());
+    VLOG(3) << "Fleet executor inf runs once use: "
+            << std::to_string(timer.toc()) << "ms";
+    return true;
+  }
+#endif
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) {
@@ -1035,7 +1307,6 @@ bool AnalysisPredictor::ZeroCopyRun() {
     MkldnnPreSet(shape_vector);
   }
 #endif
-
   executor_->Run();
 
   if (config_.shape_range_info_collected()) {
@@ -1364,7 +1635,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
-  x->executor_->ResetTrtOps(++x->clone_num_);
+  x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
   return std::unique_ptr<PaddlePredictor>(x);
 }
 

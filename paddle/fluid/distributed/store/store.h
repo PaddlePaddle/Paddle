@@ -32,6 +32,8 @@ class Store {
   virtual int64_t add(const std::string& key, int64_t value) = 0;
   virtual std::vector<uint8_t> get(const std::string& key) = 0;
   virtual void wait(const std::string& key) = 0;
+  virtual void set(const std::string& key,
+                   const std::vector<uint8_t>& value) = 0;
 
   virtual const std::chrono::seconds& timeout() const { return _timeout; }
 

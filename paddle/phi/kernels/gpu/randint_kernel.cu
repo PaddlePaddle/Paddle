@@ -18,9 +18,12 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
+
+DECLARE_bool(use_curand);
 
 namespace phi {
 
@@ -32,34 +35,39 @@ void RandintRawKernel(const Context& dev_ctx,
                       DataType dtype,
                       int seed,
                       DenseTensor* out) {
-  DenseTensor tmp;
-  tmp.Resize(phi::make_ddim(shape.GetData()));
-  T* tmp_data = dev_ctx.template HostAlloc<T>(&tmp);
-
-  out->Resize(tmp.dims());
+  out->Resize(phi::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
-
-  std::shared_ptr<std::mt19937_64> engine;
-  if (seed) {
-    engine = std::make_shared<std::mt19937_64>();
-    engine->seed(seed);
+  if (FLAGS_use_curand) {
+    funcs::uniform_distribution<uint32_t> dist;
+    funcs::uniform_int_transform<T, uint32_t> trans(low, high);
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
-    engine = dev_ctx.GetHostGenerator()->GetCPUEngine();
-  }
+    DenseTensor tmp;
+    tmp.Resize(phi::make_ddim(shape.GetData()));
+    T* tmp_data = dev_ctx.template HostAlloc<T>(&tmp);
 
-  std::uniform_int_distribution<T> dist(low, high - 1);
-  auto numel = out->numel();
-  for (int64_t i = 0; i < numel; ++i) {
-    tmp_data[i] = dist(*engine);
-  }
+    std::shared_ptr<std::mt19937_64> engine;
+    if (seed) {
+      engine = std::make_shared<std::mt19937_64>();
+      engine->seed(seed);
+    } else {
+      engine = dev_ctx.GetHostGenerator()->GetCPUEngine();
+    }
 
-  paddle::memory::Copy<phi::GPUPlace, phi::Place>(
-      out->place(),
-      data,
-      tmp.place(),
-      tmp_data,
-      numel * paddle::experimental::SizeOf(out->dtype()),
-      0);
+    std::uniform_int_distribution<T> dist(low, high - 1);
+    auto numel = out->numel();
+    for (int64_t i = 0; i < numel; ++i) {
+      tmp_data[i] = dist(*engine);
+    }
+
+    paddle::memory::Copy<phi::GPUPlace, phi::Place>(
+        out->place(),
+        data,
+        tmp.place(),
+        tmp_data,
+        numel * paddle::experimental::SizeOf(out->dtype()),
+        0);
+  }
 }
 
 template <typename T, typename Context>
