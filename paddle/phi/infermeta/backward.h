@@ -46,11 +46,6 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 int axis,
                                 MetaTensor* dx);
 
-void GatherNdGradInferMeta(const MetaTensor& x,
-                           const MetaTensor& index,
-                           const MetaTensor& out_grad,
-                           MetaTensor* x_grad);
-
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,
