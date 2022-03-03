@@ -52,6 +52,7 @@ paddle/infrt/dialect/pd_ops.td
 paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td
 paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td
 tools/infrt/kernels.json
+tools/infrt/kernel_signature.json
 paddle/infrt/dialect/pd_ops_info.h
 .lit_test_times.txt
 paddle/infrt/tests/dialect/Output
