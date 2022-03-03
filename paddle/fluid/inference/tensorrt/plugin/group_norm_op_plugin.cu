@@ -69,24 +69,28 @@ int GroupNormPlugin::enqueue(int batch_size, const void* const* inputs,
   const int group_size = c / groups_;
   const int channel_volume = h * w;
 
-  platform::dynload::cudnnSetTensor4dDescriptor(
-      desc_, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, batch_size * groups_,
-      group_size, channel_volume);
-  platform::dynload::cudnnDeriveBNTensorDescriptor(bn_desc_, desc_,
-                                                   CUDNN_BATCHNORM_SPATIAL);
+  platform::dynload::cudnnSetTensor4dDescriptor(bn_desc_, CUDNN_TENSOR_NCHW,
+                                                CUDNN_DATA_FLOAT, 1,
+                                                batch_size * groups_, 1, 1);
   platform::dynload::cudnnSetStream(handle_, stream);
 
-  int ans = 1;
+  int error_code = 1;
   if (with_fp16_) {
-    ans = enqueueImpl<__half>(inputs, outputs, handle_, desc_, bn_desc_,
-                              bn_scale_, bn_bias_, epsilon_, channel_volume,
-                              batch_size, c, stream);
+    platform::dynload::cudnnSetTensor4dDescriptor(
+        desc_, CUDNN_TENSOR_NCHW, CUDNN_DATA_HALF, 1, batch_size * groups_,
+        group_size, channel_volume);
+    error_code = enqueueImpl<__half>(inputs, outputs, handle_, desc_, bn_desc_,
+                                     bn_scale_, bn_bias_, epsilon_,
+                                     channel_volume, batch_size, c, stream);
   } else {
-    ans = enqueueImpl<float>(inputs, outputs, handle_, desc_, bn_desc_,
-                             bn_scale_, bn_bias_, epsilon_, channel_volume,
-                             batch_size, c, stream);
+    platform::dynload::cudnnSetTensor4dDescriptor(
+        desc_, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, batch_size * groups_,
+        group_size, channel_volume);
+    error_code = enqueueImpl<float>(inputs, outputs, handle_, desc_, bn_desc_,
+                                    bn_scale_, bn_bias_, epsilon_,
+                                    channel_volume, batch_size, c, stream);
   }
-  return ans;
+  return error_code;
 }
 
 template <typename T>
@@ -99,9 +103,10 @@ int GroupNormPlugin::enqueueImpl(const void* const* inputs,
                                  const cudnnHandle_t& handle,
                                  const cudnnTensorDescriptor_t& desc,
                                  const cudnnTensorDescriptor_t& bn_desc,
-                                 float* bn_scale, float* bn_bias, float eps,
-                                 const int channel_volume, const int batch_size,
-                                 const int c, const cudaStream_t& stream) {
+                                 float* bn_scale, float* bn_bias,
+                                 const float eps, const int channel_volume,
+                                 const int batch_size, const int c,
+                                 const cudaStream_t& stream) {
   float alpha = 1.F;
   float beta = 0.F;
   const T* input = static_cast<const T*>(inputs[0]);

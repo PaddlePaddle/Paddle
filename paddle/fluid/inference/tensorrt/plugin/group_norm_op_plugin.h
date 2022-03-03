@@ -31,7 +31,6 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
   float epsilon_;
   int groups_;
   std::vector<int> input_dims_;
-  bool with_fp16_ = false;
 
   std::vector<float> ones_for_serialize_;
   std::vector<float> zeroes_for_serialize_;
@@ -44,6 +43,8 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
   std::vector<float> bias_for_serialize_;
   float* bn_scale_;
   float* bn_bias_;
+
+  bool with_fp16_;
 
   cudnnHandle_t handle_;
   cudnnTensorDescriptor_t desc_, bn_desc_;
@@ -249,7 +250,7 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
                   const cudnnHandle_t& handle,
                   const cudnnTensorDescriptor_t& desc,
                   const cudnnTensorDescriptor_t& bn_desc, float* bn_scale,
-                  float* bn_bias, float eps, const int channel_volume,
+                  float* bn_bias, const float eps, const int channel_volume,
                   const int batch_size, const int c,
                   const cudaStream_t& stream);
 

@@ -39,7 +39,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
             return np.random.randn(32).astype(np.float32)
 
         for batch in [1, 2, 4]:
-            for group in [1, 4, 32]:
+            for group in [1, 32]:
                 for epsilon in [0.1, 0.7]:
                     for data_layout in ['NCHW', 'NHWC']:
                         for i in [0, 1]:
@@ -86,11 +86,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 32, 32]}
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 64, 128, 64]
-            }
-            self.dynamic_shape.opt_input_shape = {"input_data": [2, 32, 64, 64]}
+            pass
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -117,7 +113,7 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
             attrs, False), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-5, 1e-5)
+            attrs, False), (1e-2, 1e-5)
 
     def test(self):
         self.run_test()
