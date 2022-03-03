@@ -131,6 +131,12 @@ bool AssertOpsCount(const Graph& graph,
 
   for (const OpTypeCountPair& p : op_type_count) {
     result = result && (p.second == 0);
+    if(p.second < 0) {
+      std::cout << "Number of " << p.first << " nodes should be increased by " << p.second * (-1) << std::endl;
+    }
+    else if(p.second > 0){
+      std::cout << "Number of " << p.first << " nodes should be reduced by " << p.second << std::endl;
+    }
   }
   return result;
 }
@@ -163,9 +169,23 @@ bool RunPassAndAssert(Graph* graph, const std::string& pass_name,
   if (!TestIsReachable(*graph, from, to)) return false;
 
   int original_nodes_num = graph->Nodes().size();
+
+  std::cout << "Before applying pass" << std::endl;
+  for (const auto& node : graph->Nodes())
+  {
+    std::cout << node->Name() << std::endl;
+  }
+
+
   auto pass = PassRegistry::Instance().Get(pass_name);
   pass->Apply(graph);
   int current_nodes_num = graph->Nodes().size();
+
+  std::cout << "After applying pass" << std::endl;
+  for (const auto& node : graph->Nodes())
+  {
+    std::cout << node->Name() << std::endl;
+  }
 
   if (!TestIsReachable(*graph, from, to)) return false;
 
