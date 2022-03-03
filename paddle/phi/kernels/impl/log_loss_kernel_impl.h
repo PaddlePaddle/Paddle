@@ -26,7 +26,6 @@ void LogLossKernel(const Context& dev_ctx,
                    float epsilon,
                    DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  out->data<T>();
 
   auto prediction = EigenVector<T>::Flatten(input);
   auto label_out = EigenVector<T>::Flatten(label);
