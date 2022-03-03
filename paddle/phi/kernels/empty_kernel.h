@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -34,14 +34,11 @@ void EmptyLikeKernel(const Context& dev_ctx,
                      DataType dtype,
                      DenseTensor* out);
 
-// TODO(chenweihang): the tensor creation method need to be replaced later,
-// all kernel api call Empty here instead of making tensor self
 template <typename Context>
 DenseTensor Empty(const Context& dev_ctx, DenseTensorMeta&& meta) {
-  phi::DenseTensor dense_out(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      std::move(meta));
+  phi::DenseTensor dense_out;
+  dense_out.set_meta(meta);
+  dev_ctx.Alloc(&dense_out, dense_out.dtype());
   return dense_out;
 }
 
@@ -49,7 +46,7 @@ template <typename T, typename Context>
 DenseTensor Empty(const Context& dev_ctx) {
   return Empty(dev_ctx,
                {paddle::experimental::CppTypeToDataType<T>::Type(),
-                {-1},
+                {0},
                 DataLayout::NCHW});
 }
 
