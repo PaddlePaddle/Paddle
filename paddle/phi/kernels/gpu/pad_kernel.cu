@@ -12,38 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <chrono>
-#include <cstdint>
-#include <vector>
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/pad_kernel_impl.h"
+#include "paddle/phi/kernels/pad_kernel.h"
 
-namespace paddle {
-namespace distributed {
-
-// TODO(shenliang03): To support AVG for reduce
-enum class ReduceOp : std::uint8_t { SUM = 0, AVG, MAX, MIN, PRODUCT };
-
-struct AllreduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-};
-
-struct BroadcastOptions {
-  int source_rank = 0;
-  int source_root = 0;
-};
-
-struct BarrierOptions {
-  std::vector<int> place_ids;
-};
-
-struct ReduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-  int root_rank = 0;
-};
-
-struct ScatterOptions {
-  int root_rank = 0;
-};
-
-}  //  namespace distributed
-}  //  namespace paddle
+PD_REGISTER_KERNEL(pad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PadKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
