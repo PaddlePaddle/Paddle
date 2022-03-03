@@ -74,7 +74,10 @@ class TestElementWiseAddReluFusePass(PassAutoScanTest):
         yield config, ["elementwise_add"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["elt_act_mkldnn_fuse_pass"])
+        self.run_and_statis(
+            quant=False,
+            passes=["elt_act_mkldnn_fuse_pass"],
+            min_success_num=4)
 
 
 if __name__ == "__main__":
