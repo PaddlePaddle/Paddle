@@ -12,42 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gpu/sigmoid_cross_entropy_with_logits.h"
 #include "paddle/phi/kernels/sigmoid_cross_entropy_with_logits_kernel.h"
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/math.h"
-#include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpu/sigmoid_cross_entropy_with_logits.h"
 
 namespace phi {
 
 template <typename T>
-__global__ void GPUSigmoidForward(const T *x_data,
-                                  const T *label_data,
-                                  const int ignore_index,
-                                  const int limit,
-                                  T *out_data,
-                                  T *counts) {
-  CUDA_KERNEL_LOOP(i, limit) {
-    T x = x_data[i];
-    T label = label_data[i];
-    T eps = static_cast<T>(1e-5);
-    T diff = label - static_cast<T>(ignore_index);
+struct SigmoidFwdFunctor {
+  T ignore_index_;
+  T eps = static_cast<T>(1e-5);
+
+  HOSTDEVICE inline SigmoidFwdFunctor(const T ignore_index)
+      : ignore_index_(ignore_index) {}
+
+  HOSTDEVICE inline phi::Array<T, 2> operator()(const T x, const T label) {
+    T counts;
+    T out_data;
+
+    T diff = label - static_cast<T>(ignore_index_);
     if ((diff > -eps) && (diff < eps)) {
-      out_data[i] = static_cast<T>(0.);
-      counts[i] = 0;
+      out_data = static_cast<T>(0.);
+      counts = 0;
     } else {
       T term1 = (x > 0) ? x : 0;
       T term2 = x * label;
       T term3 = paddle::operators::real_log(
           static_cast<T>(1) +
           paddle::operators::real_exp(static_cast<T>(-abs(x))));
-      out_data[i] = term1 - term2 + term3;
-      counts[i] = 1;
+
+      out_data = term1 - term2 + term3;
+      counts = 1;
     }
+    phi::Array<T, 2> outs;
+
+    outs[0] = out_data;
+    outs[1] = counts;
+    return outs;
   }
-}
+};
 
 template <typename T, typename Context>
 void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
@@ -59,20 +62,59 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
   auto out_data = dev_ctx.template Alloc<T>(out);
 
   // Temporary memory
-  auto cnt_ptr = paddle::memory::Alloc(dev_ctx, label.numel() * sizeof(T));
-  T *counts = reinterpret_cast<T *>(cnt_ptr->ptr());
+  DenseTensor *counts_tensor = new DenseTensor();
+
+  int64_t out_dims = label.numel() * sizeof(T);
+  counts_tensor->Resize({out_dims});
+  dev_ctx.template Alloc<T>(counts_tensor);
+  counts_tensor->Resize(out->dims());
 
   int limit = out->numel();
   int blocks = NumBlocks(limit);
   int threads = kNumCUDAThreads;
-  GPUSigmoidForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-      x.data<T>(), label.data<T>(), ignore_index, limit, out_data, counts);
+  std::vector<const DenseTensor *> ins = {&x, &label};
+  std::vector<DenseTensor *> outs = {out, counts_tensor};
+  auto functor = SigmoidFwdFunctor<T>(ignore_index);
+  constexpr int Size = 2;
+  phi::funcs::ElementwiseKernel<T, decltype(functor), Size>(
+      dev_ctx, ins, &outs, functor);
   if (normalize) {
-    auto norm_ptr = paddle::memory::Alloc(dev_ctx, sizeof(T));
-    T *norm = reinterpret_cast<T *>(norm_ptr->ptr());
-    Sum<T, kNumCUDAThreads><<<1, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
-        counts, limit, static_cast<T>(1e-5), norm);
-    Div<T><<<blocks, threads, 0, dev_ctx.stream()>>>(out_data, limit, norm);
+    T *counts = dev_ctx.template Alloc<T>(counts_tensor);
+    DenseTensor *norm_tensor = new DenseTensor();
+    norm_tensor->Resize({sizeof(T)});
+    dev_ctx.template Alloc<T>(norm_tensor);
+    auto dims = phi::vectorize(counts_tensor->dims());
+    std::vector<int> reduce_dim = {};
+    for (int i = 0; i < dims.size(); i++) {
+      reduce_dim.push_back(i);
+    }
+
+    kernels::TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+        dev_ctx,
+        *counts_tensor,
+        norm_tensor,
+        NonzeroFunctor<T>(),
+        reduce_dim,
+        dev_ctx.stream());
+    T *norm = dev_ctx.template Alloc<T>(norm_tensor);
+    auto norm_cpu_mem = paddle::memory::Alloc(phi::CPUPlace(), sizeof(T));
+    T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
+    paddle::memory::Copy(phi::CPUPlace(),
+                         norm_cpu_ptr,
+                         dev_ctx.GetPlace(),
+                         norm,
+                         sizeof(T),
+                         dev_ctx.stream());
+    auto eps = static_cast<T>(1e-5);
+    *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
+
+    std::vector<const DenseTensor *> div_ins = {out};
+    std::vector<DenseTensor *> div_outs = {out};
+    auto div_functor = DivFunctor<T>(*norm_cpu_ptr);
+    phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs, div_functor);
+
+    delete norm_tensor;
+    delete counts_tensor;
   }
 }
 

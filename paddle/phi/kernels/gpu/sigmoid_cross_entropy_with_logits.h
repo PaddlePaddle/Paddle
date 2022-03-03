@@ -15,7 +15,15 @@
 #pragma once
 
 #include <algorithm>
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/math.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
+#include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -39,27 +47,23 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-template <typename T, int BlockDim>
-__global__ void Sum(const T *counts, int num, const T eps, T *sum) {
-  typedef cub::BlockReduce<double, BlockDim> BlockReduce;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-  T in = 0;
-  for (int i = threadIdx.x; i < num; i += BlockDim) {
-    in += counts[i];
+template <typename T>
+struct NonzeroFunctor {
+  HOSTDEVICE explicit inline NonzeroFunctor() {}
+  HOSTDEVICE inline T operator()(const T x) const {
+    return static_cast<T>(static_cast<double>(x) != 0);
   }
-  __syncthreads();
-  auto out =
-      BlockReduce(temp_storage).Reduce(static_cast<double>(in), cub::Sum());
-  __syncthreads();
-  if (threadIdx.x == 0) {
-    T a = out > eps ? out : eps;
-    sum[0] = a;
-  }
-}
+};
 
 template <typename T>
-__global__ void Div(T *loss, const int num, const T *norm) {
-  CUDA_KERNEL_LOOP(i, num) { loss[i] /= norm[0]; }
-}
+struct DivFunctor {
+  const T norm_;
+  HOSTDEVICE inline DivFunctor(const T norm) : norm_(norm) {}
+
+  HOSTDEVICE inline T operator()(T loss) {
+    loss /= norm_;
+    return loss;
+  }
+};
 
 }  // namespace phi
