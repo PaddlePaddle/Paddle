@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -239,7 +239,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const int group_size = C / groups;
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     auto* x_data = x->data<T>();

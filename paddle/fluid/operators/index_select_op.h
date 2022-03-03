@@ -15,8 +15,8 @@
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -73,8 +73,8 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  input->Resize(framework::make_ddim({outer_nums, input_dim[dim], slice_size}));
-  output->Resize(framework::make_ddim({outer_nums, index_size, slice_size}));
+  input->Resize(phi::make_ddim({outer_nums, input_dim[dim], slice_size}));
+  output->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
 
   auto input_tensor = framework::EigenTensor<T, 3>::From(*input);
   auto output_tensor = framework::EigenTensor<T, 3>::From(*output);
@@ -103,7 +103,7 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     if (dim < 0) {
       dim += inputs.dims().size();
     }
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(index_type_match, true,
@@ -141,7 +141,7 @@ struct IndexSelectAdd<
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   void operator()(const framework::ExecutionContext& ctx, int slice_size,
                   const T* src_pointer, const T* p_pointer, T* dist_pointer) {
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
 };
@@ -159,7 +159,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   auto output_dim = x_grad->dims();
 
   auto& dev_ctx = context.template device_context<DeviceContext>();
-  pten::funcs::SetConstant<DeviceContext, T> set_constant;
+  phi::funcs::SetConstant<DeviceContext, T> set_constant;
   set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
 
   auto slice_size = 1;
@@ -211,7 +211,7 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
     if (dim < 0) {
       dim += out_grad->dims().size();
     }
-    const auto& index_type = index->type();
+    const auto& index_type = framework::TransToProtoVarType(index->dtype());
 
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;

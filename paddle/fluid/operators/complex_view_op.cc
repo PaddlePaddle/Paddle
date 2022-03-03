@@ -95,9 +95,9 @@ class AsRealOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "as_real");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "as_real");
 
-    auto out_dims_v = framework::vectorize(ctx->GetInputDim("X"));
+    auto out_dims_v = phi::vectorize(ctx->GetInputDim("X"));
     out_dims_v.push_back(2);
-    const framework::DDim out_dims = framework::make_ddim(out_dims_v);
+    const framework::DDim out_dims = phi::make_ddim(out_dims_v);
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }

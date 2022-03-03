@@ -32,9 +32,9 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
             for i in range(len(program_config.ops))
         ]
 
-        # If the problem has been fixed, the judgment 
-        # needs to be deleted!!!
-        if attrs[0]['data_format'] == "NHWC":
+        if attrs[0]['data_format'] == "NCHW" and attrs[1]["axis"] == 3:
+            return False
+        if attrs[0]['data_format'] == "NHWC" and attrs[1]["axis"] == 1:
             return False
 
         return True
@@ -46,7 +46,7 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
         groups = draw(st.sampled_from([1, 2, 4, 8]))
         paddings = draw(st.sampled_from([[0, 3], [1, 2, 3, 4]]))
         strides = draw(st.sampled_from([[1, 1], [2, 2], [1, 2]]))
-        axis = draw(st.sampled_from([1]))
+        axis = draw(st.sampled_from([1, 3]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
         def generate_input():
@@ -110,7 +110,9 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=["conv_transpose_bias_mkldnn_fuse_pass"])
+            quant=False,
+            max_duration=300,
+            passes=["conv_transpose_bias_mkldnn_fuse_pass"])
 
 
 if __name__ == "__main__":

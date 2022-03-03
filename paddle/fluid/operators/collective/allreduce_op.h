@@ -41,7 +41,8 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
-    int dtype = platform::ToNCCLDataType(in->type());
+    int dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     auto* sendbuff = in->data();
     out->Resize(in->dims());

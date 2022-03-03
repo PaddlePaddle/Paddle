@@ -21,8 +21,7 @@ limitations under the License.*/
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/gather.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -66,7 +65,8 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     auto multi_layer_scores =
         context.MultiInput<paddle::framework::LoDTensor>("MultiLevelScores");
-    auto multi_rois_num = context.MultiInput<Tensor>("MultiLevelRoIsNum");
+    auto multi_rois_num =
+        context.MultiInput<framework::Tensor>("MultiLevelRoIsNum");
     int num_size = multi_rois_num.size();
 
     auto* fpn_rois = context.Output<paddle::framework::LoDTensor>("FpnRois");
@@ -176,7 +176,7 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
     num_per_batch.emplace_back(post_nms_topN - pre_idx);
     if (context.HasOutput("RoisNum")) {
-      auto* rois_num = context.Output<Tensor>("RoisNum");
+      auto* rois_num = context.Output<framework::Tensor>("RoisNum");
       int* rois_num_data =
           rois_num->mutable_data<int>({batch_size}, context.GetPlace());
       for (int i = 0; i < batch_size; i++) {

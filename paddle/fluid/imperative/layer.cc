@@ -15,6 +15,8 @@
 #include "paddle/fluid/imperative/layer.h"
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/framework/convert_utils.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -23,7 +25,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -99,20 +101,24 @@ static std::string DebugString(
       auto& tensor = var.Get<framework::LoDTensor>();
       ss << "LoDTensor<";
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << framework::DataTypeToString(
+                  framework::TransToProtoVarType(tensor.dtype()))
+           << ", ";
         ss << tensor.place() << ", ";
         ss << "(" << tensor.dims() << ")";
       } else {
         ss << "NOT_INITED";
       }
       ss << ">";
-    } else if (var.IsType<pten::SelectedRows>()) {
+    } else if (var.IsType<phi::SelectedRows>()) {
       ss << "SelectedRows<";
-      auto& selected_rows = var.Get<pten::SelectedRows>();
+      auto& selected_rows = var.Get<phi::SelectedRows>();
       auto& tensor = selected_rows.value();
       auto& rows = selected_rows.rows();
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << framework::DataTypeToString(
+                  framework::TransToProtoVarType(tensor.dtype()))
+           << ", ";
         ss << tensor.place() << ", ";
         ss << "height(" << selected_rows.height() << "), rows(";
         std::for_each(rows.cbegin(), rows.cend(),
@@ -171,9 +177,9 @@ std::string LayerDebugString(const std::string& op_type,
 }
 
 std::string LayerDebugString(const std::string& op_type,
-                             const NameVarMap<egr::EagerTensor>& ins,
-                             const NameVarMap<egr::EagerTensor>& outs) {
-  return LayerDebugStringImpl<egr::EagerTensor>(op_type, ins, outs);
+                             const NameVarMap<egr::EagerVariable>& ins,
+                             const NameVarMap<egr::EagerVariable>& outs) {
+  return LayerDebugStringImpl<egr::EagerVariable>(op_type, ins, outs);
 }
 
 template <typename VarType>
@@ -188,9 +194,14 @@ static void SetForwardDataTypeOfGradVars(const NameVarMap<VarType>& outs) {
   }
 }
 template <>
-void SetForwardDataTypeOfGradVars<egr::EagerTensor>(
-    const NameVarMap<egr::EagerTensor>& outs) {
+void SetForwardDataTypeOfGradVars<egr::EagerVariable>(
+    const NameVarMap<egr::EagerVariable>& outs) {
   // In eager mode we don't need this.
+}
+
+void TestSetForwardDataTypeOfGradVarsEager(
+    const NameVarMap<egr::EagerVariable>& outs) {
+  SetForwardDataTypeOfGradVars<egr::EagerVariable>(outs);
 }
 
 VarBase::VarBase(const std::shared_ptr<VariableWrapper>& var)
@@ -212,8 +223,8 @@ size_t VarBase::GradOpNum() const {
 void VarBase::ClearGradient(bool set_to_zero) {
   VLOG(4) << "ClearGradient " << Name();
   if (grad_var_) {
-    if (grad_var_->Var().IsType<pten::SelectedRows>()) {
-      auto* grad_t = grad_var_->MutableVar()->GetMutable<pten::SelectedRows>();
+    if (grad_var_->Var().IsType<phi::SelectedRows>()) {
+      auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
 #ifdef PADDLE_WITH_MKLDNN
         if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
@@ -222,14 +233,15 @@ void VarBase::ClearGradient(bool set_to_zero) {
         grad_t->mutable_value()->clear();
       }
     } else {
-      platform::RecordEvent record_event("ClearGradient");
+      platform::RecordEvent record_event(
+          "ClearGradient", platform::TracerEventType::UserDefined, 2);
       auto* grad_t =
           grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
       if (grad_t->IsInitialized()) {
         if (set_to_zero) {
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
-          pten::funcs::set_constant(*dev_ctx, grad_t, 0.0);
+          phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
         } else {
           grad_t->clear();
         }
@@ -271,7 +283,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
   PADDLE_ENFORCE_EQ(
       Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
-                                Var().IsType<pten::SelectedRows>()),
+                                Var().IsType<phi::SelectedRows>()),
       true, platform::errors::InvalidArgument(
                 "Variable is not initialized or Variable's type is not "
                 "LoDTensor or SelectedRows when getting numpy tensor"));
@@ -300,12 +312,12 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
             << dst_place;
     return new_var;
   } else {
-    auto& src_selected_rows = Var().Get<pten::SelectedRows>();
+    auto& src_selected_rows = Var().Get<phi::SelectedRows>();
     auto new_var = std::make_shared<VarBase>(
         false, "Itmp" + std::to_string(copied_counter_++));
     new_var->SetType(framework::proto::VarType::SELECTED_ROWS);
     auto* dst_selected_rows =
-        new_var->MutableVar()->GetMutable<pten::SelectedRows>();
+        new_var->MutableVar()->GetMutable<phi::SelectedRows>();
 
     framework::TensorCopy(src_selected_rows.value(), dst_place,
                           dst_selected_rows->mutable_value());
@@ -369,9 +381,9 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
       dst_tensor->Resize(src_tensor.dims());
     }
     framework::TensorCopy(src_tensor, place, dst_tensor);
-  } else if (src.Var().IsType<pten::SelectedRows>()) {
-    auto& src_selected_rows = src.Var().Get<pten::SelectedRows>();
-    auto* dst_selected_rows = MutableVar()->GetMutable<pten::SelectedRows>();
+  } else if (src.Var().IsType<phi::SelectedRows>()) {
+    auto& src_selected_rows = src.Var().Get<phi::SelectedRows>();
+    auto* dst_selected_rows = MutableVar()->GetMutable<phi::SelectedRows>();
     dst_selected_rows->set_height(src_selected_rows.height());
     dst_selected_rows->set_rows(src_selected_rows.rows());
 
@@ -522,12 +534,12 @@ void OpBase::Run(const framework::OperatorBase& op,
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
-                 const NameVarMap<egr::EagerTensor>& ins,
-                 const NameVarMap<egr::EagerTensor>& outs,
+                 const NameVarMap<egr::EagerVariable>& ins,
+                 const NameVarMap<egr::EagerVariable>& outs,
                  const framework::AttributeMap& attrs,
                  const framework::AttributeMap& default_attrs,
                  const platform::Place& place) {
-  OpBaseRunImpl<egr::EagerTensor>(op, ins, outs, attrs, default_attrs, place);
+  OpBaseRunImpl<egr::EagerVariable>(op, ins, outs, attrs, default_attrs, place);
 }
 
 void ClearNoNeedBufferInputs(OpBase* op) {

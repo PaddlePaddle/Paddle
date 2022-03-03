@@ -26,7 +26,7 @@
 
 USE_OP(mul);
 USE_OP(cinn_launch);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 namespace paddle::framework {
 
 using Name2VarInfoMap =

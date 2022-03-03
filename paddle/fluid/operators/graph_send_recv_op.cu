@@ -360,7 +360,7 @@ class GraphSendRecvOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Src_index");
     auto* dst_index = ctx.Input<Tensor>("Dst_index");
-    auto index_type = src_index->type();
+    auto index_type = framework::TransToProtoVarType(src_index->dtype());
 
     if (index_type == framework::proto::VarType::INT32) {
       GraphSendRecvOpCUDAKernelLaunchHelper<DeviceContext, T, int>(
@@ -383,7 +383,7 @@ class GraphSendRecvGradOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* src_index = ctx.Input<Tensor>("Dst_index");
     auto* dst_index = ctx.Input<Tensor>("Src_index");
-    auto index_type = src_index->type();
+    auto index_type = framework::TransToProtoVarType(src_index->dtype());
 
     if (index_type == framework::proto::VarType::INT32) {
       GraphSendRecvGradOpCUDAKernelLaunchHelper<DeviceContext, T, int>(

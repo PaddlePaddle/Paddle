@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/increment_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -27,7 +27,7 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
     float step = context.Attr<float>("step");
     out_tensor->mutable_data<T>(context.GetPlace());
 
-    Tensor step_tensor(x_tensor->type());
+    Tensor step_tensor(x_tensor->dtype());
 
     step_tensor.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));

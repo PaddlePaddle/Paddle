@@ -19,11 +19,11 @@
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -112,8 +112,7 @@ class DeterminantKernel : public framework::OpKernel<T> {
                           "the input matrix should be square matrix."));
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
-    auto output_dims =
-        framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
+    auto output_dims = phi::slice_ddim(input->dims(), 0, input_dim_size - 2);
     if (input_dim_size > 2) {
       output->Resize(output_dims);
     } else {
@@ -150,7 +149,7 @@ inline bool CheckMatrixInvertible(const framework::ExecutionContext& ctx,
   auto* data = dev_tensor.mutable_data<bool>({1}, ctx.GetPlace());
 
   // set false
-  pten::funcs::SetConstant<DeviceContext, bool> zero;
+  phi::funcs::SetConstant<DeviceContext, bool> zero;
   zero(dev_ctx, &dev_tensor, false);
 
   // find whether zero
@@ -208,7 +207,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
       VLOG(3) << "The input matrix not invertible!";
       ddet->Resize(input->dims());
       ddet->mutable_data<T>(context.GetPlace());
-      pten::funcs::SetConstant<DeviceContext, T> zero;
+      phi::funcs::SetConstant<DeviceContext, T> zero;
       zero(dev_ctx, ddet, static_cast<T>(0.0f));
       return;
     }
@@ -322,7 +321,7 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     }
     output_dim_vec.insert(output_dim_vec.begin(),
                           2);  // make the output dims as same as numpy
-    auto output_dims = framework::make_ddim(output_dim_vec);
+    auto output_dims = phi::make_ddim(output_dim_vec);
     output->Resize(output_dims);
     VLOG(2) << "output dim:" << output->dims();
   }
@@ -363,7 +362,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
       VLOG(3) << "The input matrix not invertible!";
       dslogdet->Resize(input->dims());
       dslogdet->mutable_data<T>(context.GetPlace());
-      pten::funcs::SetConstant<DeviceContext, T> zero;
+      phi::funcs::SetConstant<DeviceContext, T> zero;
       zero(dev_ctx, dslogdet, std::numeric_limits<T>::quiet_NaN());
       return;
     }
@@ -395,7 +394,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
                                                      size_t(numel * sizeof(T)));
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
+    phi::funcs::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
     for_range(functor);
 
     VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();

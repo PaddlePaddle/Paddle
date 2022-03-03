@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -271,25 +272,40 @@ bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
   if (op_type == "c_sync_calc_stream" || op_type == "c_sync_comm_stream") {
     return true;
   }
-  auto &all_kernels = OperatorWithKernel::AllOpKernels();
-  auto it = all_kernels.find(op_type);
-  // skip op not has kernel
-  if (it != all_kernels.end()) {
-    bool support_cpu = false;
-    bool support_gpu = false;
-    for (auto &kernel_pair : it->second) {
-      if (platform::is_cpu_place(kernel_pair.first.place_)) {
-        support_cpu = true;
-      }
-      if (platform::is_gpu_place(kernel_pair.first.place_)) {
-        support_gpu = true;
+  bool support_cpu = false;
+  bool support_gpu = false;
+  auto &kernel_factory = phi::KernelFactory::Instance();
+  auto kernel_key_map =
+      kernel_factory.SelectKernelMap(phi::TransToPhiKernelName(op_type));
+  bool has_op_kernel = kernel_key_map.size() > 0 ? true : false;
+  for (auto &kernel : kernel_key_map) {
+    if (platform::is_gpu_place(phi::TransToPhiPlace(kernel.first.backend()))) {
+      support_gpu = true;
+    } else if (platform::is_cpu_place(
+                   phi::TransToPhiPlace(kernel.first.backend()))) {
+      support_cpu = true;
+    }
+  }
+
+  if (!support_cpu || !support_gpu) {
+    auto &all_kernels = OperatorWithKernel::AllOpKernels();
+    auto it = all_kernels.find(op_type);
+    // skip op not has kernel
+    if (it != all_kernels.end()) {
+      has_op_kernel = true;
+      for (auto &kernel_pair : it->second) {
+        if (platform::is_cpu_place(kernel_pair.first.place_)) {
+          support_cpu = true;
+        } else if (platform::is_gpu_place(kernel_pair.first.place_)) {
+          support_gpu = true;
+        }
       }
     }
-    VLOG(6) << "Op check: " << op_type << ", support CPU: " << support_cpu
-            << ", support GPU: " << support_gpu;
-    return support_cpu && support_gpu;
   }
-  return true;
+
+  VLOG(6) << "Op check: " << op_type << ", support CPU: " << support_cpu
+          << ", support GPU: " << support_gpu;
+  return has_op_kernel ? (support_cpu && support_gpu) : true;
 }
 
 bool FuseOptimizerOpPass::GradGeneratedOpKernelCheck(

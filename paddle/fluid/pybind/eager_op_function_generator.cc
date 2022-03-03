@@ -32,8 +32,8 @@
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
 
-// pten
-#include "paddle/pten/kernels/declarations.h"
+// phi
+#include "paddle/phi/kernels/declarations.h"
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
@@ -79,10 +79,10 @@ const char* CAST_VAR_LIST_TEMPLATE = R"(
     auto %s = GetTensorListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_TEMPLATE = R"(
-    auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_LIST_TEMPLATE = R"(
-    auto %s = GetEagerTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_SIZE_T_TEMPLATE = R"(
     auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
@@ -365,9 +365,9 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    // if the pten lib contains op kernel, we still generate ops method
+    // if the phi lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
-        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+        !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
     std::string func_name = "eager_api_" + op_type;

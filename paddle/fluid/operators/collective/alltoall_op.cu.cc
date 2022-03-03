@@ -31,7 +31,8 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto out = ctx.Output<framework::LoDTensor>("Out");
     int send_numel = x->numel();
-    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int ring_id = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(

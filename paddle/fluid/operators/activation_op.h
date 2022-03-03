@@ -28,9 +28,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif

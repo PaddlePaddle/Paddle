@@ -16,11 +16,11 @@
 
 #include <string>
 
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -88,13 +88,14 @@ std::string ScaleLossGradOpHandle::LossGradName() const {
 }
 
 void ScaleLossGradOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::UserDefined, 2);
   RunOnVar(local_exec_scopes_[0]->FindVar(LossGradName()), true);
 }
 
 void ScaleLossGradOpHandle::RunOnVar(Variable *var, bool record_event) {
   auto *tensor = var->GetMutable<LoDTensor>();
-  tensor->Resize(make_ddim({1}));
+  tensor->Resize(phi::make_ddim({1}));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_,

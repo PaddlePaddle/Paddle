@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/execution_policy.h>
@@ -59,7 +59,7 @@ struct Transform {
                   BinaryOperation op);
 };
 
-// NOTE: After the pten kernel is migrated, it needs to be deleted.
+// NOTE: After the phi kernel is migrated, it needs to be deleted.
 template <>
 struct Transform<platform::CPUDeviceContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
@@ -78,16 +78,16 @@ struct Transform<platform::CPUDeviceContext> {
 };
 
 template <>
-struct Transform<pten::CPUContext> {
+struct Transform<phi::CPUContext> {
   template <typename InputIter, typename OutputIter, typename UnaryOperation>
-  void operator()(const pten::CPUContext& context, InputIter first,
+  void operator()(const phi::CPUContext& context, InputIter first,
                   InputIter last, OutputIter result, UnaryOperation op) {
     std::transform(first, last, result, op);
   }
 
   template <typename InputIter1, typename InputIter2, typename OutputIter,
             typename BinaryOperation>
-  void operator()(const pten::CPUContext& context, InputIter1 first1,
+  void operator()(const phi::CPUContext& context, InputIter1 first1,
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
     std::transform(first1, last1, first2, result, op);
@@ -120,6 +120,53 @@ struct Transform<platform::CUDADeviceContext> {
   template <typename InputIter1, typename InputIter2, typename OutputIter,
             typename BinaryOperation>
   void operator()(const platform::CUDADeviceContext& context, InputIter1 first1,
+                  InputIter1 last1, InputIter2 first2, OutputIter result,
+                  BinaryOperation op) {
+    auto place = context.GetPlace();
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "The CUDA Transform must be used in GPU place."));
+#ifdef __HIPCC__
+    thrust::transform(thrust::hip::par.on(context.stream()),
+                      details::CastToCUDATransformIterator(first1),
+                      details::CastToCUDATransformIterator(last1),
+                      details::CastToCUDATransformIterator(first2),
+                      details::CastToCUDATransformIterator(result), op);
+#else
+    thrust::transform(thrust::cuda::par.on(context.stream()),
+                      details::CastToCUDATransformIterator(first1),
+                      details::CastToCUDATransformIterator(last1),
+                      details::CastToCUDATransformIterator(first2),
+                      details::CastToCUDATransformIterator(result), op);
+#endif
+  }
+};
+
+template <>
+struct Transform<phi::GPUContext> {
+  template <typename InputIter, typename OutputIter, typename UnaryOperation>
+  void operator()(const phi::GPUContext& context, InputIter first,
+                  InputIter last, OutputIter result, UnaryOperation op) {
+    auto place = context.GetPlace();
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "The CUDA Transform must be used in GPU place."));
+#ifdef __HIPCC__
+    thrust::transform(thrust::hip::par.on(context.stream()),
+                      details::CastToCUDATransformIterator(first),
+                      details::CastToCUDATransformIterator(last),
+                      details::CastToCUDATransformIterator(result), op);
+#else
+    thrust::transform(thrust::cuda::par.on(context.stream()),
+                      details::CastToCUDATransformIterator(first),
+                      details::CastToCUDATransformIterator(last),
+                      details::CastToCUDATransformIterator(result), op);
+#endif
+  }
+
+  template <typename InputIter1, typename InputIter2, typename OutputIter,
+            typename BinaryOperation>
+  void operator()(const phi::GPUContext& context, InputIter1 first1,
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
     auto place = context.GetPlace();

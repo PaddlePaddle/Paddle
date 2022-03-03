@@ -80,8 +80,8 @@ class CropNPUKernel : public framework::OpKernel<T> {
                             "Input(shape) should be equal to the shape of dims "
                             "(%d) of the Input(X).",
                             shape_size.size(), x->dims().size()));
-      Tensor tmp_shape(x->type());
-      tmp_shape.Resize(framework::make_ddim(shape_size));
+      Tensor tmp_shape(x->dtype());
+      tmp_shape.Resize(phi::make_ddim(shape_size));
       tmp_shape.mutable_data<T>(ctx.GetPlace());
       const auto& runner =
           NpuOpRunner("Crop", {*x, tmp_shape}, {*out}, attr_input);

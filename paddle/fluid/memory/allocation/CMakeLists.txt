@@ -58,6 +58,11 @@ else ()
     set(AllocatorFacadeDeps)
 endif()
 
+if (WITH_CUSTOM_DEVICE)
+  cc_library(custom_allocator SRCS custom_allocator.cc DEPS allocator device_manager)
+  set(AllocatorFacadeDeps ${AllocatorFacadeDeps} custom_allocator)
+endif()
+
 if (WITH_GPU)
     nv_test(best_fit_allocator_test
             SRCS best_fit_allocator_test.cc

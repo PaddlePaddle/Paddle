@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined(PADDLE_WITH_XPU)
 namespace paddle {

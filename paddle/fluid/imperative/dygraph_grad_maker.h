@@ -365,12 +365,12 @@ class TracedGradOp {
                var_wrapper->MutableVar()->CurrentInplaceVersion()) {
       return var_wrapper;
     } else if (var_wrapper->MutableVar()->IsType<framework::LoDTensor>() ||
-               var_wrapper->MutableVar()->IsType<pten::SelectedRows>()) {
+               var_wrapper->MutableVar()->IsType<phi::SelectedRows>()) {
       auto* tensor =
           var_wrapper->MutableVar()->IsType<framework::LoDTensor>()
               ? var_wrapper->MutableVar()->GetMutable<framework::LoDTensor>()
               : var_wrapper->MutableVar()
-                    ->GetMutable<pten::SelectedRows>()
+                    ->GetMutable<phi::SelectedRows>()
                     ->mutable_value();
       if (!tensor->IsInitialized()) {
         return var_wrapper;

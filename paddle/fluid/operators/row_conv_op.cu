@@ -13,7 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/row_conv_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -336,7 +336,8 @@ class RowConvKernel<platform::CUDADeviceContext, T>
 
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    paddle::framework::MixVector<size_t> mix_vector(&batch_indices);
+    size_t *idx = mix_vector.CUDAMutableData(context.GetPlace());
     auto stream = context.cuda_device_context().stream();
 
     if (future_context <= 32) {
@@ -352,6 +353,7 @@ class RowConvKernel<platform::CUDADeviceContext, T>
       RowConvForward<T><<<grid_dim, block_dim, 0, stream>>>(
           in, weight, num_sequence, input_dim, future_context, idx, out);
     }
+    mix_vector.CopyToCPU();
   }
 };
 
@@ -392,10 +394,11 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     // int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    size_t *idx = batch_indices.CUDAMutableData(context.GetPlace());
+    paddle::framework::MixVector<size_t> mixv_batch_indices(&batch_indices);
+    size_t *idx = mixv_batch_indices.CUDAMutableData(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
 
     if (dFilter) {
       T *dfilter = dFilter->mutable_data<T>(context.GetPlace());
@@ -444,6 +447,7 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
             dout, weights, num_sequence, input_dim, future_context, idx, din);
       }
     }
+    mixv_batch_indices.CopyToCPU();
   }
 };
 }  // namespace operators

@@ -23,7 +23,7 @@
 #include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
@@ -166,9 +166,9 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
             /*xDesc=*/data_desc_,
             /*sizeInBytes=*/&reserve_space_size));
 
-    reserve_space_ptr = reserve_space->mutable_data(ctx.GetPlace(), x->type(),
+    reserve_space_ptr = reserve_space->mutable_data(ctx.GetPlace(), x->dtype(),
                                                     reserve_space_size);
-    workspace_ptr = workspace_tensor.mutable_data(ctx.GetPlace(), x->type(),
+    workspace_ptr = workspace_tensor.mutable_data(ctx.GetPlace(), x->dtype(),
                                                   workspace_size);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
@@ -256,8 +256,8 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
         PADDLE_THROW(
             platform::errors::Unimplemented("Unsupported activation type"));
       }
-      pten::funcs::SetConstant<platform::CUDADeviceContext,
-                               BatchNormParamType<T>>
+      phi::funcs::SetConstant<platform::CUDADeviceContext,
+                              BatchNormParamType<T>>
           functor;
       functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
       functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));

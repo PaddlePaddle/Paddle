@@ -80,3 +80,16 @@ class FuseOptimizerPass(CPPPassWrapper):
 
     def _type(self):
         return PassType.FUSION_OPT
+
+
+@register_pass("inplace_addto_op")
+class InplaceAddtoOpPass(CPPPassWrapper):
+    def __init__(self):
+        super(InplaceAddtoOpPass, self).__init__()
+
+    @property
+    def cpp_name(self):
+        return "inplace_addto_op_pass"
+
+    def _type(self):
+        return PassType.CALC_OPT

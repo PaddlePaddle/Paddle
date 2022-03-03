@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace memory {
@@ -116,7 +117,9 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
-pten::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
+phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
+  platform::RecordEvent("StreamSafeCUDAAllocator::Allocate",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
@@ -143,7 +146,9 @@ pten::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   return allocation;
 }
 
-void StreamSafeCUDAAllocator::FreeImpl(pten::Allocation* allocation) {
+void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
+  platform::RecordEvent("StreamSafeCUDAAllocator::Free",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       dynamic_cast<StreamSafeCUDAAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
