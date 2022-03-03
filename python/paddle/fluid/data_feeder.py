@@ -67,6 +67,9 @@ def convert_dtype(dtype):
             # however, jointly supporting python2 and python3, (as well as python4 maybe)
             # may still be a long-lasting problem.
             return str(dtype)
+        # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
+        if dtype in ['bfloat16']:
+            return 'uint16'
 
     raise TypeError(
         "dtype must be any of [bool, float16, uint16, float32, float64, int8, int16, "

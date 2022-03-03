@@ -66,20 +66,20 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     bool is_train = !is_test && !use_global_stats;
     std::string act_type = ctx.Attr<std::string>("act_type");
 
-    auto input_x_shape = framework::vectorize<int>(input_x->dims());
-    auto filter_x_shape = framework::vectorize<int>(filter_x->dims());
+    auto input_x_shape = phi::vectorize<int>(input_x->dims());
+    auto filter_x_shape = phi::vectorize<int>(filter_x->dims());
     // std::swap used to convert shape of filter from conv2d when kernel size is
     // 1.
     if (filter_x_shape[1] != filter_x_shape[2] && 1 == filter_x_shape[2]) {
       std::swap(filter_x_shape[1], filter_x_shape[3]);
     }
     auto param_dims = scale_x->dims();
-    auto param_shape = framework::vectorize<int>(scale_x->dims());
+    auto param_shape = phi::vectorize<int>(scale_x->dims());
     if (1 == param_shape.size()) {
       param_shape = {1, 1, 1, param_shape[0]};
     }
-    auto output_shape = framework::vectorize<int>(output->dims());
-    auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
+    auto output_shape = phi::vectorize<int>(output->dims());
+    auto bitmask_shape = phi::vectorize<int>(bitmask->dims());
     int output_channel = filter_x_shape[0];
     int64_t ele_count =
         std::accumulate(output_shape.begin(), output_shape.end(), 1,
@@ -128,8 +128,8 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
       Tensor *running_mean_z = ctx.Output<Tensor>("RunningMeanZ");
       Tensor *running_var_z = ctx.Output<Tensor>("RunningVarZ");
 
-      auto input_z_shape = framework::vectorize<int>(input_z->dims());
-      auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
+      auto input_z_shape = phi::vectorize<int>(input_z->dims());
+      auto filter_z_shape = phi::vectorize<int>(filter_z->dims());
 
       // 3.1 Conv for second input
       Tensor sum_z;
@@ -206,11 +206,11 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
     bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     std::string act_type = ctx.Attr<std::string>("act_type");
 
-    auto x_shape = framework::vectorize<int>(x->dims());
-    auto filter_x_shape = framework::vectorize<int>(filter_x->dims());
-    auto param_shape = framework::vectorize<int>(scale_x->dims());
-    auto output_shape = framework::vectorize<int>(output->dims());
-    auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
+    auto x_shape = phi::vectorize<int>(x->dims());
+    auto filter_x_shape = phi::vectorize<int>(filter_x->dims());
+    auto param_shape = phi::vectorize<int>(scale_x->dims());
+    auto output_shape = phi::vectorize<int>(output->dims());
+    auto bitmask_shape = phi::vectorize<int>(bitmask->dims());
 
     auto place = ctx.GetPlace();
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -267,8 +267,8 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
                          eps);
 
       // 1.3 Backward of Conv for z, get z_grad and filter_z_grad
-      auto z_shape = framework::vectorize<int>(z->dims());
-      auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
+      auto z_shape = phi::vectorize<int>(z->dims());
+      auto filter_z_shape = phi::vectorize<int>(filter_z->dims());
       CudnnNormConvolutionGrad<T> conv_z_op(dev_ctx, z_shape, filter_z_shape,
                                             output_shape, padding, stride_z,
                                             dilation, group);

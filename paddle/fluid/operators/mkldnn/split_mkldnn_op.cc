@@ -25,7 +25,7 @@ static inline std::vector<std::vector<int64_t>> CalculateOutsDims(
     const std::vector<int>& sections, const size_t axis,
     const int outs_number) {
   std::vector<std::vector<int64_t>> outs_dims(outs_number,
-                                              framework::vectorize(in_dims));
+                                              phi::vectorize(in_dims));
 
   if (num > 0) {
     PADDLE_ENFORCE_EQ(in_dims[axis] % num, 0,
@@ -84,11 +84,11 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
       const auto outs_dims =
           CalculateOutsDims(x->dims(), num, sections, axis, outs_number);
       for (size_t i = 0; i < outs.size(); ++i) {
-        outs[i]->Resize(framework::make_ddim(outs_dims[i]));
+        outs[i]->Resize(phi::make_ddim(outs_dims[i]));
       }
     }
 
-    auto x_vec_dims = framework::vectorize(x_dims);
+    auto x_vec_dims = phi::vectorize(x_dims);
 
     dnnl::memory::data_type x_type =
         framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
@@ -104,7 +104,7 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
         x->format(), platform::to_void_cast(x->data<T>()));
 
     for (size_t i = 0; i < outs_number; ++i) {
-      auto out_vec_dims = framework::vectorize(outs[i]->dims());
+      auto out_vec_dims = phi::vectorize(outs[i]->dims());
       auto slice_mem_p = reorder_handler.AcquireSubmemory(out_vec_dims, offset,
                                                           reorder_src_memory_p);
 

@@ -96,7 +96,7 @@ class CorrelationOp : public framework::OperatorWithKernel {
     std::vector<int64_t> output_shape =
         CorrelationOutputSize(in_dims[0], in_dims[2], in_dims[3], stride1,
                               stride2, kernel_size, pad_size, max_displacement);
-    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
   }
 
  protected:

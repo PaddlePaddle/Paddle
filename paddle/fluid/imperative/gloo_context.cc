@@ -84,18 +84,18 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
     }
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>());
-  } else if (src.IsType<pten::SelectedRows>()) {
+  } else if (src.IsType<phi::SelectedRows>()) {
     if (&src != dst) {
-      if (!dst->IsType<pten::SelectedRows>()) {
+      if (!dst->IsType<phi::SelectedRows>()) {
         dst->Clear();
       }
-      AllReduce(src.Get<pten::SelectedRows>(),
-                dst->GetMutable<pten::SelectedRows>());
+      AllReduce(src.Get<phi::SelectedRows>(),
+                dst->GetMutable<phi::SelectedRows>());
     } else {
       // SelectedRows cannot be allreduce in-place
       framework::Variable tmp_dst;
-      AllReduce(src.Get<pten::SelectedRows>(),
-                tmp_dst.GetMutable<pten::SelectedRows>());
+      AllReduce(src.Get<phi::SelectedRows>(),
+                tmp_dst.GetMutable<phi::SelectedRows>());
       *dst = std::move(tmp_dst);
     }
   } else {
@@ -132,8 +132,8 @@ void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
     break;                                                        \
   }
 
-void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
-                                    pten::SelectedRows *dst) {
+void GLOOParallelContext::AllReduce(const phi::SelectedRows &src,
+                                    phi::SelectedRows *dst) {
   // auto ;
   // int local_rank = strategy_.local_rank_;
   int nranks = strategy_.nranks_;
@@ -143,7 +143,7 @@ void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
   auto dtype = framework::TransToProtoVarType(src_tensor.dtype());
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
-  const auto &src_rows = src.rows();
+  auto &src_rows = src.rows();
   auto gloo_wrapper = framework::GlooWrapper::GetInstance();
   size_t local_row_num = src_rows.size();
   std::vector<size_t> rows_num_vector =
@@ -157,13 +157,15 @@ void GLOOParallelContext::AllReduce(const pten::SelectedRows &src,
           << ", height: " << src.height();
   auto *dst_rows = dst->mutable_rows();
   dst_rows->resize(rows_num);
-  auto *dst_rows_ptr = dst_rows->MutableData(place);
-  const int64_t *src_rows_ptr = src_rows.Data(place);
+  paddle::framework::MixVector<int64_t> mixv_dst_rows(dst_rows);
+  auto *dst_rows_ptr = mixv_dst_rows.MutableData(place);
+  paddle::framework::MixVector<int64_t> mixv_src_rows(&src_rows);
+  const int64_t *src_rows_ptr = mixv_src_rows.Data(place);
 
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
   dims[0] = rows_num;
-  auto feature_size = framework::product(dims) / dims[0];
+  auto feature_size = phi::product(dims) / dims[0];
   dst_tensor->Resize(dims);
 
   std::vector<size_t> element_nums = rows_num_vector;

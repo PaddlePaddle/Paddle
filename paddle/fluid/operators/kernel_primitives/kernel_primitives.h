@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/pten/kernels/primitive/kernel_primitives.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
 namespace operators {
-namespace kernel_primitives = pten::kps;
+namespace kernel_primitives = phi::kps;
 }
 }

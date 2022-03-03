@@ -18,7 +18,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-void Allocator::FreeImpl(pten::Allocation* allocation) {
+void Allocator::FreeImpl(phi::Allocation* allocation) {
   static_cast<Allocation*>(allocation)
       ->TopDecoratedAllocator()
       ->Free(allocation);

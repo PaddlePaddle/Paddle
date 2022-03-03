@@ -130,9 +130,9 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         """
 
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        src_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.work_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
@@ -287,9 +287,9 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         """
 
         dist_op_context = ctx.dist_op_context
-        main_block = dist_op_context.get_dst_main_program().global_block()
-        src_op = dist_op_context.get_cur_src_op()
-        rank_id = dist_op_context.get_rank_id()
+        main_block = dist_op_context.work_block
+        src_op = dist_op_context.cur_src_op
+        rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))

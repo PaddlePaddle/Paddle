@@ -80,7 +80,7 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);
       std::vector<int64_t> new_dim = {1, index_dims[0]};
-      tmp_tensor.Resize(framework::make_ddim(new_dim));
+      tmp_tensor.Resize(phi::make_ddim(new_dim));
       index = &tmp_tensor;
 
       tmp_tensor2.ShareDataWith(*dout);
@@ -88,7 +88,7 @@ class GatherNdGradNPUKernel : public framework::OpKernel<T> {
       for (int i = index->numel(); i < x->dims().size(); i++) {
         new_dim2.push_back(x->dims()[i]);
       }
-      tmp_tensor2.Resize(framework::make_ddim(new_dim2));
+      tmp_tensor2.Resize(phi::make_ddim(new_dim2));
       dout = &tmp_tensor2;
     }
 

@@ -15,9 +15,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -191,7 +191,7 @@ class MaxSeqPoolGradFunctor {
     const int* max_index = index.data<int>();
     T* ig_data = in_grad->data<T>();
 
-    pten::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
     set_zero(context, in_grad, static_cast<T>(0.0));
     int64_t num_seq = og_dims[0];
     int64_t dim = out_grad.numel() / num_seq;
@@ -289,7 +289,7 @@ class SumSeqPoolGradFunctor {
                           in_w, out_w, in_w, out_w));
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = in_grad->mutable_data<T>(context.GetPlace());
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       if (h == 0) continue;
@@ -375,7 +375,7 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       Tensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-      auto in_e = EigenMatrix<T>::From(in_t, framework::make_ddim({h, w}));
+      auto in_e = EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
       if (pooltype == "AVERAGE") {
         out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
@@ -409,7 +409,7 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@Grad be zero at first when pooltype is LAST/FIRST
-      pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(context, in_grad, 0);
     }
 

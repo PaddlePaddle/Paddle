@@ -46,13 +46,13 @@ class FillKernel : public framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     auto &out = GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Out"),
                                 "Output", "Out", "Fill");
-    out.Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
+    out.Resize(phi::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    auto pten_dtype = framework::TransToPtenDataType(dtype);
+    auto phi_dtype = framework::TransToPhiDataType(dtype);
     platform::CPUPlace cpu;
     auto force_cpu = ctx.Attr<bool>("force_cpu");
-    out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), pten_dtype);
+    out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), phi_dtype);
 
     framework::LoDTensor tensor;
 
@@ -61,7 +61,7 @@ class FillKernel : public framework::OpKernel<T> {
     } else {
       // Always make tensor in CPU memory.
       tensor.Resize(out.dims());
-      tensor.mutable_data(cpu, pten_dtype);
+      tensor.mutable_data(cpu, phi_dtype);
     }
 
     framework::VisitDataType(

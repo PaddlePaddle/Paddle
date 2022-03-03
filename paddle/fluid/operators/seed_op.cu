@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/seed_op.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ class GPUSeedKernel : public framework::OpKernel<T> {
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(platform::CPUPlace());
       out->mutable_data<T>(platform::CPUPlace());
-      pten::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
+      phi::funcs::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               out, static_cast<T>(seed));
     } else {

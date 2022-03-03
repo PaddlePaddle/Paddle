@@ -1,8 +1,0 @@
-add_executable(print_pten_kernels print_pten_kernels.cc)
-target_link_libraries(print_pten_kernels pten pten_api_utils)
-if(WIN32)
-    target_link_libraries(print_pten_kernels shlwapi.lib)
-endif()
-if(WITH_ROCM)
-    target_link_libraries(print_pten_kernels ${ROCM_HIPRTC_LIB})
-endif()

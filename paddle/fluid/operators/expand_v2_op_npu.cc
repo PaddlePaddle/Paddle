@@ -29,7 +29,7 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
 
     auto in_dims = X->dims();
     auto expand_shape = get_expand_shape(ctx);
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = phi::vectorize<int>(in_dims);
     auto diff = expand_shape.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
     std::vector<int> final_expand_shape(vec_in_dims.size());
@@ -103,7 +103,7 @@ class ExpandV2NPUKernel : public framework::OpKernel<T> {
                           "less than or equal to %d.",
                           shape_size, MAX_RANK_SUPPORTED));
 
-    framework::DDim out_dims = framework::make_ddim(final_expand_shape);
+    framework::DDim out_dims = phi::make_ddim(final_expand_shape);
     Out->Resize(out_dims);
     Out->mutable_data<T>(ctx.GetPlace());
 
@@ -162,8 +162,8 @@ class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
       for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
         reduced_dout_dims.push_back(dout->dims()[i]);
       }
-      tmp_dout.Resize(framework::make_ddim(reduced_dout_dims));
-      reduced_dout.Resize(framework::make_ddim(reduced_dout_dims));
+      tmp_dout.Resize(phi::make_ddim(reduced_dout_dims));
+      reduced_dout.Resize(phi::make_ddim(reduced_dout_dims));
       reduced_dout.mutable_data<T>(ctx.GetPlace());
       const auto& runner = NpuOpRunner("ReduceSumD", {*dout}, {reduced_dout},
                                        {{"axes", axes}, {"keep_dims", false}});

@@ -59,7 +59,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
       FillNpuTensorWithConstant<int32_t>(&index,
                                          static_cast<int32_t>(padding_idx));
 
-      auto updata_dim = framework::make_ddim({1, table_t->dims()[1]});
+      auto updata_dim = phi::make_ddim({1, table_t->dims()[1]});
       Tensor update;
       update.mutable_data<T>(updata_dim, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&update, static_cast<T>(0));

@@ -21,7 +21,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -106,7 +106,7 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     int batch_size = row_lod.size() - 1;
     int pos_total_size = row_lod[batch_size] * channel_num * max_k;
     vec_pos_shape.push_back(pos_total_size);
-    pos->Resize({framework::make_ddim(vec_pos_shape)});
+    pos->Resize({phi::make_ddim(vec_pos_shape)});
     auto pos_data = pos->mutable_data<int>(context.GetPlace());
 
     int offset = 0;
@@ -196,7 +196,7 @@ class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    pten::funcs::SetConstant<paddle::platform::CPUDeviceContext, T> zero;
+    phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, T> zero;
     zero(dev_ctx, d_in, static_cast<T>(0.0));
 
     auto din_data = d_in->data<T>();
