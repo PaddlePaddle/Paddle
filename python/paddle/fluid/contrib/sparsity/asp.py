@@ -155,8 +155,7 @@ def prune_model(main_program=None,
                 n=2,
                 m=4,
                 mask_algo='mask_1d',
-                with_mask=True,
-                sharding=False):
+                with_mask=True):
     r"""
     Pruning parameters of supported layers in :attr:`main_program` via 
     specified mask generation function given by :attr:`mask_algo`. This 
@@ -179,7 +178,6 @@ def prune_model(main_program=None,
         mask_algo (string, optional): The function name to generate spase mask. Default is `mask_1d`.
                                       The vaild inputs should be one of 'mask_1d', 'mask_2d_greedy' and 'mask_2d_best'.
         with_mask (bool, optional): To prune mask Variables related to parameters or not. Ture is purning also, False is not. Defalut is True.
-        sharding (bool, optional): Whether to turn on sharding (model parallel) during training. Please consider turning it ON when encountering OOM using sharding. Default is False.
     Returns:
         dictionary: A dictionary with key: `parameter name` (string) and value: its corresponding mask Variable.
     Examples:
@@ -221,7 +219,10 @@ def prune_model(main_program=None,
             # Must call `exe.run(startup_program)` first before calling `sparsity.prune_model`
             sparsity.prune_model(main_program, mask_algo='mask_2d_best')
     """
-    if sharding:
+    if main_program is not None and hasattr(
+            main_program,
+            "distributed_info_") and main_program.distributed_info_[
+                "sharding_degree"] > 1 and paddle.fluid.is_compiled_with_cuda():
         gpu_id = int(os.environ.get('FLAGS_selected_gpus', 0))
         place = paddle.CUDAPlace(gpu_id)
     else:

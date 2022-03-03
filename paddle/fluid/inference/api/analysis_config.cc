@@ -274,6 +274,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(ipu_available_memory_proportion_);
   CP_MEMBER(ipu_enable_half_partial_);
 
+  // fleet exe related
+  CP_MEMBER(dist_config_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_, false,
                       platform::errors::InvalidArgument(

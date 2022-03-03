@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_helper.h"
 #endif
 #include "paddle/fluid/operators/conv_transpose_op.h"
-#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 namespace paddle {
 namespace operators {
@@ -108,7 +108,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
 
     std::vector<int> input_pad(input_transpose.dims().size() * 2, 0);
     Tensor transformed_input;
@@ -139,12 +139,14 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, input_transpose, pad_value, &transformed_input);
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+              dev_ctx, input_pad, input_transpose, pad_value,
+              &transformed_input);
         } break;
         case 5: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, input_transpose, pad_value, &transformed_input);
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+              dev_ctx, input_pad, input_transpose, pad_value,
+              &transformed_input);
         } break;
         default:
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -375,7 +377,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
 
     std::vector<int> input_pad(input_transpose.dims().size() * 2, 0);
     Tensor transformed_output_grad;
@@ -407,13 +409,13 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, output_grad_transpose, pad_value,
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+              dev_ctx, input_pad, output_grad_transpose, pad_value,
               &transformed_output_grad);
         } break;
         case 5: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, output_grad_transpose, pad_value,
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+              dev_ctx, input_pad, output_grad_transpose, pad_value,
               &transformed_output_grad);
         } break;
         default:
@@ -735,7 +737,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
     Tensor transformed_X(X->type());
     Tensor transformed_ddX(X->type());
 
@@ -794,26 +796,28 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+              dev_ctx, input_pad, transformed_X_channel, pad_value,
+              &transformed_X);
           if (dO) {
-            math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-                ctx, input_pad, transformed_dO_channel, pad_value,
+            phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+                dev_ctx, input_pad, transformed_dO_channel, pad_value,
                 &transformed_dO);
           }
 
           if (ddX) {
-            math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-                ctx, input_pad, transformed_ddX_channel, pad_value,
+            phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+                dev_ctx, input_pad, transformed_ddX_channel, pad_value,
                 &transformed_ddX);
           }
         } break;
         case 5: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+              dev_ctx, input_pad, transformed_X_channel, pad_value,
+              &transformed_X);
           if (ddX) {
-            math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-                ctx, input_pad, transformed_ddX_channel, pad_value,
+            phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+                dev_ctx, input_pad, transformed_ddX_channel, pad_value,
                 &transformed_ddX);
           }
         } break;

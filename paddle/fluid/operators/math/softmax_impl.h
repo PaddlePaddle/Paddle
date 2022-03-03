@@ -156,6 +156,65 @@ class SoftmaxEigen<DeviceContext, platform::float16, is_test> {
   }
 };
 
+template <typename DeviceContext, bool is_test>
+class SoftmaxEigen<DeviceContext, platform::bfloat16, is_test> {
+ public:
+  void operator()(const DeviceContext& context, const int axis_dim,
+                  const framework::Tensor* X, framework::Tensor* Y) {
+    constexpr int kBatchDim = 0;
+    constexpr int kClassDim = 1;
+    constexpr int kAxisDim = 1;
+
+    auto logits = EigenMatrix<platform::bfloat16>::From(*X);
+    auto softmax = EigenMatrix<platform::bfloat16>::From(*Y);
+
+    const int batch_size = logits.dimension(kBatchDim);
+    const int num_classes = logits.dimension(kClassDim);
+    const int num_remain = num_classes / axis_dim;
+
+    Eigen::DSizes<int, 1> along_axis(kAxisDim);
+    Eigen::DSizes<int, 2> batch_classes(batch_size, num_classes);
+    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
+    Eigen::DSizes<int, 3> batch_one_remain(batch_size, 1, num_remain);
+    Eigen::DSizes<int, 3> one_axis_one(1, axis_dim, 1);
+    Eigen::DSizes<int, 2> one_axis(1, axis_dim);
+    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+
+    // For numerical stability, logits should be shifted by maximum number along
+    // axis, calculate shifted_logits into softmax tensor for memory reuse.
+    if (num_remain == 1) {
+      // axis == -1, axis and class in same dimension, calculate along
+      // class dimension directly for higher performance
+      softmax.device(*context.eigen_device()) =
+          (logits -
+           logits.maximum(along_axis)
+               .reshape(batch_by_one)
+               .broadcast(one_by_class))
+              .unaryExpr(ValueClip<platform::bfloat16>());
+    } else {
+      // axis != -1, class dimension split into (axis, remain), max and sum
+      // should be calculated along axis dimension
+      softmax.device(*context.eigen_device()) =
+          (logits.reshape(batch_axis_remain) -
+           logits.reshape(batch_axis_remain)
+               .maximum(along_axis)
+               .reshape(batch_one_remain)
+               .broadcast(one_axis_one)
+               .reshape(batch_classes))
+              .unaryExpr(ValueClip<platform::bfloat16>());
+    }
+
+    softmax.device(*context.eigen_device()) = softmax.exp();
+    softmax.device(*context.eigen_device()) =
+        (softmax *
+         softmax.reshape(batch_axis_remain)
+             .sum(along_axis)
+             .inverse()
+             .broadcast(one_axis));
+  }
+};
+
 template <typename DeviceContext, typename T, bool is_test, typename Enable>
 void SoftmaxFunctor<DeviceContext, T, is_test, Enable>::operator()(
     const DeviceContext& context, const int axis_dim,
@@ -266,6 +325,38 @@ class SoftmaxGradEigen<DeviceContext, platform::float16> {
     auto softmax = EigenMatrix<platform::float16>::From(*y);
     auto softmax_grad = EigenMatrix<platform::float16>::From(*y_grad);
     auto logits_grad = EigenMatrix<platform::float16>::From(*x_grad);
+
+    constexpr int kBatchDim = 0;
+    constexpr int kClassDim = 1;
+
+    const int batch_size = softmax.dimension(kBatchDim);
+    const int num_classes = softmax.dimension(kClassDim);
+    const int num_remain = num_classes / axis_dim;
+
+    Eigen::DSizes<int, 1> along_class(kClassDim);
+    Eigen::DSizes<int, 2> batch_by_one(batch_size, 1);
+    Eigen::DSizes<int, 2> one_by_class(1, num_classes);
+    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+    Eigen::DSizes<int, 2> one_axis(1, axis_dim);
+
+    auto dot = (softmax * softmax_grad)
+                   .reshape(batch_axis_remain)
+                   .sum(along_class)
+                   .broadcast(one_axis);
+    logits_grad.device(*context.eigen_device()) =
+        (softmax_grad - dot) * softmax;
+  }
+};
+
+template <typename DeviceContext>
+class SoftmaxGradEigen<DeviceContext, platform::bfloat16> {
+ public:
+  void operator()(const DeviceContext& context, const int axis_dim,
+                  const framework::Tensor* y, const framework::Tensor* y_grad,
+                  framework::Tensor* x_grad) {
+    auto softmax = EigenMatrix<platform::bfloat16>::From(*y);
+    auto softmax_grad = EigenMatrix<platform::bfloat16>::From(*y_grad);
+    auto logits_grad = EigenMatrix<platform::bfloat16>::From(*x_grad);
 
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
