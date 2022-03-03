@@ -44,8 +44,7 @@ class TestElementWiseAddReluFusePass(PassAutoScanTest):
             "op_outputs": {
                 "Out": ["add_output"]
             },
-            "op_attrs": {
-            }
+            "op_attrs": {}
         }, {
             "op_type": "relu",
             "op_inputs": {
@@ -54,14 +53,14 @@ class TestElementWiseAddReluFusePass(PassAutoScanTest):
             "op_outputs": {
                 "Out": ["relu_output"]
             },
-            "op_attrs": {
-            }
+            "op_attrs": {}
         }]
 
         ops = self.generate_op_config(ops_config)
 
         program_config = ProgramConfig(
             ops=ops,
+            weights={},
             inputs={
                 "A": TensorConfig(data_gen=partial(generate_input)),
                 "B": TensorConfig(data_gen=partial(generate_input))
