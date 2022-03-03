@@ -16,6 +16,7 @@
 #include "paddle/phi/kernels/cpu/graph_send_recv_funcs.h"
 
 #include <algorithm>
+#include <set>
 #include <vector>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
