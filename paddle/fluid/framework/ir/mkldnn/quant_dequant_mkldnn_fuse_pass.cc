@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ namespace ir {
 
 void QuantDequantMkldnnFusePass::MarkSkipQuantizedOps(
     ir::Graph* graph, std::unordered_set<std::string> skip_ops) const {
+  VLOG(3) << "mark skip quantized ops";
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
@@ -56,6 +57,7 @@ void QuantDequantMkldnnFusePass::GatherInfoFromFake(
     std::unordered_set<std::string> fake_dequantize_types,
     std::unordered_map<std::string, std::vector<float>>& weight_thresholds)
     const {
+  VLOG(3) << "gather weight_thresholds from fake dequantized ops";
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
@@ -90,6 +92,7 @@ void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
     std::unordered_set<std::string> fake_quantize_types,
     std::unordered_map<std::string, std::vector<float>>& var_quant_scales)
     const {
+  VLOG(3) << "gather input scales from fake quantized ops";
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
@@ -114,6 +117,9 @@ void QuantDequantMkldnnFusePass::GatherInputScalesFromFake(
       auto* scale_tensor = var->GetMutable<LoDTensor>();
       auto scale_data = scale_tensor->mutable_data<float>(platform::CPUPlace());
       float scale = 1.0 / scale_data[0];
+      if (std::isinf(scale) || std::isnan(scale)) {
+        scale = 0.0;
+      }
 
       auto iter_in = var_quant_scales.find(x_var_name);
       if (iter_in == var_quant_scales.end()) {
@@ -132,6 +138,7 @@ void QuantDequantMkldnnFusePass::GatherOutputScalesFromAttr(
     ir::Graph* graph,
     std::unordered_map<std::string, std::vector<float>>& var_quant_scales)
     const {
+  VLOG(3) << "gather output scales from op's attr";
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
@@ -158,6 +165,7 @@ void QuantDequantMkldnnFusePass::RemoveFakeOps(
     ir::Graph* graph, std::unordered_set<std::string> fake_quantize_types,
     std::unordered_set<std::string> fake_dequantize_types,
     std::unordered_set<std::string> fake_quantize_dequantize_types) const {
+  VLOG(3) << "remove fake quantize and dequantize ops";
   auto collect_fake_quantize = [&](ir::Graph* graph, Node* op_node,
                                    std::unordered_set<const Node*>& nodes2rm) {
     auto* op_desc = op_node->Op();
@@ -258,10 +266,56 @@ void QuantDequantMkldnnFusePass::RemoveFakeOps(
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
+void QuantDequantMkldnnFusePass::TransposeWeight(Tensor* input) const {
+  const auto input_dims = input->dims();
+  std::vector<int> orders;
+  for (int i = input_dims.size() - 1; i >= 0; i--) {
+    orders.push_back(i);
+  }
+
+  Tensor trans_tensor;
+  trans_tensor.Resize(input_dims);
+  float* trans_data = trans_tensor.mutable_data<float>(platform::CPUPlace());
+  float* in_data = input->mutable_data<float>(platform::CPUPlace());
+
+  auto in_dims = input->dims();
+  auto out_dims = trans_tensor.dims();
+  int num_axes = in_dims.size();
+  int count = 1;
+  for (int i = 0; i < num_axes; i++) {
+    count *= in_dims[i];
+  }
+
+  std::vector<int> old_steps(
+      {static_cast<int>(in_dims[1] * in_dims[2] * in_dims[3]),
+       static_cast<int>(in_dims[2] * in_dims[3]), static_cast<int>(in_dims[3]),
+       1});
+  std::vector<int> new_steps(
+      {static_cast<int>(out_dims[1] * out_dims[2] * out_dims[3]),
+       static_cast<int>(out_dims[2] * out_dims[3]),
+       static_cast<int>(out_dims[3]), 1});
+
+  for (int i = 0; i < count; ++i) {
+    int old_idx = 0;
+    int idx = i;
+    for (int j = 0; j < num_axes; ++j) {
+      int order = orders[j];
+      old_idx += (idx / new_steps[j]) * old_steps[order];
+      idx %= new_steps[j];
+    }
+    trans_data[i] = in_data[old_idx];
+  }
+
+  for (int i = 0; i < input->numel(); i++) {
+    in_data[i] = trans_data[i];
+  }
+}
+
 void QuantDequantMkldnnFusePass::DequantizeWeights(
     ir::Graph* graph, Scope* scope,
     std::unordered_map<std::string, std::vector<float>>& weight_thresholds)
     const {
+  VLOG(3) << "dequantize weight for ops which has weight";
   auto is_int8_weights = [&](Node* op_node, Scope* scope,
                              std::string weight_name) -> bool {
     auto* op_desc = op_node->Op();
@@ -281,51 +335,6 @@ void QuantDequantMkldnnFusePass::DequantizeWeights(
       }
     }
     return is_int8;
-  };
-
-  auto transpose_weight = [&](Tensor* input) {
-    const auto input_dims = input->dims();
-    std::vector<int> orders;
-    for (int i = input_dims.size() - 1; i >= 0; i--) {
-      orders.push_back(i);
-    }
-
-    Tensor trans_tensor;
-    trans_tensor.Resize(input_dims);
-    float* trans_data = trans_tensor.mutable_data<float>(platform::CPUPlace());
-    float* in_data = input->mutable_data<float>(platform::CPUPlace());
-
-    auto in_dims = input->dims();
-    auto out_dims = trans_tensor.dims();
-    int num_axes = in_dims.size();
-    int count = 1;
-    for (int i = 0; i < num_axes; i++) {
-      count *= in_dims[i];
-    }
-
-    std::vector<int> old_steps(
-        {static_cast<int>(in_dims[1] * in_dims[2] * in_dims[3]),
-         static_cast<int>(in_dims[2] * in_dims[3]),
-         static_cast<int>(in_dims[3]), 1});
-    std::vector<int> new_steps(
-        {static_cast<int>(out_dims[1] * out_dims[2] * out_dims[3]),
-         static_cast<int>(out_dims[2] * out_dims[3]),
-         static_cast<int>(out_dims[3]), 1});
-
-    for (int i = 0; i < count; ++i) {
-      int old_idx = 0;
-      int idx = i;
-      for (int j = 0; j < num_axes; ++j) {
-        int order = orders[j];
-        old_idx += (idx / new_steps[j]) * old_steps[order];
-        idx %= new_steps[j];
-      }
-      trans_data[i] = in_data[old_idx];
-    }
-
-    for (int i = 0; i < input->numel(); i++) {
-      in_data[i] = trans_data[i];
-    }
   };
 
   auto dequantize_op_weights = [&](
@@ -351,7 +360,7 @@ void QuantDequantMkldnnFusePass::DequantizeWeights(
         weight_data[i] /= 127;
       }
 
-      transpose_weight(weight_tensor);
+      TransposeWeight(weight_tensor);
 
       if (size == 1) {
         for (int i = 0; i < weight_tensor->numel(); i++) {
@@ -371,7 +380,7 @@ void QuantDequantMkldnnFusePass::DequantizeWeights(
         }
       }
 
-      transpose_weight(weight_tensor);
+      TransposeWeight(weight_tensor);
     } else if (weight_dims.size() > 1 && size == weight_dims[1]) {
       auto weight_data =
           weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
@@ -423,6 +432,7 @@ void QuantDequantMkldnnFusePass::DequantizeWeights(
 }
 
 void QuantDequantMkldnnFusePass::UpdateActivations(ir::Graph* graph) const {
+  VLOG(3) << "update conv2d or depthwise_conv2d fused activation";
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
@@ -431,22 +441,16 @@ void QuantDequantMkldnnFusePass::UpdateActivations(ir::Graph* graph) const {
       auto* op_desc = op_node->Op();
       if (!op_desc->HasAttr("fuse_activation")) {
         std::string activation;
-        if (op_desc->HasAttr("fuse_relu")) {
-          const bool fuse_relu =
-              BOOST_GET_CONST(bool, op_desc->GetAttr("fuse_relu"));
-          if (fuse_relu) activation = "relu";
-        } else if (op_desc->HasAttr("fuse_brelu")) {
-          const bool fuse_brelu =
-              BOOST_GET_CONST(bool, op_desc->GetAttr("fuse_relu"));
-          if (fuse_brelu) {
-            activation = "relu6";
-            float alpha = 6.0;
-            if (op_desc->HasAttr("fuse_brelu_threshold")) {
-              alpha = BOOST_GET_CONST(float,
-                                      op_desc->GetAttr("fuse_brelu_threshold"));
-            }
-            op_node->Op()->SetAttr("fuse_alpha", alpha);
+        if (op_desc->GetAttrIfExists<bool>("fuse_relu")) {
+          activation = "relu";
+        } else if (op_desc->GetAttrIfExists<bool>("fuse_brelu")) {
+          activation = "relu6";
+          float alpha = 6.0;
+          if (op_desc->HasAttr("fuse_brelu_threshold")) {
+            alpha = BOOST_GET_CONST(float,
+                                    op_desc->GetAttr("fuse_brelu_threshold"));
           }
+          op_node->Op()->SetAttr("fuse_alpha", alpha);
         }
         op_node->Op()->SetAttr("fuse_activation", activation);
       }
@@ -455,6 +459,7 @@ void QuantDequantMkldnnFusePass::UpdateActivations(ir::Graph* graph) const {
 }
 
 void QuantDequantMkldnnFusePass::RemoveCtrlVars(ir::Graph* graph) const {
+  VLOG(3) << "remove control flow variable";
   std::unordered_set<const Node*> nodes2rm = {};
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
@@ -466,17 +471,18 @@ void QuantDequantMkldnnFusePass::RemoveCtrlVars(ir::Graph* graph) const {
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-// save weight_thresholds and var_quant_scales in dummy op for
-// requant_mkldnn_fuse_pass
+// save weight_thresholds and var_quant_scales in the first op's attr
+// for requant_mkldnn_fuse_pass
 void QuantDequantMkldnnFusePass::SaveQuantInfo(
     ir::Graph* graph,
     std::unordered_map<std::string, std::vector<float>>& weight_thresholds,
     std::unordered_map<std::string, std::vector<float>>& var_quant_scales)
     const {
+  VLOG(3) << "save variables in the first op's attr";
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "feth")
+        op_node->Op()->Type() == "fetch")
       continue;
     op_node->Op()->SetAttr("has_quant_info", true);
 
