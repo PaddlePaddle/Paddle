@@ -15,9 +15,6 @@
 #include "paddle/phi/kernels/isfinite_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#endif
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/isfinite_kernel_impl.h"
@@ -25,73 +22,42 @@
 namespace phi {
 
 template <typename T, typename Context, typename Functor>
-inline void IsfiniteSRImpl(const Context& dev_ctx,
-                           const SelectedRows& x,
-                           SelectedRows* out) {
+inline void IsfiniteKernelImpl(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   Functor functor;
-  functor(x.value(), out->mutable_value());
+  functor(x, out);
 }
+
 }  // namespace phi
 
-PD_REGISTER_KERNEL(isinf_sr,
+PD_REGISTER_KERNEL(isinf,
                    CPU,
                    ALL_LAYOUT,
-                   phi::IsinfSR,
+                   phi::IsinfKernel,
                    float,
                    double,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(isnan_sr,
+PD_REGISTER_KERNEL(isnan,
                    CPU,
                    ALL_LAYOUT,
-                   phi::IsnanSR,
+                   phi::IsnanKernel,
                    float,
                    double,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(isfinite_sr,
+PD_REGISTER_KERNEL(isfinite,
                    CPU,
                    ALL_LAYOUT,
-                   phi::IsfiniteSR,
+                   phi::IsfiniteKernel,
                    float,
                    double,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(isinf_sr,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::IsinfSR,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(isnan_sr,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::IsnanSR,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(isfinite_sr,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::IsfiniteSR,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   int,
-                   int64_t) {}
-#endif

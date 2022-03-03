@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/isfinite_kernel.h"
-
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/isfinite_kernel_impl.h"
+#include "paddle/phi/kernels/isfinite_kernel.h"
 
 namespace phi {
 
@@ -33,43 +32,12 @@ inline void IsfiniteKernelImpl(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(isinf,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::IsinfKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(isnan,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::IsnanKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(isfinite,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::IsfiniteKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16,
-                   int,
-                   int64_t) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(isinf,
                    GPU,
                    ALL_LAYOUT,
                    phi::IsinfKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}
 
@@ -79,7 +47,7 @@ PD_REGISTER_KERNEL(isnan,
                    phi::IsnanKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}
 
@@ -89,7 +57,6 @@ PD_REGISTER_KERNEL(isfinite,
                    phi::IsfiniteKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}
-#endif
