@@ -16,7 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cusolver.h"
+#endif  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -74,13 +76,12 @@ struct MatrixEighFunctor<CPUContext, T> {
                   DenseTensor *eigen_vectors,
                   bool is_lower,
                   bool has_vectors) {
-    using ValueType = phi::funcs::Real<T>;
+    using ValueType = phi::dtype::Real<T>;
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
-    // auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
+    // auto *out_value =
+    eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
-    auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
-            ctx);
+    auto dito = math::DeviceIndependenceTensorOperations<CPUContext, T>(ctx);
 
     DenseTensor input_trans;
     // lapack is a column-major storge, transpose make the input to
@@ -98,14 +99,15 @@ struct MatrixEighFunctor<CPUContext, T> {
     char jobz = has_vectors ? 'V' : 'N';
     auto n = dims[dim_size - 1];
     auto lda = std::max<int64_t>(1, n);
-    // if work = -1, it means that you need to use the lapack function to query
-    // the optimal value
-    int lwork = -1;      // The length of the array work
-    int lrwork = -1;     // The dimension of the array rwork,rwork is REAL array
-    int liwork = -1;     // The dimension of the array iwork
-    int iwork_opt = -1;  // The optimal length of the array liwork
-    T lwork_opt = static_cast<T>(-1);  // The optimal length of the array work
-    ValueType rwork_opt =
+    // if work = -1, it means that you need to use the lapack function to
+    query
+        // the optimal value
+        int lwork = -1;     // The length of the array work
+    int lrwork = -1;        // The dimension of the array rwork,rwork is REAL
+    array int liwork = -1;  // The dimension of the array iwork
+    int iwork_opt = -1;     // The optimal length of the array liwork
+    T lwork_opt = static_cast<T>(-1);  // The optimal length of the array
+    work ValueType rwork_opt =
         static_cast<ValueType>(-1);  // The optimal length of the array rwork
 
     int info = 0;
@@ -142,31 +144,33 @@ struct MatrixEighFunctor<CPUContext, T> {
     }
     DenseTensor iwork_tensor, work_tensor;
 
-    iwork_tensor.Resize(phi::make_ddim({liwork});
-    int *iwork_data =  dev_ctx.template Alloc<int>(&iwork_tensor);
-    // auto *iwork_data = iwork_tensor.mutable_data<int>(),
-    //                                                   ctx.GetPlace());
-    // auto *work_data =
-    //     work_tensor.mutable_data<T>(phi::make_ddim({lwork}), ctx.GetPlace());
+    iwork_tensor.Resize(
+        phi::make_ddim({liwork});
+        int *iwork_data = dev_ctx.template Alloc<int>(&iwork_tensor);
+        // auto *iwork_data = iwork_tensor.mutable_data<int>(),
+        //                                                   ctx.GetPlace());
+        // auto *work_data =
+        //     work_tensor.mutable_data<T>(phi::make_ddim({lwork}),
+        ctx.GetPlace());
     work_tensor.Resize(phi::make_ddim({lwork});
     T *work_data = dev_ctx.template Alloc<T>(&work_tensor);
 
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;
       auto *input_data = input_vector + i * vector_stride;
-      phi::funcs::lapackEigh<T, phi::funcs::Real<T>>(jobz,
-                                                     uplo,
-                                                     n,
-                                                     input_data,
-                                                     lda,
-                                                     value_data,
-                                                     work_data,
-                                                     lwork,
-                                                     rwork_data,
-                                                     lrwork,
-                                                     iwork_data,
-                                                     liwork,
-                                                     &info);
+      phi::funcs::lapackEigh<T, ValueType>(jobz,
+                                           uplo,
+                                           n,
+                                           input_data,
+                                           lda,
+                                           value_data,
+                                           work_data,
+                                           lwork,
+                                           rwork_data,
+                                           lrwork,
+                                           iwork_data,
+                                           liwork,
+                                           &info);
       CheckEighResult(i, info);
     }
     if (has_vectors) {
@@ -195,15 +199,15 @@ struct MatrixEighFunctor<GPUContext, T> {
                   DenseTensor *eigen_vectors,
                   bool is_lower,
                   bool has_vectors) {
-    using ValueType = Real<T>;
+    using ValueType = phi::dtype::Real<T>;
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
-    // auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
+    // auto *out_value =
+    eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
-    auto dito =
-        math::DeviceIndependenceTensorOperations<phi::GPUContext, T>(ctx);
+    auto dito = math::DeviceIndependenceTensorOperations<GPUContext, T>(ctx);
     DenseTensor input_trans;
     input_trans = dito.Transpose(input);
-    auto *input_vector = input_trans.data<T>();
+    T *input_vector = input_trans.data<T>();
     auto &dims = input.dims();
     int dim_size = dims.size();
     int64_t batch_size = GetBatchSize(dims);
@@ -221,8 +225,8 @@ struct MatrixEighFunctor<GPUContext, T> {
     auto info = paddle::memory::Alloc(dev_ctx, sizeof(int) * batch_size);
     auto *info_ptr = reinterpret_cast<int *>(info->ptr());
 
-    // When the input type is float32, and the feature value input dimension is
-    // greater than or equal to [*,32,32]  and less than or equal to
+    // When the input type is float32, and the feature value input dimension
+    // is greater than or equal to [*,32,32]  and less than or equal to
     // [*,512,512], Syevj has better performance.
     bool use_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
                       values_stride >= 32 && values_stride <= 512);
@@ -306,7 +310,7 @@ struct MatrixEighFunctor<GPUContext, T> {
     }
   }
 
-  using ValueType = Real<T>;
+  using ValueType = phi::dtype::Real<T>;
   inline void EvdBuffer(cusolverDnHandle_t handle,
                         cusolverEigMode_t jobz,
                         cublasFillMode_t uplo,
@@ -388,6 +392,8 @@ FUNC_WITH_TYPES(EVD_INSTANCE);
 #undef FUNC_WITH_TYPES
 #undef EVDBUFFER_INSTANCE
 #undef EVD_INSTANCE
+
+#endif  // PADDLE_WITH_CUDA
 
 }  // namespace funcs
 }  // namespace phi

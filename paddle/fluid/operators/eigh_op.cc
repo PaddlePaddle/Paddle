@@ -145,3 +145,11 @@ REGISTER_OPERATOR(eigh, ops::EighOp, ops::EignOpMaker,
                   ops::EighGradOpMaker<paddle::framework::OpDesc>,
                   ops::EighGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(eigh_grad, ops::EighGradOp);
+
+REGISTER_OP_CPU_KERNEL(
+    eigh_grad, ops::EighGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::EighGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::EighGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex<float>>,
+    ops::EighGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex<double>>);

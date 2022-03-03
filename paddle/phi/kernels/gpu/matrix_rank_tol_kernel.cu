@@ -314,13 +314,12 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MatrixRankTolKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const Scalar& atol_tensor,
-                         bool hermitian,
-                         bool use_default_tol,
-                         float tol,
-                         DenseTensor* out) {
+void MatrixRankKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      bool hermitian,
+                      bool use_default_tol,
+                      float tol,
+                      DenseTensor* out) {
   auto* x_data = x.data<T>();
   dev_ctx.template Alloc<int64_t>(out);
 
@@ -453,10 +452,10 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(matrix_rank,  // cuda_only
+PD_REGISTER_KERNEL(matrix_rank_tol,  // cuda_only
                    GPU,
                    ALL_LAYOUT,
-                   phi::MatrixRankTolKernel,
+                   phi::MatrixRankKernel,
                    float,
                    double) {}
 
