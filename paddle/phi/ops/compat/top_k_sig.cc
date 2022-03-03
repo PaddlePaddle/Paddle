@@ -32,5 +32,7 @@ KernelSignature TopkGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(top_k_v2, top_k);
+PD_REGISTER_BASE_KERNEL_NAME(top_k_v2_grad, top_k_grad);
 PD_REGISTER_ARG_MAPPING_FN(top_k, phi::TopkOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(top_k_grad, phi::TopkGradOpArgumentMapping);
