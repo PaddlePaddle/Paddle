@@ -193,10 +193,10 @@ class AllocatorFacadePrivate {
         }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-        auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+        auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
           for (size_t dev_id = 0;
-               dev_id < platform::DeviceManager::GetDeviceCount(dev_type);
+               dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
                ++dev_id) {
             InitNaiveBestFitCustomDeviceAllocator(
                 platform::CustomPlace(dev_type, dev_id));
@@ -240,10 +240,10 @@ class AllocatorFacadePrivate {
         }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-        auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+        auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
         for (const auto& dev_type : device_types) {
           for (size_t dev_id = 0;
-               dev_id < platform::DeviceManager::GetDeviceCount(dev_type);
+               dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
                ++dev_id) {
             InitAutoGrowthCustomDeviceAllocator(
                 platform::CustomPlace(dev_type, dev_id), allow_free_idle_chunk);
@@ -738,7 +738,7 @@ class AllocatorFacadePrivate {
     auto custom_allocator =
         std::make_shared<paddle::memory::allocation::CustomAllocator>(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        custom_allocator, platform::DeviceManager::GetMinChunkSize(p),
+        custom_allocator, phi::DeviceManager::GetMinChunkSize(p),
         allow_free_idle_chunk);
   }
 #endif
@@ -814,11 +814,10 @@ class AllocatorFacadePrivate {
     }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    auto device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+    auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
     for (const auto& dev_type : device_types) {
       for (size_t dev_id = 0;
-           dev_id < platform::DeviceManager::GetDeviceCount(dev_type);
-           dev_id++) {
+           dev_id < phi::DeviceManager::GetDeviceCount(dev_type); dev_id++) {
         places.emplace_back(platform::CustomPlace(dev_type, dev_id));
       }
     }

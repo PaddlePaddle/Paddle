@@ -14,11 +14,10 @@
 
 #pragma once
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/event.h"
-#include "paddle/fluid/platform/device/stream.h"
+#include "paddle/phi/backends/event.h"
+#include "paddle/phi/backends/stream.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 class DeviceInterface {  // Driver / Runtime
  public:
@@ -66,7 +65,8 @@ class DeviceInterface {  // Driver / Runtime
   // Stream
   // ! Create an asynchronous stream
   virtual void CreateStream(
-      size_t dev_id, stream::Stream* stream,
+      size_t dev_id,
+      stream::Stream* stream,
       const stream::Stream::Priority& priority =
           stream::Stream::Priority::kNormal,
       const stream::Stream::Flag& flag = stream::Stream::Flag::kDefaultFlag);
@@ -81,19 +81,22 @@ class DeviceInterface {  // Driver / Runtime
   virtual bool QueryStream(size_t dev_id, const stream::Stream* stream);
 
   // ! Add a callback to a compute stream.
-  virtual void AddCallback(size_t dev_id, stream::Stream* stream,
+  virtual void AddCallback(size_t dev_id,
+                           stream::Stream* stream,
                            stream::Stream::Callback* callback);
 
   // Event
   // ! Create an event.
-  virtual void CreateEvent(size_t dev_id, event::Event* event,
+  virtual void CreateEvent(size_t dev_id,
+                           event::Event* event,
                            event::Event::Flag flags);
 
   // ! Destroy an event.
   virtual void DestroyEvent(size_t dev_id, event::Event* event);
 
   // ! Records an event.
-  virtual void RecordEvent(size_t dev_id, const event::Event* event,
+  virtual void RecordEvent(size_t dev_id,
+                           const event::Event* event,
                            const stream::Stream* stream);
 
   // ! Waits for event to complete.
@@ -102,24 +105,34 @@ class DeviceInterface {  // Driver / Runtime
   virtual bool QueryEvent(size_t dev_id, const event::Event* event);
 
   // ! Make a compute stream wait on an event
-  virtual void StreamWaitEvent(size_t dev_id, const stream::Stream* stream,
+  virtual void StreamWaitEvent(size_t dev_id,
+                               const stream::Stream* stream,
                                const event::Event* event);
 
   // Memory
-  virtual void MemoryCopyH2D(size_t dev_id, void* dst, const void* src,
+  virtual void MemoryCopyH2D(size_t dev_id,
+                             void* dst,
+                             const void* src,
                              size_t size,
                              const stream::Stream* stream = nullptr);
 
-  virtual void MemoryCopyD2H(size_t dev_id, void* dst, const void* src,
+  virtual void MemoryCopyD2H(size_t dev_id,
+                             void* dst,
+                             const void* src,
                              size_t size,
                              const stream::Stream* stream = nullptr);
 
-  virtual void MemoryCopyD2D(size_t dev_id, void* dst, const void* src,
+  virtual void MemoryCopyD2D(size_t dev_id,
+                             void* dst,
+                             const void* src,
                              size_t size,
                              const stream::Stream* stream = nullptr);
 
-  virtual void MemoryCopyP2P(const Place& dst_place, void* dst, size_t src_id,
-                             const void* src, size_t size,
+  virtual void MemoryCopyP2P(const Place& dst_place,
+                             void* dst,
+                             size_t src_id,
+                             const void* src,
+                             size_t size,
                              const stream::Stream* stream = nullptr);
 
   virtual void* MemoryAllocate(size_t dev_id, size_t size);
@@ -160,7 +173,6 @@ class DeviceInterface {  // Driver / Runtime
   size_t AvailableAllocSize(size_t dev_id);
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
 
 #endif
