@@ -32,13 +32,6 @@ void FullKernel(const Context& dev_ctx,
                 DenseTensor* out);
 
 template <typename T, typename Context>
-void FullSR(const Context& dev_ctx,
-            const ScalarArray& shape,
-            const Scalar& val,
-            DataType dtype,
-            SelectedRows* out);
-
-template <typename T, typename Context>
 void FullLikeKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const Scalar& val,

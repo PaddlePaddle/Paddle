@@ -22,25 +22,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void ScaleKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const Scalar& scale,
-                 float bias,
-                 bool bias_after_scale,
-                 DenseTensor* out);
-
-template <typename T, typename Context>
-DenseTensor Scale(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const Scalar& scale,
-                  float bias,
-                  bool bias_after_scale) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
-  MetaTensor meta_out(&dense_out);
-  UnchangedInferMeta(x, &meta_out);
-  ScaleKernel<T, Context>(
-      dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
-  return dense_out;
-}
+void ScaleSR(const Context& dev_ctx,
+             const SelectedRows& x,
+             const Scalar& scale,
+             float bias,
+             bool bias_after_scale,
+             SelectedRows* out);
 
 }  // namespace phi
