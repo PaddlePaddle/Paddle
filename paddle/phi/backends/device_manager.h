@@ -15,17 +15,16 @@
 #pragma once
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 
-#include "paddle/fluid/platform/device/device_base.h"
-#include "paddle/fluid/platform/device/device_ext.h"
-#include "paddle/fluid/platform/device/event.h"
-#include "paddle/fluid/platform/device/stream.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/device_base.h"
+#include "paddle/phi/backends/device_ext.h"
+#include "paddle/phi/backends/event.h"
+#include "paddle/phi/backends/stream.h"
+#include "paddle/phi/common/place.h"
 
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 class Device final {
  public:
   Device(size_t dev_id, DeviceInterface* impl) : dev_id_(dev_id), impl_(impl) {}
@@ -33,8 +32,9 @@ class Device final {
   // Stream
   // ! Create an asynchronous stream
   void CreateStream(
-      stream::Stream* stream, const stream::Stream::Priority& priority =
-                                  stream::Stream::Priority::kNormal,
+      stream::Stream* stream,
+      const stream::Stream::Priority& priority =
+          stream::Stream::Priority::kNormal,
       const stream::Stream::Flag& flag = stream::Stream::Flag::kDefaultFlag);
 
   // ! Destroys an asynchronous stream.
@@ -69,17 +69,26 @@ class Device final {
   void StreamWaitEvent(const stream::Stream* stream, const event::Event* event);
 
   // Memory
-  void MemoryCopyH2D(void* dst, const void* src, size_t size,
+  void MemoryCopyH2D(void* dst,
+                     const void* src,
+                     size_t size,
                      const stream::Stream* stream = nullptr);
 
-  void MemoryCopyD2H(void* dst, const void* src, size_t size,
+  void MemoryCopyD2H(void* dst,
+                     const void* src,
+                     size_t size,
                      const stream::Stream* stream = nullptr);
 
-  void MemoryCopyD2D(void* dst, const void* src, size_t size,
+  void MemoryCopyD2D(void* dst,
+                     const void* src,
+                     size_t size,
                      const stream::Stream* stream = nullptr);
 
-  void MemoryCopyP2P(const Place& dst_place, void* dst, const void* src,
-                     size_t size, const stream::Stream* stream = nullptr);
+  void MemoryCopyP2P(const Place& dst_place,
+                     void* dst,
+                     const void* src,
+                     size_t size,
+                     const stream::Stream* stream = nullptr);
 
   void* MemoryAllocate(size_t size);
 
@@ -168,7 +177,8 @@ void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle);
 
 void LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
                           std::unique_ptr<C_DeviceInterface> device_interface,
-                          const std::string& dso_lib_path, void* dso_handle);
+                          const std::string& dso_lib_path,
+                          void* dso_handle);
 
 class Registrar {
  public:
@@ -180,7 +190,6 @@ class Registrar {
   void Touch() {}
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
 
 #endif

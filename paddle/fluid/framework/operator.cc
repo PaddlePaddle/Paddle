@@ -254,7 +254,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           "reinstall Paddle with CustomDevice support.",
           place));
 #else
-      platform::DeviceManager::SetDevice(place);
+      phi::DeviceManager::SetDevice(place);
 #endif
     }
 
@@ -2106,15 +2106,19 @@ void OperatorWithKernel::BuildPhiKernelContext(
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       phi::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset];
-      if (var->template IsType<framework::LoDTensor>()) {
-        tensor_out = var->template GetMutable<framework::LoDTensor>();
-      } else if (var->template IsType<phi::SelectedRows>()) {
-        tensor_out = var->template GetMutable<phi::SelectedRows>();
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported output `%s` type when call pt kernel.",
-            framework::ToTypeName(var->Type())));
+
+      if (var) {
+        if (var->template IsType<framework::LoDTensor>()) {
+          tensor_out = var->template GetMutable<framework::LoDTensor>();
+        } else if (var->template IsType<phi::SelectedRows>()) {
+          tensor_out = var->template GetMutable<phi::SelectedRows>();
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported output `%s` type when call pt kernel.",
+              framework::ToTypeName(var->Type())));
+        }
       }
+
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
 

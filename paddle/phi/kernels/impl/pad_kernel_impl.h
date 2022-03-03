@@ -13,37 +13,20 @@
 // limitations under the License.
 
 #pragma once
-#include <chrono>
-#include <cstdint>
+#include <utility>
 #include <vector>
-
-namespace paddle {
-namespace distributed {
-
-// TODO(shenliang03): To support AVG for reduce
-enum class ReduceOp : std::uint8_t { SUM = 0, AVG, MAX, MIN, PRODUCT };
-
-struct AllreduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-};
-
-struct BroadcastOptions {
-  int source_rank = 0;
-  int source_root = 0;
-};
-
-struct BarrierOptions {
-  std::vector<int> place_ids;
-};
-
-struct ReduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-  int root_rank = 0;
-};
-
-struct ScatterOptions {
-  int root_rank = 0;
-};
-
-}  //  namespace distributed
-}  //  namespace paddle
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/padding.h"
+namespace phi {
+template <typename T, typename Context>
+void PadKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int>& paddings,
+               float pad_value,
+               DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  int rank = x.dims().size();
+  funcs::PaddingFunctor<Context, T>(
+      rank, dev_ctx, paddings, static_cast<T>(pad_value), x, out);
+}
+}  // namespace phi
