@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/device_guard.h"
+#include "paddle/phi/backends/device_guard.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 // Even this source file does not contains any code, it is better to keep this
 // source file for cmake dependency.
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
