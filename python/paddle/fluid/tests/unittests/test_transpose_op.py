@@ -16,10 +16,11 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -111,6 +112,39 @@ class TestCase9(TestTransposeOp):
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
+
+
+class TestTransposeBF16Op(OpTest):
+    def setUp(self):
+        self.init_op_type()
+        self.initTestCase()
+        self.dtype = np.uint16
+        x = np.random.random(self.shape).astype("float32")
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {
+            'axis': list(self.axis),
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            'XShape': convert_float_to_uint16(
+                np.random.random(self.shape).astype("float32")),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+    def init_op_type(self):
+        self.op_type = "transpose2"
+        self.use_mkldnn = False
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
+
+    def test_check_grad(self):
+        pass
+
+    def initTestCase(self):
+        self.shape = (3, 2)
+        self.axis = (1, 0)
 
 
 class TestTransposeOpBool(TestTransposeOp):
@@ -389,6 +423,14 @@ class TestMoveAxis(unittest.TestCase):
         self.assertEqual(np.array_equal(out.numpy(), expected), True)
         paddle.enable_static()
 
+    def test_moveaxis3(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            [[1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j]])
+        out = x.moveaxis(0, 1)
+        self.assertEqual(out.shape, [2, 3])
+        paddle.enable_static()
+
     def test_error(self):
         x = paddle.randn([2, 3, 4, 5])
         # src must have the same number with dst
@@ -421,4 +463,5 @@ class TestMoveAxis(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

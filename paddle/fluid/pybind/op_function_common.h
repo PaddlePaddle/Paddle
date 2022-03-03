@@ -43,6 +43,30 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj);
 
 bool PyObject_CheckString(PyObject* obj);
 
+bool CastPyArg2Boolean(PyObject* obj, const std::string& op_type,
+                       ssize_t arg_pos);
+int CastPyArg2Int(PyObject* obj, const std::string& op_type, ssize_t arg_pos);
+int64_t CastPyArg2Long(PyObject* obj, const std::string& op_type,
+                       ssize_t arg_pos);
+float CastPyArg2Float(PyObject* obj, const std::string& op_type,
+                      ssize_t arg_pos);
+std::string CastPyArg2String(PyObject* obj, const std::string& op_type,
+                             ssize_t arg_pos);
+std::vector<bool> CastPyArg2Booleans(PyObject* obj, const std::string& op_type,
+                                     ssize_t arg_pos);
+std::vector<int> CastPyArg2Ints(PyObject* obj, const std::string& op_type,
+                                ssize_t arg_pos);
+std::vector<int64_t> CastPyArg2Longs(PyObject* obj, const std::string& op_type,
+                                     ssize_t arg_pos);
+std::vector<float> CastPyArg2Floats(PyObject* obj, const std::string& op_type,
+                                    ssize_t arg_pos);
+std::vector<double> CastPyArg2Float64s(PyObject* obj,
+                                       const std::string& op_type,
+                                       ssize_t arg_pos);
+std::vector<std::string> CastPyArg2Strings(PyObject* obj,
+                                           const std::string& op_type,
+                                           ssize_t arg_pos);
+
 void CastPyArg2AttrBoolean(PyObject* obj,
                            paddle::framework::AttributeMap& attrs,  // NOLINT
                            const std::string& key, const std::string& op_type,

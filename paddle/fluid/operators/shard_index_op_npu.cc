@@ -67,7 +67,7 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     tmp.mutable_data<T>(framework::DDim({1}), place);
     FillNpuTensorWithConstant(&tmp, shard_size);
 
-    Tensor condition(framework::proto::VarType::BOOL);
+    Tensor condition(experimental::DataType::BOOL);
     condition.mutable_data<bool>(in->dims(), place);
 
     Tensor tmp2(in->type());

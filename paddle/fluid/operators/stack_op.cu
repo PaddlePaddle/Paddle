@@ -196,10 +196,12 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
 REGISTER_OP_CUDA_KERNEL(stack, ops::StackGPUKernel<float>,
                         ops::StackGPUKernel<double>, ops::StackGPUKernel<int>,
                         ops::StackGPUKernel<int64_t>,
-                        ops::StackGPUKernel<plat::float16>);
+                        ops::StackGPUKernel<plat::float16>,
+                        ops::StackGPUKernel<plat::bfloat16>);
 
 REGISTER_OP_CUDA_KERNEL(stack_grad, ops::StackGradGPUKernel<float>,
                         ops::StackGradGPUKernel<double>,
                         ops::StackGradGPUKernel<int>,
                         ops::StackGradGPUKernel<int64_t>,
-                        ops::StackGradGPUKernel<plat::float16>);
+                        ops::StackGradGPUKernel<plat::float16>,
+                        ops::StackGradGPUKernel<plat::bfloat16>);

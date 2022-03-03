@@ -59,20 +59,20 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
     IG->mutable_data<T>(context.GetPlace());
 
     // ones
-    Tensor ones(grad->type());
+    Tensor ones(grad->dtype());
     ones.mutable_data<T>(IG->dims(), context.GetPlace());
     const auto& runner_ones = NpuOpRunner("OnesLike", {*IG}, {ones}, {});
     runner_ones.Run(stream);
 
     // means
-    Tensor mean_tensor(grad->type());
+    Tensor mean_tensor(grad->dtype());
     mean_tensor.Resize({1});
     mean_tensor.mutable_data<T>(context.GetPlace());
     FillNpuTensorWithConstant<T>(
         &mean_tensor, static_cast<T>(1.0 / static_cast<float>(IG->numel())));
 
     // means mul ones
-    Tensor mean_ma(grad->type());
+    Tensor mean_ma(grad->dtype());
     mean_ma.Resize(IG->dims());
     mean_ma.mutable_data<T>(context.GetPlace());
     const auto& runner_mul_1 =

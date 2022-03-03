@@ -34,10 +34,10 @@ PADDLE_DEFINE_EXPORTED_bool(
 #define SCOPE_VARS_READER_LOCK
 #define SCOPE_VARS_WRITER_LOCK
 #else
-#define SCOPE_KIDS_READER_LOCK pten::AutoRDLock auto_lock(&kids_lock_);
-#define SCOPE_KIDS_WRITER_LOCK pten::AutoWRLock auto_lock(&kids_lock_);
-#define SCOPE_VARS_READER_LOCK pten::AutoRDLock auto_lock(&vars_lock_);
-#define SCOPE_VARS_WRITER_LOCK pten::AutoWRLock auto_lock(&vars_lock_);
+#define SCOPE_KIDS_READER_LOCK phi::AutoRDLock auto_lock(&kids_lock_);
+#define SCOPE_KIDS_WRITER_LOCK phi::AutoWRLock auto_lock(&kids_lock_);
+#define SCOPE_VARS_READER_LOCK phi::AutoRDLock auto_lock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK phi::AutoWRLock auto_lock(&vars_lock_);
 #endif
 
 namespace paddle {

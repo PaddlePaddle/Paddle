@@ -46,7 +46,7 @@ class MulOp : public framework::OperatorWithKernel {
             << " x_num_col_dims=" << x_num_col_dims
             << " y_num_col_dims=" << y_num_col_dims;
 
-    PADDLE_ENFORCE_NE(framework::product(y_dims), 0,
+    PADDLE_ENFORCE_NE(phi::product(y_dims), 0,
                       platform::errors::PreconditionNotMet(
                           "The Input variable Y(%s) has not "
                           "been initialized. You may need to confirm "
@@ -68,8 +68,8 @@ class MulOp : public framework::OperatorWithKernel {
             "dimensions = %d, Y's shape = [%s], y_num_col_dims = %d.",
             y_dims.size(), y_dims, y_num_col_dims));
 
-    auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
-    auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
+    auto x_mat_dims = phi::flatten_to_2d(x_dims, x_num_col_dims);
+    auto y_mat_dims = phi::flatten_to_2d(y_dims, y_num_col_dims);
 
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
@@ -93,7 +93,7 @@ class MulOp : public framework::OperatorWithKernel {
       output_dims.push_back(y_dims[i]);
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -136,7 +136,8 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor), The output tensor of mul op.");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<int>(
         "x_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two

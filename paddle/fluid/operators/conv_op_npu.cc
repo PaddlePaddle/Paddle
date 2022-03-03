@@ -64,13 +64,13 @@ class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
+    filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&padding, &dilation, padding_algorithm,
                              in_data_dims, stride, ksize);
 
@@ -143,13 +143,13 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
+    filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&padding, &dilation, padding_algorithm,
                              in_data_dims, stride, ksize);
 
@@ -201,8 +201,7 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
           .AddInput(input_tensor)
           .AddInput(output_grad_tensor)
           .AddOutput(*filter_grad)
-          .AddAttr("filter_size",
-                   framework::vectorize(transformed_filter.dims()))
+          .AddAttr("filter_size", phi::vectorize(transformed_filter.dims()))
           .AddAttr("strides", strides)
           .AddAttr("dilations", dilations)
           .AddAttr("pads", padding)
@@ -221,7 +220,7 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
           .AddInput(transformed_filter)
           .AddInput(output_grad_tensor)
           .AddOutput(input_grad_tensor)
-          .AddAttr("input_size", framework::vectorize(input->dims()))
+          .AddAttr("input_size", phi::vectorize(input->dims()))
           .AddAttr("strides", strides)
           .AddAttr("dilations", dilations)
           .AddAttr("pads", padding)
@@ -256,13 +255,13 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
+    filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -325,13 +324,13 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
     framework::DDim filter_data_dims;
 
     if (channel_last) {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     }
-    filter_data_dims = framework::slice_ddim(filter_dims, 2, in_dims.size());
+    filter_data_dims = phi::slice_ddim(filter_dims, 2, in_dims.size());
 
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
@@ -358,8 +357,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
-      std::vector<int> filter_shape_vec =
-          framework::vectorize<int>(filter->dims());
+      std::vector<int> filter_shape_vec = phi::vectorize<int>(filter->dims());
 
       const auto& runner = NpuOpRunner(
           "Conv2DBackpropFilterD", {input_tensor, output_grad_tensor},
@@ -373,8 +371,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
     }
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
-      std::vector<int> input_shape_vec =
-          framework::vectorize<int>(input->dims());
+      std::vector<int> input_shape_vec = phi::vectorize<int>(input->dims());
 
       Tensor input_grad_tensor;
       input_grad_tensor.ShareDataWith(*input_grad);

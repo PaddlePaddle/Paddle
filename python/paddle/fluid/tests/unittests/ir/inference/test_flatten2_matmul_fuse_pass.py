@@ -174,7 +174,7 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
             quant=False,
             max_examples=50,
             max_duration=1000,
-            passes=["flatten2_matmul_fuse_pass"])
+            passes=["gpu_cpu_flatten2_matmul_fuse_pass"])
 
 
 if __name__ == "__main__":
