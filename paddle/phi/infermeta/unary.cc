@@ -133,6 +133,11 @@ void ArgsortInferMeta(const MetaTensor& input,
 }
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(out_dtype);
+  out->set_layout(x.layout());
+}
+
 void TrilTriuInferMeta(const MetaTensor& x,
                        int diagonal,
                        bool lower,
@@ -183,12 +188,6 @@ void QrInferMeta(const MetaTensor& x,
   r->share_lod(x);
   q->set_dtype(x.dtype());
   r->set_dtype(x.dtype());
-}
-
-void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(out_dtype);
-  out->set_layout(x.layout());
 }
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {

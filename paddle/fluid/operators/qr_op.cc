@@ -33,6 +33,46 @@ using DDim = framework::DDim;
 class QrOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+class QrOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor), The input tensor of qr op.");
+    AddOutput("Q", "(Tensor), The output Q tensor of qr op.");
+    AddOutput("R", "(Tensor), The output R tensor of qr op.");
+    AddAttr<std::string>(
+        "mode",
+        "(string, default \"reduced\"). "
+        "If mode is \"reduced\", Qr op will return reduced Q and R matrices. "
+        "If mode is \"complete\", Qr op will return complete Q and R matrices. "
+        "If mode is \"r\", Qr op will only return reduced R matrix.")
+        .SetDefault("reduced");
+    AddComment(R"DOC(
+Qr Operator.
+This operator is used to perform QR operation for batched matrics $X$.
+$$Q, R = qr(X)$$
+)DOC");
+  }
+};
+
+class QrGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Q")), "Input",
+                   "Q@Grad", "QrGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("R")), "Input",
+                   "R@Grad", "QrGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Q"), "Input", "Q", "QrGrad");
+    OP_INOUT_CHECK(ctx->HasInput("R"), "Input", "R", "QrGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   "X@Grad", "QrGrad");
+
+    auto x_dims = ctx->GetInputDim(("X"));
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(

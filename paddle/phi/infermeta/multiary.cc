@@ -345,6 +345,8 @@ void BatchNormInferInferMeta(const MetaTensor& x,
                      /*saved_variance=*/nullptr,
                      /*reserve_space=*/nullptr,
                      config);
+}
+
 void MultiplexInferMeta(const std::vector<MetaTensor*>& ins,
                         const MetaTensor& ids,
                         MetaTensor* out) {

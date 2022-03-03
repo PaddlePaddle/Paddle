@@ -91,8 +91,6 @@ void QrInferMeta(const MetaTensor& x,
                  MetaTensor* q,
                  MetaTensor* r);
 
-void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
-
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
