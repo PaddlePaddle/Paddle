@@ -20,10 +20,11 @@
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
 namespace phi {
+
 template <typename T,
           template <typename> class ReduceOp,
           template <typename, typename> class TransformOp>
-void Reduce(const GPUContext& dev_ctx,
+void Reduce(const KPDevice& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
             const std::vector<int64_t>& dims,
@@ -38,7 +39,7 @@ void Reduce(const GPUContext& dev_ctx,
     reduce_num *= (x.dims())[i];
   }
 
-  gpuStream_t stream = dev_ctx.stream();
+  KPStream stream = dev_ctx.stream();
 
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);

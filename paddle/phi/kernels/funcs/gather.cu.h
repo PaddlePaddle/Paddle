@@ -13,24 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <vector>
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/memory/memcpy.h"
+// TODO(paddle-dev): move gpu_primitives.h to phi
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/dim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-namespace paddle {
-namespace operators {
 
-using framework::Tensor;
-using platform::DeviceContext;
+namespace phi {
+namespace funcs {
 
 template <typename T, typename IndexT = int>
-__global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
-                                 T* output, size_t index_size,
+__global__ void GatherCUDAKernel(const T* params,
+                                 const IndexT* indices,
+                                 T* output,
+                                 size_t index_size,
                                  size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
@@ -42,9 +43,12 @@ __global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
 }
 
 template <typename T, typename IndexT = int>
-__global__ void GatherNdCUDAKernel(const T* input, const int64_t* input_dims,
-                                   const IndexT* indices, T* output,
-                                   size_t remain_size, size_t slice_size,
+__global__ void GatherNdCUDAKernel(const T* input,
+                                   const int64_t* input_dims,
+                                   const IndexT* indices,
+                                   T* output,
+                                   size_t remain_size,
+                                   size_t slice_size,
                                    size_t end_size) {
   CUDA_KERNEL_LOOP_TYPE(i, remain_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
@@ -59,7 +63,8 @@ __global__ void GatherNdCUDAKernel(const T* input, const int64_t* input_dims,
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
           "be less than [%d] and greater than or equal to 0, but received [%d]",
-          input_dims[j], index_value);
+          input_dims[j],
+          index_value);
       gather_i += (index_value * temp);
       temp *= input_dims[j];
     }
@@ -76,13 +81,16 @@ __global__ void GatherNdCUDAKernel(const T* input, const int64_t* input_dims,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
-               const Tensor& index, Tensor* output) {
+void GPUGather(const phi::GPUContext& ctx,
+               const DenseTensor& src,
+               const DenseTensor& index,
+               DenseTensor* output) {
   if (index.dims().size() == 2) {
-    PADDLE_ENFORCE_EQ(index.dims()[1], 1,
-                      platform::errors::InvalidArgument(
-                          "If the index's rank of gather_op is 2,"
-                          " the second dimension should be 1."));
+    PADDLE_ENFORCE_EQ(
+        index.dims()[1],
+        1,
+        phi::errors::InvalidArgument("If the index's rank of gather_op is 2,"
+                                     " the second dimension should be 1."));
   }
 
   // index size
@@ -90,7 +98,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   if (index_size == 0) return;
 
   auto src_dims = src.dims();
-  framework::DDim output_dims(src_dims);
+  phi::DDim output_dims(src_dims);
   output_dims[0] = index_size;
 
   // slice size
@@ -105,18 +113,17 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   int64_t n = slice_size * index_size;
   int64_t grid = (n + block - 1) / block;
 
-  GatherCUDAKernel<T, IndexT><<<
-      grid, block, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
+  GatherCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_src, p_index, p_output, index_size, slice_size);
 }
 
-template <typename DeviceContext, typename T, typename IndexT = int>
-void GPUGatherNd(const framework::ExecutionContext& context,
-                 const Tensor& input, const Tensor& index, Tensor* output) {
-  const auto& ctx = context.template device_context<DeviceContext>();
+template <typename T, typename IndexT = int>
+void GPUGatherNd(const phi::GPUContext& ctx,
+                 const DenseTensor& input,
+                 const DenseTensor& index,
+                 DenseTensor* output) {
   const auto gplace = ctx.GetPlace();
-  auto cplace = platform::CPUPlace();
+  auto cplace = phi::CPUPlace();
 
   auto index_dims = index.dims();
   auto index_dims_size = index_dims.size();
@@ -143,29 +150,36 @@ void GPUGatherNd(const framework::ExecutionContext& context,
     v_input_dims[i] = input_dims[i];
   }
 
-  auto& dev_ctx = context.cuda_device_context();
+  phi::DenseTensor input_dims_tensor;
+  input_dims_tensor.Resize({input_dims_size});
+  auto* g_input_dims = ctx.Alloc<int64_t>(&input_dims_tensor);
   int64_t bytes = input_dims_size * sizeof(int64_t);
-  auto p_input_dims = memory::Alloc(dev_ctx, bytes);
-  int64_t* g_input_dims = reinterpret_cast<int64_t*>(p_input_dims->ptr());
-  memory::Copy(gplace, g_input_dims, cplace, v_input_dims.data(), bytes,
-               ctx.stream());
+
+  paddle::memory::Copy(
+      gplace, g_input_dims, cplace, v_input_dims.data(), bytes, ctx.stream());
 
   int block = 512;
   int64_t n = slice_size * remain_numel;
   int64_t grid = (n + block - 1) / block;
 
-  GatherNdCUDAKernel<T, IndexT><<<
-      grid, block, 0,
-      reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_input, g_input_dims, p_index, p_output, remain_numel, slice_size,
-      end_size);
+  GatherNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(p_input,
+                                                                  g_input_dims,
+                                                                  p_index,
+                                                                  p_output,
+                                                                  remain_numel,
+                                                                  slice_size,
+                                                                  end_size);
 }
 
 template <typename T, typename U>
-__global__ void GatherGPUKernel(const T* input, const U* index, T* out,
-                                int64_t outer_dim_size, int64_t inner_dim_size,
+__global__ void GatherGPUKernel(const T* input,
+                                const U* index,
+                                T* out,
+                                int64_t outer_dim_size,
+                                int64_t inner_dim_size,
                                 int64_t out_index_dim_size,
-                                int64_t input_index_dim_size, int64_t size) {
+                                int64_t input_index_dim_size,
+                                int64_t size) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   int64_t outer_size = outer_dim_size * out_index_dim_size;
   for (; idx < size; idx += blockDim.x * gridDim.x) {
@@ -180,7 +194,8 @@ __global__ void GatherGPUKernel(const T* input, const U* index, T* out,
         "please check whether the dimensions of index and "
         "input meet the requirements. It should "
         "be less than [%d] and greater than or equal to 0, but received [%d]",
-        input_index_dim_size, index_val);
+        input_index_dim_size,
+        index_val);
 
     int64_t out_dim_index = next_idx - outer_dim_size * index_dim_index;
     int64_t input_index =
@@ -191,11 +206,14 @@ __global__ void GatherGPUKernel(const T* input, const U* index, T* out,
 }
 
 template <typename T, typename U>
-__global__ void GatherGradGPUKernel(const T* input, const U* index, T* out,
+__global__ void GatherGradGPUKernel(const T* input,
+                                    const U* index,
+                                    T* out,
                                     int64_t outer_dim_size,
                                     int64_t inner_dim_size,
                                     int64_t input_index_dim_size,
-                                    int64_t out_index_dim_size, int64_t size) {
+                                    int64_t out_index_dim_size,
+                                    int64_t size) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < size; idx += blockDim.x * gridDim.x) {
     int64_t inner_dim_index = idx / (outer_dim_size * input_index_dim_size);
@@ -210,10 +228,11 @@ __global__ void GatherGradGPUKernel(const T* input, const U* index, T* out,
 }
 
 template <typename T, typename U>
-void GatherV2CUDAFunction(const Tensor* input, const Tensor* index,
-                          const int axis, Tensor* out,
-                          const paddle::platform::Place& place,
-                          const framework::ExecutionContext& ctx) {
+void GatherV2CUDAFunction(const DenseTensor* input,
+                          const DenseTensor* index,
+                          const int axis,
+                          DenseTensor* out,
+                          const phi::GPUContext& ctx) {
   int64_t index_size = index->numel();
   int64_t input_size = input->numel();
   auto input_dim = input->dims();
@@ -241,24 +260,31 @@ void GatherV2CUDAFunction(const Tensor* input, const Tensor* index,
   auto out_dim = phi::make_ddim(out_dim_vec);
 
   out->Resize(out_dim);
-  auto* out_data = out->mutable_data<T>(place);
+  auto* out_data = ctx.Alloc<T>(out);
   int64_t out_size = out->numel();
   if (out_size == 0) return;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), out_size);
-  auto stream = ctx.cuda_device_context().stream();
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
+  auto stream = ctx.stream();
   GatherGPUKernel<
-      T, U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-      input_data, index_data, out_data, outer_dim_size, inner_dim_size,
-      index_size, index_dim_size, out_size);
+      T,
+      U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+      input_data,
+      index_data,
+      out_data,
+      outer_dim_size,
+      inner_dim_size,
+      index_size,
+      index_dim_size,
+      out_size);
 }
 
 template <typename T, typename U>
-void GatherV2GradCUDAFunction(const Tensor* input, const Tensor* index,
-                              const int axis, Tensor* out,
-                              const paddle::platform::Place& place,
-                              const framework::ExecutionContext& ctx) {
+void GatherV2GradCUDAFunction(const DenseTensor* input,
+                              const DenseTensor* index,
+                              const int axis,
+                              DenseTensor* out,
+                              const phi::GPUContext& ctx) {
   auto* index_data = index->data<U>();
   int64_t index_size = index->numel();
   int64_t input_size = input->numel();
@@ -279,19 +305,25 @@ void GatherV2GradCUDAFunction(const Tensor* input, const Tensor* index,
     outer_dim_size *= input_dim[i];
   }
 
-  auto* out_data = out->mutable_data<T>(place);
-  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto* out_data = ctx.Alloc<T>(out);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  phi::funcs::set_constant(*dev_ctx, out, 0.0);
+  phi::funcs::set_constant(ctx, out, 0.0);
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), input_size);
-  auto stream = ctx.cuda_device_context().stream();
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, input_size);
+  auto stream = ctx.stream();
   GatherGradGPUKernel<
-      T, U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-      input_data, index_data, out_data, outer_dim_size, inner_dim_size,
-      input_index_dim_size, out_index_dim_size, input_size);
+      T,
+      U><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+      input_data,
+      index_data,
+      out_data,
+      outer_dim_size,
+      inner_dim_size,
+      input_index_dim_size,
+      out_index_dim_size,
+      input_size);
 }
-}  // namespace operators
-}  // namespace paddle
+
+}  // namespace funcs
+}  // namespace phi

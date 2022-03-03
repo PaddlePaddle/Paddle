@@ -10148,6 +10148,9 @@ def flatten(x, axis=1, name=None):
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64', 'uint8'],
         'flatten')
+    if in_dygraph_mode():
+        return _C_ops.flatten2(x, 'axis', axis)[0]
+
     helper = LayerHelper('flatten', **locals())
 
     if not (isinstance(x, Variable)):
