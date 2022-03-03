@@ -258,10 +258,7 @@ def generate_activation_fn(op_type):
 
     def func(x, name=None):
         if in_dygraph_mode():
-            if _in_eager_mode():
-                op = getattr(_C_ops, "final_state_" + op_type)
-            else:
-                op = getattr(_C_ops, op_type)
+            op = getattr(_C_ops, op_type)
             return op(x)
 
         if op_type not in ["abs", "exp", "square"]:
