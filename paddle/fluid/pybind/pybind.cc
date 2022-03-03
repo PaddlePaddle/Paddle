@@ -2953,7 +2953,8 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::HostPythonNode::device_node_ptrs);
 
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
-      .def("Create", &paddle::platform::Profiler::Create)
+      .def("Create", &paddle::platform::Profiler::Create,
+           py::return_value_policy::take_ownership)
       .def("Prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
