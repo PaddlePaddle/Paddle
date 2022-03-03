@@ -297,7 +297,7 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
 
   auto& input_names = std::get<0>(signature.args);
   auto& attr_names = std::get<1>(signature.args);
-  auto& output_names = std::get<2>(signature.args);
+  // auto& output_names = std::get<2>(signature.args);
 
   auto kernels_map =
       phi::KernelFactory::Instance().SelectKernelMap(signature.name);
