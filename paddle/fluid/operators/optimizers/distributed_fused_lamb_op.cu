@@ -316,15 +316,15 @@ static __global__ void ScaleCUDAKernel(const T1 *__restrict__ x,
   int stride = blockDim.x * gridDim.x * VecSize;
 
   for (; i + VecSize <= num; i += stride) {
-    platform::AlignedVector<T1, VecSize> x_vec;
-    platform::AlignedVector<T1, VecSize> y_vec;
+    phi::AlignedVector<T1, VecSize> x_vec;
+    phi::AlignedVector<T1, VecSize> y_vec;
 
-    platform::Load(x + i, &x_vec);
+    phi::Load(x + i, &x_vec);
 #pragma unroll
     for (int j = 0; j < VecSize; ++j) {
       y_vec[j] = static_cast<T1>(static_cast<T2>(x_vec[j]) * s);
     }
-    platform::Store(y_vec, y + i);
+    phi::Store(y_vec, y + i);
   }
 
   for (; i < num; ++i) {
