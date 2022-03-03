@@ -113,5 +113,9 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
     PyObject* obj);
 
+std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
+    PyObject* obj);
+
+paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj);
 }  // namespace pybind
 }  // namespace paddle

@@ -140,7 +140,11 @@ void GradNodeBase::SetGradInMeta(AutogradMeta* fwd_out, size_t slot_rank) {
   // Init stop gradient vector before use to avoid push back
   VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
   meta.Init(1);
-  meta.SetStopGradient(0, fwd_out->StopGradient());
+  if (fwd_out) {
+    meta.SetStopGradient(0, fwd_out->StopGradient());
+  } else {
+    meta.SetStopGradient(0, true);
+  }
 }
 
 void GradNodeBase::SetGradOutMeta(std::vector<AutogradMeta*>* fwd_in,

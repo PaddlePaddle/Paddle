@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 
 #include "glog/logging.h"
 
@@ -30,14 +31,91 @@ namespace egr {
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodePyLayer::
 operator()(
     const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
-  VLOG(3) << "Running Eager Backward Node: GradNodePyLayer";
+  VLOG(3) << "Running Eager Backward Node: " << name();
+
+  std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads =
+      GradNodePyLayer::ApplyGradientHooks(grads);
+
   paddle::pybind::PyLayerObject* ctx =
       reinterpret_cast<paddle::pybind::PyLayerObject*>(ctx_);
-  auto backward_args = PyTuple_New(grads.size() + 1);
 
-  paddle::experimental::Tensor grad_out;
+  PADDLE_ENFORCE_EQ(ctx->forward_output_tensor_is_duplicable.size(),
+                    grads.size(),
+                    paddle::platform::errors::InvalidArgument(
+                        "%s's grad input size(%s) mast be equal with it's "
+                        "forward's output size(%s).",
+                        name(), grads.size(),
+                        ctx->forward_output_tensor_is_duplicable.size()));
 
-  return {{grad_out}};
+  auto backward_args = PyTuple_New(grads.size());
+  for (size_t i = 0; i < grads.size(); i++) {
+    if (ctx->forward_output_tensor_is_duplicable[i]) {
+      PyTuple_SET_ITEM(backward_args, i, paddle::pybind::ToPyObject(grads[i]));
+    } else {
+      PyTuple_SET_ITEM(backward_args, i,
+                       paddle::pybind::ToPyObject(grads[i][0]));
+    }
+  }
+
+  VLOG(6) << "PyLayer backward args is ready, begin call user's backward "
+             "function...";
+
+  auto backward_fn =
+      PyObject_GetAttrString(reinterpret_cast<PyObject*>(ctx), "backward");
+  if (!backward_fn) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Get backward function faild."));
+  }
+  auto outputs = PyObject_CallObject(backward_fn, backward_args);
+  if (!outputs) {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "backward function return a nullptr."));
+  }
+
+  VLOG(6) << "PyLayer backward function finish...";
+
+  PyObject* outputs_tuple = nullptr;
+  if (PyTuple_Check(outputs)) {
+    outputs_tuple = outputs;
+  } else {
+    outputs_tuple = PyTuple_New(1);
+    Py_INCREF(outputs);
+    PyTuple_SET_ITEM(outputs_tuple, 0, outputs);
+  }
+
+  size_t outputs_size = PyTuple_GET_SIZE(outputs_tuple);
+
+  std::vector<std::vector<paddle::experimental::Tensor>> grad_out;
+  grad_out.reserve(ctx->forward_input_tensor_is_duplicable.size());
+  for (size_t i = 0; i < ctx->forward_input_tensor_is_duplicable.size(); i++) {
+    if (i < outputs_size) {
+      PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
+      if (this->OutputMeta()[i].IsStopGradient(0)) {
+        PADDLE_ENFORCE_EQ(
+            obj, Py_None,
+            paddle::platform::errors::InvalidArgument(
+                "%s's backward function should return None at %d position, "
+                "because it's forward Tensor's stopgradient is true.",
+                name(), i));
+        grad_out.push_back({});
+      } else {
+        if (ctx->forward_input_tensor_is_duplicable[i]) {
+          grad_out.push_back(paddle::pybind::GetTensorListFromPyObject(obj));
+        } else {
+          grad_out.push_back({paddle::pybind::GetTensorFromPyObject(obj)});
+        }
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(
+          this->OutputMeta()[i].IsStopGradient(0), true,
+          paddle::platform::errors::InvalidArgument(
+              "%s's backward function should not return empyt at %d position.",
+              name(), i));
+      grad_out.push_back({});
+    }
+  }
+
+  return grad_out;
 }
 
 void GradNodePyLayer::RegisterReduceHook(

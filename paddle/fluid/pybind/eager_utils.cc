@@ -776,5 +776,57 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromPyObject(
   return result;
 }
 
+std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
+    PyObject* obj) {
+  std::vector<paddle::experimental::Tensor> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_IsInstance(item,
+                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument must be "
+            "list of Tensor, but got %s at pos %d",
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_IsInstance(item,
+                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument must be "
+            "list of Tensor, but got %s at pos %d",
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name, i));
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument must be "
+        "list or tuple, but got %s",
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
+paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj) {
+  if (!IsEagerTensor(obj)) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument must be "
+        "Tensor, but got %s",
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return reinterpret_cast<TensorObject*>(obj)->tensor;
+}
+
 }  // namespace pybind
 }  // namespace paddle

@@ -50,8 +50,8 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
 }
 
 static void PyLayerDealloc(PyLayerObject* self) {
-  if (self->to_save) {
-    Py_DECREF(self->to_save);
+  if (self->container) {
+    Py_DECREF(self->container);
   }
   if (self->non_differentiable) {
     Py_DECREF(self->non_differentiable);
@@ -69,7 +69,8 @@ PyObject* pylayer_method_name(PyObject* self, PyObject* noargs) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* pylayer_method_apply(PyObject* cls, PyObject* inputs) {
+PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
+                               PyObject* kwargs) {
   EAGER_TRY
   VLOG(6) << "Begin run PyLayer apply...";
   PyObject* backward_function =
@@ -88,15 +89,31 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* inputs) {
 
   bool require_any_grad = false;
 
-  std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
-  auto inputs_size = PyTuple_GET_SIZE(inputs);
-  auto forward_args = PyTuple_New(inputs_size + 1);
-  inputs_autograd_meta.reserve(inputs_size);
+  size_t inputs_size = 0;
+  PyObject* forward_args = nullptr;
+  PyObject* kwargs_value_list = nullptr;
+  if (kwargs) {
+    inputs_size = PyDict_Size(kwargs);
+    kwargs_value_list = PyDict_Values(kwargs);
+    forward_args = PyTuple_New(1);
+  } else {
+    inputs_size = PyTuple_GET_SIZE(args);
+    forward_args = PyTuple_New(inputs_size + 1);
+  }
   Py_INCREF(ctx);
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
-  for (Py_ssize_t i = 0; i < inputs_size; i++) {
-    PyObject* obj = PyTuple_GET_ITEM(inputs, i);
 
+  std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
+  inputs_autograd_meta.reserve(inputs_size);
+  ctx->forward_input_tensor_is_duplicable.clear();
+  ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
+  for (size_t i = 0; i < inputs_size; i++) {
+    PyObject* obj = nullptr;
+    if (kwargs) {
+      obj = PyList_GetItem(kwargs_value_list, i);
+    } else {
+      obj = PyTuple_GET_ITEM(args, i);
+    }
     if (IsEagerTensor(obj)) {
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
           reinterpret_cast<TensorObject*>(obj)->tensor);
@@ -106,16 +123,25 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* inputs) {
       if (!stop_gradient) {
         require_any_grad = true;
       }
-    } else if (PyList_Check(obj) || PyTuple_Check(obj)) {
+      ctx->forward_input_tensor_is_duplicable.push_back(false);
+    } else if ((PyList_Check(obj) && IsEagerTensor(PyList_GetItem(obj, 0))) ||
+               (PyTuple_Check(obj) && IsEagerTensor(PyTuple_GetItem(obj, 0)))) {
       auto tensors = CastPyArg2VectorOfTensor(obj, i);
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensors);
+      for (auto iter : autograd_meta) {
+        bool stop_gradient = iter == nullptr ? true : iter->StopGradient();
+        if (!stop_gradient) {
+          require_any_grad = true;
+        }
+      }
       inputs_autograd_meta.push_back(autograd_meta);
-    } else {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "PyLayer forward arguements mast be Tensor or list of Tensor."));
+      ctx->forward_input_tensor_is_duplicable.push_back(true);
     }
-    Py_INCREF(obj);
-    PyTuple_SET_ITEM(forward_args, i + 1, obj);
+
+    if (!kwargs) {
+      Py_INCREF(obj);
+      PyTuple_SET_ITEM(forward_args, i + 1, obj);
+    }
   }
 
   VLOG(6)
@@ -128,47 +154,53 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* inputs) {
   }
   bool trace_backward = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);
-  auto outputs = PyObject_CallObject(forward_fn, forward_args);
+  auto outputs = PyObject_Call(forward_fn, forward_args, kwargs);
   egr::Controller::Instance().SetHasGrad(trace_backward);
   if (!outputs) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "forward function return a nullptr."));
   }
 
+  PyObject* outputs_tuple = nullptr;
+  if (PyTuple_Check(outputs)) {
+    outputs_tuple = outputs;
+  } else {
+    outputs_tuple = PyTuple_New(1);
+    Py_INCREF(outputs);
+    PyTuple_SET_ITEM(outputs_tuple, 0, outputs);
+  }
+
+  auto outputs_size = PyTuple_GET_SIZE(outputs_tuple);
+  std::vector<std::vector<paddle::experimental::Tensor*>> outputs_tensor;
+  outputs_tensor.reserve(outputs_size);
+  std::vector<std::vector<egr::AutogradMeta*>> outputs_autograd_meta;
+  outputs_autograd_meta.reserve(outputs_size);
+  ctx->forward_output_tensor_is_duplicable.clear();
+  ctx->forward_output_tensor_is_duplicable.reserve(outputs_size);
+  for (Py_ssize_t i = 0; i < outputs_size; i++) {
+    PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
+    if (IsEagerTensor(obj)) {
+      outputs_tensor.push_back(
+          {&(reinterpret_cast<TensorObject*>(obj)->tensor)});
+      outputs_autograd_meta.push_back({egr::EagerUtils::autograd_meta(
+          &(reinterpret_cast<TensorObject*>(obj)->tensor))});
+      ctx->forward_output_tensor_is_duplicable.push_back(false);
+    } else if ((PyList_Check(obj) && IsEagerTensor(PyList_GetItem(obj, 0))) ||
+               (PyTuple_Check(obj) && IsEagerTensor(PyTuple_GetItem(obj, 0)))) {
+      auto tensors = GetTensorPtrListFromPyObject(obj);
+      outputs_tensor.push_back(tensors);
+      outputs_autograd_meta.push_back(egr::EagerUtils::autograd_meta(&tensors));
+      ctx->forward_output_tensor_is_duplicable.push_back(true);
+    }
+  }
+
+  if (outputs_tensor.size() == 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "At least one output of `PyLayer.forward` is a `Tensor`."));
+  }
   VLOG(6) << "PyLayer forward function finish...";
 
   if (require_any_grad && trace_backward) {
-    PyObject* outputs_tuple = nullptr;
-    if (PyTuple_Check(outputs)) {
-      outputs_tuple = outputs;
-    } else {
-      outputs_tuple = PyTuple_New(1);
-      Py_INCREF(outputs);
-      PyTuple_SET_ITEM(outputs_tuple, 0, outputs);
-    }
-    std::vector<std::vector<paddle::experimental::Tensor*>> outputs_tensor;
-    std::vector<std::vector<egr::AutogradMeta*>> outputs_autograd_meta;
-    auto outputs_size = PyTuple_GET_SIZE(outputs_tuple);
-    outputs_tensor.reserve(outputs_size);
-    outputs_autograd_meta.reserve(outputs_size);
-    for (Py_ssize_t i = 0; i < outputs_size; i++) {
-      PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
-      if (IsEagerTensor(obj)) {
-        outputs_tensor.push_back(
-            {&(reinterpret_cast<TensorObject*>(obj)->tensor)});
-        outputs_autograd_meta.push_back({egr::EagerUtils::autograd_meta(
-            &(reinterpret_cast<TensorObject*>(obj)->tensor))});
-      } else if (PyList_Check(obj) || PyTuple_Check(obj)) {
-        auto tensors = GetTensorPtrListFromPyObject(obj);
-        outputs_tensor.push_back(tensors);
-        outputs_autograd_meta.push_back(
-            egr::EagerUtils::autograd_meta(&tensors));
-      } else {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-            "PyLayer forward mast return Tensor or list of Tensor."));
-      }
-    }
-
     for (auto autograd_metas : outputs_autograd_meta) {
       for (auto autograd_meta : autograd_metas) {
         autograd_meta->WeakSetStopGradient(false);
@@ -176,30 +208,31 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* inputs) {
     }
 
     auto grad_node = std::make_shared<egr::GradNodePyLayer>(
-        reinterpret_cast<PyObject*>(ctx), outputs_size, inputs_size);
+        reinterpret_cast<PyObject*>(ctx), outputs_autograd_meta.size(),
+        inputs_autograd_meta.size());
     ctx->grad_node = grad_node;
 
     for (size_t i = 0; i < inputs_autograd_meta.size(); i++) {
-      if (inputs_autograd_meta[i].size() == 1) {
-        grad_node->SetGradOutMeta(inputs_autograd_meta[i][0], i);
-        grad_node->AddEdges(inputs_autograd_meta[i][0], i);
-      } else {
+      if (ctx->forward_input_tensor_is_duplicable[i]) {
         grad_node->SetGradOutMeta(&inputs_autograd_meta[i], i);
         grad_node->AddEdges(&inputs_autograd_meta[i], i);
+      } else {
+        grad_node->SetGradOutMeta(inputs_autograd_meta[i][0], i);
+        grad_node->AddEdges(inputs_autograd_meta[i][0], i);
       }
     }
 
     for (size_t i = 0; i < outputs_autograd_meta.size(); i++) {
-      if (outputs_autograd_meta[i].size() == 1) {
-        egr::EagerUtils::SetOutRankWithSlot(outputs_autograd_meta[i][0], i);
-        egr::EagerUtils::SetHistory(outputs_autograd_meta[i][0], grad_node);
-        grad_node->SetGradInMeta(outputs_autograd_meta[i][0], i);
-        egr::EagerUtils::CheckAndRetainGrad(*outputs_tensor[i][0]);
-      } else {
+      if (ctx->forward_output_tensor_is_duplicable[i]) {
         egr::EagerUtils::SetOutRankWithSlot(&outputs_autograd_meta[i], i);
         egr::EagerUtils::SetHistory(&outputs_autograd_meta[i], grad_node);
         grad_node->SetGradInMeta(&outputs_autograd_meta[i], i);
         egr::EagerUtils::CheckAndRetainGrad(outputs_tensor[i]);
+      } else {
+        egr::EagerUtils::SetOutRankWithSlot(outputs_autograd_meta[i][0], i);
+        egr::EagerUtils::SetHistory(outputs_autograd_meta[i][0], grad_node);
+        grad_node->SetGradInMeta(outputs_autograd_meta[i][0], i);
+        egr::EagerUtils::CheckAndRetainGrad(*outputs_tensor[i][0]);
       }
     }
     VLOG(6) << "PyLayer construct backward node finish...";
@@ -215,16 +248,98 @@ PyObject* pylayer_method_register_hook(PyObject* _self, PyObject* hook) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-struct PyGetSetDef pylayer_properties[1];
+PyObject* tensor_properties_get_container(PyLayerObject* self, void* closure) {
+  EAGER_TRY
+  if (self->container == nullptr) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  Py_INCREF(self->container);
+  return self->container;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int tensor_properties_set_container(PyLayerObject* self, PyObject* value,
+                                    void* closure) {
+  EAGER_TRY
+  Py_XINCREF(value);
+  Py_XDECREF(self->container);
+  self->container = value;
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
+}
+
+PyObject* tensor_properties_get_non_differentiable(PyLayerObject* self,
+                                                   void* closure) {
+  EAGER_TRY
+  if (self->non_differentiable == nullptr) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  Py_INCREF(self->non_differentiable);
+  return self->non_differentiable;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int tensor_properties_set_non_differentiable(PyLayerObject* self,
+                                             PyObject* value, void* closure) {
+  EAGER_TRY
+  Py_XINCREF(value);
+  Py_XDECREF(self->non_differentiable);
+  self->non_differentiable = value;
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
+}
+
+PyObject* tensor_properties_get_dirty_tensors(PyLayerObject* self,
+                                              void* closure) {
+  EAGER_TRY
+  if (self->dirty_tensors == nullptr) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  Py_INCREF(self->dirty_tensors);
+  return self->dirty_tensors;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int tensor_properties_set_dirty_tensors(PyLayerObject* self, PyObject* value,
+                                        void* closure) {
+  EAGER_TRY
+  Py_XINCREF(value);
+  Py_XDECREF(self->dirty_tensors);
+  self->dirty_tensors = value;
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
+}
+
+int tensor_properties_set_materialize_grads(PyLayerObject* self,
+                                            PyObject* value, void* closure) {
+  EAGER_TRY
+  self->materialize_grads = CastPyArg2AttrBoolean(value, 0);
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_ZERO
+}
 
 PyMethodDef pylayer_methods[] = {
     {"name", (PyCFunction)(void (*)(void))pylayer_method_name, METH_NOARGS,
      NULL},
     {"apply", (PyCFunction)(void (*)(void))pylayer_method_apply,
-     METH_CLASS | METH_VARARGS, NULL},
+     METH_CLASS | METH_VARARGS | METH_KEYWORDS, NULL},
     {"register_hook", (PyCFunction)(void (*)(void))pylayer_method_register_hook,
      METH_O, NULL},
     {NULL, NULL, 0, NULL}};
+
+struct PyGetSetDef pylayer_properties[]{
+    {"container", (getter)tensor_properties_get_container,
+     (setter)tensor_properties_set_container, nullptr, nullptr},
+    {"non_differentiable", (getter)tensor_properties_get_non_differentiable,
+     (setter)tensor_properties_set_non_differentiable, nullptr, nullptr},
+    {"dirty_tensors", (getter)tensor_properties_get_dirty_tensors,
+     (setter)tensor_properties_set_dirty_tensors, nullptr, nullptr},
+    {"materialize_grads", nullptr,
+     (setter)tensor_properties_set_materialize_grads, nullptr, nullptr},
+    {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 void BindEagerPyLayer(PyObject* module) {
   auto heap_type = reinterpret_cast<PyHeapTypeObject*>(

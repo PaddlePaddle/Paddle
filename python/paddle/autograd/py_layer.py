@@ -331,7 +331,40 @@ class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
 
 class EagerPyLayerContext(object):
     def save_for_backward(self, *tensors: core.eager.Tensor):
-        self.to_save = tensors
+        self.container = tensors
+
+    def saved_tensor(self):
+        """
+        Get the tensors stored by ``save_for_backward``.
+
+        Returns:
+            list of Tensors or None: If context contains tensors stored by `save_for_backward`, 
+            then return these tensors, otherwise return None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+
+                class cus_tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        # ctx is a context object that store some objects for backward.
+                        y = paddle.tanh(x)
+                        # Pass tensors to backward.
+                        ctx.save_for_backward(y)
+                        return y
+
+                    @staticmethod
+                    def backward(ctx, dy):
+                        # Get the tensors passed by forward.
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - paddle.square(y))
+                        return grad
+        """
+
+        return self.container
 
     def mark_dirty(self, *args: core.eager.Tensor):
         self.dirty_tensors = args
@@ -344,9 +377,8 @@ class EagerPyLayerContext(object):
 
 
 class EagerPyLayerBackward(core.eager.PyLayer, EagerPyLayerContext):
-    def backward(self, *args, **kwargs):
-        with paddle.fluid.dygraph.guard():
-            return self._forward_cls.backward(*args, **kwargs)
+    def backward(self, *args):
+        return self._forward_cls.backward(self, *args)
 
 
 class EagerPyLayerMeta(type):
@@ -400,7 +432,7 @@ class EagerPyLayer(
             "You must implement the forward function for PyLayer.")
 
     @staticmethod
-    def backward(ctx, *args, **kwargs):
+    def backward(ctx, *args):
         """
         This is a function to calculate the gradient. It is to be overloaded by subclasses. 
         It must accept a object of `PyLayerContext` as the first argument, and the rest 

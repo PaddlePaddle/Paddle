@@ -27,10 +27,12 @@ typedef struct {
 typedef struct {
   PyObject_HEAD
 
-      PyObject* to_save;
+      PyObject* container;
   PyObject* non_differentiable;
   PyObject* dirty_tensors;
   bool materialize_grads;
+  std::vector<bool> forward_input_tensor_is_duplicable;
+  std::vector<bool> forward_output_tensor_is_duplicable;
   std::weak_ptr<egr::GradNodePyLayer> grad_node;
 } PyLayerObject;
 
