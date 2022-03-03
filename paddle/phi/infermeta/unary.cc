@@ -1007,7 +1007,7 @@ void TransposeInferMeta(const MetaTensor& x,
   }
 
   phi::DDim out_dims(x_dims);
-  for (size_t i = 0; i < axis_size; i++) {
+  for (size_t i = 0; i < axis_size; ++i) {
     out_dims[i] = x_dims[axis[i]];
   }
 

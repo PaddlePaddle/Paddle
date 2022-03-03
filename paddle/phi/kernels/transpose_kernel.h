@@ -15,6 +15,7 @@
 #pragma once
 
 #include <vector>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -40,10 +41,13 @@ DenseTensor Transpose(const Context& dev_ctx,
 
 template <typename T, typename Context>
 DenseTensor TransposeLast2Dim(const Context& dev_ctx, const DenseTensor& x) {
-  auto out_dims = phi::vectorize<int>(x.dims());
   size_t rank = x.dims().size();
-  std::swap(out_dims[rank - 1], out_dims[rank - 2]);
-  return Transpose<T, Context>(dev_ctx, x, out_dims);
+  std::vector<int> axis(rank);
+  for (size_t i = 0; i < rank; ++i) {
+    axis[i] = i;
+  }
+  std::swap(axis[rank - 1], axis[rank - 2]);
+  return Transpose<T, Context>(dev_ctx, x, axis);
 }
 
 }  // namespace phi
