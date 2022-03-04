@@ -83,6 +83,10 @@ void DistInferMeta(const MetaTensor& x,
                    float p,
                    MetaTensor* out);
 
+void GatherNdInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       MetaTensor* out);
+
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);
