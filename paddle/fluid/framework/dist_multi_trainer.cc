@@ -93,7 +93,7 @@ void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
     workers_[i]->CacheProgram(main_program);
 #endif
   }
@@ -110,7 +110,7 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   }
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->Start();
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->GetXpuOpIndex();
   }
