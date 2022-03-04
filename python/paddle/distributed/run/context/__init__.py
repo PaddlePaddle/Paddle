@@ -100,6 +100,9 @@ class Context(object):
             help="accelerate devices. as --gpus,npus,xps")
 
         base_group.add_argument(
+            "--host", type=str, default=None, help="host ip")
+
+        base_group.add_argument(
             "training_script",
             type=str,
             help="the full path of py script,"
@@ -178,6 +181,7 @@ class Context(object):
 
     def set_env_in_args(self):
         env_args = {
+            'POD_IP': 'host',
             'PADDLE_MASTER': 'master',
             'PADDLE_DEVICES': 'devices',
             'PADDLE_NP': 'np',
