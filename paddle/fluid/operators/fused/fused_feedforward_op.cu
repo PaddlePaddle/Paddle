@@ -21,6 +21,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -56,7 +61,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
            framework::Tensor* dropout1_out, framework::Tensor* dropout2_out,
            const int bsz_seq, const int d_model, const int dim_feedforward,
            const std::string& act_method, const bool pre_layer_norm,
-           const float epsilon1, const float epsilon2,
+           const float epsilon1, const float epsilon2, const int ring_id,
            const DropoutParam& dropout_param1,
            const DropoutParam& dropout_param2,
            const platform::CUDADeviceContext& ctx) const {
@@ -95,6 +100,21 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     framework::Tensor linear2_out;
     linear2_out.mutable_data<T>({bsz_seq, d_model}, place);
     MatMul(ctx, *dropout1_out, linear2_weight, &linear2_out);
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    if (ring_id != -1) {
+      auto dtype = platform::ToNCCLDataType(
+          framework::TransToProtoVarType(linear2_out.dtype()));
+      int64_t numel = linear2_out.numel();
+      const void* sendbuff = linear2_out.data<T>();
+      void* recvbuff = linear2_out.mutable_data<T>(place);
+      auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+      auto stream = ctx.stream();
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+          sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+    }
+#endif
+
     if (!pre_layer_norm) {
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
           ctx, linear2_out.data<T>(), x.data<T>(), linear2_bias_ptr,
@@ -150,6 +170,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
 
     const float epsilon1 = context.Attr<float>("ln1_epsilon");
     const float epsilon2 = context.Attr<float>("ln2_epsilon");
+    const int ring_id = context.Attr<int>("ring_id");
 
     DropoutParam dropout_param1(context, 1);
     DropoutParam dropout_param2(context, 2);
@@ -186,7 +207,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
         dropout2_mask, ln1_mean, ln1_variance, ln2_mean, ln2_variance,
         linear1_out, ln1_out, dropout1_out, dropout2_out, bsz_seq, d_model,
         dim_feedforward, act_method, pre_layer_norm, epsilon1, epsilon2,
-        dropout_param1, dropout_param2, context.cuda_device_context());
+        ring_id, dropout_param1, dropout_param2, context.cuda_device_context());
   }
 };
 
