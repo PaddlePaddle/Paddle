@@ -43,7 +43,7 @@ const char *AllocationTypeStr(AllocationType type) {
     case AllocationType::MLU:
       return "mlu";
     default:
-      PD_THROW("Invalid pten device type.");
+      PD_THROW("Invalid phi device type.");
       return {};
   }
 }

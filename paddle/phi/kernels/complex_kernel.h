@@ -50,14 +50,10 @@ DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
   return x;
 }
 
-template <typename T, typename DeviceContext>
-void RealKernel(const DeviceContext& dev_ctx,
-                const DenseTensor& x,
-                DenseTensor* out);
+template <typename T, typename Context>
+void RealKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
-template <typename T, typename DeviceContext>
-void ImagKernel(const DeviceContext& dev_ctx,
-                const DenseTensor& x,
-                DenseTensor* out);
+template <typename T, typename Context>
+void ImagKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
 }  // namespace phi

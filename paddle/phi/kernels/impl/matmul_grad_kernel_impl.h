@@ -60,7 +60,7 @@ struct ReduceSumForMatmulGrad<GPUContext, T> {
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims) {
     auto stream = dev_ctx.stream();
-    kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+    funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         dev_ctx, input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
   }
 };
@@ -596,7 +596,6 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
         ddout_flag = true;
       }
     }
-
     if (ddy) {
       auto ddy_mat = ddy.get();
       if (ddy_mat.dims() != y_help.dims()) {

@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/hooks.h"
 
 namespace egr {
 
@@ -23,11 +24,14 @@ class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
   explicit GradNodeAccumulation(AutogradMeta* meta) : GradNodeBase(1, 1) {
+    VLOG(6) << "Construct GradNodeAccumulation";
     weak_grad_ = meta->WeakGrad();
     SetDefaultGradInOutMeta();
   }
 
-  ~GradNodeAccumulation() override = default;
+  ~GradNodeAccumulation() override {
+    VLOG(6) << "Destruct GradNodeAccumulation";
+  }
 
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
@@ -39,7 +43,7 @@ class GradNodeAccumulation : public GradNodeBase {
   /**
    * Register ReduceHook
    * **/
-  void RegisterReduceHook(const std::function<void(void)>& hook);
+  void RegisterReduceHook(std::shared_ptr<TensorVoidHook>&& hook);
 
   /**
    * Apply ReduceHook here
@@ -54,7 +58,7 @@ class GradNodeAccumulation : public GradNodeBase {
       const paddle::experimental::Tensor&)>
       retain_grad_hook_;
 
-  std::vector<std::function<void(void)>> reduce_hooks_;
+  std::vector<std::shared_ptr<TensorVoidHook>> reduce_hooks_;
 };
 
 }  // namespace egr

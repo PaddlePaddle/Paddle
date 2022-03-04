@@ -23,9 +23,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_context.h"
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/selected_rows.h"
-#endif
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/type_defs.h"
@@ -104,26 +102,26 @@ namespace phi {
     }                                                                      \
   }
 
-#define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)        \
-  template <typename... Tail>                                              \
-  struct KernelCallHelper<const std::vector<tensor_type>&, Tail...> {      \
-    template <int dev_ctx_idx,                                             \
-              int in_idx,                                                  \
-              int attr_idx,                                                \
-              int out_idx,                                                 \
-              typename... PreviousArgs>                                    \
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {      \
-      static_assert(attr_idx == 0,                                         \
-                    "Kernel's Input should appear before Attributes.");    \
-      static_assert(out_idx == 0,                                          \
-                    "Kernel's Input should appear before Outputs.");       \
-      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);         \
-      std::vector<tensor_type> arg = std::move(                            \
-          ctx->MoveInputsBetween<tensor_type>(range.first, range.second)); \
-      KernelCallHelper<Tail...>::                                          \
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(    \
-              ctx, pargs..., arg);                                         \
-    }                                                                      \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)          \
+  template <typename... Tail>                                                \
+  struct KernelCallHelper<const std::vector<const tensor_type*>&, Tail...> { \
+    template <int dev_ctx_idx,                                               \
+              int in_idx,                                                    \
+              int attr_idx,                                                  \
+              int out_idx,                                                   \
+              typename... PreviousArgs>                                      \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {        \
+      static_assert(attr_idx == 0,                                           \
+                    "Kernel's Input should appear before Attributes.");      \
+      static_assert(out_idx == 0,                                            \
+                    "Kernel's Input should appear before Outputs.");         \
+      const std::pair<int, int> range = ctx->InputRangeAt(in_idx);           \
+      std::vector<const tensor_type*> arg = std::move(                       \
+          ctx->InputsBetween<tensor_type>(range.first, range.second));       \
+      KernelCallHelper<Tail...>::                                            \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
+              ctx, pargs..., arg);                                           \
+    }                                                                        \
   }
 
 #define PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(attr_type)           \
@@ -221,10 +219,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
-#endif
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
@@ -245,6 +242,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
   PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
@@ -258,9 +256,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRows);
-#endif
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCooTensor);
   PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCooTensor);

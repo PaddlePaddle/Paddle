@@ -73,7 +73,9 @@ def logger_config(log_path, logging_name):
     return logger
 
 
-logger = logger_config(log_path='/ps_log', logging_name='ps_log')
+ps_log_root_dir = '/ps_log/'
+logger = logger_config(
+    log_path='/ps_usr_print_log', logging_name='ps_usr_print_log')
 
 
 class DistributedMode:
