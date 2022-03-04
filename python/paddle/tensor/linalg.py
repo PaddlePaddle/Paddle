@@ -2665,6 +2665,8 @@ def triangular_solve(x,
         #               -x3 = 5
 
         import paddle
+        import numpy as np
+
         x = paddle.to_tensor([[1, 1, 1], 
                               [0, 2, 1],
                               [0, 0,-1]], dtype="float64")

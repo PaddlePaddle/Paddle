@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
-#include "paddle/fluid/operators/tril_triu_op.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/math_kernel.h"
