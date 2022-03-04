@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+const int kIgnoreIndex = -100;
 
 void CheckAttrs(const framework::ExecutionContext& ctx) {
   // Add this check is is due to Ascend SigmoidCrossEntropyWithLogits

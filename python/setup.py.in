@@ -576,8 +576,12 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # phi api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/common')) +  # phi common headers
     # phi level api headers (low level api)
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi')) +  # phi extension header
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/include', recursive=True)) +  # phi include headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
     # utila api headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)))  # paddle utils headers
 
