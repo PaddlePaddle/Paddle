@@ -84,7 +84,8 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
         if ((!ctx->IsRuntime()) && (in_x_dims[i + 2] < 0)) {
           output_shape.push_back(in_x_dims[i + 2]);
         } else {
-          output_shape.push_back(MaxPoolOutputSize(in_x_dims[i + 2], ksize[i], paddings[i], strides[i]));
+          output_shape.push_back(MaxPoolOutputSize(in_x_dims[i + 2], ksize[i],
+                                                   paddings[i], strides[i]));
         }
       }
     }
