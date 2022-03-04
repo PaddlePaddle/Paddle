@@ -168,13 +168,20 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_dtype()
+
             self.out_size = None
             self.actual_shape = None
             self.data_layout = 'NCHW'
+
+            self.interp_method = 'nearest'
+            self.scale = 0.
+            self.align_corners = True
+
             self.init_test_case()
             self.op_type = "nearest_interp_v2"
             input_np = np.random.random(self.input_shape).astype(self.dtype)
 
+            # in
             if self.data_layout == "NCHW" and len(self.input_shape) == 4:
                 in_d = 1
                 in_h = self.input_shape[2]
@@ -192,6 +199,8 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
                 in_d = self.input_shape[1]
                 in_h = self.input_shape[2]
                 in_w = self.input_shape[3]
+
+            # scale
             scale_d = 0
             scale_h = 0
             scale_w = 0
@@ -199,8 +208,10 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
                 if isinstance(self.scale, float) or isinstance(self.scale, int):
                     if self.scale > 0:
                         scale_d = scale_h = scale_w = float(self.scale)
+                        self.scale = [self.scale]
                 if isinstance(self.scale, list) and len(self.scale) == 1:
                     scale_d = scale_w = scale_h = self.scale[0]
+                    self.scale = [self.scale[0], self.scale[0]]
                 elif isinstance(self.scale, list) and len(self.scale) > 1:
                     if len(self.scale) == 5:
                         scale_w = self.scale[2]
@@ -219,6 +230,7 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
                 out_h = self.out_h
                 out_w = self.out_w
 
+            # output_np
             if len(self.input_shape) == 4:
                 output_np = nearest_neighbor_interp_np(
                     input_np, out_h, out_w, scale_h, scale_w, self.out_size,
@@ -228,11 +240,14 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
                     input_np, out_d, out_h, out_w, scale_d, scale_h, scale_w,
                     self.out_size, self.actual_shape, self.align_corners,
                     self.data_layout)
+            self.outputs = {'Out': output_np}
+
             self.inputs = {'X': input_np}
             if self.out_size is not None:
                 self.inputs['OutSize'] = self.out_size
             if self.actual_shape is not None:
                 self.inputs['OutSize'] = self.actual_shape
+
             if len(self.input_shape) == 5:
                 self.attrs = {
                     'out_d': self.out_d,
@@ -250,14 +265,9 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
                     'align_corners': self.align_corners,
                     'data_layout': self.data_layout
                 }
+
             if self.scale:
-                if isinstance(self.scale, float) or isinstance(self.scale, int):
-                    if self.scale > 0:
-                        self.scale = [self.scale]
-                if isinstance(self.scale, list) and len(self.scale) == 1:
-                    self.scale = [self.scale[0], self.scale[0]]
                 self.attrs['scale'] = self.scale
-            self.outputs = {'Out': output_np}
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -269,13 +279,10 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X'], 'Out', in_place=True)
 
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [2, 3, 4, 5]
             self.out_h = 2
             self.out_w = 2
-            self.scale = 0.
             self.out_size = np.array([3, 3]).astype("int32")
-            self.align_corners = True
 
     """
     # case copied form gpu but disabled in xpu: not support 5-dim input_shape
@@ -292,70 +299,49 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
 
     class TestNearestNeighborInterpCase2(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [3, 3, 9, 6]
             self.out_h = 12
             self.out_w = 12
-            self.scale = 0.
-            self.align_corners = True
 
     class TestNearestNeighborInterpCase3(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [1, 1, 32, 64]
             self.out_h = 64
             self.out_w = 32
-            self.scale = 0.
-            self.align_corners = True
 
     class TestNearestNeighborInterpCase4(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [4, 1, 7, 8]
             self.out_h = 1
             self.out_w = 1
-            self.scale = 0.
             self.out_size = np.array([2, 2]).astype("int32")
-            self.align_corners = True
 
     class TestNearestNeighborInterpCase5(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [3, 3, 9, 6]
             self.out_h = 12
             self.out_w = 12
-            self.scale = 0.
             self.out_size = np.array([11, 11]).astype("int32")
-            self.align_corners = True
 
     class TestNearestNeighborInterpCase6(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [1, 1, 32, 64]
             self.out_h = 64
             self.out_w = 32
-            self.scale = 0.
             self.out_size = np.array([65, 129]).astype("int32")
-            self.align_corners = True
 
     class TestNearestNeighborInterpSame(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [2, 3, 32, 64]
             self.out_h = 32
             self.out_w = 64
-            self.scale = 0.
-            self.align_corners = True
 
     class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [3, 2, 32, 16]
             self.out_h = 64
             self.out_w = 32
-            self.scale = 0.
             self.out_size = np.array([66, 40]).astype("int32")
-            self.align_corners = True
 
     """
     # case copied form gpu but disabled in xpu: not support NHWC data_layout
@@ -377,33 +363,27 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
 
     class TestNearestNeighborInterpScale1(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [3, 2, 7, 5]
             self.out_h = 64
             self.out_w = 32
             self.scale = 2.
             self.out_size = np.array([66, 40]).astype("int32")
-            self.align_corners = True
 
     class TestNearestNeighborInterpScale2(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [3, 2, 5, 7]
             self.out_h = 64
             self.out_w = 32
             self.scale = 1.5
             self.out_size = np.array([66, 40]).astype("int32")
-            self.align_corners = True
 
     class TestNearestNeighborInterpScale3(TestNearestInterpOp):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [3, 2, 7, 5]
             self.out_h = 64
             self.out_w = 32
             self.scale = [2.0, 3.0]
             self.out_size = np.array([66, 40]).astype("int32")
-            self.align_corners = True
 
     """
     # case copied form gpu but disabled in xpu: not support 5-dim input_shape
@@ -423,8 +403,14 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_dtype()
+
             self.out_size = None
             self.actual_shape = None
+
+            self.interp_method = 'nearest'
+            self.scale = 0.
+            self.align_corners = True
+
             self.init_test_case()
             self.op_type = "nearest_interp_v2"
             self.shape_by_1Dtensor = False
@@ -472,9 +458,9 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
                 if isinstance(self.scale, list) and len(self.scale) == 1:
                     self.scale = [self.scale[0], self.scale[0]]
                 self.attrs['scale'] = self.scale
-            output_np = nearest_neighbor_interp_np(
-                input_np, out_h, out_w, 0, 0, self.out_size, self.actual_shape,
-                self.align_corners)
+            output_np = nearest_neighbor_interp_np(input_np, out_h, out_w, 0, 0,
+                                                   self.out_size, self.actual_shape,
+                                                   self.align_corners)
             self.outputs = {'Out': output_np}
 
         def init_dtype(self):
@@ -487,47 +473,36 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X'], 'Out', in_place=True)
 
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [2, 5, 4, 4]
             self.out_h = 3
             self.out_w = 3
-            self.scale = 0.
             self.out_size = [3, 3]
-            self.align_corners = True
 
     # out_size is a tensor list
     class TestNearestInterp_attr_tensor_Case1(TestNearestInterpOp_attr_tensor):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [3, 3, 9, 6]
             self.out_h = 12
             self.out_w = 12
-            self.scale = 0.
             self.out_size = [8, 12]
-            self.align_corners = True
 
     # out_size is a 1-D tensor
     class TestNearestInterp_attr_tensor_Case2(TestNearestInterpOp_attr_tensor):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [3, 2, 32, 16]
             self.out_h = 64
             self.out_w = 32
-            self.scale = 0.
             self.out_size = np.array([66, 40]).astype("int32")
-            self.align_corners = True
             self.shape_by_1Dtensor = True
 
     # scale is a 1-D tensor
     class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         def init_test_case(self):
-            self.interp_method = 'nearest'
             self.input_shape = [3, 2, 32, 16]
             self.out_h = 64
             self.out_w = 32
             self.scale = 2.0
             self.out_size = None
-            self.align_corners = True
             self.scale_by_1Dtensor = True
 
 
