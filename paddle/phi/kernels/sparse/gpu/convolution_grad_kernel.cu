@@ -80,7 +80,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
   dev_ctx.Alloc(
       kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
   T* d_kernel_ptr = kernel_grad->data<T>();
-  phi::funcs::SetConstant<Context, int> set_zero;
+  phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, kernel_grad, 0);
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
@@ -178,12 +178,15 @@ void Conv3dGradKernel(const Context& dev_ctx,
   dev_ctx.Alloc(x_grad, x_grad->dtype(), sizeof(T) * x_grad->numel());
   T* x_grad_values_ptr = x_grad->data<T>();
 
-  DenseTensor out_index = phi::Empty<int, Context>(dev_ctx);
-  DenseTensor unique_key = phi::Empty<int, Context>(dev_ctx);
-  DenseTensor unique_value = phi::Empty<int, Context>(dev_ctx);
-  unique_key.ResizeAndAllocate({rulebook_len});
-  out_index.ResizeAndAllocate({rulebook_len});
-  unique_value.ResizeAndAllocate({rulebook_len});
+  DenseTensor out_index = phi::Empty(
+      dev_ctx,
+      DenseTensorMeta(DataType::INT32, {rulebook_len}, DataLayout::NCHW));
+  DenseTensor unique_key = phi::Empty(
+      dev_ctx,
+      DenseTensorMeta(DataType::INT32, {rulebook_len}, DataLayout::NCHW));
+  DenseTensor unique_value = phi::Empty(
+      dev_ctx,
+      DenseTensorMeta(DataType::INT32, {rulebook_len}, DataLayout::NCHW));
   dev_ctx.Alloc(
       &unique_key, unique_key.dtype(), sizeof(int) * unique_key.numel());
   dev_ctx.Alloc(&out_index, out_index.dtype(), sizeof(int) * out_index.numel());

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
 namespace phi {
@@ -74,6 +75,8 @@ void Conv3dGradKernel(const Context& dev_ctx,
   dev_ctx.Alloc(
       kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
   T* d_kernel_ptr = kernel_grad->data<T>();
+  phi::funcs::SetConstant<Context, T> set_zero;
+  set_zero(dev_ctx, kernel_grad, 0);
 
   Gather<T>(x.non_zero_elements().data<T>(),
             rulebook_ptr + rulebook_len,

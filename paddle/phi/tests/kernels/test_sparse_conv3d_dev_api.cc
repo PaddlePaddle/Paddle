@@ -113,7 +113,8 @@ void TestConv3dBase(const std::vector<int>& indices,
   };
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
-    DenseTensor rulebook = phi::Empty<int, phi::CPUContext>(dev_ctx_cpu);
+    DenseTensor rulebook = phi::Empty(
+        dev_ctx_cpu, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
     SparseCooTensor out = sparse::Conv3d<T>(dev_ctx_cpu,
                                             x_tensor,
                                             kernel_tensor,
@@ -198,7 +199,8 @@ void TestConv3dBase(const std::vector<int>& indices,
   phi::Copy(
       dev_ctx_gpu, kernel_tensor, phi::GPUPlace(), true, &d_kernel_tensor);
 
-  DenseTensor d_rulebook = phi::Empty<int, phi::GPUContext>(dev_ctx_gpu);
+  DenseTensor d_rulebook = phi::Empty(
+      dev_ctx_gpu, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
   SparseCooTensor d_out = sparse::Conv3d<T>(dev_ctx_gpu,
                                             d_x_tensor,
                                             d_kernel_tensor,

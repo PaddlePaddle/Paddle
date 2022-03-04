@@ -406,9 +406,12 @@ void Conv3dKernel(const Context& dev_ctx,
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
   DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(offsets_meta));
-  DenseTensor out_index = phi::Empty<int, Context>(dev_ctx);
-  DenseTensor unique_key = phi::Empty<int, Context>(dev_ctx);
-  DenseTensor unique_value = phi::Empty<int, Context>(dev_ctx);
+  DenseTensor out_index = phi::Empty(
+      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
+  DenseTensor unique_key = phi::Empty(
+      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
+  DenseTensor unique_value = phi::Empty(
+      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
 
   int n = ProductRuleBook<T, Context>(dev_ctx,
                                       x,
