@@ -20,7 +20,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 namespace phi {
@@ -87,7 +87,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
           *input_tensor, ctx.GetPlace(), ctx, output_tensor);
     } else {
       // reduce_sum implementation on CUDA
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           ctx,
           *input_tensor,
           output_tensor,
