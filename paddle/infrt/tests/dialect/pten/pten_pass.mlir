@@ -1,4 +1,4 @@
-// RUN: phi-ir-exec %s
+// RUN: opt -phi-op-convert %s
 
 // CHECK-LABEL: @ops
 func @ops() {
