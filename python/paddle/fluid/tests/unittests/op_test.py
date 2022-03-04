@@ -1239,8 +1239,10 @@ class OpTest(unittest.TestCase):
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
 
-            api_outs = self._calc_python_api_output(place)
-            self._check_api_outs_by_dygraph_outs(api_outs, dygraph_outs, place)
+            if hasattr(self, "python_api"):
+                api_outs = self._calc_python_api_output(place)
+                self._check_api_outs_by_dygraph_outs(api_outs, dygraph_outs,
+                                                     place)
 
         if check_eager:
             with _test_eager_guard():
