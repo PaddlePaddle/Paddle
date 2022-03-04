@@ -20,12 +20,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AbsGradKernel(const Context& ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y,
-                   const DenseTensor& out_grad,
-                   float p,
-                   DenseTensor* x_grad,
-                   DenseTensor* y_grad);
+void DistGradKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    const DenseTensor& out,
+                    const DenseTensor& out_grad,
+                    float p,
+                    DenseTensor* x_grad,
+                    DenseTensor* y_grad);
 
 }  // namespace phi
