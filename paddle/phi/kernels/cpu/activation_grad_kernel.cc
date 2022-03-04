@@ -42,31 +42,18 @@ namespace phi {
         dev_ctx, nullptr, &out, &dout, dx, functor);                  \
   }
 
-DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(
-    Cos,
-    funcs::CosGradFunctor<
-        T>) DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Tan,
-                                                   funcs::TanGradFunctor<T>)
-    DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(
-        Acos,
-        funcs::AcosGradFunctor<
-            T>) DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Sin,
-                                                       funcs::SinGradFunctor<T>)
-        DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Asin, funcs::AsinGradFunctor<T>)
-            DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Atan,
-                                                   funcs::AtanGradFunctor<T>)
-                DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(
-                    Sinh, funcs::SinhGradFunctor<T>)
-                    DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(
-                        Cosh, funcs::CoshGradFunctor<T>)
-                        DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(
-                            Asinh, funcs::AsinhGradFunctor<T>)
-                            DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(
-                                Acosh, funcs::AcoshGradFunctor<T>)
-                                DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(
-                                    Atanh, funcs::AtanhGradFunctor<T>)
-                                    DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepOut(
-                                        Relu, funcs::ReluGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Cos, funcs::CosGradFunctor<T>) 
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Tan,funcs::TanGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Acos, funcs::AcosGradFunctor<T>) 
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Sin, funcs::SinGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Asin, funcs::AsinGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Atan, funcs::AtanGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Sinh, funcs::SinhGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Cosh, funcs::CoshGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Asinh, funcs::AsinhGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Acosh, funcs::AcoshGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, funcs::AtanhGradFunctor<T>)
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepOut(Relu, funcs::ReluGradFunctor<T>)
 
 }  // namespace phi
 PD_REGISTER_KERNEL(
