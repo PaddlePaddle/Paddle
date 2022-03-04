@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -43,8 +45,9 @@ std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
                                     const std::vector<int>& dilations,
                                     const std::vector<int>& strides,
                                     const int groups) {
-  DenseTensor x_grad;
-  DenseTensor kernel_grad;
+  DenseTensor x_grad = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor kernel_grad = phi::Empty<T, Context>(dev_ctx);
+  // TODO(zhangkaihuo): call InferMeta func here
   Conv3dGradKernel<T, Context>(dev_ctx,
                                x,
                                rulebook,
