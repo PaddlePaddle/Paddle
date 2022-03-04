@@ -102,7 +102,7 @@ namespace phi {
     }                                                                      \
   }
 
-#define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)          \
+#define PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)          \
   template <typename... Tail>                                                \
   struct KernelCallHelper<const std::vector<const tensor_type*>&, Tail...> { \
     template <int dev_ctx_idx,                                               \
@@ -217,11 +217,11 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   /* Input Helpers */
 
-  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
-  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
-  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
-  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
-  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
 
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
