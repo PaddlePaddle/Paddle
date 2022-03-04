@@ -1879,25 +1879,25 @@ def fold(x,
         output_sizes = [output_sizes, output_sizes]
     else:
         assert _is_list_or_turple_(output_sizes) and (len(output_sizes) == 2), \
-            "output_sizes should either be an integer or a list of two integers"
+            "output_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
         assert _is_list_or_turple_(kernel_sizes) and (len(kernel_sizes) == 2), \
-            "kernel_sizes should either be an integer or a list of two integers"
+            "kernel_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
         assert _is_list_or_turple_(strides) and (len(strides) == 2), \
-            "strides should either be an integer or a list of two integers"
+            "strides should either be an integer or a list/tuple of two integers"
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
         assert _is_list_or_turple_(dilations) and (len(dilations) == 2), \
-            "dilations should either be an integer or a list of two integers"
+            "dilations should either be an integer or a list/tuple of two integers"
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
@@ -1915,16 +1915,21 @@ def fold(x,
             "Unexpected type of paddings, it should be either an integer or a list"
             "of 2 or 4 integers")
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="fold",
-        inputs={"X": x},
-        outputs={"Y": out},
-        attrs={
-            "output_sizes": output_sizes,
-            "kernel_sizes": kernel_sizes,
-            "strides": strides,
-            "paddings": paddings,
-            "dilations": dilations
-        })
+    if in_dygraph_mode():
+        out = _C_ops.fold(x, "output_sizes", output_sizes, "kernel_sizes",
+                          kernel_sizes, "strides", strides, "paddings",
+                          paddings, "dilations", dilations)
+    else:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type="fold",
+            inputs={"X": x},
+            outputs={"Y": out},
+            attrs={
+                "output_sizes": output_sizes,
+                "kernel_sizes": kernel_sizes,
+                "strides": strides,
+                "paddings": paddings,
+                "dilations": dilations
+            })
     return out
