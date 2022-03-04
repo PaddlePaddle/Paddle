@@ -1186,7 +1186,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // phase
   phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
+  VLOG(1) << "########### " << phi::KernelFactory::Instance();
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
+    VLOG(1) << "######### HasCompatiblePhiKernel";
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
       pt_kernel_signature_.reset(
           new KernelSignature(std::move(GetExpectedPhiKernelArgs(exe_ctx))));
@@ -2178,6 +2180,60 @@ void OperatorWithKernel::BuildPhiKernelContext(
             std::move(experimental::MakePhiScalarFromVar(*ins_vector.front())));
       }
 
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(std::vector<phi::Scalar>))) {
+      auto& attr = Attrs().at(attr_names[i]);
+      if (std::type_index(attr.type()) ==
+          std::type_index(typeid(std::vector<int32_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<float>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<double>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<bool>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<bool>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` to vector<Scalar> when "
+            "construct KernelContext.",
+            attr_names[i]));
+      }
     } else {
       // TODO(chenweihang): support other attrs later
       auto& attr = Attrs().at(attr_names[i]);
