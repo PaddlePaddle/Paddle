@@ -23,7 +23,7 @@ class PDT_Op<string mnemonic, list<OpTrait> traits = []> : Op<PHI_DenseTensorDia
 
 class CreateDenseTensorOp<string place, string dtype, string layout> 
       : PDT_Op<"create_dense_tensor." # place # "." # dtype # "." # layout, [NoSideEffect]> {
-  let arguments = (ins CPU_Allocator:$allocator, I64ArrayAttr:$dims, I64ArrayAttr:$lod);
+  let arguments = (ins Allocator:$allocator, I64ArrayAttr:$dims, I64ArrayAttr:$lod);
   let results = (outs DenseTensor:$output);
 }
 
@@ -47,13 +47,13 @@ class PrintDenseTensorOp:
 class CreateCPUAllocatorOp
       : PDT_Op<"create_allocator." # "cpu", [NoSideEffect]> {
   let arguments = (ins);
-  let results = (outs CPU_Allocator:$output);
+  let results = (outs Allocator:$output);
 }
 
 class CreateCPUContextOp
       : PDT_Op<"create_context." # "cpu", [NoSideEffect]> {
-  let arguments = (ins CPU_Allocator:$input);
-  let results = (outs CPU_Context:$output);
+  let arguments = (ins Allocator:$input);
+  let results = (outs Context:$output);
 }
 
 def PDT_CreateDenseTensorOp_cpu_f32_nchw : CreateDenseTensorOp<"cpu", "f32", "nchw">;
@@ -63,7 +63,7 @@ def PDT_CreateContextOp_cpu : CreateCPUContextOp;
 def PDT_PrintDenseTensor_cpu : PrintDenseTensorOp;
 
 def FakeKernelOp : PDT_Op<"fake_phi_kernel"> {
-  let arguments = (ins CPU_Context:$dev_ctx, DenseTensor:$x, DenseTensor:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
+  let arguments = (ins Context:$dev_ctx, DenseTensor:$x, DenseTensor:$y, BoolAttr:$transpose_x, BoolAttr:$transpose_y);
   let results = (outs DenseTensor:$output);
 }
 
