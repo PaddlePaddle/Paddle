@@ -27,6 +27,8 @@ sys.path.append('..')
 from op_test import OpTest
 from test_pool2d_op import pool2D_forward_naive, avg_pool2D_forward_naive, max_pool2D_forward_naive, adaptive_start_index, adaptive_end_index
 
+paddle.enable_static()
+
 
 def pool2d_backward_navie(x,
                           ksize,
@@ -1016,5 +1018,4 @@ class TestDygraphPool2DAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
