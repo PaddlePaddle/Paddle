@@ -50,7 +50,7 @@ class EagerScaleTestCase(unittest.TestCase):
             data_eager.retain_grads()
 
             out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
-            self.assertFalse(data_eager.grad._is_initialized())
+            self.assertTrue(data_eager.grad is None)
             out_eager.backward(grad_eager, False)
             self.assertTrue(data_eager.grad._is_initialized())
             self.assertTrue(np.array_equal(data_eager.grad.numpy(), input_data))
@@ -72,7 +72,7 @@ class EagerScaleTestCase(unittest.TestCase):
             data_eager.retain_grads()
 
             out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
-            self.assertFalse(data_eager.grad._is_initialized())
+            self.assertTrue(data_eager.grad is None)
             with self.assertRaisesRegexp(
                     AssertionError,
                     "The type of grad_tensor must be paddle.Tensor"):
