@@ -23,10 +23,10 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#define SWITCH_OUT_RANK_CASE(n)                                         \
-  case n: {                                                             \
-    ApplyBroadcast<T, Context, n>(ctx, &in_tensors[i], out_tensors[i]); \
-    break;                                                              \
+#define SWITCH_OUT_RANK_CASE(n)                                        \
+  case n: {                                                            \
+    ApplyBroadcast<T, Context, n>(ctx, in_tensors[i], out_tensors[i]); \
+    break;                                                             \
   }
 
 namespace phi {
@@ -75,7 +75,7 @@ void ApplyBroadcast(const Context& ctx,
 
 template <typename T, typename Context>
 void BroadcastTensorsKernel(const Context& ctx,
-                            const std::vector<DenseTensor>& x,
+                            const std::vector<const DenseTensor*>& x,
                             std::vector<DenseTensor*> out) {
   const auto& in_tensors = x;
   auto out_tensors = out;

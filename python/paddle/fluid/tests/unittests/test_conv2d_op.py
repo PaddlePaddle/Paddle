@@ -604,7 +604,7 @@ class TestWithInput1x1Filter1x1(TestConv2DOp):
         self.groups = 3
 
 
-#----------------Conv2DCUDNN----------------
+# #----------------Conv2DCUDNN----------------
 
 create_test_cudnn_class(TestConv2DOp)
 create_test_cudnn_class(TestWithPad)
