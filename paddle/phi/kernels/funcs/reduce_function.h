@@ -1088,12 +1088,12 @@ template <typename Tx,
           typename Ty,
           template <typename> class ReduceOp,
           typename TransformOp>
-void TensorReduceImpl(const phi::GPUContext& dev_ctx,
-                      const phi::DenseTensor& x,
-                      phi::DenseTensor* y,
-                      const TransformOp& transform,
-                      const std::vector<int>& origin_reduce_dims,
-                      KPStream stream) {
+void ReduceKernel(const phi::GPUContext& dev_ctx,
+                  const phi::DenseTensor& x,
+                  phi::DenseTensor* y,
+                  const TransformOp& transform,
+                  const std::vector<int>& origin_reduce_dims) {
+  auto stream = dev_ctx.stream();
   dev_ctx.Alloc<Ty>(y);
 
   auto x_dim = phi::vectorize<int>(x.dims());
