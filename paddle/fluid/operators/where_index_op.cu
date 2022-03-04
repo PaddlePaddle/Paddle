@@ -316,12 +316,12 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
                    2><<<1, block_c, 0, stream>>>(
         count_data, cumsum_data, size_count_block, main_offset_c,
         kps::AddFunctor<int64_t>());
-    dev_ctx.Wait();
     // 3.1 set temp ptr for in;
     // 3.1 alloc for out
     // 3.1.1 get true_num for gpu place the last cumsum is the true_num
     memory::Copy(platform::CPUPlace(), h_stride_array, dev_ctx.GetPlace(),
                  cumsum_data + need_grids, sizeof(int64_t), dev_ctx.stream());
+    dev_ctx.Wait();
     // 3.1.2 allock for out with total_true_num
     out->Resize(
         phi::make_ddim({static_cast<int64_t>(h_stride_array[0]), rank}));
