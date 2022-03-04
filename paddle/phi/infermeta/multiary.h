@@ -52,4 +52,15 @@ void AdamaxInferMeta(const MetaTensor& param,
                      MetaTensor* param_out,
                      MetaTensor* moment_out,
                      MetaTensor* inf_norm_out);
+
+void AdadeltaInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& avg_squared_grad,
+                       const MetaTensor& avg_squared_update,
+                       float rho,
+                       float epsilon,
+                       MetaTensor* param_out,
+                       MetaTensor* avg_squared_grad_out,
+                       MetaTensor* avg_squared_update_out);
+
 }  // namespace phi

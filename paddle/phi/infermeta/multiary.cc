@@ -84,6 +84,42 @@ void AdamaxInferMeta(const MetaTensor& param,
   inf_norm_out->set_dtype(inf_norm.dtype());
 }
 
+void AdadeltaInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& avg_squared_grad,
+                       const MetaTensor& avg_squared_update,
+                       float rho,
+                       float epsilon,
+                       MetaTensor* param_out,
+                       MetaTensor* avg_squared_grad_out,
+                       MetaTensor* avg_squared_update_out) {
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      grad.dims(),
+      errors::InvalidArgument(
+          "Param and grad input of AdadeltaOp should have same dimension."));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      avg_squared_grad.dims(),
+      errors::InvalidArgument("Param and AvgSquaredGrad input of AdadeltaOp "
+                              "should have same dimension"));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      avg_squared_update.dims(),
+      errors::InvalidArgument("Param and AvgSquaredUpdate input of AdadeltaOp "
+                              "should have same dimension"));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  avg_squared_grad_out->set_dims(param_dims);
+  avg_squared_grad_out->set_dtype(avg_squared_grad.dtype());
+
+  avg_squared_update_out->set_dims(param_dims);
+  avg_squared_update_out->set_dtype(avg_squared_update.dtype());
+}
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
