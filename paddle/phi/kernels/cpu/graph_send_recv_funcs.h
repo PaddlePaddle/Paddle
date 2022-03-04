@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
@@ -66,12 +65,12 @@ struct GraphSendRecvMaxFunctor {
 };
 
 template <typename T, typename IndexT, typename Functor>
-void elementwise_inner_operation(const DenseTensor& src,
-                                 DenseTensor* dst,
-                                 const IndexT& src_index,
-                                 const IndexT& dst_index,
-                                 const bool& first_flag,
-                                 Functor functor) {
+void ElementwiseInnerOperation(const DenseTensor& src,
+                               DenseTensor* dst,
+                               const IndexT& src_index,
+                               const IndexT& dst_index,
+                               const bool& first_flag,
+                               Functor functor) {
   auto src_slice = src.Slice(src_index, src_index + 1);
   auto dst_slice = dst->Slice(dst_index, dst_index + 1);
 

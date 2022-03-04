@@ -26,27 +26,27 @@
 namespace phi {
 
 template <typename T, typename IndexT, typename Functor>
-void graph_send_recv_cpu_for_loop(const int& input_size,
-                                  const int& index_size,
-                                  const IndexT* s_index,
-                                  const IndexT* d_index,
-                                  const DenseTensor& src,
-                                  DenseTensor* dst,
-                                  const std::string& pool_type,
-                                  int* dst_count = nullptr) {
+void GraphSendRecvCpuLoop(const int& input_size,
+                          const int& index_size,
+                          const IndexT* s_index,
+                          const IndexT* d_index,
+                          const DenseTensor& src,
+                          DenseTensor* dst,
+                          const std::string& pool_type,
+                          int* dst_count = nullptr) {
   Functor functor;
   if (pool_type == "SUM") {
     for (int i = 0; i < index_size; ++i) {
       const IndexT& src_idx = s_index[i];
       const IndexT& dst_idx = d_index[i];
-      elementwise_inner_operation<T, IndexT, Functor>(
+      ElementwiseInnerOperation<T, IndexT, Functor>(
           src, dst, src_idx, dst_idx, false, functor);
     }
   } else if (pool_type == "MEAN") {
     for (int i = 0; i < index_size; ++i) {
       const IndexT& src_idx = s_index[i];
       const IndexT& dst_idx = d_index[i];
-      elementwise_inner_operation<T, IndexT, Functor>(
+      ElementwiseInnerOperation<T, IndexT, Functor>(
           src, dst, src_idx, dst_idx, false, functor);
     }
     for (int i = 0; i < index_size; ++i) {
@@ -66,11 +66,11 @@ void graph_send_recv_cpu_for_loop(const int& input_size,
       const IndexT& dst_idx = d_index[i];
       bool in_set = existed_dst.find(dst_idx) != existed_dst.end();
       if (!in_set) {
-        elementwise_inner_operation<T, IndexT, Functor>(
+        ElementwiseInnerOperation<T, IndexT, Functor>(
             src, dst, src_idx, dst_idx, true, functor);
         existed_dst.emplace(dst_idx);
       } else {
-        elementwise_inner_operation<T, IndexT, Functor>(
+        ElementwiseInnerOperation<T, IndexT, Functor>(
             src, dst, src_idx, dst_idx, false, functor);
       }
     }
@@ -100,27 +100,26 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
   if (pool_type == "SUM") {
-    graph_send_recv_cpu_for_loop<T, IndexT, GraphSendRecvSumFunctor<T>>(
+    GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, x, out, pool_type);
   } else if (pool_type == "MIN") {
-    graph_send_recv_cpu_for_loop<T, IndexT, GraphSendRecvMinFunctor<T>>(
+    GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvMinFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, x, out, pool_type);
   } else if (pool_type == "MAX") {
-    graph_send_recv_cpu_for_loop<T, IndexT, GraphSendRecvMaxFunctor<T>>(
+    GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvMaxFunctor<T>>(
         src_dims[0], index_size, s_index, d_index, x, out, pool_type);
   } else if (pool_type == "MEAN") {
     ctx.template Alloc<int>(dst_count);
     int* p_dst_count = dst_count->data<int>();
     memset(p_dst_count, 0, src_dims[0] * sizeof(int));
-    graph_send_recv_cpu_for_loop<T, IndexT, GraphSendRecvSumFunctor<T>>(
-        src_dims[0],
-        index_size,
-        s_index,
-        d_index,
-        x,
-        out,
-        pool_type,
-        p_dst_count);
+    GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(src_dims[0],
+                                                                index_size,
+                                                                s_index,
+                                                                d_index,
+                                                                x,
+                                                                out,
+                                                                pool_type,
+                                                                p_dst_count);
   }
 }
 

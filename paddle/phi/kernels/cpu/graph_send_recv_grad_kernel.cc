@@ -23,22 +23,22 @@
 namespace phi {
 
 template <typename T, typename IndexT, typename Functor>
-void graph_send_recv_cpu_for_loop_grad(const int& input_size,
-                                       const int& index_size,
-                                       const IndexT* s_index,
-                                       const IndexT* d_index,
-                                       const DenseTensor& src,
-                                       DenseTensor* dst,
-                                       const std::string& pool_type,
-                                       const int* dst_count = nullptr,
-                                       const DenseTensor* input = nullptr,
-                                       const DenseTensor* output = nullptr) {
+void GraphSendRecvCpuGradLoop(const int& input_size,
+                              const int& index_size,
+                              const IndexT* s_index,
+                              const IndexT* d_index,
+                              const DenseTensor& src,
+                              DenseTensor* dst,
+                              const std::string& pool_type,
+                              const int* dst_count = nullptr,
+                              const DenseTensor* input = nullptr,
+                              const DenseTensor* output = nullptr) {
   if (pool_type == "SUM") {
     Functor functor;
     for (int i = 0; i < index_size; ++i) {
       const IndexT& src_idx = s_index[i];
       const IndexT& dst_idx = d_index[i];
-      elementwise_inner_operation<T, IndexT, Functor>(
+      ElementwiseInnerOperation<T, IndexT, Functor>(
           src, dst, src_idx, dst_idx, false, functor);
     }
   } else if (pool_type == "MEAN") {
@@ -96,33 +96,31 @@ void GraphSendRecvGradOpKernelLaunchHelper(
   const IndexT* d_index = dst_index.data<IndexT>();
 
   if (pool_type == "SUM") {
-    graph_send_recv_cpu_for_loop_grad<T, IndexT, GraphSendRecvSumFunctor<T>>(
+    GraphSendRecvCpuGradLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(
         src_dims[0], index_size, d_index, s_index, out_grad, x_grad, pool_type);
   } else if (pool_type == "MEAN") {
     const int* s_count = dst_count->data<int>();
     // Functor not used here.
-    graph_send_recv_cpu_for_loop_grad<T, IndexT, GraphSendRecvSumFunctor<T>>(
-        src_dims[0],
-        index_size,
-        d_index,
-        s_index,
-        out_grad,
-        x_grad,
-        pool_type,
-        s_count);
+    GraphSendRecvCpuGradLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(src_dims[0],
+                                                                    index_size,
+                                                                    d_index,
+                                                                    s_index,
+                                                                    out_grad,
+                                                                    x_grad,
+                                                                    pool_type,
+                                                                    s_count);
   } else if (pool_type == "MIN" || pool_type == "MAX") {
     // Functor not used here.
-    graph_send_recv_cpu_for_loop_grad<T, IndexT, GraphSendRecvMinFunctor<T>>(
-        src_dims[0],
-        index_size,
-        d_index,
-        s_index,
-        out_grad,
-        x_grad,
-        pool_type,
-        nullptr,
-        x,
-        out);
+    GraphSendRecvCpuGradLoop<T, IndexT, GraphSendRecvMinFunctor<T>>(src_dims[0],
+                                                                    index_size,
+                                                                    d_index,
+                                                                    s_index,
+                                                                    out_grad,
+                                                                    x_grad,
+                                                                    pool_type,
+                                                                    nullptr,
+                                                                    x,
+                                                                    out);
   }
 }
 
