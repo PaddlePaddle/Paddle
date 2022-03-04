@@ -40,4 +40,29 @@ void EyeInferMeta(int64_t num_rows,
   out->set_dims({num_rows, num_columns});
   out->set_dtype(dtype);
 }
+
+void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
+                                      float mean,
+                                      float std,
+                                      int seed,
+                                      DataType dtype,
+                                      MetaTensor* out) {
+  auto out_dims = phi::make_ddim(shape);
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+  out->set_layout(DataLayout::NCHW);
+}
+
+void GaussianRandomInferMeta(const ScalarArray& shape,
+                             float mean,
+                             float std,
+                             int seed,
+                             DataType dtype,
+                             MetaTensor* out) {
+  auto out_dims = phi::make_ddim(shape.GetData());
+  out->set_dims(out_dims);
+  out->set_dtype(dtype);
+  out->set_layout(DataLayout::NCHW);
+}
+
 }  // namespace phi
