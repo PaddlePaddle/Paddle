@@ -839,83 +839,86 @@ paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj) {
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
   return reinterpret_cast<TensorObject*>(obj)->tensor;
-  paddle::experimental::Scalar CastPyArg2Scalar(
-      PyObject * obj, const std::string& op_type, ssize_t arg_pos) {
-    if (obj == Py_None) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be "
-          "bool, but got %s",
-          op_type, arg_pos + 1,
-          ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-    }
+}
 
-    // obj could be: int, float, bool, paddle.Tensor
-    PyTypeObject* type = obj->ob_type;
-    auto type_name = std::string(type->tp_name);
-    if (type_name == "int") {
-      int value = CastPyArg2Int(obj, op_type, arg_pos);
-      return paddle::experimental::Scalar(value);
-    } else if (type_name == "float") {
-      float value = CastPyArg2Float(obj, op_type, arg_pos);
-      return paddle::experimental::Scalar(value);
-
-    } else if (type_name == "bool") {
-      bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
-      return paddle::experimental::Scalar(value);
-
-    } else if (type_name == "paddle.Tensor") {
-      paddle::experimental::Tensor& value = GetTensorFromPyObject(
-          op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
-      return paddle::experimental::Scalar(value);
-
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be "
-          "bool, but got %s",
-          op_type, arg_pos + 1,
-          ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-    }
-
-    // Fake a Scalar
-    return paddle::experimental::Scalar(1.0);
+paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
+                                              const std::string& op_type,
+                                              ssize_t arg_pos) {
+  if (obj == Py_None) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "bool, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 
-  paddle::experimental::ScalarArray CastPyArg2ScalarArray(
-      PyObject * obj, const std::string& op_type, ssize_t arg_pos) {
-    // In case of ScalarArray, only two possible PyObjects:
-    // 1. list of int
-    // 2. Tensor
-    if (obj == Py_None) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be "
-          "bool, but got %s",
-          op_type, arg_pos + 1,
-          ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-    }
+  // obj could be: int, float, bool, paddle.Tensor
+  PyTypeObject* type = obj->ob_type;
+  auto type_name = std::string(type->tp_name);
+  if (type_name == "int") {
+    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (type_name == "float") {
+    float value = CastPyArg2Float(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
 
-    // obj could be: int, float, bool, paddle.Tensor
-    PyTypeObject* type = obj->ob_type;
-    auto type_name = std::string(type->tp_name);
-    if (type_name == "list") {
-      std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
-      return paddle::experimental::ScalarArray(value);
+  } else if (type_name == "bool") {
+    bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
 
-    } else if (type_name == "paddle.Tensor") {
-      paddle::experimental::Tensor& value = GetTensorFromPyObject(
-          op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
-      return paddle::experimental::ScalarArray(value);
+  } else if (type_name == "paddle.Tensor") {
+    paddle::experimental::Tensor& value = GetTensorFromPyObject(
+        op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
+    return paddle::experimental::Scalar(value);
 
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) must be "
-          "bool, but got %s",
-          op_type, arg_pos + 1,
-          ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
-    }
-
-    // Fake a ScalarArray
-    return paddle::experimental::ScalarArray({1});
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "bool, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
+
+  // Fake a Scalar
+  return paddle::experimental::Scalar(1.0);
+}
+
+paddle::experimental::ScalarArray CastPyArg2ScalarArray(
+    PyObject* obj, const std::string& op_type, ssize_t arg_pos) {
+  // In case of ScalarArray, only two possible PyObjects:
+  // 1. list of int
+  // 2. Tensor
+  if (obj == Py_None) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "bool, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  // obj could be: int, float, bool, paddle.Tensor
+  PyTypeObject* type = obj->ob_type;
+  auto type_name = std::string(type->tp_name);
+  if (type_name == "list") {
+    std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
+    return paddle::experimental::ScalarArray(value);
+
+  } else if (type_name == "paddle.Tensor") {
+    paddle::experimental::Tensor& value = GetTensorFromPyObject(
+        op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
+    return paddle::experimental::ScalarArray(value);
+
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "bool, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  // Fake a ScalarArray
+  return paddle::experimental::ScalarArray({1});
+}
 
 }  // namespace pybind
 }  // namespace paddle

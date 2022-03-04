@@ -25,6 +25,8 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 
 #include "glog/logging.h"
+#pragma GCC diagnostic ignored "-Wattributes"
+#include "pybind11/pytypes.h"
 
 namespace egr {
 
@@ -68,8 +70,8 @@ operator()(
   }
   auto outputs = PyObject_CallObject(backward_fn, backward_args);
   if (!outputs) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "backward function return a nullptr."));
+    PADDLE_THROW(paddle::platform::errors::External(
+        pybind11::detail::error_string().c_str()));
   }
 
   VLOG(6) << "PyLayer backward function finish...";

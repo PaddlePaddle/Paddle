@@ -14,6 +14,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#pragma GCC diagnostic ignored "-Wattributes"
+#include "pybind11/pytypes.h"
+
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -82,8 +85,7 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
   if (!ctx) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Construct PyLayerContext faild."));
+    return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
 
@@ -157,8 +159,7 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   auto outputs = PyObject_Call(forward_fn, forward_args, kwargs);
   egr::Controller::Instance().SetHasGrad(trace_backward);
   if (!outputs) {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "forward function return a nullptr."));
+    return nullptr;
   }
 
   PyObject* outputs_tuple = nullptr;
