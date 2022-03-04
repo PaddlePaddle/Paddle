@@ -14,12 +14,26 @@
 
 #include <mlir/Support/MlirOptMain.h>
 #include <mlir/Transforms/Passes.h>
+
 #include "paddle/infrt/dialect/init_infrt_dialects.h"
+#ifdef INFRT_WITH_PHI
+#include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
+#include "paddle/phi/kernels/declarations.h"
+#endif
 
 int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
   infrt::registerCinnDialects(registry);
   mlir::registerCanonicalizerPass();
+
+  mlir::registerPass([]() -> std::unique_ptr<mlir::Pass> {
+    std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
+                                               infrt::PrecisionType::FLOAT32,
+                                               infrt::LayoutType::NCHW}};
+    auto p = std::make_unique<infrt::PhiOpConvertPass>(valid_places);
+    return p;
+  });
+
   return mlir::failed(
       mlir::MlirOptMain(argc, argv, "infrt mlir pass driver", registry));
 }

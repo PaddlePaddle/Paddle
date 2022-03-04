@@ -41,17 +41,33 @@ namespace infrt {
  *  "pd.fetch" (%d, %f)
  * }
  */
-class phiOpCvtPass
-    : public mlir::PassWrapper<phiOpCvtPass, mlir::FunctionPass> {
+class PhiOpConvertPass
+    : public mlir::PassWrapper<PhiOpConvertPass, mlir::FunctionPass> {
  public:
-  ::llvm::StringRef getName() const override { return "phiOpCvtPass"; }
+  ::llvm::StringRef getName() const override { return "phi-op-convert"; }
   void runOnFunction() override;
-  explicit phiOpCvtPass(std::vector<Place> valid_places = std::vector<Place>())
+
+  PhiOpConvertPass() = default;
+
+  explicit PhiOpConvertPass(const std::vector<Place>& valid_places)
       : valid_places_(valid_places) {}
+
+  PhiOpConvertPass(const PhiOpConvertPass& other)
+      : mlir::PassWrapper<PhiOpConvertPass, mlir::FunctionPass>(*this),
+        valid_places_(other.valid_places_) {}
+
+  llvm::StringRef getArgument() const override { return "phi-op-convert"; }
 
  private:
   void convertStage();
   void dispatchStage();
+
+  // Force a specified data format for all layout sensitive operations.
+  Option<std::string> valid_places_options_{
+      *this,
+      "valid-targets",
+      llvm::cl::desc("Set the valid target, [CPU/GPU]")};
+
   std::vector<Place> valid_places_;
 };
 }  // namespace infrt

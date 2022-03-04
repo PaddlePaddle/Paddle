@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/phi/pass/phi_op_cvt_pass.h"
+#include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
 
 #include <glog/logging.h>
 #include <llvm/ADT/SetVector.h>
@@ -20,6 +20,7 @@
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/Operation.h>
 #include <mlir/IR/OperationSupport.h>
+
 #include <list>
 #include <unordered_set>
 #include <vector>
@@ -32,12 +33,12 @@
 #include "paddle/phi/ops/compat/signatures.h"
 namespace infrt {
 // Implementation of the phiOpCvtPass.
-void phiOpCvtPass::runOnFunction() {
+void PhiOpConvertPass::runOnFunction() {
   convertStage();
   dispatchStage();
 }
 
-void phiOpCvtPass::convertStage() {
+void PhiOpConvertPass::convertStage() {
   mlir::Block &body = getFunction().front();
   std::vector<mlir::Operation *> worklist;
   for (auto &op : body.without_terminator()) {
@@ -102,7 +103,8 @@ void phiOpCvtPass::convertStage() {
     op->erase();
   }
 }
-void phiOpCvtPass::dispatchStage() {
+
+void PhiOpConvertPass::dispatchStage() {
   std::vector<infrt::KernelOp> worklist;
   mlir::Block &block = getFunction().front();
   for (auto &op : block) {
@@ -165,9 +167,11 @@ void phiOpCvtPass::dispatchStage() {
     }
     operation_state.addOperands(
         phi_context.at(phi_kernel_desc.kernel_type.target));
-    for (size_t index = 0; index < phi_kernel_desc.input_types.size(); ++index) {
+
+    for (size_t index = 0; index < phi_kernel_desc.input_types.size();
+         ++index) {
       mlir::Value input = kernel_op.getOperand(index);
-      auto cvt_tensor_type_op = builder.create<CvtTensorOp>(
+      auto cvt_tensor_type_op = builder.create<TensorCastOp>(
           kernel_op.getLoc(),
           DenseTensorType::get(kernel_op.getContext(),
                                phi_kernel_desc.input_types[index].target,
@@ -176,6 +180,7 @@ void phiOpCvtPass::dispatchStage() {
           input);
       operation_state.addOperands(cvt_tensor_type_op.output());
     }
+
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
          ++index) {
       operation_state.addTypes(
@@ -189,7 +194,7 @@ void phiOpCvtPass::dispatchStage() {
     for (size_t index = 0; index < phi_kernel_desc.output_types.size();
          ++index) {
       mlir::Value input = phi_operation->getResult(index);
-      auto cvt_tensor_type_op = builder.create<CvtTensorOp>(
+      auto cvt_tensor_type_op = builder.create<TensorCastOp>(
           kernel_op.getLoc(), kernel_op.getResultTypes()[index], input);
       kernel_op.getResult(index).replaceAllUsesWith(
           cvt_tensor_type_op.output());
