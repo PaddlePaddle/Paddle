@@ -372,6 +372,8 @@ bool InMemoryDataFeed<T>::Start() {
 template <typename T>
 int InMemoryDataFeed<T>::Next() {
 #ifdef _LINUX
+  platform::Timer timeline;
+  timeline.Start();
   this->CheckStart();
   if (!enable_heterps_) {
     CHECK(output_channel_ != nullptr);
@@ -425,6 +427,9 @@ int InMemoryDataFeed<T>::Next() {
             << " batch_offsets: " << batch_offsets_.size()
             << " baych_size: " << this->batch_size_;
   }
+  timeline.Pause();
+  VLOG(0) << "InMemoryDataFeed<T>::Next() cost time=" << timeline.ElapsedSec()
+          << " seconds, thread_id=" << thread_id_;
   return this->batch_size_;
 #else
   return 0;
@@ -1453,9 +1458,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   fused_float_tensor.mutable_data<float>({float_total_num, 1},
                                          platform::CPUPlace());
 
-  // size_t fea_num = 0;
-  int uint64_total_num2 = 0;
-  int float_total_num2 = 0;
+  uint64_total_num = 0;
+  float_total_num = 0;
 
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     if (feed_vec_[i] == nullptr) {
@@ -1465,44 +1469,39 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const auto& type = all_slots_type_[i];
     // 2.   【cpu】slice 出来，feasign拷贝 进去
     if (type[0] == 'f') {  // float
-      // VLOG(0) << "total_instance:" << total_instance << "
-      // batch_float_feasigns_[" << i << "].size()" <<
-      // batch_float_feasigns_[i].size();
-      // fea_num = batch_float_feasigns_[i].size();
       auto sub_tensor = fused_float_tensor.Slice(
-          static_cast<int64_t>(float_total_num2),
-          static_cast<int64_t>(float_total_num2 + total_instance));
+          static_cast<int64_t>(float_total_num),
+          static_cast<int64_t>(float_total_num + total_instance));
       float* sub_tensor_ptr =
           sub_tensor.mutable_data<float>(fused_float_tensor.place());
       memcpy(sub_tensor_ptr, batch_float_feasigns_[i].data(),
              total_instance * sizeof(float));
-      float_total_num2 += total_instance;
+      float_total_num += total_instance;
     } else if (type[0] == 'u') {  // uint64
-      // VLOG(0) << "total_instance:" << total_instance << "
-      // batch_uint64_feasigns_[" << i << "].size()" <<
-      // batch_uint64_feasigns_[i].size();
-      // fea_num = batch_uint64_feasigns_[i].size();
       auto sub_tensor = fused_uint64_tensor.Slice(
-          static_cast<int64_t>(uint64_total_num2),
-          static_cast<int64_t>(uint64_total_num2 + total_instance));
+          static_cast<int64_t>(uint64_total_num),
+          static_cast<int64_t>(uint64_total_num + total_instance));
       int64_t* sub_tensor_ptr =
           sub_tensor.mutable_data<int64_t>(fused_uint64_tensor.place());
       memcpy(sub_tensor_ptr, batch_uint64_feasigns_[i].data(),
              total_instance * sizeof(int64_t));
-      uint64_total_num2 += total_instance;
+      uint64_total_num += total_instance;
     }
   }
 
-  PADDLE_ENFORCE_EQ(
-      uint64_total_num, uint64_total_num2,
-      platform::errors::InvalidArgument("In batch reader, the uint64_total_num "
-                                        "must be %d, but received %d.",
-                                        uint64_total_num, uint64_total_num2));
-  PADDLE_ENFORCE_EQ(
-      float_total_num, float_total_num2,
-      platform::errors::InvalidArgument("In batch reader, the uint64_total_num "
-                                        "must be %d, but received %d.",
-                                        float_total_num, float_total_num2));
+  // PADDLE_ENFORCE_EQ(
+  //     uint64_total_num, uint64_total_num2,
+  //     platform::errors::InvalidArgument("In batch reader, the
+  //     uint64_total_num "
+  //                                       "must be %d, but received %d.",
+  //                                       uint64_total_num,
+  //                                       uint64_total_num2));
+  // PADDLE_ENFORCE_EQ(
+  //     float_total_num, float_total_num2,
+  //     platform::errors::InvalidArgument("In batch reader, the
+  //     uint64_total_num "
+  //                                       "must be %d, but received %d.",
+  //                                       float_total_num, float_total_num2));
 
   // 3.  [gpu] fused_tensor 拷贝到 gpu_tensor中
   // memcopy
@@ -1511,9 +1510,9 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   // LoDTensor gpu_fused_uint64_tensor_;
   // // float tensor
   // LoDTensor gpu_fused_float_tensor_;
-  gpu_fused_uint64_tensor_.mutable_data<int64_t>({uint64_total_num2, 1},
+  gpu_fused_uint64_tensor_.mutable_data<int64_t>({uint64_total_num, 1},
                                                  this->place_);
-  gpu_fused_float_tensor_.mutable_data<float>({float_total_num2, 1},
+  gpu_fused_float_tensor_.mutable_data<float>({float_total_num, 1},
                                               this->place_);
 
   framework::TensorCopy(
@@ -1524,14 +1523,15 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       fused_float_tensor, this->place_,
       *platform::DeviceContextPool::Instance().Get(this->place_),
       &gpu_fused_float_tensor_);
-  auto stream = dynamic_cast<platform::CUDADeviceContext*>(
-                    platform::DeviceContextPool::Instance().Get(this->place_))
-                    ->stream();
-  cudaStreamSynchronize(stream);
+  // auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+  //                   platform::DeviceContextPool::Instance().Get(this->place_))
+  //                   ->stream();
+  // cudaStreamSynchronize(stream);
 
   // 4.   sharedatawith 到 feed_vec_[i]的tensor
-  int64_t float_offset = 0;
-  int64_t uint64_offset = 0;
+  float_total_num = 0;
+  uint64_total_num = 0;
+
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     if (feed_vec_[i] == nullptr) {
       continue;
@@ -1542,24 +1542,16 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     if (type[0] == 'f') {  // float
       // feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
       feed_vec_[i]->ShareDataWith(gpu_fused_float_tensor_.Slice(
-          static_cast<int64_t>(float_offset),
-          static_cast<int64_t>(float_offset + total_instance)));
-      VLOG(0) << "feed_vec_[" << i << "]  address: " << feed_vec_[i]->data()
-              << " gpu_fused_float_tensor_---address:"
-              << gpu_fused_float_tensor_.data()
-              << " total_instance: " << total_instance << ", ";
-      float_offset += total_instance;
+          static_cast<int64_t>(float_total_num),
+          static_cast<int64_t>(float_total_num + total_instance)));
+      float_total_num += total_instance;
     } else if (type[0] == 'u') {  // uint64
       // feed_vec_[i]->mutable_data<int64_t>({total_instance, 1}, this->place_);
       feed_vec_[i]->ShareDataWith(gpu_fused_uint64_tensor_.Slice(
-          static_cast<int64_t>(uint64_offset),
-          static_cast<int64_t>(uint64_offset + total_instance)));
-      VLOG(0) << "feed_vec_[" << i << "]  address: " << feed_vec_[i]->data()
-              << " gpu_fused_uint64_tensor_---address:"
-              << gpu_fused_uint64_tensor_.data()
-              << " total_instance: " << total_instance << ", ";
+          static_cast<int64_t>(uint64_total_num),
+          static_cast<int64_t>(uint64_total_num + total_instance)));
 
-      uint64_offset += total_instance;
+      uint64_total_num += total_instance;
     }
     auto& slot_offset = offset_[i];
     if (this->input_type_ == 0) {
