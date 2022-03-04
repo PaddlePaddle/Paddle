@@ -48,6 +48,8 @@ enum class TracerEventType {
   Communication = 12,
   // Used to mark python api
   PythonOp = 13,
+  // Used to mark python level userdefined
+  PythonUserDefined = 14,
   // A flag to denote the number of current types
   NumTypes
 };

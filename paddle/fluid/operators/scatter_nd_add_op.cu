@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/gather_op.h"
-#include "paddle/fluid/operators/scatter.cu.h"
 #include "paddle/fluid/operators/scatter_nd_add_op.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/scatter.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -33,22 +33,20 @@ class ScatterNdAddOpCUDAKernel : public framework::OpKernel<T> {
     auto *Out = ctx.Output<Tensor>("Out");
 
     framework::TensorCopySync(*X, ctx.GetPlace(), Out);
-    const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Index holds the wrong type, it holds [%s], but "
-                          "desires to be [%s] or [%s].",
-                          paddle::framework::DataTypeToString(index_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
-    if (index_type == framework::proto::VarType::INT32) {
-      GPUScatterNdAdd<DeviceContext, T, int32_t>(ctx, *Updates, *Ids, Out);
+    const auto &index_type = Ids->dtype();
+    bool index_type_match = index_type == phi::DataType::INT32 ||
+                            index_type == phi::DataType::INT64;
+    PADDLE_ENFORCE_EQ(
+        index_type_match, true,
+        platform::errors::InvalidArgument(
+            "Index holds the wrong type, it holds [%s], but "
+            "desires to be [%s] or [%s].",
+            index_type, phi::DataType::INT32, phi::DataType::INT64));
+    auto &dev_ctx = ctx.cuda_device_context();
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::GPUScatterNdAdd<T, int32_t>(dev_ctx, *Updates, *Ids, Out);
     } else {
-      GPUScatterNdAdd<DeviceContext, T, int64_t>(ctx, *Updates, *Ids, Out);
+      phi::funcs::GPUScatterNdAdd<T, int64_t>(dev_ctx, *Updates, *Ids, Out);
     }
   }
 };
@@ -69,12 +67,13 @@ class ScatterNdAddGradOpCUDAKernel : public framework::OpKernel<T> {
     }
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());
+      auto &dev_ctx = ctx.cuda_device_context();
       // Gradient by Gather
-      const auto &index_type = framework::TransToProtoVarType(Ids->dtype());
-      if (index_type == framework::proto::VarType::INT32) {
-        GPUGatherNd<DeviceContext, T, int32_t>(ctx, *dOut, *Ids, dUpdates);
+      const auto &index_type = Ids->dtype();
+      if (index_type == phi::DataType::INT32) {
+        phi::funcs::GPUGatherNd<T, int32_t>(dev_ctx, *dOut, *Ids, dUpdates);
       } else {
-        GPUGatherNd<DeviceContext, T, int64_t>(ctx, *dOut, *Ids, dUpdates);
+        phi::funcs::GPUGatherNd<T, int64_t>(dev_ctx, *dOut, *Ids, dUpdates);
       }
     }
   }
