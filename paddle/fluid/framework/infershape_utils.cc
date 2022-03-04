@@ -204,10 +204,17 @@ class CompatMetaTensor : public phi::MetaTensor {
   void set_layout(DataLayout layout) override {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(
-          static_cast<phi::DenseTensor*>(tensor))
-          ->layout = layout;
+      if (var->IsType<phi::DenseTensor>()) {
+        auto* tensor = var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Currently, only can set layout from DenseTensor or "
+            "SelectedRows."));
+      }
     } else {
       // NOTE(chenweihang): do nothing
       // Unsupported set layout for VarDesc now

@@ -23,7 +23,7 @@ add_subdirectory(tools)
 add_subdirectory(tests)
 
 # make an unity target for compile deps
-set(PHI_DEPS convert_utils dense_tensor phi_context kernel_factory kernel_context arg_map_context infermeta lod_utils op_compat_infos sparse_csr_tensor sparse_coo_tensor)
+set(PHI_DEPS convert_utils dense_tensor phi_context kernel_factory kernel_context arg_map_context infermeta wrapped_infermeta lod_utils op_compat_infos sparse_csr_tensor sparse_coo_tensor)
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 # keep this message for debug, remove it later if needless
 message(STATUS "All standard phi kernels: ${phi_kernels}")

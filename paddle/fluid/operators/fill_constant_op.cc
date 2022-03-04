@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/infermeta/generated.h"
 
 namespace paddle {
 namespace operators {
@@ -148,7 +148,7 @@ Fill up a variable with specified constant value.
 namespace ops = paddle::operators;
 
 DELCARE_INFER_SHAPE_FUNCTOR(fill_constant, FillConstantInferShapeFunctor,
-                            PT_INFER_META(phi::CreateInferMeta));
+                            PT_INFER_META(phi::FullInferMeta));
 
 REGISTER_OPERATOR(
     fill_constant, ops::FillConstantOp, ops::FillConstantOpMaker,

@@ -15,8 +15,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/fluid/operators/mean_op.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {

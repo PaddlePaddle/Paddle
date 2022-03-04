@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/infermeta/generated.h"
 
 namespace paddle {
 namespace operators {
@@ -83,7 +83,7 @@ class FillAnyLikeVarTypeInference : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 DELCARE_INFER_SHAPE_FUNCTOR(fill_any_like, FillAnyLikeInferShapeFunctor,
-                            PT_INFER_META(phi::CreateLikeInferMeta));
+                            PT_INFER_META(phi::Full_likeInferMeta));
 REGISTER_OPERATOR(
     fill_any_like, ops::FillAnyLikeOp, ops::FillAnyLikeOpMaker,
     ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
