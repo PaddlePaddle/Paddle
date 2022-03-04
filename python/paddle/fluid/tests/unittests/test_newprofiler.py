@@ -203,7 +203,7 @@ class TestProfiler(unittest.TestCase):
         prof.stop()
         prof.export(path='./test_profiler_pb.pb', format='pb')
         prof.summary()
-        result = profiler.utils.LoadProfilerResult('./test_profiler_pb.pb')
+        result = profiler.utils.load_profiler_result('./test_profiler_pb.pb')
 
 
 if __name__ == '__main__':

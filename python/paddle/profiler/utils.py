@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.core import (_RecordEvent, TracerEventType,
-                               LoadProfilerResult)
+                               load_profiler_result)
 from typing import Any
 from warnings import warn
 import functools
