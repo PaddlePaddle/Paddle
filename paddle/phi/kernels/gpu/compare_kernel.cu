@@ -80,7 +80,7 @@ inline void CompareAllKernelImpl(const Context& ctx,
   for (int i = 0; i < reduce_dims.size(); ++i) {
     reduce_dims[i] = i;
   }
-  kernels::TensorReduceImpl<bool, bool, BitwiseAdd, kps::IdentityFunctor<bool>>(
+  funcs::TensorReduceImpl<bool, bool, BitwiseAdd, kps::IdentityFunctor<bool>>(
       ctx, tmp, out, kps::IdentityFunctor<bool>(), reduce_dims, ctx.stream());
 }
 

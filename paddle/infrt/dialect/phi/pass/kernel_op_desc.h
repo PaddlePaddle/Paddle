@@ -16,15 +16,20 @@
 
 #include <string>
 #include <vector>
+
 #include "paddle/infrt/dialect/infrt/common_type.h"
 
 namespace infrt {
 
 struct PhiKernelDesc {
-  std::vector<Place> inputs_types;  // kernel input place
+  std::vector<Place> input_types;  // kernel input place
   std::vector<Place> output_types;  // kernel output place
   Place kernel_type;                // kernel place
 };
+
+std::string getPhiTargetPrefix(TargetType target);
+std::string getPhiPrecisionSuffix(PrecisionType precision);
+std::string getPhiLayoutSuffix(LayoutType layout);
 
 std::vector<PhiKernelDesc> GetCandidateKernels(
     std::string name, const std::vector<Place>& valid_palces);
