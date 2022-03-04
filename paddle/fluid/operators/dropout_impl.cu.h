@@ -266,7 +266,8 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                           cudaMemcpyDeviceToDevice, stream));
 #endif
     } else {
-      T factor = static_cast<T>(1.0f - dropout_prob);
+      using MT = typename details::MPTypeTrait<T>::Type;
+      MT factor = static_cast<MT>(1.0f - dropout_prob);
       std::vector<const framework::Tensor*> ins = {&x};
       std::vector<framework::Tensor*> outs = {y};
       auto functor = phi::funcs::ScaleFunctor<T>(factor);
