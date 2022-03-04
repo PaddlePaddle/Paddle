@@ -87,7 +87,7 @@ void DropoutRawKernel(const Context& dev_ctx,
     } else {
       auto X = EigenMatrix<T>::Reshape(x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
-      auto& place = *dev_ctx.template eigen_device();
+      auto& place = *dev_ctx.eigen_device();
       Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
   }

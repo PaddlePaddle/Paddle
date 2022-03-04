@@ -34,7 +34,7 @@ void DropoutGradRawKernel(const Context& dev_ctx,
   auto dX = EigenVector<T>::Flatten(*grad_x);
   auto dY = EigenVector<T>::Flatten(*grad_y);
 
-  auto& place = *dev_ctx.template eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto& dropout_implementation = mode;
   if (is_test == true) {
     if (dropout_implementation == "upscale_in_train") {
