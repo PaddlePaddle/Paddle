@@ -478,7 +478,7 @@ function(op_library TARGET)
     if (${pybind_flag} EQUAL 0)
       # NOTE(*): activation use macro to regist the kernels, set use_op manually.
       if(${TARGET} STREQUAL "activation")
-        file(APPEND ${pybind_file} "USE_OP(relu);\n")
+        file(APPEND ${pybind_file} "USE_OP_ITSELF(relu);\n")
       elseif(${TARGET} STREQUAL "fake_dequantize")
         file(APPEND ${pybind_file} "USE_OP(fake_dequantize_max_abs);\n")
       elseif(${TARGET} STREQUAL "fake_quantize")
