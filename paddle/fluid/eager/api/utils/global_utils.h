@@ -76,7 +76,7 @@ class Controller {
   std::shared_ptr<paddle::imperative::Tracer> tracer_{
       new paddle::imperative::Tracer()};
   // TODO(jiabin): remove when we don't need imperative.
-  bool in_eager_mode_{false};
+  bool in_eager_mode_{true};
   DISABLE_COPY_AND_ASSIGN(Controller);
 };
 
