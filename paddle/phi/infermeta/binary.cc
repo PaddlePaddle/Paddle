@@ -328,6 +328,8 @@ void TriangularSolveInferMeta(const MetaTensor& x,
 
   // dim of 'out' is the same with 'Y' after broadcast
   out->set_dims(phi::make_ddim(y_broadcast_dims));
+  out->set_dtype(y.dtype());
+  out->set_layout(y.layout());
   out->share_lod(y);
 }
 
