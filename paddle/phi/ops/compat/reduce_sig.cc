@@ -56,11 +56,24 @@ KernelSignature ReduceProdOpArgumentMapping(const ArgumentMappingContext& ctx) {
       "reduce_prod", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
 }
 
+KernelSignature ReduceSumGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "sum_grad",
+      {"X", GradVarName("Out")},
+      {"dim", "keep_dim", "reduce_all", "in_dtype", "out_dtype"},
+      {GradVarName("X")});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_mean, mean);
+PD_REGISTER_BASE_KERNEL_NAME(reduce_sum_grad, sum_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_prod, phi::ReduceProdOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(reduce_sum_grad,
+                           phi::ReduceSumGradOpArgumentMapping);
