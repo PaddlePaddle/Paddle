@@ -140,6 +140,12 @@ void DiagInferMeta(const MetaTensor& x,
 
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void PadInferMeta(const MetaTensor& input,
+                  const std::vector<int>& paddings,
+                  float pad_value,
+                  MetaTensor* out,
+                  MetaConfig config = MetaConfig());
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,

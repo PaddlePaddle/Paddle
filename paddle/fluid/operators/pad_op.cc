@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -28,37 +30,6 @@ class PadOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad");
-
-    auto x_dim = ctx->GetInputDim("X");
-    auto& paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    PADDLE_ENFORCE_EQ(
-        static_cast<int>(paddings.size()), x_dim.size() * 2,
-        platform::errors::InvalidArgument(
-            "Size of 'paddings' dimension should be equal to 2 * size of "
-            "Input(X)'s dimension, but received (size of 'paddings' dimension "
-            "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
-            static_cast<int>(paddings.size()), x_dim.size() * 2));
-    for (size_t i = 0; i < paddings.size(); ++i) {
-      PADDLE_ENFORCE_GE(paddings[i], 0,
-                        platform::errors::InvalidArgument(
-                            "The element of 'paddings' should >= 0, but "
-                            "received %d for index %d.",
-                            paddings[i], static_cast<int>(i)));
-    }
-    std::vector<int64_t> out_dims(x_dim.size());
-    for (int i = 0; i < x_dim.size(); ++i) {
-      if ((!ctx->IsRuntime()) && (x_dim[i] == -1)) {
-        out_dims[i] = -1;
-      } else {
-        out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
-      }
-    }
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
-    if (out_dims[0] == x_dim[0]) {
-      // Only pass LoD when the first dimension is equal between
-      // output and input.
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
   }
 };
 
@@ -160,6 +131,8 @@ class PadOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DELCARE_INFER_SHAPE_FUNCTOR(pad, PadInferShapeFunctor,
+                            PT_INFER_META(phi::PadInferMeta));
 
 REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
