@@ -24,9 +24,10 @@ phi::Backend cvtTarget2Phi(TargetType target) {
       return phi::Backend::CPU;
     case TargetType::GPU:
       return phi::Backend::GPU;
-    default:
+    case TargetType::UNK:
       return phi::Backend::UNDEFINED;
   }
+  return phi::Backend::UNDEFINED;
 }
 
 TargetType cvtTargetFromPhi(phi::Backend backend) {
@@ -112,45 +113,47 @@ LayoutType cvtLayoutFromPhi(phi::DataLayout layout) {
   }
 }
 
-phi::KernelKey cvtPlace2Phi(const Place& place) {
+phi::KernelKey ConvertPlace2Phi(const Place& place) {
   return phi::KernelKey(cvtTarget2Phi(place.target),
                         cvtLayout2Phi(place.layout),
                         cvtPrecision2Phi(place.precision));
 }
 
-Place cvtPlaceFromPhi(phi::TensorArgDef tensor_arg) {
+Place ConvertPlaceFromPhi(phi::TensorArgDef tensor_arg) {
   return Place(cvtTargetFromPhi(tensor_arg.backend),
                cvtPrecisionFromPhi(tensor_arg.dtype),
                cvtLayoutFromPhi(tensor_arg.layout));
 }
 
-std::vector<PhiKernelDesc> getCandidateKernels(
+std::vector<PhiKernelDesc> GetCandidateKernels(
     std::string name, const std::vector<Place>& valid_palces) {
   std::vector<PhiKernelDesc> candidate_kernels;
   PhiKernelDesc phi_kernel_desc;
   phi::KernelKeyMap kernel_key_map =
       phi::KernelFactory::Instance().SelectKernelMap(name);
   for (const Place& place : valid_palces) {
-    phi::KernelKey kernel_key = cvtPlace2Phi(place);
+    phi::KernelKey kernel_key = ConvertPlace2Phi(place);
     if (kernel_key_map.find(kernel_key) == kernel_key_map.end()) {
       kernel_key = phi::KernelKey(kernel_key.backend(),
                                   phi::DataLayout::ALL_LAYOUT,
                                   kernel_key.dtype());
       if (kernel_key_map.find(kernel_key) == kernel_key_map.end()) continue;
     }
-    phi_kernel_desc.kernelType = place;
-    phi_kernel_desc.inputsType.clear();
-    phi_kernel_desc.outputsType.clear();
+    phi_kernel_desc.kernel_type = place;
+    phi_kernel_desc.inputs_types.clear();
+    phi_kernel_desc.output_types.clear();
     phi::KernelArgsDef args_def = kernel_key_map.at(kernel_key).args_def();
     const paddle::SmallVector<phi::TensorArgDef>& input_arg =
         args_def.input_defs();
     const paddle::SmallVector<phi::TensorArgDef>& output_arg =
         args_def.output_defs();
     for (auto tensor_arg : input_arg) {
-      phi_kernel_desc.inputsType.emplace_back(cvtPlaceFromPhi(tensor_arg));
+      phi_kernel_desc.inputs_types.emplace_back(
+          ConvertPlaceFromPhi(tensor_arg));
     }
     for (auto tensor_arg : output_arg) {
-      phi_kernel_desc.outputsType.emplace_back(cvtPlaceFromPhi(tensor_arg));
+      phi_kernel_desc.output_types.emplace_back(
+          ConvertPlaceFromPhi(tensor_arg));
     }
     candidate_kernels.emplace_back(phi_kernel_desc);
   }

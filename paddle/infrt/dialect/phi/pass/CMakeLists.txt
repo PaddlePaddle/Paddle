@@ -5,3 +5,5 @@ gather_srcs(infrt_src SRCS
     phi_op_cvt_pass.cc
     kernel_op_desc.cc
     )
+
+cc_test(test_kernel_op_desc SRCS kernel_op_desc_test.cc DEPS infrt)

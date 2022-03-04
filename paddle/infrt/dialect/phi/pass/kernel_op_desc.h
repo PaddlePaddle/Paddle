@@ -21,12 +21,12 @@
 namespace infrt {
 
 struct PhiKernelDesc {
-  std::vector<Place> inputsType;   // kernel input place
-  std::vector<Place> outputsType;  // kernel output place
-  Place kernelType;                // kernel place
+  std::vector<Place> inputs_types;  // kernel input place
+  std::vector<Place> output_types;  // kernel output place
+  Place kernel_type;                // kernel place
 };
 
-std::vector<PhiKernelDesc> getCandidateKernels(
+std::vector<PhiKernelDesc> GetCandidateKernels(
     std::string name, const std::vector<Place>& valid_palces);
 
 }  // namespace infrt

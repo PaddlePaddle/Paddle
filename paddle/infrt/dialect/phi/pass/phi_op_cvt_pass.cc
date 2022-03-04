@@ -31,8 +31,9 @@ namespace infrt {
 // Implementation of the phiOpCvtPass.
 void phiOpCvtPass::runOnFunction() {
   convertStage();
-  diapatchStage();
+  dispatchStage();
 }
+
 void phiOpCvtPass::convertStage() {
   mlir::Block &body = getFunction().front();
   std::vector<mlir::Operation *> worklist;
@@ -43,9 +44,9 @@ void phiOpCvtPass::convertStage() {
   while (!worklist.empty()) {
     auto *op = worklist.back();
     worklist.pop_back();
-    if (op == nullptr) continue;
+    if (!op) continue;
 
-    std::string op_name = op->getName().getIdentifier().str();
+    auto op_name = op->getName().getIdentifier().str();
 
     // only convert op in pd dialect.
     if (op_name.substr(0, 3) != "pd.") continue;
@@ -54,6 +55,7 @@ void phiOpCvtPass::convertStage() {
             pd_dialect_inputs_info_map_.end() ||
         pd_dialect_outputs_info_map_.find(op_name) ==
             pd_dialect_outputs_info_map_.end()) {
+      LOG(WARNING) << "No op info found for " << op_name;
       // Todo: print log
       continue;
     }
@@ -66,7 +68,8 @@ void phiOpCvtPass::convertStage() {
     ::llvm::SmallVector<mlir::Type, 4> output_types;
     for (const std::string &str : std::get<0>(kernel_sign.args)) {
       if (pd_dialect_inputs_info_map_.at(op_name).count(str) == 0) {
-        // Todo: print error log
+        LOG(ERROR) << "No input info for Op " << op_name << " and argument "
+                   << str;
         return;
       }
       uint8_t index = pd_dialect_inputs_info_map_.at(op_name).at(str);
@@ -75,7 +78,8 @@ void phiOpCvtPass::convertStage() {
 
     for (const std::string &str : std::get<2>(kernel_sign.args)) {
       if (pd_dialect_outputs_info_map_.at(op_name).count(str) == 0) {
-        // Todo: print error log
+        LOG(ERROR) << "No output info for Op " << op_name << " and argument "
+                   << str;
         return;
       }
       uint8_t index = pd_dialect_outputs_info_map_.at(op_name).at(str);
@@ -90,14 +94,12 @@ void phiOpCvtPass::convertStage() {
     for (size_t index = 0; index < ori_output.size(); ++index) {
       ori_output[index].replaceAllUsesWith(kernel_op.getResult(index));
     }
-    if (!op->use_empty()) {
-      // Todo: print error log
-      return;
-    }
+
+    CHECK(op->use_empty());
     op->erase();
   }
 }
-void phiOpCvtPass::diapatchStage() {
+void phiOpCvtPass::dispatchStage() {
   std::vector<infrt::KernelOp> worklist;
   mlir::Block &block = getFunction().front();
   for (auto &op : block) {

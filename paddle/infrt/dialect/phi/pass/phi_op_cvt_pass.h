@@ -51,7 +51,7 @@ class phiOpCvtPass
 
  private:
   void convertStage();
-  void diapatchStage();
+  void dispatchStage();
   std::vector<Place> valid_places_;
 };
 }  // namespace infrt
