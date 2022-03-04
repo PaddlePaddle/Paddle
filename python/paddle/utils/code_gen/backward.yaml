@@ -25,16 +25,6 @@
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, bias, bias_after_scale)
 
-- backward_api : diagonal_grad
-  forward : diagonal (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int offset, int axis1 = 0, int axis2 = 1)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : diagonal_grad
-
 # TODO(zhangyunfei) The config of double grad and triple grad will be supported in the future.
 
 # - backward_api : matmul_triple_grad
