@@ -17,8 +17,9 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/gpu/elementwise.h"
+#include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
 namespace phi {
@@ -33,9 +34,9 @@ void AddGradFunc(const GPUContext& dev_ctx,
                  DenseTensor* dy,
                  int axis = -1) {
   if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
-    elementwise_add_grad<T>(dev_ctx, x, y, out, dout, dx, dy);
+    ElementwiseAddGrad<T>(dev_ctx, x, y, out, dout, dx, dy);
   } else {
-    default_elementwise_add_grad<T>(dev_ctx, x, y, out, dout, dx, dy, axis);
+    DefaultElementwiseAddGrad<T>(dev_ctx, x, y, out, dout, dx, dy, axis);
   }
 }
 
@@ -58,15 +59,7 @@ void AddDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout,
                          int axis,
                          DenseTensor* ddout) {
-  phi::AddDoubleGradImpl<T>(dev_ctx,
-                            y,
-                            ddx,
-                            ddy,
-                            dout,
-                            axis,
-                            ddout,
-                            ElementwiseCompute<funcs::AddFunctor<T>, T>,
-                            ElementwiseCompute<funcs::InverseAddFunctor<T>, T>);
+  phi::AddDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
 }
 
 template <typename T, typename Context>
@@ -106,15 +99,7 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               int axis,
                               DenseTensor* ddout) {
-  phi::SubtractDoubleGradImpl<T>(
-      dev_ctx,
-      y,
-      ddx,
-      ddy,
-      dout,
-      axis,
-      ddout,
-      ElementwiseCompute<funcs::SubtractFunctor<T>, T>);
+  phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
 }
 
 }  // namespace phi
@@ -128,6 +113,7 @@ PD_REGISTER_KERNEL(add_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -140,6 +126,7 @@ PD_REGISTER_KERNEL(add_double_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -152,6 +139,7 @@ PD_REGISTER_KERNEL(add_triple_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -164,6 +152,7 @@ PD_REGISTER_KERNEL(subtract_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -176,5 +165,6 @@ PD_REGISTER_KERNEL(subtract_double_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

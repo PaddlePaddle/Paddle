@@ -35,7 +35,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->ResizeAndAllocate(phi::make_ddim(shape.GetData()));
+  out->Resize(phi::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 
@@ -99,4 +99,6 @@ PD_REGISTER_KERNEL(full_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}

@@ -13,18 +13,11 @@
 // limitations under the License.
 
 #pragma once
-
-// See Note [ Why still include the fluid headers? ]
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
-#include "paddle/fluid/framework/mixed_vector.h"
-#endif
+#include <cstddef>
+#include <vector>
 
 namespace phi {
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
-using LoD = std::vector<paddle::framework::Vector<size_t>>;
-#else
-using LoD = std::vector<std::vector<size_t>>;
-#endif
+using LoD = std::vector<std::vector<std::size_t>>;
 
 void AppendLoD(LoD* lod, const LoD& lod_length);
 
@@ -40,4 +33,4 @@ void AppendLoD(LoD* lod, const LoD& lod_length);
  */
 LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
 
-}  // namespace  pten
+}  // namespace  phi

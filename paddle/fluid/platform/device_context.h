@@ -72,9 +72,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #endif
 
-#include "paddle/fluid/platform/device/device_ext.h"
-#include "paddle/fluid/platform/device/stream.h"
+#include "paddle/phi/backends/device_ext.h"
+#include "paddle/phi/backends/stream.h"
+
+#if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
 #include "unsupported/Eigen/CXX11/Tensor"
+#endif
 
 namespace Eigen {
 struct DefaultDevice;
@@ -835,7 +838,7 @@ class CustomDeviceContext : public phi::CustomContext {
   void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
  private:
-  std::shared_ptr<platform::stream::Stream> stream_;
+  std::shared_ptr<phi::stream::Stream> stream_;
 };
 template <>
 struct DefaultDeviceContextType<platform::CustomPlace> {

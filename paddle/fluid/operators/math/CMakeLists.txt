@@ -1,14 +1,12 @@
-add_subdirectory(detail)
-
 if (WITH_ASCEND_CL)
   cc_library(beam_search_npu SRCS beam_search_npu.cc DEPS npu_op_runner)
 endif()
 
 # please add new math_library in alphabetical order
 if (WITH_ASCEND_CL)
-math_library(concat_and_split DEPS npu_op_runner)
+math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
 else()
-math_library(concat_and_split)
+math_library(concat_and_split DEPS concat_and_split_functor)
 endif()
 math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
@@ -18,8 +16,7 @@ math_library(im2col)
 math_library(sample_prob)
 math_library(sampler DEPS generator)
 
-math_library(gru_compute DEPS activation_functions math_function)
-math_library(lstm_compute DEPS activation_functions)
+# math_library(math_function DEPS blas dense_tensor tensor)
 math_library(maxouting)
 math_library(pooling)
 
@@ -29,7 +26,6 @@ else()
     math_library(selected_rows_functor DEPS selected_rows_utils math_function blas)
 endif()
 
-math_library(sequence2batch)
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
@@ -41,6 +37,7 @@ else()
 endif()
 math_library(fc DEPS blas jit_kernel_helper)
 math_library(matrix_bit_code)
+
 
 math_library(unpooling)
 math_library(vol2col)

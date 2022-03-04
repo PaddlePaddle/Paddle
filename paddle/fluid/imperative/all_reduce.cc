@@ -90,6 +90,7 @@ static void AllReduce(const phi::SelectedRows &src, phi::SelectedRows *dst,
       platform::DeviceContextPool::Instance().Get(place));
 
   bool use_calc_stream = (dev_ctx->stream() == stream);
+  VLOG(4) << "Is use calculate stream: " << use_calc_stream;
 
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
@@ -97,7 +98,9 @@ static void AllReduce(const phi::SelectedRows &src, phi::SelectedRows *dst,
   framework::Vector<int64_t> rows_num_vector(strategy.nranks_);
   rows_num_vector[strategy.local_rank_] = static_cast<int64_t>(src_rows.size());
   // CUDAMutableData use CalStream
-  auto *gpu_rows_num_ptr = rows_num_vector.CUDAMutableData(place);
+  paddle::framework::MixVector<int64_t> mixv_rows_num_vector(&rows_num_vector);
+  auto *gpu_rows_num_ptr = mixv_rows_num_vector.CUDAMutableData(place);
+  VLOG(4) << "start dev_ctx->wait";
   if (!use_calc_stream) {
     dev_ctx->Wait();
   }
@@ -109,6 +112,7 @@ static void AllReduce(const phi::SelectedRows &src, phi::SelectedRows *dst,
     platform::GpuStreamSync(stream);
   }
 
+  mixv_rows_num_vector.CopyToCPU();
   const auto *cpu_rows_num_ptr = rows_num_vector.data();
   auto rows_num =
       std::accumulate(cpu_rows_num_ptr, cpu_rows_num_ptr + strategy.nranks_,
@@ -121,8 +125,10 @@ static void AllReduce(const phi::SelectedRows &src, phi::SelectedRows *dst,
 
   auto *dst_rows = dst->mutable_rows();
   dst_rows->resize(rows_num);
-  auto *dst_rows_ptr = dst_rows->CUDAMutableData(place);
-  const auto *src_rows_ptr = src_rows.CUDAData(place);
+  paddle::framework::MixVector<int64_t> mixv_dst_rows(dst_rows);
+  auto *dst_rows_ptr = mixv_dst_rows.CUDAMutableData(place);
+  paddle::framework::MixVector<int64_t> mixv_src_rows(&src_rows);
+  const auto *src_rows_ptr = mixv_src_rows.CUDAData(place);
 
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
@@ -150,24 +156,28 @@ static void AllReduce(const phi::SelectedRows &src, phi::SelectedRows *dst,
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllGather(
         src_tensor_ptr, dst_tensor_ptr, value_sendcount, nccl_dtype,
         comm->comm(), stream));
-    return;
-  }
-  for (int i = 0; i < strategy.nranks_; ++i) {
-    if (cpu_rows_num_ptr[i] > 0) {
-      // 2. Broadcast the rows of SelectedRows
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
-          src_rows_ptr, dst_rows_ptr + row_offset, cpu_rows_num_ptr[i],
-          ncclInt64, i, comm->comm(), stream));
-      // 3. Broadcast the tensor data of SelectedRows
-      auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
-                               row_offset * feature_size * sizeof_dtype;
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
-          src_tensor_ptr, dst_tensor_ptr_i, cpu_rows_num_ptr[i] * feature_size,
-          nccl_dtype, i, comm->comm(), stream));
-      row_offset += cpu_rows_num_ptr[i];
+  } else {
+    for (int i = 0; i < strategy.nranks_; ++i) {
+      if (cpu_rows_num_ptr[i] > 0) {
+        // 2. Broadcast the rows of SelectedRows
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
+            src_rows_ptr, dst_rows_ptr + row_offset, cpu_rows_num_ptr[i],
+            ncclInt64, i, comm->comm(), stream));
+        // 3. Broadcast the tensor data of SelectedRows
+        auto *dst_tensor_ptr_i = reinterpret_cast<uint8_t *>(dst_tensor_ptr) +
+                                 row_offset * feature_size * sizeof_dtype;
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBroadcast(
+            src_tensor_ptr, dst_tensor_ptr_i,
+            cpu_rows_num_ptr[i] * feature_size, nccl_dtype, i, comm->comm(),
+            stream));
+        row_offset += cpu_rows_num_ptr[i];
+      }
     }
   }
-
+  if (!use_calc_stream) {
+    platform::GpuStreamSync(stream);
+  }
+  mixv_dst_rows.CopyToCPU();
   VLOG(3) << "Original SelectedRows rows: "
           << string::join_strings(src_rows, ',');
   VLOG(3) << "Result SelectedRows rows: "

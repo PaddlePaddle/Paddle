@@ -21,7 +21,7 @@ limitations under the License. */
 
 namespace phi {
 
-// EigenDim converts paddle::platform::DDim into Eigen::DSizes.
+// EigenDim converts phi::DDim into Eigen::DSizes.
 template <int D>
 struct EigenDim {
   using Type = Eigen::DSizes<Eigen::DenseIndex, D>;
@@ -29,7 +29,7 @@ struct EigenDim {
   static Type From(const DDim& dims) {
     PADDLE_ENFORCE_EQ(arity(dims),
                       D,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input dimension size should be equal to %d, but "
                           "received dimension size is %d.",
                           arity(dims),
@@ -42,7 +42,7 @@ struct EigenDim {
   }
 };
 
-// Interpret paddle::platform::Tensor as EigenTensor and EigenConstTensor.
+// Interpret phi::Tensor as EigenTensor and EigenConstTensor.
 template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
@@ -86,7 +86,7 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
     int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),
                       true,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input dimension number(num_col_dims) must be "
                           "between 0 and %d, but received number is %d.",
                           rank,
@@ -100,7 +100,7 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
     int rank = tensor.dims().size();
     PADDLE_ENFORCE_EQ((num_col_dims > 0 && num_col_dims < rank),
                       true,
-                      paddle::platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input dimension number(num_col_dims) must be "
                           "between 0 and %d, but received number is %d.",
                           rank,

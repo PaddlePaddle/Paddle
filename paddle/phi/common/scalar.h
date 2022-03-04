@@ -25,7 +25,6 @@ namespace experimental {
 template <typename T>
 class ScalarBase {
  public:
-  bool FromTensor() const { return is_from_tensor_; }
   // Constructor support implicit
   ScalarBase(double val) : dtype_(DataType::FLOAT64) {  // NOLINT
     data_.f64 = val;
@@ -156,6 +155,10 @@ class ScalarBase {
   ScalarBase(const ScalarBase<OtherT>& other) {
     CopyScalar(other, this);
   }
+
+  bool FromTensor() const { return is_from_tensor_; }
+
+  void SetFromTensor(bool from_tensor) { is_from_tensor_ = from_tensor; }
 
   template <typename RT>
   inline RT to() const {

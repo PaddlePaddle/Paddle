@@ -86,19 +86,6 @@ __global__ void GetNonZeroElementsAndIndices(const T* dense_data,
   }
 }
 
-template <typename Context>
-void GetGpuLaunchConfig1D(const Context& dev_ctx,
-                          const int64_t n,
-                          int* grid_size,
-                          int* block_size) {
-  const int MAX_BLOCK_DIM = dev_ctx.GetMaxThreadsPerBlock();
-  const int MAX_GRID_DIM = dev_ctx.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
-  *block_size = (n >= MAX_BLOCK_DIM) ? MAX_BLOCK_DIM
-                                     : (1 << static_cast<int>(std::log2(n)));
-  *grid_size = n / *block_size;
-  *grid_size = (*grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : *grid_size;
-}
-
 template <typename T, typename Context>
 void DenseToSparseCooKernel(const Context& dev_ctx,
                             const DenseTensor& x,
@@ -379,7 +366,7 @@ void SparseCooToCsrKernel(const Context& dev_ctx,
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
   if (non_zero_num <= 0) return;
