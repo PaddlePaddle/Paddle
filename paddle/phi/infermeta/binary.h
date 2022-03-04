@@ -85,6 +85,10 @@ void BCELossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void GatherNdInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       MetaTensor* out);
+
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);

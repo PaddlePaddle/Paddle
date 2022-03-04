@@ -456,6 +456,39 @@ void BCELossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void GatherNdInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto x_dims_size = x_dims.size();
+  auto index_dims = index.dims();
+  auto index_dims_size = index_dims.size();
+
+  PADDLE_ENFORCE_LE(
+      index_dims[index_dims_size - 1],
+      x_dims_size,
+      phi::errors::InvalidArgument(
+          "Input(Index).shape[-1] should be no greater than Input(X).rank"));
+  PADDLE_ENFORCE_GE(index_dims_size,
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(Index) should be greater than 1"));
+
+  std::vector<int64_t> result_dims;
+  // The result dims is
+  //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
+  for (int i = 0; i < index_dims_size - 1; ++i) {
+    result_dims.emplace_back(index_dims[i]);
+  }
+  for (int i = index_dims[index_dims_size - 1]; i < x_dims_size; ++i) {
+    result_dims.emplace_back(x_dims[i]);
+  }
+
+  out->set_dims(phi::make_ddim(result_dims));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out) {
