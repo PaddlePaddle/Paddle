@@ -69,12 +69,12 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
                                                accessor_proto.fea_dim))
             break
 
-    fea_dim = accessor.fea_dim
+    fea_dim = accessor_proto.fea_dim
     if fea_dim != embedding_dim:
         raise ValueError(
             "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".
             format(embedding_dim, fea_dim))
-    embedx_dim = accessor.embedx_dim
+    embedx_dim = accessor_proto.embedx_dim
     if embedx_dim != embedding_dim - 3:
         raise ValueError(
             "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".
@@ -936,7 +936,7 @@ class TheOnePSRuntime(RuntimeBase):
             # self._communicator.set_clients(all_info)
             # self._communicator.create_client_to_client_connection()
             self._worker.set_clients(all_info)
-            self._worker.create_client_to_client_connection()
+            # self._worker.create_client_to_client_connection()
             print('create c2c connection done')
         else:
             print('cannot create c2c connection')
