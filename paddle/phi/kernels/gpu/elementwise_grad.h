@@ -29,7 +29,7 @@ void ReduceWrapper(const GPUContext &dev_ctx,
                    DenseTensor *dst) {
   std::vector<int> reduce_dims =
       funcs::GetReduceDim(dst->dims(), src->dims(), axis);
-  kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+  funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
       dev_ctx,
       *src,
       dst,
