@@ -63,6 +63,18 @@ class TestStatisticHelper(unittest.TestCase):
         src2 = [(1, 2), (3, 5)]
         dst = statistic_helper.merge_ranges(src1, src2, True)
         self.assertEqual(dst, src2)
+        src1 = [(3, 4), (1, 2), (17, 19)]
+        src2 = [(6, 9), (13, 15)]
+        dst = statistic_helper.merge_ranges(src1, src2)
+        self.assertEqual(dst, [(1, 2), (3, 4), (6, 9), (13, 15), (17, 19)])
+        dst = statistic_helper.merge_ranges(src2, src1)
+        self.assertEqual(dst, [(1, 2), (3, 4), (6, 9), (13, 15), (17, 19)])
+        src1 = [(1, 2), (5, 9), (12, 13)]
+        src2 = [(6, 8), (9, 15)]
+        dst = statistic_helper.merge_ranges(src1, src2)
+        self.assertEqual(dst, [(1, 2), (5, 15)])
+        dst = statistic_helper.merge_ranges(src2, src1)
+        self.assertEqual(dst, [(1, 2), (5, 15)])
 
     def test_merge_ranges_case2(self):
         src1 = [(3, 4), (1, 2), (9, 14)]
@@ -81,6 +93,16 @@ class TestStatisticHelper(unittest.TestCase):
         self.assertEqual(dst, [(3, 7), (10, 12), (15, 18)])
         dst = statistic_helper.intersection_ranges(src1, src2, True)
         self.assertEqual(dst, [(3, 7), (10, 12), (15, 18)])
+        src1 = []
+        src2 = []
+        dst = statistic_helper.intersection_ranges(src1, src2, True)
+        self.assertEqual(dst, [])
+        src1 = [(3, 7), (10, 12)]
+        src2 = [(2, 9), (11, 13), (15, 19)]
+        dst = statistic_helper.intersection_ranges(src1, src2)
+        self.assertEqual(dst, [(3, 7), (11, 12)])
+        dst = statistic_helper.intersection_ranges(src2, src1)
+        self.assertEqual(dst, [(3, 7), (11, 12)])
 
     def test_intersection_ranges_case2(self):
         src2 = [(9, 12), (1, 7), (14, 18)]
