@@ -447,7 +447,7 @@ void MergeLoDTensor(LoDTensor *target,
   target->set_layout(new_layout);
   target->set_lod(new_lod);
   target->mutable_data(dst_place,
-                       paddle::framework::TransToPtenDataType(new_type));
+                       paddle::framework::TransToPhiDataType(new_type));
 
   int begin = 0;
   for (auto *src : lod_tensors) {

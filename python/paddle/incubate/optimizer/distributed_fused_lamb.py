@@ -171,21 +171,23 @@ class DistributedFusedLamb(Optimizer):
         moment2.is_distributed = True
         beta1pow = self._create_persistable_var('beta1pow')
         beta2pow = self._create_persistable_var('beta2pow')
-        fused_indices = self._create_persistable_var(
-            'fused_indices', dtype='int32')
-        weight_decay = self._create_persistable_var('weight_decay')
-        weight_decay.is_distributed = True
+
         param_info = self._create_persistable_var('param_info', dtype='int32')
         param_info.is_distributed = True
 
-        fused_offsets = self._create_persistable_var('fused_offsets')
+        fused_offsets = self._create_persistable_var(
+            'fused_offsets', dtype='int32')
 
         fp32_partial_fused_offsets = self._create_persistable_var(
             'fp32_partial_fused_offsets', dtype='int32')
         fp32_partial_fused_offsets.is_distributed = True
+
         fp16_partial_fused_offsets = self._create_persistable_var(
             'fp16_partial_fused_offsets', dtype='int32')
         fp16_partial_fused_offsets.is_distributed = True
+
+        param_order = self._create_persistable_var('param_order', dtype='int32')
+        param_order.is_distributed = True
 
         rank = get_rank()
         nranks = get_world_size()
@@ -193,11 +195,11 @@ class DistributedFusedLamb(Optimizer):
 
         params = [p for p, _ in params_grads]
         grads = [g for _, g in params_grads]
-        weight_decay_values = [self._weight_decay] * len(params)
+        apply_weight_decay = [1] * len(params)
         if self._exclude_from_weight_decay_fn is not None:
             for i, p in enumerate(params):
                 if self._exclude_from_weight_decay_fn(p):
-                    weight_decay_values[i] = 0.0
+                    apply_weight_decay[i] = 0
 
         startup_block = self.helper.startup_program.global_block()
         for g in grads:
@@ -223,8 +225,6 @@ class DistributedFusedLamb(Optimizer):
                 'Moment2': [moment2],
                 'Beta1Pow': [beta1pow],
                 'Beta2Pow': [beta2pow],
-                'FusedIndices': [fused_indices],
-                'WeightDecay': [weight_decay],
                 'GlobalScale': [scale],
                 'ParamInfo': [param_info],
                 'ParamOut': params,
@@ -233,12 +233,13 @@ class DistributedFusedLamb(Optimizer):
                 'FP32ShardFusedParamOffsets': [fp32_partial_fused_offsets],
                 'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
                 'FusedParamOffsets': [fused_offsets],
+                'ParamOrder': [param_order],
             },
             attrs={
                 'alignment': self._alignment,
                 'rank': rank,
                 'nranks': nranks,
-                'weight_decay': weight_decay_values,
+                'apply_weight_decay': apply_weight_decay,
                 'moment1': 0.0,
                 'moment2': 0.0,
                 'beta1': self._beta1,
@@ -270,8 +271,6 @@ class DistributedFusedLamb(Optimizer):
                 'Moment2': [moment2],
                 'Beta1Pow': [beta1pow],
                 'Beta2Pow': [beta2pow],
-                'FusedIndices': [fused_indices],
-                'WeightDecay': [weight_decay],
                 'GlobalScale': [scale],
                 'ParamInfo': [param_info],
                 'Param': params,
@@ -279,6 +278,7 @@ class DistributedFusedLamb(Optimizer):
                 'FusedParamOffsets': [fused_offsets],
                 'FP32ShardFusedParamOffsets': [fp32_partial_fused_offsets],
                 'FP16ShardFusedParamOffsets': [fp16_partial_fused_offsets],
+                'ParamOrder': [param_order],
             },
             outputs={
                 'FP32FusedParamOut': [fp32_fused_param],
@@ -292,6 +292,7 @@ class DistributedFusedLamb(Optimizer):
                 'FoundInf': [self._found_inf],
             },
             attrs={
+                'weight_decay': self._weight_decay,
                 'beta1': self._beta1,
                 'beta2': self._beta2,
                 'epsilon': self._epsilon,

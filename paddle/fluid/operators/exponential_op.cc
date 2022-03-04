@@ -76,7 +76,7 @@ class ExponentialKernel<platform::CPUDeviceContext, T>
     auto engine = gen->GetCPUEngine();
 
     std::uniform_real_distribution<T> uniform(0.0, 1.0);
-    distribution::exponential_transform<T> trans(lambda);
+    phi::funcs::exponential_transform<T> trans(lambda);
     for (int64_t i = 0; i < size; ++i) {
       out_data[i] = trans(uniform(*engine));
     }

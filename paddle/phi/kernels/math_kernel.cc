@@ -121,7 +121,8 @@ PD_REGISTER_KERNEL(subtract,
                    int,
                    int64_t,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(divide,
                    CPU,
                    ALL_LAYOUT,
@@ -142,7 +143,8 @@ PD_REGISTER_KERNEL(multiply,
                    int64_t,
                    bool,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::bfloat16) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(mean,
@@ -163,6 +165,7 @@ PD_REGISTER_KERNEL(sum,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int16_t,
                    int,
                    int64_t,
@@ -180,6 +183,7 @@ PD_REGISTER_KERNEL(add,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    complex64,
                    complex128) {}
 PD_REGISTER_KERNEL(subtract,
@@ -193,7 +197,8 @@ PD_REGISTER_KERNEL(subtract,
                    int64_t,
                    phi::dtype::float16,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(divide,
                    GPU,
                    ALL_LAYOUT,

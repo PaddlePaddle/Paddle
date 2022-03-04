@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
@@ -24,11 +24,11 @@ void RealGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
   auto numel = dout.numel();
-  auto* dout_data = dout.data<phi::funcs::Real<T>>();
+  auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
-  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::RealToComplexFunctor<T> functor(dout_data, dx_data, numel);
   for_range(functor);
 }
@@ -38,11 +38,11 @@ void ImagGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
   auto numel = dout.numel();
-  auto* dout_data = dout.data<phi::funcs::Real<T>>();
+  auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
-  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::ImagToComplexFunctor<T> functor(dout_data, dx_data, numel);
   for_range(functor);
 }
