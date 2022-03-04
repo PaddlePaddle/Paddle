@@ -74,6 +74,8 @@ operator()(
         pybind11::detail::error_string().c_str()));
   }
 
+  outputs_ = outputs;
+
   VLOG(6) << "PyLayer backward function finish...";
 
   PyObject* outputs_tuple = nullptr;

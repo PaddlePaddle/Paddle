@@ -330,7 +330,42 @@ class PyLayer(with_mateclass(LayerMeta, CPyLayer)):
 
 
 class EagerPyLayerContext(object):
-    def save_for_backward(self, *tensors: core.eager.Tensor):
+    def save_for_backward(self, *tensors):
+        """
+        Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
+        
+        .. note::
+            This API should be called at most once, and only inside `forward`. 
+
+        Args:
+            tensors(list of Tensors): Tensors to be stored.
+
+        Returns:
+            None
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+
+                class cus_tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        # ctx is a context object that store some objects for backward.
+                        y = paddle.tanh(x)
+                        # Pass tensors to backward.
+                        ctx.save_for_backward(y)
+                        return y
+
+                    @staticmethod
+                    def backward(ctx, dy):
+                        # Get the tensors passed by forward.
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - paddle.square(y))
+                        return grad
+
+        """
         self.container = tensors
 
     def saved_tensor(self):
@@ -363,17 +398,7 @@ class EagerPyLayerContext(object):
                         grad = dy * (1 - paddle.square(y))
                         return grad
         """
-
         return self.container
-
-    def mark_dirty(self, *args: core.eager.Tensor):
-        self.dirty_tensors = args
-
-    def mark_non_differentiable(self, *args: core.eager.Tensor):
-        self.non_differentiable = args
-
-    def set_materialize_grads(self, value: bool):
-        self.materialize_grads = value
 
 
 class EagerPyLayerBackward(core.eager.PyLayer, EagerPyLayerContext):

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -47,7 +47,9 @@ PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   if (obj) {
     auto v = reinterpret_cast<PyLayerObject*>(obj);
     v->materialize_grads = true;
-    // TODO(wanghuancoder) init other member
+    new (&v->grad_node) std::weak_ptr<egr::GradNodePyLayer>();
+    new (&v->forward_input_tensor_is_duplicable) std::vector<bool>();
+    new (&v->forward_output_tensor_is_duplicable) std::vector<bool>();
   }
   return obj;
 }
@@ -62,6 +64,9 @@ static void PyLayerDealloc(PyLayerObject* self) {
   if (self->dirty_tensors) {
     Py_DECREF(self->dirty_tensors);
   }
+  self->grad_node.~weak_ptr<egr::GradNodePyLayer>();
+  self->forward_input_tensor_is_duplicable.~vector();
+  self->forward_output_tensor_is_duplicable.~vector();
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 

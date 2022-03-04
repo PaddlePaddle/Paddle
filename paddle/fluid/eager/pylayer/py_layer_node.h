@@ -52,6 +52,9 @@ class GradNodePyLayer : public GradNodeBase {
   inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
   void ApplyReduceHooks();
 
+  // for paddle.grad get result
+  PyObject* GetMutableOutputs() { return outputs_; }
+
  private:
   std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
 
@@ -61,6 +64,7 @@ class GradNodePyLayer : public GradNodeBase {
 
   std::vector<std::shared_ptr<TensorVoidHook>> reduce_hooks_;
   PyObject* ctx_{nullptr};
+  PyObject* outputs_{nullptr};
 };
 
 }  // namespace egr
