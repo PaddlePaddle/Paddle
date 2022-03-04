@@ -142,9 +142,9 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), (1e-5, 1e-3)
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-5, 1e-5)
+        # self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        # yield self.create_inference_config(), generate_trt_nodes_num(
+        #     attrs, False), (1e-5, 1e-5)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -154,9 +154,9 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), (1e-5, 1e-5)
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-5, 1e-5)
+        # self.trt_param.precision = paddle_infer.PrecisionType.Int8
+        # yield self.create_inference_config(), generate_trt_nodes_num(
+        #     attrs, True), (1e-5, 1e-5)
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
