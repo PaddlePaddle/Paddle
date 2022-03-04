@@ -12,20 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void NormGradKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& out,
-                    const DenseTensor& out_grad,
-                    int axis,
-                    float epsilon,
-                    bool is_test,
-                    DenseTensor* x_grad);
+KernelSignature LogLossGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("log_loss_grad",
+                         {"Predicted", "Labels", GradVarName("Loss")},
+                         {"epsilon"},
+                         {GradVarName("Predicted")});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(log_loss_grad, phi::LogLossGradOpArgumentMapping);

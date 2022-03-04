@@ -19,13 +19,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NormGradKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& out,
-                    const DenseTensor& out_grad,
-                    int axis,
-                    float epsilon,
-                    bool is_test,
-                    DenseTensor* x_grad);
+void LogLossGradKernel(const Context& dev_ctx,
+                       const DenseTensor& input,
+                       const DenseTensor& label,
+                       const DenseTensor& out_grad,
+                       float epsilon,
+                       DenseTensor* in_grad);
 
 }  // namespace phi

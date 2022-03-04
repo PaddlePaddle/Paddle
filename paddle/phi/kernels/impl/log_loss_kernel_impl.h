@@ -14,18 +14,27 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void NormGradKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& out,
-                    const DenseTensor& out_grad,
-                    int axis,
-                    float epsilon,
-                    bool is_test,
-                    DenseTensor* x_grad);
+void LogLossKernel(const Context& dev_ctx,
+                   const DenseTensor& input,
+                   const DenseTensor& label,
+                   float epsilon,
+                   DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+
+  auto prediction = EigenVector<T>::Flatten(input);
+  auto label_out = EigenVector<T>::Flatten(label);
+
+  auto loss = EigenVector<T>::Flatten(*out);
+  auto& place = *dev_ctx.eigen_device();
+
+  phi::funcs::EigenLogLoss<std::decay_t<decltype(place)>, T>::Eval(
+      place, loss, prediction, label_out, epsilon);
+}
 
 }  // namespace phi

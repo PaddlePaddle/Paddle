@@ -12,16 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include <string>
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature DigammaGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "digamma_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")});
-}
+template <typename T, typename Context>
+void AucKernel(const Context& dev_ctx,
+               const DenseTensor& input,
+               const DenseTensor& label,
+               const DenseTensor& stat_pos,
+               const DenseTensor& stat_neg,
+               const std::string& curve,
+               int num_thresholds,
+               int slide_steps,
+               DenseTensor* auc,
+               DenseTensor* stat_pos_out,
+               DenseTensor* stat_neg_out);
 
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(digamma_grad, phi::DigammaGradOpArgumentMapping);

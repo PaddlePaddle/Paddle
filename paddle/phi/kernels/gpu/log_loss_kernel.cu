@@ -12,20 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/log_loss_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/log_loss_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void NormGradKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& out,
-                    const DenseTensor& out_grad,
-                    int axis,
-                    float epsilon,
-                    bool is_test,
-                    DenseTensor* x_grad);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(log_loss, GPU, ALL_LAYOUT, phi::LogLossKernel, float) {}

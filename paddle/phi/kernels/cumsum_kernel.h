@@ -18,14 +18,13 @@
 
 namespace phi {
 
-template <typename T, typename Context>
-void NormGradKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& out,
-                    const DenseTensor& out_grad,
-                    int axis,
-                    float epsilon,
-                    bool is_test,
-                    DenseTensor* x_grad);
+template <typename Functor, typename Context>
+void CumsumKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int axis,
+                  bool flatten,
+                  bool exclusive,
+                  bool reverse,
+                  DenseTensor* out);
 
 }  // namespace phi
