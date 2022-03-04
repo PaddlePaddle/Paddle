@@ -27,15 +27,16 @@ namespace paddle {
 namespace distributed {
 
 enum class ReplyType { WAITING, STOP_WAIT };
-enum class Command { ADD, GET, WAIT, STOP };
+enum class Command { ADD, GET, SET, WAIT, STOP };
 
 namespace detail {
 
 class MasterDaemon {
  public:
-  static std::unique_ptr<MasterDaemon> start(SocketType listen_socket);
+  static std::unique_ptr<MasterDaemon> start(SocketType listen_socket,
+                                             int nranks);
   MasterDaemon() = delete;
-  explicit MasterDaemon(SocketType listen_socket);
+  explicit MasterDaemon(SocketType listen_socket, int nranks);
   ~MasterDaemon();
 
  private:
@@ -43,18 +44,20 @@ class MasterDaemon {
   void _do_add(SocketType socket);
   void _do_wait(SocketType socket);
   void _do_get(SocketType socket);
+  void _do_set(SocketType socket);
   void _do_stop(SocketType socket);
   SocketType _listen_socket;
   std::vector<SocketType> _sockets;
   std::unordered_map<std::string, std::vector<uint8_t>> _store;
   std::thread _background_thread{};
+  int _nranks;
   bool _stop = false;
 };
 
 class TCPServer {
  public:
   TCPServer() = default;
-  static std::unique_ptr<TCPServer> create(std::uint16_t port);
+  static std::unique_ptr<TCPServer> create(std::uint16_t port, int nranks);
 
  private:
   std::unique_ptr<MasterDaemon> _master_daemon;
@@ -97,6 +100,7 @@ class TCPStore : public Store {
   int64_t add(const std::string& key, int64_t value) override;
   std::vector<uint8_t> get(const std::string& key) override;
   void wait(const std::string& key) override;
+  void set(const std::string& key, const std::vector<uint8_t>& value) override;
 
  private:
   void waitWorkers();

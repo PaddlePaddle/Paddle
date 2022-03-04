@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/gather.h"
-#include "paddle/fluid/operators/scatter.h"
+#include "paddle/phi/kernels/funcs/gather.h"
+#include "paddle/phi/kernels/funcs/scatter.h"
 
 namespace paddle {
 namespace operators {
@@ -40,31 +40,32 @@ class GatherOpKernel : public framework::OpKernel<T> {
     // get axis from tensor
     if (ctx.HasInput("Axis")) {
       const Tensor *axis_tensor = ctx.Input<Tensor>("Axis");
-      const auto &axis_type =
-          framework::TransToProtoVarType(axis_tensor->dtype());
-      if (axis_type == framework::proto::VarType::INT32) {
+      const auto &axis_type = axis_tensor->dtype();
+      if (axis_type == phi::DataType::INT32) {
         axis = static_cast<int>(axis_tensor->data<int32_t>()[0]);
-      } else if (axis_type == framework::proto::VarType::INT64) {
+      } else if (axis_type == phi::DataType::INT64) {
         axis = static_cast<int>(axis_tensor->data<int64_t>()[0]);
       }
     }
-    const auto &place = ctx.GetPlace();
-    const auto &index_type = framework::TransToProtoVarType(index->dtype());
+    const auto &index_type = index->dtype();
+    auto &dev_ctx = ctx.template device_context<phi::CPUContext>();
     if (axis != 0) {
-      if (index_type == framework::proto::VarType::INT32) {
-        GatherV2Function<T, int32_t>(x, index, axis, output, place);
-      } else if (index_type == framework::proto::VarType::INT64) {
-        GatherV2Function<T, int64_t>(x, index, axis, output, place);
+      if (index_type == phi::DataType::INT32) {
+        phi::funcs::GatherV2Function<T, int32_t>(dev_ctx, x, index, axis,
+                                                 output);
+      } else if (index_type == phi::DataType::INT64) {
+        phi::funcs::GatherV2Function<T, int64_t>(dev_ctx, x, index, axis,
+                                                 output);
       }
       return;
     }
 
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
-    if (index_type == framework::proto::VarType::INT32) {
-      CPUGather<T, int>(ctx.device_context(), *x, *index, output);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      CPUGather<T, int64_t>(ctx.device_context(), *x, *index, output);
+    if (index_type == phi::DataType::INT32) {
+      phi::funcs::CPUGather<T, int>(dev_ctx, *x, *index, output);
+    } else if (index_type == phi::DataType::INT64) {
+      phi::funcs::CPUGather<T, int64_t>(dev_ctx, *x, *index, output);
     }
   }
 };
@@ -84,44 +85,45 @@ class GatherGradientOpKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("Axis")) {
       const Tensor *axis_tensor = ctx.Input<Tensor>("Axis");
-      const auto &axis_type =
-          framework::TransToProtoVarType(axis_tensor->dtype());
-      if (axis_type == framework::proto::VarType::INT32) {
+      const auto &axis_type = axis_tensor->dtype();
+      if (axis_type == phi::DataType::INT32) {
         axis = static_cast<int>(axis_tensor->data<int32_t>()[0]);
-      } else if (axis_type == framework::proto::VarType::INT64) {
+      } else if (axis_type == phi::DataType::INT64) {
         axis = static_cast<int>(axis_tensor->data<int64_t>()[0]);
       }
     }
-    const auto &index_type = framework::TransToProtoVarType(index->dtype());
+    const auto &index_type = index->dtype();
+    auto &dev_ctx = ctx.template device_context<phi::CPUContext>();
 
     if (axis != 0) {
-      if (index_type == framework::proto::VarType::INT32) {
-        GatherV2GradFunction<T, int32_t>(dO, index, axis, dX, ctx.GetPlace());
-      } else if (index_type == framework::proto::VarType::INT64) {
-        GatherV2GradFunction<T, int64_t>(dO, index, axis, dX, ctx.GetPlace());
+      if (index_type == phi::DataType::INT32) {
+        phi::funcs::GatherV2GradFunction<T, int32_t>(dev_ctx, dO, index, axis,
+                                                     dX);
+      } else if (index_type == phi::DataType::INT64) {
+        phi::funcs::GatherV2GradFunction<T, int64_t>(dev_ctx, dO, index, axis,
+                                                     dX);
       }
       return;
     }
 
     dX->mutable_data<T>(ctx.GetPlace());
     auto dxt = framework::EigenVector<T>::Flatten(*dX);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
+    auto &place = *dev_ctx.eigen_device();
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
     bool overwrite = ctx.Attr<bool>("overwrite");
 
-    if (index_type == framework::proto::VarType::INT32) {
+    if (index_type == phi::DataType::INT32) {
       if (overwrite) {
-        ScatterAssign<T, int32_t>(ctx.device_context(), *dO, *index, dX);
+        phi::funcs::ScatterAssign<T, int32_t>(dev_ctx, *dO, *index, dX);
       } else {
-        ScatterAssignAdd<T, int32_t>(ctx, *dO, *index, dX);
+        phi::funcs::ScatterAssignAdd<T, int32_t>(dev_ctx, *dO, *index, dX);
       }
-    } else if (index_type == framework::proto::VarType::INT64) {
+    } else if (index_type == phi::DataType::INT64) {
       if (overwrite) {
-        ScatterAssign<T, int64_t>(ctx.device_context(), *dO, *index, dX);
+        phi::funcs::ScatterAssign<T, int64_t>(dev_ctx, *dO, *index, dX);
       } else {
-        ScatterAssignAdd<T, int64_t>(ctx, *dO, *index, dX);
+        phi::funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, *dO, *index, dX);
       }
     }
   }
