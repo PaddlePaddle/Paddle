@@ -30,8 +30,6 @@
 #include <memory>
 #include <mutex>  // NOLINT
 
-#include "paddle/fluid/platform/enforce.h"
-
 namespace phi {
 
 namespace stream {
