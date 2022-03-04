@@ -749,7 +749,8 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
                                                              pre_attr)
             dist_param_dict[var_name] = complete_param
         else:
-            dist_param_dict[var_name] = pre_param[0]
+            complete_param = pre_param[0]
+            dist_param_dict[var_name] = complete_param
 
         if len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping:
             sliced_param = _slice_parameter_with_dist_attr(complete_param,
