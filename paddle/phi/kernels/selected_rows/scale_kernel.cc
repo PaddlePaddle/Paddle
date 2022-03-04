@@ -12,21 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/scale_kernel.h"
+#include "paddle/phi/kernels/selected_rows/scale_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
-void ScaleSR(const Context& dev_ctx,
-             const SelectedRows& x,
-             const Scalar& scale,
-             float bias,
-             bool bias_after_scale,
-             SelectedRows* out) {
+void ScaleKernel(const Context& dev_ctx,
+                 const SelectedRows& x,
+                 const Scalar& scale,
+                 float bias,
+                 bool bias_after_scale,
+                 SelectedRows* out) {
   if (x.value().Holder() != out->value().Holder() ||
       x.value().data() != out->value().data()) {
     out->set_rows(x.rows());
@@ -36,12 +38,13 @@ void ScaleSR(const Context& dev_ctx,
       dev_ctx, x.value(), scale, bias, bias_after_scale, out->mutable_value());
 }
 
+}  // namespace sr
 }  // namespace phi
 
 PD_REGISTER_KERNEL(scale_sr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ScaleSR,
+                   phi::sr::ScaleKernel,
                    float,
                    double,
                    phi::dtype::bfloat16,
@@ -55,7 +58,7 @@ PD_REGISTER_KERNEL(scale_sr,
 PD_REGISTER_KERNEL(scale_sr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ScaleSR,
+                   phi::sr::ScaleKernel,
                    float,
                    double,
                    phi::dtype::float16,
