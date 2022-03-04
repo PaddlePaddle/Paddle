@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/fused/cudnn_norm_conv.cu.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
@@ -29,10 +30,10 @@ namespace platform = paddle::platform;
 namespace op = paddle::operators;
 using Tensor = paddle::framework::Tensor;
 
-USE_OP(conv2d);
-USE_OP(conv2d_grad);
-USE_OP_DEVICE_KERNEL(conv2d, CUDNN);
-USE_OP_DEVICE_KERNEL(conv2d_grad, CUDNN);
+USE_OP_ITSELF(conv2d);
+USE_OP_ITSELF(conv2d_grad);
+PD_DECLARE_KERNEL(conv2d, GPUDNN, ALL_LAYOUT);
+PD_DECLARE_KERNEL(conv2d_grad, GPUDNN, ALL_LAYOUT);
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
