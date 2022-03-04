@@ -185,17 +185,17 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
         attr_name == "op_role" || attr_name == "op_role_var" ||
         attr_name == "op_namescope" || attr_name == "op_callstack" ||
         attr_name == "op_device") {
-      VLOG(6) << "Parse PhiKernel attribute: skip needless attr - "
-              << attr_name;
+      VLOG(10) << "Parse PhiKernel attribute: skip needless attr - "
+               << attr_name;
       continue;
     }
     if ((attr.has_extra() && attr.extra()) ||
         (attr.has_quant() && attr.quant())) {
-      VLOG(6) << "Parse PhiKernel attribute: skip extra & quant attr - "
-              << attr_name;
+      VLOG(10) << "Parse PhiKernel attribute: skip extra & quant attr - "
+               << attr_name;
       continue;
     }
-    VLOG(6) << "Parse PhiKernel attribute: " << attr_name;
+    VLOG(10) << "Parse PhiKernel attribute: " << attr_name;
     attr_names_.emplace_back(attr_name);
   }
 
