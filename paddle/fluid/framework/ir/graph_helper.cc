@@ -603,9 +603,9 @@ static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(
   for (const auto *op_desc : block_ops) {
     size_t op_idx = op_id_to_idx.size();
     PADDLE_ENFORCE_EQ(
-        op_id_to_idx.emplace(op_desc->Id(), op_idx).second, true,
+        op_id_to_idx.emplace(op_desc->OriginalId(), op_idx).second, true,
         platform::errors::InvalidArgument(
-            "There should not be duplicate op id: %d", op_desc->Id()));
+            "There should not be duplicate op id: %d", op_desc->OriginalId()));
   }
 
   std::vector<std::vector<ir::Node::Dep>> dep_matrix(op_num);
@@ -624,9 +624,9 @@ static std::vector<std::vector<ir::Node::Dep>> GetOpDependencies(
 
   for (const auto &pair : all_preceding_ops) {
     const auto *cur_op_node = pair.first;
-    size_t op_idx_1 = get_op_idx_by_id(cur_op_node->Op()->Id());
+    size_t op_idx_1 = get_op_idx_by_id(cur_op_node->Op()->OriginalId());
     for (const auto *preceding_op_node : pair.second) {
-      size_t op_idx_2 = get_op_idx_by_id(preceding_op_node->Op()->Id());
+      size_t op_idx_2 = get_op_idx_by_id(preceding_op_node->Op()->OriginalId());
       dep_matrix[op_idx_1][op_idx_2] = ir::Node::Dep::kAfter;
       dep_matrix[op_idx_2][op_idx_1] = ir::Node::Dep::kBefore;
     }

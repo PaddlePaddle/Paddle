@@ -33,7 +33,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be no less "
                 "than 0. But recieved: shape[%u] = %d; shape = [%s].",
-                i, shape[i], framework::make_ddim(shape)));
+                i, shape[i], phi::make_ddim(shape)));
       }
     }
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
@@ -43,11 +43,11 @@ class FillConstantOp : public framework::OperatorWithKernel {
         num_ele *= shape_dims[i];
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
-      ctx->SetOutputDim("Out", framework::make_ddim(vec_dims));
+      ctx->SetOutputDim("Out", phi::make_ddim(vec_dims));
 
       return;
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(shape));
   }
 
  protected:
@@ -98,29 +98,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
     }
 
     return kt;
-  }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext& ctx) const override {
-    std::string shape;
-    if (ctx.HasInput("ShapeTensor")) {
-      shape = "ShapeTensor";
-    } else if (ctx.MultiInput<framework::Tensor>("ShapeTensorList").size()) {
-      shape = "ShapeTensorList";
-    } else {
-      shape = "shape";
-    }
-    std::string value;
-    if (ctx.HasInput("ValueTensor")) {
-      value = "ValueTensor";
-    } else {
-      const auto& str_value = ctx.Attr<std::string>("str_value");
-      value = str_value.empty() ? "value" : "str_value";
-    }
-    if (!ctx.OutputVar("Out")->IsType<framework::SelectedRows>()) {
-      return framework::KernelSignature("full", {}, {shape, value}, {"Out"});
-    }
-    return framework::KernelSignature("fill_constant.unregistered", {}, {}, {});
   }
 };
 
@@ -200,16 +177,6 @@ REGISTER_OPERATOR(
     ops::FillConstantOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    fill_constant, ops::FillConstantKernel<float>,
-    ops::FillConstantKernel<double>, ops::FillConstantKernel<uint8_t>,
-    ops::FillConstantKernel<int16_t>, ops::FillConstantKernel<int>,
-    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<bool>,
-    ops::FillConstantKernel<paddle::platform::float16>,
-    ops::FillConstantKernel<paddle::platform::bfloat16>,
-    ops::FillConstantKernel<paddle::platform::complex<float>>,
-    ops::FillConstantKernel<paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(fill_constant)
     .AddCheckpoint(

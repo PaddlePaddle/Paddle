@@ -18,220 +18,79 @@ import numpy as np
 import unittest
 import sys
 sys.path.append("..")
+
+import paddle
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-
-from paddle.fluid import ParamAttr
-from paddle.fluid.framework import Program, grad_var_name
-from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
 
-class TestArgsortOp(XPUOpTest):
-    def setUp(self):
-        self.set_xpu()
-        self.op_type = "argsort"
-        self.place = paddle.XPUPlace(0)
-        self.init_dtype()
-        self.init_inputshape()
-        self.init_axis()
-        self.init_direction()
+class XPUTestArgsortOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'argsort'
+        self.use_dynamic_create_class = True
 
-        self.x = np.random.random(self.input_shape).astype(self.dtype)
-        self.inputs = {"X": self.x}
-        self.attrs = {"axis": self.axis, "descending": self.descending}
-        self.get_output()
-        self.outputs = {"Out": self.sorted_x, "Indices": self.indices}
+    def dynamic_create_class(self):
+        base_class = self.TestArgsortOp
+        classes = []
+        for descending in [True, False]:
+            for axis in [0, 1, 2, -1, -2]:
+                class_name = 'XPUTestArgsortOp_axis_' + str(axis) + '_' + str(
+                    descending)
+                attr_dict = {'init_axis': axis, 'init_descending': descending}
+                classes.append([class_name, attr_dict])
+        return base_class, classes
 
-    def get_output(self):
-        if self.descending:
-            self.indices = np.flip(
-                np.argsort(
-                    self.x, kind='heapsort', axis=self.axis), self.axis)
-            self.sorted_x = np.flip(
-                np.sort(
-                    self.x, kind='heapsort', axis=self.axis), self.axis)
-        else:
-            self.indices = np.argsort(self.x, kind='heapsort', axis=self.axis)
-            self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
+    class TestArgsortOp(XPUOpTest):
+        def setUp(self):
+            self.set_xpu()
+            self.op_type = "argsort"
+            self.place = paddle.XPUPlace(0)
+            self.dtype = self.in_type
+            self.input_shape = (2, 2, 2, 3, 3)
+            self.axis = -1 if not hasattr(self, 'init_axis') else self.init_axis
+            self.descending = False if not hasattr(
+                self, 'init_descending') else self.init_descending
 
-    def set_xpu(self):
-        self.__class__.use_xpu = True
-        self.__class__.no_need_check_grad = True
+            if self.dtype == np.float32:
+                self.x = np.random.random(self.input_shape).astype(self.dtype)
+            else:
+                self.x = np.random.randint(
+                    low=-1000, high=1000,
+                    size=self.input_shape).astype(self.dtype)
 
-    def init_inputshape(self):
-        self.input_shape = (2, 2, 2, 3, 3)
+            self.inputs = {"X": self.x}
+            self.attrs = {"axis": self.axis, "descending": self.descending}
+            self.get_output()
+            self.outputs = {"Out": self.sorted_x, "Indices": self.indices}
 
-    def init_dtype(self):
-        self.dtype = 'float32'
+        def get_output(self):
+            if self.descending:
+                self.indices = np.flip(
+                    np.argsort(
+                        self.x, kind='heapsort', axis=self.axis),
+                    self.axis)
+                self.sorted_x = np.flip(
+                    np.sort(
+                        self.x, kind='heapsort', axis=self.axis), self.axis)
+            else:
+                self.indices = np.argsort(
+                    self.x, kind='heapsort', axis=self.axis)
+                self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
 
-    def init_axis(self):
-        self.axis = -1
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place)
-
-    def init_direction(self):
-        self.descending = False
-
-
-class TestArgsortOpAxis0XPU(TestArgsortOp):
-    def init_axis(self):
-        self.axis = 0
-
-
-class TestArgsortOpAxis1XPU(TestArgsortOp):
-    def init_axis(self):
-        self.axis = 1
-
-
-class TestArgsortOpAxis2XPU(TestArgsortOp):
-    def init_axis(self):
-        self.axis = 2
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
 
 
-class TestArgsortOpAxisNeg1XPU(TestArgsortOp):
-    def init_axis(self):
-        self.axis = -1
-
-
-class TestArgsortOpAxisNeg2XPU(TestArgsortOp):
-    def init_axis(self):
-        self.axis = -2
-
-
-class TestArgsortOpDescendingAxisXPU(TestArgsortOp):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxis0XPU(TestArgsortOpAxis0XPU):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxis1XPU(TestArgsortOpAxis1XPU):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxis2XPU(TestArgsortOpAxis2XPU):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxisNeg1XPU(TestArgsortOpAxisNeg1XPU):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxisNeg2XPU(TestArgsortOpAxisNeg2XPU):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpAxis0XPUINT64(TestArgsortOp):
-    def setUp(self):
-        self.set_xpu()
-        self.op_type = "argsort"
-        self.place = paddle.XPUPlace(0)
-        self.init_dtype()
-        self.init_inputshape()
-        self.init_axis()
-        self.init_direction()
-
-        self.x = np.random.randint(
-            low=-1000, high=1000, size=self.input_shape).astype(self.dtype)
-        self.inputs = {"X": self.x}
-        self.attrs = {"axis": self.axis, "descending": self.descending}
-        self.get_output()
-        self.outputs = {"Out": self.sorted_x, "Indices": self.indices}
-
-    def init_axis(self):
-        self.axis = 0
-
-    def init_dtype(self):
-        self.dtype = 'int64'
-
-
-class TestArgsortOpAxis1XPUINT64(TestArgsortOpAxis0XPUINT64):
-    def init_axis(self):
-        self.axis = 1
-
-
-class TestArgsortOpAxis2XPUINT64(TestArgsortOpAxis0XPUINT64):
-    def init_axis(self):
-        self.axis = 2
-
-
-class TestArgsortOpAxisNeg1XPUINT64(TestArgsortOpAxis0XPUINT64):
-    def init_axis(self):
-        self.axis = -1
-
-
-class TestArgsortOpAxisNeg2XPUINT64(TestArgsortOpAxis0XPUINT64):
-    def init_axis(self):
-        self.axis = -2
-
-
-class TestArgsortOpDescendingAxisXPUINT64(TestArgsortOpAxis0XPUINT64):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxis0XPUINT64(TestArgsortOpAxis0XPUINT64):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxis1XPUINT64(TestArgsortOpAxis1XPUINT64):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxis2XPUINT64(TestArgsortOpAxis2XPUINT64):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxisNeg1XPUINT64(TestArgsortOpAxisNeg1XPUINT64):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpDescendingAxisNeg2XPUINT64(TestArgsortOpAxisNeg2XPUINT64):
-    def init_direction(self):
-        self.descending = True
-
-
-class TestArgsortOpAxis0XPUINT(TestArgsortOp):
-    def setUp(self):
-        self.set_xpu()
-        self.op_type = "argsort"
-        self.place = paddle.XPUPlace(0)
-        self.init_dtype()
-        self.init_inputshape()
-        self.init_axis()
-        self.init_direction()
-
-        self.x = np.random.randint(
-            low=-1000, high=1000, size=self.input_shape).astype(self.dtype)
-        self.inputs = {"X": self.x}
-        self.attrs = {"axis": self.axis, "descending": self.descending}
-        self.get_output()
-        self.outputs = {"Out": self.sorted_x, "Indices": self.indices}
-
-    def init_axis(self):
-        self.axis = 0
-
-    def init_dtype(self):
-        self.dtype = 'int'
-
+support_types = get_xpu_op_support_types('argsort')
+for stype in support_types:
+    create_test_class(globals(), XPUTestArgsortOp, stype)
 
 if __name__ == '__main__':
     unittest.main()

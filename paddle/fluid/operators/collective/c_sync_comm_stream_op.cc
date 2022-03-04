@@ -24,6 +24,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
 #endif
 
+#if defined(PADDLE_WITH_CNCL)
+#include "paddle/fluid/platform/device/mlu/cncl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -81,6 +85,16 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
         platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
     platform::NPUStreamSync(stream);
 
+#elif defined(PADDLE_WITH_CNCL)
+    auto place = ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(platform::is_mlu_place(place), true,
+                      platform::errors::PreconditionNotMet(
+                          "Sync stream op can run on mlu place only for now."));
+    int ring_id = ctx.Attr<int>("ring_id");
+    auto stream =
+        platform::CNCLCommContext::Instance().Get(ring_id, place)->stream();
+    platform::MLUStreamSync(stream);
+
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
@@ -99,3 +113,5 @@ REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream, ops::CSyncCommStreamOp,
 REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
 
 REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+
+REGISTER_OP_MLU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);

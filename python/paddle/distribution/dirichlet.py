@@ -22,23 +22,37 @@ from .exponential_family import ExponentialFamily
 
 class Dirichlet(ExponentialFamily):
     r"""
-    Dirichlet distribution with parameter concentration
+    Dirichlet distribution with parameter "concentration".
 
     The Dirichlet distribution is defined over the `(k-1)-simplex` using a 
     positive, lenght-k vector concentration(`k > 1`).
     The Dirichlet is identically the Beta distribution when `k = 2`.
 
+    For independent and identically distributed continuous random variable 
+    :math:`\boldsymbol X \in R_k` , and support 
+    :math:`\boldsymbol X \in (0,1), ||\boldsymbol X|| = 1` , 
     The probability density function (pdf) is
 
     .. math::
+    
+        f(\boldsymbol X; \boldsymbol \alpha) = \frac{1}{B(\boldsymbol \alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1} 
 
-        f(x_1,...,x_k; \alpha_1,...,\alpha_k) = \frac{1}{B(\alpha)} \prod_{i=1}^{k}x_i^{\alpha_i-1} 
+    where :math:`\boldsymbol \alpha = {\alpha_1,...,\alpha_k}, k \ge 2` is 
+    parameter, the normalizing constant is the multivariate beta function.
 
-    The normalizing constant is the multivariate beta function.
+    .. math::
+
+        B(\boldsymbol \alpha) = \frac{\prod_{i=1}^{k} \Gamma(\alpha_i)}{\Gamma(\alpha_0)}
+
+    :math:`\alpha_0=\sum_{i=1}^{k} \alpha_i` is the sum of parameters, 
+    :math:`\Gamma(\alpha)` is gamma function.
 
     Args:
-        concentration (Tensor): concentration parameter of dirichlet 
-            distribution
+        concentration (Tensor): "Concentration" parameter of dirichlet 
+            distribution, also called :math:`\alpha`. When it's over one 
+            dimension, the last axis denotes the parameter of distribution,
+            ``event_shape=concentration.shape[-1:]`` , axes other than last are
+            condsider batch dimensions with ``batch_shape=concentration.shape[:-1]`` .
 
     Examples:
 
@@ -68,59 +82,59 @@ class Dirichlet(ExponentialFamily):
 
     @property
     def mean(self):
-        """mean of Dirichelt distribution.
+        """Mean of Dirichelt distribution.
 
         Returns:
-            mean value of distribution.
+            Mean value of distribution.
         """
         return self.concentration / self.concentration.sum(-1, keepdim=True)
 
     @property
     def variance(self):
-        """variance of Dirichlet distribution.
+        """Variance of Dirichlet distribution.
 
         Returns:
-            variance value of distribution.
+            Variance value of distribution.
         """
         concentration0 = self.concentration.sum(-1, keepdim=True)
         return (self.concentration * (concentration0 - self.concentration)) / (
             concentration0.pow(2) * (concentration0 + 1))
 
     def sample(self, shape=()):
-        """sample from dirichlet distribution.
+        """Sample from dirichlet distribution.
 
         Args:
-            shape (Sequence[int], optional): sample shape. Defaults to empty tuple.
+            shape (Sequence[int], optional): Sample shape. Defaults to empty tuple.
         """
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         return _dirichlet(self.concentration.expand(self._extend_shape(shape)))
 
     def prob(self, value):
-        """Probability density function(pdf) evaluated at value.
+        """Probability density function(PDF) evaluated at value.
 
         Args:
-            value (Tensor): value to be evaluated.
+            value (Tensor): Value to be evaluated.
 
         Returns:
-            pdf evaluated at value.
+            PDF evaluated at value.
         """
         return paddle.exp(self.log_prob(value))
 
     def log_prob(self, value):
-        """log of probability densitiy function.
+        """Log of probability densitiy function.
 
         Args:
-            value (Tensor): value to be evaluated.
+            value (Tensor): Value to be evaluated.
         """
         return ((paddle.log(value) * (self.concentration - 1.0)
                  ).sum(-1) + paddle.lgamma(self.concentration.sum(-1)) -
                 paddle.lgamma(self.concentration).sum(-1))
 
     def entropy(self):
-        """entropy of Dirichlet distribution.
+        """Entropy of Dirichlet distribution.
 
         Returns:
-            entropy of distribution.
+            Entropy of distribution.
         """
         concentration0 = self.concentration.sum(-1)
         k = self.concentration.shape[-1]

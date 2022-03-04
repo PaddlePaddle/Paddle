@@ -13,13 +13,14 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/imperative/bkcl_context.h"
 
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -41,8 +42,9 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
 
   const void *src_ptr = src.data();
   dst->Resize(src.dims());
-  auto *dst_ptr = dst->mutable_data(src.place(), src.type());
-  auto bkcl_dtype = platform::ToBKCLDataType(src.type());
+  auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
+  auto bkcl_dtype =
+      platform::ToBKCLDataType(framework::TransToProtoVarType(src.dtype()));
 
   PADDLE_ENFORCE_EQ(bkcl_all_reduce(comm->comm(), src_ptr, dst_ptr, src.numel(),
                                     bkcl_dtype, BKCL_ADD, stream),
@@ -159,7 +161,8 @@ void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   XPUStream stream = comm->stream();
 
   void *src_ptr = src_tensor->data();
-  auto data_type = platform::ToBKCLDataType(src_tensor->type());
+  auto data_type = platform::ToBKCLDataType(
+      framework::TransToProtoVarType(src_tensor->dtype()));
 
   PADDLE_ENFORCE_EQ(bkcl_broadcast(comm->comm(), src_ptr, src_ptr,
                                    src_tensor->numel(), data_type, 0, stream),

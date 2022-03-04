@@ -16,6 +16,7 @@ limitations under the License. */
 
 // NOTE(): support float16 to half in header file.
 #define PADDLE_CUDA_FP16
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -60,6 +61,14 @@ __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
 }
 
 template <>
+__forceinline__ __device__ bfloat16 CudaShuffleDownSync(unsigned mask,
+                                                        bfloat16 val, int delta,
+                                                        int width) {
+  return bfloat16(__shfl_down(static_cast<float>(val),
+                              static_cast<unsigned>(delta), width));
+}
+
+template <>
 __forceinline__ __device__ paddle::platform::complex<float> CudaShuffleDownSync(
     unsigned mask, paddle::platform::complex<float> val, int delta, int width) {
   float real = __shfl_down(val.real, delta, width);
@@ -80,6 +89,13 @@ template <>
 __forceinline__ __device__ float16 CudaShuffleXorSync(unsigned mask,
                                                       float16 val, int width) {
   return float16(__shfl_xor(static_cast<float>(val), width));
+}
+
+template <>
+__forceinline__ __device__ bfloat16 CudaShuffleXorSync(unsigned mask,
+                                                       bfloat16 val,
+                                                       int width) {
+  return bfloat16(__shfl_xor(static_cast<float>(val), width));
 }
 
 template <>

@@ -57,6 +57,7 @@ REGISTER_OP_WITHOUT_GRADIENT(where_index, ops::WhereIndexOp,
                              ops::WhereIndexOpMaker);
 REGISTER_OP_CPU_KERNEL(where_index, ops::CPUWhereIndexKernel<int64_t>,
                        ops::CPUWhereIndexKernel<int>,
+                       ops::CPUWhereIndexKernel<int16_t>,
                        ops::CPUWhereIndexKernel<bool>,
                        ops::CPUWhereIndexKernel<float>,
                        ops::CPUWhereIndexKernel<double>);

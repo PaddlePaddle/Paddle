@@ -68,7 +68,7 @@ class TileNPUKernel : public framework::OpKernel<T> {
               "be positive integers, but the value received is %d.",
               repeat_times[i]));
     }
-    auto vec_in_dims = framework::vectorize<int>(in_dims);
+    auto vec_in_dims = phi::vectorize<int>(in_dims);
     if (repeat_times.size() < vec_in_dims.size()) {
       int diff = vec_in_dims.size() - repeat_times.size();
       repeat_times.insert(repeat_times.begin(), diff, 1);
@@ -84,7 +84,7 @@ class TileNPUKernel : public framework::OpKernel<T> {
             vec_in_dims.size(), repeat_times.size()));
     auto* out0 = context.Output<framework::Tensor>("Out");
 
-    framework::DDim new_in_dims = framework::make_ddim(vec_in_dims);
+    framework::DDim new_in_dims = phi::make_ddim(vec_in_dims);
     framework::DDim out_dims(new_in_dims);
 
     for (size_t i = 0; i < repeat_times.size(); ++i) {

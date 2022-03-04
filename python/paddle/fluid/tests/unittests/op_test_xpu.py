@@ -78,7 +78,8 @@ class XPUOpTest(OpTest):
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=True,
-                                inplace_atol=None):
+                                inplace_atol=None,
+                                check_eager=False):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         #xpu not support float64
         if self.dtype == np.float64:
@@ -105,7 +106,8 @@ class XPUOpTest(OpTest):
                               user_defined_grads=None,
                               user_defined_grad_outputs=None,
                               check_dygraph=True,
-                              numeric_place=None):
+                              numeric_place=None,
+                              check_eager=False):
         if place == None:
             place = paddle.XPUPlace(0)
 
@@ -191,11 +193,6 @@ class XPUOpTest(OpTest):
 
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
-            tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
-            tensor_size = six.moves.reduce(lambda a, b: a * b,
-                                           tensor_to_check.shape(), 1)
-            if tensor_size < 100:
-                self.__class__.input_shape_is_large = False
 
         if not type(output_names) is list:
             output_names = [output_names]

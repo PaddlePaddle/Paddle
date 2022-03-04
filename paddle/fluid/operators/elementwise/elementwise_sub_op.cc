@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
@@ -78,9 +76,15 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, Sub);
 
 namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(elementwise_sub, ::paddle::operators::ElementwiseOp,
+                  ::paddle::operators::ElementwiseSubOpMaker,
+                  ::paddle::operators::ElementwiseOpInferVarType,
+                  elementwise_subGradMaker<::paddle::framework::OpDesc>,
+                  elementwise_subGradMaker<::paddle::imperative::OpBase>,
+                  ::paddle::operators::ElementwiseOpInplaceInferer);
 
 REGISTER_OPERATOR(
     elementwise_sub_grad, ops::ElementwiseOpGrad,
@@ -91,41 +95,6 @@ REGISTER_OPERATOR(elementwise_sub_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,
                   ops::ElementwiseDoubleGradOpInplaceInferer,
                   ops::ElementwiseDoubleGradNoBufVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub_grad,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub_grad_grad,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_sub)
     .AddCheckpoint(

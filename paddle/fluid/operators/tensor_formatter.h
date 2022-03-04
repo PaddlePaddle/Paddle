@@ -18,9 +18,9 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/var_type.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace operators {

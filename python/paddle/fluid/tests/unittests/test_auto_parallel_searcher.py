@@ -154,7 +154,7 @@ class TestMLPSearcher(unittest.TestCase):
         ops = train_program.global_block().ops
         vars = train_program.global_block().vars
         from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container
-        from paddle.distributed.auto_parallel.completion import is_elementwise_like_op
+        from paddle.distributed.auto_parallel.operators.common import is_elementwise_op
         from paddle.distributed.auto_parallel.dist_op import DistributedOperator
 
         for op in ops:
@@ -163,7 +163,7 @@ class TestMLPSearcher(unittest.TestCase):
             if dist_op_impl_container is None:
                 op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
                 dist_op = DistributedOperator(op, op_dist_attr)
-                if is_elementwise_like_op(op.type):
+                if is_elementwise_op(op.type):
                     changed = update_op_dims_mapping_by_elementwise_like_dist_impl(
                         dist_op)
                     self.assertFalse(changed)

@@ -14,18 +14,19 @@
 
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 void BroadcastOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
-
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
   if (places_.size() == 1) return;
 
   // The input and output may have dummy vars.
@@ -87,7 +88,8 @@ void BroadcastOpHandle::BroadcastOneVar(
     int root_id = in_tensor.place().device;
     std::vector<std::function<void()>> broadcast_calls;
 
-    int type = platform::ToNCCLDataType(in_tensor.type());
+    int type = platform::ToNCCLDataType(
+        framework::TransToProtoVarType(in_tensor.dtype()));
     size_t numel = static_cast<size_t>(in_tensor.numel());
 
     for (auto out_var_handle : out_var_handles) {
@@ -147,7 +149,8 @@ void BroadcastOpHandle::BroadcastOneVar(
     int root_id = in_tensor.place().device;
     std::vector<std::function<void()>> broadcast_calls;
 
-    int type = platform::ToBKCLDataType(in_tensor.type());
+    int type = platform::ToBKCLDataType(
+        framework::TransToProtoVarType(in_tensor.dtype()));
     size_t numel = static_cast<size_t>(in_tensor.numel());
 
     for (auto out_var_handle : out_var_handles) {
@@ -239,7 +242,7 @@ void BroadcastOpHandle::InitOutputValue(
     }
     VariableVisitor::ShareDimsAndLoD(*in_var, out_var);
     VariableVisitor::GetMutableTensor(out_var).mutable_data(t_out_p,
-                                                            in_tensor.type());
+                                                            in_tensor.dtype());
   }
 }
 

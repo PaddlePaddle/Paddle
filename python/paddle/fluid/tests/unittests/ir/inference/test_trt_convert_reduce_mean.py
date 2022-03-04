@@ -36,26 +36,32 @@ class TrtConvertReduceMeanTest(TrtLayerAutoScanTest):
                 return False
         if len(attrs[0]["dim"]) == 0:
             return False
-        ## skip not use 
-        if attrs[0]["out_dtype"] != -1:
-            return False
+
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
+            if attrs[0]['out_dtype'] == 2:
+                return False
 
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 3, 64, 64]).astype(np.float32)
+        def generate_input1(dtype, attrs: List[Dict[str, Any]]):
+            if dtype == -1 or dtype == 5:
+                return np.random.random([1, 3, 64, 64]).astype(np.float32)
+            elif dtype == 2:
+                return np.random.random([1, 3, 64, 64]).astype(np.int32)
 
-        for keep_dim in [False, True]:
+        for keep_dim in [True, False]:
             for dim in [[], [1], [0], [0, 1], [1, 2, 3], [-2, 0, 3], [-3],
                         [-4, 1], [3, 4, 5]]:
-                for reduce_all in [False, True]:
-                    for out_dtype in [-1, 0, 1]:
+                for reduce_all in [True, False]:
+                    for out_dtype in [-1, 2, 5]:
                         dics = [{
                             "keep_dim": keep_dim,
                             "dim": dim,
                             "reduce_all": reduce_all,
-                            "out_dtype": out_dtype
+                            "out_dtype": out_dtype,
+                            "in_dtype": out_dtype,
                         }, {}]
 
                         ops_config = [{
@@ -75,7 +81,7 @@ class TrtConvertReduceMeanTest(TrtLayerAutoScanTest):
                             weights={},
                             inputs={
                                 "input_data": TensorConfig(data_gen=partial(
-                                    generate_input1, dics))
+                                    generate_input1, out_dtype, dics))
                             },
                             outputs=["reduce_output_data"])
 
@@ -134,16 +140,6 @@ class TrtConvertReduceMeanTest(TrtLayerAutoScanTest):
         pass
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['out_dtype'] != -1:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "NOT Implemented: we will add out_dtype not equal to  -1 in the future"
-        )
-
         pass
 
     def test(self):

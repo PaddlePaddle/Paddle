@@ -45,6 +45,7 @@ using reg32_t = const Xbyak::Reg32;
 using xmm_t = const Xbyak::Xmm;
 using ymm_t = const Xbyak::Ymm;
 using zmm_t = const Xbyak::Zmm;
+using opmask_t = const Xbyak::Opmask;
 using Label = Xbyak::Label;
 
 typedef enum {

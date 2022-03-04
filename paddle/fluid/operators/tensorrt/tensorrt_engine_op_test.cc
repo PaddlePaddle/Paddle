@@ -33,10 +33,14 @@ void CreateCUDATensor(framework::Scope* scope, const std::string& name,
                       const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<framework::LoDTensor>();
-  auto dims = framework::make_ddim(shape);
+  auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(place, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
   inference::tensorrt::RandomizeTensor(tensor, place, ctx);
 }
 
@@ -133,6 +137,10 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   framework::Scope scope;
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(place, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
   // Prepare variables.
   if (allow_build_at_runtime)
     CreateCUDATensor(&scope, "x", std::vector<int64_t>({3, 4, 1, 1}));
@@ -159,6 +167,10 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   framework::Scope scope;
   platform::CUDAPlace place;
   platform::CUDADeviceContext ctx(place);
+  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                       .GetAllocator(place, ctx.stream())
+                       .get());
+  ctx.PartialInitWithAllocator();
 
   auto* block_ = program.Proto()->add_blocks();
   block_->set_idx(0);

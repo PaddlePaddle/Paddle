@@ -75,15 +75,15 @@ class LstsqOp : public framework::OperatorWithKernel {
             "but got x's row dimention [%d] and y's row dimention [%d]",
             x_dims[x_rank - 2], y_dims[y_rank - 2]));
 
-    ctx->SetOutputDim("Rank", framework::make_ddim(batch_dims_vec));
+    ctx->SetOutputDim("Rank", phi::make_ddim(batch_dims_vec));
 
     batch_dims_vec.emplace_back(
         std::min(x_dims[x_rank - 2], x_dims[x_rank - 1]));
-    ctx->SetOutputDim("SingularValues", framework::make_ddim(batch_dims_vec));
+    ctx->SetOutputDim("SingularValues", phi::make_ddim(batch_dims_vec));
 
     batch_dims_vec[x_rank - 2] = x_dims[x_rank - 1];
     batch_dims_vec.emplace_back(y_dims[x_rank - 1]);
-    ctx->SetOutputDim("Solution", framework::make_ddim(batch_dims_vec));
+    ctx->SetOutputDim("Solution", phi::make_ddim(batch_dims_vec));
   }
 
  protected:

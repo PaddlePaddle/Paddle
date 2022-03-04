@@ -18,9 +18,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
-#include "paddle/fluid/operators/math/sequence2batch.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/sequence2batch.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -35,7 +35,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "multi_gru");
   auto x_dims = ctx->GetInputDim("X");
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                        ? framework::flatten_to_2d(x_dims, 1)
+                        ? phi::flatten_to_2d(x_dims, 1)
                         : x_dims;
   PADDLE_ENFORCE_EQ(
       x_mat_dims.size(), 2,
