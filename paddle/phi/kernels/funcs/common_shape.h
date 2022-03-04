@@ -140,5 +140,30 @@ inline bool CheckDims(const DDim &dims_x, const DDim &dims_y) {
   return true;
 }
 
+inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
+  if (s_dims.size() > l_dims.size()) {
+    return GetOutputDims(l_dims, s_dims);
+  }
+  std::vector<int64_t> shapes = phi::vectorize<int64_t>(l_dims);
+  for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
+    int64_t s = s_dims[i];
+    int64_t l = l_dims[j];
+    if (s != l) {
+      if (l == 1) {
+        shapes[j] = s;
+      } else if (s != 1) {
+        PADDLE_THROW(errors::InvalidArgument(
+            "The shape of tensor a %s:%d must match shape of tensor b "
+            "%s:%d.",
+            s_dims.to_str(),
+            i,
+            l_dims.to_str(),
+            j));
+      }
+    }
+  }
+  return phi::make_ddim(shapes);
+}
+
 }  // namespace funcs
 }  // namespace phi

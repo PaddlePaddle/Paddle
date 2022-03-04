@@ -60,7 +60,7 @@ struct ReduceSumForMatmulGrad<GPUContext, T> {
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims) {
     auto stream = dev_ctx.stream();
-    kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+    funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         dev_ctx, input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
   }
 };

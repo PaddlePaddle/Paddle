@@ -17,6 +17,7 @@ limitations under the License. */
 #include <mutex>
 #include <random>
 #include <string>
+#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
@@ -27,7 +28,9 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 
 USE_OP(cinn_launch);
+USE_OP(cinn_instruction_run);
 USE_OP_ITSELF(elementwise_add);
+DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle::operators {
 
@@ -61,6 +64,7 @@ TEST(CinnLaunchOpTest, TestWithElementwiseAdd) {
     CompareOpResult<float>(scope.GetVar(test_op_out_name),
                            scope.GetVar(add_op_out_name));
   };
+  FLAGS_eager_delete_tensor_gb = -1;
 
   // CPU
   run_and_check_fn(platform::CPUPlace());
