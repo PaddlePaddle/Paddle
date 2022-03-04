@@ -23,13 +23,6 @@ limitations under the License. */
 #include "paddle/utils/any.h"
 #include "paddle/utils/optional.h"
 
-// Note: mixed_vector include many header now, LoD will be
-// used on CUDA device? Can we use small_vector here?
-// @zhanlve: Rollback to original LoD for now
-#ifndef PADDLE_WITH_CUSTOM_KERNEL
-#include "paddle/fluid/framework/mixed_vector.h"
-#endif
-
 namespace phi {
 
 using DDim = phi::DDim;

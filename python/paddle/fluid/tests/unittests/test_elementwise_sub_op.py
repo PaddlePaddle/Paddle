@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest, skip_check_grad_ci
+import paddle.fluid.core as core
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 
 
 class TestElementwiseOp(OpTest):
@@ -42,6 +43,33 @@ class TestElementwiseOp(OpTest):
     def test_check_grad_ingore_y(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+
+
+class TestBF16ElementwiseOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        y = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        out = x - y
+
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y)
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(

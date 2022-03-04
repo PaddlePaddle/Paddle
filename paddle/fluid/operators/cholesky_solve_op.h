@@ -203,7 +203,7 @@ class CholeskySolveGradKernel : public framework::OpKernel<T> {
       commonterm_conj = helper.Transpose(commonterm_conj);
 
       phi::AddRawKernel<T>(
-          static_cast<const typename paddle::framework::ConvertToPtenContext<
+          static_cast<const typename paddle::framework::ConvertToPhiContext<
               DeviceContext>::TYPE &>(dev_ctx),
           commonterm, commonterm_conj, -1, &commonterm);
 

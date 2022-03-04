@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scatter.h"
+#include "paddle/phi/kernels/funcs/scatter.h"
 
 #include <gtest/gtest.h>
 
@@ -43,7 +43,7 @@ TEST(scatter, ScatterUpdate) {
 
   auto* cpu_place = new paddle::platform::CPUPlace();
   paddle::platform::CPUDeviceContext ctx(*cpu_place);
-  paddle::operators::ScatterAssign<float>(ctx, src, index, &output);
+  phi::funcs::ScatterAssign<float>(ctx, src, index, &output);
 
   for (size_t i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], 0.0f);
   for (size_t i = 0; i < 4; ++i) EXPECT_EQ(output.data<float>()[i], 0.0f);
