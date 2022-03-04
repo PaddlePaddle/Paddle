@@ -13,12 +13,15 @@
 // limitations under the License.
 
 #pragma once
+#include <thrust/functional.h>
 #include <algorithm>
 #include <functional>
 #include <string>
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/hostdevice.h"
+
 namespace phi {
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
