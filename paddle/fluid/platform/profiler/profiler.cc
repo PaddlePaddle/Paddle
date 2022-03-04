@@ -25,6 +25,7 @@
 #endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
+#include "paddle/fluid/platform/profiler/executor_statistics.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
@@ -80,6 +81,7 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
     tracer.Get().StopTracing();
     tracer.Get().CollectTraceData(&collector);
   }
+  StatisticsHostEvents(collector);
   std::unique_ptr<NodeTrees> tree(new NodeTrees(collector.HostEvents(),
                                                 collector.RuntimeEvents(),
                                                 collector.DeviceEvents()));
