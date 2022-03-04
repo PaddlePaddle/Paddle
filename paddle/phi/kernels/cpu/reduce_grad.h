@@ -100,7 +100,7 @@ void ReduceGradKernel(const Context& dev_ctx,
         keep_dim,
         reduce_all,
         in_dtype,
-        out_grad,
+        out_dtype,
         x_grad);
   } else {
     ComputeFromInput<Context, T, Functor, kNoNeedBufferX, kNoNeedBufferY>(
@@ -113,7 +113,7 @@ void ReduceGradKernel(const Context& dev_ctx,
         keep_dim,
         reduce_all,
         in_dtype,
-        out_grad,
+        out_dtype,
         x_grad);
   }
 }

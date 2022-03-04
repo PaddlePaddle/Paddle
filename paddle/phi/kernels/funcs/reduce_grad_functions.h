@@ -63,6 +63,38 @@ void ReduceGradFunctor(const Context& dev_ctx,
 }
 
 template <typename Context, typename T, typename Functor>
+void HandleLargeDimGrad(const Context& dev_ctx,
+                        const DenseTensor* x,
+                        const DenseTensor* out,
+                        const DenseTensor* dout,
+                        DenseTensor* dx,
+                        Functor functor,
+                        const std::vector<int>& dims) {
+  const int64_t unreduced = out->numel();
+  const int64_t reduced = x->numel() / unreduced;
+  DDim out_dim(out->dims());
+  DDim x_dim(x->dims());
+  // transpose and reshape X
+  DenseTensor shuffled_x;
+  GetShuffledInput<Context, T>(dev_ctx, x, &shuffled_x, dims);
+  DDim shuffled_dim = shuffled_x.dims();
+  shuffled_x.Resize({unreduced, reduced});
+  // reshape dX {unreduced, reduced}
+  dx->Resize({unreduced, reduced});
+  ReduceGradFunctor<Context, T, 2, Functor>(
+      dev_ctx, shuffled_x, *out, *dout, dx, functor, {1});
+  // transpose dX
+  std::vector<int> origin_axis(x_dim.size());
+  GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
+  Tensor dx_tmp;
+  framework::TensorCopy(*dx, dev_ctx.GetPlace(), &dx_tmp);
+  dx_tmp.Resize(shuffled_dim);
+  dx->Resize(x_dim);
+  phi::funcs::TransposeNormal<Context, T> trans;
+  trans(dev_ctx.template device_context<Context>(), dx_tmp, dx, origin_axis);
+}
+
+template <typename Context, typename T, typename Functor>
 void LaunchReduceGradKernel(const Context& dev_ctx,
                             const DenseTensor* input0,
                             const DenseTensor* input1,
@@ -77,7 +109,7 @@ void LaunchReduceGradKernel(const Context& dev_ctx,
     auto x_reduce_grad = phi::EigenVector<T>::Flatten(*input2);
     auto x_grad = phi::EigenVector<T>::Flatten(*output);
     auto& place = *dev_ctx.eigen_device();
-    // *dev_ctx.template device_context<Context>().eigen_device();
+    // *dev_ctx.eigen_device();
     auto broadcast_dim =
         Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
     functor(place,
@@ -92,63 +124,27 @@ void LaunchReduceGradKernel(const Context& dev_ctx,
     switch (rank) {
       case 1:
         ReduceGradFunctor<Context, T, 1, Functor>(
-            dev_ctx.template device_context<Context>(),
-            *input0,
-            *input1,
-            *input2,
-            output,
-            functor,
-            dims);
+            dev_ctx, *input0, *input1, *input2, output, functor, dims);
         break;
       case 2:
         ReduceGradFunctor<Context, T, 2, Functor>(
-            dev_ctx.template device_context<Context>(),
-            *input0,
-            *input1,
-            *input2,
-            output,
-            functor,
-            dims);
+            dev_ctx, *input0, *input1, *input2, output, functor, dims);
         break;
       case 3:
         ReduceGradFunctor<Context, T, 3, Functor>(
-            dev_ctx.template device_context<Context>(),
-            *input0,
-            *input1,
-            *input2,
-            output,
-            functor,
-            dims);
+            dev_ctx, *input0, *input1, *input2, output, functor, dims);
         break;
       case 4:
         ReduceGradFunctor<Context, T, 4, Functor>(
-            dev_ctx.template device_context<Context>(),
-            *input0,
-            *input1,
-            *input2,
-            output,
-            functor,
-            dims);
+            dev_ctx, *input0, *input1, *input2, output, functor, dims);
         break;
       case 5:
         ReduceGradFunctor<Context, T, 5, Functor>(
-            dev_ctx.template device_context<Context>(),
-            *input0,
-            *input1,
-            *input2,
-            output,
-            functor,
-            dims);
+            dev_ctx, *input0, *input1, *input2, output, functor, dims);
         break;
       case 6:
         ReduceGradFunctor<Context, T, 6, Functor>(
-            dev_ctx.template device_context<Context>(),
-            *input0,
-            *input1,
-            *input2,
-            output,
-            functor,
-            dims);
+            dev_ctx, *input0, *input1, *input2, output, functor, dims);
         break;
       default:
         HandleLargeDimGrad<Context, T, Functor>(
