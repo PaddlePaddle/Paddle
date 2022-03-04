@@ -17,21 +17,21 @@
 #include <math.h>
 #include <algorithm>
 #include <vector>
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using framework::Tensor;
+using ETensor = phi::EigenTensor<T, D, MajorType, IndexType>;
 
 template <int Rank>
-static void GetBraodcastDims(const framework::DDim& x_dims,
-                             const framework::DDim& y_dims,
+static void GetBraodcastDims(const phi::DDim& x_dims,
+                             const phi::DDim& y_dims,
                              Eigen::DSizes<int, Rank>* x_bcast_dims,
                              Eigen::DSizes<int, Rank>* y_bcast_dims) {
   int bcast_dims_remainder = 0;
@@ -46,14 +46,16 @@ static void GetBraodcastDims(const framework::DDim& x_dims,
       bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
   }
-  PADDLE_ENFORCE_EQ(bcast_dims_remainder, 0,
-                    platform::errors::PreconditionNotMet(
+  PADDLE_ENFORCE_EQ(bcast_dims_remainder,
+                    0,
+                    phi::errors::PreconditionNotMet(
                         "The input tensor of Op(dist) could not be broadcast, "
                         "X's shape is [%s], Y's shape is [%s].",
-                        x_dims, y_dims));
+                        x_dims,
+                        y_dims));
 }
 
-static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
+static phi::DDim GetNewDims(const phi::DDim& in_dims, int rank) {
   std::vector<int64_t> new_dims_vec(rank);
   if (in_dims.size() < rank) {
     for (int i = 0; i < rank - in_dims.size(); ++i) {
@@ -68,26 +70,27 @@ static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
   return phi::make_ddim(new_dims_vec);
 }
 
-template <typename DeviceContext, typename T, int Rank>
-static void DistFunction(const framework::ExecutionContext& context) {
-  auto* x = context.Input<Tensor>("X");
-  auto* y = context.Input<Tensor>("Y");
-  auto* out = context.Output<Tensor>("Out");
-  auto p = context.Attr<float>("p");
-  out->mutable_data<T>(context.GetPlace());
-
-  auto x_dims = context.Input<Tensor>("X")->dims();
-  auto y_dims = context.Input<Tensor>("Y")->dims();
+template <typename Context, typename T, int Rank>
+static void DistFunction(const Context& context,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         float p,
+                         DenseTensor* out) {
+  // out->mutable_data<T>(context.GetPlace());
+  if (out) {
+    context.template Alloc<T>(out);
+  }
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
 
   // new dims with same size as rank, e.g. (rank=3, (4, 3) => (1, 4, 3))
-  framework::DDim x_new_dims = GetNewDims(x_dims, Rank);
-  framework::DDim y_new_dims = GetNewDims(y_dims, Rank);
+  phi::DDim x_new_dims = GetNewDims(x_dims, Rank);
+  phi::DDim y_new_dims = GetNewDims(y_dims, Rank);
 
-  auto x_t = EigenTensor<T, Rank>::From(*x, x_new_dims);
-  auto y_t = EigenTensor<T, Rank>::From(*y, y_new_dims);
-  auto out_t = EigenTensor<T, 1>::From(*out);
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
+  auto x_t = ETensor<T, Rank>::From(x, x_new_dims);
+  auto y_t = ETensor<T, Rank>::From(y, y_new_dims);
+  auto out_t = ETensor<T, 1>::From(*out);
+  auto& place = *context.eigen_device();
 
   Eigen::DSizes<int, Rank> x_bcast_dims;
   Eigen::DSizes<int, Rank> y_bcast_dims;
@@ -121,27 +124,25 @@ static void DistFunction(const framework::ExecutionContext& context) {
   }
 }
 
-template <typename DeviceContext, typename T, int Rank>
-static void DistGradFunction(const framework::ExecutionContext& context) {
-  auto* x = context.Input<Tensor>("X");
-  auto* y = context.Input<Tensor>("Y");
-  auto* out = context.Input<Tensor>("Out");
-  auto p = context.Attr<float>("p");
+template <typename Context, typename T, int Rank>
+static void DistGradFunction(const Context& context,
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             const DenseTensor& out,
+                             const DenseTensor& out_grad,
+                             float p,
+                             DenseTensor* x_grad,
+                             DenseTensor* y_grad) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto out_dims = out.dims();
 
-  auto x_grad = context.Output<Tensor>(framework::GradVarName("X"));
-  auto y_grad = context.Output<Tensor>(framework::GradVarName("Y"));
-  auto out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-
-  auto x_dims = context.Input<Tensor>("X")->dims();
-  auto y_dims = context.Input<Tensor>("Y")->dims();
-  auto out_dims = context.Input<Tensor>("Out")->dims();
-
-  framework::DDim x_new_dims = GetNewDims(x_dims, Rank);
-  framework::DDim y_new_dims = GetNewDims(y_dims, Rank);
-  framework::DDim out_new_dims = GetNewDims(out_dims, Rank);
-  auto x_t = EigenTensor<T, Rank>::From(*x, x_new_dims);
-  auto y_t = EigenTensor<T, Rank>::From(*y, y_new_dims);
-  auto out_t = EigenTensor<T, Rank>::From(*out, out_new_dims);
+  phi::DDim x_new_dims = GetNewDims(x_dims, Rank);
+  phi::DDim y_new_dims = GetNewDims(y_dims, Rank);
+  phi::DDim out_new_dims = GetNewDims(out_dims, Rank);
+  auto x_t = ETensor<T, Rank>::From(x, x_new_dims);
+  auto y_t = ETensor<T, Rank>::From(y, y_new_dims);
+  auto out_t = ETensor<T, Rank>::From(out, out_new_dims);
 
   Eigen::DSizes<int, Rank> x_bcast_dims;
   Eigen::DSizes<int, Rank> y_bcast_dims;
@@ -153,14 +154,13 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
     new_dims_vec[i] = std::max(x_new_dims[i], y_new_dims[i]);
     out_bcast_dims[i] = new_dims_vec[i];
   }
-  framework::DDim new_dims = phi::make_ddim(new_dims_vec);
+  phi::DDim new_dims = phi::make_ddim(new_dims_vec);
 
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
-  auto out_grad_t = EigenTensor<T, Rank>::From(*out_grad, out_new_dims);
-  framework::Tensor grad;
+  auto& place = *context.eigen_device();
+  auto out_grad_t = ETensor<T, Rank>::From(out_grad, out_new_dims);
+  DenseTensor grad;
   grad.mutable_data<T>(new_dims, context.GetPlace());
-  auto grad_t = EigenTensor<T, Rank>::From(grad);
+  auto grad_t = ETensor<T, Rank>::From(grad);
 
   auto x_minux_y = x_t.broadcast(x_bcast_dims) - y_t.broadcast(y_bcast_dims);
   auto x_minux_y_abs = x_minux_y.abs();
@@ -171,13 +171,12 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
 
   // 1: Lp-norm(z), z = x-y, compute dz
   if (p == 0) {
-    phi::funcs::SetConstant<DeviceContext, T> set_zero;
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    set_zero(dev_ctx, &grad, static_cast<T>(0));
+    phi::funcs::SetConstant<Context, T> set_zero;
+    set_zero(context, &grad, static_cast<T>(0));
   } else if (p == INFINITY || p == -INFINITY) {
     // p=inf or -inf, Lp-norm = |z_i|, the j-th element of dz tends to 0 if
     // j!=i, or equals to sign(z_i) * dout if j=i.
-    if (platform::is_cpu_place(context.GetPlace())) {
+    if (paddle::platform::is_cpu_place(context.GetPlace())) {
       grad_t.device(place) = (x_minux_y_abs == out_t.broadcast(out_bcast_dims))
                                  .template cast<T>() *
                              sign.eval() * out_grad_t.broadcast(out_bcast_dims);
@@ -188,7 +187,7 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
     }
   } else {
     // dz = pow(abs(x-y)/out, p-1) * sign(x-y) * dout
-    if (platform::is_cpu_place(context.GetPlace())) {
+    if (paddle::platform::is_cpu_place(context.GetPlace())) {
       grad_t.device(place) =
           (x_minux_y_abs / (out_t + epsilon).broadcast(out_bcast_dims))
               .pow(p - 1) *
@@ -216,89 +215,103 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
   // the grad need to be sum along the broadcasted dimensions
   if (x_grad) {
     x_grad->mutable_data<T>(context.GetPlace());
-    auto x_grad_t = EigenTensor<T, Rank>::From(*x_grad, x_new_dims);
+    auto x_grad_t = ETensor<T, Rank>::From(*x_grad, x_new_dims);
     x_grad_t.device(place) = grad_t.reshape(x_reshape_dims)
                                  .sum(reduce_dims)
                                  .reshape(x_grad_t.dimensions());
   }
   if (y_grad) {
     y_grad->mutable_data<T>(context.GetPlace());
-    auto y_grad_t = EigenTensor<T, Rank>::From(*y_grad, y_new_dims);
+    auto y_grad_t = ETensor<T, Rank>::From(*y_grad, y_new_dims);
     y_grad_t.device(place) = -grad_t.reshape(y_reshape_dims)
                                   .sum(reduce_dims)
                                   .reshape(y_grad_t.dimensions());
   }
 }
 
-template <typename DeviceContext, typename T>
-class DistKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto x_rank = context.Input<Tensor>("X")->dims().size();
-    auto y_rank = context.Input<Tensor>("Y")->dims().size();
-    auto rank = std::max(x_rank, y_rank);
-    PADDLE_ENFORCE_LE(rank, 6,
-                      platform::errors::Unimplemented(
-                          "Op(dist) only support tensors with no more than 6 "
-                          "dimensions, but X's rank is %d, Y's rank is %d.",
-                          x_rank, y_rank));
-    switch (rank) {
-      case 1:
-        DistFunction<DeviceContext, T, 1>(context);
-        break;
-      case 2:
-        DistFunction<DeviceContext, T, 2>(context);
-        break;
-      case 3:
-        DistFunction<DeviceContext, T, 3>(context);
-        break;
-      case 4:
-        DistFunction<DeviceContext, T, 4>(context);
-        break;
-      case 5:
-        DistFunction<DeviceContext, T, 5>(context);
-        break;
-      case 6:
-        DistFunction<DeviceContext, T, 6>(context);
-        break;
-    }
+template <typename T, typename Context>
+void DistKernel(const Context& context,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                float p,
+                DenseTensor* out) {
+  auto x_rank = x.dims().size();
+  auto y_rank = y.dims().size();
+  auto rank = std::max(x_rank, y_rank);
+  PADDLE_ENFORCE_LE(rank,
+                    6,
+                    phi::errors::Unimplemented(
+                        "Op(dist) only support tensors with no more than 6 "
+                        "dimensions, but X's rank is %d, Y's rank is %d.",
+                        x_rank,
+                        y_rank));
+  switch (rank) {
+    case 1:
+      DistFunction<Context, T, 1>(context, x, y, p, out);
+      break;
+    case 2:
+      DistFunction<Context, T, 2>(context, x, y, p, out);
+      break;
+    case 3:
+      DistFunction<Context, T, 3>(context, x, y, p, out);
+      break;
+    case 4:
+      DistFunction<Context, T, 4>(context, x, y, p, out);
+      break;
+    case 5:
+      DistFunction<Context, T, 5>(context, x, y, p, out);
+      break;
+    case 6:
+      DistFunction<Context, T, 6>(context, x, y, p, out);
+      break;
   }
-};
+}
 
-template <typename DeviceContext, typename T>
-class DistGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto x_rank = context.Input<Tensor>("X")->dims().size();
-    auto y_rank = context.Input<Tensor>("Y")->dims().size();
-    auto rank = std::max(x_rank, y_rank);
-    PADDLE_ENFORCE_LE(rank, 6,
-                      platform::errors::Unimplemented(
-                          "Op(dist) only support tensors with no more than 6 "
-                          "dimensions, but X's rank is %d, Y's rank is %d.",
-                          x_rank, y_rank));
-    switch (rank) {
-      case 1:
-        DistGradFunction<DeviceContext, T, 1>(context);
-        break;
-      case 2:
-        DistGradFunction<DeviceContext, T, 2>(context);
-        break;
-      case 3:
-        DistGradFunction<DeviceContext, T, 3>(context);
-        break;
-      case 4:
-        DistGradFunction<DeviceContext, T, 4>(context);
-        break;
-      case 5:
-        DistGradFunction<DeviceContext, T, 5>(context);
-        break;
-      case 6:
-        DistGradFunction<DeviceContext, T, 6>(context);
-        break;
-    }
+template <typename T, typename Context>
+void DistGradKernel(const Context& context,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    const DenseTensor& out,
+                    const DenseTensor& out_grad,
+                    float p,
+                    DenseTensor* x_grad,
+                    DenseTensor* y_grad) {
+  auto x_rank = x.dims().size();
+  auto y_rank = y.dims().size();
+  auto rank = std::max(x_rank, y_rank);
+  PADDLE_ENFORCE_LE(rank,
+                    6,
+                    phi::errors::Unimplemented(
+                        "Op(dist) only support tensors with no more than 6 "
+                        "dimensions, but X's rank is %d, Y's rank is %d.",
+                        x_rank,
+                        y_rank));
+  switch (rank) {
+    case 1:
+      DistGradFunction<Context, T, 1>(
+          context, x, y, out, out_grad, p, x_grad, y_grad);
+      break;
+    case 2:
+      DistGradFunction<Context, T, 2>(
+          context, x, y, out, out_grad, p, x_grad, y_grad);
+      break;
+    case 3:
+      DistGradFunction<Context, T, 3>(
+          context, x, y, out, out_grad, p, x_grad, y_grad);
+      break;
+    case 4:
+      DistGradFunction<Context, T, 4>(
+          context, x, y, out, out_grad, p, x_grad, y_grad);
+      break;
+    case 5:
+      DistGradFunction<Context, T, 5>(
+          context, x, y, out, out_grad, p, x_grad, y_grad);
+      break;
+    case 6:
+      DistGradFunction<Context, T, 6>(
+          context, x, y, out, out_grad, p, x_grad, y_grad);
+      break;
   }
-};
+}
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

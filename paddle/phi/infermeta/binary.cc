@@ -397,6 +397,28 @@ void BCELossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void DistInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   float p,
+                   MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  PADDLE_ENFORCE_NE(phi::product(x_dims),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(X) has not been initialized properly. The "
+                        "shape of Input(X) = [%s].",
+                        x_dims));
+  PADDLE_ENFORCE_NE(phi::product(y_dims),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(Y) has not been initialized properly. The "
+                        "shape of Input(Y) = [%s].",
+                        y_dims));
+  out->set_dims({1});
+}
+
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out) {

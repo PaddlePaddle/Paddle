@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/dist_op.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/dist_kernel.h"
+#include "paddle/phi/kernels/impl/dist_kernel_impl.h"
 
-namespace ops = paddle::operators;
 #ifdef PADDLE_WITH_HIP
 // Eigen3/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h:922
 // do not support double in HIPCC platform (Eigen3 to be fixed)
-REGISTER_OP_CUDA_KERNEL(
-    dist, ops::DistKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    dist_grad, ops::DistGradKernel<paddle::platform::CUDADeviceContext, float>);
+PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float) {}
 #else
-REGISTER_OP_CUDA_KERNEL(
-    dist, ops::DistKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::DistKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    dist_grad, ops::DistGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::DistGradKernel<paddle::platform::CUDADeviceContext, double>);
+PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float, double) {}
 #endif
