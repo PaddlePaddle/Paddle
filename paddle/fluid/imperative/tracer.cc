@@ -175,7 +175,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
                      paddle::framework::AttributeMap* passed_default_attrs_,
                      bool use_default_attr_map) {
   platform::RecordEvent op_type_record_event(
-      type, platform::TracerEventType::Operator, 2);
+      type, platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
@@ -253,7 +253,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
 #endif
     } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      platform::DeviceManager::SetDevice(place);
+      phi::DeviceManager::SetDevice(place);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with CustomDevice if use "

@@ -265,11 +265,15 @@ def parse_args():
     parser.add_argument(
         '--run_single_pass', type=int, default=0, help="test single pass")
     parser.add_argument(
+        '--run_the_one_ps', type=int, default=0, help="test the_one_ps")
+    parser.add_argument(
         '--debug_new_minimize', type=int, default=0, help="test single pass")
     parser.add_argument(
         '--debug_new_pass', type=int, default=0, help="test single pass")
     parser.add_argument(
         '--applied_pass_name', type=str, default="", help="test single pass")
+    parser.add_argument(
+        '--debug_the_one_ps', type=int, default=0, help="test the_one_ps")
 
     args = parser.parse_args()
     args.abs_dir = os.path.dirname(os.path.abspath(args.config_yaml))
@@ -280,9 +284,11 @@ def parse_args():
     config["pure_bf16"] = args.pure_bf16
     config['run_minimize'] = args.run_minimize
     config['run_single_pass'] = args.run_single_pass
+    config['run_the_one_ps'] = args.run_the_one_ps
     config['debug_new_minimize'] = args.debug_new_minimize
     config['debug_new_pass'] = args.debug_new_pass
     config['applied_pass_name'] = args.applied_pass_name
+    config['debug_the_one_ps'] = args.debug_the_one_ps
     yaml_helper.print_yaml(config)
     return config
 
@@ -344,15 +350,15 @@ class DnnTrainer(object):
             fleet_obj.minimize(loss)
 
         if fleet.is_server():
-            _main_file = '/' + sync_mode + '_run_minimize' + '_debug:_' + str(
+            _main_file = ps_log_root_dir + sync_mode + '_run_minimize' + '_debug:_' + str(
                 self.config['debug_new_minimize']) + '_server_main.prototxt'
             debug_program(_main_file, loss.block.program)
         elif fleet.is_worker():
-            _main_file = '/' + sync_mode + '_run_minimize' + '_debug:_' + str(
+            _main_file = ps_log_root_dir + sync_mode + '_run_minimize' + '_debug:_' + str(
                 self.config['debug_new_minimize']) + '_worker_main.prototxt'
             debug_program(_main_file, loss.block.program)
         elif self.role_maker._is_heter_worker():
-            _main_file = '/' + sync_mode + '_run_minimize' + '_debug:_' + str(
+            _main_file = ps_log_root_dir + sync_mode + '_run_minimize' + '_debug:_' + str(
                 self.config[
                     'debug_new_minimize']) + '_heter_worker_main.prototxt'
             debug_program(_main_file, loss.block.program)
@@ -397,15 +403,83 @@ class DnnTrainer(object):
             _main = worker.append_send_ops_pass(_main, compiled_config)
 
         if fleet.is_server():
-            _main_file = '/' + sync_mode + "_" + str(config[
+            _main_file = ps_log_root_dir + sync_mode + "_" + str(config[
                 "applied_pass_name"]) + '_debug:_' + str(self.config[
                     'debug_new_pass']) + '_server_main.prototxt'
             debug_program(_main_file, _main)
         elif fleet.is_worker():
-            _main_file = '/' + sync_mode + "_" + str(config[
+            _main_file = ps_log_root_dir + sync_mode + "_" + str(config[
                 "applied_pass_name"]) + '_debug:_' + str(self.config[
                     'debug_new_pass']) + '_worker_main.prototxt'
             debug_program(_main_file, _main)
+
+    def run_the_one_ps(self):
+        self.init_fleet_with_gloo()
+        self.model = get_model(self.config)
+        self.input_data = self.model.create_feeds()
+        self.metrics = self.model.net(self.input_data)
+        loss = self.model._cost
+        user_defined_strategy = get_user_defined_strategy(self.config)
+        learning_rate = self.config.get(
+            "hyper_parameters.optimizer.learning_rate")
+        sync_mode = self.config.get("runner.sync_mode")
+        inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
+
+        self.role_maker._generate_role()  # 必要
+        if self.config['debug_the_one_ps'] == 1:
+            logger.info("entering run_the_one_ps -- new")
+
+            from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
+            ps_optimizer = ParameterServerOptimizer(inner_optimizer)
+            ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
+                                         user_defined_strategy)
+            ps_optimizer.minimize_impl(loss)
+
+            from paddle.distributed.ps.the_one_ps import TheOnePSRuntime
+            _runtime_handle = TheOnePSRuntime()  # ps 目录下重构版的 TheOnePSRuntime
+            _runtime_handle._set_basic_info(ps_optimizer.pass_ctx._attrs)
+            if fleet.is_worker():
+                worker_desc = _runtime_handle.ps_desc_builder.build_worker_desc(
+                )
+                with open(ps_log_root_dir + sync_mode + '_' +
+                          'new_worker_ps_desc', 'w') as f:
+                    f.write(worker_desc)
+            if fleet.is_server():
+                server_desc = _runtime_handle.ps_desc_builder.build_server_desc(
+                )
+                with open(ps_log_root_dir + sync_mode + '_' +
+                          'new_server_ps_desc', 'w') as f:
+                    f.write(server_desc)
+
+        else:
+            pass
+        '''          
+            logger.info("entering run_the_one_ps -- old")
+            fleet_obj = fleet.distributed_optimizer(
+                inner_optimizer, user_defined_strategy)  
+            fleet_obj.minimize(loss)  
+            if fleet.is_worker():
+                worker_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=False, is_sync=False)
+                server_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=True, is_sync=False)
+                with open(ps_log_root_dir + sync_mode + '_' + 'worker_ps_desc', 'w') as f:
+                    f.write(str(worker_desc) + str(server_desc))
+            if fleet.is_server():
+                server_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=True, is_sync=False)
+                with open(ps_log_root_dir + sync_mode + '_' + 'server_ps_desc', 'w') as f:
+                    f.write(str(server_desc) + str(fleet_obj._runtime_handle._get_fs_client_desc().to_string()))
+        '''
+        if fleet.is_server():
+            _main_file = ps_log_root_dir + sync_mode + '_run_the_one_ps' + '_debug:_' + str(
+                self.config['debug_the_one_ps']) + '_server_main.prototxt'
+            debug_program(_main_file, loss.block.program)
+        elif fleet.is_worker():
+            _main_file = ps_log_root_dir + sync_mode + '_run_the_one_ps' + '_debug:_' + str(
+                self.config['debug_the_one_ps']) + '_worker_main.prototxt'
+            debug_program(_main_file, loss.block.program)
+        elif self.role_maker._is_heter_worker():
+            _main_file = ps_log_root_dir + sync_mode + '_run_the_one_ps' + '_debug:_' + str(
+                self.config['debug_the_one_ps']) + '_heter_worker_main.prototxt'
+            debug_program(_main_file, loss.block.program)
 
 
 if __name__ == "__main__":
@@ -418,3 +492,5 @@ if __name__ == "__main__":
         benchmark_main.run_single_pass()
     elif config['run_minimize'] == 1:
         benchmark_main.run_minimize()
+    elif config['run_the_one_ps'] == 1:
+        benchmark_main.run_the_one_ps()

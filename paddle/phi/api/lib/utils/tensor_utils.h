@@ -42,8 +42,5 @@ phi::ScalarArray MakePhiScalarArrayFromVar(const framework::Variable& variable);
 phi::ScalarArray MakePhiScalarArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list);
 
-void ResetTensorDtypeAndLayoutByArgDef(phi::TensorBase* dst,
-                                       const phi::TensorArgDef& arg_def);
-
 }  // namespace experimental
 }  // namespace paddle

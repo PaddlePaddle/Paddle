@@ -14,6 +14,7 @@
 
 #include "paddle/infrt/dialect/infrt/infrt_dialect.h"
 
+#include <llvm/ADT/TypeSwitch.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/DialectImplementation.h>
