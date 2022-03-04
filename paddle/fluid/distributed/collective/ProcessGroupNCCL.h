@@ -65,6 +65,7 @@ class ProcessGroupNCCL : public ProcessGroup {
     virtual ~NCCLTask();
 
     std::vector<EventManager> control_events_;
+    std::vector<Tensor> barrierTensors_;
 
    protected:
     std::vector<Place> places_;
@@ -88,6 +89,29 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<Tensor>& tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
 
+  std::shared_ptr<ProcessGroup::Task> Barrier(
+      const BarrierOptions& = BarrierOptions()) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(std::vector<Tensor>& tensors,
+                                           int dst_rank) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(std::vector<Tensor>& tensors,
+                                           int src_rank) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<Tensor>& in_tensors,
+      std::vector<Tensor>& out_tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<Tensor>& in, std::vector<Tensor>& out) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<Tensor>& tensors, const ReduceOptions& opts) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(std::vector<Tensor>& in_tensors,
+                                              std::vector<Tensor>& out_tensors,
+                                              const ScatterOptions&) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
       std::vector<Place> places, int rank, CommType opType,
@@ -106,6 +130,8 @@ class ProcessGroupNCCL : public ProcessGroup {
                      std::vector<std::unique_ptr<CUDADeviceContext>>>
       places_to_ctx_;
 
+  std::set<int> used_place_ids_;
+
  private:
   void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids, int root,  // NOLINT
                    int server_fd);
@@ -117,6 +143,11 @@ class ProcessGroupNCCL : public ProcessGroup {
       std::vector<Tensor>& inputs,   // NOLINT
       std::vector<Tensor>& outputs,  // NOLINT
       Fn fn, CommType op_type);
+
+  template <typename Fn>
+  std::shared_ptr<ProcessGroup::Task> PointToPoint(
+      std::vector<Tensor>& tensors,  // NOLINT
+      Fn fn, int dst_rank, CommType op_type);
 
   void CreateNCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);

@@ -39,6 +39,8 @@ void UnchangedInferMetaCheckAxis(const MetaTensor& x,
                                  int axis,
                                  MetaTensor* out);
 
+void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
@@ -138,9 +140,16 @@ void DiagInferMeta(const MetaTensor& x,
 
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void DiagonalInferMeta(
+    const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
                            MetaTensor* out);
+
+void TransposeInferMeta(const MetaTensor& x,
+                        const std::vector<int>& axis,
+                        MetaTensor* out);
 
 }  // namespace phi
