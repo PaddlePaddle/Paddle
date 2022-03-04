@@ -14,11 +14,14 @@
 
 #pragma once
 
+#include "paddle/phi/kernels/triangular_solve_grad_kernel.h"
+
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
-#include "paddle/phi/kernels/triangular_solve_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/matrix_reduce.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -63,7 +66,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     if (dy_bst.dims() == y.dims()) {
       Copy<Context>(dev_ctx, dy_bst, dev_ctx.GetPlace(), false, dy);
     } else {
-      MatrixReduceSumFunctor<T, Context> functor;
+      funcs::MatrixReduceSumFunctor<T, Context> functor;
       functor(dev_ctx, dy_bst, dy);
       dy->Resize(y.dims());
     }
@@ -125,7 +128,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
     if (dx_bst.dims() == x.dims()) {
       Copy<Context>(dev_ctx, dx_bst_upper, dev_ctx.GetPlace(), false, dx);
     } else {
-      MatrixReduceSumFunctor<T, Context> functor;
+      funcs::MatrixReduceSumFunctor<T, Context> functor;
       functor(dev_ctx, dx_bst_upper, dx);
       dx->Resize(x.dims());
     }

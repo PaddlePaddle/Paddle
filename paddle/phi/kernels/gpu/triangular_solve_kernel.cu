@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/triangular_solve_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -19,7 +21,6 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/triangular_solve_kernel.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/allocation/allocator.h"

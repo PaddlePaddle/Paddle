@@ -26,8 +26,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-static void triangular_solve(const DeviceContext& context, const Tensor& x,
-                             const Tensor& y, Tensor* out, bool upper,
+static void triangular_solve(const DeviceContext &context, const Tensor &x,
+                             const Tensor &y, Tensor *out, bool upper,
                              bool transpose, bool unitriangular) {
   // Tensor broadcast use eigen
   std::vector<int64_t> x_bst_dims_vec;
@@ -56,6 +56,46 @@ static void triangular_solve(const DeviceContext& context, const Tensor& x,
   functor(context, &x_clone, out, /*left=*/true, upper, transpose,
           unitriangular);
 }
+
+template <typename DeviceContext, typename T>
+class MatrixReduceSumFunctor {
+ public:
+  void operator()(const Tensor &input, Tensor *output,
+                  const framework::ExecutionContext &ctx);
+};
+
+template <typename T>
+class MatrixReduceSumFunctor<platform::CPUDeviceContext, T> {
+ public:
+  void operator()(const Tensor &in, Tensor *out,
+                  const framework::ExecutionContext &ctx) {
+    // For example: in's dim = [5, 3, 2, 7, 3] ; out's dim = [3, 1, 7, 3]
+    // out_reduce_dim should be [0, 2]
+    const std::vector<std::int64_t> in_dims = phi::vectorize(in.dims());
+    auto in_size = in_dims.size();
+    const std::vector<std::int64_t> out_dims = phi::vectorize(out->dims());
+    auto out_size = out_dims.size();
+
+    std::vector<std::int64_t> out_bst_dims(in_size);
+
+    std::fill(out_bst_dims.data(), out_bst_dims.data() + in_size - out_size, 1);
+    std::copy(out_dims.data(), out_dims.data() + out_size,
+              out_bst_dims.data() + in_size - out_size);
+    out->Resize(phi::make_ddim(out_bst_dims));
+
+    std::vector<int> out_reduce_dims;
+    for (size_t idx = 0; idx <= in_size - 3; idx++) {
+      if (in_dims[idx] != 1 && out_bst_dims[idx] == 1) {
+        out_reduce_dims.push_back(idx);
+      }
+    }
+
+    ReduceKernelFunctor<platform::CPUDeviceContext, T, SumFunctor>(
+        &in, out, out_reduce_dims, true, false, ctx)
+        .template apply<T>();
+    out->Resize(phi::make_ddim(out_dims));
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle

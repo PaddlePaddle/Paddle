@@ -13,30 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/impl/triangular_solve_grad_kernel_impl.h"
-
-namespace phi {
-
-template <typename T>
-class MatrixReduceSumFunctor<T, GPUContext> {
- public:
-  void operator()(const GPUContext& dev_ctx,
-                  const DenseTensor& in,
-                  DenseTensor* out) {
-    std::vector<int64_t> reduce_dims = GetReduceDims(in, out);
-    std::vector<int> reduce_dims_tmp(reduce_dims.begin(), reduce_dims.end());
-    kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        dev_ctx,
-        in,
-        out,
-        kps::IdentityFunctor<T>(),
-        reduce_dims_tmp,
-        dev_ctx.stream());
-  }
-};
-
-}  // namespace phi
 
 PD_REGISTER_KERNEL(triangular_solve_grad,
                    GPU,

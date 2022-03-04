@@ -140,9 +140,9 @@ inline bool CheckDims(const DDim &dims_x, const DDim &dims_y) {
   return true;
 }
 
-// Just For Matrix OP. For example: x's dim = [5, 3, 2, M, M] ; y's dim = [3, 1,
-// M, N]
-// out is [5, 3, 2], which is batch_size of matrix after broadcast
+// Just For Matrix OP, for example:
+// x's dim = [5, 3, 2, M, M] ; y's dim = [3, 1, M, N]
+// out [5, 3, 2], which is batch_size of matrix
 static inline std::vector<int64_t> MatrixGetBroadcastBatchPortion(
     std::vector<int64_t> x, std::vector<int64_t> y) {
   size_t size_x = x.size();
@@ -173,10 +173,10 @@ static inline std::vector<int64_t> MatrixGetBroadcastBatchPortion(
   return batchPortion;
 }
 
-// Just For Matrix OP, for example: x's dim = [5, 3, 2, M, M] ; y's dim = [3, 1,
-// M, N]
-// out is be [5, 3, 2, M, M] + [5, 3, 2, M, N], and [5, 3, 2] is batch_size of
-// matrix
+// Just For Matrix OP, for example:
+// x's dim = [5, 3, 2, M, M] ; y's dim = [3, 1, M, N]
+// out shoule be [5, 3, 2, M, M] + [5, 3, 2, M, N], and [5, 3, 2] is
+// batch_size of matrix
 static inline std::tuple<std::vector<int64_t>, std::vector<int64_t>>
 MatrixGetBroadcastDims(const DenseTensor &x, const DenseTensor &y) {
   std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
