@@ -32,15 +32,10 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
   int groups_;
   std::vector<int> input_dims_;
 
-  std::vector<float> ones_for_serialize_;
-  std::vector<float> zeroes_for_serialize_;
-
   float* scale_;
   float* bias_;
   std::vector<float> scale_v_;
   std::vector<float> bias_v_;
-  std::vector<float> scale_for_serialize_;
-  std::vector<float> bias_for_serialize_;
   float* bn_scale_;
   float* bn_bias_;
 
@@ -69,37 +64,14 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
     DeserializeValue(&serialData, &serialLength, &groups_);
     DeserializeValue(&serialData, &serialLength, &input_dims_);
     DeserializeValue(&serialData, &serialLength, &with_fp16_);
-
-    DeserializeValue(&serialData, &serialLength, &ones_for_serialize_);
-    DeserializeValue(&serialData, &serialLength, &zeroes_for_serialize_);
-    DeserializeValue(&serialData, &serialLength, &scale_for_serialize_);
-    DeserializeValue(&serialData, &serialLength, &bias_for_serialize_);
-    deserializeToDevice();
+    DeserializeValue(&serialData, &serialLength, &bn_scale_);
+    DeserializeValue(&serialData, &serialLength, &bn_bias_);
+    DeserializeValue(&serialData, &serialLength, &scale_);
+    DeserializeValue(&serialData, &serialLength, &bias_);
 
     platform::dynload::cudnnCreate(&handle_);
     platform::dynload::cudnnCreateTensorDescriptor(&desc_);
     platform::dynload::cudnnCreateTensorDescriptor(&bn_desc_);
-  }
-
-  void deserializeToDevice() {
-    const int size = static_cast<int>(ones_for_serialize_.size());
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&bn_scale_, sizeof(float) * size));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&bn_bias_, sizeof(float) * size));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(bn_scale_, ones_for_serialize_.data(),
-                                          sizeof(float) * size,
-                                          cudaMemcpyHostToDevice));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMemcpy(bn_bias_, zeroes_for_serialize_.data(), sizeof(float) * size,
-                   cudaMemcpyHostToDevice));
-
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&scale_, sizeof(float) * size));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&bias_, sizeof(float) * size));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(scale_, scale_for_serialize_.data(),
-                                          sizeof(float) * size,
-                                          cudaMemcpyHostToDevice));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(bias_, bias_for_serialize_.data(),
-                                          sizeof(float) * size,
-                                          cudaMemcpyHostToDevice));
   }
 
   ~GroupNormPlugin() {
@@ -121,10 +93,7 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
     ptr->bias_ = this->bias_;
     ptr->bn_scale_ = this->bn_scale_;
     ptr->bn_bias_ = this->bn_bias_;
-    ptr->ones_for_serialize_ = this->ones_for_serialize_;
-    ptr->zeroes_for_serialize_ = this->zeroes_for_serialize_;
-    ptr->scale_for_serialize_ = this->scale_for_serialize_;
-    ptr->bias_for_serialize_ = this->bias_for_serialize_;
+    ptr->with_fp16_ = this->with_fp16_;
     return ptr;
   }
 
@@ -211,14 +180,6 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
     std::vector<float> ones(c, 1.F);
     std::vector<float> zeroes(c, 0.F);
     for (int i = 0; i < max_batch_size; i++) {
-      ones_for_serialize_.insert(ones_for_serialize_.end(), ones.begin(),
-                                 ones.end());
-      zeroes_for_serialize_.insert(zeroes_for_serialize_.end(), zeroes.begin(),
-                                   zeroes.end());
-      scale_for_serialize_.insert(scale_for_serialize_.end(), scale_v_.begin(),
-                                  scale_v_.end());
-      bias_for_serialize_.insert(bias_for_serialize_.end(), bias_v_.begin(),
-                                 bias_v_.end());
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(bn_scale_ + i * c, ones.data(),
                                             sizeof(float) * c,
                                             cudaMemcpyHostToDevice));
@@ -257,10 +218,9 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     return getBaseSerializationSize() + SerializedSize(epsilon_) +
            SerializedSize(groups_) + SerializedSize(input_dims_) +
-           SerializedSize(with_fp16_) + SerializedSize(ones_for_serialize_) +
-           SerializedSize(zeroes_for_serialize_) +
-           SerializedSize(scale_for_serialize_) +
-           SerializedSize(bias_for_serialize_);
+           SerializedSize(with_fp16_) + SerializedSize(bn_scale_) +
+           SerializedSize(bn_bias_) + SerializedSize(scale_) +
+           SerializedSize(bias_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT override {
@@ -269,10 +229,10 @@ class GroupNormPlugin : public PluginTensorRTV2Ext {
     SerializeValue(&buffer, groups_);
     SerializeValue(&buffer, input_dims_);
     SerializeValue(&buffer, with_fp16_);
-    SerializeValue(&buffer, ones_for_serialize_);
-    SerializeValue(&buffer, zeroes_for_serialize_);
-    SerializeValue(&buffer, scale_for_serialize_);
-    SerializeValue(&buffer, bias_for_serialize_);
+    SerializeValue(&buffer, bn_scale_);
+    SerializeValue(&buffer, bn_bias_);
+    SerializeValue(&buffer, scale_);
+    SerializeValue(&buffer, bias_);
   }
 };
 
