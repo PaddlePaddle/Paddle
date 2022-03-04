@@ -36,6 +36,10 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                         user_defined_strategy):
         super(ParameterServerOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
+        attrs = {}
+        attrs['role_maker'] = self.role_maker
+        attrs['k_steps'] = self.user_defined_strategy.a_sync_configs["k_steps"]
+        self.pass_ctx._attrs = attrs
 
     def _set_origin_programs(self, losses):
         self.origin_main_programs = []

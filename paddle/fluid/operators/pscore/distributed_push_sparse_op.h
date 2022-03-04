@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
+// #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -39,15 +39,15 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto clks = context.Input<framework::LoDTensor>("Clicks");
     auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
 
-    // auto fleet = distributed::FleetWrapper::GetInstance();
-    auto *communicator = (distributed::AsyncCommunicator *)
-        distributed::Communicator::GetInstance();
+    auto fleet = distributed::FleetWrapper::GetInstance();
+    // auto *communicator = (distributed::AsyncCommunicator *)
+    //   distributed::Communicator::GetInstance();
 
     if (platform::is_cpu_place(context.GetPlace())) {
-      communicator->PushSparseFromTensorAsync(
-          static_cast<uint64_t>(table_id), emb_dim,
-          static_cast<uint64_t>(padding_idx), context.GetPlace(), &inputs,
-          shows, clks, &outputs);
+      fleet->PushSparseFromTensorAsync(static_cast<uint64_t>(table_id), emb_dim,
+                                       static_cast<uint64_t>(padding_idx),
+                                       context.GetPlace(), &inputs, shows, clks,
+                                       &outputs);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");
@@ -94,7 +94,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       }
 
       // use fleet->PullSparse
-      communicator->PushSparseFromTensorAsync(
+      fleet->PushSparseFromTensorAsync(
           static_cast<uint64_t>(table_id), emb_dim,
           static_cast<uint64_t>(padding_idx), context.GetPlace(),
           &tmp_input_vec, tmp_shows_tensor, tmp_clicks_tensor, &tmp_output_vec);

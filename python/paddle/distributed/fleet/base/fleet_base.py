@@ -1431,6 +1431,7 @@ class Fleet(object):
         # cache original feed forward program
         self.origin_main_program = loss.block.program
         context["origin_main_program"] = self.origin_main_program
+        context["origin_main_programs"] = [self.origin_main_program]
         context["loss"] = loss
         if startup_program == None:
             self.origin_startup_program = \
@@ -1441,6 +1442,7 @@ class Fleet(object):
                 startup_program.clone(for_test=False)
 
         context["origin_startup_program"] = startup_program
+        context["origin_startup_programs"] = [startup_program]
         context["role_maker"] = self._role_maker
 
         # Use the auto-parallel's routines instead
@@ -1594,13 +1596,13 @@ class Fleet(object):
                 ]
                 param_grads_fp16 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP16)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
                 ]
                 param_grads_fp32 = [
                     param._grad_ivar() for param in optimizer._parameter_list
-                    if (param._grad_ivar() is not None) and (param._grad_ivar(
-                    ).dtype == core.VarDesc.VarType.FP32)
+                    if (param._grad_ivar() is not None) and
+                    (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
                 ]
             temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
             temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))

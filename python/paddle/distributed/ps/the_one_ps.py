@@ -68,16 +68,17 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
             print('new var: {}, {}, {}'.format(var, embedding_dim,
                                                accessor_proto.fea_dim))
             break
-    fea_dim = accessor_proto.fea_dim
-    if fea_dim != embedding_dim + 2:
+
+    fea_dim = accessor.fea_dim
+    if fea_dim != embedding_dim:
         raise ValueError(
-            "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
-            format(embedding_dim + 2, fea_dim))
-    embedx_dim = accessor_proto.embedx_dim
-    if embedx_dim != embedding_dim - 1:
+            "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".
+            format(embedding_dim, fea_dim))
+    embedx_dim = accessor.embedx_dim
+    if embedx_dim != embedding_dim - 3:
         raise ValueError(
-            "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
-            format(embedding_dim - 1, embedx_dim))
+            "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".
+            format(embedding_dim - 3, embedx_dim))
 
 
 class Service:
@@ -890,23 +891,26 @@ class TheOnePSRuntime(RuntimeBase):
             kwargs.update(sync_kwargs)
 
         print("communicator config:", trainer_config.get_communicator_flags())
-        self._communicator = Communicator(
-            trainer_config.mode, kwargs,
-            trainer_config.get_communicator_flags())
-        self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
-                                         self.string_hosts,
-                                         fluid.global_scope())
+
+        role_id = get_role_id(self.role_maker)
+        self._worker.init_worker(proto_txt, string_hosts, role_id)
+
+        #        self._communicator = Communicator(
+        #            trainer_config.mode, kwargs,
+        #            trainer_config.get_communicator_flags())
+        #        self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
+        #                                         string_hosts, fluid.global_scope())
 
         fleet.util.barrier()
-        info = self._communicator.get_client_info()
+        info = self._worker.get_client_info()
         if isinstance(info, list) and len(info) > 0:
             all_info = self.role_maker._all_gather(info[0])
             # for unittest
             if not isinstance(all_info, list):
                 warnings.warn("gloo may not initialize correctly")
                 all_info = [all_info]
-            self._communicator.set_clients(all_info)
-            self._communicator.create_client_to_client_connection()
+            self._worker.set_clients(all_info)
+            self._worker.create_client_to_client_connection()
             print('create c2c connection done')
         else:
             print('cannot create c2c connection')
@@ -922,16 +926,16 @@ class TheOnePSRuntime(RuntimeBase):
         else:
             init_params = dense_map
 
-        if not is_test:
-            self._communicator.init_params(init_params)
-            fleet.util.barrier()
-        self._communicator.pull_dense(init_params)
+#        if not is_test:
+#            self._communicator.init_params(init_params)
+#            fleet.util.barrier()
+#        self._communicator.pull_dense(init_params)
         fleet.util.barrier()
 
-        if not self._communicator.is_running():
-            self._communicator.start()
-        else:
-            warnings.warn("communicator has been initialized, skip")
+        #        if not self._communicator.is_running():
+        #            self._communicator.start()
+        #        else:
+        #            warnings.warn("communicator has been initialized, skip")
 
         launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
         launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
