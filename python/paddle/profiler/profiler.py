@@ -292,7 +292,7 @@ class Profiler:
         if ProfilerTarget.GPU in self.targets:
             profileoption.trace_switch |= (1 << 1)
         wrap_optimizers()
-        self.profiler = _Profiler.Create(profileoption)
+        self.profiler = _Profiler.create(profileoption)
         if callable(scheduler):
             self.scheduler = scheduler
         elif isinstance(scheduler, (tuple, list)):
@@ -338,13 +338,13 @@ class Profiler:
         '''
         # CLOSED -> self.current_state
         if self.current_state == ProfilerState.READY:
-            self.profiler.Prepare()
+            self.profiler.prepare()
         elif self.current_state == ProfilerState.RECORD:
-            self.profiler.Prepare()
-            self.profiler.Start()
+            self.profiler.prepare()
+            self.profiler.start()
         elif self.current_state == ProfilerState.RECORD_AND_RETURN:
-            self.profiler.Prepare()
-            self.profiler.Start()
+            self.profiler.prepare()
+            self.profiler.start()
         self.record_event = RecordEvent(
             name="ProfileStep#{}".format(self.step_num),
             event_type=TracerEventType.ProfileStep)
@@ -364,10 +364,10 @@ class Profiler:
             warn(
                 "Inproper Profiler state transform: READY->CLOSED, profiler will start and stop without saving data"
             )
-            self.profiler.Start()
-            self.profiler.Stop()
+            self.profiler.start()
+            self.profiler.stop()
         if self.current_state == ProfilerState.RECORD or self.current_state == ProfilerState.RECORD_AND_RETURN:
-            self.profiler_result = self.profiler.Stop()
+            self.profiler_result = self.profiler.stop()
             if self.on_trace_ready:
                 self.on_trace_ready(self)
 
@@ -391,57 +391,57 @@ class Profiler:
     def _trigger_action(self):
         if self.previous_state == ProfilerState.CLOSED:
             if self.current_state == ProfilerState.READY:  # CLOSED -> READY
-                self.profiler.Prepare()
+                self.profiler.prepare()
             if self.current_state == ProfilerState.RECORD:  # CLOSED -> RECORD
-                self.profiler.Prepare()
-                self.profiler.Start()
+                self.profiler.prepare()
+                self.profiler.start()
             if self.current_state == ProfilerState.RECORD_AND_RETURN:  # CLOSED -> RECORD_AND_RETURN
-                self.profiler.Prepare()
-                self.profiler.Start()
+                self.profiler.prepare()
+                self.profiler.start()
 
         elif self.previous_state == ProfilerState.READY:
             if self.current_state == ProfilerState.CLOSED:  # READY -> CLOSED
                 warn(
                     "Improper schedule: READY->CLOSED, profiler will start and stop without saving data"
                 )
-                self.profiler.Start()
-                self.profiler.Stop()
+                self.profiler.start()
+                self.profiler.stop()
             if self.current_state == ProfilerState.RECORD:  # READY -> RECORD
-                self.profiler.Start()
+                self.profiler.start()
             if self.current_state == ProfilerState.RECORD_AND_RETURN:  # READY -> RECORD_AND_RETURN
-                self.profiler.Start()
+                self.profiler.start()
 
         elif self.previous_state == ProfilerState.RECORD:
             if self.current_state == ProfilerState.CLOSED:  # RECORD -> CLOSED
                 warn(
                     "Improper schedule: RECORD->CLOSED, profiler will not saving data"
                 )
-                self.profiler.Stop()
+                self.profiler.stop()
 
             if self.current_state == ProfilerState.READY:  # RECORD -> READY
                 warn(
                     "Improper schedule: RECORD->READY, profiler will stop and re-prepare"
                 )
-                self.profiler.Stop()
-                self.profiler.Prepare()
+                self.profiler.stop()
+                self.profiler.prepare()
             if self.current_state == ProfilerState.RECORD_AND_RETURN:  # RECORD -> RECORD_AND_RETURN
                 pass
 
         else:
             assert self.previous_state == ProfilerState.RECORD_AND_RETURN
             if self.current_state == ProfilerState.CLOSED:  # RECORD_AND_RETURN -> CLOSED
-                self.profiler_result = self.profiler.Stop()
+                self.profiler_result = self.profiler.stop()
             if self.current_state == ProfilerState.READY:  # RECORD_AND_RETURN -> READY
-                self.profiler_result = self.profiler.Stop()
-                self.profiler.Prepare()
+                self.profiler_result = self.profiler.stop()
+                self.profiler.prepare()
             if self.current_state == ProfilerState.RECORD:  # RECORD_AND_RETURN -> RECORD
-                self.profiler_result = self.profiler.Stop()
-                self.profiler.Prepare()
-                self.profiler.Start()
+                self.profiler_result = self.profiler.stop()
+                self.profiler.prepare()
+                self.profiler.start()
             if self.current_state == ProfilerState.RECORD_AND_RETURN:  # RECORD_AND_RETURN -> RECORD_AND_RETURN
-                self.profiler_result = self.profiler.Stop()
-                self.profiler.Prepare()
-                self.profiler.Start()
+                self.profiler_result = self.profiler.stop()
+                self.profiler.prepare()
+                self.profiler.start()
             if self.on_trace_ready:
                 self.on_trace_ready(self)
 
