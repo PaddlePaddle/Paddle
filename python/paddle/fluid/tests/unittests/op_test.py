@@ -692,7 +692,7 @@ class OpTest(unittest.TestCase):
             np_dyg = np.array(dygraph_outs[name])
             self.assertTrue(
                 np.allclose(
-                    np_api, np_dyg, atol=1e-5, rtol=1e-5, equal_nan=False),
+                    np_api, np_dyg, equal_nan=False),
                 "Output (" + name + ") has diff at " + str(place) + "\nExpect "
                 + str(np_dyg) + "\n" + "But Got" + str(np_api) + " in class " +
                 self.__class__.__name__)
@@ -731,10 +731,10 @@ class OpTest(unittest.TestCase):
             args = [inp[0] for inp in args]
             return args, argvs
 
-        def cal_python_api(api_name, args, argvs, kernel_sig):
+        def cal_python_api(python_api, args, argvs, kernel_sig):
             args, argvs = assumption_assert_and_transform(args, argvs)
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
-            ret_tuple = eval(api_name)(*args, **argvs)
+            ret_tuple = python_api(*args, **argvs)
             return construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
 
         with fluid.dygraph.base.guard(place=place):

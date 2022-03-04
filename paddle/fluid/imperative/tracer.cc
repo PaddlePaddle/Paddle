@@ -406,6 +406,11 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
           default_attrs);
   auto* opbase_with_kernel =
       dynamic_cast<framework::OperatorWithKernel*>(op.get());
+  PADDLE_ENFORCE_NE(opbase_with_kernel, nullptr,
+                    platform::errors::InvalidArgument(
+                        "This op type:`%s` is not a OperatorWithKernel, only "
+                        "OperatorWithKernel can get KernelSignature",
+                        type));
   return phi::KernelSignature(
       std::move(opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx)));
 }
