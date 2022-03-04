@@ -1194,8 +1194,7 @@ class OpTest(unittest.TestCase):
                     if check_dygraph:
                         imperative_actual = find_imperative_actual(
                             sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = np.array(imperative_actual.value()
-                                                       .get_tensor())
+                        imperative_actual_t = imperative_actual.numpy()
                     if check_eager:
                         with _test_eager_guard():
                             eager_imperative_actual = find_imperative_actual(
@@ -1256,8 +1255,7 @@ class OpTest(unittest.TestCase):
                 if check_dygraph:
                     imperative_actual = find_imperative_actual(
                         out_name, dygraph_outs, place)
-                    imperative_actual_t = np.array(imperative_actual.value()
-                                                   .get_tensor())
+                    imperative_actual_t = imperative_actual.numpy()
                 if check_eager:
                     with _test_eager_guard():
                         eager_imperative_actual = find_imperative_actual(
