@@ -13,10 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
@@ -78,7 +80,8 @@ void Conv3dGradKernel(const Context& dev_ctx,
   dev_ctx.Alloc(
       kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
   T* d_kernel_ptr = kernel_grad->data<T>();
-  cudaMemset(d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel());
+  phi::funcs::SetConstant<Context, int> set_zero;
+  set_zero(dev_ctx, kernel_grad, 0);
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * in_channels, 1);
@@ -106,11 +109,16 @@ void Conv3dGradKernel(const Context& dev_ctx,
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   std::vector<int> offsets(kernel_size + 1), counter(kernel_size, 0),
       h_counter(rulebook_len, 0);
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&h_counter[0],
-                                             rulebook_ptr,
-                                             rulebook_len * sizeof(int),
-                                             cudaMemcpyDeviceToHost,
-                                             dev_ctx.stream()));
+  phi::backends::gpu::GpuMemcpyAsync(&h_counter[0],
+                                     rulebook_ptr,
+                                     rulebook_len * sizeof(int),
+#ifdef PADDLE_WITH_HIP
+                                     hipMemcpyDeviceToHost,
+#else
+                                     cudaMemcpyDeviceToHost,
+#endif
+
+                                     dev_ctx.stream());
   dev_ctx.Wait();
 
   for (int i = 0; i < rulebook_len; i++) {
