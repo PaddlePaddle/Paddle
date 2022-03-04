@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <vector>
 
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -51,7 +52,7 @@ inline void run_program_dygraph_function(
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
     // Set Attributes
-    grad_node->SetAttrMap(std::move(attrs));
+    grad_node->SetAttrMap(attrs);
     // Set TensorWrappers
     grad_node->SetTensor_X(x);
     grad_node->SetTensor_Params(params);
