@@ -306,7 +306,6 @@ class TestAuc(unittest.TestCase):
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 0.8125)
-
         m.reset()
         self.assertEqual(m.accumulate(), 0.0)
 
