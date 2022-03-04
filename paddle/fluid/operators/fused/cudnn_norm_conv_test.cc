@@ -405,8 +405,17 @@ TEST(CudnnNormConvFp16, K1S1) {
   CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.CheckForward(1e-3, true);
-  test.CheckBackward(1e-3, true);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3, true), paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3, true));
+  }
 }
 
 // test for fp16, kernel = 3, output_channels = input_channels
@@ -421,8 +430,17 @@ TEST(CudnnNormConvFp16, K3S1) {
   CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.CheckForward(1e-3, true);
-  test.CheckBackward(1e-3, true);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3, true), paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3, true));
+  }
 }
 
 // test for fp16, kernel = 1, output_channels = input_channels * 4
@@ -437,8 +455,17 @@ TEST(CudnnNormConvFp16, K1S1O4) {
   CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.CheckForward(1e-3, true);
-  test.CheckBackward(1e-3, true);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3, true), paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3, true));
+  }
 }
 
 // test for fp16, kernel = 1, stride = 2, output_channels = input_channels * 4
