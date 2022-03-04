@@ -195,8 +195,10 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       std::vector<paddle::experimental::Tensor*> tensors;
       Py_ssize_t len = PyList_Size(obj);
       for (Py_ssize_t i = 0; i < len; i++) {
-        tensors.push_back(
-            &(reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor));
+        if (IsEagerTensor(PyList_GetItem(obj, i))) {
+          tensors.push_back(&(
+              reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor));
+        }
       }
       if (!tensors.empty()) {
         outputs_tensor.push_back(tensors);
@@ -208,8 +210,11 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       std::vector<paddle::experimental::Tensor*> tensors;
       Py_ssize_t len = PyTuple_Size(obj);
       for (Py_ssize_t i = 0; i < len; i++) {
-        tensors.push_back(&(
-            reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))->tensor));
+        if (IsEagerTensor(PyTuple_GetItem(obj, i))) {
+          tensors.push_back(
+              &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))
+                    ->tensor));
+        }
       }
       if (!tensors.empty()) {
         outputs_tensor.push_back(tensors);
