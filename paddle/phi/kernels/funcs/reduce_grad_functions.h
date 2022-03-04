@@ -19,6 +19,8 @@
 #include "paddle/phi/core/dense_tensor.h"
 // #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+
+#include "paddle/phi/kernels/cpu/reduce.h"
 namespace phi {
 
 template <typename Context, typename T, size_t D, typename Functor>
@@ -62,6 +64,19 @@ void ReduceGradFunctor(const Context& dev_ctx,
           broad_cats_times);
 }
 
+inline void GetOriginDimFromShuffled(const DDim& src_dim,
+                                     const std::vector<int>& dims,
+                                     std::vector<int>* origin_dim) {
+  DDim shuffled_dims(src_dim);
+  size_t n = src_dim.size();
+  std::vector<int> perm_axis(n);
+  std::vector<int64_t> dims_64{dims.begin(), dims.end()};
+  GetShuffledDim(src_dim, &shuffled_dims, dims_64, &perm_axis);
+  for (size_t i = 0; i < n; ++i) {
+    (*origin_dim)[perm_axis[i]] = i;
+  }
+}
+
 template <typename Context, typename T, typename Functor>
 void HandleLargeDimGrad(const Context& dev_ctx,
                         const DenseTensor* x,
@@ -76,7 +91,8 @@ void HandleLargeDimGrad(const Context& dev_ctx,
   DDim x_dim(x->dims());
   // transpose and reshape X
   DenseTensor shuffled_x;
-  GetShuffledInput<Context, T>(dev_ctx, x, &shuffled_x, dims);
+  std::vector<int64_t> dims_64{dims.begin(), dims.end()};
+  GetShuffledInput<Context, T>(dev_ctx, *x, &shuffled_x, dims_64);
   DDim shuffled_dim = shuffled_x.dims();
   shuffled_x.Resize({unreduced, reduced});
   // reshape dX {unreduced, reduced}
@@ -86,12 +102,12 @@ void HandleLargeDimGrad(const Context& dev_ctx,
   // transpose dX
   std::vector<int> origin_axis(x_dim.size());
   GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
-  Tensor dx_tmp;
-  framework::TensorCopy(*dx, dev_ctx.GetPlace(), &dx_tmp);
+  DenseTensor dx_tmp;
+  paddle::framework::TensorCopy(*dx, dev_ctx.GetPlace(), &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
   phi::funcs::TransposeNormal<Context, T> trans;
-  trans(dev_ctx.template device_context<Context>(), dx_tmp, dx, origin_axis);
+  trans(dev_ctx, dx_tmp, dx, origin_axis);
 }
 
 template <typename Context, typename T, typename Functor>

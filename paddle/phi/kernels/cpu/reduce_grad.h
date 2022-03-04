@@ -59,18 +59,24 @@ void ComputeFromInput(const Context& dev_ctx,
     input0 = output;
   }
   if (kNoNeedBufferY) {
-    input1 = input2;
+    input1 = &input2;
   }
 
   const std::vector<int> const_dims{dims.begin(), dims.end()};
 
   // NOTE(dengkaipeng): Out is unnecessary in some reduce kernel and
   // not be set as Input in grad Maker, use Out_grad to replace here
-  if (!input1) input1 = input2;
+  if (!input1) input1 = &input2;
   Functor functor;
 
-  LaunchReduceGradKernel<Context, T, Functor>(
-      dev_ctx, input0, input1, input2, output, functor, const_dims, reduce_all);
+  LaunchReduceGradKernel<Context, T, Functor>(dev_ctx,
+                                              input0,
+                                              input1,
+                                              &input2,
+                                              output,
+                                              functor,
+                                              const_dims,
+                                              reduce_all);
 }
 
 template <typename Context,
