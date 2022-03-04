@@ -315,7 +315,7 @@ use_py_reader = False
 sync = False
 
 # how many batches we use
-batch_num = 2
+batch_num = 5
 
 np.random.seed(90)
 src_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
