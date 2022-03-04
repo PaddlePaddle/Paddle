@@ -30,19 +30,21 @@ class RequantMkldnnFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  Tensor* GetTensorFromVector(const std::vector<float>& data_v);
+  void GetTensorFromVector(const std::vector<float>& data_v,
+                           Tensor* tensor) const;
 
   void GetQuantInfo(
       ir::Graph* graph, Scope* scope,
       std::unordered_map<std::string, Tensor*>& weight_thresholds,  // NOLINT
-      std::unordered_map<std::string, std::pair<int, Tensor*>>&
+      std::unordered_map<std::string, std::pair<bool, Tensor*>>&
           var_quant_scales)  // NOLINT
       const;
 
-  // void ComputeWeightScales(ir::Graph* graph, Scope* scope,
-  //   std::unordered_map<std::string, Tensor*>& weight_thresholds,
-  //   std::unordered_map<std::string, std::pair<int, Tensor*>>&
-  //   var_quant_scales) const;
+  void ComputeWeightScales(
+      ir::Graph* graph, Scope* scope,
+      std::unordered_map<std::string, std::pair<bool, Tensor*>>&
+          var_quant_scales)  // NOLINT
+      const;
 };
 }  // namespace ir
 }  // namespace framework
