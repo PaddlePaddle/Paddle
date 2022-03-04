@@ -22,19 +22,19 @@ namespace phi {
 
 template <typename T, typename Context>
 void ConcatKernel(const Context& dev_ctx,
-                  const std::vector<DenseTensor>& x,
+                  const std::vector<const DenseTensor*>& x,
                   const Scalar& axis,
                   DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Concat(const Context& dev_ctx,
-                   const std::vector<DenseTensor>& x,
+                   const std::vector<const DenseTensor*>& x,
                    const Scalar& axis) {
   std::vector<MetaTensor> meta_x;
   meta_x.reserve(x.size());
   std::vector<MetaTensor*> meta_x_ptr;
-  for (const auto& t : x) {
-    meta_x.emplace_back(t);
+  for (const auto* t : x) {
+    meta_x.emplace_back(*t);
     meta_x_ptr.push_back(&meta_x.back());
   }
 
