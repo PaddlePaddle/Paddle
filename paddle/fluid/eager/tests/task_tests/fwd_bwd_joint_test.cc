@@ -79,7 +79,7 @@ TEST(FwdBwdJoint, SingleNode) {
 
   std::vector<paddle::experimental::Tensor> outs = {out};
   // 4. Run Backward
-  RunBackward(outs, {});
+  Backward(outs, {});
 
   VLOG(7) << "Target Grad is: "
           << std::static_pointer_cast<phi::DenseTensor>(
@@ -130,7 +130,7 @@ TEST(FwdBwdJoint, LinearNodes) {
 
   std::vector<paddle::experimental::Tensor> outs = {out1};
   // 4. Run Backward
-  RunBackward(outs, {});
+  Backward(outs, {});
 
   // Examine Backward Grad
   eager_test::CompareGradTensorWithValue<float>(tensor, 10.0);
@@ -196,7 +196,7 @@ TEST(FwdBwdJoint, BranchedNodes) {
 
   // 4. Run Backward
   std::vector<paddle::experimental::Tensor> outs = {out1, out2};
-  RunBackward(outs, {});
+  Backward(outs, {});
 
   // Examine Backward Grad
   eager_test::CompareGradTensorWithValue<float>(tensor, 30.0);
@@ -253,7 +253,7 @@ TEST(FwdBwdJoint, GradientHook) {
 
   // 4. Run Backward
   std::vector<paddle::experimental::Tensor> outs = {out1, out2};
-  RunBackward(outs, {});
+  Backward(outs, {});
 
   // Examine Backward Grad
   // leaf grad
@@ -311,13 +311,13 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
 
   // 4. Run Backward
   std::vector<paddle::experimental::Tensor> outs = {out1, out2};
-  RunBackward(outs, {});
+  Backward(outs, {});
 
   // Examine Backward Grad
   eager_test::CompareGradTensorWithValue<float>(tensor, 30.0);
 
   // Cross Batch Accumulation
-  RunBackward(outs, {});
+  Backward(outs, {});
 
   // Examine Backward Grad
   eager_test::CompareGradTensorWithValue<float>(tensor, 60.0);
@@ -349,7 +349,7 @@ TEST(FwdBwdJoint, SingleNodeCUDA) {
 
   std::vector<paddle::experimental::Tensor> outs = {out};
   // 4. Run Backward
-  RunBackward(outs, {});
+  Backward(outs, {});
 
   // Examine Backward Grad
   eager_test::CompareGradTensorWithValue<float>(tensor, 2.0);
@@ -405,7 +405,7 @@ TEST(FwdBwdJoint, BranchedNodesCUDA) {
   // TODO(jiabin): fix this with add functor
   // 4. Run Backward
   std::vector<paddle::experimental::Tensor> outs = {out1, out2};
-  RunBackward(outs, {});
+  Backward(outs, {});
 
   // Examine Backward Grad
   eager_test::CompareGradTensorWithValue<float>(tensor, 30.0);

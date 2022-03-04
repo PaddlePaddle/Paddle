@@ -67,12 +67,12 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
   std::vector<egr::AutogradMeta*> res = {meta};
   scale_node_ptr->AddEdges(&res, 0);
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 5.0);
 
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 10.0);

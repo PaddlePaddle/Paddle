@@ -19,6 +19,7 @@ from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
 import numpy as np
+from paddle.fluid.framework import _test_eager_guard
 
 
 def _dygraph_guard_(func):
@@ -38,6 +39,28 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 def random_var(size, low=-1, high=1, dtype='float32'):
     x_np = np.random.uniform(low=low, high=high, size=size).astype(dtype)
     return fluid.dygraph.to_variable(x_np)
+
+
+class TestEagerGrad(TestCase):
+    def func_simple_example_eager_grad(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        out = paddle.matmul(x, y)
+        dx = fluid.dygraph.grad(out, x)
+
+        dout = np.ones_like(np_y)
+        expected_dx = np.matmul(dout, np.transpose(np_y))
+
+        self.assertTrue(np.allclose(dx[0].numpy(), expected_dx[0]))
+
+    def test_simple_example_eager_grad(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad()
+        self.func_simple_example_eager_grad()
 
 
 class TestDygraphDoubleGrad(TestCase):
