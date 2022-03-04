@@ -15,11 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
-#include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/empty_kernel.h"
+
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void ScaleSR(const Context& dev_ctx,
@@ -29,4 +28,5 @@ void ScaleSR(const Context& dev_ctx,
              bool bias_after_scale,
              SelectedRows* out);
 
+}  // namespace sr
 }  // namespace phi

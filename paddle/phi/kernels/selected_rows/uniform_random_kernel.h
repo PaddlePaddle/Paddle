@@ -15,10 +15,10 @@
 #pragma once
 
 #include "paddle/phi/common/scalar_array.h"
-#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void UniformRandomRawSRKernel(const Context& dev_ctx,
@@ -41,4 +41,5 @@ void UniformRandomSRKernel(const Context& dev_ctx,
                            int seed,
                            SelectedRows* out);
 
+}  // namespace sr
 }  // namespace phi

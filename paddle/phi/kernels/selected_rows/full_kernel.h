@@ -19,6 +19,7 @@
 #include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void FullSR(const Context& dev_ctx,
@@ -27,4 +28,5 @@ void FullSR(const Context& dev_ctx,
             DataType dtype,
             SelectedRows* out);
 
+}  // namespace sr
 }  // namespace phi

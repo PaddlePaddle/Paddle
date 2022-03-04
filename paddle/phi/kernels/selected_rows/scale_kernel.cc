@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void ScaleSR(const Context& dev_ctx,
@@ -37,6 +38,7 @@ void ScaleSR(const Context& dev_ctx,
       dev_ctx, x.value(), scale, bias, bias_after_scale, out->mutable_value());
 }
 
+}  // namespace sr
 }  // namespace phi
 
 PD_REGISTER_KERNEL(scale_sr,
