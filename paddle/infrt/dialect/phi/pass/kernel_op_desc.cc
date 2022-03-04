@@ -16,8 +16,10 @@
 #include <glog/logging.h>
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_registry.h"
-namespace infrt {
+#include "paddle/phi/kernels/declarations.h"
 
+namespace infrt {
+namespace {
 phi::Backend cvtTarget2Phi(TargetType target) {
   switch (target) {
     case TargetType::CPU:
@@ -124,19 +126,76 @@ Place cvtPlaceFromPhi(phi::TensorArgDef tensor_arg) {
                cvtLayoutFromPhi(tensor_arg.layout));
 }
 
+}  // namespace
+
+std::string getPhiTargetPrefix(TargetType target) {
+  switch (target) {
+    case TargetType::CPU:
+      return "phi_cpu.";
+    case TargetType::GPU:
+      return "phi_gpu.";
+    default:
+      LOG(FATAL) << "UnSupported target type !";
+      return std::string();
+  }
+}
+std::string getPhiPrecisionSuffix(PrecisionType precision) {
+  switch (precision) {
+    case PrecisionType::FLOAT32:
+      return ".float32";
+    case PrecisionType::FLOAT16:
+      return ".float16";
+    case PrecisionType::FLOAT64:
+      return ".float64";
+    case PrecisionType::UINT8:
+      return ".uint8";
+    case PrecisionType::INT8:
+      return ".int8";
+    case PrecisionType::INT16:
+      return ".int16";
+    case PrecisionType::INT32:
+      return ".int32";
+    case PrecisionType::INT64:
+      return ".int64";
+    case PrecisionType::COMPLEX64:
+      return ".complex64";
+    case PrecisionType::COMPLEX128:
+      return ".complex128";
+    case PrecisionType::BOOL:
+      return ".bool";
+    default:
+      LOG(FATAL) << "UnSupported precision type !";
+      return std::string();
+  }
+}
+std::string getPhiLayoutSuffix(LayoutType layout) {
+  switch (layout) {
+    case LayoutType::NCHW:
+      return ".nchw";
+    case LayoutType::NHWC:
+      return ".nhwc";
+    case LayoutType::ANY:
+      return ".any";
+    default:
+      LOG(FATAL) << "UnSupported layout type !";
+      return std::string();
+  }
+}
+
 std::vector<PhiKernelDesc> getCandidateKernels(
     std::string name, const std::vector<Place>& valid_palces) {
   std::vector<PhiKernelDesc> candidate_kernels;
   PhiKernelDesc phi_kernel_desc;
   phi::KernelKeyMap kernel_key_map =
       phi::KernelFactory::Instance().SelectKernelMap(name);
-  for (const Place& place : valid_palces) {
+  for (Place place : valid_palces) {
     phi::KernelKey kernel_key = cvtPlace2Phi(place);
     if (kernel_key_map.find(kernel_key) == kernel_key_map.end()) {
       kernel_key = phi::KernelKey(kernel_key.backend(),
                                   phi::DataLayout::ALL_LAYOUT,
                                   kernel_key.dtype());
       if (kernel_key_map.find(kernel_key) == kernel_key_map.end()) continue;
+      place.layout = LayoutType::ANY;
     }
     phi_kernel_desc.kernelType = place;
     phi_kernel_desc.inputsType.clear();

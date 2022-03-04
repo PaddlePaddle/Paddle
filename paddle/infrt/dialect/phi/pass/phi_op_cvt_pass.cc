@@ -18,11 +18,14 @@
 #include <llvm/ADT/SetVector.h>
 #include <mlir/Analysis/SliceAnalysis.h>
 #include <mlir/IR/Builders.h>
+#include <mlir/IR/Operation.h>
+#include <mlir/IR/OperationSupport.h>
 #include <list>
 #include <unordered_set>
 #include <vector>
 
 #include "paddle/infrt/dialect/infrt/infrt_dialect.h"
+#include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 #include "paddle/infrt/dialect/phi/pass/kernel_op_desc.h"
 #include "paddle/infrt/dialect/phi/pass/proto_arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
@@ -58,8 +61,8 @@ void phiOpCvtPass::convertStage() {
       continue;
     }
 
-    phi::KernelSignature kernel_sign =
-        phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name)(
+    ::phi::KernelSignature kernel_sign =
+        ::phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_name)(
             ProtoArgumentMappingContext(op));
     // resort input&output according to kernel_sign
     ::llvm::SmallVector<mlir::Value, 4> inputs, ori_output;
@@ -104,13 +107,92 @@ void phiOpCvtPass::diapatchStage() {
     infrt::KernelOp kernel_op = ::llvm::dyn_cast_or_null<infrt::KernelOp>(&op);
     if (nullptr != kernel_op) worklist.push_back(kernel_op);
   }
-  // ToDo: implementation in the next PR
-  while (!worklist.empty()) {
-    // infrt::KernelOp kernel_op = worklist.back();
-    worklist.pop_back();
-    // std::string kernel_name = kernel_op.name().str();
-    // std::vector<PhiKernelDesc> candidates =
-    //     getCandidateKernels(kernel_name, valid_places_);
+
+  mlir::OpBuilder builder(&block, block.begin());
+  std::map<TargetType, mlir::Value> phi_context;
+  for (infrt::KernelOp kernel_op : worklist) {
+    std::string kernel_name = kernel_op.name().str();
+    std::vector<PhiKernelDesc> candidates =
+        getCandidateKernels(kernel_name, valid_places_);
+    if (candidates.empty()) {
+      LOG(FATAL) << "No candidate kernels for op:" << kernel_name;
+      continue;
+    }
+    builder.setInsertionPoint(kernel_op);
+
+    // Todo: Implimentation the concrete pass pick strategy
+    const PhiKernelDesc &phi_kernel_desc = candidates.front();
+
+    kernel_name = getPhiTargetPrefix(phi_kernel_desc.kernelType.target) +
+                  kernel_name +
+                  getPhiLayoutSuffix(phi_kernel_desc.kernelType.layout) +
+                  getPhiPrecisionSuffix(phi_kernel_desc.kernelType.precision);
+
+    // mlir::OperationName operation_name = kernel_op.getOperation()->getName();
+
+    mlir::OperationName operation_name(kernel_name, kernel_op.getContext());
+    mlir::OperationState operation_state(kernel_op.getLoc(), operation_name);
+
+    if (phi_context.find(phi_kernel_desc.kernelType.target) ==
+        phi_context.end()) {
+      switch (phi_kernel_desc.kernelType.target) {
+        case TargetType::CPU: {
+          auto alloctor_value =
+              builder
+                  .create<infrt::phi::CreateAllocatorOp_cpu>(
+                      kernel_op.getLoc(),
+                      phi::AllocatorType::get(kernel_op.getContext(),
+                                              TargetType::CPU))
+                  .output();
+          auto context_value =
+              builder
+                  .create<infrt::phi::CreateContextOp_cpu>(
+                      kernel_op.getLoc(),
+                      phi::ContextType::get(kernel_op.getContext(),
+                                            TargetType::CPU),
+                      alloctor_value)
+                  .output();
+          phi_context[TargetType::CPU] = context_value;
+        } break;
+        case TargetType::GPU:
+        case TargetType::UNK:
+        default:
+          LOG(FATAL) << "Unsupported TargetType";
+          break;
+      }
+    }
+    operation_state.addOperands(
+        phi_context.at(phi_kernel_desc.kernelType.target));
+    for (size_t index = 0; index < phi_kernel_desc.inputsType.size(); ++index) {
+      mlir::Value input = kernel_op.getOperand(index);
+      auto cvt_tensor_type_op = builder.create<CvtTensorOp>(
+          kernel_op.getLoc(),
+          DenseTensorType::get(kernel_op.getContext(),
+                               phi_kernel_desc.inputsType[index].target,
+                               phi_kernel_desc.inputsType[index].precision,
+                               phi_kernel_desc.inputsType[index].layout),
+          input);
+      operation_state.addOperands(cvt_tensor_type_op.output());
+    }
+    for (size_t index = 0; index < phi_kernel_desc.outputsType.size();
+         ++index) {
+      operation_state.addTypes(
+          DenseTensorType::get(kernel_op.getContext(),
+                               phi_kernel_desc.outputsType[index].target,
+                               phi_kernel_desc.outputsType[index].precision,
+                               phi_kernel_desc.outputsType[index].layout));
+    }
+    operation_state.addAttributes(kernel_op.attrsAttr().getValue());
+    mlir::Operation *phi_operation = builder.createOperation(operation_state);
+    for (size_t index = 0; index < phi_kernel_desc.outputsType.size();
+         ++index) {
+      mlir::Value input = phi_operation->getResult(index);
+      auto cvt_tensor_type_op = builder.create<CvtTensorOp>(
+          kernel_op.getLoc(), kernel_op.getResultTypes()[index], input);
+      kernel_op.getResult(index).replaceAllUsesWith(
+          cvt_tensor_type_op.output());
+    }
+    kernel_op.erase();
   }
 }
 }  // namespace infrt
