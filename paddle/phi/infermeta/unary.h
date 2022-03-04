@@ -145,4 +145,8 @@ void PixelShuffleInferMeta(const MetaTensor& x,
                            const std::string& data_format,
                            MetaTensor* out);
 
+void TransposeInferMeta(const MetaTensor& x,
+                        const std::vector<int>& axis,
+                        MetaTensor* out);
+
 }  // namespace phi

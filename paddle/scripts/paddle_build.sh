@@ -330,7 +330,7 @@ function check_style() {
 
     # pre-commit use python3.8.0 
     OLD_PATH=$PATH
-    export PATH=export PATH=/usr/local/python3.8.0/bin:/usr/local/python3.8.0/include:/usr/local/bin:${PATH}
+    export PATH=/usr/local/python3.8.0/bin:/usr/local/python3.8.0/include:/usr/local/bin:${PATH}
 
     pre-commit install
     clang-format --version
@@ -2754,17 +2754,20 @@ function build_pr_and_develop() {
     fi
 
     git fetch upstream develop
+    git checkout develop
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
-        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
+        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
+        cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
         git checkout -b develop_base_pr upstream/$BRANCH
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         generate_api_spec "$1" "DEV"
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
+
 }
 
 function build_develop() {

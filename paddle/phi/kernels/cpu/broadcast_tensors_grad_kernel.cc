@@ -59,7 +59,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void BroadcastTensorsGradKernel(const Context& ctx,
-                                const std::vector<DenseTensor>& dout,
+                                const std::vector<const DenseTensor*>& dout,
                                 std::vector<DenseTensor*> dx) {
   // Find reduce dimensions
   const auto& in_tensors = dout;
@@ -85,7 +85,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
   // For each In-Out tensor pair,
   // Prepare and apply broadcast dims array
   for (size_t i = 0; i < num_ins; i++) {
-    const auto* input_tensor = &in_tensors[i];
+    const auto* input_tensor = in_tensors[i];
     auto* output_tensor = out_tensors[i];
 
     const auto& input_dims = input_tensor->dims();
