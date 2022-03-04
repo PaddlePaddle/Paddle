@@ -39,13 +39,11 @@ inline DenseTensor MatMul(const Context& ctx,
                           const DenseTensor& matrix_b,
                           const phi::DDim& a_dim,
                           const phi::DDim& b_dim) {
-  // auto place = ctx.GetPlace();
   auto blas = phi::funcs::GetBlas<Context, T>(ctx);
 
   DenseTensor matrix_c;
   phi::DDim c_dim = phi::make_ddim({a_dim[0], b_dim[1]});
   matrix_c.Resize(c_dim);
-  // matrix_c.mutable_data<T>(place);
   ctx.template Alloc<T>(&matrix_c);
 
   auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_dim, 0, false);
@@ -189,11 +187,6 @@ void MultiDotKernel(const Context& ctx,
                     const std::vector<DenseTensor>& x,
                     DenseTensor* out) {
   auto ins = x;
-  // auto ins = ctx.MultiInput<framework::Tensor>("X");
-  // auto* out = ctx.Output<framework::Tensor>("Out");
-
-  // auto place = ctx.GetPlace();
-  // out->mutable_data<T>(place);
   ctx.template Alloc<T>(out);
 
   auto blas = phi::funcs::GetBlas<Context, T>(ctx);
@@ -317,9 +310,7 @@ void MatChainMulGrad(const Context& ctx,
   DenseTensor dA, dB;
   dA.Resize({dout_dim[0], b_dim[0]});
   dB.Resize({a_dim[1], dout_dim[1]});
-  // dA.mutable_data<T>(ctx.GetPlace());
   ctx.template Alloc<T>(&dA);
-  // dB.mutable_data<T>(ctx.GetPlace());
   ctx.template Alloc<T>(&dB);
 
   CalcGrad<Context, T>(ctx, dout, *A, *B, dout_dim, a_dim, b_dim, &dA, &dB);
@@ -349,19 +340,14 @@ void MultiDotGradKernel(const Context& ctx,
                         const DenseTensor& out_grad,
                         const std::vector<DenseTensor>& x,
                         std::vector<DenseTensor*> x_grad) {
-  // auto ins = ctx.MultiInput<DenseTensor>("X");
-  // auto dout = *ctx.Input<DenseTensor>(framework::GradVarName("Out"));
-  // auto dx = ctx.MultiOutput<DenseTensor>(framework::GradVarName("X"));
   auto ins = x;
   auto dout = out_grad;
   auto dx = x_grad;
 
   auto blas = phi::funcs::GetBlas<Context, T>(ctx);
-  // auto place = ctx.GetPlace();
 
   const auto n = ins.size();
   for (size_t i = 0; i < n; i++) {
-    // dx[i]->mutable_data<T>(place);
     ctx.template Alloc<T>(dx[i]);
   }
 
@@ -406,10 +392,8 @@ void MultiDotGradKernel(const Context& ctx,
     if (cost1 < cost2) {
       DenseTensor tmp_out, tmp_dout;
       tmp_out.Resize({Ma, Nb});
-      // tmp_out.mutable_data<T>(place);
       ctx.template Alloc<T>(&tmp_out);
       tmp_dout.Resize({mat_dim_dout.height_, Nb});
-      // tmp_dout.mutable_data<T>(place);
       ctx.template Alloc<T>(&tmp_dout);
       blas.MatMul(ins[0], mat_dim_a, ins[1], mat_dim_b, alpha, &tmp_out, T(0));
       CalcGrad<Context, T>(ctx,
@@ -433,10 +417,8 @@ void MultiDotGradKernel(const Context& ctx,
     } else {
       DenseTensor tmp_out, tmp_dout;
       tmp_out.Resize({Ka, Nc});
-      // tmp_out.mutable_data<T>(place);
       ctx.template Alloc<T>(&tmp_out);
       tmp_dout.Resize({Ka, mat_dim_dout.width_});
-      // tmp_dout.mutable_data<T>(place);
       ctx.template Alloc<T>(&tmp_dout);
       blas.MatMul(ins[1], mat_dim_b, ins[2], mat_dim_c, alpha, &tmp_out, T(0));
       CalcGrad<Context, T>(ctx,
