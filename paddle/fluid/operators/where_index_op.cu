@@ -43,6 +43,17 @@ using Mode = kps::details::ReduceMode;
 * 3. Get result of this block according to block reduce
 * 4. first block store 0 and current result
 */
+template <typename T>
+struct NonZeroFunctor {
+  HOSTDEVICE NonZeroFunctor() {}
+  HOSTDEVICE inline T operator()(const T in) {
+    if (in) {
+      return static_cast<T>(1.0f);
+    } else {
+      return static_cast<T>(0.0f);
+    }
+  }
+};
 
 template <typename InT, typename OutT, int VecSize, int IsBoundary>
 __device__ void GetBlockCountImpl(const InT *in, OutT *out, int num,
@@ -51,7 +62,7 @@ __device__ void GetBlockCountImpl(const InT *in, OutT *out, int num,
   OutT temp[VecSize];
   OutT result = static_cast<OutT>(0.0f);
   using Add = kps::AddFunctor<OutT>;
-  using Cast = kps::IdentityFunctor<InT>;
+  using Cast = NonZeroFunctor<InT>;
   int store_fix = BLOCK_ID_X + repeat * GRID_NUM_X;
 
   kps::Init<InT, VecSize>(&in_data[0], static_cast<InT>(0.0f));
@@ -67,6 +78,7 @@ __device__ void GetBlockCountImpl(const InT *in, OutT *out, int num,
     OutT tmp = static_cast<OutT>(0.0f);
     kps::WriteData<OutT, 1, 1, 1, true>(out + store_fix, &tmp, 1);
   }
+
   // store num of this block
   kps::WriteData<OutT, 1, 1, 1, true>(out + store_fix + 1, &result, 1);
 }
@@ -158,8 +170,8 @@ SelectKernelImpl(OutT *out, const MT *mask, InT *in, Functor func, int num,
   // each thread cumsum 2 data
   using IdT = int64_t;
   // Set index data type
-  using Add = kps::AddFunctor<IdT>;       // for cumsum
-  using Cast = kps::IdentityFunctor<MT>;  // for mask
+  using Add = kps::AddFunctor<IdT>;  // for cumsum
+  using Cast = NonZeroFunctor<InT>;  // for mask
 
   IdT init_idx = static_cast<IdT>(0.0f);
   MT init_mask = static_cast<MT>(0.0f);
