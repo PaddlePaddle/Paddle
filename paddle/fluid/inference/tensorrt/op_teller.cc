@@ -503,33 +503,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!desc.HasAttr("axis")) {
         VLOG(3) << "flatten need attribute: axis.";
         return false;
-      } else {
-        if (with_dynamic_shape) {
+      }
+      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis != 1) {
+        VLOG(3) << "TRT flatten_op not support the "
+                   "batch-dimension being changed in static_shape mode";
+        return false;
+      }
+      if (with_dynamic_shape) {
 #if IS_TRT_VERSION_GE(7130)
 #else
-          VLOG(3) << "Flatten_op'dynamic shape need TensorRt version > 7.1 ";
-          return false;
+        VLOG(3) << "Flatten_op'dynamic shape need TensorRt version > 7.1 ";
+        return false;
 #endif
-        } else {
-          auto x_var_name = desc.Input("X")[0];
-          auto* block = desc.Block();
-          auto* x_var_desc = block->FindVar(x_var_name);
-          const auto x_shape = x_var_desc->GetShape();
-          int dims = x_shape.size();
-          int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-          if (axis < 0) {
-            axis += dims;
-          }
-          if (axis == 0) {
-            VLOG(3) << "TRT flatten_op not support the "
-                       "batch-dimension being changed in static_shape mode";
-            return false;
-          }
-          if (dims <= 1) {
-            VLOG(3) << "On TRT static shape, flatten input dims should > 1 ";
-            return false;
-          }
-        }
       }
     }
     if (op_type == "flatten_contiguous_range") {
@@ -563,6 +549,13 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           VLOG(3) << "On TRT static shape, flatten_contiguous_range input dims "
                      "should > 1 ";
           return false;
+        }
+        for (int i = start_axis; i <= stop_axis; ++i) {
+          if (x_shape[i] < 0) {
+            VLOG(3) << "On TRT static shape,flatten_contiguous_range input dim "
+                       "should be > 0";
+            return false;
+          }
         }
       }
     }

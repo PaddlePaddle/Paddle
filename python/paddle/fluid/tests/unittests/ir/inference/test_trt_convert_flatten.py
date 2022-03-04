@@ -75,7 +75,7 @@ class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             ver = paddle_infer.get_trt_compile_version()
-            if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 >= 7130:
+            if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 >= 7130:
                 if attrs[0]['axis'] == 1:
                     return 1, 2
                 else:

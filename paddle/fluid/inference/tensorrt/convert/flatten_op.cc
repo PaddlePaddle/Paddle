@@ -34,48 +34,65 @@ class FlattenOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto dims = input->getDimensions();
-    int start_axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
-    int stop_axis = dims.nbDims - 1;
+    auto input_dim = input->getDimensions();
+    int dims = input_dim.nbDims;
+    int mid_axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
     nvinfer1::IShuffleLayer* layer = nullptr;
-    if (!engine_->with_dynamic_shape()) {
-      if (dims.nbDims <= 1) {
+    if (!engine_->with_dynamic_shape()) {  // Todo: explicit display dimensions
+                                           // when use static shape mode
+      if (dims == 0) {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "On TRT static shape, flatten input dims should > 1."));
       }
-      if (start_axis < 0) {
-        start_axis += dims.nbDims + 1;
-      }
-      if (start_axis == 0) {
+      if (mid_axis != 1) {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "The flatten'start_axis must != 0, when use static shape mode."));
-      } else {
-        start_axis--;
+            "TRT flatten not support the batch-dimension being changed, when "
+            "use static shape mode."));
       }
+      mid_axis--;  // mid_axis == 0
 
       nvinfer1::Dims flatten_dim;
-      flatten_dim.nbDims = dims.nbDims - (stop_axis - start_axis);
-      for (int i = 0; i < flatten_dim.nbDims; i++) {
-        flatten_dim.d[i] = 0;
-      }
-      flatten_dim.d[start_axis] = 1;
-      for (int i = start_axis; i <= stop_axis; i++) {
-        flatten_dim.d[start_axis] *= dims.d[i];
+      flatten_dim.nbDims = 1;
+      flatten_dim.d[0] = 1;
+      for (int i = 0; i < dims; i++) {
+        flatten_dim.d[0] *= input_dim.d[i];
       }
       layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       layer->setReshapeDimensions(flatten_dim);
     } else {
-      if (start_axis < 0) {
-        start_axis += dims.nbDims;
-      }
-      nvinfer1::Dims flatten_dim;
-      flatten_dim.nbDims = dims.nbDims - (stop_axis - start_axis);
-      for (int i = 0; i < flatten_dim.nbDims; i++) {
-        flatten_dim.d[i] = 0;
-      }
-      flatten_dim.d[start_axis] = -1;
+      auto* shape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shape, *input);
+      nvinfer1::Dims start_dim, size_dim, stride_dim;
+      start_dim.nbDims = 1;
+      size_dim.nbDims = 1;
+      stride_dim.nbDims = 1;
+      start_dim.d[0] = 1;
+      size_dim.d[0] = dims - 1;
+      stride_dim.d[0] = 1;
+      auto* slice_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Slice, *(shape_layer->getOutput(0)),
+                               start_dim, size_dim, stride_dim);
+      uint32_t reduce_dim = 1;
+      auto* reduce_prod_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *(slice_layer->getOutput(0)),
+          nvinfer1::ReduceOperation::kPROD, reduce_dim, true);
+      int32_t* constant_weight_data = new int32_t[1];
+      constant_weight_data[0] = -1;
+      TensorRTEngine::Weight constant_weight{
+          nvinfer1::DataType::kINT32, static_cast<void*>(constant_weight_data),
+          1};
+      nvinfer1::Dims constant_dims;
+      constant_dims.nbDims = 1;
+      constant_dims.d[0] = 1;
+      auto* constant_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Constant, constant_dims, constant_weight.get());
+      std::vector<nvinfer1::ITensor*> itensors;
+      itensors.push_back(constant_layer->getOutput(0));
+      itensors.push_back(reduce_prod_layer->getOutput(0));
+      auto* concat_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(), 2);
+      concat_layer->setAxis(0);
       layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-      layer->setReshapeDimensions(flatten_dim);
+      layer->setInput(1, *(concat_layer->getOutput(0)));
     }
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "flatten", {output_name}, test_mode);
