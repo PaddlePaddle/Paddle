@@ -26,6 +26,28 @@ using paddle::framework::To32BitIndex;
 template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(
     const DeviceContext& context, paddle::framework::Tensor* tensor, T num) {
+  if (num == static_cast<T>(0)) {
+    if (std::is_same<DeviceContext, phi::CPUContext>::value) {
+      auto* ptr = context.template Alloc<T>(tensor);
+      size_t nbytes = tensor->numel() * sizeof(T);
+      std::memset(ptr, 0, nbytes);
+      return;
+    }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (std::is_same<DeviceContext, phi::GPUContext>::value) {
+      auto* ptr = context.template Alloc<T>(tensor);
+      size_t nbytes = tensor->numel() * sizeof(T);
+      auto stream = reinterpret_cast<const phi::GPUContext&>(context).stream();
+#ifdef PADDLE_WITH_CUDA
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(ptr, 0, nbytes, stream));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(ptr, 0, nbytes, stream));
+#endif
+      return;
+    }
+#endif
+  }
+
   bool xpu_place = false;
 #ifdef PADDLE_WITH_XPU
   if (paddle::platform::is_xpu_place(context.GetPlace())) {

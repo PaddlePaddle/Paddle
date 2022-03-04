@@ -129,8 +129,12 @@ def update_loss_scaling(x,
         'decr_every_n_nan_or_inf': decr_every_n_nan_or_inf,
         'incr_ratio': incr_ratio,
         'decr_ratio': decr_ratio,
-        'stop_update': stop_update
     }
+
+    if isinstance(stop_update, Variable):
+        inputs['StopUpdate'] = stop_update
+    else:
+        attrs['stop_update'] = stop_update
 
     helper.append_op(
         type='update_loss_scaling', inputs=inputs, outputs=outputs, attrs=attrs)

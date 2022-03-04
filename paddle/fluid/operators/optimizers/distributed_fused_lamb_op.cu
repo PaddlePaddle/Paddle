@@ -1030,6 +1030,46 @@ static void CheckHasNanInfGrad(const float *fp32_grad, int fp32_numel,
   }
 }
 
+template <typename T, int VecSize>
+static __global__ void InplaceAddToCUDAKernel(const T *__restrict__ x,
+                                              T *__restrict__ y, int n) {
+  int i = (threadIdx.x + blockIdx.x * blockDim.x) * VecSize;
+  int stride = (blockDim.x * gridDim.x) * VecSize;
+  using MT = MasterT<T>;
+  for (; i + VecSize <= n; i += stride) {
+    platform::AlignedVector<T, VecSize> x_vec, y_vec;
+    platform::Load(x + i, &x_vec);
+    platform::Load(y + i, &y_vec);
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      y_vec[j] =
+          static_cast<T>(static_cast<MT>(x_vec[j]) + static_cast<MT>(y_vec[j]));
+    }
+    platform::Store(y_vec, y + i);
+  }
+
+  for (; i < n; ++i) {
+    y[i] = static_cast<T>(static_cast<MT>(x[i]) + static_cast<MT>(y[i]));
+  }
+}
+
+template <typename T>
+static void LaunchInplaceAddToKernel(const platform::CUDADeviceContext &dev_ctx,
+                                     const T *x, T *y, int n,
+                                     gpuStream_t stream) {
+  int vec_size = std::min(GetChunkedVecSize(x, 0), GetChunkedVecSize(y, 0));
+  auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n, vec_size);
+
+#define PD_LAUNCH_INPLACE_ADD_TO_KERNEL                                        \
+  do {                                                                         \
+    InplaceAddToCUDAKernel<T, kVecSize><<<                                     \
+        config.block_per_grid, config.thread_per_block, 0, stream>>>(x, y, n); \
+  } while (0)
+
+  PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_INPLACE_ADD_TO_KERNEL);
+#undef PD_LAUNCH_INPLACE_ADD_TO_KERNEL
+}
+
 template <typename T>
 class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -1039,6 +1079,9 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto stream = dev_ctx.stream();
     auto place = dev_ctx.GetPlace();
+
+    auto *found_inf_t = ctx.Output<framework::Tensor>("FoundInf");
+    found_inf_t->Resize({1});
 
     // Step 1: Get fp16 param and grad tensors
     int64_t fp16_numel;
@@ -1084,6 +1127,106 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                           "Too many parameter number. Only <= %d is supported.",
                           std::numeric_limits<int>::max()));
 
+    auto acc_steps = ctx.Attr<int>("acc_steps");
+    PADDLE_ENFORCE_GE(
+        acc_steps, 1,
+        platform::errors::InvalidArgument(
+            "The gradient accumulation steps should be not less than 1."));
+    if (acc_steps > 1) {
+      auto *step_t = ctx.Output<framework::Tensor>("Steps");
+      PADDLE_ENFORCE_NOT_NULL(
+          step_t,
+          platform::errors::InvalidArgument(
+              "Output(Steps) cannot be nullptr when Attr(acc_steps) > 1."));
+      bool is_initialized = step_t->IsInitialized();
+      int64_t *step_ptr;
+      if (is_initialized) {
+        step_ptr = step_t->mutable_data<int64_t>(platform::CPUPlace());
+        ++(*step_ptr);
+      } else {
+        step_t->Resize({1});
+        step_ptr = step_t->mutable_data<int64_t>(platform::CPUPlace());
+        *step_ptr = 1;
+      }
+      int64_t rounded_step = (*step_ptr) % acc_steps;
+
+      float *fp32_acc_grad = nullptr;
+      if (has_fp32_param) {
+        auto *fp32_acc_grad_t =
+            ctx.Output<framework::Tensor>("FP32AccFusedGrad");
+        PADDLE_ENFORCE_NOT_NULL(
+            fp32_acc_grad_t, platform::errors::InvalidArgument(
+                                 "Output(FP32AccFusedGrad) cannot be nullptr "
+                                 "when Attr(acc_steps) > 1."));
+        if (!fp32_acc_grad_t->IsInitialized()) {
+          fp32_acc_grad_t->Resize({static_cast<int64_t>(fp32_numel)});
+          fp32_acc_grad = fp32_acc_grad_t->mutable_data<float>(place);
+        } else {
+          fp32_acc_grad = fp32_acc_grad_t->data<float>();
+        }
+      }
+
+      platform::float16 *fp16_acc_grad = nullptr;
+      if (has_fp16_param) {
+        auto *fp16_acc_grad_t =
+            ctx.Output<framework::Tensor>("FP16AccFusedGrad");
+        PADDLE_ENFORCE_NOT_NULL(
+            fp16_acc_grad_t, platform::errors::InvalidArgument(
+                                 "Output(FP16AccFusedGrad) cannot be nullptr "
+                                 "when Attr(acc_steps) > 1."));
+        if (!fp16_acc_grad_t->IsInitialized()) {
+          fp16_acc_grad_t->Resize({static_cast<int64_t>(fp16_numel)});
+          fp16_acc_grad =
+              fp16_acc_grad_t->mutable_data<platform::float16>(place);
+        } else {
+          fp16_acc_grad = fp16_acc_grad_t->data<platform::float16>();
+        }
+      }
+
+      // Inplace addto
+      if (has_fp32_param) {
+        if (rounded_step == 1) {
+          memory::Copy(place, fp32_acc_grad, place, fp32_grad,
+                       fp32_numel * sizeof(float), stream);
+        } else {
+          LaunchInplaceAddToKernel(dev_ctx, fp32_grad, fp32_acc_grad,
+                                   fp32_numel, stream);
+        }
+      }
+
+      if (has_fp16_param) {
+        if (rounded_step == 1) {
+          memory::Copy(place, fp16_acc_grad, place, fp16_grad,
+                       fp16_numel * sizeof(platform::float16), stream);
+        } else {
+          LaunchInplaceAddToKernel(dev_ctx, fp16_grad, fp16_acc_grad,
+                                   fp16_numel, stream);
+        }
+      }
+
+      auto *stop_update_t = ctx.Output<framework::Tensor>("StopUpdate");
+      stop_update_t->Resize({1});
+      auto *stop_update =
+          stop_update_t->mutable_data<bool>(platform::CPUPlace());
+
+      auto *found_inf_cpu =
+          found_inf_t->mutable_data<bool>(platform::CPUPlace());
+
+      if (rounded_step != 0) {
+        *stop_update = true;
+        auto *found_inf_cpu =
+            found_inf_t->mutable_data<bool>(platform::CPUPlace());
+        *found_inf_cpu = false;
+        return;
+      } else {
+        // swap pointer
+        fp32_grad = fp32_acc_grad;
+        fp16_grad = fp16_acc_grad;
+        *stop_update = false;
+        found_inf_t->clear();
+      }
+    }
+
     // Step 3: Get ParamInfo
     const auto *param_info_tensor = GetInputTensorPtr<int>(ctx, "ParamInfo");
     auto fp32_local_start_idx = param_info_tensor[0];
@@ -1111,7 +1254,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
             << " , fp16_global_param_num = " << fp16_global_param_num;
 
     // Step 4: Get LearningRate, Moment1, Moment2, Beta1Pow, Beta2Pow,
-    // GlobalScale, FoundInf
+    // GlobalScale
     const auto *global_scale = GetInputTensorPtr<float>(ctx, "GlobalScale");
     const auto *lr = GetInputTensorPtr<float>(ctx, "LearningRate");
     int64_t partial_numel = 0;
@@ -1146,8 +1289,6 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
     auto *beta2pow =
         GetSameInOutTensorPtr<float>(ctx, place, "Beta2Pow", "Beta2PowOut");
 
-    auto *found_inf_t = ctx.Output<framework::Tensor>("FoundInf");
-    found_inf_t->Resize({1});
     auto *found_inf = found_inf_t->mutable_data<bool>(place);
 
     // Step 5: Get attributes weight_decay, beta1, beta2, epsilon,

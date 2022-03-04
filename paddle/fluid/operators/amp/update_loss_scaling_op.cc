@@ -68,6 +68,16 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
 
     return framework::OpKernelType(dtype, ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "FoundInfinite" || var_name == "StopUpdate") {
+      return expected_kernel_type;
+    }
+    return framework::OperatorWithKernel::GetKernelTypeForVar(
+        var_name, tensor, expected_kernel_type);
+  }
 };
 
 class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -93,6 +103,10 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("LossScaling", "(Tensor) 1-dim tensor, updated loss scaling.");
     AddOutput("OutGoodSteps", "(Tensor) 1-dim tensor, pdated good steps.");
     AddOutput("OutBadSteps", "(Tensor) 1-dim tensor, updated bad steps.");
+    AddOutput("StopUpdate",
+              "(Tensor) 1-dim tensor. Stop updating loss scaling, and just "
+              "zero inputs. It has higher priority than Attr(stop_update).")
+        .AsDispensable();
     AddAttr<int>("incr_every_n_steps",
                  "A value represents increasing loss scaling every n "
                  "consecutive steps with finite gradients.");
@@ -131,8 +145,8 @@ decr_every_n_nan_or_inf steps and each step some gradients are infinite.
   }
 };
 
-template <typename T>
-class UpdateLossScalingFunctor<platform::CPUDeviceContext, T> {
+template <typename T, bool IsFoundInfOnCPU>
+class UpdateLossScalingFunctor<platform::CPUDeviceContext, T, IsFoundInfOnCPU> {
  public:
   void operator()(const platform::CPUDeviceContext& ctx,
                   const bool* found_inf_data, const T* pre_loss_scaling_data,
@@ -141,6 +155,10 @@ class UpdateLossScalingFunctor<platform::CPUDeviceContext, T> {
                   const int decr_every_n_nan_or_inf, const float incr_ratio,
                   const float decr_ratio, T* updated_loss_scaling_data,
                   int* good_out_data, int* bad_out_data) const {
+    PADDLE_ENFORCE_EQ(
+        IsFoundInfOnCPU, true,
+        platform::errors::InvalidArgument(
+            "The Input(FoundInfinite) should be on the CPUPlace."));
     Update<T>(found_inf_data, pre_loss_scaling_data, good_in_data, bad_in_data,
               incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio,
               decr_ratio, updated_loss_scaling_data, good_out_data,

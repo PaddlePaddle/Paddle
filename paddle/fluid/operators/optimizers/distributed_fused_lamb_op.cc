@@ -100,6 +100,10 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("FP16FusedParamOut", "The updated FP16FusedParam.")
         .AsDispensable();
+    AddOutput("FP32AccFusedGrad", "The accumulated FP32 gradients.")
+        .AsDispensable();
+    AddOutput("FP16AccFusedGrad", "The accumulated FP16 gradients.")
+        .AsDispensable();
 
     AddOutput("Moment1Out", "The updated Moment1.");
     AddOutput("Moment2Out", "The updated Moment2.");
@@ -110,7 +114,13 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
 
     AddOutput("FoundInf", "Whether there is NaN/Inf");
+    AddOutput("Steps", "The training steps.").AsDispensable();
+    AddOutput("StopUpdate",
+              "Whether the parameter updating is stopped when the gradient "
+              "accumulated steps is less than Attr(acc_steps).")
+        .AsDispensable();
 
+    AddAttr<int>("acc_steps", "The gradient accumulation steps.").SetDefault(1);
     AddAttr<float>("beta1", "The initial Beta1Pow value.");
     AddAttr<float>("beta2", "The initial Beta2Pow value.");
     AddAttr<float>("epsilon",

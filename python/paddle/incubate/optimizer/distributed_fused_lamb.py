@@ -38,6 +38,7 @@ class DistributedFusedLamb(Optimizer):
                  is_grad_scaled_by_nranks=True,
                  alignment=128,
                  use_master_param_norm=True,
+                 gradient_accumulation_steps=1,
                  name=None):
         assert not framework.in_dygraph_mode(
         ), "DistributedFusedLamb does not support dygraph mode"
@@ -67,6 +68,9 @@ class DistributedFusedLamb(Optimizer):
         self._scale = None
         self._ring_id = 0
         self._use_master_param_norm = use_master_param_norm
+        self._gradient_accumulation_steps = gradient_accumulation_steps
+        assert self._gradient_accumulation_steps >= 1
+
         self.helper = LayerHelper('distributed_fused_lamb')
         self._supports_check_nan_inf = True  # very import flag for AMP
 
@@ -76,7 +80,18 @@ class DistributedFusedLamb(Optimizer):
             shape=[1],
             dtype=core.VarDesc.VarType.BOOL)
 
+        if self._gradient_accumulation_steps > 1:
+            self._stop_update = main_block.create_var(
+                name=unique_name.generate('stop_update'),
+                shape=[1],
+                dtype=core.VarDesc.VarType.BOOL)
+        else:
+            self._stop_update = None
+
         self._param_to_master_param = {}
+
+    def _get_stop_update_var(self):
+        return self._stop_update if self._stop_update is not None else False
 
     def _set_scale(self, scale):
         assert scale is not None
@@ -189,6 +204,20 @@ class DistributedFusedLamb(Optimizer):
         param_order = self._create_persistable_var('param_order', dtype='int32')
         param_order.is_distributed = True
 
+        if self._gradient_accumulation_steps > 1:
+            fp32_acc_fused_grad = [
+                self._create_persistable_var('fp32_acc_fused_grad')
+            ]
+            fp16_acc_fused_grad = [
+                self._create_persistable_var(
+                    'fp16_acc_fused_grad', dtype='float16')
+            ]
+            steps = [self._create_persistable_var('steps', dtype='int64')]
+        else:
+            fp32_acc_fused_grad = []
+            fp16_acc_fused_grad = []
+            steps = []
+
         rank = get_rank()
         nranks = get_world_size()
         scale = self._get_or_create_scale()
@@ -290,6 +319,11 @@ class DistributedFusedLamb(Optimizer):
                 'ParamOut': params,
                 'GradOut': grads,
                 'FoundInf': [self._found_inf],
+                'FP32AccFusedGrad': fp32_acc_fused_grad,
+                'FP16AccFusedGrad': fp16_acc_fused_grad,
+                'Steps': steps,
+                'StopUpdate': self._stop_update
+                if self._stop_update is not None else [],
             },
             attrs={
                 'weight_decay': self._weight_decay,
@@ -302,5 +336,6 @@ class DistributedFusedLamb(Optimizer):
                 'ring_id': self._ring_id,
                 'use_master_param_norm': self._use_master_param_norm,
                 'is_grad_scaled_by_nranks': self._is_grad_scaled_by_nranks,
+                'acc_steps': self._gradient_accumulation_steps,
             })
         return [lamb_op]

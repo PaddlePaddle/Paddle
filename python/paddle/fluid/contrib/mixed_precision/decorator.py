@@ -432,7 +432,7 @@ class OptimizerWithMixedPrecision(object):
                     self._decr_every_n_nan_or_inf,
                     self._incr_ratio,
                     self._decr_ratio,
-                    stop_update=False,
+                    stop_update=self._optimizer._get_stop_update_var(),
                     name="update_loss_scaling")
             return
 
