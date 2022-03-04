@@ -116,9 +116,10 @@ class HTTPMaster(Master):
 
         assert self.client.wait_server_ready(timeout=600), 'server is not ready'
 
+        # 'aaaaaa' make suer main pod (master server) as rank 0
         ky = 'aaaaaa' if rank < 0 and self.role == Master.MAIN else key
         k = "{}/{}/{}".format(prefix, ky, rank)
-        assert self.client.put(k, value)
+        assert self.client.put(k, value), 'put value failed'
         self.gc.append(k)
 
         while True:
@@ -261,9 +262,9 @@ class ETCDMaster(Master):
         self.client.delete_prefix(self.heartbeat_prefix)
 
     def set_status(self, status):
-        assert self.client.put(self.job_prefix,
-                               six.b(status),
-                               lease=self.client.lease(600))
+        assert self.client.put(
+            self.job_prefix, six.b(status),
+            lease=self.client.lease(600)), "set status failed {}".format(status)
 
     def get_status(self):
         return six.ensure_str(self.client.get(self.job_prefix)[0] or '')
