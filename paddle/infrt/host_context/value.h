@@ -70,7 +70,7 @@ using ValueVariantType =
             backends::CpuPhiAllocator,
             backends::CpuPhiContext,
             ::phi::CPUContext,
-            std::vector<phi::DenseTensor>,
+            std::vector<const phi::DenseTensor*>,
             paddle::experimental::ScalarBase<phi::DenseTensor>,
             paddle::experimental::ScalarArrayBase<phi::DenseTensor>,
             std::vector<phi::MetaTensor*>,
