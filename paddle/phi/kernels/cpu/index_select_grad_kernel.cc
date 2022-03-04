@@ -57,16 +57,13 @@ void IndexSelectGradInner(const Context& ctx,
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();
 
-  const T* p_output = x_grad->mutable_data<T>(ctx.GetPlace());
-  //  const T* p_output = ctx.template Alloc<T>(x_grad);
-  T* out_data = x_grad->mutable_data<T>(ctx.GetPlace());
-  //  T* out_data = ctx.template Alloc<T>(x_grad);
+  const T* p_output = ctx.template Alloc<T>(x_grad);
+  T* out_data = ctx.template Alloc<T>(x_grad);
 
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
 
-  //  auto& dev_ctx = context.template device_context<DeviceContext>();
   phi::funcs::SetConstant<Context, T> set_constant;
   set_constant(ctx, x_grad, static_cast<T>(0.0));
 

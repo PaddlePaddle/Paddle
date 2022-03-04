@@ -15,9 +15,8 @@
 #include "paddle/phi/kernels/roll_grad_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/roll_kernel_impl.h"
+#include "paddle/phi/kernels/cpu/roll_kernel_impl.h"
 
 namespace phi {
 
@@ -43,8 +42,7 @@ void RollGradKernel(const Context& dev_ctx,
   }
 
   for (size_t i = 0; i < nums; i++) {
-    shift_along_dim(
-        out_vec.data(), input_dim, axis_data[i], 0 - shifts_data[i]);
+    ShiftAlongDim(out_vec.data(), input_dim, axis_data[i], 0 - shifts_data[i]);
   }
 
   dev_ctx.template Alloc<T>(x_grad);

@@ -19,7 +19,7 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/array.h"
-#include "paddle/phi/kernels/impl/roll_kernel_impl.cu.h"
+#include "paddle/phi/kernels/gpu/roll_kernel_impl.h"
 
 namespace phi {
 

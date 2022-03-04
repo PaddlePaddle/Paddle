@@ -118,4 +118,9 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             MetaTensor* out,
                                             MetaConfig config = MetaConfig());
 
+void IndexSelectInferMeta(const MetaTensor& x,
+                          const MetaTensor& index,
+                          int dim,
+                          MetaTensor* output);
+
 }  // namespace phi

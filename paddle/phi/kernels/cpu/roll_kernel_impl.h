@@ -14,15 +14,16 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/roll_kernel.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T>
-inline void shift_along_dim(T* data,
-                            const DDim& input_dim,
-                            int64_t dim,
-                            int64_t shift) {
+inline void ShiftAlongDim(T* data,
+                          const DDim& input_dim,
+                          int64_t dim,
+                          int64_t shift) {
   if (dim < 0) {
     dim += input_dim.size();
   }
