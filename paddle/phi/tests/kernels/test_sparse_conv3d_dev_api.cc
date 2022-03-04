@@ -665,5 +665,49 @@ TEST(DEV_API, sparse_conv3d_backward) {
              kernel_grad);
 }
 
+TEST(DEV_API, sparse_conv2d_subm) {
+  const int in_channels = 1;
+  const int out_channels = 1;
+  DDim x_dims = {1, 1, 4, 5, in_channels};
+  DDim kernel_dims = {1, 3, 3, in_channels, out_channels};
+  DDim out_dims = {1, 1, 3, 3, out_channels};
+  std::vector<int> paddings = {0, 0, 0};
+  std::vector<int> strides = {1, 1, 1};
+  std::vector<int> dilations = {1, 1, 1};
+
+  const int non_zero_num = 2;
+  std::vector<int> indices_flatten = {0, 0, 0, 0, 3, 0, 2, 3};
+
+  std::vector<float> features = {-0.79394531, -0.3125, -0.55029297};
+  // 3*3*3=27
+  std::vector<float> kernel = {0.65820312,
+                               0.75048828,
+                               0.21411133,
+                               0.17370605,
+                               0.85546875,
+                               0.53076172,
+                               0.28833008,
+                               0.71044922,
+                               0.00659943};
+
+  std::vector<int> out_indices_flatten = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                          0, 0, 2, 2, 2, 1, 2, 0, 1, 2};
+
+  std::vector<float> out_features = {
+      -0.17004, -0.71338, -0.00206, -0.22205, -0.09009};
+
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations);
+}
 }  // namespace tests
 }  // namespace phi

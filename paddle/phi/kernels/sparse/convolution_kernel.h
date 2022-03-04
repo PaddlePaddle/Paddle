@@ -124,6 +124,7 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
+                  const std::string& algorithm = "norm",  // norm or subm
                   SparseCooTensor* out,
                   DenseTensor* rulebook);
 
@@ -135,6 +136,7 @@ SparseCooTensor Conv3d(const Context& dev_ctx,
                        const std::vector<int>& dilations,
                        const std::vector<int>& strides,
                        const int groups,
+                       const std::string& algorithm,  // norm or subm
                        DenseTensor* rulebook) {
   DenseTensor indices = phi::Empty<T, Context>(dev_ctx);
   DenseTensor values = phi::Empty<T, Context>(dev_ctx);

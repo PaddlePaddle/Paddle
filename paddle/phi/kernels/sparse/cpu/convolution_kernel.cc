@@ -35,6 +35,7 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
+                  const std::string& algorithm,
                   SparseCooTensor* out,
                   DenseTensor* rulebook) {
   // update padding and dilation

@@ -39,6 +39,7 @@ void ProductRuleBook(const Context& dev_ctx,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,
                      const DDim& out_dims,
+                     const std::string& algorithm,
                      DenseTensor* rulebook,
                      DenseTensor* counter_per_kernel) {
   const auto& kernel_dims = kernel.dims();
@@ -61,6 +62,19 @@ void ProductRuleBook(const Context& dev_ctx,
   const Dims4D c_paddings(1, paddings[2], paddings[1], paddings[0]);
   const Dims4D c_strides(1, strides[2], strides[1], strides[0]);
   const Dims4D c_dilations(1, dilations[2], dilations[1], dilations[0]);
+
+  std::set<int> hash_in;
+  const bool is_subm = algorithm == "subm";
+  if (is_subm) {
+    for (int i = 0; i < non_zero_num; i++) {
+      int batch = indices_ptr[i];
+      int in_z = indices_ptr[i + non_zero_num];
+      int in_y = indices_ptr[i + 2 * non_zero_num];
+      int in_x = indices_ptr[i + 3 * non_zero_num];
+      int index = PointToIndex<DDim>(batch, in_x, in_y, in_z, x_dims);
+      hash_set.insert(index);
+    }
+  }
 
   auto f_calc_rulebook = [&](int* rulebook_ptr) {
     int kernel_index = 0, rulebook_index = 0;
@@ -86,6 +100,16 @@ void ProductRuleBook(const Context& dev_ctx,
                       kx,
                       ky,
                       kz)) {
+              if (is_subm) {
+                int center_x = in_x - kx + kernel_dims[2] / 2;
+                int center_y = in_y - ky + kernel_dims[1] / 2;
+                int center_z = in_z - kz + kernel_dims[0] / 2;
+                int center_index = PointToIndex<DDim>(
+                    batch, center_x, center_y, center_z, x_dims);
+                if (hash_in.find(center_index) == hash_in.end()) {
+                  continue;
+                }
+              }
               if (rulebook_ptr == nullptr) {
                 counter_ptr[kernel_index] += 1;
                 ++rulebook_len;
