@@ -294,8 +294,9 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
-        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$? \
-        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
+        
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
