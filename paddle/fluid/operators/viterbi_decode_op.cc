@@ -9,7 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/viterbi_decode_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -104,6 +103,3 @@ namespace ops = paddle::operators;
 namespace platform = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(viterbi_decode, ops::ViterbiDecodeOp,
                              ops::ViterbiDecodeOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    viterbi_decode, ops::ViterbiDecodeKernel<platform::CPUDeviceContext, float>,
-    ops::ViterbiDecodeKernel<platform::CPUDeviceContext, double>);
