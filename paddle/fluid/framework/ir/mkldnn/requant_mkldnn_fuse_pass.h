@@ -21,6 +21,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+using StringTensorPtrMap = std::unordered_map<std::string, Tensor*>;
+using StringPairMap = std::unordered_map<std::string, std::pair<bool, Tensor*>>;
+
 class RequantMkldnnFusePass : public FusePassBase {
  public:
   RequantMkldnnFusePass() = default;
@@ -33,17 +36,13 @@ class RequantMkldnnFusePass : public FusePassBase {
   void GetTensorFromVector(const std::vector<float>& data_v,
                            Tensor* tensor) const;
 
-  void GetQuantInfo(
-      ir::Graph* graph, Scope* scope,
-      std::unordered_map<std::string, Tensor*>& weight_thresholds,  // NOLINT
-      std::unordered_map<std::string, std::pair<bool, Tensor*>>&
-          var_quant_scales)  // NOLINT
+  void GetQuantInfo(ir::Graph* graph, Scope* scope,
+                    StringTensorPtrMap& weight_thresholds,  // NOLINT
+                    StringPairMap& var_quant_scales)        // NOLINT
       const;
 
-  void ComputeWeightScales(
-      ir::Graph* graph, Scope* scope,
-      std::unordered_map<std::string, std::pair<bool, Tensor*>>&
-          var_quant_scales)  // NOLINT
+  void ComputeWeightScales(ir::Graph* graph, Scope* scope,
+                           StringPairMap& var_quant_scales)  // NOLINT
       const;
 };
 }  // namespace ir

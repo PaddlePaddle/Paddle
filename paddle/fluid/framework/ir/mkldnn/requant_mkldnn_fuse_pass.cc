@@ -31,10 +31,8 @@ void RequantMkldnnFusePass::GetTensorFromVector(
 }
 
 void RequantMkldnnFusePass::GetQuantInfo(
-    ir::Graph* graph, Scope* scope,
-    std::unordered_map<std::string, Tensor*>& weight_thresholds,
-    std::unordered_map<std::string, std::pair<bool, Tensor*>>& var_quant_scales)
-    const {
+    ir::Graph* graph, Scope* scope, StringTensorPtrMap& weight_thresholds,
+    StringPairMap& var_quant_scales) const {
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
@@ -74,9 +72,7 @@ void RequantMkldnnFusePass::GetQuantInfo(
 }
 
 void RequantMkldnnFusePass::ComputeWeightScales(
-    ir::Graph* graph, Scope* scope,
-    std::unordered_map<std::string, std::pair<bool, Tensor*>>& var_quant_scales)
-    const {
+    ir::Graph* graph, Scope* scope, StringPairMap& var_quant_scales) const {
   auto get_scales = [&](Tensor* tensor, int axis) -> std::vector<float> {
     PADDLE_ENFORCE_LT(axis, 2, "The input axis is required to be less than 2.");
     auto data = tensor->mutable_data<float>(platform::CPUPlace());
@@ -117,9 +113,7 @@ void RequantMkldnnFusePass::ComputeWeightScales(
 
   auto compute_var_scales = [&](
       ir::Graph* graph, Scope* scope, std::unordered_set<std::string> ops,
-      std::string weight_name, int axis,
-      std::unordered_map<std::string, std::pair<bool, Tensor*>>&
-          var_quant_scales) {
+      std::string weight_name, int axis, StringPairMap& var_quant_scales) {
     for (auto* op_node :
          ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
       if (!op_node->IsOp()) continue;
@@ -211,10 +205,9 @@ void RequantMkldnnFusePass::ComputeWeightScales(
     GetTensorFromVector(scale_ur, tensor);
   };
 
-  auto compute_gru_weight_scales = [&](
-      ir::Graph* graph, Scope* scope, std::string wx_name, std::string wh_name,
-      std::unordered_map<std::string, std::pair<bool, Tensor*>>&
-          var_quant_scales) {
+  auto compute_gru_weight_scales = [&](ir::Graph* graph, Scope* scope,
+                                       std::string wx_name, std::string wh_name,
+                                       StringPairMap& var_quant_scales) {
     for (auto* op_node :
          ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
       if (!op_node->IsOp()) continue;
@@ -279,8 +272,7 @@ void RequantMkldnnFusePass::ComputeWeightScales(
 
   auto compute_lstm_weight_scales = [&](
       ir::Graph* graph, Scope* scope, std::string wx_name, std::string wh_name,
-      std::unordered_map<std::string, std::pair<bool, Tensor*>>&
-          var_quant_scales) {
+      StringPairMap& var_quant_scales) {
     for (auto* op_node :
          ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
       if (!op_node->IsOp()) continue;
@@ -320,13 +312,17 @@ void RequantMkldnnFusePass::ComputeWeightScales(
                              var_quant_scales);
 }
 
+void RequantMkldnnFusePass::PropagateScales() {
+  auto update_scale_op_in_scale = [&]() {};
+}
+
 void RequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Convert paddle model to mkldnn quantized model.";
   const std::string pattern_name = "requant_mkldnn_fuse_pass";
   FusePassBase::Init(pattern_name, graph);
 
-  std::unordered_map<std::string, Tensor*> weight_thresholds;
-  std::unordered_map<std::string, std::pair<bool, Tensor*>> var_quant_scales;
+  StringTensorPtrMap weight_thresholds;
+  StringPairMap var_quant_scales;
 
   auto* scope = param_scope();
   GetQuantInfo(graph, scope, weight_thresholds, var_quant_scales);
