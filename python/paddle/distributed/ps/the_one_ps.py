@@ -751,22 +751,25 @@ class TheOnePSRuntime(RuntimeBase):
             kwargs.update(sync_kwargs)
 
         print("communicator config:", trainer_config.get_communicator_flags())
-        self._communicator = Communicator(
-            trainer_config.mode, kwargs,
-            trainer_config.get_communicator_flags())
-        self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
-                                         string_hosts, fluid.global_scope())
+        role_id = get_role_id(self.role_maker)
+        self._worker.init_worker(proto_txt, string_hosts, role_id)
+
+        #        self._communicator = Communicator(
+        #            trainer_config.mode, kwargs,
+        #            trainer_config.get_communicator_flags())
+        #        self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
+        #                                         string_hosts, fluid.global_scope())
 
         fleet.util.barrier()
-        info = self._communicator.get_client_info()
+        info = self._worker.get_client_info()
         if isinstance(info, list) and len(info) > 0:
             all_info = self.role_maker._all_gather(info[0])
             # for unittest
             if not isinstance(all_info, list):
                 warnings.warn("gloo may not initialize correctly")
                 all_info = [all_info]
-            self._communicator.set_clients(all_info)
-            self._communicator.create_client_to_client_connection()
+            self._worker.set_clients(all_info)
+            self._worker.create_client_to_client_connection()
             print('create c2c connection done')
         else:
             print('cannot create c2c connection')
@@ -782,16 +785,16 @@ class TheOnePSRuntime(RuntimeBase):
         else:
             init_params = dense_map
 
-        if not is_test:
-            self._communicator.init_params(init_params)
-            fleet.util.barrier()
-        self._communicator.pull_dense(init_params)
+#        if not is_test:
+#            self._communicator.init_params(init_params)
+#            fleet.util.barrier()
+#        self._communicator.pull_dense(init_params)
         fleet.util.barrier()
 
-        if not self._communicator.is_running():
-            self._communicator.start()
-        else:
-            warnings.warn("communicator has been initialized, skip")
+        #        if not self._communicator.is_running():
+        #            self._communicator.start()
+        #        else:
+        #            warnings.warn("communicator has been initialized, skip")
 
         launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
         launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))

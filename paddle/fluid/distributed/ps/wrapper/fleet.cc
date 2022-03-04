@@ -12,9 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+#include <google/protobuf/text_format.h>
+
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 
 namespace paddle {
 namespace distributed {
@@ -29,6 +31,7 @@ std::shared_ptr<FleetWrapper> FleetWrapper::s_instance_ = NULL;
 bool FleetWrapper::is_initialized_ = false;
 
 std::shared_ptr<paddle::distributed::PSCore> FleetWrapper::pserver_ptr_ = NULL;
+std::shared_ptr<paddle::distributed::PSClient> FleetWrapper::worker_ptr_ = NULL;
 
 void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
                                           int connect_timeout_ms,
@@ -86,28 +89,74 @@ void FleetWrapper::InitServer(
 //   }
 // }
 
-void FleetWrapper::InitWorker(
-    const std::string& dist_desc,
-    const std::vector<std::string>& host_sign_list, Scope* scope,
-    const RpcCtxMap& send_ctx,
-    const std::unordered_map<uint64_t, std::vector<std::string>>&
-        dense_varnames,
-    const std::map<std::string, std::string>& envs, int node_num, int index) {
+void FleetWrapper::InitGFlag(const std::string& gflags) {
+  VLOG(3) << "Init With Gflags:" << gflags;
+  std::vector<std::string> flags = paddle::string::split_string(gflags);
+  if (flags.size() < 1) {
+    flags.push_back("-max_body_size=314217728");
+    flags.push_back("-bthread_concurrency=40");
+    flags.push_back("-socket_max_unwritten_bytes=2048000000");
+    flags.push_back("-max_connection_pool_size=1950");
+  }
+  auto it = flags.begin();
+  flags.insert(it, "exe default");
+  char* flags_ptr[flags.size()];
+  for (size_t i = 0; i < flags.size(); ++i) {
+    flags_ptr[i] = (char*)(flags[i].c_str());  // NOLINT
+  }
+  int params_cnt = flags.size();
+  char** params_ptr = &(flags_ptr[0]);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
+}
+
+void FleetWrapper::InitWorker(const std::string& dist_desc,
+                              const std::vector<std::string>& host_sign_list,
+                              int index) {
   if (!is_initialized_) {
-    VLOG(3) << "Going to init worker";
+    // not used, just for psclient's init
+    // TODO(zhaocaibei123): remove this later
+    std::map<uint64_t, std::vector<paddle::distributed::Region>>
+        dense_pull_regions;
 
-    Communicator::InitInstance<AsyncCommunicator>(
-        send_ctx, dense_varnames, dist_desc, host_sign_list, scope, envs);
-
-    pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
-        new paddle::distributed::PSCore());
-    pserver_ptr_->init_worker(dist_desc, _regions, &host_sign_list, node_num,
-                              index);
-    is_initialized_ = true;
+    if (worker_ptr_.get() == nullptr) {
+      paddle::distributed::PSParameter ps_param;
+      google::protobuf::TextFormat::ParseFromString(dist_desc, &ps_param);
+      InitGFlag(ps_param.init_gflags());
+      int servers = host_sign_list.size();
+      VLOG(0) << "debug zcb init worker servers.size: " << servers;
+      ps_env_.set_ps_servers(&host_sign_list, servers);
+      worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
+          paddle::distributed::PSClientFactory::create(ps_param));
+      worker_ptr_->configure(ps_param, dense_pull_regions, ps_env_, index);
+      VLOG(3) << "debug zcb init worker: " << (worker_ptr_ != NULL);
+    }
   } else {
-    VLOG(3) << "Worker can be initialized only once";
+    VLOG(3) << "Client can be initialized only once";
   }
 }
+
+// void FleetWrapper::InitWorker(
+//    const std::string& dist_desc,
+//    const std::vector<std::string>& host_sign_list, Scope* scope,
+//    const RpcCtxMap& send_ctx,
+//    const std::unordered_map<uint64_t, std::vector<std::string>>&
+//        dense_varnames,
+//    const std::map<std::string, std::string>& envs, int node_num, int index) {
+//  if (!is_initialized_) {
+//    VLOG(3) << "Going to init worker";
+//
+//    Communicator::InitInstance<AsyncCommunicator>(
+//        send_ctx, dense_varnames, dist_desc, host_sign_list, scope, envs);
+//
+//    pserver_ptr_ = std::shared_ptr<paddle::distributed::PSCore>(
+//        new paddle::distributed::PSCore());
+//    pserver_ptr_->init_worker(dist_desc, _regions, &host_sign_list, node_num,
+//                              index);
+//    is_initialized_ = true;
+//  } else {
+//    VLOG(3) << "Worker can be initialized only once";
+//  }
+//}
 
 void FleetWrapper::StopServer() {
   VLOG(3) << "Going to stop server";
@@ -135,15 +184,21 @@ uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
 
 std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
   VLOG(3) << "Going to get client info";
-  auto* communicator = Communicator::GetInstance();
-  std::vector<uint64_t> res = communicator->GetClientInfo();
+  std::vector<uint64_t> res = ps_env_.get_client_info();
+  for (auto rr : res) {
+    VLOG(2) << "FleetWrapper::GetClientInfo " << rr;
+  }
   return res;
+}
+
+int FleetWrapper::SetClients(std::vector<uint64_t>& host_sign_list) {
+  int node = host_sign_list.size();
+  return ps_env_.set_ps_clients(host_sign_list.data(), node);
 }
 
 void FleetWrapper::CreateClient2ClientConnection() {
   VLOG(1) << "Going to create client2client connection";
-  auto* communicator = Communicator::GetInstance();
-  communicator->_worker_ptr->create_client2client_connection(
+  worker_ptr_->create_client2client_connection(
       client2client_request_timeout_ms_, client2client_connect_timeout_ms_,
       client2client_max_retry_);
 }
@@ -288,10 +343,10 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
       pull_result_ptr.push_back(output_data + output_len);
     }
   }
-  auto* communicator = Communicator::GetInstance();
-  auto status = communicator->_worker_ptr->pull_sparse(
-      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(),
-      is_training);
+  // auto* communicator = Communicator::GetInstance();
+  auto status =
+      worker_ptr_->pull_sparse(pull_result_ptr.data(), table_id,
+                               fea_keys.data(), fea_keys.size(), is_training);
   status.wait();
   auto ret = status.get();
   if (ret != 0) {
@@ -318,8 +373,7 @@ void FleetWrapper::PullDenseVarsAsync(
     paddle::distributed::Region reg(w, tensor->numel());
     regions[i] = std::move(reg);
   }
-  auto status = pserver_ptr_->_worker_ptr->pull_dense(regions.data(),
-                                                      regions.size(), tid);
+  auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
   pull_dense_status->push_back(std::move(status));
 }
 
@@ -336,9 +390,7 @@ void FleetWrapper::PullDenseVarsSync(
     paddle::distributed::Region reg(w, tensor->numel());
     regions.emplace_back(std::move(reg));
   }
-  auto* communicator = Communicator::GetInstance();
-  auto status = communicator->_worker_ptr->pull_dense(regions.data(),
-                                                      regions.size(), tid);
+  auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
   status.wait();
 }
 
@@ -355,9 +407,8 @@ void FleetWrapper::PushDenseParamSync(
     paddle::distributed::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
   }
-  auto* communicator = Communicator::GetInstance();
-  auto push_status = communicator->_worker_ptr->push_dense_param(
-      regions.data(), regions.size(), table_id);
+  auto push_status =
+      worker_ptr_->push_dense_param(regions.data(), regions.size(), table_id);
   push_status.wait();
   auto status = push_status.get();
   CHECK(status == 0) << "push dense param failed, status[" << status << "]";
@@ -386,12 +437,12 @@ void FleetWrapper::PushDenseVarsAsync(
             << g[tensor->numel() - 1];
   }
 
-  auto* communicator =
-      dynamic_cast<AsyncCommunicator*>(Communicator::GetInstance());
-  auto push_status = communicator->_worker_ptr->push_dense(
-      regions.data(), regions.size(), table_id);
+  //  auto* communicator =
+  //      dynamic_cast<AsyncCommunicator*>(Communicator::GetInstance());
+  auto push_status =
+      worker_ptr_->push_dense(regions.data(), regions.size(), table_id);
 
-  communicator->PushDensePostProcessing();
+  //  communicator->PushDensePostProcessing();
 }
 
 void FleetWrapper::PushSparseVarsAsync(
@@ -445,7 +496,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;
-    } else {
+    } else if (batch_size != cur_batch_size) {
       // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;
@@ -485,7 +536,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
       Eigen::Map<
           Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
           g_mat(g, g_tensor->numel() / fea_dim, fea_dim);
-      g_mat.rightCols(fea_dim) *= batch_size;
+      g_mat.rightCols(fea_dim - 2) *= batch_size;  // make sure use cvm op
     }
 
     const framework::LoDTensor* tensor = inputs->at(index);
@@ -502,16 +553,16 @@ void FleetWrapper::PushSparseFromTensorAsync(
             continue;
           }
           push_keys.emplace_back(real_id);
-          push_values.emplace_back(fea_dim + 3);
+          push_values.emplace_back(fea_dim + 1);
           // slot show clk grad... consistent with CtrCommonPushValue defined in
           // ctr_accessor.h
           push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-          push_values.back()[1] =
-              (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-          push_values.back()[2] =
-              (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+          // push_values.back()[1] =
+          //    (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+          // push_values.back()[2] =
+          //    (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
 
-          float* data = push_values.back().data() + 3;
+          float* data = push_values.back().data() + 1;
 
           memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
@@ -525,16 +576,16 @@ void FleetWrapper::PushSparseFromTensorAsync(
           continue;
         }
         push_keys.emplace_back(real_id);
-        push_values.emplace_back(fea_dim + 3);
+        push_values.emplace_back(fea_dim + 1);
         // slot show clk grad... consistent with CtrCommonPushValue defined in
         // ctr_accessor.h
         push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-        push_values.back()[1] =
-            (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-        push_values.back()[2] =
-            (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+        // push_values.back()[1] =
+        //     (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+        // push_values.back()[2] =
+        //     (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
 
-        float* data = push_values.back().data() + 3;
+        float* data = push_values.back().data() + 1;
 
         memcpy(data, g + output_len, sizeof(float) * fea_dim);
 
@@ -548,16 +599,23 @@ void FleetWrapper::PushSparseFromTensorAsync(
 
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
+
+    // for debug
+    std::cout << "push sparse key: " << push_keys[i] << " values: ";
+    for (auto gg : push_values[i]) {
+      std::cout << gg << " ";
+    }
+    std::cout << "\n";
   }
 
-  auto* communicator = Communicator::GetInstance();
-  PADDLE_ENFORCE_EQ(
-      communicator->Check(table_id), true,
-      platform::errors::InvalidArgument(
-          "can not find table: %s, please check your config", table_id));
-  auto status = communicator->_worker_ptr->push_sparse(
-      table_id, push_keys.data(), (const float**)push_g_vec.data(),
-      push_keys.size());
+  //  auto* communicator = Communicator::GetInstance();
+  //  PADDLE_ENFORCE_EQ(
+  //      communicator->Check(table_id), true,
+  //      platform::errors::InvalidArgument(
+  //          "can not find table: %s, please check your config", table_id));
+  auto status = worker_ptr_->push_sparse(table_id, push_keys.data(),
+                                         (const float**)push_g_vec.data(),
+                                         push_keys.size());
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {

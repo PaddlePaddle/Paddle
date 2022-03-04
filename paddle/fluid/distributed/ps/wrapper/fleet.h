@@ -178,12 +178,7 @@ class FleetWrapper {
       const std::vector<framework::ProgramDesc>& server_sub_program = {});
   // init trainer
   void InitWorker(const std::string& dist_desc,
-                  const std::vector<std::string>& host_sign_list, Scope* scope,
-                  const RpcCtxMap& send_ctx,
-                  const std::unordered_map<uint64_t, std::vector<std::string>>&
-                      dense_varnames,
-                  const std::map<std::string, std::string>& envs, int node_num,
-                  int index);
+                  const std::vector<std::string>& host_sign_list, int index);
 
   // stop server
   void StopServer();
@@ -193,6 +188,8 @@ class FleetWrapper {
   uint64_t RunServer(const std::string& ip, uint32_t port);
   // get client info
   std::vector<uint64_t> GetClientsInfo();
+  // set client info
+  int SetClients(std::vector<uint64_t>& host_sign_list);  // NOLINT
   // create client to client connection
   void CreateClient2ClientConnection();
   // flush all push requests
@@ -248,10 +245,15 @@ class FleetWrapper {
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
 
+  // for init worker
+  void InitGFlag(const std::string& gflags);
+
   static std::shared_ptr<paddle::distributed::PSCore> pserver_ptr_;
+  static std::shared_ptr<paddle::distributed::PSClient> worker_ptr_;
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+  paddle::distributed::PaddlePSEnvironment ps_env_;
   size_t GetAbsoluteSum(size_t start, size_t end, size_t level,
                         const framework::LoD& lod);
 
