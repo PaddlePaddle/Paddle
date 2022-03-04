@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void EyeKernel(const Context& ctx,
                int64_t num_rows,
                int64_t num_columns,
-               int dtype,
+               DataType dtype,
                DenseTensor* out);
 
 }  // namespace phi
