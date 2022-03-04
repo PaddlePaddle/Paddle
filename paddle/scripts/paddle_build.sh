@@ -242,6 +242,7 @@ function cmake_base() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -293,7 +294,8 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
-        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$? \
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     if [ "$build_error" != 0 ];then
         exit 7;
     fi

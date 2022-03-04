@@ -32,6 +32,11 @@
 #include "onnxruntime_cxx_api.h"  // NOLINT
 #include "paddle2onnx/converter.h"
 
+#ifdef PADDLE_WITH_TESTING
+#include <gtest/gtest.h>
+#include <gtest/gtest_prod.h>
+#endif
+
 ///
 /// \file onnxruntime_predictor.h
 ///
@@ -91,7 +96,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   explicit ONNXRuntimePredictor(const AnalysisConfig &config)
       : config_(config) {
     predictor_id_ = inference::GetUniqueId();
-    env_ = Ort::Env(ORT_LOGGING_LEVEL_VERBOSE, "onnx");
+    env_ = Ort::Env(ORT_LOGGING_LEVEL_INFO, "onnx");
   }
   ///
   /// \brief Destroy the ONNXRuntime Predictor object
@@ -209,6 +214,12 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
   int predictor_id_;
+
+// Some more detailed tests, they are made the friends of the predictor, so that
+// the all the details can be tested.
+#if PADDLE_WITH_TESTING
+  FRIEND_TEST(ONNXRuntimePredictor, onnxruntime_on);
+#endif
 };
 
 }  // namespace paddle

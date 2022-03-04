@@ -354,6 +354,18 @@ TEST(AnalysisPredictor, set_xpu_device_id) {
 }
 #endif
 
+TEST(AnalysisPredictor, enable_onnxruntime) {
+  AnalysisConfig config;
+  config.EnableONNXRuntime();
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  ASSERT_TRUE(config.use_onnxruntime());
+#else
+  ASSERT_TRUE(!config.use_onnxruntime());
+#endif
+  config.DisableONNXRuntime();
+  ASSERT_TRUE(!config.use_onnxruntime());
+}
+
 }  // namespace paddle
 
 namespace paddle_infer {
