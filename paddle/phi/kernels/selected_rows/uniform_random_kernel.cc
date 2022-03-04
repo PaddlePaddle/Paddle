@@ -23,16 +23,16 @@ namespace phi {
 namespace sr {
 
 template <typename T, typename Context>
-void UniformRandomRawSRKernel(const Context& dev_ctx,
-                              const ScalarArray& shape,
-                              DataType dtype,
-                              float min,
-                              float max,
-                              int seed,
-                              int diag_num,
-                              int diag_step,
-                              float diag_val,
-                              SelectedRows* out) {
+void UniformRandomRawKernel(const Context& dev_ctx,
+                            const ScalarArray& shape,
+                            DataType dtype,
+                            float min,
+                            float max,
+                            int seed,
+                            int diag_num,
+                            int diag_step,
+                            float diag_val,
+                            SelectedRows* out) {
   phi::UniformRandomRawKernel<T>(dev_ctx,
                                  shape,
                                  dtype,
@@ -46,13 +46,13 @@ void UniformRandomRawSRKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void UniformRandomSRKernel(const Context& dev_ctx,
-                           const ScalarArray& shape,
-                           DataType dtype,
-                           float min,
-                           float max,
-                           int seed,
-                           SelectedRows* out) {
+void UniformRandomKernel(const Context& dev_ctx,
+                         const ScalarArray& shape,
+                         DataType dtype,
+                         float min,
+                         float max,
+                         int seed,
+                         SelectedRows* out) {
   phi::UniformRandomKernel<T>(
       dev_ctx, shape, dtype, min, max, seed, out->mutable_value());
 }
@@ -63,7 +63,7 @@ void UniformRandomSRKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(uniform_random_raw_sr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::UniformRandomRawSRKernel,
+                   phi::sr::UniformRandomRawKernel,
                    float,
                    double,
                    phi::dtype::bfloat16) {}
@@ -71,7 +71,7 @@ PD_REGISTER_KERNEL(uniform_random_raw_sr,
 PD_REGISTER_KERNEL(uniform_random_sr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::UniformRandomSRKernel,
+                   phi::sr::UniformRandomKernel,
                    float,
                    double,
                    phi::dtype::bfloat16) {}
@@ -81,14 +81,14 @@ PD_REGISTER_KERNEL(uniform_random_sr,
 PD_REGISTER_KERNEL(uniform_random_raw_sr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UniformRandomRawSRKernel,
+                   phi::sr::UniformRandomRawKernel,
                    float,
                    double) {}
 
 PD_REGISTER_KERNEL(uniform_random_sr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UniformRandomSRKernel,
+                   phi::sr::UniformRandomKernel,
                    float,
                    double) {}
 #endif

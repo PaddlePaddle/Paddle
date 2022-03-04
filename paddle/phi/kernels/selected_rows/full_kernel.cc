@@ -28,11 +28,11 @@ namespace phi {
 namespace sr {
 
 template <typename T, typename Context>
-void FullSR(const Context& dev_ctx,
-            const ScalarArray& shape,
-            const Scalar& val,
-            DataType dtype,
-            SelectedRows* out) {
+void FullKernel(const Context& dev_ctx,
+                const ScalarArray& shape,
+                const Scalar& val,
+                DataType dtype,
+                SelectedRows* out) {
   phi::FullKernel<T>(dev_ctx, shape, val, dtype, out->mutable_value());
 }
 
@@ -42,7 +42,7 @@ void FullSR(const Context& dev_ctx,
 PD_REGISTER_KERNEL(full_sr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::FullSR,
+                   phi::sr::FullKernel,
                    float,
                    double,
                    uint8_t,

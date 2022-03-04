@@ -23,12 +23,12 @@ namespace phi {
 namespace sr {
 
 template <typename T, typename Context>
-void ScaleSR(const Context& dev_ctx,
-             const SelectedRows& x,
-             const Scalar& scale,
-             float bias,
-             bool bias_after_scale,
-             SelectedRows* out) {
+void ScaleKernel(const Context& dev_ctx,
+                 const SelectedRows& x,
+                 const Scalar& scale,
+                 float bias,
+                 bool bias_after_scale,
+                 SelectedRows* out) {
   if (x.value().Holder() != out->value().Holder() ||
       x.value().data() != out->value().data()) {
     out->set_rows(x.rows());
@@ -44,7 +44,7 @@ void ScaleSR(const Context& dev_ctx,
 PD_REGISTER_KERNEL(scale_sr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ScaleSR,
+                   phi::sr::ScaleKernel,
                    float,
                    double,
                    phi::dtype::bfloat16,

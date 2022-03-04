@@ -21,12 +21,12 @@ namespace phi {
 namespace sr {
 
 template <typename T, typename Context>
-void ScaleSR(const Context& dev_ctx,
-             const SelectedRows& x,
-             const Scalar& scale,
-             float bias,
-             bool bias_after_scale,
-             SelectedRows* out);
+void ScaleKernel(const Context& dev_ctx,
+                 const SelectedRows& x,
+                 const Scalar& scale,
+                 float bias,
+                 bool bias_after_scale,
+                 SelectedRows* out);
 
 }  // namespace sr
 }  // namespace phi

@@ -21,25 +21,25 @@ namespace phi {
 namespace sr {
 
 template <typename T, typename Context>
-void UniformRandomRawSRKernel(const Context& dev_ctx,
-                              const ScalarArray& shape,
-                              DataType dtype,
-                              float min,
-                              float max,
-                              int seed,
-                              int diag_num,
-                              int diag_step,
-                              float diag_val,
-                              SelectedRows* out);
+void UniformRandomRawKernel(const Context& dev_ctx,
+                            const ScalarArray& shape,
+                            DataType dtype,
+                            float min,
+                            float max,
+                            int seed,
+                            int diag_num,
+                            int diag_step,
+                            float diag_val,
+                            SelectedRows* out);
 
 template <typename T, typename Context>
-void UniformRandomSRKernel(const Context& dev_ctx,
-                           const ScalarArray& shape,
-                           DataType dtype,
-                           float min,
-                           float max,
-                           int seed,
-                           SelectedRows* out);
+void UniformRandomKernel(const Context& dev_ctx,
+                         const ScalarArray& shape,
+                         DataType dtype,
+                         float min,
+                         float max,
+                         int seed,
+                         SelectedRows* out);
 
 }  // namespace sr
 }  // namespace phi
