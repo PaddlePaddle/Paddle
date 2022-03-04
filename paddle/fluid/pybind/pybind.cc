@@ -2953,15 +2953,15 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::HostPythonNode::device_node_ptrs);
 
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
-      .def("Create", &paddle::platform::Profiler::Create,
+      .def("create", &paddle::platform::Profiler::Create,
            py::return_value_policy::take_ownership)
-      .def("Prepare",
+      .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
              profiler->Prepare();
            })
-      .def("Start", &paddle::platform::Profiler::Start)
-      .def("Stop",
+      .def("start", &paddle::platform::Profiler::Start)
+      .def("stop",
            [](paddle::platform::Profiler *profiler) {
              platform::DisableHostEventRecorder();
              return profiler->Stop();
@@ -2975,8 +2975,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<platform::RecordEvent>(m, "_RecordEvent")
       .def(py::init([](std::string name, platform::TracerEventType type) {
-        return std::unique_ptr<platform::RecordEvent>(new platform::RecordEvent(
-            name, type, 1, paddle::platform::EventRole::kOrdinary));
+        return std::make_unique<platform::RecordEvent>(
+            name, type, 1, paddle::platform::EventRole::kOrdinary);
       }))
       .def("end", [](platform::RecordEvent *event) { event->End(); });
 
@@ -2997,7 +2997,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
       .value("PythonUserDefined",
              paddle::platform::TracerEventType::PythonUserDefined);
-  m.def("LoadProfilerResult", &paddle::platform::LoadProfilerResult);
+  m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);

@@ -332,6 +332,10 @@ class Profiler:
         self.stop()
 
     def start(self):
+        r'''
+        Start profiler and enter the first profiler step(0).
+        State transformed from CLOSED to self.current_state and trigger corresponding action. 
+        '''
         # CLOSED -> self.current_state
         if self.current_state == ProfilerState.READY:
             self.profiler.Prepare()
@@ -347,6 +351,10 @@ class Profiler:
         self.record_event.begin()
 
     def stop(self):
+        r'''
+        Stop profiler and State transformed from self.current_state to CLOSED.
+        Trigger corresponding action and post-process profiler result using self.on_trace_ready if result exists.
+        '''
         # self.current_state -> CLOSED
         # In this situation, RECORD state is regarded as RECORD_AND_RETURN
         if self.record_event:
