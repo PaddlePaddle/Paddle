@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -129,10 +130,10 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
                                          context.GetPlace());
     int axis = -1;
-    ElementwiseComputeEx<GreaterThanFunctor<T, int64_t>,
+    ElementwiseComputeEx<phi::funcs::GreaterThanFunctor<T, int64_t>,
                          platform::CUDADeviceContext, T, int64_t>(
         context, &eigenvalue_tensor, &tol_tensor, axis,
-        GreaterThanFunctor<T, int64_t>(), &compare_result);
+        phi::funcs::GreaterThanFunctor<T, int64_t>(), &compare_result);
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  int64_t>(context);

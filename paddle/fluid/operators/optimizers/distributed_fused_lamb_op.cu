@@ -19,11 +19,11 @@
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
 #include "paddle/fluid/operators/optimizers/multi_tensor_apply.h"
 #include "paddle/fluid/operators/tensor_to_string.h"
-#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -66,8 +66,8 @@ struct L2NormFunctor {
     int i;
     for (i = threadIdx.x * VecSize; i + VecSize <= size;
          i += (BlockDim * VecSize)) {
-      platform::AlignedVector<T, VecSize> tmp_vec;
-      platform::Load(ptr + i, &tmp_vec);
+      phi::AlignedVector<T, VecSize> tmp_vec;
+      phi::Load(ptr + i, &tmp_vec);
 #pragma unroll
       for (int j = 0; j < VecSize; ++j) {
         auto tmp = static_cast<MT>(tmp_vec[j]);
@@ -111,9 +111,9 @@ static int GetChunkedVecSize(const T *ptr, int chunk_size) {
   constexpr int max_load_bits = 128;
   int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
   auto address = reinterpret_cast<uintptr_t>(ptr);
-  constexpr int vec8 = alignof(platform::AlignedVector<T, 8>);
-  constexpr int vec4 = alignof(platform::AlignedVector<T, 4>);
-  constexpr int vec2 = alignof(platform::AlignedVector<T, 2>);
+  constexpr int vec8 = alignof(phi::AlignedVector<T, 8>);
+  constexpr int vec4 = alignof(phi::AlignedVector<T, 4>);
+  constexpr int vec2 = alignof(phi::AlignedVector<T, 2>);
   chunk_size *= sizeof(T);
   if (address % vec8 == 0 && chunk_size % vec8 == 0) {
     return std::min(8, valid_vec_size);
@@ -304,14 +304,30 @@ struct AndFunctor {
   HOSTDEVICE bool operator()(bool x, bool y) const { return x && y; }
 };
 
-template <typename T1, typename T2>
+template <typename T1, typename T2, int VecSize>
 static __global__ void ScaleCUDAKernel(const T1 *__restrict__ x,
                                        const T2 *__restrict__ scale,
                                        T1 *__restrict__ y, int num) {
   static_assert(sizeof(T1) <= sizeof(T2),
                 "sizeof(T1) must be not greater than sizeof(T2).");
   T2 s = scale[0];
-  CUDA_KERNEL_LOOP(i, num) {
+
+  int i = (threadIdx.x + blockIdx.x * blockDim.x) * VecSize;
+  int stride = blockDim.x * gridDim.x * VecSize;
+
+  for (; i + VecSize <= num; i += stride) {
+    phi::AlignedVector<T1, VecSize> x_vec;
+    phi::AlignedVector<T1, VecSize> y_vec;
+
+    phi::Load(x + i, &x_vec);
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      y_vec[j] = static_cast<T1>(static_cast<T2>(x_vec[j]) * s);
+    }
+    phi::Store(y_vec, y + i);
+  }
+
+  for (; i < num; ++i) {
     y[i] = static_cast<T1>(static_cast<T2>(x[i]) * s);
   }
 }
@@ -394,25 +410,24 @@ static __global__ void UpdateLambMomentAndTrustRatioDivCUDAKernel(
   int stride = blockDim.x * gridDim.x * VecSize;
 
   for (; i + VecSize <= num; i += stride) {
-    platform::AlignedVector<T, VecSize> param_vec;
-    platform::AlignedVector<GradT, VecSize> grad_vec;
-    platform::AlignedVector<T, VecSize> weight_decay_vec;
-    platform::AlignedVector<T, VecSize> mom1_vec;
-    platform::AlignedVector<T, VecSize> mom2_vec;
-    platform::AlignedVector<T, VecSize> trust_ratio_div_vec;
+    phi::AlignedVector<T, VecSize> param_vec;
+    phi::AlignedVector<GradT, VecSize> grad_vec;
+    phi::AlignedVector<T, VecSize> mom1_vec;
+    phi::AlignedVector<T, VecSize> mom2_vec;
+    phi::AlignedVector<T, VecSize> trust_ratio_div_vec;
 
     T cur_weight_decay = (i < weight_decay_end_numel) * weight_decay;
     if (cur_weight_decay != static_cast<T>(0.0)) {
-      platform::Load(param_p + i, &param_vec);
+      phi::Load(param_p + i, &param_vec);
     } else {
 #pragma unroll
       for (int j = 0; j < VecSize; ++j) {
         param_vec[j] = static_cast<T>(0);
       }
     }
-    platform::Load(grad_p + i, &grad_vec);
-    platform::Load(mom1_p + i, &mom1_vec);
-    platform::Load(mom2_p + i, &mom2_vec);
+    phi::Load(grad_p + i, &grad_vec);
+    phi::Load(mom1_p + i, &mom1_vec);
+    phi::Load(mom2_p + i, &mom2_vec);
 
 #define PD_LAMB_MOM_TRUST_RATIO_DIV_UPDATE(__param, __grad, __mom1, __mom2,    \
                                            __trust_ratio_div, __idx)           \
@@ -435,9 +450,9 @@ static __global__ void UpdateLambMomentAndTrustRatioDivCUDAKernel(
                                          mom2_vec, trust_ratio_div_vec, j);
     }
 
-    platform::Store(mom1_vec, mom1_p + i);
-    platform::Store(mom2_vec, mom2_p + i);
-    platform::Store(trust_ratio_div_vec, trust_ratio_div_p + i);
+    phi::Store(mom1_vec, mom1_p + i);
+    phi::Store(mom2_vec, mom2_p + i);
+    phi::Store(trust_ratio_div_vec, trust_ratio_div_p + i);
   }
 
   for (; i < num; ++i) {
@@ -617,29 +632,29 @@ struct LambUpdateParamAndBetaPowsFunctor {
     trust_ratio_div += offset;
 
     for (i = threadIdx.x * VecSize; i + VecSize <= size; i += stride) {
-      platform::AlignedVector<MT, VecSize> trust_ratio_div_vec;
-      platform::Load(trust_ratio_div + i, &trust_ratio_div_vec);
+      phi::AlignedVector<MT, VecSize> trust_ratio_div_vec;
+      phi::Load(trust_ratio_div + i, &trust_ratio_div_vec);
       if (HasMasterParam) {
-        platform::AlignedVector<MT, VecSize> master_param_vec;
-        platform::Load(master_param + i, &master_param_vec);
-        platform::AlignedVector<ParamT, VecSize> param_vec;
+        phi::AlignedVector<MT, VecSize> master_param_vec;
+        phi::Load(master_param + i, &master_param_vec);
+        phi::AlignedVector<ParamT, VecSize> param_vec;
 #pragma unroll
         for (int j = 0; j < VecSize; ++j) {
           MT p = master_param_vec[j] - ratio * trust_ratio_div_vec[j];
           master_param_vec[j] = p;
           param_vec[j] = static_cast<ParamT>(p);
         }
-        platform::Store(master_param_vec, master_param + i);
-        platform::Store(param_vec, param + i);
+        phi::Store(master_param_vec, master_param + i);
+        phi::Store(param_vec, param + i);
       } else {
-        platform::AlignedVector<ParamT, VecSize> param_vec;
-        platform::Load(param + i, &param_vec);
+        phi::AlignedVector<ParamT, VecSize> param_vec;
+        phi::Load(param + i, &param_vec);
 #pragma unroll
         for (int j = 0; j < VecSize; ++j) {
           MT p = static_cast<MT>(param_vec[j]) - ratio * trust_ratio_div_vec[j];
           param_vec[j] = static_cast<ParamT>(p);
         }
-        platform::Store(param_vec, param + i);
+        phi::Store(param_vec, param + i);
       }
     }
 
@@ -760,6 +775,24 @@ static bool CreatePreMulScaleOpIfSupported(ncclDataType_t dtype,
   return false;
 }
 
+template <typename T1, typename T2>
+static void LaunchScaleKernel(const platform::CUDADeviceContext &dev_ctx,
+                              const T1 *x, const T2 *scale, T1 *y, int n,
+                              gpuStream_t stream) {
+  int vec_size = std::min(GetChunkedVecSize(x, 0), GetChunkedVecSize(y, 0));
+  auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n, vec_size);
+
+#define PD_LAMB_VEC_SCALE_KERNEL_CASE                                          \
+  do {                                                                         \
+    ScaleCUDAKernel<T1, T2, kVecSize><<<config.block_per_grid,                 \
+                                        config.thread_per_block, 0, stream>>>( \
+        x, scale, y, n);                                                       \
+  } while (0)
+
+  PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAMB_VEC_SCALE_KERNEL_CASE);
+#undef PD_LAMB_VEC_SCALE_KERNEL_CASE
+}
+
 template <typename T>
 static void NCCLReduceScatterWithScale(
     const T *sendbuff, T *recvbuff, size_t recvcount, size_t nranks,
@@ -775,10 +808,8 @@ static void NCCLReduceScatterWithScale(
       PADDLE_ENFORCE_EQ(nranks, 1,
                         platform::errors::InvalidArgument(
                             "nranks must be 1 when scale != nullptr."));
-      auto numel = recvcount * nranks;
-      auto config = platform::GetGpuLaunchConfig1D(dev_ctx, numel);
-      ScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
-                        stream>>>(sendbuff, scale, recvbuff, numel);
+      LaunchScaleKernel(dev_ctx, sendbuff, scale, recvbuff, recvcount * nranks,
+                        stream);
     }
     return;
   }
@@ -792,9 +823,7 @@ static void NCCLReduceScatterWithScale(
   if (scale && !should_destroy_op) {
     size_t numel = recvcount * nranks;
     T *new_sendbuff = buffer.Alloc<T>(numel);
-    auto config = platform::GetGpuLaunchConfig1D(dev_ctx, numel);
-    ScaleCUDAKernel<<<config.block_per_grid, config.thread_per_block, 0,
-                      stream>>>(sendbuff, scale, new_sendbuff, numel);
+    LaunchScaleKernel(dev_ctx, sendbuff, scale, new_sendbuff, numel, stream);
     sendbuff = new_sendbuff;
   }
 

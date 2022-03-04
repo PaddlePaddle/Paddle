@@ -88,6 +88,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_types[0] == proto::VarType::SELECTED_ROWS;
   }
 
+  bool IsForInferShape() const override { return true; }
+
  private:
   const InferShapeContext& ctx_;
 };
@@ -127,7 +129,9 @@ class CompatMetaTensor : public phi::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return phi::make_ddim(var->GetShape());
+
+      return var->GetShape().empty() ? phi::make_ddim({0UL})
+                                     : phi::make_ddim(var->GetShape());
     }
   }
 
@@ -377,6 +381,10 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             std::type_index(typeid(std::vector<int32_t>))) {
           infer_meta_context.EmplaceBackAttr(std::move(
               phi::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int64_t>))) {
+          infer_meta_context.EmplaceBackAttr(std::move(
+              phi::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int))) {
           infer_meta_context.EmplaceBackAttr(

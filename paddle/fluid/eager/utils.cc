@@ -122,12 +122,22 @@ paddle::experimental::Tensor* EagerUtils::mutable_grad(
 void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
   for (const auto& autograd_meta : *autograd_metas) {
+    if (autograd_meta->GradNode()) {
+      VLOG(7) << "Should not set grad node twice, original node is:"
+              << autograd_meta->GradNode()->name()
+              << "current is: " << grad_node->name();
+    }
     autograd_meta->SetGradNode(grad_node);
   }
 }
 
 void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
+  if (autograd_meta->GradNode()) {
+    VLOG(7) << "Should not set grad node twice, original node is:"
+            << autograd_meta->GradNode()->name()
+            << "current is: " << grad_node->name();
+  }
   autograd_meta->SetGradNode(grad_node);
 }
 
