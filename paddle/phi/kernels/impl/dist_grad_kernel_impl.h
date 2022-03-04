@@ -102,7 +102,8 @@ static void DistGradFunction(const Context& context,
   auto& place = *context.eigen_device();
   auto out_grad_t = ETensor<T, Rank>::From(out_grad, out_new_dims);
   DenseTensor grad;
-  grad.mutable_data<T>(new_dims, context.GetPlace());
+  grad.Resize(new_dims);
+  context.template Alloc<T>(&grad);
   auto grad_t = ETensor<T, Rank>::From(grad);
 
   auto x_minux_y = x_t.broadcast(x_bcast_dims) - y_t.broadcast(y_bcast_dims);
@@ -157,14 +158,14 @@ static void DistGradFunction(const Context& context,
   // 2: if x or y is broadcasted in forward function,
   // the grad need to be sum along the broadcasted dimensions
   if (x_grad) {
-    x_grad->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(x_grad);
     auto x_grad_t = ETensor<T, Rank>::From(*x_grad, x_new_dims);
     x_grad_t.device(place) = grad_t.reshape(x_reshape_dims)
                                  .sum(reduce_dims)
                                  .reshape(x_grad_t.dimensions());
   }
   if (y_grad) {
-    y_grad->mutable_data<T>(context.GetPlace());
+    context.template Alloc<T>(y_grad);
     auto y_grad_t = ETensor<T, Rank>::From(*y_grad, y_new_dims);
     y_grad_t.device(place) = -grad_t.reshape(y_reshape_dims)
                                   .sum(reduce_dims)

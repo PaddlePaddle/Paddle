@@ -76,7 +76,6 @@ static void DistFunction(const Context& context,
                          const DenseTensor& y,
                          float p,
                          DenseTensor* out) {
-  // out->mutable_data<T>(context.GetPlace());
   if (out) {
     context.template Alloc<T>(out);
   }
