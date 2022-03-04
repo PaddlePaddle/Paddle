@@ -18,6 +18,7 @@ namespace operators {
 
 #ifdef PADDLE_WITH_XPU
 
+using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class DropoutXPUKernel : public framework::OpKernel<T> {
   using XPUTyp = typename XPUTypeTrait<T>::Type;
