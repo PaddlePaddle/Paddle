@@ -14,26 +14,6 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-namespace phi {
-
-KernelSignature IsInfArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("isinf", {"X"}, {}, {"Out"});
-}
-
-KernelSignature IsNanArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("isnan", {"X"}, {}, {"Out"});
-}
-
-KernelSignature IsFiniteArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("isfinite", {"X"}, {}, {"Out"});
-}
-
-}  // namespace phi
-
 PD_REGISTER_BASE_KERNEL_NAME(isinf_v2, isinf);
 PD_REGISTER_BASE_KERNEL_NAME(isnan_v2, isnan);
 PD_REGISTER_BASE_KERNEL_NAME(isfinite_v2, isfinite);
-
-PD_REGISTER_ARG_MAPPING_FN(isinf, phi::IsInfArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(isnan, phi::IsNanArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(isfinite, phi::IsFiniteArgumentMapping);
