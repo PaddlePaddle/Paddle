@@ -458,9 +458,9 @@ class XPUNearestInterpOpWrapper(XPUOpTestWrapper):
                 if isinstance(self.scale, list) and len(self.scale) == 1:
                     self.scale = [self.scale[0], self.scale[0]]
                 self.attrs['scale'] = self.scale
-            output_np = nearest_neighbor_interp_np(input_np, out_h, out_w, 0, 0,
-                                                   self.out_size, self.actual_shape,
-                                                   self.align_corners)
+            output_np = nearest_neighbor_interp_np(
+                input_np, out_h, out_w, 0, 0, self.out_size, self.actual_shape,
+                self.align_corners)
             self.outputs = {'Out': output_np}
 
         def init_dtype(self):
