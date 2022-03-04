@@ -74,6 +74,7 @@ void MasterDaemon::_do_set(SocketType socket) {
 }
 
 void MasterDaemon::_do_get(SocketType socket) {
+  VLOG(3) << "MasterDaemon::_do_get";
   std::string key = tcputils::receive_string(socket);
   auto iter = _store.find(key);
   PADDLE_ENFORCE_NE(
@@ -86,13 +87,14 @@ void MasterDaemon::_do_get(SocketType socket) {
 void MasterDaemon::_do_stop(SocketType socket) {
   VLOG(3) << "MasterDaemon::_do_stop";
   ReplyType value = ReplyType::STOP_WAIT;
+  tcputils::send_value<ReplyType>(socket, value);
   if (--_nranks == 0) {
     _stop = true;
   }
-  tcputils::send_value<ReplyType>(socket, value);
 }
 
 void MasterDaemon::_do_wait(SocketType socket) {
+  VLOG(3) << "MasterDaemon::_do_wait";
   std::string key = tcputils::receive_string(socket);
   auto iter = _store.find(key);
   auto reply = ReplyType::STOP_WAIT;
@@ -134,32 +136,42 @@ void MasterDaemon::run() {
     }
 
     for (size_t i = 1; i < fds.size(); i++) {
-      if (fds[i].revents == 0) {
-        continue;
-      }
+      VLOG(0) << "fds.size:" << fds.size();
+      VLOG(0) << "fds.size-i:" << i;
+      VLOG(0) << "fds[i].revents:" << fds[i].revents;
 
-      Command command = tcputils::receive_value<Command>(fds[i].fd);
-      VLOG(3) << "TCPStore: recv command: " << static_cast<int>(command) << ".";
+      try {
+        if (fds[i].revents == 0) {
+          continue;
+        }
 
-      switch (command) {
-        case Command::ADD:
-          _do_add(fds[i].fd);
-          break;
-        case Command::GET:
-          _do_get(fds[i].fd);
-          break;
-        case Command::SET:
-          _do_set(fds[i].fd);
-          break;
-        case Command::WAIT:
-          _do_wait(fds[i].fd);
-          break;
-        case Command::STOP:
-          _do_stop(fds[i].fd);
-          break;
-        default:
-          VLOG(0) << "Unknow command: " << static_cast<int>(command);
-          exit(-1);
+        Command command = tcputils::receive_value<Command>(fds[i].fd);
+        VLOG(3) << "TCPStore: recv command: " << static_cast<int>(command)
+                << ".";
+
+        switch (command) {
+          case Command::ADD:
+            _do_add(fds[i].fd);
+            break;
+          case Command::GET:
+            _do_get(fds[i].fd);
+            break;
+          case Command::SET:
+            _do_set(fds[i].fd);
+            break;
+          case Command::WAIT:
+            _do_wait(fds[i].fd);
+            break;
+          case Command::STOP:
+            _do_stop(fds[i].fd);
+            break;
+          default:
+            VLOG(0) << "Unknow command: " << static_cast<int>(command);
+            exit(-1);
+        }
+      } catch (...) {
+        fds.erase(fds.begin() + i);
+        _sockets.erase(_sockets.begin() + i - 1);
       }
     }
   }
@@ -281,8 +293,8 @@ void TCPStore::wait(const std::string& key) {
 }
 
 TCPStore::~TCPStore() {
-  _client->send_command_for_key(Command::STOP, "");
   VLOG(3) << "~TCPStore";
+  _client->send_command_for_key(Command::STOP, "");
   ReplyType ret = _client->receive_value<ReplyType>();
   PADDLE_ENFORCE_EQ(ret, ReplyType::STOP_WAIT,
                     platform::errors::InvalidArgument(
