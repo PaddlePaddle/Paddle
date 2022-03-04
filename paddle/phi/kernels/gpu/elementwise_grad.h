@@ -49,20 +49,24 @@ void GetGradXAndYOut(const GPUContext &dev_ctx,
                      Functor func) {
   DenseTensor tmp_dx;
   DenseTensor tmp_dy;
-  dx->mutable_data<T>(place);
-  dy->mutable_data<T>(place);
+  dev_ctx.Alloc<T>(dx);
+  dev_ctx.Alloc<T>(dy);
   std::vector<DenseTensor *> outs;
   if (dx->dims() == dout.dims() && dy->dims() == dout.dims()) {
     outs = {dx, dy};
   } else if (dx->dims() != dout.dims() && dy->dims() == dout.dims()) {
-    tmp_dx.mutable_data<T>(dout.dims(), place);
+    tmp_dx.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dx);
     outs = {&tmp_dx, dy};
   } else if (dx->dims() == dout.dims() && dy->dims() != dout.dims()) {
-    tmp_dy.mutable_data<T>(dout.dims(), place);
+    tmp_dy.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dy);
     outs = {dx, &tmp_dy};
   } else if (dx->dims() != dout.dims() && dy->dims() != dout.dims()) {
-    tmp_dy.mutable_data<T>(dout.dims(), place);
-    tmp_dx.mutable_data<T>(dout.dims(), place);
+    tmp_dy.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dy);
+    tmp_dx.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dx);
     outs = {&tmp_dx, &tmp_dy};
   }
 
@@ -88,11 +92,12 @@ void GetGradXOrYOut(const GPUContext &dev_ctx,
                     DenseTensor *dxy,
                     Functor func) {
   DenseTensor tmp_dxy;
-  dxy->mutable_data<T>(place);
+  dev_ctx.Alloc<T>(dxy);
 
   std::vector<DenseTensor *> outs;
   if (dxy->dims() != dout.dims()) {
-    tmp_dxy.mutable_data<T>(dout.dims(), place);
+    tmp_dxy.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dxy);
     outs = {&tmp_dxy};
   } else {
     outs = {dxy};
