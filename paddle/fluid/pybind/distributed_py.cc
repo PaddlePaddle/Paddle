@@ -24,15 +24,14 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
+#include "paddle/fluid/distributed/store/tcp_store.h"
+#include "paddle/fluid/distributed/store/tcp_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/pybind/distributed_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/all.h"
-
-#include "paddle/fluid/distributed/store/tcp_store.h"
-#include "paddle/fluid/distributed/store/tcp_utils.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
