@@ -1401,6 +1401,10 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   ins_content_vec_.reserve(ins_vec.size());
   ins_id_vec_.clear();
   ins_id_vec_.reserve(ins_vec.size());
+
+  int uint64_total_num = 0;
+  int float_total_num = 0;
+
   for (size_t i = 0; i < ins_vec.size(); ++i) {
     auto& r = ins_vec[i];
     ins_id_vec_.push_back(r.ins_id_);
@@ -1408,11 +1412,13 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     for (auto& item : r.float_feasigns_) {
       batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
       visit_[item.slot()] = true;
+      float_total_num += 1;
     }
     for (auto& item : r.uint64_feasigns_) {
       batch_uint64_feasigns_[item.slot()].push_back(
           item.sign().uint64_feasign_);
       visit_[item.slot()] = true;
+      uint64_total_num += 1;
     }
     for (size_t j = 0; j < use_slots_.size(); ++j) {
       const auto& type = all_slots_type_[j];
@@ -1422,8 +1428,10 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         // fill slot value with default value 0
         if (type[0] == 'f') {  // float
           batch_float_feasigns_[j].push_back(0.0);
+          float_total_num += 1;
         } else if (type[0] == 'u') {  // uint64
           batch_uint64_feasigns_[j].push_back(0);
+          uint64_total_num += 1;
         }
       }
       // get offset of this ins in this slot
@@ -1435,23 +1443,123 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     }
   }
 
+  // 1. create 大fused_tensor
+  // uint64 tensor
+  LoDTensor fused_uint64_tensor;
+  // float tensor
+  LoDTensor fused_float_tensor;
+  fused_uint64_tensor.mutable_data<int64_t>({uint64_total_num, 1},
+                                            platform::CPUPlace());
+  fused_float_tensor.mutable_data<float>({float_total_num, 1},
+                                         platform::CPUPlace());
+
+  // size_t fea_num = 0;
+  int uint64_total_num2 = 0;
+  int float_total_num2 = 0;
+
   for (size_t i = 0; i < use_slots_.size(); ++i) {
     if (feed_vec_[i] == nullptr) {
       continue;
     }
     int total_instance = offset_[i].back();
     const auto& type = all_slots_type_[i];
+    // 2.   【cpu】slice 出来，feasign拷贝 进去
     if (type[0] == 'f') {  // float
-      float* feasign = batch_float_feasigns_[i].data();
-      float* tensor_ptr =
-          feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
-      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(float));
+      // VLOG(0) << "total_instance:" << total_instance << "
+      // batch_float_feasigns_[" << i << "].size()" <<
+      // batch_float_feasigns_[i].size();
+      // fea_num = batch_float_feasigns_[i].size();
+      auto sub_tensor = fused_float_tensor.Slice(
+          static_cast<int64_t>(float_total_num2),
+          static_cast<int64_t>(float_total_num2 + total_instance));
+      float* sub_tensor_ptr =
+          sub_tensor.mutable_data<float>(fused_float_tensor.place());
+      memcpy(sub_tensor_ptr, batch_float_feasigns_[i].data(),
+             total_instance * sizeof(float));
+      float_total_num2 += total_instance;
     } else if (type[0] == 'u') {  // uint64
-      // no uint64_t type in paddlepaddle
-      uint64_t* feasign = batch_uint64_feasigns_[i].data();
-      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
-          {total_instance, 1}, this->place_);
-      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
+      // VLOG(0) << "total_instance:" << total_instance << "
+      // batch_uint64_feasigns_[" << i << "].size()" <<
+      // batch_uint64_feasigns_[i].size();
+      // fea_num = batch_uint64_feasigns_[i].size();
+      auto sub_tensor = fused_uint64_tensor.Slice(
+          static_cast<int64_t>(uint64_total_num2),
+          static_cast<int64_t>(uint64_total_num2 + total_instance));
+      int64_t* sub_tensor_ptr =
+          sub_tensor.mutable_data<int64_t>(fused_uint64_tensor.place());
+      memcpy(sub_tensor_ptr, batch_uint64_feasigns_[i].data(),
+             total_instance * sizeof(int64_t));
+      uint64_total_num2 += total_instance;
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      uint64_total_num, uint64_total_num2,
+      platform::errors::InvalidArgument("In batch reader, the uint64_total_num "
+                                        "must be %d, but received %d.",
+                                        uint64_total_num, uint64_total_num2));
+  PADDLE_ENFORCE_EQ(
+      float_total_num, float_total_num2,
+      platform::errors::InvalidArgument("In batch reader, the uint64_total_num "
+                                        "must be %d, but received %d.",
+                                        float_total_num, float_total_num2));
+
+  // 3.  [gpu] fused_tensor 拷贝到 gpu_tensor中
+  // memcopy
+
+  // // uint64 tensor
+  // LoDTensor gpu_fused_uint64_tensor_;
+  // // float tensor
+  // LoDTensor gpu_fused_float_tensor_;
+  gpu_fused_uint64_tensor_.mutable_data<int64_t>({uint64_total_num2, 1},
+                                                 this->place_);
+  gpu_fused_float_tensor_.mutable_data<float>({float_total_num2, 1},
+                                              this->place_);
+
+  framework::TensorCopy(
+      fused_uint64_tensor, this->place_,
+      *platform::DeviceContextPool::Instance().Get(this->place_),
+      &gpu_fused_uint64_tensor_);
+  framework::TensorCopy(
+      fused_float_tensor, this->place_,
+      *platform::DeviceContextPool::Instance().Get(this->place_),
+      &gpu_fused_float_tensor_);
+  auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+                    platform::DeviceContextPool::Instance().Get(this->place_))
+                    ->stream();
+  cudaStreamSynchronize(stream);
+
+  // 4.   sharedatawith 到 feed_vec_[i]的tensor
+  int64_t float_offset = 0;
+  int64_t uint64_offset = 0;
+  for (size_t i = 0; i < use_slots_.size(); ++i) {
+    if (feed_vec_[i] == nullptr) {
+      continue;
+    }
+    int total_instance = offset_[i].back();
+    const auto& type = all_slots_type_[i];
+
+    if (type[0] == 'f') {  // float
+      // feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
+      feed_vec_[i]->ShareDataWith(gpu_fused_float_tensor_.Slice(
+          static_cast<int64_t>(float_offset),
+          static_cast<int64_t>(float_offset + total_instance)));
+      VLOG(0) << "feed_vec_[" << i << "]  address: " << feed_vec_[i]->data()
+              << " gpu_fused_float_tensor_---address:"
+              << gpu_fused_float_tensor_.data()
+              << " total_instance: " << total_instance << ", ";
+      float_offset += total_instance;
+    } else if (type[0] == 'u') {  // uint64
+      // feed_vec_[i]->mutable_data<int64_t>({total_instance, 1}, this->place_);
+      feed_vec_[i]->ShareDataWith(gpu_fused_uint64_tensor_.Slice(
+          static_cast<int64_t>(uint64_offset),
+          static_cast<int64_t>(uint64_offset + total_instance)));
+      VLOG(0) << "feed_vec_[" << i << "]  address: " << feed_vec_[i]->data()
+              << " gpu_fused_uint64_tensor_---address:"
+              << gpu_fused_uint64_tensor_.data()
+              << " total_instance: " << total_instance << ", ";
+
+      uint64_offset += total_instance;
     }
     auto& slot_offset = offset_[i];
     if (this->input_type_ == 0) {
@@ -1487,6 +1595,124 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   }
 #endif
 }
+
+// void MultiSlotInMemoryDataFeed::PutToFeedVec(
+//     const std::vector<Record>& ins_vec) {
+// #ifdef _LINUX
+//   for (size_t i = 0; i < batch_float_feasigns_.size(); ++i) {
+//     batch_float_feasigns_[i].clear();
+//     batch_uint64_feasigns_[i].clear();
+//     offset_[i].clear();
+//     offset_[i].push_back(0);
+//   }
+//   ins_content_vec_.clear();
+//   ins_content_vec_.reserve(ins_vec.size());
+//   ins_id_vec_.clear();
+//   ins_id_vec_.reserve(ins_vec.size());
+//   for (size_t i = 0; i < ins_vec.size(); ++i) {
+//     auto& r = ins_vec[i];
+//     ins_id_vec_.push_back(r.ins_id_);
+//     ins_content_vec_.push_back(r.content_);
+//     for (auto& item : r.float_feasigns_) {
+//       batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
+//       visit_[item.slot()] = true;
+//     }
+//     for (auto& item : r.uint64_feasigns_) {
+//       VLOG(0) << "item: " << item.slot() << "  sign().uint64_feasign_:" <<
+//       item.sign().uint64_feasign_;
+//       batch_uint64_feasigns_[item.slot()].push_back(
+//           item.sign().uint64_feasign_);
+//       visit_[item.slot()] = true;
+//     }
+//     for (size_t j = 0; j < use_slots_.size(); ++j) {
+//       const auto& type = all_slots_type_[j];
+//       if (visit_[j]) {
+//         visit_[j] = false;
+//       } else {
+//         // fill slot value with default value 0
+//         if (type[0] == 'f') {  // float
+//           batch_float_feasigns_[j].push_back(0.0);
+//         } else if (type[0] == 'u') {  // uint64
+//           VLOG(0) <<"use_slots_: " << j << " visit_[j] :" << visit_[j] << "
+//           push 0";
+//           batch_uint64_feasigns_[j].push_back(0);
+//         }
+//       }
+//       // get offset of this ins in this slot
+//       if (type[0] == 'f') {  // float
+//         offset_[j].push_back(batch_float_feasigns_[j].size());
+//         // use_slots_: 318 batch_float_feasigns_ size:7857
+//         // VLOG(0) <<"use_slots_: " << j << " batch_float_feasigns_ size:" <<
+//         batch_float_feasigns_[j].size();
+//       } else if (type[0] == 'u') {  // uint64
+//         offset_[j].push_back(batch_uint64_feasigns_[j].size());
+//         // VLOG(0) <<"use_slots_: " << j << " batch_uint64_feasigns_ size:"
+//         << batch_uint64_feasigns_[j].size();
+//       }
+//     }
+//   }
+
+//   for (size_t i = 0; i < use_slots_.size(); ++i) {
+//     if (feed_vec_[i] == nullptr) {
+//       continue;
+//     }
+//     // total_instance:10201 (大部分2048)
+//     int total_instance = offset_[i].back();
+//     const auto& type = all_slots_type_[i];
+//     if (type[0] == 'f') {  // float
+//       float* feasign = batch_float_feasigns_[i].data();
+//       float* tensor_ptr =
+//           feed_vec_[i]->mutable_data<float>({total_instance, 1},
+//           this->place_);
+//       CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(float));
+//     } else if (type[0] == 'u') {  // uint64
+//       // no uint64_t type in paddlepaddle
+//       uint64_t* feasign = batch_uint64_feasigns_[i].data();
+//       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+//           {total_instance, 1}, this->place_);
+//       CopyToFeedTensor(tensor_ptr, feasign, total_instance *
+//       sizeof(int64_t));
+//     }
+//     // offset_[i].back(): 10201 (大部分2048)
+//     // feed_vec_[i]->numel(): 10201
+//     auto& slot_offset = offset_[i];
+//     VLOG(0) <<"total_instance:" << total_instance << "  this->input_type_" <<
+//     this->input_type_;
+//     if (this->input_type_ == 0) {
+//       if (!use_slots_is_dense_[i]) {
+//         LoD data_lod{slot_offset};
+//         feed_vec_[i]->set_lod(data_lod);
+//         VLOG(0) <<"feed_vec_["<< i << "] ->numel():"<< feed_vec_[i]->numel();
+//       }
+//     } else if (this->input_type_ == 1) {
+//       if (!use_slots_is_dense_[i]) {
+//         VLOG(0) <<"total_instance:" << i << " input_type_=1";
+//         std::vector<size_t> tmp_offset;
+//         PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
+//                           platform::errors::InvalidArgument(
+//                               "In batch reader, the sparse tensor lod size "
+//                               "must be 2, but received %d.",
+//                               slot_offset.size()));
+//         const auto& max_size = slot_offset[1];
+//         tmp_offset.reserve(max_size + 1);
+//         for (unsigned int k = 0; k <= max_size; k++) {
+//           tmp_offset.emplace_back(k);
+//         }
+//         slot_offset = tmp_offset;
+//         LoD data_lod{slot_offset};
+//         feed_vec_[i]->set_lod(data_lod);
+//       }
+//     }
+//     if (use_slots_is_dense_[i]) {
+//       if (inductive_shape_index_[i] != -1) {
+//         use_slots_shape_[i][inductive_shape_index_[i]] =
+//             total_instance / total_dims_without_inductive_[i];
+//       }
+//       feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+//     }
+//   }
+// #endif
+// }
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
 template <typename T>

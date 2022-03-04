@@ -1109,6 +1109,12 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual void GetMsgFromLogKey(const std::string& log_key, uint64_t* search_id,
                                 uint32_t* cmatch, uint32_t* rank);
   virtual void PutToFeedVec(const Record* ins_vec, int num);
+
+ protected:
+  // uint64 tensor
+  LoDTensor gpu_fused_uint64_tensor_;
+  // float tensor
+  LoDTensor gpu_fused_float_tensor_;
 };
 
 class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
