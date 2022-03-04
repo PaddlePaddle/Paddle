@@ -35,17 +35,18 @@ KernelSignature ReluDoubleGradOpArgumentMapping(
   return KernelSignature("relu_double_grad", {"Out", "DDX"}, {}, {"DDOut"});
 }
 
-DefineActGradDepXOpArgMap(Cos, "cos") DefineActGradDepXOpArgMap(Tan, "tan")
-    DefineActGradDepXOpArgMap(Acos, "acos")
-        DefineActGradDepXOpArgMap(Sin, "sin") DefineActGradDepXOpArgMap(Asin,
-                                                                        "asin")
-            DefineActGradDepXOpArgMap(Atan, "atan")
-                DefineActGradDepXOpArgMap(Sinh, "sinh")
-                    DefineActGradDepXOpArgMap(Cosh, "cosh")
-                        DefineActGradDepXOpArgMap(Asinh, "asinh")
-                            DefineActGradDepXOpArgMap(Acosh, "acosh")
-                                DefineActGradDepXOpArgMap(Atanh, "atanh")
-                                    DefineActGradDepOutOpArgMap(Relu, "relu")
+DefineActGradDepXOpArgMap(Cos, "cos") 
+DefineActGradDepXOpArgMap(Tan, "tan")
+DefineActGradDepXOpArgMap(Acos, "acos")
+DefineActGradDepXOpArgMap(Sin, "sin") 
+DefineActGradDepXOpArgMap(Asin, "asin")
+DefineActGradDepXOpArgMap(Atan, "atan")
+DefineActGradDepXOpArgMap(Sinh, "sinh")
+DefineActGradDepXOpArgMap(Cosh, "cosh")
+DefineActGradDepXOpArgMap(Asinh, "asinh")
+DefineActGradDepXOpArgMap(Acosh, "acosh")
+DefineActGradDepXOpArgMap(Atanh, "atanh")
+DefineActGradDepOutOpArgMap(Relu, "relu")
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(relu_grad_grad, relu_double_grad);
