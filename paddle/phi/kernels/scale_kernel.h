@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 namespace phi {
@@ -28,14 +27,6 @@ void ScaleKernel(const Context& dev_ctx,
                  float bias,
                  bool bias_after_scale,
                  DenseTensor* out);
-
-template <typename T, typename Context>
-void ScaleSR(const Context& dev_ctx,
-             const SelectedRows& x,
-             const Scalar& scale,
-             float bias,
-             bool bias_after_scale,
-             SelectedRows* out);
 
 template <typename T, typename Context>
 DenseTensor Scale(const Context& dev_ctx,

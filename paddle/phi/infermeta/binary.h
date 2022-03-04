@@ -29,6 +29,15 @@ namespace phi {
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
 
+void CompareInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      int axis,
+                      MetaTensor* out);
+
+void CompareAllInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out);
+
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void MatmulInferMeta(const MetaTensor& x,
@@ -68,4 +77,12 @@ void BCELossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
+
+void GatherNdInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       MetaTensor* out);
+
+void GatherTreeMeta(const MetaTensor& ids,
+                    const MetaTensor& parents,
+                    MetaTensor* out);
 }  // namespace phi
