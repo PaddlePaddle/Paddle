@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,31 +15,18 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/core/selected_rows.h"
+
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
+                 const SelectedRows& x,
                  const Scalar& scale,
                  float bias,
                  bool bias_after_scale,
-                 DenseTensor* out);
+                 SelectedRows* out);
 
-template <typename T, typename Context>
-DenseTensor Scale(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const Scalar& scale,
-                  float bias,
-                  bool bias_after_scale) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
-  MetaTensor meta_out(&dense_out);
-  UnchangedInferMeta(x, &meta_out);
-  ScaleKernel<T, Context>(
-      dev_ctx, x, scale, bias, bias_after_scale, &dense_out);
-  return dense_out;
-}
-
+}  // namespace sr
 }  // namespace phi
