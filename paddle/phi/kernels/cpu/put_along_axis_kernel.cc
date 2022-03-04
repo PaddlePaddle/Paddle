@@ -15,11 +15,11 @@
 #include "paddle/phi/kernels/put_along_axis_kernel.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 
 namespace phi {
 
@@ -36,7 +36,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
       true,
       errors::PreconditionNotMet("PutAlongAxisOpKernel only runs on CPU."));
 
-  paddle::framework::TensorCopy(x, dev_ctx.GetPlace(), out);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   const auto& index_type =
       paddle::framework::TransToProtoVarType(index.dtype());
   if (reduce == "add") {

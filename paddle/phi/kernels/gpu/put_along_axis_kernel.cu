@@ -19,6 +19,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 
 namespace phi {
 
@@ -38,7 +39,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
   const auto& index_type =
       paddle::framework::TransToProtoVarType(index.dtype());
 
-  paddle::framework::TensorCopy(x, dev_ctx.GetPlace(), out);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   if (reduce == "add") {
     if (index_type == paddle::framework::proto::VarType::INT32) {
       paddle::operators::gpu_scatter_add_kernel<T, int32_t>(

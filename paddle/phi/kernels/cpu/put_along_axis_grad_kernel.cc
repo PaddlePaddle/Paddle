@@ -15,11 +15,11 @@
 #include "paddle/phi/kernels/put_along_axis_grad_kernel.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 
 namespace phi {
 
@@ -40,7 +40,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
   const auto& index_type =
       paddle::framework::TransToProtoVarType(index.dtype());
   if (x_grad) {
-    paddle::framework::TensorCopy(out_grad, dev_ctx.GetPlace(), x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (index_type == paddle::framework::proto::VarType::INT32) {
       paddle::operators::cpu_scatter_input_grad_kernel<T, int32_t>(
           // Here passing an unused argument out_grad, because it's
