@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 
 namespace phi {
 
@@ -168,7 +168,7 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
       gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
@@ -183,7 +183,7 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
       gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           ctx, dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
@@ -281,7 +281,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
       gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
     }
   }
@@ -302,7 +302,7 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
       gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
+      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
           ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
     }
   }
