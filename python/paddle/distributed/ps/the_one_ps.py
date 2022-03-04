@@ -837,7 +837,29 @@ class TheOnePSRuntime(RuntimeBase):
 
         self.ps_desc_builder = PsDescBuilder(self.context)
 
-    def _init_worker(self):
+    def _init_params(self, scopes, send_ctx, recv_map):
+        for name, ctx in send_ctx.items():
+            if ctx.is_sparse():
+                continue
+            _, _, idx = get_program_by_id(self.context, ctx.program_id())
+            scope = scopes[idx]
+            table_id = ctx.table_id()
+            var_names = recv_map[table_id]
+            print("init params:", idx, table_id, var_names)
+            self._worker.push_dense_params(scope, table_id, var_names)
+
+    def _pull_dense(self, scopes, send_ctx, recv_map):
+        for name, ctx in send_ctx.items():
+            if ctx.is_sparse():
+                continue
+            _, _, idx = get_program_by_id(self.context, ctx.program_id())
+            scope = scopes[idx]
+            table_id = ctx.table_id()
+            var_names = recv_map[table_id]
+            print("pull dense:", idx, table_id, var_names)
+            self._worker.pull_dense_params(scope, table_id, var_names)
+
+    def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
 
         if self.context['use_ps_gpu']:
@@ -892,16 +914,17 @@ class TheOnePSRuntime(RuntimeBase):
 
         print("communicator config:", trainer_config.get_communicator_flags())
 
+        # self._communicator = Communicator(
+        #     trainer_config.mode, kwargs,
+        #     trainer_config.get_communicator_flags())
+        # self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
+        #                                  self.string_hosts,
+        #                                  fluid.global_scope())
         role_id = get_role_id(self.role_maker)
-        self._worker.init_worker(proto_txt, string_hosts, role_id)
-
-        #        self._communicator = Communicator(
-        #            trainer_config.mode, kwargs,
-        #            trainer_config.get_communicator_flags())
-        #        self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
-        #                                         string_hosts, fluid.global_scope())
-
+        self._worker.init_worker(proto_txt, self.string_hosts, role_id)
         fleet.util.barrier()
+
+        # info = self._communicator.get_client_info()
         info = self._worker.get_client_info()
         if isinstance(info, list) and len(info) > 0:
             all_info = self.role_maker._all_gather(info[0])
@@ -909,6 +932,9 @@ class TheOnePSRuntime(RuntimeBase):
             if not isinstance(all_info, list):
                 warnings.warn("gloo may not initialize correctly")
                 all_info = [all_info]
+
+            # self._communicator.set_clients(all_info)
+            # self._communicator.create_client_to_client_connection()
             self._worker.set_clients(all_info)
             self._worker.create_client_to_client_connection()
             print('create c2c connection done')
@@ -919,23 +945,39 @@ class TheOnePSRuntime(RuntimeBase):
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
 
-        if self.role_maker._is_first_worker() and self.is_heter_ps_mode:
-            # for ps-heter mode load all parameters on first_worker
-            init_params = get_the_one_recv_context(
-                self.context, split_dense_table=True, use_origin_program=True)
-        else:
-            init_params = dense_map
+        # if self.role_maker._is_first_worker() and self.is_heter_ps_mode:
+        #     # for ps-heter mode load all parameters on first_worker
+        #     init_params = get_the_one_recv_context(
+        #         self.context, split_dense_table=True, use_origin_program=True)
+        # else:
+        #     init_params = dense_map
 
-#        if not is_test:
-#            self._communicator.init_params(init_params)
-#            fleet.util.barrier()
-#        self._communicator.pull_dense(init_params)
+        # if not is_test:
+        #     self._communicator.init_params(init_params)
+        #     fleet.util.barrier()
+        # self._communicator.pull_dense(init_params)
+        # fleet.util.barrier()
+
+        if scopes is None:
+            if len(self.origin_main_programs) > 1:
+                raise ValueError(
+                    "You must set the scope list when you have Multiple programs"
+                )
+            scopes = [fluid.global_scope()]
+        if len(self.origin_main_programs) != len(scopes):
+            raise VauleError("len(programs) != len(scopes)")
+
+        if not is_test:
+            if role_id == 0:
+                self._init_params(scopes, send_ctx, dense_map)
+            fleet.util.barrier()
+        self._pull_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
-        #        if not self._communicator.is_running():
-        #            self._communicator.start()
-        #        else:
-        #            warnings.warn("communicator has been initialized, skip")
+        # if not self._communicator.is_running():
+        #     self._communicator.start()
+        # else:
+        #     warnings.warn("communicator has been initialized, skip")
 
         launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
         launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))

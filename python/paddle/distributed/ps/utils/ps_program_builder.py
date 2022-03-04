@@ -37,6 +37,34 @@ class PsProgramBuilder(object):
         self.server_endpoints = self.attrs['role_maker']._get_pserver_endpoints(
         )
 
+    def _build_trainer_desc(self):
+        opt_info = self.loss.block.program._fleet_opt
+        opt_info = {} if opt_info is None else opt_info
+        pid = str(id(self.cloned_main))
+        program_configs = {
+            pid: {
+                'pull_dense': [],
+                'push_dense': [],
+                'pull_sparse': [],
+                'push_sparse': []
+            }
+        }
+        dense_table_config = {}
+        send_ctx = get_the_one_send_context(self.attrs)
+        recv_ctx = get_the_one_recv_context(self.attrs)
+        for name, ctx in send_ctx.items():
+            if ctx.program_id() != id(self.loss.block.program):
+                continue
+            if ctx.is_sparse():
+                continue
+            if not ctx.is_tensor_table():
+                program_configs[pid]['pull_dense'].append(ctx.table_id())
+                program_configs[pid]['push_dense'].append(ctx.table_id())
+            dense_table_config[ctx.table_id()] = recv_ctx[ctx.table_id()]
+        opt_info['program_configs'] = program_configs
+        opt_info['dense_table_config'] = dense_table_config
+        self.cloned_main._fleet_opt = opt_info
+
     def _optimize_programs(self):
         pass
 
@@ -63,7 +91,15 @@ class PsProgramBuilder(object):
             logger.info("start building trainer program")
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
+            print("ps_program_build before =", id(self.loss.block.program))
+            self._build_trainer_desc()
             self.loss.block.program = self.cloned_main
+            print("ps_program_build after =", id(self.loss.block.program))
+            print("ps_program_build clone after =", id(self.cloned_main))
+            print("ps_program_build after trainer_desc",
+                  id(self.loss.block.program))
+            print("ps_program build trainer desc",
+                  self.loss.block.program._fleet_opt)
 
         elif self.attrs['is_server']:
             logger.info("start building pserver program")
