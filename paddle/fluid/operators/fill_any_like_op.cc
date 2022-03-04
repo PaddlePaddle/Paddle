@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,13 +24,6 @@ namespace operators {
 class FillAnyLikeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fill_any_like");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fill_any_like");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -87,8 +82,10 @@ class FillAnyLikeVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DELCARE_INFER_SHAPE_FUNCTOR(fill_any_like, FillAnyLikeInferShapeFunctor,
+                            PT_INFER_META(phi::CreateLikeInferMeta));
 REGISTER_OPERATOR(
     fill_any_like, ops::FillAnyLikeOp, ops::FillAnyLikeOpMaker,
     ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::FillAnyLikeVarTypeInference)
+    FillAnyLikeInferShapeFunctor, ops::FillAnyLikeVarTypeInference)

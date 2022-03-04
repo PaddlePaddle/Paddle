@@ -12,43 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_constant_op.h"
 #include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/infermeta/nullary.h"
+
 namespace paddle {
 namespace operators {
 
 class FillConstantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FillConstant");
-
-    auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    if (!ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList")) {
-      for (size_t i = 0; i < shape.size(); ++i) {
-        PADDLE_ENFORCE_GE(
-            shape[i], 0,
-            platform::errors::InvalidArgument(
-                "Each value of attribute 'shape' is expected to be no less "
-                "than 0. But recieved: shape[%u] = %d; shape = [%s].",
-                i, shape[i], phi::make_ddim(shape)));
-      }
-    }
-    if (shape.empty() && ctx->HasInput("ShapeTensor")) {
-      auto shape_dims = ctx->GetInputDim("ShapeTensor");
-      int num_ele = 1;
-      for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
-      }
-      auto vec_dims = std::vector<int>(num_ele, -1);
-      ctx->SetOutputDim("Out", phi::make_ddim(vec_dims));
-
-      return;
-    }
-    ctx->SetOutputDim("Out", phi::make_ddim(shape));
-  }
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
@@ -172,11 +147,15 @@ Fill up a variable with specified constant value.
 
 namespace ops = paddle::operators;
 
+DELCARE_INFER_SHAPE_FUNCTOR(fill_constant, FillConstantInferShapeFunctor,
+                            PT_INFER_META(phi::CreateInferMeta));
+
 REGISTER_OPERATOR(
     fill_constant, ops::FillConstantOp, ops::FillConstantOpMaker,
     ops::FillConstantOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    FillConstantInferShapeFunctor);
 
 REGISTER_OP_VERSION(fill_constant)
     .AddCheckpoint(
