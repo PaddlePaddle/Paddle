@@ -31,13 +31,15 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/all.h"
 
+#include "paddle/fluid/distributed/store/tcp_store.h"
+#include "paddle/fluid/distributed/store/tcp_utils.h"
+
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
-#include "paddle/fluid/distributed/store/tcp_store.h"
 #endif
 
 namespace py = pybind11;
@@ -52,6 +54,8 @@ using ProcessGroupGloo = paddle::distributed::ProcessGroupGloo;
 using GlooStore = paddle::distributed::ProcessGroupGloo::GlooStore;
 using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
 #endif
+
+using TCPStore = paddle::distributed::TCPStore;
 
 static std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";  // NOLINT
 
@@ -81,6 +85,42 @@ void BindDistributed(py::module *m) {
       .def(py::init<>())
       .def_readwrite("reduce_op", &distributed::ReduceOptions::reduce_op)
       .def_readwrite("source_root", &distributed::ReduceOptions::root_rank);
+
+  auto Store =
+      py::class_<distributed::Store, std::shared_ptr<distributed::Store>>(
+          *m, "Store")
+          .def(py::init<>())
+          .def("set",
+               [](distributed::Store &self, const std::string &key,
+                  const std::string &value) {
+                 std::vector<uint8_t> data(value.begin(), value.end());
+                 self.set(key, data);
+               },
+               py::arg("key"), py::arg("value"),
+               py::call_guard<py::gil_scoped_release>())
+          .def("get",
+               [](distributed::Store &self,
+                  const std::string &key) -> py::bytes {
+                 auto data = self.get(key);
+                 return py::bytes(reinterpret_cast<char *>(data.data()),
+                                  data.size());
+               },
+               py::arg("key"), py::call_guard<py::gil_scoped_release>())
+          .def("add", &distributed::Store::add,
+               py::call_guard<py::gil_scoped_release>())
+          .def("wait", &distributed::Store::wait,
+               py::call_guard<py::gil_scoped_release>());
+
+  py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore", Store)
+      .def(py::init([](std::string hostname, uint16_t port, bool is_master,
+                       size_t world_size, std::chrono::seconds timeout) {
+             return std::make_shared<TCPStore>(hostname, port, is_master,
+                                               world_size, timeout);
+           }),
+           py::arg("hostname"), py::arg("port"), py::arg("is_master"),
+           py::arg("world_size"),
+           py::arg("timeout") = distributed::tcputils::kNoTimeout,
+           py::call_guard<py::gil_scoped_release>());
 
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
@@ -197,7 +237,7 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroupNCCL,
              std::shared_ptr<distributed::ProcessGroupNCCL>>(
       *m, "ProcessGroupNCCL", ProcessGroup)
-      .def(py::init<const distributed::ProcessGroupStrategy &, int, int>(),
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int>(),
            py::call_guard<py::gil_scoped_release>());
 #endif
 
@@ -209,44 +249,6 @@ void BindDistributed(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("synchronize", &distributed::ProcessGroup::Task::Synchronize,
            py::call_guard<py::gil_scoped_release>());
-
-  // define parallel strategy, it will be removed
-  py::class_<distributed::ProcessGroupStrategy> pg_strategy(
-      *m, "ProcessGroupStrategy", "");
-  pg_strategy.def(py::init())
-      .def_property("nranks",
-                    [](const distributed::ProcessGroupStrategy &self) {
-                      return self.nranks_;
-                    },
-                    [](distributed::ProcessGroupStrategy &self, int nranks) {
-                      self.nranks_ = nranks;
-                    })
-      .def_property("local_rank",
-                    [](const distributed::ProcessGroupStrategy &self) {
-                      return self.local_rank_;
-                    },
-                    [](distributed::ProcessGroupStrategy &self,
-                       int local_rank) { self.local_rank_ = local_rank; })
-      .def_property(
-          "trainer_endpoints",
-          [](const distributed::ProcessGroupStrategy &self) {
-            return self.trainer_endpoints_;
-          },
-          [](distributed::ProcessGroupStrategy &self,
-             std::vector<std::string> eps) { self.trainer_endpoints_ = eps; })
-      .def_property("current_endpoint",
-                    [](const distributed::ProcessGroupStrategy &self) {
-                      return self.current_endpoint_;
-                    },
-                    [](distributed::ProcessGroupStrategy &self,
-                       const std::string &ep) { self.current_endpoint_ = ep; })
-      .def_property("nrings",
-                    [](const distributed::ProcessGroupStrategy &self) {
-                      return self.nrings_;
-                    },
-                    [](distributed::ProcessGroupStrategy &self, int nrings) {
-                      self.nrings_ = nrings;
-                    });
 
 #if defined(PADDLE_WITH_GLOO)
   py::class_<GlooOptions>(*m, "GlooOptions")
@@ -279,9 +281,7 @@ void BindDistributed(py::module *m) {
              return std::make_shared<ProcessGroupGloo>(store, rank, world_size,
                                                        opts);
            }),
-           py::arg("store"), py::arg("rank"),
-           py::arg("world_size"),  // py::arg("timeout") =
-                                   // kProcessGroupDefaultTimeout,
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
            py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",
                   &ProcessGroupGloo::createDefaultDevice);
