@@ -1030,44 +1030,56 @@ static void CheckHasNanInfGrad(const float *fp32_grad, int fp32_numel,
   }
 }
 
-template <typename T, int VecSize>
-static __global__ void InplaceAddToCUDAKernel(const T *__restrict__ x,
-                                              T *__restrict__ y, int n) {
+template <typename T1, typename T2, typename T3, int VecSize>
+static __global__ void ElementwiseAddWithCastCUDAKernel(const T1 *x,
+                                                        const T2 *y, T3 *z,
+                                                        int n) {
+  static_assert(sizeof(T1) <= sizeof(T2),
+                "sizeof(T1) must be smaller than sizeof(T2).");
+  using MT = MasterT<T2>;
+
   int i = (threadIdx.x + blockIdx.x * blockDim.x) * VecSize;
   int stride = (blockDim.x * gridDim.x) * VecSize;
-  using MT = MasterT<T>;
   for (; i + VecSize <= n; i += stride) {
-    platform::AlignedVector<T, VecSize> x_vec, y_vec;
-    platform::Load(x + i, &x_vec);
-    platform::Load(y + i, &y_vec);
+    phi::AlignedVector<T1, VecSize> x_vec;
+    phi::AlignedVector<T2, VecSize> y_vec;
+    phi::AlignedVector<T3, VecSize> z_vec;
+    phi::Load(x + i, &x_vec);
+    phi::Load(y + i, &y_vec);
 #pragma unroll
     for (int j = 0; j < VecSize; ++j) {
-      y_vec[j] =
-          static_cast<T>(static_cast<MT>(x_vec[j]) + static_cast<MT>(y_vec[j]));
+      auto x_tmp = static_cast<MT>(x_vec[j]);
+      auto y_tmp = static_cast<MT>(y_vec[j]);
+      z_vec[j] = static_cast<T3>(x_tmp + y_tmp);
     }
-    platform::Store(y_vec, y + i);
+    phi::Store(z_vec, z + i);
   }
 
   for (; i < n; ++i) {
-    y[i] = static_cast<T>(static_cast<MT>(x[i]) + static_cast<MT>(y[i]));
+    auto x_tmp = static_cast<MT>(x[i]);
+    auto y_tmp = static_cast<MT>(y[i]);
+    z[i] = static_cast<T3>(x_tmp + y_tmp);
   }
 }
 
-template <typename T>
-static void LaunchInplaceAddToKernel(const platform::CUDADeviceContext &dev_ctx,
-                                     const T *x, T *y, int n,
-                                     gpuStream_t stream) {
-  int vec_size = std::min(GetChunkedVecSize(x, 0), GetChunkedVecSize(y, 0));
+template <typename T1, typename T2, typename T3>
+static void LaunchElementwiseAddWithCastKernel(
+    const platform::CUDADeviceContext &dev_ctx, const T1 *x, const T2 *y, T3 *z,
+    int n, gpuStream_t stream) {
+  int vec_size =
+      std::min(std::min(GetChunkedVecSize(x, 0), GetChunkedVecSize(y, 0)),
+               GetChunkedVecSize(z, 0));
   auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n, vec_size);
 
-#define PD_LAUNCH_INPLACE_ADD_TO_KERNEL                                        \
-  do {                                                                         \
-    InplaceAddToCUDAKernel<T, kVecSize><<<                                     \
-        config.block_per_grid, config.thread_per_block, 0, stream>>>(x, y, n); \
+#define PD_LAUNCH_ELEMENTWISE_ADD_WITH_CAST_KERNEL                            \
+  do {                                                                        \
+    ElementwiseAddWithCastCUDAKernel<T1, T2, T3, kVecSize><<<                 \
+        config.block_per_grid, config.thread_per_block, 0, stream>>>(x, y, z, \
+                                                                     n);      \
   } while (0)
 
-  PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_INPLACE_ADD_TO_KERNEL);
-#undef PD_LAUNCH_INPLACE_ADD_TO_KERNEL
+  PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_ELEMENTWISE_ADD_WITH_CAST_KERNEL);
+#undef PD_LAUNCH_ELEMENTWISE_ADD_WITH_CAST_KERNEL
 }
 
 template <typename T>
@@ -1167,6 +1179,7 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
       }
 
       platform::float16 *fp16_acc_grad = nullptr;
+      float *master_acc_grad = nullptr;
       if (has_fp16_param) {
         auto *fp16_acc_grad_t =
             ctx.Output<framework::Tensor>("FP16AccFusedGrad");
@@ -1175,12 +1188,13 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
                                  "Output(FP16AccFusedGrad) cannot be nullptr "
                                  "when Attr(acc_steps) > 1."));
         if (!fp16_acc_grad_t->IsInitialized()) {
-          fp16_acc_grad_t->Resize({static_cast<int64_t>(fp16_numel)});
+          fp16_acc_grad_t->Resize({static_cast<int64_t>(3 * fp16_numel)});
           fp16_acc_grad =
               fp16_acc_grad_t->mutable_data<platform::float16>(place);
         } else {
           fp16_acc_grad = fp16_acc_grad_t->data<platform::float16>();
         }
+        master_acc_grad = reinterpret_cast<float *>(fp16_acc_grad + fp16_numel);
       }
 
       // Inplace addto
@@ -1189,18 +1203,38 @@ class DistributedFusedLambOpKernel<platform::CUDADeviceContext, T>
           memory::Copy(place, fp32_acc_grad, place, fp32_grad,
                        fp32_numel * sizeof(float), stream);
         } else {
-          LaunchInplaceAddToKernel(dev_ctx, fp32_grad, fp32_acc_grad,
-                                   fp32_numel, stream);
+          LaunchElementwiseAddWithCastKernel(dev_ctx, fp32_grad, fp32_acc_grad,
+                                             fp32_acc_grad, fp32_numel, stream);
         }
       }
 
       if (has_fp16_param) {
-        if (rounded_step == 1) {
-          memory::Copy(place, fp16_acc_grad, place, fp16_grad,
-                       fp16_numel * sizeof(platform::float16), stream);
-        } else {
-          LaunchInplaceAddToKernel(dev_ctx, fp16_grad, fp16_acc_grad,
-                                   fp16_numel, stream);
+        if (acc_steps == 2) {
+          if (rounded_step == 0) {
+            LaunchElementwiseAddWithCastKernel(dev_ctx, fp16_acc_grad,
+                                               fp16_grad, fp16_acc_grad,
+                                               fp16_numel, stream);
+          } else {
+            memory::Copy(place, fp16_acc_grad, place, fp16_grad,
+                         fp16_numel * sizeof(platform::float16), stream);
+          }
+        } else {  // acc_steps >= 3
+          if (rounded_step == 0) {
+            LaunchElementwiseAddWithCastKernel(dev_ctx, fp16_grad,
+                                               master_acc_grad, fp16_acc_grad,
+                                               fp16_numel, stream);
+          } else if (rounded_step == 1) {
+            memory::Copy(place, fp16_acc_grad, place, fp16_grad,
+                         fp16_numel * sizeof(platform::float16), stream);
+          } else if (rounded_step == 2) {
+            LaunchElementwiseAddWithCastKernel(dev_ctx, fp16_grad,
+                                               fp16_acc_grad, master_acc_grad,
+                                               fp16_numel, stream);
+          } else {
+            LaunchElementwiseAddWithCastKernel(dev_ctx, fp16_grad,
+                                               master_acc_grad, master_acc_grad,
+                                               fp16_numel, stream);
+          }
         }
       }
 
