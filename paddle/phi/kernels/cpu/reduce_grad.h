@@ -14,14 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/data_type_transform.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_grad_functions.h"
-#include "paddle/utils/optional.h"
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+
 namespace phi {
 
 template <typename Context,
@@ -33,13 +28,13 @@ void ComputeFromInput(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const paddle::optional<DenseTensor>& out,
+                      const DenseTensor& input2,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all,
                       DataType in_dtype,
                       DataType out_dtype,
-                      DenseTensor* x_grad,
-                      const DenseTensor* input2) {
+                      DenseTensor* x_grad) {
   auto* input0 = &x;
   auto* input1 = out.get_ptr();
   auto* output = x_grad;
@@ -73,14 +68,9 @@ void ComputeFromInput(const Context& dev_ctx,
   // not be set as Input in grad Maker, use Out_grad to replace here
   if (!input1) input1 = input2;
   Functor functor;
-  LaunchReduceGradKernel<Context, T, Functor>(dev_ctx,
-                                              *input0,
-                                              *input1,
-                                              *input2,
-                                              output,
-                                              functor,
-                                              const_dims,
-                                              reduce_all);
+
+  LaunchReduceGradKernel<Context, T, Functor>(
+      dev_ctx, input0, input1, input2, output, functor, const_dims, reduce_all);
 }
 
 template <typename Context,
@@ -99,43 +89,32 @@ void ReduceGradKernel(const Context& dev_ctx,
                       DataType out_dtype,
                       DenseTensor* x_grad) {
   if (in_dtype != DataType::UNDEFINED) {
-    DenseTensor tmp_tensor;
-    auto* pre_input = &out_grad;
-    auto in_kernel_type = paddle::framework::OpKernelType(
-        paddle::framework::TransToProtoVarType(pre_input->dtype()),
-        dev_ctx.GetPlace());
-    auto out_kernel_type = paddle::framework::OpKernelType(
-        paddle::framework::TransToProtoVarType(in_dtype), dev_ctx.GetPlace());
-    paddle::framework::TransDataType(
-        in_kernel_type, out_kernel_type, *pre_input, &tmp_tensor);
-
+    auto tmp_tensor = phi::Cast<T>(dev_ctx, out_grad, in_dtype);
     ComputeFromInput<Context, T, Functor, kNoNeedBufferX, kNoNeedBufferY>(
         dev_ctx,
         x,
         out_grad,
         out,
+        tmp_tensor,
         dims,
         keep_dim,
         reduce_all,
         in_dtype,
-        out_dtype,
-        x_grad,
-        &tmp_tensor);
-
+        out_grad,
+        x_grad);
   } else {
-    auto* input2 = &out_grad;
     ComputeFromInput<Context, T, Functor, kNoNeedBufferX, kNoNeedBufferY>(
         dev_ctx,
         x,
         out_grad,
         out,
+        out_grad,
         dims,
         keep_dim,
         reduce_all,
         in_dtype,
-        out_dtype,
-        x_grad,
-        input2);
+        out_grad,
+        x_grad);
   }
 }
 

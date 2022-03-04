@@ -14,23 +14,23 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/cpu/reduce.h"
-
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+// #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 namespace phi {
 
-template <typename DeviceContext, typename T, size_t D, typename Functor>
-void ReduceGradFunctor(const DeviceContext& context,
+template <typename Context, typename T, size_t D, typename Functor>
+void ReduceGradFunctor(const Context& dev_ctx,
                        const DenseTensor& input0,
                        const DenseTensor& input1,
                        const DenseTensor& input2,
                        DenseTensor* output,
                        Functor functor,
                        const std::vector<int>& dims) {
-  auto x = EigenTensor<T, D>::From(input0);
-  auto x_grad = EigenTensor<T, D>::From(*output);
+  auto x = phi::EigenTensor<T, D>::From(input0);
+  auto x_grad = phi::EigenTensor<T, D>::From(*output);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto x_dims = input0.dims();
   auto reduced_dims_v = phi::vectorize(x_dims);
@@ -51,7 +51,7 @@ void ReduceGradFunctor(const DeviceContext& context,
   auto x_reduce = EigenTensor<T, D>::From(input1, reduced_dims);
   auto x_reduce_grad = EigenTensor<T, D>::From(input2, reduced_dims);
 
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
 
   functor(place,
           &x,
@@ -62,70 +62,24 @@ void ReduceGradFunctor(const DeviceContext& context,
           broad_cats_times);
 }
 
-inline void GetOriginDimFromShuffled(const DDim& src_dim,
-                                     const std::vector<int>& dims,
-                                     std::vector<int>* origin_dim) {
-  DDim shuffled_dims(src_dim);
-  size_t n = src_dim.size();
-  std::vector<int> perm_axis(n);
-  std::vector<int64_t> dims_64(dims.begin(), dims.end());
-  GetShuffledDim(src_dim, &shuffled_dims, dims_64, &perm_axis);
-  for (size_t i = 0; i < n; ++i) {
-    (*origin_dim)[perm_axis[i]] = i;
-  }
-}
-
-template <typename DeviceContext, typename T, typename Functor>
-void HandleLargeDimGrad(const DeviceContext& context,
-                        const DenseTensor* x,
-                        const DenseTensor* out,
-                        const DenseTensor* dout,
-                        DenseTensor* dx,
-                        Functor functor,
-                        const std::vector<int>& dims) {
-  const int64_t unreduced = out->numel();
-  const int64_t reduced = x->numel() / unreduced;
-  DDim out_dim(out->dims());
-  DDim x_dim(x->dims());
-  // transpose and reshape X
-  DenseTensor shuffled_x;
-  GetShuffledInput<DeviceContext, T>(
-      context, *x, &shuffled_x, std::vector<int64_t>(dims.begin(), dims.end()));
-  DDim shuffled_dim = shuffled_x.dims();
-  shuffled_x.Resize({unreduced, reduced});
-  // reshape dX {unreduced, reduced}
-  dx->Resize({unreduced, reduced});
-  ReduceGradFunctor<DeviceContext, T, 2, Functor>(
-      context, shuffled_x, *out, *dout, dx, functor, {1});
-  // transpose dX
-  std::vector<int> origin_axis(x_dim.size());
-  GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
-  DenseTensor dx_tmp;
-  paddle::framework::TensorCopy(*dx, context.GetPlace(), &dx_tmp);
-  dx_tmp.Resize(shuffled_dim);
-  dx->Resize(x_dim);
-  phi::funcs::TransposeNormal<DeviceContext, T> trans;
-  trans(context, dx_tmp, dx, origin_axis);
-}
-
 template <typename Context, typename T, typename Functor>
 void LaunchReduceGradKernel(const Context& dev_ctx,
-                            const DenseTensor& input0,
-                            const DenseTensor& input1,
-                            const DenseTensor& input2,
+                            const DenseTensor* input0,
+                            const DenseTensor* input1,
+                            const DenseTensor* input2,
                             DenseTensor* output,
                             Functor functor,
                             const std::vector<int>& dims,
                             bool reduce_all = false) {
   if (reduce_all) {
-    auto x = EigenVector<T>::Flatten(input0);
-    auto x_reduce = EigenVector<T>::Flatten(input1);
-    auto x_reduce_grad = EigenVector<T>::Flatten(input2);
-    auto x_grad = EigenVector<T>::Flatten(*output);
-    const auto& place = dev_ctx.eigen_device();
-
+    auto x = phi::EigenVector<T>::Flatten(*input0);
+    auto x_reduce = phi::EigenVector<T>::Flatten(*input1);
+    auto x_reduce_grad = phi::EigenVector<T>::Flatten(*input2);
+    auto x_grad = phi::EigenVector<T>::Flatten(*output);
+    auto& place = *dev_ctx.eigen_device();
+    // *dev_ctx.template device_context<Context>().eigen_device();
     auto broadcast_dim =
-        Eigen::array<int, 1>({{static_cast<int>(input0.numel())}});
+        Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
     functor(place,
             &x,
             &x_reduce,
@@ -134,35 +88,71 @@ void LaunchReduceGradKernel(const Context& dev_ctx,
             broadcast_dim,
             broadcast_dim[0]);
   } else {
-    int rank = input0.dims().size();
+    int rank = input0->dims().size();
     switch (rank) {
       case 1:
         ReduceGradFunctor<Context, T, 1, Functor>(
-            dev_ctx, input0, input1, input2, output, functor, dims);
+            dev_ctx.template device_context<Context>(),
+            *input0,
+            *input1,
+            *input2,
+            output,
+            functor,
+            dims);
         break;
       case 2:
         ReduceGradFunctor<Context, T, 2, Functor>(
-            dev_ctx, input0, input1, input2, output, functor, dims);
+            dev_ctx.template device_context<Context>(),
+            *input0,
+            *input1,
+            *input2,
+            output,
+            functor,
+            dims);
         break;
       case 3:
         ReduceGradFunctor<Context, T, 3, Functor>(
-            dev_ctx, input0, input1, input2, output, functor, dims);
+            dev_ctx.template device_context<Context>(),
+            *input0,
+            *input1,
+            *input2,
+            output,
+            functor,
+            dims);
         break;
       case 4:
         ReduceGradFunctor<Context, T, 4, Functor>(
-            dev_ctx, input0, input1, input2, output, functor, dims);
+            dev_ctx.template device_context<Context>(),
+            *input0,
+            *input1,
+            *input2,
+            output,
+            functor,
+            dims);
         break;
       case 5:
         ReduceGradFunctor<Context, T, 5, Functor>(
-            dev_ctx, input0, input1, input2, output, functor, dims);
+            dev_ctx.template device_context<Context>(),
+            *input0,
+            *input1,
+            *input2,
+            output,
+            functor,
+            dims);
         break;
       case 6:
         ReduceGradFunctor<Context, T, 6, Functor>(
-            dev_ctx, input0, input1, input2, output, functor, dims);
+            dev_ctx.template device_context<Context>(),
+            *input0,
+            *input1,
+            *input2,
+            output,
+            functor,
+            dims);
         break;
       default:
         HandleLargeDimGrad<Context, T, Functor>(
-            dev_ctx, &input0, &input1, &input2, output, functor, dims);
+            dev_ctx, input0, input1, input2, output, functor, dims);
         break;
     }
   }
