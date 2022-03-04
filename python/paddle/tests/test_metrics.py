@@ -60,6 +60,7 @@ def convert_to_one_hot(y, C):
 
 class TestAccuracy(unittest.TestCase):
     def test_acc(self, squeeze_y=False):
+        paddle.disable_static()
         x = paddle.to_tensor(
             np.array([[0.1, 0.2, 0.3, 0.4], [0.1, 0.4, 0.3, 0.2],
                       [0.1, 0.2, 0.4, 0.3], [0.1, 0.2, 0.3, 0.4]]))
@@ -94,11 +95,13 @@ class TestAccuracy(unittest.TestCase):
         m.reset()
         self.assertEqual(m.total[0], 0.0)
         self.assertEqual(m.count[0], 0.0)
+        paddle.enable_static()
 
     def test_1d_label(self):
         self.test_acc(True)
 
     def compare(self, x_np, y_np, k=(1, )):
+        paddle.disable_static()
         x = paddle.to_tensor(x_np)
         y = paddle.to_tensor(y_np)
 
@@ -112,6 +115,7 @@ class TestAccuracy(unittest.TestCase):
         self.assertEqual(correct.shape, list(x_np.shape)[:-1] + [max(k)])
         self.assertEqual(m.update(correct), acc_np)
         self.assertEqual(m.accumulate(), acc_np)
+        paddle.enable_static()
 
     def test_3d(self):
         x_np = np.random.rand(2, 3, 4)
@@ -228,7 +232,7 @@ class TestAccuracyStaticMultiTopk(TestAccuracyStatic):
 
 class TestPrecision(unittest.TestCase):
     def test_1d(self):
-
+        paddle.disable_static()
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
 
@@ -242,8 +246,10 @@ class TestPrecision(unittest.TestCase):
         m.update(x, y)
         r = m.accumulate()
         self.assertAlmostEqual(r, 4. / 6.)
+        paddle.enable_static()
 
     def test_2d(self):
+        paddle.disable_static()
         x = np.array([0.1, 0.5, 0.6, 0.7]).reshape(-1, 1)
         y = np.array([1, 0, 1, 1]).reshape(-1, 1)
 
@@ -263,10 +269,12 @@ class TestPrecision(unittest.TestCase):
         self.assertEqual(m.tp, 0.0)
         self.assertEqual(m.fp, 0.0)
         self.assertEqual(m.accumulate(), 0.0)
+        paddle.enable_static()
 
 
 class TestRecall(unittest.TestCase):
     def test_1d(self):
+        paddle.disable_static()
         x = np.array([0.1, 0.5, 0.6, 0.7])
         y = np.array([1, 0, 1, 1])
 
@@ -286,6 +294,7 @@ class TestRecall(unittest.TestCase):
         self.assertEqual(m.tp, 0.0)
         self.assertEqual(m.fn, 0.0)
         self.assertEqual(m.accumulate(), 0.0)
+        paddle.enable_static()
 
 
 class TestAuc(unittest.TestCase):
@@ -302,6 +311,7 @@ class TestAuc(unittest.TestCase):
         self.assertEqual(m.accumulate(), 0.0)
 
     def test_auc_tensor(self):
+        paddle.disable_static()
         x = paddle.to_tensor(
             np.array([[0.78, 0.22], [0.62, 0.38], [0.55, 0.45], [0.30, 0.70],
                       [0.14, 0.86], [0.59, 0.41], [0.91, 0.08], [0.16, 0.84]]))
@@ -313,6 +323,7 @@ class TestAuc(unittest.TestCase):
 
         m.reset()
         self.assertEqual(m.accumulate(), 0.0)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
