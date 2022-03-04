@@ -31,9 +31,15 @@ namespace pybind {
 using TCPStore = paddle::distributed::TCPStore;
 
 void BindTCPStore(py::module* m) {
-  py::class_<TCPStore>(*m, "TCPStore")
-      .def(
-          py::init<std::string, uint16_t, bool, size_t, std::chrono::seconds>())
+  py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore")
+      .def(py::init([](std::string hostname, uint16_t port, bool is_master,
+                       size_t world_size, std::chrono::seconds timeout) {
+             return std::make_shared<TCPStore>(hostname, port, is_master,
+                                               world_size, timeout);
+           }),
+           py::arg("hostname"), py::arg("port"), py::arg("is_master"),
+           py::arg("world_size"), py::arg("timeout"),
+           py::call_guard<py::gil_scoped_release>())
       .def("add", &TCPStore::add)
       .def("get", &TCPStore::get);
 }

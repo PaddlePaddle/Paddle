@@ -26,12 +26,14 @@ core_ops_args_type_info = {}
 
 yaml_types_mapping = {
     'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
-  'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
-  'Backend' : 'Backend', 'DataLayout' : 'DataLayout', 'DataType' : 'DataType', \
-  'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
+    'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
+    'Backend' : 'paddle::experimental::Backend', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
+    'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
-    'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>'
+    'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
+    'Scalar' : 'paddle::experimental::Scalar',
+    'ScalarArray' : 'paddle::experimental::ScalarArray'
 }
 
 
@@ -206,35 +208,26 @@ def ParseYamlArgs(string):
 
 
 def ParseYamlReturns(string):
-    # Example: Tensor, Tensor
-
-    # list = [ ["", ret_type, orig_position], ...]
-    returns_list = []
-
-    returns = [x.strip() for x in string.strip().split(",")]
-    for i in range(len(returns)):
-        ret = returns[i]
-        returns_list.append(["", ret, i])
-
-    return returns_list
-
-
-def ParseYamlReturnsWithName(string):
-    # Example: Tensor(out), Tensor(out1)
+    # Example0: Tensor(out), Tensor(out1)
+    # Example1: Tensor, Tensor
+    # Example2: Tensor[](out), Tensor
 
     # list = [ [ret_name, ret_type, orig_position], ...]
     returns_list = []
 
     returns = [x.strip() for x in string.strip().split(",")]
 
-    atype = r'(.*?)'
-    aname = r'(.*?)'
-    pattern = f'{atype}\({aname}\)'
     for i in range(len(returns)):
         ret = returns[i]
-        m = re.search(pattern, ret)
-        ret_type = m.group(1)
-        ret_name = m.group(2)
+
+        ret_name = ""
+        if "(" in ret and ")" in ret:
+            # Remove trailing ')'
+            ret = ret[:-1]
+            ret_type = ret.split("(")[0].strip()
+            ret_name = ret.split("(")[1].strip()
+        else:
+            ret_type = ret.strip()
 
         assert ret_type in yaml_types_mapping.keys()
         ret_type = yaml_types_mapping[ret_type]
@@ -260,7 +253,7 @@ def ParseYamlForwardFromBackward(string):
     function_returns = m.group(3)
 
     forward_inputs_list, forward_attrs_list = ParseYamlArgs(function_args)
-    forward_returns_list = ParseYamlReturnsWithName(function_returns)
+    forward_returns_list = ParseYamlReturns(function_returns)
 
     return forward_inputs_list, forward_attrs_list, forward_returns_list
 
@@ -290,7 +283,7 @@ def ParseYamlBackward(args_str, returns_str):
     args_str = re.search(args_pattern, args_str).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
-    returns_list = ParseYamlReturnsWithName(returns_str)
+    returns_list = ParseYamlReturns(returns_str)
 
     return inputs_list, attrs_list, returns_list
 
@@ -534,7 +527,7 @@ class {} : public egr::GradNodeBase {{
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads) override;
-  
+  std::string name() override {{ return \" {} \"; }}
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
   // SetAttributes
@@ -549,8 +542,9 @@ class {} : public egr::GradNodeBase {{
 """
     node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
         grad_node_name, grad_node_name, grad_node_name, grad_node_name,
-        set_tensor_wrapper_methods_str, set_attribute_methods_str,
-        tensor_wrapper_members_str, attribute_members_str)
+        grad_node_name, set_tensor_wrapper_methods_str,
+        set_attribute_methods_str, tensor_wrapper_members_str,
+        attribute_members_str)
 
     return node_declaration_str
 

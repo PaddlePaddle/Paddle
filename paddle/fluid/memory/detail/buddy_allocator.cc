@@ -26,6 +26,7 @@ DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {
@@ -43,11 +44,11 @@ BuddyAllocator::BuddyAllocator(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (!dev_type.empty()) {
     init_allocate_size_func_ = [dev_type]() {
-      return platform::DeviceManager::GetInitAllocSize(
+      return phi::DeviceManager::GetInitAllocSize(
           platform::PlaceHelper::CreatePlace(dev_type));
     };
     re_allocate_size_func_ = [dev_type]() {
-      return platform::DeviceManager::GetReallocSize(
+      return phi::DeviceManager::GetReallocSize(
           platform::PlaceHelper::CreatePlace(dev_type));
     };
   } else {

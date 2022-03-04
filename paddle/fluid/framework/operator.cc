@@ -254,7 +254,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           "reinstall Paddle with CustomDevice support.",
           place));
 #else
-      platform::DeviceManager::SetDevice(place);
+      phi::DeviceManager::SetDevice(place);
 #endif
     }
 
@@ -2054,7 +2054,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
     // deal with optional here
     if ((it == ctx.inputs.end() || it->second.size() == 0) &&
         (input_defs[i].type_index ==
-         std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
+             std::type_index(
+                 typeid(paddle::optional<const phi::DenseTensor&>)) ||
+         input_defs[i].type_index ==
+             std::type_index(
+                 typeid(paddle::optional<const phi::SelectedRows&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2115,35 +2119,38 @@ void OperatorWithKernel::BuildPhiKernelContext(
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       phi::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset];
-      if (var->template IsType<framework::LoDTensor>()) {
-        tensor_out = var->template GetMutable<framework::LoDTensor>();
-        pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-      } else if (var->template IsType<phi::SelectedRows>()) {
-        tensor_out = var->template GetMutable<phi::SelectedRows>();
-        pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-      } else if (var->template IsType<framework::LoDTensorArray>()) {
-        paddle::SmallVector<phi::TensorBase*> tensor_vector;
-        auto* tensor_array =
-            var->template GetMutable<framework::LoDTensorArray>();
-        // NOTE(chenweihang): [ How to handle LoDTensorArray? ]
-        // LoDTensorArray is a flexible output type that allows tensor to be
-        // created inside the kernel, which makes us unable to know its output
-        // size in advance. If we create a new TensorArray type and let it
-        // inherit TensorBase, it can also be supported, but this is too ugly!
-        // For now, assume that the input and output LoDTensorArray and the
-        // input LoDTensorArray have the same size. I know that this does not
-        // fit all situations (such as slice), but it needs to be able to
-        // support some kernels (such as assign, reverse) to be able to migrate.
-        tensor_array->resize(tensor_array_size);
-        for (auto& t : *tensor_array) {
-          tensor_vector.emplace_back(&t);
+      if (var) {
+        if (var->template IsType<framework::LoDTensor>()) {
+          tensor_out = var->template GetMutable<framework::LoDTensor>();
+          pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<phi::SelectedRows>()) {
+          tensor_out = var->template GetMutable<phi::SelectedRows>();
+          pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<framework::LoDTensorArray>()) {
+          paddle::SmallVector<phi::TensorBase*> tensor_vector;
+          auto* tensor_array =
+              var->template GetMutable<framework::LoDTensorArray>();
+          // NOTE(chenweihang): [ How to handle LoDTensorArray? ]
+          // LoDTensorArray is a flexible output type that allows tensor to be
+          // created inside the kernel, which makes us unable to know its output
+          // size in advance. If we create a new TensorArray type and let it
+          // inherit TensorBase, it can also be supported, but this is too ugly!
+          // For now, assume that the input and output LoDTensorArray and the
+          // input LoDTensorArray have the same size. I know that this does not
+          // fit all situations (such as slice), but it needs to be able to
+          // support some kernels (such as assign, reverse) to be able to
+          // migrate.
+          tensor_array->resize(tensor_array_size);
+          for (auto& t : *tensor_array) {
+            tensor_vector.emplace_back(&t);
+          }
+          pt_kernel_context->EmplaceBackOutputsWithoutSetRange(tensor_vector);
+          end_idx += tensor_array_size - 1;
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported output `%s` type when call pt kernel.",
+              framework::ToTypeName(var->Type())));
         }
-        pt_kernel_context->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-        end_idx += tensor_array_size - 1;
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported output `%s` type when call pt kernel.",
-            framework::ToTypeName(var->Type())));
       }
     }
     pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
@@ -2243,8 +2250,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
                                                        vector_int_attr.end());
           pt_kernel_context->EmplaceBackAttr(vector_int64_attr);
         }
-        // TODO(YuanRisheng) Need support vector<int64_t> attr
-
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int32_t>))) {
         const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);

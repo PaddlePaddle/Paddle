@@ -31,6 +31,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
+#include "paddle/phi/kernels/cpu/elementwise_grad.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -133,7 +134,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
 
 inline framework::DDim trim_trailing_singular_dims(
     const framework::DDim &dims) {
-  return phi::funcs::trim_trailing_singular_dims(dims);
+  return phi::funcs::TrimTrailingSingularDims(dims);
 }
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP,
@@ -152,7 +153,7 @@ void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
                                                Tout>(
         dev_ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
   } else {
-    phi::ElemwiseGradComputeWithBroadcast<T, DX_OP, DY_OP, Tout>(
+    phi::funcs::ElemwiseGradComputeWithBroadcast<T, DX_OP, DY_OP, Tout>(
         dev_ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
   }
 }
@@ -173,19 +174,9 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
   z->mutable_data<OutType>(ctx.GetPlace());
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-    const auto &dev_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
-    phi::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func,
-                                                 z);
-
-#endif
-    return;
-  }
-  const auto &dev_ctx =
-      ctx.template device_context<platform::CPUDeviceContext>();
-  phi::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func, z);
+  const auto &dev_ctx = ctx.template device_context<DeviceContext>();
+  phi::funcs::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis,
+                                                      func, z);
 }
 
 // FusedElemwiseAndAct
@@ -443,8 +434,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  phi::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                           &is_run_common_broadcast);
+  phi::funcs::GetMidDims(x_dim, y_dim, axis, &pre, &n, &post,
+                         &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -991,8 +982,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  phi::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                           &is_run_common_broadcast);
+  phi::funcs::GetMidDims(x_dim, y_dim, axis, &pre, &n, &post,
+                         &is_run_common_broadcast);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
   if (x->IsInitialized()) x_data = x->data<T>();

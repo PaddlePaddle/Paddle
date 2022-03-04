@@ -326,27 +326,29 @@ void BuildDygraphPhiKernelContext(
 
       phi::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset]->MutableVar();
-      if (var->template IsType<phi::DenseTensor>()) {
-        tensor_out = var->template GetMutable<phi::DenseTensor>();
-        kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
-      } else if (var->template IsType<phi::SelectedRows>()) {
-        tensor_out = var->template GetMutable<phi::SelectedRows>();
-        kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
-      } else if (var->template IsType<framework::LoDTensorArray>()) {
-        paddle::SmallVector<phi::TensorBase*> tensor_vector;
-        auto* tensor_array =
-            var->template GetMutable<framework::LoDTensorArray>();
-        // See NOTE [ How to handle LoDTensorArray? ]
-        tensor_array->resize(tensor_array_size);
-        for (auto& t : *tensor_array) {
-          tensor_vector.emplace_back(&t);
+      if (var) {
+        if (var->template IsType<phi::DenseTensor>()) {
+          tensor_out = var->template GetMutable<phi::DenseTensor>();
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<phi::SelectedRows>()) {
+          tensor_out = var->template GetMutable<phi::SelectedRows>();
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<framework::LoDTensorArray>()) {
+          paddle::SmallVector<phi::TensorBase*> tensor_vector;
+          auto* tensor_array =
+              var->template GetMutable<framework::LoDTensorArray>();
+          // See NOTE [ How to handle LoDTensorArray? ]
+          tensor_array->resize(tensor_array_size);
+          for (auto& t : *tensor_array) {
+            tensor_vector.emplace_back(&t);
+          }
+          kernel_ctx->EmplaceBackOutputsWithoutSetRange(tensor_vector);
+          end_idx += tensor_array_size - 1;
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported output `%s` type when call pt kernel.",
+              framework::ToTypeName(var->Type())));
         }
-        kernel_ctx->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-        end_idx += tensor_array_size - 1;
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported output `%s` type when call pt kernel.",
-            framework::ToTypeName(var->Type())));
       }
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
