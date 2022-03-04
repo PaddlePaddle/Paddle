@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/operators/tril_triu_op.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +32,7 @@ template <typename DeviceContext, typename T>
 static void triangular_solve(const DeviceContext &context, const Tensor &x,
                              const Tensor &y, Tensor *out, bool upper,
                              bool transpose, bool unitriangular) {
-  // Tensor broadcast use eigen
+  // Tensor broadcast use eigen library
   std::vector<int64_t> x_bst_dims_vec;
   std::vector<int64_t> y_bst_dims_vec;
   std::tie(x_bst_dims_vec, y_bst_dims_vec) = get_broadcast_dims(x, y);
