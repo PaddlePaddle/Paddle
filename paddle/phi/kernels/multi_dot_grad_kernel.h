@@ -21,7 +21,7 @@ namespace phi {
 template <typename T, typename Context>
 void MultiDotGradKernel(const Context& ctx,
                         const DenseTensor& out_grad,
-                        const std::vector<DenseTensor>& x,
+                        const std::vector<const DenseTensor*>& x,
                         std::vector<DenseTensor*> x_grad);
 
 }  // namespace phi
