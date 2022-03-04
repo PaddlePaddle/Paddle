@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import gc
 
 import paddle
 import paddle.profiler as profiler
@@ -24,36 +23,22 @@ import paddle.profiler as profiler
 
 class TestProfiler(unittest.TestCase):
     def test_profiler(self):
-        repeat = 5
-        #test_profiler_both
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU],
-            scheduler=[1, 3])
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        prof.summary()
+        def my_trace_back(prof):
+            profiler.export_chrome_tracing('./test_profiler_chrometracing/')(
+                prof)
+            profiler.export_protobuf('./test_profiler_pb/')(prof)
 
-        # test_profiler_sheduler
-        prof = None
-        gc.enable()
+        repeat = 4
         x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
+        x = paddle.to_tensor(
+            x_value, stop_gradient=False, place=paddle.CPUPlace())
         y = x / 2.0
         ones_like_y = paddle.ones_like(y)
         with profiler.Profiler(
-                targets=[
-                    profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU
-                ],
+                targets=[profiler.ProfilerTarget.CPU],
                 scheduler=profiler.make_scheduler(
-                    closed=0, ready=1, record=2, repeat=1)) as prof:
+                    closed=1, ready=1, record=1, repeat=1, skip_first=1),
+                on_trace_ready=my_trace_back) as prof:
             for i in range(repeat):
                 y = x / 2.0
                 paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
