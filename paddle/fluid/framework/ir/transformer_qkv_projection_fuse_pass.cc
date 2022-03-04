@@ -154,46 +154,6 @@ TansformerQKVProjectionFusePass::TansformerQKVProjectionFusePass() {
       .AddAttr("axis")
       .IsIntIn({2, -1, 0})
       .End();
-
-  AddOpCompat(OpCompat("reshape2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Shape")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddInput("ShapeTensor")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddOutput("XShape")
-      .IsOptional()
-      .IsTensor()
-      .End()
-      .AddAttr("shape")  // -->(B, S, H, N)  <--(B, S, N*H)
-      .IsType<std::vector<int>>()
-      .End();
-
-  // -->: (B, S, H, N) -> (B, H, S, N)
-  // <--: (B, H, S, N) -> (B, S, H, N)
-  AddOpCompat(OpCompat("transpose2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddOutput("XShape")
-      .IsOptional()
-      .IsTensor()
-      .End()
-      .AddAttr("axis")  // {0, 2, 1, 3}
-      .IsType<std::vector<int>>()
-      .End();
 }
 
 int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
@@ -299,14 +259,13 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
 
     // Define fused QKV op
     OpDesc fused_qkv_op_desc(mul0->Op()->Block());
-    fused_qkv_op_desc.SetType("fused_qkv");
+    fused_qkv_op_desc.SetType("fc");
 
     fused_qkv_op_desc.SetInput("Input", {input0->Name()});
     fused_qkv_op_desc.SetInput("W", {mul0_w->Name()});
     fused_qkv_op_desc.SetInput("Bias", {eltadd0_b->Name()});
 
-    fused_qkv_op_desc.SetOutput(
-        "Out", {eltadd0_out->Name(), eltadd1_out->Name(), eltadd2_out->Name()});
+    fused_qkv_op_desc.SetOutput("Out", {mul0_out->Name()});
 
     auto* mul0_op_desc = mul0->Op();
     auto* mul1_op_desc = mul1->Op();
@@ -343,15 +302,31 @@ int TansformerQKVProjectionFusePass::BuildFusion(Graph* graph,
       }
     }
 
+    // Define split op
+    OpDesc split_op_desc(mul0->Op()->Block());
+    split_op_desc.SetType("split");
+
+    split_op_desc.SetInput(
+        "X", {mul0_out->Name()});  // [batch_size, seq_length, 3, hidden_out]
+    split_op_desc.SetOutput(
+        "Out", {eltadd0_out->Name(), eltadd1_out->Name(),
+                eltadd2_out->Name()});  // [batch_size, seq_length, hidden_out]
+    split_op_desc.SetAttr("axis", 2);
+    split_op_desc.SetAttr("num", 3);
+    split_op_desc.SetAttr("squeeze", true);
+
     auto* fused_qkv = graph->CreateOpNode(&fused_qkv_op_desc);
+    auto* split = graph->CreateOpNode(&split_op_desc);
 
     IR_NODE_LINK_TO(input0, fused_qkv);
     IR_NODE_LINK_TO(mul0_w, fused_qkv);
     IR_NODE_LINK_TO(eltadd0_b, fused_qkv);
 
-    IR_NODE_LINK_TO(fused_qkv, eltadd0_out);
-    IR_NODE_LINK_TO(fused_qkv, eltadd1_out);
-    IR_NODE_LINK_TO(fused_qkv, eltadd2_out);
+    IR_NODE_LINK_TO(fused_qkv, mul0_out);
+    IR_NODE_LINK_TO(mul0_out, split);
+    IR_NODE_LINK_TO(split, eltadd0_out);
+    IR_NODE_LINK_TO(split, eltadd1_out);
+    IR_NODE_LINK_TO(split, eltadd2_out);
   };
 
   int fusion_count{0};

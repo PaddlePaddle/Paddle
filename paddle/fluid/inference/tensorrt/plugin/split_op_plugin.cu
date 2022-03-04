@@ -53,6 +53,14 @@ nvinfer1::Dims SplitPlugin::getOutputDimensions(
 
   nvinfer1::Dims output_dims = input_dims[0];
   output_dims.d[axis_] = output_length_.at(index);
+
+  if (squeeze_ && output_length_.at(index) == 1) {
+    output_dims.nbDims = output_dims.nbDims - 1;
+    for (int i = axis_; i < output_dims.nbDims; i++) {
+      output_dims.d[i] = output_dims.d[i + 1];
+    }
+  }
+
   return output_dims;
 }
 
@@ -159,13 +167,14 @@ int SplitPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 size_t SplitPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(axis_) + SerializedSize(output_length_) +
-         SerializedSize(with_fp16_);
+         SerializedSize(with_fp16_) + SerializedSize(squeeze_);
 }
 
 void SplitPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, axis_);
   SerializeValue(&buffer, output_length_);
   SerializeValue(&buffer, with_fp16_);
+  SerializeValue(&buffer, squeeze_);
 }
 
 nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
@@ -182,6 +191,13 @@ nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
 
   nvinfer1::DimsExprs output_dims = inputs[0];
   output_dims.d[axis_] = expr_builder.constant(output_length_.at(output_index));
+
+  if (squeeze && output_length_.at(output_index) == 1) {
+    output_dims.nbDims = output_dims.nbDims - 1;
+    for (int i = axis_; i < output_dims.nbDims; i++) {
+      output_dims.d[i] = output_dims.d[i + 1];
+    }
+  }
 
   return output_dims;
 }

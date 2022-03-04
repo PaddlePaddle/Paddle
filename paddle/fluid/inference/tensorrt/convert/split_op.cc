@@ -34,6 +34,7 @@ class SplitOpConverter : public OpConverter {
 
     // Get Attrs
     int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
+    bool squeeze = BOOST_GET_CONST(bool, op_desc.GetAttr("squeeze"));
 
     std::vector<int> output_lengths =
         BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
@@ -61,14 +62,14 @@ class SplitOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::SplitPluginDynamic* plugin =
-          new plugin::SplitPluginDynamic(axis, output_lengths, with_fp16);
+      plugin::SplitPluginDynamic* plugin = new plugin::SplitPluginDynamic(
+          axis, output_lengths, with_fp16, squeeze);
       layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
     } else {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       plugin::SplitPlugin* plugin =
-          new plugin::SplitPlugin(axis, output_lengths, with_fp16);
+          new plugin::SplitPlugin(axis, output_lengths, with_fp16, squeeze);
       layer = engine_->AddPluginV2Ext(&input, input_num, plugin);
     }
 
