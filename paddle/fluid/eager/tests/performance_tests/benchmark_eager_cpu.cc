@@ -72,6 +72,50 @@ TEST(Benchmark, EagerScaleCPU) {
   }
 }
 
+TEST(Benchmark, EagerIntermediateMatmulCPU) {
+  // Prepare Device Contexts
+  eager_test::InitEnv(paddle::platform::CPUPlace());
+
+  auto tracer = std::make_shared<paddle::imperative::Tracer>();
+  paddle::imperative::SetCurrentTracer(tracer);
+
+  for (const std::string& mode : {"Accuracy", "Performance"}) {
+    paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
+    paddle::experimental::Tensor X = CreateTensorWithValue(
+        ddimX, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, 1.0, true);
+    RetainGradForTensor(X);
+
+    paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
+    paddle::experimental::Tensor Y = CreateTensorWithValue(
+        ddimY, paddle::platform::CPUPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, 2.0, true);
+    RetainGradForTensor(Y);
+
+    if (mode == "Accuracy") {
+      benchmark_eager_intermediate_matmul(X, Y, true /* accuracy_check */);
+
+    } else if (mode == "Performance") {
+      auto t_start = std::chrono::high_resolution_clock::now();
+#ifdef WITH_GPERFTOOLS
+      ProfilerStart("eager_intermediate_matmul_cpu.out");
+#endif
+      benchmark_eager_intermediate_matmul(X, Y);
+
+#ifdef WITH_GPERFTOOLS
+      ProfilerStop();
+#endif
+      auto t_end = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(t_end - t_start).count();
+      std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+    }
+  }
+}
+
 TEST(Benchmark, EagerIntermediateMLPCPU) {
   // Prepare Device Contexts
   eager_test::InitEnv(paddle::platform::CPUPlace());
