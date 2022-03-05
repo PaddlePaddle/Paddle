@@ -23,7 +23,7 @@ template <typename Context, typename T, typename IndexT>
 class SegmentPoolFunctor {
  public:
   /* mean pool has summed_ids output */
-  void operator()(const Context& context,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& segments,
                   DenseTensor* output,
@@ -35,7 +35,7 @@ template <typename Context, typename T, typename IndexT>
 class SegmentPoolGradFunctor {
  public:
   /* mean pool has summed_ids output */
-  void operator()(const Context& context,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& out_grad,

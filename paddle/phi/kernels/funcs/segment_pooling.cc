@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/segment_pooling.h"
+
 #include <string>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -25,7 +27,7 @@ using Tensor = DenseTensor;
 template <typename T, typename IndexT>
 class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& segments,
                   DenseTensor* output,
@@ -35,7 +37,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
     auto curent_id = segment_ids[0];
     int64_t last_idx = 0;
     int64_t w = input.numel() / input.dims()[0];
-    auto& place = *context.eigen_device();
+    auto& place = *dev_ctx.eigen_device();
     for (int64_t idx = 1; idx <= segments.numel(); ++idx) {
       if (idx < segments.numel()) {
         if (segment_ids[idx] == curent_id) continue;
@@ -82,7 +84,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
 template <typename T, typename IndexT>
 class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& out_grad,
@@ -91,7 +93,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
                   paddle::optional<const DenseTensor&> index,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
-    auto& place = *context.eigen_device();
+    auto& place = *dev_ctx.eigen_device();
     auto curent_id = segment_ids[0];
     int64_t last_idx = 0;
     int64_t w = in_grad->numel() / in_grad->dims()[0];

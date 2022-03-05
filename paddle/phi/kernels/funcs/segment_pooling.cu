@@ -12,13 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/kernels/funcs/segment_pooling.h"
+
 #include <algorithm>
+
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/segment_pooling.h"
 
 namespace phi {
 namespace funcs {
@@ -409,7 +411,7 @@ class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
 template <typename T, typename IndexT>
 class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& out_grad,
@@ -419,24 +421,24 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
                   const std::string pooltype = "SUM") {
     if (pooltype == "MAX" || pooltype == "MIN") {
       SegmentPoolCUDAGradFunctor<T, IndexT>(
-          context, input, segments, output, out_grad, in_grad, pooltype);
+          dev_ctx, input, segments, output, out_grad, in_grad, pooltype);
     } else if (pooltype == "MEAN") {
       DenseTensor mean_grad;
       mean_grad.Resize(input.dims());
-      context.template Alloc<T>(&mean_grad);
+      dev_ctx.template Alloc<T>(&mean_grad);
       paddle::framework::TensorCopy(
-          out_grad, context.GetPlace(), context, &mean_grad);
+          out_grad, dev_ctx.GetPlace(), dev_ctx, &mean_grad);
       int len = output.dims()[0];
       int dim = output.numel() / len;
-      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(context, len);
+      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, len);
       SimpleDiv<T><<<config.block_per_grid.x,
                      config.thread_per_block.x,
                      0,
-                     context.stream()>>>(
+                     dev_ctx.stream()>>>(
           mean_grad.data<T>(), summed_ids->data<T>(), len, dim);
-      phi::funcs::GPUGather<T, IndexT>(context, mean_grad, segments, in_grad);
+      phi::funcs::GPUGather<T, IndexT>(dev_ctx, mean_grad, segments, in_grad);
     } else if (pooltype == "SUM") {
-      phi::funcs::GPUGather<T, IndexT>(context, out_grad, segments, in_grad);
+      phi::funcs::GPUGather<T, IndexT>(dev_ctx, out_grad, segments, in_grad);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "

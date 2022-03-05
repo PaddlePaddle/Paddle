@@ -25,7 +25,7 @@ namespace phi {
 using Tensor = DenseTensor;
 
 template <typename Context, typename T, typename IndexT>
-void SegmentKernelLaunchHelper(const Context& context,
+void SegmentKernelLaunchHelper(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& segment_ids,
                                const std::string& pooltype,
@@ -48,7 +48,7 @@ void SegmentKernelLaunchHelper(const Context& context,
     return;
   }
 
-  bool cpu_place = context.GetPlace().GetType() == phi::AllocationType::CPU;
+  bool cpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU;
   if (cpu_place) {
     auto dims = x.dims();
     auto* segment_ids_ptr = segment_ids.data<IndexT>();
@@ -61,16 +61,16 @@ void SegmentKernelLaunchHelper(const Context& context,
             "Segment ids must be >= 0, but got last id %d", dims[0]));
 
     out->Resize({dims});
-    context.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
 
     phi::funcs::SetConstant<Context, T> set_zero;
-    set_zero(context, out, static_cast<T>(0));
+    set_zero(dev_ctx, out, static_cast<T>(0));
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!cpu_place) {
     DenseTensor length;
     length.Resize(phi::make_ddim({1}));
-    IndexT* length_data = context.template HostAlloc<IndexT>(&length);
+    IndexT* length_data = dev_ctx.template HostAlloc<IndexT>(&length);
 
     // IndexT* length_data = length.data<IndexT>();
     const IndexT* segment_ids_ptr = segment_ids.data<IndexT>();
@@ -97,7 +97,7 @@ void SegmentKernelLaunchHelper(const Context& context,
     auto dims = x.dims();
     dims[0] = static_cast<int64_t>(length_host);
     out->Resize({dims});
-    context.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
 
     T init_value = 0;
     if (pooltype == "MAX") {
@@ -106,23 +106,23 @@ void SegmentKernelLaunchHelper(const Context& context,
       init_value = static_cast<T>(FLT_MAX);
     }
     phi::funcs::SetConstant<Context, T> setconst;
-    setconst(context, out, static_cast<T>(init_value));
+    setconst(dev_ctx, out, static_cast<T>(init_value));
     // the gpu kernel of mean pool record the counts of segment_ids
     if (pooltype == "MEAN") {
       summed_ids->Resize({dims[0], 1});
-      summed_ids->mutable_data<T>(context.GetPlace());
-      setconst(context, summed_ids, static_cast<T>(1e-12));
+      dev_ctx.template Alloc<T>(summed_ids);
+      setconst(dev_ctx, summed_ids, static_cast<T>(1e-12));
     }
   }
 #endif
 
   phi::funcs::SegmentPoolFunctor<Context, T, IndexT> pool;
 
-  pool(context, x, segment_ids, out, summed_ids, pooltype);
+  pool(dev_ctx, x, segment_ids, out, summed_ids, pooltype);
 }
 
 template <typename T, typename Context>
-void SegmentPoolKernel(const Context& context,
+void SegmentPoolKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& segment_ids,
                        const std::string& pooltype,
@@ -131,10 +131,10 @@ void SegmentPoolKernel(const Context& context,
   auto index_type = paddle::framework::TransToProtoVarType(segment_ids.dtype());
   if (index_type == paddle::framework::proto::VarType::INT32) {
     SegmentKernelLaunchHelper<Context, T, int>(
-        context, x, segment_ids, pooltype, out, summed_ids);
+        dev_ctx, x, segment_ids, pooltype, out, summed_ids);
   } else if (index_type == paddle::framework::proto::VarType::INT64) {
     SegmentKernelLaunchHelper<Context, T, int64_t>(
-        context, x, segment_ids, pooltype, out, summed_ids);
+        dev_ctx, x, segment_ids, pooltype, out, summed_ids);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupported index type, Expected int, int64, but got %s.",

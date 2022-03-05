@@ -18,14 +18,8 @@ namespace phi {
 
 KernelSignature SegmentPoolOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  // const auto& pooltype= paddle::any_cast<std::string>(ctx.Attr("pooltype"));
-  // if(pooltype == "MEAN"){
   return KernelSignature(
       "segment_pool", {"X", "SegmentIds"}, {"pooltype"}, {"Out", "SummedIds"});
-  // }else{
-  //   return KernelSignature(
-  //       "segment_pool", {"X", "SegmentIds"}, {"pooltype"}, {"Out"});
-  // }
 }
 
 KernelSignature SegmentPoolGradOpArgumentMapping(
