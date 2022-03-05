@@ -94,18 +94,18 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
         dev_ctx, nullptr, &out, &dout, dx, functor);                  \
   }
 
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepOut(Relu, funcs::CudaReluGradFunctor<T>) 
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Cos, funcs::CudaCosGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Tan, funcs::CudaTanGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acos, funcs::CudaAcosGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Sin, funcs::CudaSinGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asin, funcs::CudaAsinGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atan, funcs::CudaAtanGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Sinh, funcs::CudaSinhGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Cosh, funcs::CudaCoshGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asinh, funcs::CudaAsinhGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acosh, funcs::CudaAcoshGradFunctor<T>)
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, funcs::CudaAtanhGradFunctor<T>)
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepOut(Relu, funcs::CudaReluGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Cos, funcs::CudaCosGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Tan, funcs::CudaTanGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acos, funcs::CudaAcosGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Sin, funcs::CudaSinGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asin, funcs::CudaAsinGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atan, funcs::CudaAtanGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Sinh, funcs::CudaSinhGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Cosh, funcs::CudaCoshGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asinh, funcs::CudaAsinhGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acosh, funcs::CudaAcoshGradFunctor<T>);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, funcs::CudaAtanhGradFunctor<T>);
 
 }  // namespace phi
 PD_REGISTER_KERNEL(cos_grad,
