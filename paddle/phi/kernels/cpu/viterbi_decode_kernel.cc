@@ -14,23 +14,23 @@
 
 #include "paddle/phi/kernels/viterbi_decode_kernel.h"
 
+#ifdef PADDLE_WITH_MKLML
+#include <omp.h>
+#endif
+
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/viterbi_decode_functor.h"
-#ifdef PADDLE_WITH_MKLML
-#include <omp.h>
-#endif
 
 namespace phi {
 
@@ -242,12 +242,12 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   start_trans.Resize({1, n_labels});
   auto logit0 = input_exp.Slice(0, 1);
   logit0.Resize({batch_size, n_labels});
-  BinaryOperation<Context, paddle::operators::AddFunctor, T> AddFloat;
-  BinaryOperation<Context, paddle::operators::AddFunctor, int64_t> AddInt;
-  BinaryOperation<Context, paddle::operators::MulFunctor, T> MulFloat;
-  BinaryOperation<Context, paddle::operators::MulFunctor, int64_t> MulInt;
-  BinaryOperation<Context, paddle::operators::SubFunctor, T> SubFloat;
-  BinaryOperation<Context, paddle::operators::SubFunctor, int64_t> SubInt;
+  BinaryOperation<Context, phi::funcs::AddFunctor, T> AddFloat;
+  BinaryOperation<Context, phi::funcs::AddFunctor, int64_t> AddInt;
+  BinaryOperation<Context, phi::funcs::MultiplyFunctor, T> MulFloat;
+  BinaryOperation<Context, phi::funcs::MultiplyFunctor, int64_t> MulInt;
+  BinaryOperation<Context, phi::funcs::SubtractFunctor, T> SubFloat;
+  BinaryOperation<Context, phi::funcs::SubtractFunctor, int64_t> SubInt;
   if (include_bos_eos_tag) {
     AddFloat(dev_ctx, logit0, start_trans, &alpha);
     GetMask<Context, phi::funcs::EqualFunctor, T>()(
