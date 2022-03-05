@@ -209,32 +209,4 @@ void LerpInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void LinspaceInferMeta(const MetaTensor& start,
-                       const MetaTensor& stop,
-                       const MetaTensor& number,
-                       MetaTensor* out) {
-  auto s_dims = start.dims();
-  PADDLE_ENFORCE_EQ(
-      (s_dims.size() == 1) && (s_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
-                                   "but received input shape is [%s].",
-                                   s_dims));
-  auto e_dims = stop.dims();
-  PADDLE_ENFORCE_EQ(
-      (e_dims.size() == 1) && (e_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
-                                   "but received input shape is [%s].",
-                                   e_dims));
-  auto step_dims = number.dims();
-  PADDLE_ENFORCE_EQ(
-      (step_dims.size() == 1) && (step_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
-                                   "but received input shape is [%s].",
-                                   step_dims));
-  out->set_dims(phi::make_ddim({-1}));
-}
-
 }  // namespace phi
