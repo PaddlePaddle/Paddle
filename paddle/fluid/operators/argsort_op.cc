@@ -25,31 +25,6 @@ namespace operators {
 class ArgsortOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "argsort");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "argsort");
-    OP_INOUT_CHECK(ctx->HasOutput("Indices"), "Output", "Indices", "argsort");
-
-    auto in_dims = ctx->GetInputDim("X");
-    int axis = ctx->Attrs().Get<int>("axis");
-
-    auto num_dims = in_dims.size();
-    PADDLE_ENFORCE_GE(axis, -num_dims,
-                      platform::errors::InvalidArgument(
-                          "'axis'(%d) must be greater than or equal to"
-                          " -num_dims(%d).",
-                          axis, -num_dims));
-    PADDLE_ENFORCE_LT(
-        axis, num_dims,
-        platform::errors::InvalidArgument(
-            "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
-
-    ctx->ShareDim("X", "Out");
-    ctx->ShareDim("X", "Indices");
-    ctx->ShareLoD("X", "Out");
-    ctx->ShareLoD("X", "Indices");
-  }
 };
 
 class ArgsortGradOp : public framework::OperatorWithKernel {
