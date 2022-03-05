@@ -90,9 +90,6 @@ namespace plat = paddle::platform;
 
 DELCARE_INFER_SHAPE_FUNCTOR(empty, EmptyInferShapeFunctor,
                             PT_INFER_META(phi::CreateInferMeta));
-
-REGISTER_OPERATOR(
-    empty, ops::EmptyOp, ops::EmptyOpMaker, ops::EmptyOpVarTypeInference,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    EmptyInferShapeFunctor);
+REGISTER_OP_WITHOUT_GRADIENT(empty, ops::EmptyOp, ops::EmptyOpMaker,
+                             ops::EmptyOpVarTypeInference,
+                             EmptyInferShapeFunctor);
