@@ -57,6 +57,8 @@ class TestRenormAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             input = [[[2.0, 2, -2], [3, 0.3, 3]], [[2, -8, 2], [3.1, 3.7, 3]]]
             x = paddle.to_tensor(input, stop_gradient=False)
+            x = paddle.rand(x.shape, dtype="float32")
+            print(type(x))
             y = paddle.renorm(x, 1.0, 2, 2.05)
             expected = np.array([[[0.40594056, 0.29285714, -0.41000000],
                                   [0.60891086, 0.04392857, 0.61500001]],
