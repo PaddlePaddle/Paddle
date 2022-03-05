@@ -474,8 +474,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { return 0; }
 #define _PD_KERNEL_REGISTRAR_INIT_2(reg_type,                                 \
                                     kernel_name,                              \
@@ -497,8 +497,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_1(reg_type,                             \
                                         kernel_name,                          \
                                         backend,                              \
@@ -528,8 +528,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_2(reg_type,                             \
                                         kernel_name,                          \
                                         backend,                              \
@@ -559,8 +559,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_3(reg_type,                             \
                                         kernel_name,                          \
                                         backend,                              \
@@ -590,8 +590,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_4(reg_type,                             \
                                         kernel_name,                          \
                                         backend,                              \
@@ -621,8 +621,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_5(reg_type,                             \
                                         kernel_name,                          \
                                         backend,                              \
@@ -652,8 +652,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_6(reg_type,                             \
                                         kernel_name,                          \
                                         backend,                              \
@@ -683,8 +683,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_7(reg_type,                             \
                                         kernel_name,                          \
                                         backend,                              \
@@ -714,8 +714,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_8(reg_type,                             \
                                         kernel_name,                          \
                                         backend,                              \
@@ -745,8 +745,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_9(reg_type,                             \
                                         kernel_name,                          \
                                         backend,                              \
@@ -776,8 +776,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_10(reg_type,                            \
                                          kernel_name,                         \
                                          backend,                             \
@@ -807,8 +807,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_11(reg_type,                            \
                                          kernel_name,                         \
                                          backend,                             \
@@ -838,8 +838,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_12(reg_type,                            \
                                          kernel_name,                         \
                                          backend,                             \
@@ -869,8 +869,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_13(reg_type,                            \
                                          kernel_name,                         \
                                          backend,                             \
@@ -900,8 +900,8 @@ struct KernelRegistrar {
       ::phi::KernelArgsParseFunctor<decltype(                                 \
           &meta_kernel_fn<cpp_dtype, context>)>::Parse,                       \
       args_def_fn,                                                            \
-      PD_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PD_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                         \
+      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));               \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_14(reg_type,                            \
                                          kernel_name,                         \
                                          backend,                             \
@@ -944,8 +944,8 @@ struct KernelRegistrar {
           DATALAYOUT(layout),                                               \
           ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
           &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
-          PD_KERNEL(kernel_fn),                                             \
-          PD_VARIADIC_KERNEL(kernel_fn));                                   \
+          PHI_KERNEL(kernel_fn),                                            \
+          PHI_VARIADIC_KERNEL(kernel_fn));                                  \
   int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() {         \
     return 0;                                                               \
   }                                                                         \
@@ -964,8 +964,8 @@ struct KernelRegistrar {
           DATALAYOUT(layout),                                               \
           ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,       \
           &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,    \
-          PD_KERNEL(kernel_fn),                                             \
-          PD_VARIADIC_KERNEL(kernel_fn));                                   \
+          PHI_KERNEL(kernel_fn),                                            \
+          PHI_VARIADIC_KERNEL(kernel_fn));                                  \
   int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() {         \
     return 0;                                                               \
   }                                                                         \
