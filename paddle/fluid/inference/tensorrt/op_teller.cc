@@ -546,8 +546,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
         if (dims <= 1) {
-          VLOG(3) << "On TRT static shape, flatten_contiguous_range input dims "
-                     "should > 1 ";
+          VLOG(3) << "TRT flatten_contiguous_range input dims should > 1 "
+                     "in static_shape mode ";
           return false;
         }
         for (int i = start_axis; i <= stop_axis; ++i) {
