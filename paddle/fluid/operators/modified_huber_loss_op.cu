@@ -17,7 +17,7 @@ limitations under the License. */
 #include <thrust/tuple.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/modified_huber_loss_op.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -50,7 +50,7 @@ class ModifiedHuberLossGradGPUKernel : public framework::OpKernel<T> {
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
 
     if (out0) {
-      auto counts = framework::product(in1->dims());
+      auto counts = phi::product(in1->dims());
       auto y_ptr = thrust::device_pointer_cast(in0->data<T>());
       auto inter_val_ptr = thrust::device_pointer_cast(in1->data<T>());
       auto out_grad_ptr = thrust::device_pointer_cast(in2->data<T>());

@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/detection/sigmoid_focal_loss_op.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/pten/core/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

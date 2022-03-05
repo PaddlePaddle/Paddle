@@ -59,7 +59,7 @@ ConvConcatReLUFusePass::ConvConcatReLUFusePass() {
       .IsType<std::vector<int>>()
       .End()
       .AddAttr("data_format")
-      .IsStringIn({"NCHW"})
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
   AddOpCompat(OpCompat("concat"))

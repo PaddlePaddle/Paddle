@@ -31,68 +31,75 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
-        self.attrs = {}
-        self.pass_ctx = PassContext()
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
         super(ParameterServerOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
+    def _set_origin_programs(self, losses):
+        self.origin_main_programs = []
+        for loss in losses:
+            self.origin_main_programs.append(loss.block.program)
+
     def _init_ps_pass_context(self, loss, startup_program):
+        self.pass_ctx = PassContext()
+        attrs = {}
         # trainer
-        self.attrs["env"] = get_dist_env()
+        attrs["env"] = get_dist_env()
 
-        self.attrs['loss'] = loss
-        self.attrs['min_block_size'] = 81920
-        self.attrs['origin_main_program'] = loss.block.program
-        self.attrs['origin_startup_program'] = startup_program
+        attrs['loss'] = loss
+        attrs['min_block_size'] = 81920
+        attrs['origin_main_program'] = loss.block.program
+        attrs['origin_startup_program'] = startup_program
 
-        self.attrs['cloned_main'] = loss.block.program.clone()
-        self.attrs['cloned_startup'] = startup_program.clone()
+        attrs['origin_main_programs'] = self.origin_main_programs
 
-        self.attrs['user_defined_strategy'] = self.user_defined_strategy
-        self.attrs['trainer'] = TrainerRuntimeConfig(self.user_defined_strategy)
-        self.attrs['ps_mode'] = self.attrs['trainer'].mode
+        attrs['cloned_main'] = attrs['origin_main_program'].clone()
+        attrs['cloned_startup'] = attrs['origin_startup_program'].clone()
 
-        self.attrs['role_maker'] = self.role_maker
-        self.attrs[
+        attrs['user_defined_strategy'] = self.user_defined_strategy
+        attrs['valid_strategy'] = self.user_defined_strategy
+        attrs['trainer'] = TrainerRuntimeConfig(self.user_defined_strategy)
+        attrs['ps_mode'] = attrs['trainer'].mode
+        logger.info("ps_mode: {}".format(attrs['ps_mode']))
+        attrs['role_maker'] = self.role_maker
+        attrs[
             'is_heter_ps_mode'] = self.role_maker._is_heter_parameter_server_mode
-        self.attrs['is_worker'] = self.role_maker._is_worker()
-        self.attrs['is_server'] = self.role_maker._is_server()
-        self.attrs['is_heter_worker'] = self.role_maker._is_heter_worker()
-
-        self.attrs['use_ps_gpu'] = self.user_defined_strategy.a_sync_configs[
+        attrs['is_worker'] = self.role_maker._is_worker()
+        attrs['is_server'] = self.role_maker._is_server()
+        attrs['is_heter_worker'] = self.role_maker._is_heter_worker()
+        logger.info("this process is heter? {}".format(attrs[
+            'is_heter_worker']))
+        attrs['use_ps_gpu'] = self.user_defined_strategy.a_sync_configs[
             "use_ps_gpu"]
-        self.attrs[
-            'lr_decay_steps'] = self.user_defined_strategy.a_sync_configs[
-                "lr_decay_steps"]
-        self.attrs['k_steps'] = self.user_defined_strategy.a_sync_configs[
-            "k_steps"]
-        self.attrs[
-            'launch_barrier'] = self.user_defined_strategy.a_sync_configs[
-                "launch_barrier"]
+        attrs['lr_decay_steps'] = self.user_defined_strategy.a_sync_configs[
+            "lr_decay_steps"]
+        attrs['k_steps'] = self.user_defined_strategy.a_sync_configs["k_steps"]
+        attrs['launch_barrier'] = self.user_defined_strategy.a_sync_configs[
+            "launch_barrier"]
 
-        self.attrs['launch_barrier_flag'] = int(
+        attrs['launch_barrier_flag'] = int(
             os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
 
-        build_var_distributed(self.attrs)
+        build_var_distributed(attrs)
 
         # server 
-        self.attrs['_main_server'] = fluid.Program()
-        self.attrs['_startup_server'] = fluid.Program()
-        self.attrs['tensor_table'] = {}
+        attrs['_main_server'] = fluid.Program()
+        attrs['_startup_server'] = fluid.Program()
+        attrs['tensor_table'] = {}
 
-        self.pass_ctx._attrs = self.attrs
+        self.pass_ctx._attrs = attrs
 
     def _is_graph_out(self):
         return False
 
     def _can_apply(self):
-        if self._attrs['role_maker']._is_collective or self._attrs[
-                'k_steps'] < 0:
+        if self.role_maker._is_collective:
             return False
-        return True
+
+        k_steps = self.user_defined_strategy.a_sync_configs["k_steps"]
+        return True if k_steps >= 0 else False
 
     def minimize_impl(self,
                       loss,
@@ -103,10 +110,35 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                                 no_grad_set)
         if startup_program == None:
             startup_program = paddle.static.default_startup_program()
+        print("program after inner optimizer minimize:",
+              str(loss.block.program))
+        self._set_origin_programs([loss])
         self._init_ps_pass_context(loss, startup_program)
         ps_builder = PsProgramBuilderFactory()._create_ps_program_builder(
             self.pass_ctx)
         ps_builder._build_programs()
+        return None, None
+
+    def minimize_losses_impl(self,
+                             losses,
+                             startup_program=None,
+                             parameter_list=None,
+                             no_grad_set=None):
+        if parameter_list is None:
+            parameter_list = [None] * len(losses)
+        for idx, loss in enumerate(losses):
+            startup_prog = startup_program[idx]
+            parameters = parameter_list[idx]
+            self.inner_opt.minimize(loss, startup_prog, parameters, no_grad_set)
+        self._set_origin_programs(losses)
+        for idx, loss in enumerate(losses):
+            print("ps_optimizer idx loss:", idx, loss)
+            startup_prog = startup_program[idx]
+            self._init_ps_pass_context(loss, startup_prog)
+            ps_builder = PsProgramBuilderFactory()._create_ps_program_builder(
+                self.pass_ctx)
+            ps_builder._build_programs()
+            startup_program[idx] = self.pass_ctx._attrs['cloned_startup']
         return None, None
 
     def _can_apply_geo(self, program):

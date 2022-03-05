@@ -1495,6 +1495,15 @@ struct DuplicatedInputs : public PatternBase {
   PATTERN_DECL_NODE(op);
 };
 
+struct DuplicatedOutputs : public PatternBase {
+  DuplicatedOutputs(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "many_outputs_op") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(op);
+};
+
 // Pattern used for enforcing inplace computation for in-place computation
 // supporting DNNL ops. softmax, batch_norm and layer_norm
 struct MKLDNNInPlace : public PatternBase {

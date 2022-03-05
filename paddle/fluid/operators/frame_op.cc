@@ -87,7 +87,7 @@ class FrameOp : public framework::OperatorWithKernel {
       output_shape.push_back(n_frames);
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
   }
 
  protected:

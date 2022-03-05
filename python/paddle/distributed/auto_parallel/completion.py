@@ -442,7 +442,7 @@ class Completer:
                 assert forward_op is not None
 
                 if grad_op.type == "concat" and forward_op.type == "split":
-                    forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
+                    forward_op_dist_attr = self._dist_context.get_op_dist_attr_for_program(
                         forward_op)
                     output_var = vars[grad_op.desc.output('Out')[0]]
                     split_input_var_name = forward_op.input("X")[0]
@@ -458,14 +458,14 @@ class Completer:
                     output_var_dist_attr = TensorDistributedAttribute()
                     output_var_dist_attr.dims_mapping = ref_dims_mapping
                     output_var_dist_attr.process_mesh = ref_mesh
-                    dist_context.set_tensor_dist_attr_for_program(
+                    self._dist_context.set_tensor_dist_attr_for_program(
                         output_var, output_var_dist_attr)
 
                     grad_op_dist_attr.set_output_dims_mapping(output_var.name,
                                                               ref_dims_mapping)
                     grad_op_dist_attr.process_mesh = ref_mesh
-                    dist_context.set_op_dist_attr_for_program(grad_op,
-                                                              grad_op_dist_attr)
+                    self._dist_context.set_op_dist_attr_for_program(
+                        grad_op, grad_op_dist_attr)
                     continue
 
                 # op dist attr
@@ -579,6 +579,28 @@ class Completer:
             # TODO to add attribute for moment var
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
+                if op.type == "clip_by_norm":
+                    param_grad = vars[op.input("X")[0]]
+                    param_grad_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                        param_grad)
+                    assert param_grad_dist_attr is not None
+                    ref_process_mesh = param_grad_dist_attr.process_mesh
+                    ref_dims_mapping = param_grad_dist_attr.dims_mapping
+
+                    out = vars[op.output("Out")[0]]
+                    out_dist_attr = TensorDistributedAttribute()
+                    out_dist_attr.process_mesh = ref_process_mesh
+                    out_dist_attr.dims_mapping = ref_dims_mapping
+                    self._dist_context.set_tensor_dist_attr_for_program(
+                        out, out_dist_attr)
+
+                    op_dist_attr = OperatorDistributedAttribute()
+                    op_dist_attr.process_mesh = ref_process_mesh
+                    op_dist_attr.set_input_dist_attr(param_grad.name,
+                                                     param_grad_dist_attr)
+                    op_dist_attr.set_output_dist_attr(out.name, out_dist_attr)
+                    self._dist_context.set_op_dist_attr_for_program(
+                        op, op_dist_attr)
 
                 if "Grad" in op.input_names and "Param" in ops[idx].input_names:
                     assert len(op.input(

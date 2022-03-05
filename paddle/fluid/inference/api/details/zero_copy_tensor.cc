@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -20,6 +21,7 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/allocator.h"
 
 namespace paddle_infer {
 
@@ -40,7 +42,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
       var, paddle::platform::errors::PreconditionNotMet(
                "No tensor called [%s] in the runtime scope", name_));
   auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
-  tensor->Resize(paddle::framework::make_ddim(shape));
+  tensor->Resize(phi::make_ddim(shape));
 }
 
 void Tensor::ReshapeStrings(const size_t &shape) {
@@ -122,7 +124,7 @@ T *Tensor::data(PlaceType *place, int *size) const {
 
 DataType Tensor::type() const {
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
-  auto type = tensor->type();
+  auto type = paddle::framework::TransToProtoVarType(tensor->dtype());
   if (type == paddle::framework::proto::VarType::FP32) {
     return DataType::FLOAT32;
   } else if (type == paddle::framework::proto::VarType::FP16) {
@@ -201,6 +203,73 @@ void Tensor::CopyFromCpu(const T *data) {
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+  }
+}
+
+template <typename T>
+struct DataTypeInfo;
+
+template <>
+struct DataTypeInfo<float> {
+  paddle::experimental::DataType TYPE = paddle::experimental::DataType::FLOAT32;
+};
+
+template <>
+struct DataTypeInfo<float16> {
+  paddle::experimental::DataType TYPE = paddle::experimental::DataType::FLOAT16;
+};
+
+template <>
+struct DataTypeInfo<int64_t> {
+  paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT64;
+};
+
+template <>
+struct DataTypeInfo<int8_t> {
+  paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT8;
+};
+
+template <>
+struct DataTypeInfo<uint8_t> {
+  paddle::experimental::DataType TYPE = paddle::experimental::DataType::UINT8;
+};
+
+template <>
+struct DataTypeInfo<int32_t> {
+  paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT32;
+};
+
+paddle::experimental::DataLayout LayoutConvert(DataLayout layout) {
+  PADDLE_ENFORCE_EQ(
+      layout, DataLayout::kNCHW,
+      paddle::platform::errors::InvalidArgument("Only NCHW is supported now."));
+  return paddle::experimental::DataLayout::NCHW;
+}
+
+template <typename T>
+void Tensor::ShareExternalData(const T *data, const std::vector<int> &shape,
+                               PlaceType place, DataLayout layout) {
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor)
+  size_t size =
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()) *
+      sizeof(T);
+  phi::DenseTensorMeta meta(DataTypeInfo<T>().TYPE, phi::make_ddim(shape),
+                            LayoutConvert(layout));
+  if (place == PlaceType::kCPU) {
+    phi::DenseTensor dtensor(
+        std::make_shared<phi::Allocation>(const_cast<T *>(data), size,
+                                          paddle::platform::CPUPlace()),
+        meta);
+    *tensor = std::move(dtensor);
+  } else if (place == PlaceType::kGPU) {
+    phi::DenseTensor dtensor(
+        std::make_shared<phi::Allocation>(const_cast<T *>(data), size,
+                                          paddle::platform::CUDAPlace(device_)),
+        meta);
+    *tensor = std::move(dtensor);
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "PlaceType must be PlaceType::kCPU or PlaceType::kGPU."));
   }
 }
 
@@ -333,6 +402,25 @@ template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<float16>(const float16 *data);
 
+template PD_INFER_DECL void Tensor::ShareExternalData<float>(
+    const float *data, const std::vector<int> &shape, PlaceType place,
+    DataLayout layout);
+template PD_INFER_DECL void Tensor::ShareExternalData<int64_t>(
+    const int64_t *data, const std::vector<int> &shape, PlaceType place,
+    DataLayout layout);
+template PD_INFER_DECL void Tensor::ShareExternalData<int32_t>(
+    const int32_t *data, const std::vector<int> &shape, PlaceType place,
+    DataLayout layout);
+template PD_INFER_DECL void Tensor::ShareExternalData<uint8_t>(
+    const uint8_t *data, const std::vector<int> &shape, PlaceType place,
+    DataLayout layout);
+template PD_INFER_DECL void Tensor::ShareExternalData<int8_t>(
+    const int8_t *data, const std::vector<int> &shape, PlaceType place,
+    DataLayout layout);
+template PD_INFER_DECL void Tensor::ShareExternalData<float16>(
+    const float16 *data, const std::vector<int> &shape, PlaceType place,
+    DataLayout layout);
+
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int32_t>(int32_t *data) const;
@@ -429,7 +517,33 @@ std::vector<int> Tensor::shape() const {
   PADDLE_ENFORCE_NOT_NULL(
       tensor_, paddle::platform::errors::PreconditionNotMet(
                    "Not found tensor called %s in the scope", name_));
-  return paddle::framework::vectorize<int>(tensor->dims());
+// mkldnn may does layout transform internally, so need to reorder before
+// return
+#ifdef PADDLE_WITH_MKLDNN
+  if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN) {
+    paddle::framework::DataLayout out_layout =
+        paddle::platform::MKLDNNDeviceContext::tls()
+            .get_cur_paddle_data_layout();
+    // Set default as NCHW in case not specified
+    out_layout = out_layout == paddle::framework::DataLayout::kAnyLayout
+                     ? paddle::framework::DataLayout::kNCHW
+                     : out_layout;
+    // In these data layouts, channel dimension is either on 2nd position: nChw
+    // or
+    // at last nhwC, so for dim==2 these layouts are the same and nothing should
+    // be done. Similarly for dim==1 when you have just one possible
+    // combination.
+    if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
+    if (out_layout == paddle::framework::DataLayout::kNHWC) {
+      auto dims = phi::vectorize<int>(tensor->dims());
+      std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+      return dims;
+    } else {
+      return phi::vectorize<int>(tensor->dims());
+    }
+  }
+#endif
+  return phi::vectorize<int>(tensor->dims());
 }
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {

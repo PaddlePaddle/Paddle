@@ -36,22 +36,22 @@ class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>
 
       output = context.Output<Tensor>("Out");
       output->mutable_data<platform::float16>(context.GetPlace());
-    } else if (in_var->IsType<pten::SelectedRows>()) {
-      auto* x = context.Input<pten::SelectedRows>("X");
+    } else if (in_var->IsType<phi::SelectedRows>()) {
+      auto* x = context.Input<phi::SelectedRows>("X");
 
       // merge ids in selected rows first
       math::scatter::MergeAdd<platform::CUDADeviceContext, platform::float16>
           merge_func;
-      pten::SelectedRows* merged_input =
+      phi::SelectedRows* merged_input =
           const_cast<framework::Scope&>(context.scope())
               .Var()
-              ->GetMutable<pten::SelectedRows>();
+              ->GetMutable<phi::SelectedRows>();
       merge_func(context.template device_context<platform::CUDADeviceContext>(),
                  *x, merged_input);
       input = &(merged_input->value());
 
-      pten::SelectedRows* output_selected_rows =
-          context.Output<pten::SelectedRows>("Out");
+      phi::SelectedRows* output_selected_rows =
+          context.Output<phi::SelectedRows>("Out");
       output_selected_rows->set_rows(merged_input->rows());
       output_selected_rows->set_height(merged_input->height());
       output = output_selected_rows->mutable_value();

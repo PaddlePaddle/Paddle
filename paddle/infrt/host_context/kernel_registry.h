@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -23,7 +24,7 @@ namespace host_context {
 
 class KernelFrame;
 
-using KernelImplementation = void (*)(KernelFrame *frame);
+using KernelImplementation = std::function<void(KernelFrame *frame)>;
 
 /**
  * Hold the kernels registered in the system.

@@ -18,9 +18,9 @@
 #include "paddle/fluid/framework/variable.h"
 
 namespace egr {
-class EagerTensor;
+class EagerVariable;
 }  // namespace egr
-namespace pten {
+namespace phi {
 class DenseTensor;
 }
 namespace paddle {

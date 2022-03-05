@@ -172,29 +172,30 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
             for i in range(len(program_config.ops))
         ]
 
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            if not dynamic_shape and self.dim1 == 0 and self.dim2 == 0 and self.dim3 == 0:
+                return 0, 3
+            return 1, 2
+
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
+                                                                     True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
+                                                                     True), 1e-5
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.dim1 == 0 and self.dim2 == 0 and self.dim3 == 0:
-                return True
-            return False
-
-        self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
-                           "Trt does not support 1-dimensional input.")
-
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
 

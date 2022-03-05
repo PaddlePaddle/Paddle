@@ -18,13 +18,13 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/pten/core/device_context.h"
-#include "paddle/pten/core/stream.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/stream.h"
 
 namespace paddle {
 namespace memory {
 
-using pten::Allocation;
+using phi::Allocation;
 using allocation::Allocator;
 using allocation::AllocationPtr;
 
@@ -33,23 +33,23 @@ extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
 
 extern AllocationPtr Alloc(const platform::Place& place, size_t size);
 
-extern AllocationPtr Alloc(const pten::DeviceContext& dev_ctx, size_t size);
+extern AllocationPtr Alloc(const phi::DeviceContext& dev_ctx, size_t size);
 
 extern uint64_t Release(const platform::Place& place);
 
 extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size,
-                                               const pten::Stream& stream);
+                                               const phi::Stream& stream);
+
+extern AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
+                           const phi::Stream& stream);
 
 extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                         const pten::Stream& stream);
+                         const phi::Stream& stream);
 
 extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-extern AllocationPtr Alloc(const platform::CUDAPlace& place, size_t size,
-                           const gpuStream_t& stream);
-
 extern uint64_t Release(const platform::CUDAPlace& place,
                         const gpuStream_t& stream);
 

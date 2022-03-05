@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/log_loss_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -29,8 +29,8 @@ class LogLossOp : public framework::OperatorWithKernel {
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto label_dims = ctx->GetInputDim("Labels");
 
-    if (ctx->IsRuntime() || (framework::product(pred_dims) > 0 &&
-                             framework::product(label_dims) > 0)) {
+    if (ctx->IsRuntime() ||
+        (phi::product(pred_dims) > 0 && phi::product(label_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
           pred_dims, label_dims,
           platform::errors::InvalidArgument(
@@ -149,13 +149,3 @@ REGISTER_OPERATOR(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>,
                   ops::LogLossGradMaker<paddle::framework::OpDesc>,
                   ops::LogLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(log_loss_grad, ops::LogLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    log_loss, ops::LogLossKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    log_loss_grad,
-    ops::LogLossGradKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    log_loss, ops::LogLossKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    log_loss_grad,
-    ops::LogLossGradKernel<paddle::platform::CUDADeviceContext, float>);

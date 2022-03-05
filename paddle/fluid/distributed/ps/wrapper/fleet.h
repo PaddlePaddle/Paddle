@@ -49,7 +49,7 @@ class PSCore;
 
 using framework::LoDTensor;
 using framework::Scope;
-using pten::SelectedRows;
+using phi::SelectedRows;
 using framework::Variable;
 
 using RpcCtxMap = std::unordered_map<std::string, CommContext>;

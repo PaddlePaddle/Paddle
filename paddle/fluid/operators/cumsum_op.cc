@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/cum_op.h"
 
 namespace paddle {
 namespace operators {
@@ -24,9 +24,8 @@ class CumOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->Attrs().Get<bool>("flatten")) {
-      ctx->SetOutputDim(
-          "Out",
-          framework::make_ddim({framework::product(ctx->GetInputDim("X"))}));
+      ctx->SetOutputDim("Out",
+                        phi::make_ddim({phi::product(ctx->GetInputDim("X"))}));
     } else {
       ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     }
@@ -92,10 +91,6 @@ using CPU = paddle::platform::CPUDeviceContext;
 REGISTER_OPERATOR(cumsum, ops::CumOp, ops::CumsumOpMaker,
                   ops::CumsumGradMaker<paddle::framework::OpDesc>,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(cumsum, ops::CumKernel<CPU, ops::CumsumFunctor<float>>,
-                       ops::CumKernel<CPU, ops::CumsumFunctor<double>>,
-                       ops::CumKernel<CPU, ops::CumsumFunctor<int>>,
-                       ops::CumKernel<CPU, ops::CumsumFunctor<int64_t>>);
 
 REGISTER_OP_VERSION(cumsum)
     .AddCheckpoint(
