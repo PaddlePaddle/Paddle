@@ -30,14 +30,14 @@
 
 namespace phi {
 
-#define PD_KERNEL(...) \
+#define PT_KERNEL(...) \
   ::phi::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
 
-#define PD_VARIADIC_KERNEL(...)                                      \
+#define PT_VARIADIC_KERNEL(...)                                      \
   reinterpret_cast<void*>(&::phi::KernelImpl<decltype(&__VA_ARGS__), \
                                              &__VA_ARGS__>::VariadicCompute)
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)           \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)           \
   template <typename... Tail>                                                \
   struct KernelCallHelper<const dev_ctx&, Tail...> {                         \
     template <int dev_ctx_idx,                                               \
@@ -60,7 +60,7 @@ namespace phi {
     }                                                                        \
   }
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(tensor_type)           \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(tensor_type)           \
   template <typename... Tail>                                           \
   struct KernelCallHelper<const tensor_type&, Tail...> {                \
     template <int dev_ctx_idx,                                          \
@@ -81,7 +81,7 @@ namespace phi {
     }                                                                   \
   }
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(tensor_type)     \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(tensor_type)     \
   template <typename... Tail>                                              \
   struct KernelCallHelper<paddle::optional<const tensor_type&>, Tail...> { \
     template <int dev_ctx_idx,                                             \
@@ -102,7 +102,7 @@ namespace phi {
     }                                                                      \
   }
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)          \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(tensor_type)          \
   template <typename... Tail>                                                \
   struct KernelCallHelper<const std::vector<const tensor_type*>&, Tail...> { \
     template <int dev_ctx_idx,                                               \
@@ -124,7 +124,7 @@ namespace phi {
     }                                                                        \
   }
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(attr_type)           \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(attr_type)           \
   template <typename... Tail>                                             \
   struct KernelCallHelper<attr_type, Tail...> {                           \
     template <int dev_ctx_idx,                                            \
@@ -142,7 +142,7 @@ namespace phi {
     }                                                                     \
   }
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(tensor_type)           \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(tensor_type)           \
   template <typename... Tail>                                            \
   struct KernelCallHelper<tensor_type*, Tail...> {                       \
     template <int dev_ctx_idx,                                           \
@@ -159,7 +159,7 @@ namespace phi {
     }                                                                    \
   }
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)          \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)          \
   template <typename... Tail>                                                 \
   struct KernelCallHelper<std::vector<tensor_type*>, Tail...> {               \
     template <int dev_ctx_idx,                                                \
@@ -204,65 +204,65 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   /* DeviceContext Helpers */
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CPUContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CPUContext);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(GPUContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(GPUContext);
 #endif
 #ifdef PADDLE_WITH_XPU
-  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CustomContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CustomContext);
 #endif
 
   /* Input Helpers */
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
-  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCooTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCooTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCooTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCooTensor);
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCsrTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCsrTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SparseCsrTensor);
 
   /* Attribute Helpers */
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(bool);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(float);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(double);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(phi::dtype::float16);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::string&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<float>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<double>&);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<std::string>&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(bool);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(float);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(double);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(int64_t);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(phi::dtype::float16);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const Scalar&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int64_t>&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::string&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<float>&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<double>&);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(const std::vector<std::string>&);
 
   /* Output Helpers */
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRows);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRows);
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCooTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCooTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCooTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCooTensor);
 
-  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCsrTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SparseCsrTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(SparseCsrTensor);
 
   /* End case */
   template <typename T>
