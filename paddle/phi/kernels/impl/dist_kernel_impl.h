@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,13 +71,13 @@ static phi::DDim GetNewDims(const phi::DDim& in_dims, int rank) {
 }
 
 template <typename Context, typename T, int Rank>
-static void DistFunction(const Context& context,
+static void DistFunction(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          float p,
                          DenseTensor* out) {
   if (out) {
-    context.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
   }
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -89,7 +89,7 @@ static void DistFunction(const Context& context,
   auto x_t = ETensor<T, Rank>::From(x, x_new_dims);
   auto y_t = ETensor<T, Rank>::From(y, y_new_dims);
   auto out_t = ETensor<T, 1>::From(*out);
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
 
   Eigen::DSizes<int, Rank> x_bcast_dims;
   Eigen::DSizes<int, Rank> y_bcast_dims;
@@ -124,7 +124,7 @@ static void DistFunction(const Context& context,
 }
 
 template <typename T, typename Context>
-void DistKernel(const Context& context,
+void DistKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y,
                 float p,
@@ -141,22 +141,22 @@ void DistKernel(const Context& context,
                         y_rank));
   switch (rank) {
     case 1:
-      DistFunction<Context, T, 1>(context, x, y, p, out);
+      DistFunction<Context, T, 1>(dev_ctx, x, y, p, out);
       break;
     case 2:
-      DistFunction<Context, T, 2>(context, x, y, p, out);
+      DistFunction<Context, T, 2>(dev_ctx, x, y, p, out);
       break;
     case 3:
-      DistFunction<Context, T, 3>(context, x, y, p, out);
+      DistFunction<Context, T, 3>(dev_ctx, x, y, p, out);
       break;
     case 4:
-      DistFunction<Context, T, 4>(context, x, y, p, out);
+      DistFunction<Context, T, 4>(dev_ctx, x, y, p, out);
       break;
     case 5:
-      DistFunction<Context, T, 5>(context, x, y, p, out);
+      DistFunction<Context, T, 5>(dev_ctx, x, y, p, out);
       break;
     case 6:
-      DistFunction<Context, T, 6>(context, x, y, p, out);
+      DistFunction<Context, T, 6>(dev_ctx, x, y, p, out);
       break;
   }
 }

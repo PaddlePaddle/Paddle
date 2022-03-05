@@ -417,6 +417,7 @@ void DistInferMeta(const MetaTensor& x,
                         "shape of Input(Y) = [%s].",
                         y_dims));
   out->set_dims({1});
+  out->set_dtype(x.dtype());
 }
 
 void GatherNdInferMeta(const MetaTensor& x,

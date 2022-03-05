@@ -68,7 +68,7 @@ static phi::DDim GetNewDims(const phi::DDim& in_dims, int rank) {
 }
 
 template <typename Context, typename T, int Rank>
-static void DistGradFunction(const Context& context,
+static void DistGradFunction(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& y,
                              const DenseTensor& out,
@@ -99,11 +99,11 @@ static void DistGradFunction(const Context& context,
   }
   phi::DDim new_dims = phi::make_ddim(new_dims_vec);
 
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto out_grad_t = ETensor<T, Rank>::From(out_grad, out_new_dims);
   DenseTensor grad;
   grad.Resize(new_dims);
-  context.template Alloc<T>(&grad);
+  dev_ctx.template Alloc<T>(&grad);
   auto grad_t = ETensor<T, Rank>::From(grad);
 
   auto x_minux_y = x_t.broadcast(x_bcast_dims) - y_t.broadcast(y_bcast_dims);
@@ -116,11 +116,11 @@ static void DistGradFunction(const Context& context,
   // 1: Lp-norm(z), z = x-y, compute dz
   if (p == 0) {
     phi::funcs::SetConstant<Context, T> set_zero;
-    set_zero(context, &grad, static_cast<T>(0));
+    set_zero(dev_ctx, &grad, static_cast<T>(0));
   } else if (p == INFINITY || p == -INFINITY) {
     // p=inf or -inf, Lp-norm = |z_i|, the j-th element of dz tends to 0 if
     // j!=i, or equals to sign(z_i) * dout if j=i.
-    if (paddle::platform::is_cpu_place(context.GetPlace())) {
+    if (paddle::platform::is_cpu_place(dev_ctx.GetPlace())) {
       grad_t.device(place) = (x_minux_y_abs == out_t.broadcast(out_bcast_dims))
                                  .template cast<T>() *
                              sign.eval() * out_grad_t.broadcast(out_bcast_dims);
@@ -131,7 +131,7 @@ static void DistGradFunction(const Context& context,
     }
   } else {
     // dz = pow(abs(x-y)/out, p-1) * sign(x-y) * dout
-    if (paddle::platform::is_cpu_place(context.GetPlace())) {
+    if (paddle::platform::is_cpu_place(dev_ctx.GetPlace())) {
       grad_t.device(place) =
           (x_minux_y_abs / (out_t + epsilon).broadcast(out_bcast_dims))
               .pow(p - 1) *
@@ -158,14 +158,14 @@ static void DistGradFunction(const Context& context,
   // 2: if x or y is broadcasted in forward function,
   // the grad need to be sum along the broadcasted dimensions
   if (x_grad) {
-    context.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     auto x_grad_t = ETensor<T, Rank>::From(*x_grad, x_new_dims);
     x_grad_t.device(place) = grad_t.reshape(x_reshape_dims)
                                  .sum(reduce_dims)
                                  .reshape(x_grad_t.dimensions());
   }
   if (y_grad) {
-    context.template Alloc<T>(y_grad);
+    dev_ctx.template Alloc<T>(y_grad);
     auto y_grad_t = ETensor<T, Rank>::From(*y_grad, y_new_dims);
     y_grad_t.device(place) = -grad_t.reshape(y_reshape_dims)
                                   .sum(reduce_dims)
@@ -174,7 +174,7 @@ static void DistGradFunction(const Context& context,
 }
 
 template <typename T, typename Context>
-void DistGradKernel(const Context& context,
+void DistGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     const DenseTensor& out,
@@ -195,27 +195,27 @@ void DistGradKernel(const Context& context,
   switch (rank) {
     case 1:
       DistGradFunction<Context, T, 1>(
-          context, x, y, out, out_grad, p, x_grad, y_grad);
+          dev_ctx, x, y, out, out_grad, p, x_grad, y_grad);
       break;
     case 2:
       DistGradFunction<Context, T, 2>(
-          context, x, y, out, out_grad, p, x_grad, y_grad);
+          dev_ctx, x, y, out, out_grad, p, x_grad, y_grad);
       break;
     case 3:
       DistGradFunction<Context, T, 3>(
-          context, x, y, out, out_grad, p, x_grad, y_grad);
+          dev_ctx, x, y, out, out_grad, p, x_grad, y_grad);
       break;
     case 4:
       DistGradFunction<Context, T, 4>(
-          context, x, y, out, out_grad, p, x_grad, y_grad);
+          dev_ctx, x, y, out, out_grad, p, x_grad, y_grad);
       break;
     case 5:
       DistGradFunction<Context, T, 5>(
-          context, x, y, out, out_grad, p, x_grad, y_grad);
+          dev_ctx, x, y, out, out_grad, p, x_grad, y_grad);
       break;
     case 6:
       DistGradFunction<Context, T, 6>(
-          context, x, y, out, out_grad, p, x_grad, y_grad);
+          dev_ctx, x, y, out, out_grad, p, x_grad, y_grad);
       break;
   }
 }
