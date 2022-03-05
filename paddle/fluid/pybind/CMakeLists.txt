@@ -77,6 +77,7 @@ set(PYBIND_SRCS
   compatible.cc
   io.cc
   generator_py.cc
+  communication.cc
   cuda_streams_py.cc)
 
 if(NOT ON_INFER)

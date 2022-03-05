@@ -24,8 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
-#include "paddle/fluid/distributed/store/tcp_store.h"
-#include "paddle/fluid/distributed/store/tcp_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -39,6 +37,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
+#include "paddle/fluid/distributed/store/tcp_store.h"
 #endif
 
 namespace py = pybind11;
@@ -53,8 +52,6 @@ using ProcessGroupGloo = paddle::distributed::ProcessGroupGloo;
 using GlooStore = paddle::distributed::ProcessGroupGloo::GlooStore;
 using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
 #endif
-
-using TCPStore = paddle::distributed::TCPStore;
 
 static std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";  // NOLINT
 
@@ -84,42 +81,6 @@ void BindDistributed(py::module *m) {
       .def(py::init<>())
       .def_readwrite("reduce_op", &distributed::ReduceOptions::reduce_op)
       .def_readwrite("source_root", &distributed::ReduceOptions::root_rank);
-
-  auto Store =
-      py::class_<distributed::Store, std::shared_ptr<distributed::Store>>(
-          *m, "Store")
-          .def(py::init<>())
-          .def("set",
-               [](distributed::Store &self, const std::string &key,
-                  const std::string &value) {
-                 std::vector<uint8_t> data(value.begin(), value.end());
-                 self.set(key, data);
-               },
-               py::arg("key"), py::arg("value"),
-               py::call_guard<py::gil_scoped_release>())
-          .def("get",
-               [](distributed::Store &self,
-                  const std::string &key) -> py::bytes {
-                 auto data = self.get(key);
-                 return py::bytes(reinterpret_cast<char *>(data.data()),
-                                  data.size());
-               },
-               py::arg("key"), py::call_guard<py::gil_scoped_release>())
-          .def("add", &distributed::Store::add,
-               py::call_guard<py::gil_scoped_release>())
-          .def("wait", &distributed::Store::wait,
-               py::call_guard<py::gil_scoped_release>());
-
-  py::class_<TCPStore, std::shared_ptr<TCPStore>>(*m, "TCPStore", Store)
-      .def(py::init([](std::string hostname, uint16_t port, bool is_master,
-                       size_t world_size, std::chrono::seconds timeout) {
-             return std::make_shared<TCPStore>(hostname, port, is_master,
-                                               world_size, timeout);
-           }),
-           py::arg("hostname"), py::arg("port"), py::arg("is_master"),
-           py::arg("world_size"),
-           py::arg("timeout") = distributed::tcputils::kNoTimeout,
-           py::call_guard<py::gil_scoped_release>());
 
   auto ProcessGroup =
       py::class_<distributed::ProcessGroup,
