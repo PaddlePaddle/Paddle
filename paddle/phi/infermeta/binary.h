@@ -85,4 +85,7 @@ void GatherNdInferMeta(const MetaTensor& x,
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);
+
+void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
+
 }  // namespace phi
