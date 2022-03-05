@@ -56,6 +56,7 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, funcs::AtanhGradFunctor<T>);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepOut(Relu, funcs::ReluGradFunctor<T>);
 
 }  // namespace phi
+
 PD_REGISTER_KERNEL(
     cos_grad, CPU, ALL_LAYOUT, phi::CosGradKernel, float, double) {}
 PD_REGISTER_KERNEL(
