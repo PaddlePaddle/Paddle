@@ -43,7 +43,7 @@ void EigenSliceWrapper(const Context& dev_ctx,
                     errors::InvalidArgument(
                         "EigenSliceWrapper function end "
                         "argument must have the same length as input rank."));
-  auto eigen_place_ptr = dev_ctx.template eigen_device();
+  auto eigen_place_ptr = dev_ctx.eigen_device();
   auto eigen_place = *eigen_place_ptr;
   auto out_t = phi::EigenTensor<T, D>::From(*out, out->dims());
   auto in_t = phi::EigenTensor<T, D>::From(*in, in->dims());
