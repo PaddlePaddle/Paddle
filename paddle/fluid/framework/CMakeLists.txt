@@ -193,19 +193,19 @@ cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_va
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 
 IF(WITH_XPU)
-cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info xpu_op_list)
+cc_library(phi_utils SRCS phi_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info xpu_op_list)
 ELSE()
-cc_library(pten_utils SRCS pten_utils.cc DEPS lod_tensor selected_rows_utils place pten var_type_traits pten_api_utils op_info)
+cc_library(phi_utils SRCS phi_utils.cc DEPS lod_tensor selected_rows_utils place phi var_type_traits phi_api_utils op_info)
 ENDIF()
 
 IF(WITH_XPU)
 cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    pten pten_utils kernel_factory infershape_utils op_utils)
+    phi phi_utils kernel_factory infershape_utils op_utils)
 ELSE()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils
-    pten pten_utils kernel_factory infershape_utils op_utils)
+    phi phi_utils kernel_factory infershape_utils op_utils)
 ENDIF()
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
@@ -235,6 +235,7 @@ if(WITH_PYTHON)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
+  py_proto_compile(ps_py_proto SRCS ps.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
   add_custom_target(fleet_proto_init ALL  
@@ -242,12 +243,13 @@ if(WITH_PYTHON)
     COMMAND ${CMAKE_COMMAND} -E touch ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py 
   )
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init pass_desc_py_proto)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto distributed_strategy_py_proto fleet_proto_init pass_desc_py_proto ps_py_proto)
   if (NOT WIN32)
     add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
       COMMAND cp distributed_strategy_*.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+      COMMAND cp ps_pb2.py ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     add_custom_target(fleet_executor_proto_init ALL DEPENDS fleet_proto_init fleet_executor_desc_py_proto
@@ -259,6 +261,7 @@ if(WITH_PYTHON)
     add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
           COMMAND copy /Y *.py ${proto_dstpath}
+      COMMAND copy /Y ps_pb2.py ${fleet_proto_dstpath}
 	  COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
 	  COMMENT "Copy generated python proto into directory paddle/distributed/fleet/proto."
@@ -412,7 +415,7 @@ cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
-cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place pten var_type_traits pten pten_api_utils op_info shape_inference)
+cc_library(infershape_utils SRCS infershape_utils.cc DEPS lod_tensor selected_rows_utils attribute place phi var_type_traits phi phi_api_utils op_info shape_inference)
 cc_test(infershape_utils_test SRCS infershape_utils_test.cc DEPS infershape_utils infermeta_utils meta_tensor)
 
 # Get the current working branch
@@ -436,12 +439,11 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper pten_tensor op_meta_info pten_api)
-cc_library(custom_kernel SRCS custom_kernel.cc DEPS op_registry pten_custom_kernel pten_tensor_raw)
+cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper phi_tensor op_meta_info phi_api)
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator custom_kernel)
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator phi_custom_kernel)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
@@ -450,7 +452,7 @@ if(WITH_TESTING AND TEST selected_rows_utils_test)
 endif()
 
 cc_test(scope_guard_test SRCS scope_guard_test.cc)
-cc_test(pten_utils_test SRCS pten_utils_test.cc DEPS pten_utils)
+cc_test(phi_utils_test SRCS phi_utils_test.cc DEPS phi_utils)
 
 if(WITH_GPU OR WITH_ROCM)
   cc_library(fluid_convert_utils SRCS convert_utils.cc DEPS data_type place gpu_info)

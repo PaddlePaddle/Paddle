@@ -1583,9 +1583,6 @@ class Executor(object):
             lr_sheduler = program.lr_sheduler
             lr_value = lr_sheduler()
             lr_var = program.global_block().vars[lr_sheduler._var_name]
-            if core.is_compiled_with_ipu():
-                if hasattr(program.lr_sheduler, 'lr_var'):
-                    lr_var = program.lr_sheduler.lr_var
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
             tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
             tensor.set(data, self.place)
@@ -2037,8 +2034,11 @@ class Executor(object):
             fleet_opt['task_id_to_rank'] = task_id_to_rank
         place = core.Place()
         place.set_place(self.place)
+        # NOTE: the last argument is used to force create some vars in root scope,
+        # won't be used during train.
         self._fleet_executor.init(carrier_id, program.desc, scope, place,
-                                  num_micro_batches, tasks, task_id_to_rank)
+                                  num_micro_batches, tasks, task_id_to_rank,
+                                  [])
 
     def _run_using_fleet_executor(self,
                                   program=None,

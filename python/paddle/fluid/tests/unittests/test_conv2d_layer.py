@@ -18,6 +18,7 @@ import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
 import paddle.fluid.initializer as I
 import unittest
+import paddle
 
 
 def _reverse_repeat_list(t, n):
@@ -284,4 +285,5 @@ def load_tests(loader, standard_tests, pattern):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
