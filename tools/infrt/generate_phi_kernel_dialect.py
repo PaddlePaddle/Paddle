@@ -16,7 +16,7 @@ import json
 import sys
 
 attr_type_converter = {"i": 'SI32Attr', "b": 'BoolAttr', "l": 'SI64Attr'}
-supported_kernels = ['sign', 'dot', 'digamma', 'conj']
+supported_kernels = ['sign', 'dot', 'digamma', 'conj', 'abs', 'add_raw']
 
 target_type_converter = {"CPU": "CPU", "GPU": "GPU"}
 layout_type_converter = {
@@ -66,7 +66,8 @@ def generate_attrs_info(op_name, attrs_info):
         'digamma': [],
         'lerp': [],
         'cast': ['out_dtype', 'in_dtype'],
-        'abs': []
+        'abs': [],
+        'add_raw': ['axis'],
     }
     attrs_args_ = ""
     if len(kernel_attrs_names[op_name]) == len(attrs_info):
@@ -95,7 +96,7 @@ def generate_inputs_info(input_info):
 def generate_arguments_info(op_name, input_info, attr_info):
     input_args = generate_inputs_info(input_info)
     attr_args = generate_attrs_info(op_name, attr_info)
-    context_args = "CPU_Context:$dev_ctx"
+    context_args = "Context:$dev_ctx"
     argument_ = "{},{},{}".format(context_args, input_args, attr_args)
     return (("let arguments = (ins {});".format(argument_.strip(","))))
 

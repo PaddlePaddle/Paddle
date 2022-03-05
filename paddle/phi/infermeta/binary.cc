@@ -13,10 +13,59 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/binary.h"
+
+#include <algorithm>
+#include <vector>
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
+
+void CompareInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      int axis,
+                      MetaTensor* out) {
+  auto dim_x = x.dims();
+  auto dim_y = y.dims();
+
+  if (dim_x == dim_y) {
+    out->share_meta(x);
+  } else {
+    int max_dim = std::max(dim_x.size(), dim_y.size());
+    int axis = std::abs(dim_x.size() - dim_y.size());
+    std::vector<int> x_dims_array(max_dim);
+    std::vector<int> y_dims_array(max_dim);
+    std::vector<int> out_dims_array(max_dim);
+    funcs::GetBroadcastDimsArrays(dim_x,
+                                  dim_y,
+                                  x_dims_array.data(),
+                                  y_dims_array.data(),
+                                  out_dims_array.data(),
+                                  max_dim,
+                                  axis);
+
+    out->set_dims(make_ddim(out_dims_array));
+    out->share_lod(x);
+  }
+
+  out->set_dtype(DataType::BOOL);
+}
+
+void CompareAllInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out) {
+  auto dim_x = x.dims();
+  auto dim_y = y.dims();
+  PADDLE_ENFORCE_GE(
+      dim_x.size(),
+      dim_y.size(),
+      errors::InvalidArgument(
+          "The size of dim_y should not be greater than dim_x's."));
+  out->share_lod(x);
+  out->set_dims(make_ddim({1}));
+  out->set_dtype(DataType::BOOL);
+}
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_dims = x.dims();
@@ -367,6 +416,39 @@ void BCELossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void GatherNdInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto x_dims_size = x_dims.size();
+  auto index_dims = index.dims();
+  auto index_dims_size = index_dims.size();
+
+  PADDLE_ENFORCE_LE(
+      index_dims[index_dims_size - 1],
+      x_dims_size,
+      phi::errors::InvalidArgument(
+          "Input(Index).shape[-1] should be no greater than Input(X).rank"));
+  PADDLE_ENFORCE_GE(index_dims_size,
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(Index) should be greater than 1"));
+
+  std::vector<int64_t> result_dims;
+  // The result dims is
+  //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
+  for (int i = 0; i < index_dims_size - 1; ++i) {
+    result_dims.emplace_back(index_dims[i]);
+  }
+  for (int i = index_dims[index_dims_size - 1]; i < x_dims_size; ++i) {
+    result_dims.emplace_back(x_dims[i]);
+  }
+
+  out->set_dims(phi::make_ddim(result_dims));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out) {
@@ -378,6 +460,36 @@ void GatherTreeMeta(const MetaTensor& ids,
                         "The shape of Input(Parents) must be same with the "
                         "shape of Input(Ids)."));
   out->set_dims(ids_dims);
+}
+
+void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
+  auto dim_x = x.dims();
+  auto dim_vec = vec.dims();
+  PADDLE_ENFORCE_EQ(
+      dim_x.size(),
+      2,
+      phi::errors::InvalidArgument("The rank of input X should be 2, but is %d",
+                                   dim_x.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_vec.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The rank of input Vec should be 1, but is %d", dim_vec.size()));
+  PADDLE_ENFORCE_EQ(dim_x[1],
+                    dim_vec[0],
+                    phi::errors::InvalidArgument(
+                        "X's second dimension is expected to be equal to "
+                        "Vec's first dimension"
+                        "but recieved X'shape = [%s], Vec's shape = [%s]",
+                        dim_x,
+                        dim_vec));
+
+  auto dim_out = phi::make_ddim({dim_x[0]});
+
+  out->set_dims(dim_out);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 }  // namespace phi
