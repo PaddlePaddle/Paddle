@@ -17,8 +17,8 @@
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/data_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -49,8 +49,8 @@ void LinspaceKernel(const Context& ctx,
                     const DenseTensor& number,
                     DataType dtype,
                     DenseTensor* out) {
-  auto start_t = phi::Cast<T>(ctx, start, dtype);
-  auto stop_t = phi::Cast<T>(ctx, stop, dtype);
+  auto start_t = phi::funcs::TransDataType(ctx, start, dtype);
+  auto stop_t = phi::funcs::TransDataType(ctx, stop, dtype);
 
   DenseTensor n_start;
   DenseTensor n_stop;

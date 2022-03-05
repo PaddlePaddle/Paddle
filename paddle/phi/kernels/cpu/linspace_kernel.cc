@@ -14,10 +14,9 @@
 
 #include "paddle/phi/kernels/linspace_kernel.h"
 
-#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/funcs/data_transform.h"
 
 namespace phi {
 
@@ -29,8 +28,8 @@ void LinspaceKernel(const Context& ctx,
                     DataType dtype,
                     DenseTensor* out) {
   int32_t num = number.data<int32_t>()[0];
-  auto start_t = phi::Cast<T, Context>(ctx, start, dtype);
-  auto stop_t = phi::Cast<T, Context>(ctx, stop, dtype);
+  auto start_t = phi::funcs::TransDataType(ctx, start, dtype);
+  auto stop_t = phi::funcs::TransDataType(ctx, stop, dtype);
 
   T start_data = start_t.template data<T>()[0];
   T stop_data = stop_t.template data<T>()[0];
