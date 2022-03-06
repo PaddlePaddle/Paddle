@@ -101,14 +101,14 @@ element of X as a tensor.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(isinf_v2, IsinfInferShapeFunctor,
-                            PT_INFER_META(phi::IsfiniteInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(isinf_v2, IsinfInferShapeFunctor,
+                            PD_INFER_META(phi::IsfiniteInferMeta));
 
-DELCARE_INFER_SHAPE_FUNCTOR(isnan_v2, IsnanInferShapeFunctor,
-                            PT_INFER_META(phi::IsfiniteInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(isnan_v2, IsnanInferShapeFunctor,
+                            PD_INFER_META(phi::IsfiniteInferMeta));
 
-DELCARE_INFER_SHAPE_FUNCTOR(isfinite_v2, IsfiniteInferShapeFunctor,
-                            PT_INFER_META(phi::IsfiniteInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(isfinite_v2, IsfiniteInferShapeFunctor,
+                            PD_INFER_META(phi::IsfiniteInferMeta));
 
 #define REGISTER_V2OP_MAKER(op_type, comment)           \
   namespace paddle {                                    \
