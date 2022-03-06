@@ -59,7 +59,6 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        DenseTensor* in_grad) {
   auto in_dims = indices.dims();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
-
   dev_ctx.template Alloc<T>(in_grad);
   auto dxt = EigenVector<T>::Flatten(*in_grad);
   auto& place = *dev_ctx.eigen_device();
@@ -101,7 +100,6 @@ void ArgsortGradKernel(const Context& dev_ctx,
     trans_ind.Resize(trans_dims);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
     int ndims = trans.size();
-    // Do transpose
     TransCompute<Context, T>(ndims, dev_ctx, out_grad, &trans_dO, trans);
     TransCompute<Context, int64_t>(ndims, dev_ctx, indices, &trans_ind, trans);
 

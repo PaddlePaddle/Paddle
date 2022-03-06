@@ -185,7 +185,6 @@ void ArgsortGradKernel(const Context& dev_ctx,
     trans_ind.Resize(trans_dims);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
     int ndims = trans.size();
-    // Do transpose
     TransCompute<Context, T>(ndims, dev_ctx, out_grad, &trans_dO, trans);
     TransCompute<Context, int64_t>(ndims, dev_ctx, indices, &trans_ind, trans);
 
