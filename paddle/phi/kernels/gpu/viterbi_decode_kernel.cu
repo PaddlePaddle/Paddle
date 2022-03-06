@@ -262,11 +262,9 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   funcs::TensorBuffer float_tensor_buffer(float_buffer);
   DenseTensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
   phi::Copy(dev_ctx, length, curr_place, false, &left_length);
-
   int64_t max_seq_len = 0;
   GetMaxValue<Context, int64_t> get_max_value;
   get_max_value(dev_ctx, left_length, &max_seq_len);
-
   dev_ctx.template Alloc<T>(scores);
   path->Resize({batch_size, max_seq_len});
   dev_ctx.template Alloc<int64_t>(path);
@@ -349,22 +347,15 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
     historys.emplace_back(alpha_argmax_temp);
     AddFloat(dev_ctx, alpha_max, logit, &alpha_nxt);
     alpha.Resize({batch_size, n_labels});
-    // mask = paddle.cast((left_length > 0), dtype='float32')
-    // alpha = mask * alpha_nxt + (1 - mask) * alpha
     GetMask<Context, phi::funcs::GreaterThanFunctor, T>()(
         dev_ctx, left_length, zero, &float_mask);
-    // alpha_nxt = mask * alpha_nxt
     MulFloat(dev_ctx, alpha_nxt, float_mask, &alpha_nxt);
-    // inv_mask = 1 - mask
     SubFloat(dev_ctx, float_one, float_mask, &float_mask);
-    // alpha = (1 - mask) * alpha
     MulFloat(dev_ctx, alpha, float_mask, &alpha);
-    // alpha += alpha_nxt
     AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
     if (include_bos_eos_tag) {
       GetMask<Context, phi::funcs::EqualFunctor, T>()(
           dev_ctx, left_length, one, &float_mask);
-      // alpha += mask * trans_exp[:, self.stop_idx]
       MulFloat(dev_ctx, stop_trans, float_mask, &alpha_nxt);
       AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
     }
