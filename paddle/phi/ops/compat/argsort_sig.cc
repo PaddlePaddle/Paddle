@@ -20,7 +20,7 @@ KernelSignature ArgsortGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("argsort_grad",
                          {"Indices", "X", GradVarName("Out")},
-                         {"axis"},
+                         {"axis", "descending"},
                          {GradVarName("X")});
 }
 
