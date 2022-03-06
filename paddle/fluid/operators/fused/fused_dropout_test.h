@@ -32,7 +32,7 @@ namespace platform = paddle::platform;
 namespace memory = paddle::memory;
 
 USE_OP(dropout);
-USE_OP(layer_norm);
+USE_OP_ITSELF(layer_norm);
 
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
