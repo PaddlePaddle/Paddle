@@ -157,8 +157,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarpCTCGradOpNoNeedBufferVarInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(warpctc, WarpctcInferShapeFunctor,
-                            PT_INFER_META(phi::WarpctcInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(warpctc, WarpctcInferShapeFunctor,
+                            PD_INFER_META(phi::WarpctcInferMeta));
 REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
                   ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
                   ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>,
