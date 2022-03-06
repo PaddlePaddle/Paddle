@@ -43,7 +43,7 @@ template <typename T, typename Context>
 void FakeDot(const Context& dev_ctx,
              const phi::DenseTensor& x,
              const phi::DenseTensor& y,
-             const std::vector<phi::DenseTensor>& fake_input_vec,
+             const std::vector<const phi::DenseTensor*>& fake_input_vec,
              bool fake_attr_bool,
              int fake_attr_int,
              float fake_attr_float,
@@ -146,12 +146,10 @@ TEST(CustomKernel, custom_kernel_dot) {
               custom_fake_dot_kernels.end());
 
   // 3.before register
-  auto& kernel_factory_instance = phi::KernelFactory::Instance();
   auto& kernels = phi::KernelFactory::Instance().kernels();
-  EXPECT_TRUE(!kernel_factory_instance.HasCompatiblePhiKernel(op_name));
+  EXPECT_TRUE(kernels.find(op_name) == kernels.end());
 
-  // mock fake_dot is supported by phi for HasCompatiblePhiKernel check while
-  // registering
+  // mock fake_dot is supported by phi for check while registering
   auto& fake_dot_kernels = kernels[op_name];
 
   EXPECT_TRUE(fake_dot_kernels.find(
@@ -196,7 +194,7 @@ TEST(CustomKernel, custom_kernel_dot) {
               fake_dot_kernels.end());
 
   // 4.kernel select
-  auto kernel = kernel_factory_instance.SelectKernelOrThrowError(
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       op_name, phi::KernelKey(backend, layout, phi::DataType::UINT8));
 
   // 5.prepare parameters for kernel

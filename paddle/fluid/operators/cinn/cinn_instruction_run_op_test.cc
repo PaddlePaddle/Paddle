@@ -50,7 +50,7 @@ TEST(CinnInstructionOpTest, TestWithElementwiseAdd) {
   auto cinn_instruction_run_op = paddle::framework::OpRegistry::CreateOp(
       "cinn_instruction_run", {{"X", {"x", "y"}}},
       {{"Out", {test_op_out_name}}},
-      {{"cached_index", 0}, {"instruction_index", 1}});
+      {{"cached_index", 0}, {"instruction_index", 0}});
   auto elementwise_add_op = paddle::framework::OpRegistry::CreateOp(
       "elementwise_add", {{"X", {"x"}}, {"Y", {"y"}}},
       {{"Out", {add_op_out_name}}}, {{}});

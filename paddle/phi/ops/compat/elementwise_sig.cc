@@ -100,6 +100,12 @@ KernelSignature ElementwiseSubGradOpArgumentMapping(
   return KernelSignature("unregistered", {}, {}, {});
 }
 
+KernelSignature ElementwiseSubDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "subtract_double_grad", {"Y", "DDX", "DDY", "DOut"}, {"axis"}, {"DDOut"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add, add);
@@ -110,6 +116,7 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad_grad, add_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_triple_grad, add_triple_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad, subtract_grad);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_sub_grad_grad, subtract_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(elementwise_add,
                            phi::ElementwiseAddOpArgumentMapping);
@@ -127,3 +134,5 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_add_triple_grad,
                            phi::ElementwiseAddTripleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_sub_grad,
                            phi::ElementwiseSubGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(elementwise_sub_grad_grad,
+                           phi::ElementwiseSubDoubleGradOpArgumentMapping);
