@@ -63,8 +63,8 @@ class BincountOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(bincount, BincountInferShapeFunctor,
-                            PT_INFER_META(phi::BincountInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(bincount, BincountInferShapeFunctor,
+                            PD_INFER_META(phi::BincountInferMeta));
 REGISTER_OPERATOR(
     bincount, ops::BincountOp, ops::BincountOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
