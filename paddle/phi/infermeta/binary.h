@@ -85,6 +85,11 @@ void BCELossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void DistInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   float p,
+                   MetaTensor* out);
+
 void GatherNdInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        MetaTensor* out);
