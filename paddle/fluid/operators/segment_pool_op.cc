@@ -137,8 +137,8 @@ class SegmentPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(segment_pool, SegmentPoolInferShapeFunctor,
-                            PT_INFER_META(phi::SegmentPoolInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(segment_pool, SegmentPoolInferShapeFunctor,
+                            PD_INFER_META(phi::SegmentPoolInferMeta));
 
 REGISTER_OPERATOR(segment_pool, ops::SegmentPoolOp, ops::SegmentPoolOpMaker,
                   ops::SegmentPoolGradOpMaker<paddle::framework::OpDesc>,
