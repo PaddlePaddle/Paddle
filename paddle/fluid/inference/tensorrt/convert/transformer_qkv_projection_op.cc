@@ -156,8 +156,8 @@ class TransformerQKVProjectionOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(fc_layer, "multihead_matmul", {output_name},
-                             test_mode);
+    RreplenishLayerAndOutput(fc_layer, "transformer_qkv_projection",
+                             {output_name}, test_mode);
   }
 };
 
