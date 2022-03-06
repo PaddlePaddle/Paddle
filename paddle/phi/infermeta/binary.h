@@ -85,6 +85,19 @@ void BCELossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
+                                            const MetaTensor& label,
+                                            bool normalize,
+                                            int ignore_index,
+                                            MetaTensor* out,
+                                            MetaConfig config = MetaConfig());
+
+void LogLossInferMeta(const MetaTensor& input,
+                      const MetaTensor& label,
+                      float epsilon,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    float p,

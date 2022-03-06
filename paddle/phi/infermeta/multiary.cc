@@ -28,6 +28,86 @@ std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors) {
   return dims;
 }
 
+void AucInferMeta(const MetaTensor& input,
+                  const MetaTensor& label,
+                  const MetaTensor& stat_pos,
+                  const MetaTensor& stat_neg,
+                  const std::string& curve,
+                  int num_thresholds,
+                  int slide_steps,
+                  MetaTensor* auc,
+                  MetaTensor* stat_pos_out,
+                  MetaTensor* stat_neg_out,
+                  MetaConfig config) {
+  auto predict_dims = input.dims();
+  auto label_dims = label.dims();
+  PADDLE_ENFORCE_GE(
+      predict_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The Input(Predict) has not been initialized properly. The "
+          "shape of Input(Predict) = [%s], the shape size must be "
+          "greater_equal 2.",
+          predict_dims));
+  auto predict_width = predict_dims[1];
+  PADDLE_ENFORCE_NE(
+      phi::product(predict_dims),
+      0,
+      phi::errors::InvalidArgument(
+          "The Input(Predict) has not been initialized properly. The "
+          "shape of Input(Predict) = [%s], the shape can not involes 0.",
+          predict_dims));
+  PADDLE_ENFORCE_NE(
+      phi::product(label_dims),
+      0,
+      phi::errors::InvalidArgument(
+          "The Input(Label) has not been initialized properly. The "
+          "shape of Input(Label) = [%s], the shape can not involes 0.",
+          label_dims));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_LE(
+        predict_width,
+        2,
+        phi::errors::InvalidArgument("Only support binary classification,"
+                                     "prediction dims[1] should be 1 or 2"));
+  }
+  auto predict_height = input.dims()[0];
+  auto label_height = label.dims()[0];
+
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        predict_height,
+        label_height,
+        phi::errors::InvalidArgument("Out and Label should have same height."));
+  }
+
+  int num_pred_buckets = num_thresholds + 1;
+
+  PADDLE_ENFORCE_GE(
+      num_pred_buckets,
+      1,
+      phi::errors::InvalidArgument("num_thresholds must larger than 1"));
+  PADDLE_ENFORCE_GE(
+      slide_steps,
+      0,
+      phi::errors::InvalidArgument("slide_steps must be natural number"));
+
+  auc->set_dims({1});
+  auc->set_dtype(DataType::INT64);
+
+  if (slide_steps) {
+    stat_pos_out->set_dims({(1 + slide_steps) * num_pred_buckets + 1});
+    stat_pos_out->set_dtype(DataType::INT64);
+    stat_neg_out->set_dims({(1 + slide_steps) * num_pred_buckets + 1});
+    stat_neg_out->set_dtype(DataType::INT64);
+  } else {
+    stat_pos_out->set_dims({1, num_pred_buckets});
+    stat_pos_out->set_dtype(DataType::INT64);
+    stat_neg_out->set_dims({1, num_pred_buckets});
+    stat_neg_out->set_dtype(DataType::INT64);
+  }
+}
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
