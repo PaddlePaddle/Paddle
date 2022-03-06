@@ -119,12 +119,12 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterNdAddGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(scatter_nd_add, ScatterNdAddInferShapeFunctor,
-                            PT_INFER_META(phi::ScatterNdAddInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_nd_add, ScatterNdAddInferShapeFunctor,
+                            PD_INFER_META(phi::ScatterNdAddInferMeta));
 
-DELCARE_INFER_SHAPE_FUNCTOR(scatter_nd_add_grad,
+DECLARE_INFER_SHAPE_FUNCTOR(scatter_nd_add_grad,
                             ScatterNdAddGradInferShapeFunctor,
-                            PT_INFER_META(phi::ScatterNdAddGradInferMeta));
+                            PD_INFER_META(phi::ScatterNdAddGradInferMeta));
 
 REGISTER_OPERATOR(scatter_nd_add, ops::ScatterNdAddOp, ops::ScatterNdAddOpMaker,
                   ops::ScatterNdAddGradMaker<paddle::framework::OpDesc>,

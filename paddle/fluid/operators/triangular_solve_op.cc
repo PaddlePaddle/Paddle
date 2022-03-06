@@ -120,8 +120,8 @@ class TriangularSolveOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(triangular_solve, TriangularSolveInferShapeFunctor,
-                            PT_INFER_META(phi::TriangularSolveInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(triangular_solve, TriangularSolveInferShapeFunctor,
+                            PD_INFER_META(phi::TriangularSolveInferMeta));
 
 REGISTER_OPERATOR(triangular_solve, ops::TriangularSolveOp,
                   ops::TriangularSolveOpMaker,
