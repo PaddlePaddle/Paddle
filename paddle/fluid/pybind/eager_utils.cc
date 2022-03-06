@@ -759,7 +759,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   if (obj == Py_None) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "bool, but got %s",
+        "int, float, bool or Tensor, but got %s",
         op_type, arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
@@ -786,7 +786,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "bool, but got %s",
+        "int, float, bool or Tensor, but got %s",
         op_type, arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
@@ -803,7 +803,7 @@ paddle::experimental::ScalarArray CastPyArg2ScalarArray(
   if (obj == Py_None) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "bool, but got %s",
+        "list or Tensor, but got %s",
         op_type, arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
@@ -823,7 +823,7 @@ paddle::experimental::ScalarArray CastPyArg2ScalarArray(
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "bool, but got %s",
+        "list or Tensor, but got %s",
         op_type, arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
@@ -888,6 +888,45 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
         (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
   }
   return result;
+}
+
+paddle::experimental::Backend CastPyArg2Backend(PyObject* obj,
+                                                const std::string& op_type,
+                                                ssize_t arg_pos) {
+  if (obj == Py_None) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "int or place, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  PyTypeObject* type = obj->ob_type;
+  auto type_name = std::string(type->tp_name);
+  if (type_name == "int") {
+    int value = CastPyArg2Int(obj, op_type, arg_pos);
+    return static_cast<paddle::experimental::Backend>(value);
+  } else {
+    platform::Place place = CastPyArg2Place(obj, arg_pos);
+    return phi::TransToPhiBackend(place);
+  }
+
+  return paddle::experimental::Backend::CPU;
+}
+
+paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
+                                                  const std::string& op_type,
+                                                  ssize_t arg_pos) {
+  if (obj == Py_None) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "data_type, but got %s",
+        op_type, arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
+  return framework::TransToPhiDataType(type);
 }
 
 }  // namespace pybind

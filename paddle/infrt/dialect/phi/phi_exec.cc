@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,37 +11,46 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <llvm/Support/CommandLine.h>
-#include <mlir/Pass/PassManager.h>
-#include <iostream>
-#include <string>
-#include "paddle/infrt/common/global.h"
-#include "paddle/infrt/dialect/mlir_loader.h"
-#include "paddle/infrt/dialect/phi/pass/phi_op_cvt_pass.h"
+
+#include "paddle/infrt/host_context/paddle_mlir.h"
+
+void print_usage() {
+  std::cout << "Error inputs format, two kinds of inputs are supported:\n";
+  std::cout << "    [1] ./paddle-mlir-convert $path_to_model_file "
+               "$path_to_params_file\n";
+  std::cout << "    [2] ./paddle-mlir-convert $path_to_model_dir(__model__ + "
+               "params)\n";
+}
+
+bool parse_inputs(int argc,
+                  char** argv,
+                  std::string* model_file_name,
+                  std::string* params_file_name) {
+  switch (argc) {
+    case 1: {
+      print_usage();
+      return false;
+    }
+    case 2: {
+      *model_file_name = std::string(argv[1]) + std::string("/__model__");
+      *params_file_name = std::string(argv[1]) + std::string("/params");
+      return true;
+    }
+    case 3: {
+      *model_file_name = argv[1];
+      *params_file_name = argv[2];
+      return true;
+    }
+    default: { return false; }
+  }
+}
 
 int main(int argc, char** argv) {
-  static llvm::cl::opt<std::string> input_file(
-      llvm::cl::Positional,
-      llvm::cl::desc("Specify input filename"),
-      llvm::cl::init("-"));
-
-  llvm::cl::ParseCommandLineOptions(argc, argv);
-
-  mlir::MLIRContext* context = infrt::Global::getMLIRContext();
-  auto module = infrt::dialect::LoadMlirFile(input_file.c_str(), context);
-
-  module->dump();
-  mlir::PassManager pm(context);
-
-  mlir::OpPassManager& phi_pass_manager = pm.nest<mlir::FuncOp>();
-  std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
-                                             infrt::PrecisionType::FLOAT32,
-                                             infrt::LayoutType::NCHW}};
-  phi_pass_manager.addPass(std::make_unique<infrt::phiOpCvtPass>(valid_places));
-  if (mlir::failed(pm.run(*module))) {
-    std::cout << "\npass failed!\n" << std::endl;
-    return 4;
+  std::string model_file_name;
+  std::string params_file_name;
+  if (parse_inputs(argc, argv, &model_file_name, &params_file_name)) {
+    MLIRModelGenImpl myGen;
+    auto module_ = myGen.ImportPaddleModel(model_file_name, params_file_name);
+    module_.dump();
   }
-  module->dump();
-  return 0;
 }

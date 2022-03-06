@@ -458,7 +458,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
                 elif self.inputs['input_info'][
                         param] == "const std::vector<Tensor>&":
                     meta_tensor_code = meta_tensor_code + f"""
-{code_indent}  auto {param}_meta_vec = MakeMetaTensor(*{PREFIX_TENSOR_NAME}{param});
+{code_indent}  auto {param}_meta_vec = MakeMetaTensor({PREFIX_TENSOR_NAME}{param});
 {code_indent}  std::vector<phi::MetaTensor*> {param}_metas({param}_meta_vec.size());
 {code_indent}  for (size_t i = 0; i < {param}_meta_vec.size(); ++i) {{
 {code_indent}    {param}_metas[i] = &{param}_meta_vec[i];
@@ -502,7 +502,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
         input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&':
-            'const std::vector<phi::DenseTensor>&',
+            'const std::vector<const phi::DenseTensor*>&',
             'const paddle::optional<Tensor>&':
             'paddle::optional<const phi::DenseTensor&>',
             'const paddle::optional<std::vector<Tensor>>&':
@@ -539,9 +539,22 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
 {code_indent}  }}"""
 
                 else:
-                    input_tensor_code = input_tensor_code + f"""
+                    if self.inputs['input_info'][input_name] == "const Tensor&":
+                        input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});"""
 
+                    elif self.inputs['input_info'][
+                            input_name] == "const std::vector<Tensor>&":
+                        input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({i}), {trans_flag});
+{code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
+{code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
+{code_indent}  }}"""
+
+                    else:
+                        # do nothing
+                        pass
             else:
                 if input_name in self.optional_vars:
                     input_tensor_code = input_tensor_code + f"""
@@ -561,7 +574,14 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name() + '_'}({self.
                 if param in self.optional_vars:
                     kernel_args = kernel_args + PREFIX_TENSOR_NAME + param + ", "
                 else:
-                    kernel_args = kernel_args + "*" + PREFIX_TENSOR_NAME + param + ", "
+                    if self.inputs['input_info'][param] == "const Tensor&":
+                        kernel_args = kernel_args + "*" + PREFIX_TENSOR_NAME + param + ", "
+                    elif self.inputs['input_info'][
+                            input_name] == "const std::vector<Tensor>&":
+                        kernel_args = kernel_args + PREFIX_TENSOR_NAME + param + ", "
+                    else:
+                        # do nothing
+                        pass
                 kernel_in_type = input_trans_map[input_infos[param]]
                 kernel_args_type_list.append(kernel_in_type)
             elif param in attr_names:
