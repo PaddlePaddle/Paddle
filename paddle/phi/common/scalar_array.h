@@ -43,13 +43,13 @@ class ScalarArrayBase {
     AssignData(date_value, n);
   }
 
-  bool IsInitByTensor() const { return is_init_by_tensor_; }
+  bool FromTensor() const { return is_from_tensor_; }
 
-  void setInitByTensor(bool val) { is_init_by_tensor_ = val; }
+  void SetFromTensor(bool val) { is_from_tensor_ = val; }
 
   // The Tensor must have one dim
   ScalarArrayBase(const T& tensor) {  // NOLINT
-    is_init_by_tensor_ = true;
+    is_from_tensor_ = true;
     size_t n = tensor.numel();
     array_.reserve(n);
     switch (tensor.dtype()) {
@@ -71,7 +71,7 @@ class ScalarArrayBase {
 
   // The Tensor in vec must have only one element
   ScalarArrayBase(const std::vector<T>& tensor_list) {  // NOLINT
-    is_init_by_tensor_ = true;
+    is_from_tensor_ = true;
 
     for (size_t i = 0; i < tensor_list.size(); ++i) {
       DataType data_type = tensor_list[i].dtype();
@@ -117,7 +117,7 @@ class ScalarArrayBase {
   // TODO(zhangyunfei) Replace std::vector with a more efficient container
   // structure.
   std::vector<int64_t> array_;
-  bool is_init_by_tensor_{false};
+  bool is_from_tensor_{false};
 };
 
 using ScalarArray =

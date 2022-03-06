@@ -1056,7 +1056,7 @@ class ReorderMKLDNNHandler {
                                                  platform::Place place) {
     auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(
-        place, framework::TransToPtenDataType(vtype_dst_), dst_md.get_size());
+        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 
@@ -1065,7 +1065,7 @@ class ReorderMKLDNNHandler {
       const MKLDNNMemoryFormat& fmt, platform::Place place) {
     auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(
-        place, framework::TransToPtenDataType(vtype_dst_), dst_md.get_size());
+        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 

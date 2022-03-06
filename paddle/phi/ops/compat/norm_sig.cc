@@ -23,12 +23,12 @@ KernelSignature NormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature NormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("norm_grad",
-                         {GradVarName("Out"), "X", "Norm"},
+                         {"X", "Norm", GradVarName("Out")},
                          {"axis", "epsilon", "is_test"},
                          {GradVarName("X")});
 }
 
 }  // namespace phi
 
-PT_REGISTER_ARG_MAPPING_FN(norm, phi::NormOpArgumentMapping);
-PT_REGISTER_ARG_MAPPING_FN(norm_grad, phi::NormGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(norm, phi::NormOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(norm_grad, phi::NormGradOpArgumentMapping);

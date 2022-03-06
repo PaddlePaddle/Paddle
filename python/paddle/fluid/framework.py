@@ -2544,7 +2544,7 @@ class Operator(object):
                     warnings.warn("The Op(%s) is not support to set device." %
                                   type)
                 if 'force_cpu' in op_attrs:
-                    if (type is 'less_than' and op_attrs['force_cpu'] != None
+                    if (type == 'less_than' and op_attrs['force_cpu'] != None
                         ) or op_attrs['force_cpu'] != False:
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "

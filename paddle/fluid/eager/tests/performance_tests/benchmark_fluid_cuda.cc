@@ -247,7 +247,7 @@ TEST(Benchmark, FluidMLPCUDA) {
 
 USE_OP_ITSELF(scale);
 USE_OP_ITSELF(matmul_v2);
-USE_OP(reduce_sum);
+USE_OP_ITSELF(reduce_sum);
 USE_OP(reduce_sum_grad);
 USE_OP_ITSELF(elementwise_add);
 

@@ -33,5 +33,13 @@ struct MeanFunctor {
   }
 };
 
+//////// Prod Functor ///////
+struct ProdFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->prod(dim);
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi

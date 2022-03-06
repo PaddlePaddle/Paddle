@@ -85,7 +85,7 @@ inline cnnlDataType_t ToCnnlDataType(
 
 inline cnnlDataType_t ToCnnlDataType(
     const paddle::framework::proto::VarType::Type& type) {
-  return ToCnnlDataType(framework::TransToPtenDataType(type));
+  return ToCnnlDataType(framework::TransToPhiDataType(type));
 }
 
 template <typename T>
@@ -1157,19 +1157,22 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
                                    const Tensor* transformed_input,
                                    Tensor* transformed_output,
                                    bool need_reshape_or_alloc) {
-  auto in_dims_vec = phi::vectorize(transformed_input->dims());
+  const int dim_size = perm.size();
   if (need_reshape_or_alloc) {
+    std::vector<int> output_shape;
+    auto input_dims = transformed_input->dims();
+    for (int i = 0; i < dim_size; ++i) {
+      output_shape.push_back(input_dims[perm[i]]);
+    }
     transformed_output->mutable_data<T>(
-        {in_dims_vec[perm[0]], in_dims_vec[perm[1]], in_dims_vec[perm[2]],
-         in_dims_vec[perm[3]]},
-        ctx.GetPlace());
+        framework::DDim(output_shape.data(), dim_size), ctx.GetPlace());
   }
   MLUCnnlTensorDesc trans_in_desc(*transformed_input, CNNL_LAYOUT_ARRAY,
                                   ToCnnlDataType<T>());
   MLUCnnlTensorDesc trans_out_desc(*transformed_output, CNNL_LAYOUT_ARRAY,
                                    ToCnnlDataType<T>());
 
-  MLUCnnl::Transpose(ctx, perm, in_dims_vec.size(), trans_in_desc.get(),
+  MLUCnnl::Transpose(ctx, perm, dim_size, trans_in_desc.get(),
                      GetBasePtr(transformed_input), trans_out_desc.get(),
                      GetBasePtr(transformed_output));
 }

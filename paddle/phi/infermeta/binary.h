@@ -29,6 +29,15 @@ namespace phi {
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
 
+void CompareInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      int axis,
+                      MetaTensor* out);
+
+void CompareAllInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* out);
+
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void MatmulInferMeta(const MetaTensor& x,
@@ -45,4 +54,50 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
                              MetaTensor* out);
+
+void HuberLossInferMeta(const MetaTensor& input_meta,
+                        const MetaTensor& label_meta,
+                        float delta,
+                        MetaTensor* out,
+                        MetaTensor* residual,
+                        MetaConfig config = MetaConfig());
+
+void TriangularSolveInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              bool upper,
+                              bool transpose,
+                              bool unitriangular,
+                              MetaTensor* out);
+
+void IndexSampleInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          MetaTensor* out,
+                          MetaConfig config = MetaConfig());
+
+void CrossInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    int axis,
+                    MetaTensor* out);
+
+void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+void BCELossInferMeta(const MetaTensor& input,
+                      const MetaTensor& label,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
+void DistInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   float p,
+                   MetaTensor* out);
+
+void GatherNdInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       MetaTensor* out);
+
+void GatherTreeMeta(const MetaTensor& ids,
+                    const MetaTensor& parents,
+                    MetaTensor* out);
+
+void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
+
 }  // namespace phi

@@ -52,7 +52,7 @@ void DotKernel(const Context& dev_ctx,
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PT_REGISTER_KERNEL(dot,
+PD_REGISTER_KERNEL(dot,
                    GPU,
                    ALL_LAYOUT,
                    phi::DotKernel,

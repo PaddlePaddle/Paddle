@@ -561,7 +561,10 @@ class MomentumOpKernel : public framework::OpKernel<T> {
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);
 
-      const int64_t* rows = merged_grad->rows().Data(ctx.GetPlace());
+      auto* grad_merge_rows = merged_grad->mutable_rows();
+      paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(
+          grad_merge_rows);
+      const int64_t* rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
       int64_t row_numel =
           merged_grad->value().numel() / merged_grad->rows().size();
       platform::ForRange<DeviceContext> for_range(
