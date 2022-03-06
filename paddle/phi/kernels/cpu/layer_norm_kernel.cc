@@ -127,7 +127,7 @@ void LayerNormKernel(const Context& dev_ctx,
                  paddle::operators::jit::LayerNormTuple<T>,
                  phi::CPUPlace>::Cache()
                  .At(right);
-  ker(x.data<T>(),
+  ker(x_tmp.data<T>(),
       out.data<T>(),
       mean->data<T>(),
       var->data<T>(),
