@@ -20,18 +20,19 @@
 
 #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/slice_utils.h"
 
 namespace phi {
 
 // check whether the tensor with dimension of second can assign to the
 // tensor with dimension of first
-inline void CheckIsDimsMatch(const DDim first, const DDim second) {
+inline void CheckIsDimsMatch(const DDim& first, const DDim& second) {
   int ignore_axis1 = 0, ignore_axis2 = 0;
   for (; ignore_axis1 < first.size(); ++ignore_axis1) {
     if (first[ignore_axis1] != 1) {
@@ -70,7 +71,7 @@ inline void CheckIsDimsMatch(const DDim first, const DDim second) {
       first.to_str()));
 }
 
-template <typename T, typename Context, typename RANK>
+template <typename T, typename Context, size_t RANK>
 void SetValueImpl(const Context& dev_ctx,
                   const DenseTensor& in,
                   const DenseTensor& value,
@@ -87,9 +88,10 @@ void SetValueImpl(const Context& dev_ctx,
   std::vector<int64_t> steps_local = steps.GetData();
   paddle::operators::CheckAndUpdateSliceAttrs(
       in_dims, axes, &starts_local, &ends_local, &steps_local);
-  auto slice_dims =
-      GetSliceDims(in_dims, axes, starts_local, ends_local, &steps_local);
-  auto decrease_slice_dims = GetDecreasedDims(slice_dims, decrease_axes);
+  auto slice_dims = paddle::operators::GetSliceDims(
+      in_dims, axes, starts_local, ends_local, &steps_local);
+  auto decrease_slice_dims =
+      paddle::operators::GetDecreasedDims(slice_dims, decrease_axes);
 
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
@@ -133,24 +135,23 @@ void SetValueImpl(const Context& dev_ctx,
   // set_value is what we want.
   Copy(dev_ctx, in, place, false, out);
 
-  Tensor slice_tensor =
+  DenseTensor slice_tensor =
       Empty<T>(dev_ctx, ScalarArray{slice_dims.Get(), slice_dims.size()});
-  Tensor pad_tensor =
+  DenseTensor pad_tensor =
       Empty<T>(dev_ctx, ScalarArray{in_dims.Get(), in_dims.size()});
 
-  auto pad_e = framework::EigenTensor<T, RANK>::From(pad_tensor, in_dims);
-  auto out_e = framework::EigenTensor<T, RANK>::From(*out);
-  auto slice_e =
-      framework::EigenTensor<T, RANK>::From(slice_tensor, slice_dims);
+  auto pad_e = EigenTensor<T, RANK>::From(pad_tensor, in_dims);
+  auto out_e = EigenTensor<T, RANK>::From(*out);
+  auto slice_e = EigenTensor<T, RANK>::From(slice_tensor, slice_dims);
 
   // Step 1: Set the value of out at `_index` to zero
   slice_e.device(eigen_place) = slice_e.constant(T(0));
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
+  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
+  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
 
-  for (size_t i = 0; i < D; ++i) {
+  for (size_t i = 0; i < RANK; ++i) {
     starts_indices[i] = 0;
     ends_indices[i] = slice_dims[i];
     strides_indices[i] = 1;
@@ -189,8 +190,13 @@ void SetValueImpl(const Context& dev_ctx,
   slice_tensor.Resize(slice_dims_for_assign);
   CheckIsDimsMatch(slice_dims_for_assign, value.dims());
   // ElementwiseComputeEx can do broadcasting
-  paddle::operators::ElementwiseComputeEx<SubFunctor<T>, Context, T>(
-      ctx, &slice_tensor, value, -1, SubFunctor<T>(), &slice_tensor);
+  funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
+      dev_ctx,
+      slice_tensor,
+      value,
+      -1,
+      funcs::SubtractFunctor<T>(),
+      &slice_tensor);
 
   slice_tensor.Resize(slice_dims);
 
@@ -307,24 +313,25 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& shape,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
-  const std::vector<T>& assgin_values;
+  std::vector<T> assgin_values;
   assgin_values.reserve(values.size());
   for (const auto& val : values) {
     assgin_values.push_back(val.to<T>());
   }
-  DensorTensor value_tensor = Empty<T>(dev_ctx, shape);
+  DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   paddle::framework::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
+  value_tensor.Resize(phi::make_ddim(shape));
 
-  SetTensorValueKernel(dev_ctx,
-                       x,
-                       value_tensor,
-                       starts,
-                       ends,
-                       steps,
-                       axes,
-                       decrease_axes,
-                       none_axes,
-                       out);
+  SetTensorValueKernel<T, Context>(dev_ctx,
+                                   x,
+                                   value_tensor,
+                                   starts,
+                                   ends,
+                                   steps,
+                                   axes,
+                                   decrease_axes,
+                                   none_axes,
+                                   out);
 }
 
 }  // namespace phi

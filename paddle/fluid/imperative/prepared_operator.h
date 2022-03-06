@@ -332,6 +332,7 @@ void BuildDygraphPhiKernelContext(
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
+    VLOG(1) << "############## attr_name: " << i << " : " << attr_names[i];
     if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
       if (attrs.find(attr_names[i]) !=
           attrs.end()) {  // shape is in the attribute
@@ -486,7 +487,11 @@ void BuildDygraphPhiKernelContext(
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
         if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int>))) {
+            std::type_index(typeid(std::vector<int64_t>))) {
+          kernel_ctx->EmplaceBackAttr(
+              BOOST_GET_CONST(std::vector<int64_t>, attr));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int>))) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),

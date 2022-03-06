@@ -539,6 +539,20 @@ bool ExecutionContext::HasInput(const std::string& name) const {
   return var != nullptr;
 }
 
+bool ExecutionContext::HasInputs(const std::string& name) const {
+  const auto& ins = ctx_.inputs;
+  auto it = ins.find(name);
+  if (it == ins.end() || it->second.empty()) {
+    return false;
+  }
+  for (const auto* input : it->second) {
+    if (input == nullptr) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool ExecutionContext::HasOutput(const std::string& name) const {
   auto* var = OutputVar(name);
   return var != nullptr;
@@ -1186,9 +1200,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // phase
   phi::KernelKey pt_kernel_key;
   std::string pt_kernel_name;
-  VLOG(1) << "########### " << phi::KernelFactory::Instance();
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
-    VLOG(1) << "######### HasCompatiblePhiKernel";
     if (pt_kernel_signature_ == nullptr || pt_kernel_ == nullptr) {
       pt_kernel_signature_.reset(
           new KernelSignature(std::move(GetExpectedPhiKernelArgs(exe_ctx))));
@@ -2268,7 +2280,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
         if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int>))) {
+            std::type_index(typeid(std::vector<int64_t>))) {
+          pt_kernel_context->EmplaceBackAttr(
+              BOOST_GET_CONST(std::vector<int64_t>, attr));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int>))) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),

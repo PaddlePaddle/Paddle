@@ -32,7 +32,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values")) {
+          } else if (ctx.HasAttr("fp32_values") &&
+                     !paddle::any_cast<std::vector<float>>(
+                          ctx.Attr("fp32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -44,7 +47,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp64_values")) {
+          } else if (ctx.HasAttr("fp64_values") &&
+                     !paddle::any_cast<std::vector<double>>(
+                          ctx.Attr("fp64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -56,7 +62,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int32_values")) {
+          } else if (ctx.HasAttr("int32_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("int32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -68,7 +77,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int64_values")) {
+          } else if (ctx.HasAttr("int64_values") &&
+                     !paddle::any_cast<std::vector<int64_t>>(
+                          ctx.Attr("int64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -80,7 +92,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("bool_values")) {
+          } else if (ctx.HasAttr("bool_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("bool_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -104,7 +119,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values")) {
+          } else if (ctx.HasAttr("fp32_values") &&
+                     !paddle::any_cast<std::vector<float>>(
+                          ctx.Attr("fp32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -116,7 +134,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp64_values")) {
+          } else if (ctx.HasAttr("fp64_values") &&
+                     !paddle::any_cast<std::vector<double>>(
+                          ctx.Attr("fp64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -128,7 +149,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int32_values")) {
+          } else if (ctx.HasAttr("int32_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("int32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -140,7 +164,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int64_values")) {
+          } else if (ctx.HasAttr("int64_values") &&
+                     !paddle::any_cast<std::vector<int64_t>>(
+                          ctx.Attr("int64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -152,7 +179,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("bool_values")) {
+          } else if (ctx.HasAttr("bool_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("bool_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -178,7 +208,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values")) {
+          } else if (ctx.HasAttr("fp32_values") &&
+                     !paddle::any_cast<std::vector<float>>(
+                          ctx.Attr("fp32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -190,7 +223,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp64_values")) {
+          } else if (ctx.HasAttr("fp64_values") &&
+                     !paddle::any_cast<std::vector<double>>(
+                          ctx.Attr("fp64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -202,7 +238,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int32_values")) {
+          } else if (ctx.HasAttr("int32_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("int32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -214,7 +253,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int64_values")) {
+          } else if (ctx.HasAttr("int64_values") &&
+                     !paddle::any_cast<std::vector<int64_t>>(
+                          ctx.Attr("int64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -226,7 +268,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("bool_values")) {
+          } else if (ctx.HasAttr("bool_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("bool_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -250,7 +295,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values")) {
+          } else if (ctx.HasAttr("fp32_values") &&
+                     !paddle::any_cast<std::vector<float>>(
+                          ctx.Attr("fp32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -262,7 +310,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp64_values")) {
+          } else if (ctx.HasAttr("fp64_values") &&
+                     !paddle::any_cast<std::vector<double>>(
+                          ctx.Attr("fp64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -274,7 +325,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int32_values")) {
+          } else if (ctx.HasAttr("int32_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("int32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -286,7 +340,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int64_values")) {
+          } else if (ctx.HasAttr("int64_values") &&
+                     !paddle::any_cast<std::vector<int64_t>>(
+                          ctx.Attr("int64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -298,7 +355,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("bool_values")) {
+          } else if (ctx.HasAttr("bool_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("bool_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"StartsTensorList",
@@ -326,7 +386,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values")) {
+          } else if (ctx.HasAttr("fp32_values") &&
+                     !paddle::any_cast<std::vector<float>>(
+                          ctx.Attr("fp32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -338,7 +401,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp64_values")) {
+          } else if (ctx.HasAttr("fp64_values") &&
+                     !paddle::any_cast<std::vector<double>>(
+                          ctx.Attr("fp64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -350,7 +416,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int32_values")) {
+          } else if (ctx.HasAttr("int32_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("int32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -362,7 +431,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int64_values")) {
+          } else if (ctx.HasAttr("int64_values") &&
+                     !paddle::any_cast<std::vector<int64_t>>(
+                          ctx.Attr("int64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -374,7 +446,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("bool_values")) {
+          } else if (ctx.HasAttr("bool_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("bool_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -398,7 +473,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values")) {
+          } else if (ctx.HasAttr("fp32_values") &&
+                     !paddle::any_cast<std::vector<float>>(
+                          ctx.Attr("fp32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -410,7 +488,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp64_values")) {
+          } else if (ctx.HasAttr("fp64_values") &&
+                     !paddle::any_cast<std::vector<double>>(
+                          ctx.Attr("fp64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -422,7 +503,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int32_values")) {
+          } else if (ctx.HasAttr("int32_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("int32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -434,7 +518,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int64_values")) {
+          } else if (ctx.HasAttr("int64_values") &&
+                     !paddle::any_cast<std::vector<int64_t>>(
+                          ctx.Attr("int64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -446,7 +533,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("bool_values")) {
+          } else if (ctx.HasAttr("bool_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("bool_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -472,7 +562,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values")) {
+          } else if (ctx.HasAttr("fp32_values") &&
+                     !paddle::any_cast<std::vector<float>>(
+                          ctx.Attr("fp32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -484,7 +577,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp64_values")) {
+          } else if (ctx.HasAttr("fp64_values") &&
+                     !paddle::any_cast<std::vector<double>>(
+                          ctx.Attr("fp64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -496,7 +592,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int32_values")) {
+          } else if (ctx.HasAttr("int32_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("int32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -508,7 +607,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int64_values")) {
+          } else if (ctx.HasAttr("int64_values") &&
+                     !paddle::any_cast<std::vector<int64_t>>(
+                          ctx.Attr("int64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -520,7 +622,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("bool_values")) {
+          } else if (ctx.HasAttr("bool_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("bool_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -544,7 +649,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "decrease_axes",
                                     "none_axes"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp32_values")) {
+          } else if (ctx.HasAttr("fp32_values") &&
+                     !paddle::any_cast<std::vector<float>>(
+                          ctx.Attr("fp32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -556,7 +664,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("fp64_values")) {
+          } else if (ctx.HasAttr("fp64_values") &&
+                     !paddle::any_cast<std::vector<double>>(
+                          ctx.Attr("fp64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -568,7 +679,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "fp64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int32_values")) {
+          } else if (ctx.HasAttr("int32_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("int32_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -580,7 +694,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int32_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("int64_values")) {
+          } else if (ctx.HasAttr("int64_values") &&
+                     !paddle::any_cast<std::vector<int64_t>>(
+                          ctx.Attr("int64_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
@@ -592,7 +709,10 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "int64_values"},
                                    {"Out"});
-          } else if (ctx.HasAttr("bool_values")) {
+          } else if (ctx.HasAttr("bool_values") &&
+                     !paddle::any_cast<std::vector<int>>(
+                          ctx.Attr("bool_values"))
+                          .empty()) {
             return KernelSignature("set_value",
                                    {"Input"},
                                    {"starts",
