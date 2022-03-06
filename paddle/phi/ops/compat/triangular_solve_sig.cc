@@ -16,13 +16,15 @@
 
 namespace phi {
 
-KernelSignature MvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("mv_grad",
-                         {"X", "Vec", GradVarName("Out")},
-                         {},
-                         {GradVarName("X"), GradVarName("Vec")});
+KernelSignature TriangularSolveGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("triangular_solve_grad",
+                         {"X", "Y", "Out", GradVarName("Out")},
+                         {"upper", "transpose", "unitriangular"},
+                         {GradVarName("X"), GradVarName("Y")});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(mv_grad, phi::MvGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(triangular_solve_grad,
+                           phi::TriangularSolveGradOpArgumentMapping);

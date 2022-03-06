@@ -33,8 +33,8 @@ template <typename T, typename Context>
 DenseTensor Matmul(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   bool transpose_x,
-                   bool transpose_y) {
+                   bool transpose_x = false,
+                   bool transpose_y = false) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   MatmulInferMeta(x, y, transpose_x, transpose_y, &meta_out);

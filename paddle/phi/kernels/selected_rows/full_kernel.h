@@ -12,17 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
-KernelSignature MvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("mv_grad",
-                         {"X", "Vec", GradVarName("Out")},
-                         {},
-                         {GradVarName("X"), GradVarName("Vec")});
-}
+template <typename T, typename Context>
+void FullKernel(const Context& dev_ctx,
+                const ScalarArray& shape,
+                const Scalar& val,
+                DataType dtype,
+                SelectedRows* out);
 
+}  // namespace sr
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(mv_grad, phi::MvGradOpArgumentMapping);

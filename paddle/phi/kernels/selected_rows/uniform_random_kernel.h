@@ -15,10 +15,10 @@
 #pragma once
 
 #include "paddle/phi/common/scalar_array.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
 template <typename T, typename Context>
 void UniformRandomRawKernel(const Context& dev_ctx,
@@ -30,7 +30,7 @@ void UniformRandomRawKernel(const Context& dev_ctx,
                             int diag_num,
                             int diag_step,
                             float diag_val,
-                            DenseTensor* out);
+                            SelectedRows* out);
 
 template <typename T, typename Context>
 void UniformRandomKernel(const Context& dev_ctx,
@@ -39,6 +39,7 @@ void UniformRandomKernel(const Context& dev_ctx,
                          float min,
                          float max,
                          int seed,
-                         DenseTensor* out);
+                         SelectedRows* out);
 
+}  // namespace sr
 }  // namespace phi

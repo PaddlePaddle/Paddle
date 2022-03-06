@@ -16,13 +16,20 @@
 
 namespace phi {
 
-KernelSignature MvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("mv_grad",
-                         {"X", "Vec", GradVarName("Out")},
-                         {},
-                         {GradVarName("X"), GradVarName("Vec")});
+KernelSignature YoloBoxOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("yolo_box",
+                         {"X", "ImgSize"},
+                         {"anchors",
+                          "class_num",
+                          "conf_thresh",
+                          "downsample_ratio",
+                          "clip_bbox",
+                          "scale_x_y",
+                          "iou_aware",
+                          "iou_aware_factor"},
+                         {"Boxes", "Scores"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(mv_grad, phi::MvGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(yolo_box, phi::YoloBoxOpArgumentMapping);
