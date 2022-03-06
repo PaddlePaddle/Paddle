@@ -10,7 +10,7 @@ add_subdirectory(funcs)
 set_property(GLOBAL PROPERTY PHI_KERNELS "")
 
 set(COMMON_KERNEL_DEPS dense_tensor sparse_coo_tensor sparse_csr_tensor kernel_context kernel_factory arg_map_context convert_utils lod_utils)
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function im2col concat_and_split_functor softmax)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function im2col vol2col concat_and_split_functor softmax)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta)
@@ -24,6 +24,8 @@ kernel_library(softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(warpctc_kernel DEPS ${COMMON_KERNEL_DEPS} phi_dynload_warpctc sequence_padding sequence_scale)
 kernel_library(warpctc_grad_kernel DEPS ${COMMON_KERNEL_DEPS} sequence_padding sequence_scale)
+kernel_library(triangular_solve_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_reduce)
+
 # auto parse and build kernel targets by cmake
 register_kernels(EXCLUDES ${MANUAL_BUILD_KERNELS} DEPS ${COMMON_KERNEL_DEPS})
 

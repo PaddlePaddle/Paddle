@@ -138,7 +138,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                     "index_data": [1]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [128, 256, 128, 256],
+                    "input_data": [128, 256, 64, 128],
                     "index_data": [4]
                 }
                 self.dynamic_shape.opt_input_shape = {

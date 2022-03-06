@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/arg_map_context.h"
 
 namespace infrt {
-class ProtoArgumentMappingContext : public phi::ArgumentMappingContext {
+class ProtoArgumentMappingContext : public ::phi::ArgumentMappingContext {
  public:
   // only support op in pd dialect
   explicit ProtoArgumentMappingContext(mlir::Operation* op)
@@ -45,6 +45,8 @@ class ProtoArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsDenseTensorOutput(const std::string& name) const override;
   bool IsSelectedRowsOutput(const std::string& name) const override;
+
+  bool IsForInferShape() const override { return false; }
 
  private:
   mlir::Operation* op_;

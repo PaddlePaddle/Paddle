@@ -1402,7 +1402,8 @@ def gather(x, index, axis=None, name=None):
         return _C_ops.gather(x, index, None, "axis", axis, "overwrite", False)
 
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        x, 'x',
+        ['float16', 'float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
         'gather')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
 
@@ -2737,9 +2738,10 @@ def moveaxis(x, source, destination, name=None):
         out, _ = _C_ops.transpose2(x, 'axis', perm)
         return out
 
-    check_variable_and_dtype(
-        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        'moveaxis')
+    check_variable_and_dtype(x, 'x', [
+        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
+        'complex128'
+    ], 'moveaxis')
 
     helper = LayerHelper('moveaxis', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)

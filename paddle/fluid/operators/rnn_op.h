@@ -20,13 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/fc.h"
-#include "paddle/fluid/operators/math/gru_compute.h"
-#include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/detail/activation_functions.h"
+#include "paddle/phi/kernels/funcs/gru_compute.h"
+#include "paddle/phi/kernels/funcs/lstm_compute.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -100,7 +100,7 @@ struct Cell {
 };
 
 template <typename T, template <typename> class EigenActivationFunctor,
-          math::detail::ActivationType act_type>
+          phi::funcs::detail::ActivationType act_type>
 struct SimpleRNNCell : Cell<T> {
   void operator()(const platform::CPUDeviceContext* device_ctx, Tensor* input,
                   const Tensor* weight_hh, const Tensor* init_h,
@@ -148,7 +148,7 @@ struct GRUCell : Cell<T> {
     size_t frame_size = init_h->dims()[2];
     size_t batch_size = init_h->dims()[1];
 
-    math::GRUMetaValue<T> gru_value;
+    phi::funcs::GRUMetaValue<T> gru_value;
     gru_value.gate_weight = weight_hh->data<T>();
     gru_value.state_weight = weight_hh->data<T>() + 2 * frame_size * frame_size;
     gru_value.reset_bias = bias_hh->data<T>() + 2 * frame_size;
@@ -158,10 +158,10 @@ struct GRUCell : Cell<T> {
     gru_value.output_value = output->data<T>();
     gru_value.prev_out_value = init_h->data<T>();
 
-    auto gate_act = math::detail::GetActivationType("sigmoid_v2");
-    auto cand_act = math::detail::GetActivationType("tanh_v2");
+    auto gate_act = phi::funcs::detail::GetActivationType("sigmoid_v2");
+    auto cand_act = phi::funcs::detail::GetActivationType("tanh_v2");
 
-    math::GRUUnitFunctorV2<platform::CPUDeviceContext, T>::compute(
+    phi::funcs::GRUUnitFunctorV2<platform::CPUDeviceContext, T>::compute(
         *device_ctx, gru_value, frame_size, batch_size, cand_act, gate_act);
   }
 };
@@ -184,14 +184,14 @@ struct LSTMCell : Cell<T> {
     blas.MatMul(*init_h, mat_dim_a, *weight_hh, mat_dim_b, static_cast<T>(1.0),
                 input, static_cast<T>(1.0));
 
-    math::LstmMetaValue<T> lstm_value;
+    phi::funcs::LstmMetaValue<T> lstm_value;
     lstm_value.check_ig = nullptr;
     lstm_value.check_fg = nullptr;
     lstm_value.check_og = nullptr;
 
-    auto gate_act = math::detail::GetActivationType("sigmoid_v2");
-    auto cell_act = math::detail::GetActivationType("tanh_v2");
-    auto cand_act = math::detail::GetActivationType("tanh_v2");
+    auto gate_act = phi::funcs::detail::GetActivationType("sigmoid_v2");
+    auto cell_act = phi::funcs::detail::GetActivationType("tanh_v2");
+    auto cand_act = phi::funcs::detail::GetActivationType("tanh_v2");
 
     size_t frame_size = init_h->dims()[2];
     size_t batch_size = init_h->dims()[1];
@@ -208,7 +208,7 @@ struct LSTMCell : Cell<T> {
     lstm_value.state_value = last_c->data<T>();
     lstm_value.state_active_value = last_c_act->data<T>();
     T cell_clip = 0.0;
-    math::LstmUnitFunctor<platform::CPUDeviceContext, T>::compute(
+    phi::funcs::LstmUnitFunctor<platform::CPUDeviceContext, T>::compute(
         *device_ctx, lstm_value, frame_size, batch_size, cell_clip, gate_act,
         cell_act, cand_act, false);
   }
@@ -986,18 +986,18 @@ class RNNCPUKernel : public framework::OpKernel<T> {
           seed, reserve_data);
     } else if (is_rnn_relu(ctx)) {
       gate_num = 1;
-      RnnFunc<
-          SimpleRNNCell<T, ReluCPUFunctor, math::detail::ActivationType::kReLU>,
-          Layer, SingleLayer, BidirLayer, T>(
+      RnnFunc<SimpleRNNCell<T, ReluCPUFunctor,
+                            phi::funcs::detail::ActivationType::kReLU>,
+              Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, pre_state[0], nullptr, sequence_length,
           state[0], nullptr, output, dropout_mask, num_layers, gate_num,
           input_size, hidden_size, is_bidirec, mode, dropout_prob, is_test,
           seed, reserve_data);
     } else if (is_rnn_tanh(ctx)) {
       gate_num = 1;
-      RnnFunc<
-          SimpleRNNCell<T, TanhFunctor, math::detail::ActivationType::kTanhV2>,
-          Layer, SingleLayer, BidirLayer, T>(
+      RnnFunc<SimpleRNNCell<T, TanhFunctor,
+                            phi::funcs::detail::ActivationType::kTanhV2>,
+              Layer, SingleLayer, BidirLayer, T>(
           ctx, input, weight_list, pre_state[0], nullptr, sequence_length,
           state[0], nullptr, output, dropout_mask, num_layers, gate_num,
           input_size, hidden_size, is_bidirec, mode, dropout_prob, is_test,
@@ -1014,14 +1014,14 @@ class RNNCPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-void create_lstm_value(math::LstmMetaValue<T>* lstm_value) {
+void create_lstm_value(phi::funcs::LstmMetaValue<T>* lstm_value) {
   lstm_value->check_ig = nullptr;
   lstm_value->check_fg = nullptr;
   lstm_value->check_og = nullptr;
 }
 
 template <typename T>
-void create_lstm_grad(math::LstmMetaGrad<T>* lstm_grad) {
+void create_lstm_grad(phi::funcs::LstmMetaGrad<T>* lstm_grad) {
   lstm_grad->check_ig_grad = nullptr;
   lstm_grad->check_fg_grad = nullptr;
   lstm_grad->check_og_grad = nullptr;
@@ -1686,8 +1686,8 @@ struct GRUGradCell : GradCell<T> {
     // zero pre_hidden
     phi::funcs::SetConstant<platform::CPUDeviceContext, T> zero;
     zero(device_ctx, grad_pre_hidden, static_cast<T>(0.0));
-    math::GRUMetaValue<T> gru_value;
-    math::GRUMetaGrad<T> gru_grad;
+    phi::funcs::GRUMetaValue<T> gru_value;
+    phi::funcs::GRUMetaGrad<T> gru_grad;
     gru_value.gate_value = gate_tensor->data<T>();
     gru_value.prev_out_value = pre_hidden->data<T>();
     gru_value.reset_output_value = state_tensor->data<T>();
@@ -1703,9 +1703,9 @@ struct GRUGradCell : GradCell<T> {
         grad_weight_hh->data<T>() + 2 * frame_size * frame_size;
     gru_grad.bias_hh_grad = grad_bias_hh->data<T>();
 
-    auto act_gate = math::detail::GetActivationType("sigmoid_v2");
-    auto act_node = math::detail::GetActivationType("tanh_v2");
-    math::GRUUnitGradFunctorV2<platform::CPUDeviceContext, T>::compute(
+    auto act_gate = phi::funcs::detail::GetActivationType("sigmoid_v2");
+    auto act_node = phi::funcs::detail::GetActivationType("tanh_v2");
+    phi::funcs::GRUUnitGradFunctorV2<platform::CPUDeviceContext, T>::compute(
         device_ctx, gru_value, gru_grad, frame_size, batch_size, act_node,
         act_gate);
 
@@ -1738,8 +1738,8 @@ struct LSTMGradCell : GradCell<T> {
       backup_tensor<T>(context, &grad_pre_state_bak, grad_pre_state);
     }
 
-    math::LstmMetaValue<T> lstm_value;
-    math::LstmMetaGrad<T> lstm_grad;
+    phi::funcs::LstmMetaValue<T> lstm_value;
+    phi::funcs::LstmMetaGrad<T> lstm_grad;
     create_lstm_value(&lstm_value);
     create_lstm_grad(&lstm_grad);
     lstm_value.gate_value = gate_tensor->data<T>();
@@ -1755,12 +1755,12 @@ struct LSTMGradCell : GradCell<T> {
     lstm_value.output_value = nullptr;
     lstm_grad.state_active_grad = nullptr;
 
-    auto gate_act = math::detail::GetActivationType("sigmoid_v2");
-    auto state_act = math::detail::GetActivationType("tanh_v2");
-    auto cand_act = math::detail::GetActivationType("tanh_v2");
+    auto gate_act = phi::funcs::detail::GetActivationType("sigmoid_v2");
+    auto state_act = phi::funcs::detail::GetActivationType("tanh_v2");
+    auto cand_act = phi::funcs::detail::GetActivationType("tanh_v2");
 
     T cell_clip = 0.0;
-    math::LstmUnitGradFunctor<platform::CPUDeviceContext, T>::compute(
+    phi::funcs::LstmUnitGradFunctor<platform::CPUDeviceContext, T>::compute(
         device_ctx, lstm_value, lstm_grad, frame_size, batch_size, cell_clip,
         gate_act, state_act, cand_act, false);
     this->update_pre_hidden_grad(
