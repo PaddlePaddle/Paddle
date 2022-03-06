@@ -62,6 +62,13 @@ void HuberLossInferMeta(const MetaTensor& input_meta,
                         MetaTensor* residual,
                         MetaConfig config = MetaConfig());
 
+void TriangularSolveInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              bool upper,
+                              bool transpose,
+                              bool unitriangular,
+                              MetaTensor* out);
+
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
@@ -82,6 +89,10 @@ void BincountInferMeta(const MetaTensor& x,
                        const paddle::optional<const MetaTensor&> weights,
                        int minlength,
                        MetaTensor* out);
+void DistInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   float p,
+                   MetaTensor* out);
 
 void GatherNdInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
@@ -90,4 +101,7 @@ void GatherNdInferMeta(const MetaTensor& x,
 void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);
+
+void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
+
 }  // namespace phi
