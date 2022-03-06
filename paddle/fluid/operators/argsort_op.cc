@@ -101,8 +101,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ArgsortGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(argsort, ArgsortInferShapeFunctor,
-                            PT_INFER_META(phi::ArgsortInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(argsort, ArgsortInferShapeFunctor,
+                            PD_INFER_META(phi::ArgsortInferMeta));
 REGISTER_OPERATOR(argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
                   ops::ArgsortGradOpMaker<paddle::framework::OpDesc>,
                   ops::ArgsortGradOpMaker<paddle::imperative::OpBase>,
