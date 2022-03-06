@@ -278,10 +278,3 @@ REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
                   ops::LayerNormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp,
                   ops::LayerNormGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LayerNormKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    layer_norm_grad,
-    ops::LayerNormGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LayerNormGradKernel<paddle::platform::CPUDeviceContext, double>);
