@@ -124,8 +124,8 @@ class DistGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(dist, DistInferShapeFunctor,
-                            PT_INFER_META(phi::DistInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(dist, DistInferShapeFunctor,
+                            PD_INFER_META(phi::DistInferMeta));
 
 REGISTER_OPERATOR(dist, ops::DistOp, ops::DistOpMaker,
                   ops::DistGradOpMaker<paddle::framework::OpDesc>,
