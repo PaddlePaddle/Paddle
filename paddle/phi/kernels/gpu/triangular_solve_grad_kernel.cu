@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/triangular_solve_grad_kernel_impl.h"
 
-namespace phi {
-
-KernelSignature MvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("mv_grad",
-                         {"X", "Vec", GradVarName("Out")},
-                         {},
-                         {GradVarName("X"), GradVarName("Vec")});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(mv_grad, phi::MvGradOpArgumentMapping);
+PD_REGISTER_KERNEL(triangular_solve_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TriangularSolveGradKernel,
+                   float,
+                   double) {}

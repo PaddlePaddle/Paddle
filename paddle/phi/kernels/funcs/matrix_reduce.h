@@ -12,17 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
+namespace funcs {
 
-KernelSignature MvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("mv_grad",
-                         {"X", "Vec", GradVarName("Out")},
-                         {},
-                         {GradVarName("X"), GradVarName("Vec")});
-}
+// Use For Matrix OP, reduce_sum 'in' according to out's dim
+// for example: in's dim = [5, 3, 2, M, N] ; out's dim = [3, 1, M, N]
+// axis [0, 2] of DenseTensor 'in' will be reduced
+template <typename T, typename Context>
+class MatrixReduceSumFunctor {
+ public:
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& in,
+                  DenseTensor* out);
+};
 
+}  // namespace funcs
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(mv_grad, phi::MvGradOpArgumentMapping);
