@@ -138,6 +138,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        const DenseTensor& input,
                        const DenseTensor& out_grad,
                        int axis,
+                       bool descending,
                        DenseTensor* in_grad) {
   dev_ctx.template Alloc<T>(in_grad);
   if (out_grad.numel() == 0) return;
