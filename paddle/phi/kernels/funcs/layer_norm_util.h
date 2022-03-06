@@ -14,6 +14,12 @@
 
 #pragma once
 
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+
 namespace phi {
 namespace funcs {
 
@@ -23,113 +29,111 @@ namespace funcs {
 // implementation only considers 2D.
 template <typename DeviceContext, typename T>
 struct RowwiseMean2D {
-  RowwiseMean2D(int left, int right, const platform::DeviceContext& dev_ctx);
+  RowwiseMean2D(int left, int right, const DeviceContext& dev_ctx);
 
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
-                  framework::Tensor* vec);
+  void operator()(const DeviceContext& context,
+                  const DenseTensor& input,
+                  DenseTensor* vec);
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
-class RowwiseMean2D<platform::CUDADeviceContext, T> {
+class RowwiseMean2D<phi::GPUContext, T> {
  public:
-  RowwiseMean2D(int left, int right, const platform::DeviceContext& dev_ctx)
+  RowwiseMean2D(int left, int right, const DeviceContext& dev_ctx)
       : left_(left), right_(right) {
-    framework::DDim ones_dim({right_});
+    DDim ones_dim({right_});
     divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
     phi::funcs::set_constant(dev_ctx, &divisor_, 1.0 / right);
   }
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  framework::Tensor* out) {
-    phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
-        false,
-        left_,
-        right_,
-        1.,
-        input.data<T>(),
-        divisor_.data<T>(),
-        0.,
-        out->data<T>());
+  void operator()(const phi::GPUContext& context,
+                  const DenseTensor& input,
+                  DenseTensor* out) {
+    phi::funcs::GetBlas<phi::GPUContext, T>(context).GEMV(false,
+                                                          left_,
+                                                          right_,
+                                                          1.,
+                                                          input.data<T>(),
+                                                          divisor_.data<T>(),
+                                                          0.,
+                                                          out->data<T>());
   }
 
  private:
   int left_;
   int right_;
-  framework::Tensor divisor_;
+  DenseTensor divisor_;
 };
 #endif
 
 template <typename T>
-class RowwiseMean2D<platform::CPUDeviceContext, T> {
+class RowwiseMean2D<phi::CPUContext, T> {
  public:
-  RowwiseMean2D(int left, int right, const platform::DeviceContext& dev_ctx) {}
+  RowwiseMean2D(int left, int right, const DeviceContext& dev_ctx) {}
 
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  framework::Tensor* out) {
+  void operator()(const phi::CPUContext& context,
+                  const DenseTensor& input,
+                  DenseTensor* out) {
     row_mean_(context, input, out);
   }
 
  private:
-  phi::funcs::RowwiseMean<platform::CPUDeviceContext, T> row_mean_;
+  phi::funcs::RowwiseMean<phi::CPUContext, T> row_mean_;
 };
 
 template <typename DeviceContext, typename T>
 struct ColwiseSum2D {
-  ColwiseSum2D(int left, int right, const platform::DeviceContext& dev_ctx);
+  ColwiseSum2D(int left, int right, const DeviceContext& dev_ctx);
 
-  void operator()(const platform::DeviceContext& context,
-                  const framework::Tensor& input,
-                  framework::Tensor* vec);
+  void operator()(const phi::DeviceContext& context,
+                  const DenseTensor& input,
+                  DenseTensor* vec);
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
-class ColwiseSum2D<platform::CUDADeviceContext, T> {
+class ColwiseSum2D<phi::GPUContext, T> {
  public:
-  ColwiseSum2D(int left, int right, const platform::DeviceContext& dev_ctx)
+  ColwiseSum2D(int left, int right, const phi::GPUContext& dev_ctx)
       : left_(left), right_(right) {
-    framework::DDim ones_dim({left_});
+    DDim ones_dim({left_});
     divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
     phi::funcs::set_constant(dev_ctx, &divisor_, 1.0);
   }
 
-  void operator()(const platform::CUDADeviceContext& context,
-                  const framework::Tensor& input,
-                  framework::Tensor* out) {
-    phi::funcs::GetBlas<platform::CUDADeviceContext, T>(context).GEMV(
-        true,
-        left_,
-        right_,
-        1.,
-        input.data<T>(),
-        divisor_.data<T>(),
-        0.,
-        out->data<T>());
+  void operator()(const phi::GPUContext& context,
+                  const DenseTensor& input,
+                  DenseTensor* out) {
+    phi::funcs::GetBlas<phi::GPUContext, T>(context).GEMV(true,
+                                                          left_,
+                                                          right_,
+                                                          1.,
+                                                          input.data<T>(),
+                                                          divisor_.data<T>(),
+                                                          0.,
+                                                          out->data<T>());
   }
 
  private:
   int left_;
   int right_;
-  framework::Tensor divisor_;
+  DenseTensor divisor_;
 };
 #endif
 
 template <typename T>
-class ColwiseSum2D<platform::CPUDeviceContext, T> {
+class ColwiseSum2D<phi::CPUContext, T> {
  public:
-  ColwiseSum2D(int left, int right, const platform::DeviceContext& dev_ctx) {}
+  ColwiseSum2D(int left, int right, const phi::CPUContext& dev_ctx) {}
 
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  framework::Tensor* out) {
+  void operator()(const phi::CPUContext& context,
+                  const DenseTensor& input,
+                  DenseTensor* out) {
     col_wise_(context, input, out);
   }
 
  private:
-  phi::funcs::ColwiseSum<platform::CPUDeviceContext, T> col_wise_;
+  phi::funcs::ColwiseSum<phi::CPUContext, T> col_wise_;
 };
 
 template <typename T>
@@ -154,23 +158,6 @@ struct MulInvVarFunctor {
     return a * std::sqrt(1.0 / b);
   }
 };
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename T>
-class LayerNormDirectCUDAFunctor {
- public:
-  void operator()(gpuStream_t stream,
-                  const T* input,
-                  std::vector<int> input_shape,
-                  const T* bias,
-                  const T* scale,
-                  T* output,
-                  T* mean,
-                  T* variance,
-                  int begin_norm_axis,
-                  float eps);
-};
-#endif
 
 }  // namespace funcs
 }  // namespace phi
