@@ -205,7 +205,7 @@
     func : index_sample_grad
 
 - backward_api : cross_grad
-  forward : cross (Tensor x, Tensor y, int axis) -> Tensor(out)
+  forward : cross (Tensor x, Tensor y, int axis = 9) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, int axis)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :

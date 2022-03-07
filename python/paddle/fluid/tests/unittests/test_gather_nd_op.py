@@ -26,6 +26,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
         self.outputs = {
@@ -33,24 +34,25 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestGatherNdOpWithIndex1(OpTest):
     def setUp(self):
         self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([1]).astype("int32")}
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestGatherNdOpWithLowIndex(OpTest):
@@ -58,6 +60,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1], [2]]).astype("int64")
 
@@ -66,10 +69,10 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.outputs = {'Out': xnp[tuple(index.T)]}  #[[14, 25, 1], [76, 22, 3]]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestGatherNdOpIndex1(OpTest):
@@ -77,6 +80,7 @@ class TestGatherNdOpIndex1(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([1, 2]).astype("int64")
 
@@ -85,10 +89,10 @@ class TestGatherNdOpIndex1(OpTest):
         self.outputs = {'Out': xnp[tuple(index.T)]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestGatherNdOpWithSameIndexAsX(OpTest):
@@ -96,6 +100,7 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1, 1], [2, 1]]).astype("int64")
 
@@ -103,10 +108,10 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.outputs = {'Out': xnp[tuple(index.T)]}  #[25, 22]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestGatherNdOpWithHighRankSame(OpTest):
@@ -114,6 +119,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
         shape = (5, 2, 3, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
         index = np.vstack([np.random.randint(0, s, size=2) for s in shape]).T
@@ -122,10 +128,10 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         self.outputs = {'Out': xnp[tuple(index.T)]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestGatherNdOpWithHighRankDiff(OpTest):
@@ -133,6 +139,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
         shape = (2, 3, 4, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
         index = np.vstack([np.random.randint(0, s, size=200) for s in shape]).T
@@ -142,10 +149,10 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.outputs = {'Out': xnp[tuple(index.T)].reshape([20, 5, 2])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 #Test Python API
@@ -245,4 +252,5 @@ class TestGatherNdAPI2(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

@@ -16,7 +16,7 @@ from __future__ import print_function
 from collections import Counter
 
 from ..static import Variable, device_guard
-from ..framework import core
+from ..framework import core, _in_eager_mode
 from ..fluid.layer_helper import LayerHelper
 from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -1567,6 +1567,8 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [1., 1.]]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.scatter(x, index, updates, overwrite)
         return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
 
     check_variable_and_dtype(
