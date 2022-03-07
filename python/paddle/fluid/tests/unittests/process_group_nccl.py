@@ -27,22 +27,13 @@ import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
-ProcessGroupStrategy = core.ProcessGroupStrategy
-
 
 def init_process_group(strategy=None):
-    # this will remove
-    if strategy is None:
-        strategy = ProcessGroupStrategy()
-        strategy.nranks = ParallelEnv().nranks
-        strategy.local_rank = ParallelEnv().local_rank
-        strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-        strategy.current_endpoint = ParallelEnv().current_endpoint
-    if strategy.nranks < 2:
-        return
-
-    pg_group = core.ProcessGroupNCCL(strategy, strategy.local_rank,
-                                     strategy.nranks)
+    nranks = ParallelEnv().nranks
+    rank = ParallelEnv().local_rank
+    is_master = True if rank == 0 else False
+    store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
+    pg_group = core.ProcessGroupNCCL(store, rank, nranks)
 
     return pg_group
 
