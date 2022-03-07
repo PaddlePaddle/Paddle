@@ -82,12 +82,11 @@ class KernelContext {
   }
 
   template <typename TensorType>
-  std::vector<TensorType> MoveInputsBetween(size_t start, size_t end) {
-    std::vector<TensorType> v;
+  std::vector<const TensorType*> InputsBetween(size_t start, size_t end) {
+    std::vector<const TensorType*> v;
     for (size_t i = start; i < end; ++i) {
-      auto t = static_cast<const TensorType*>(inputs_.at(i));
-      v.emplace_back(*t);
-      inputs_[i] = nullptr;
+      auto* t = static_cast<const TensorType*>(inputs_.at(i));
+      v.emplace_back(t);
     }
     return v;
   }

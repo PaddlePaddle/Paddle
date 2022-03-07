@@ -32,4 +32,12 @@ void CreateInferMeta(const ScalarArray& shape,
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
+void EyeInferMeta(int64_t num_rows,
+                  int64_t num_columns,
+                  DataType dtype,
+                  MetaTensor* out) {
+  if (num_columns == -1) num_columns = num_rows;
+  out->set_dims({num_rows, num_columns});
+  out->set_dtype(dtype);
+}
 }  // namespace phi

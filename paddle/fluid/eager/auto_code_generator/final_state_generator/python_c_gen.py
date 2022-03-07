@@ -14,34 +14,28 @@
 
 import os
 import argparse
-from eager_gen import ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+from eager_gen import yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+
+skipped_fwd_api_names = set(["scale"])
 
 atype_to_parsing_function = {
     "bool": "CastPyArg2Boolean",
     "int": "CastPyArg2Int",
     "long": "CastPyArg2Long",
+    "int64_t": "CastPyArg2Long",
     "float": "CastPyArg2Float",
     "string": "CastPyArg2String",
-    "bool[]": "CastPyArg2Booleans",
-    "int[]": "CastPyArg2Ints",
-    "long[]": "CastPyArg2Longs",
-    "float[]": "CastPyArg2Floats",
-    "double[]": "CastPyArg2Float64s",
-    "string[]": "CastPyArg2Strings"
-}
-
-atype_to_cxx_type = {
-    "bool": "bool",
-    "int": "int",
-    "long": "long",
-    "float": "float",
-    "string": "std::string",
-    "bool[]": "std::vector<bool>",
-    "int[]": "std::vector<int>",
-    "long[]": "std::vector<long>",
-    "float[]": "std::vector<float>",
-    "double[]": "std::vector<double>",
-    "string[]": "std::vector<std::string>"
+    "std::vector<bool>": "CastPyArg2Booleans",
+    "std::vector<int>": "CastPyArg2Ints",
+    "std::vector<long>": "CastPyArg2Longs",
+    "std::vector<int64_t>": "CastPyArg2Longs",
+    "std::vector<float>": "CastPyArg2Floats",
+    "std::vector<double>": "CastPyArg2Float64s",
+    "std::vector<std::string>": "CastPyArg2Strings",
+    "paddle::experimental::Scalar": "CastPyArg2Scalar",
+    "paddle::experimental::ScalarArray": "CastPyArg2ScalarArray",
+    "paddle::experimental::Backend": "CastPyArg2Backend",
+    "paddle::experimental::DataType": "CastPyArg2DataType",
 }
 
 
@@ -55,15 +49,9 @@ def ParseArguments():
     return args
 
 
-def GetCxxType(atype):
-    if atype not in atype_to_cxx_type.keys():
-        assert False
-
-    return atype_to_cxx_type[atype]
-
-
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
+        print(f"Unable to find {atype} in atype_to_parsing_function.")
         assert False
 
     return atype_to_parsing_function[atype]
@@ -71,7 +59,7 @@ def FindParsingFunctionFromAttributeType(atype):
 
 def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
                             forward_attrs_list, forward_outputs_position_map,
-                            optional_inputs):
+                            optional_inputs, is_forward_only):
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
     # forward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
@@ -98,11 +86,10 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
     # Get Attributes
     for name, atype, _, pos in forward_attrs_list:
         parsing_function = FindParsingFunctionFromAttributeType(atype)
-        cxx_type = GetCxxType(atype)
         key = f"{name}"
 
         parse_attributes_str += f"    PyObject* {name}_obj = PyTuple_GET_ITEM(args, {pos});\n"
-        parse_attributes_str += f"    {cxx_type} {name} = {parsing_function}({name}_obj, \"{fwd_api_name}\", {pos});\n"
+        parse_attributes_str += f"    {atype} {name} = {parsing_function}({name}_obj, \"{fwd_api_name}\", {pos});\n"
 
         dygraph_function_call_list[pos] = f"{name}"
     dygraph_function_call_str = ",".join(dygraph_function_call_list)
@@ -143,6 +130,11 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 }}
 
 """
+    if is_forward_only:
+        fwd_function_name = fwd_api_name
+    else:
+        fwd_function_name = GetForwardFunctionName(fwd_api_name)
+
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
         fwd_api_name, pythonc_event_str, fwd_api_name, get_eager_tensor_str,
         parse_attributes_str,
@@ -230,6 +222,11 @@ def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
 #pragma once
 
 #include  "pybind11/detail/common.h"
+#include  "paddle/phi/api/all.h"
+#include  "paddle/phi/common/backend.h"
+#include  "paddle/phi/common/data_type.h"
+#include  "paddle/phi/common/scalar.h"
+#include  "paddle/phi/common/scalar_array.h"
 #include  "paddle/fluid/pybind/op_function_common.h"
 #include  "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include  "paddle/fluid/pybind/exception.h"
@@ -269,18 +266,22 @@ if __name__ == "__main__":
     python_c_function_list = []
     python_c_function_reg_list = []
     for fwd_api in fwd_api_list:
+
         # We only generate Ops with grad
+        is_forward_only = False
         if 'backward' not in fwd_api.keys():
-            continue
+            is_forward_only = True
 
         assert 'api' in fwd_api.keys()
         assert 'args' in fwd_api.keys()
         assert 'output' in fwd_api.keys()
-        assert 'backward' in fwd_api.keys()
 
         fwd_api_name = fwd_api['api']
         fwd_args_str = fwd_api['args']
         fwd_returns_str = fwd_api['output']
+
+        if fwd_api_name in skipped_fwd_api_names:
+            continue
 
         # Parse Dispensable Inputs
         optional_inputs = []
@@ -303,7 +304,7 @@ if __name__ == "__main__":
 
         python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
             fwd_api_name, forward_inputs_position_map, forward_attrs_list,
-            forward_outputs_position_map, optional_inputs)
+            forward_outputs_position_map, optional_inputs, is_forward_only)
         python_c_function_list.append(python_c_function_str)
         python_c_function_reg_list.append(python_c_function_reg_str)
         print("Generated Python-C Function: ", python_c_function_str)

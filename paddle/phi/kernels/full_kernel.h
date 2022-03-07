@@ -17,7 +17,6 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/selected_rows.h"
 
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -30,13 +29,6 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out);
-
-template <typename T, typename Context>
-void FullSR(const Context& dev_ctx,
-            const ScalarArray& shape,
-            const Scalar& val,
-            DataType dtype,
-            SelectedRows* out);
 
 template <typename T, typename Context>
 void FullLikeKernel(const Context& dev_ctx,
