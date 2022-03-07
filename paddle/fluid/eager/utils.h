@@ -144,6 +144,19 @@ class EagerUtils {
     iter.apply(std::forward<Args>(args)...);
   }
 
+  static void CheckInplace(const paddle::experimental::Tensor& target,
+                           const AutogradMeta* autograd_meta,
+                           bool require_any_grad) {
+    if (require_any_grad && autograd_meta) {
+      PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() &&
+                            egr::egr_utils_api::IsLeafTensor(target),
+                        false, platform::errors::InvalidArgument(
+                                   "Leaf Var (%s) that doesn't stop gradient "
+                                   "can't use inplace strategy.",
+                                   target.name()));
+    }
+  }
+
   // TensorWrapper Utils
   static paddle::experimental::Tensor RecoverTensorWrapper(
       TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);

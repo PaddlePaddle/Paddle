@@ -52,6 +52,14 @@ def ParseArguments():
 #################
 ###  Helpers  ###
 #################
+def RecoverBaseNameOfInplaceFunction(function_name):
+    return function_name[:-1]
+
+
+def GetInplacedFunctionName(function_name):
+    return function_name + "_"
+
+
 def FindGradName(string):
     return string + "_grad"
 
@@ -140,6 +148,24 @@ def ReadBwdFile(filepath):
 ######################
 ###  Yaml Parsers  ###
 ######################
+def ParseInplaceInfo(string):
+    # string: "(x -> out0), (y -> out2)"
+    inplace_map = {}
+    for pair in string.split(","):
+        pair = pair.strip()
+        if pair.startswith("("):
+            pair = pair[1:]
+
+        if pair.endswith(")"):
+            pair = pair[:-1]
+
+        key = pair.split("->")[0].strip()
+        val = pair.split("->")[1].strip()
+        inplace_map[key] = val
+
+    return inplace_map
+
+
 def IntermediateValidationCheck(intermediate_outputs, forward_returns_list):
     # intermediate_outputs : [name0, name1, ...]
     # forward_returns_list : [[ret_name, type, orig_pos], ...]
@@ -623,9 +649,10 @@ std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std:
 
 def GenerateNodeCreationCodes(
         fwd_api_name, bwd_api_name, forward_inputs_position_map,
-        forward_outputs_position_map, forward_attrs_list,
+        forward_outputs_position_map, forward_attrs_list, forward_call_str,
         backward_fwd_input_map, backward_grad_input_map,
-        backward_grad_output_map, backward_attrs_list, optional_inputs):
+        backward_grad_output_map, backward_attrs_list, optional_inputs,
+        inplace_map):
     # fwd_api_name = ""
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
@@ -683,10 +710,20 @@ def GenerateNodeCreationCodes(
     outputs_autograd_meta_str = "\n".join(outputs_autograd_meta_list)
     pass_stop_gradient_args_str = ",".join(pass_stop_gradient_args_list)
 
+    # Check Inplace
+    check_inplace_str = ""
+    bump_inplace_version_str = ""
+    for inplace_name in inplace_map.keys():
+        inplace_autograd_meta_name = GetAutoGradMetaName(inplace_name)
+        check_inplace_str += f"    egr::EagerUtils::CheckInplace({inplace_name}, {inplace_autograd_meta_name}, require_any_grad);\n"
+        bump_inplace_version_str += f"    {inplace_name}.BumpInplaceVersion();\n"
+
     # Node Construction
     num_bwd_inputs = len(backward_grad_input_map.keys())
     num_bwd_outputs = len(backward_grad_output_map.keys())
-    grad_node_name = GetGradNodeName(fwd_api_name)
+    grad_node_name = GetGradNodeName(
+        RecoverBaseNameOfInplaceFunction(
+            fwd_api_name)) if inplace_map else GetGradNodeName(fwd_api_name)
     node_construction_str = f"        auto grad_node = std::make_shared<{grad_node_name}>({num_bwd_inputs}, {num_bwd_outputs});"
 
     # SetAttributes
@@ -759,6 +796,10 @@ def GenerateNodeCreationCodes(
     bool trace_backward = egr::Controller::Instance().HasGrad();
 
     bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
+{}
+    // Forward API Call
+    {}
+{}
     if(require_any_grad) {{
         egr::EagerUtils::PassStopGradient({});
         
@@ -786,7 +827,8 @@ def GenerateNodeCreationCodes(
 """
     node_creation_str = NODE_CREATION_TEMPLATE.format(
         inputs_autograd_meta_str, outputs_autograd_meta_str,
-        compute_require_grad_args_str, pass_stop_gradient_args_str,
+        compute_require_grad_args_str, check_inplace_str, forward_call_str,
+        bump_inplace_version_str, pass_stop_gradient_args_str,
         node_construction_str, set_attributes_str, set_tensor_wrappers_str,
         set_grad_out_meta_str, set_edges_str, set_out_rank_str, set_history_str,
         set_grad_in_meta_str, set_retain_grad_str)
@@ -794,12 +836,12 @@ def GenerateNodeCreationCodes(
     return node_creation_str
 
 
-def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
-                              forward_inputs_position_map,
-                              forward_outputs_position_map, forward_attrs_list,
-                              backward_fwd_input_map, backward_grad_input_map,
-                              backward_grad_output_map, backward_attrs_list,
-                              optional_inputs, intermediate_outputs):
+def GenerateForwardDefinition(
+        fwd_api_name, bwd_api_name, forward_inputs_position_map,
+        forward_outputs_position_map, forward_attrs_list,
+        backward_fwd_input_map, backward_grad_input_map,
+        backward_grad_output_map, backward_attrs_list, optional_inputs,
+        intermediate_outputs, inplace_map):
     # fwd_api_name = ""
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
@@ -809,6 +851,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     # backward_grad_output_map = { "name" : [type, fwd_position, orig_position] ...}
     # backward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
     # optional_inputs = ["name0", ...]
+    # inplace_map = {"input_name" : "output_name"}
 
     # Get Function Args
     num_inputs = len(forward_attrs_list) + len(forward_inputs_position_map.keys(
@@ -882,15 +925,13 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
 
     node_creation_str = GenerateNodeCreationCodes(
         fwd_api_name, bwd_api_name, forward_inputs_position_map,
-        forward_outputs_position_map, forward_attrs_list,
+        forward_outputs_position_map, forward_attrs_list, forward_call_str,
         backward_fwd_input_map, backward_grad_input_map,
-        backward_grad_output_map, backward_attrs_list, optional_inputs)
+        backward_grad_output_map, backward_attrs_list, optional_inputs,
+        inplace_map)
 
     FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{
-    // Forward API Call
-    {}
-    
 {}
 
     // Returns
@@ -901,7 +942,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     forward_function_name = GetForwardFunctionName(fwd_api_name)
     forward_function_str = FORWARD_FUNCTION_TEMPLATE.format(
         returns_type_str, forward_function_name, inputs_args_definition_str,
-        forward_call_str, node_creation_str, returns_str)
+        node_creation_str, returns_str)
     forward_function_declaration_str = f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});"
 
     return forward_function_str, forward_function_declaration_str
@@ -1081,6 +1122,10 @@ if __name__ == "__main__":
         fwd_args_str = fwd_api['args']
         fwd_returns_str = fwd_api['output']
 
+        inplace_map = {}
+        if 'inplace' in fwd_api.keys():
+            inplace_map = ParseInplaceInfo(fwd_api['inplace'])
+
         bwd_api_name = fwd_api['backward']
         assert bwd_api_name in grad_api_dict.keys()
         bwd_api = grad_api_dict[bwd_api_name]
@@ -1170,7 +1215,7 @@ if __name__ == "__main__":
             forward_outputs_position_map, forward_attrs_list,
             backward_fwd_input_map, backward_grad_input_map,
             backward_grad_output_map, backward_attrs_list, optional_inputs,
-            intermediate_outputs)
+            intermediate_outputs, {})
         print("Generated Forward Definition: ", forward_definition_str)
         print("Generated Forward Declaration: ", forward_declaration_str)
         forward_definition_str += definition_declaration_pair[0]
@@ -1180,6 +1225,30 @@ if __name__ == "__main__":
         CollectCoreOpsInformation(fwd_api_name, forward_inputs_position_map,
                                   forward_outputs_position_map,
                                   forward_attrs_list)
+
+        # Inplaced Version Dygraph Function Generation
+        if 'inplace' in fwd_api.keys():
+            fwd_api_name_inplaced = GetInplacedFunctionName(fwd_api_name)
+
+            # Node Definition Generation
+            definition_declaration_pair = GenerateForwardDefinition(
+                fwd_api_name_inplaced, bwd_api_name,
+                forward_inputs_position_map, forward_outputs_position_map,
+                forward_attrs_list, backward_fwd_input_map,
+                backward_grad_input_map, backward_grad_output_map,
+                backward_attrs_list, optional_inputs, intermediate_outputs,
+                inplace_map)
+            print("Generated Inplaced Forward Definition: ",
+                  forward_definition_str)
+            print("Generated Inplaced Forward Declaration: ",
+                  forward_declaration_str)
+            forward_definition_str += definition_declaration_pair[0]
+            forward_declaration_str += definition_declaration_pair[1]
+
+            # For python-level API dispatch
+            CollectCoreOpsInformation(
+                fwd_api_name_inplaced, forward_inputs_position_map,
+                forward_outputs_position_map, forward_attrs_list)
 
     # Generate Files
     nodes_h_path = args.nodes_h_path
