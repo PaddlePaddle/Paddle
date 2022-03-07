@@ -27,22 +27,13 @@ import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
-ProcessGroupStrategy = core.ProcessGroupStrategy
-
 
 def init_process_group(strategy=None):
-    # this will remove
-    if strategy is None:
-        strategy = ProcessGroupStrategy()
-        strategy.nranks = ParallelEnv().nranks
-        strategy.local_rank = ParallelEnv().local_rank
-        strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-        strategy.current_endpoint = ParallelEnv().current_endpoint
-    if strategy.nranks < 2:
-        return
-
-    pg_group = core.ProcessGroupNCCL(strategy, strategy.local_rank,
-                                     strategy.nranks)
+    nranks = ParallelEnv().nranks
+    rank = ParallelEnv().local_rank
+    is_master = True if rank == 0 else False
+    store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
+    pg_group = core.ProcessGroupNCCL(store, rank, nranks)
 
     return pg_group
 
@@ -144,23 +135,109 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             print("test barrier api ok\n")
 
-            # test send/recv
+            # test allgather
             # rank 0
             x = np.random.random(self.shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
             tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            out_shape = list(self.shape)
+            out_shape[0] *= 2
+            out = np.random.random(out_shape).astype(self.dtype)
+            tensor_out = paddle.to_tensor(out)
             if pg.rank() == 0:
-                task = pg.send(tensor_x, dst=1)
+                task = pg.all_gather(tensor_x, tensor_out)
                 task.wait()
                 paddle.device.cuda.synchronize()
             # rank 1
             else:
-                y = np.random.random(self.shape).astype(self.dtype)
-                tensor_y = paddle.to_tensor(y)
-                task = pg.recv(tensor_y, src=0)
+                task = pg.all_gather(tensor_y, tensor_out)
                 task.wait()
                 paddle.device.cuda.synchronize()
-                assert np.array_equal(tensor_x, tensor_y)
-                print("test send/recv api ok\n")
+            out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
+            out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
+                                 [out_shape[0]])
+            assert np.array_equal(tensor_x, out_1)
+            assert np.array_equal(tensor_y, out_2)
+            print("test allgather api ok\n")
+
+            # test alltoall
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
+            out1 = np.random.random(self.shape).astype(self.dtype)
+            out2 = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            tensor_out1 = paddle.to_tensor(out1)
+            tensor_out2 = paddle.to_tensor(out2)
+            raw_tensor_x_2 = paddle.slice(tensor_x, [0], [self.shape[0] // 2],
+                                          [self.shape[0]])
+            raw_tensor_y_1 = paddle.slice(tensor_y, [0], [0],
+                                          [self.shape[0] // 2])
+            if pg.rank() == 0:
+                task = pg.alltoall(tensor_x, tensor_out1)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            # rank 1
+            else:
+                task = pg.alltoall(tensor_y, tensor_out2)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            out1_2 = paddle.slice(tensor_out1, [0], [self.shape[0] // 2],
+                                  [self.shape[0]])
+            out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
+            if pg.rank() == 0:
+                assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
+            else:
+                assert np.array_equal(out2_1, raw_tensor_x_2)
+            print("test alltoall api ok\n")
+
+            # test Reduce
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            sum_result = tensor_x + tensor_y
+            if pg.rank() == 0:
+                task = pg.reduce(tensor_x, 0)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            # rank 1
+            else:
+                task = pg.reduce(tensor_y, 0)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            if pg.rank() == 0:
+                assert np.array_equal(tensor_x, sum_result)
+            print("test reduce sum api ok\n")
+
+            # test Scatter
+            # rank 0
+            in_shape = list(self.shape)
+            in_shape[0] *= 2
+            x = np.random.random(in_shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            if pg.rank() == 0:
+                task = pg.scatter(tensor_x, tensor_y, 0)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            # rank 1
+            else:
+                task = pg.scatter(tensor_x, tensor_y, 0)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
+            out2 = paddle.slice(tensor_x, [0], [self.shape[0]],
+                                [self.shape[0] * 2])
+            if pg.rank() == 0:
+                assert np.array_equal(tensor_y, out1)
+            else:
+                assert np.array_equal(tensor_y, out2)
+            print("test scatter api ok\n")
 
 
 class TestProcessGroupFp16(TestProcessGroupFp32):

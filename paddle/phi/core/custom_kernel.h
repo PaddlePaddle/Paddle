@@ -46,4 +46,6 @@ class CustomKernelMap {
  */
 void RegisterCustomKernels(const CustomKernelMap& custom_kernel_map);
 
+// Load custom kernel lib and register
+void LoadCustomKernelLib(const std::string& dso_lib_path, void* dso_handle);
 }  // namespace phi
