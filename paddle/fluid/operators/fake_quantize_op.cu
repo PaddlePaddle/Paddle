@@ -404,6 +404,19 @@ struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
+template <typename T>
+__global__ void FindMovingAverageAbsMaxKernel(const T* in_state,
+                                              const T* in_accum,
+                                              const T* cur_scale, const T rate,
+                                              T* out_state, T* out_accum,
+                                              T* out_scale) {
+  T state = rate * (*in_state) + T(1.0f);
+  T accum = rate * (*in_accum) + (*cur_scale);
+  *out_state = state;
+  *out_accum = accum;
+  *out_scale = accum / state;
+}
+
 template struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, float>;
 
 template <typename T>
@@ -415,29 +428,14 @@ struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   framework::Tensor* out_accum, framework::Tensor* out_scale) {
     const auto gpu_place = ctx.GetPlace();
 
-    T accum;
-    T state;
-    T scale;
-    memory::Copy(platform::CPUPlace(), &accum, gpu_place, in_accum.data<T>(),
-                 sizeof(T), ctx.stream());
-    memory::Copy(platform::CPUPlace(), &state, gpu_place, in_state.data<T>(),
-                 sizeof(T), ctx.stream());
-    memory::Copy(platform::CPUPlace(), &scale, gpu_place, cur_scale, sizeof(T),
-                 ctx.stream());
-    ctx.Wait();
-
     T rate_t = static_cast<T>(rate);
-    state = rate_t * state + static_cast<T>(1.0);
-    accum = rate_t * accum + scale;
-    scale = accum / state;
+    T* out_state_data = out_state->mutable_data<T>(gpu_place);
+    T* out_accum_data = out_accum->mutable_data<T>(gpu_place);
+    T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
 
-    memory::Copy(gpu_place, out_accum->mutable_data<T>(gpu_place),
-                 platform::CPUPlace(), &accum, sizeof(T), ctx.stream());
-    memory::Copy(gpu_place, out_state->mutable_data<T>(gpu_place),
-                 platform::CPUPlace(), &state, sizeof(T), ctx.stream());
-    memory::Copy(gpu_place, out_scale->mutable_data<T>(gpu_place),
-                 platform::CPUPlace(), &scale, sizeof(T), ctx.stream());
-    ctx.Wait();
+    FindMovingAverageAbsMaxKernel<T><<<1, 1, 0, ctx.stream()>>>(
+        in_state.data<T>(), in_accum.data<T>(), cur_scale, rate_t,
+        out_state_data, out_accum_data, out_scale_data);
   }
 };
 
