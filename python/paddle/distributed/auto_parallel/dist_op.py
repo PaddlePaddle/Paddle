@@ -267,17 +267,4 @@ class DistributedModule:
             default_dist_ctx.add_dist_op_for_program(dist_op)
         if isinstance(output, Variable):
             output = [output]
-        # main_prog = paddle.fluid.default_main_program()
-        # main_block = main_prog.global_block()
-        # op_size = len(main_block.ops)
-        # output = self._serial_module(*args, **kwargs)
-        # new_op_size = len(main_block.ops)
-        # default_dist_ctx = get_default_distributed_context()
-        # for idx in range(op_size, new_op_size):
-        #     op = main_block.ops[idx]
-        #     dist_op = DistributedOperator(op, self._dist_attr)
-        #     dist_op.dist_attr.mark_annotated_as(self._dist_attr)
-        #     default_dist_ctx.add_dist_op_for_program(dist_op)
-        # if isinstance(output, Variable):
-        #    output = [output]
         return list(output)
