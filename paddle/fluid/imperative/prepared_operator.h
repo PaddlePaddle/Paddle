@@ -259,8 +259,6 @@ void BuildDygraphPhiKernelContext(
                         "to the size of kernel attribute_defs (%d).",
                         attr_names.size(), attr_defs.size()));
 
-  size_t tensor_array_size = 0UL;
-
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ins.find(input_names[i]);
 
@@ -293,7 +291,6 @@ void BuildDygraphPhiKernelContext(
           tensor_vector.emplace_back(&t);
         }
         kernel_ctx->EmplaceBackInputsWithoutSetRange(tensor_vector);
-        tensor_array_size = tensor_array.size();
         end_idx += tensor_array.size() - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -337,13 +334,15 @@ void BuildDygraphPhiKernelContext(
           paddle::SmallVector<phi::TensorBase*> tensor_vector;
           auto* tensor_array =
               var->template GetMutable<framework::LoDTensorArray>();
-          // See NOTE [ How to handle LoDTensorArray? ]
-          tensor_array->resize(tensor_array_size);
+          PADDLE_ENFORCE_GT(
+              tensor_array.size(), 0UL,
+              platform::errors::InvalidArgument(
+                  "The output TensorArray Variable contains no elements."));
           for (auto& t : *tensor_array) {
             tensor_vector.emplace_back(&t);
           }
           kernel_ctx->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-          end_idx += tensor_array_size - 1;
+          end_idx += tensor_array.size() - 1;
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",

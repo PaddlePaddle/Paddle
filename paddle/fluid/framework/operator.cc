@@ -1214,7 +1214,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       pt_kernel_name = pt_kernel_signature_->name;
       pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
     }
-
 #ifdef PADDLE_WITH_XPU
     bool is_xpu_unsupport =
         paddle::platform::is_xpu_place(kernel_type_->place_) &&
@@ -2042,8 +2041,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
                         "to the size of kernel attribute_defs (%d).",
                         attr_names.size(), attr_defs.size()));
 
-  size_t tensor_array_size = 0UL;
-
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ctx.inputs.find(input_names[i]);
 
@@ -2083,7 +2080,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
           tensor_vector.emplace_back(&t);
         }
         pt_kernel_context->EmplaceBackInputsWithoutSetRange(tensor_vector);
-        tensor_array_size = tensor_array.size();
         end_idx += tensor_array.size() - 1;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -2130,22 +2126,15 @@ void OperatorWithKernel::BuildPhiKernelContext(
           paddle::SmallVector<phi::TensorBase*> tensor_vector;
           auto* tensor_array =
               var->template GetMutable<framework::LoDTensorArray>();
-          // NOTE(chenweihang): [ How to handle LoDTensorArray? ]
-          // LoDTensorArray is a flexible output type that allows tensor to be
-          // created inside the kernel, which makes us unable to know its output
-          // size in advance. If we create a new TensorArray type and let it
-          // inherit TensorBase, it can also be supported, but this is too ugly!
-          // For now, assume that the input and output LoDTensorArray and the
-          // input LoDTensorArray have the same size. I know that this does not
-          // fit all situations (such as slice), but it needs to be able to
-          // support some kernels (such as assign, reverse) to be able to
-          // migrate.
-          tensor_array->resize(tensor_array_size);
+          PADDLE_ENFORCE_GT(
+              tensor_array.size(), 0UL,
+              platform::errors::InvalidArgument(
+                  "The output TensorArray Variable contains no elements."));
           for (auto& t : *tensor_array) {
             tensor_vector.emplace_back(&t);
           }
           pt_kernel_context->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-          end_idx += tensor_array_size - 1;
+          end_idx += tensor_array.size() - 1;
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
