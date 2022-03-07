@@ -83,7 +83,7 @@ $$
 namespace ops = paddle::operators;
 namespace ops = paddle::operators;
 DELCARE_INFER_SHAPE_FUNCTOR(adadelta, AdadeltaInferMetaFunctor,
-                            PT_INFER_META(phi::AdadeltaInferMeta));
+                            PD_INFER_META(phi::AdadeltaInferMeta));
 REGISTER_OPERATOR(
     adadelta, ops::AdadeltaOp, ops::AdadeltaOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
