@@ -848,7 +848,7 @@ class TheOnePSRuntime(RuntimeBase):
             print("init params:", idx, table_id, var_names)
             self._worker.push_dense_params(scope, table_id, var_names)
 
-    def _pull_dense(self, scopes, send_ctx, recv_map):
+    def _pull_all_dense(self, scopes, send_ctx, recv_map):
         for name, ctx in send_ctx.items():
             if ctx.is_sparse():
                 continue
@@ -856,7 +856,18 @@ class TheOnePSRuntime(RuntimeBase):
             scope = scopes[idx]
             table_id = ctx.table_id()
             var_names = recv_map[table_id]
-            print("pull dense:", idx, table_id, var_names)
+            print("pull all dense:", idx, table_id, var_names)
+            self._worker.pull_dense_params(scope, table_id, var_names)
+
+    def _pull_dense(self, program, scope, send_ctx, recv_map):
+        for name, ctx in send_ctx.items():
+            if ctx.is_sparse():
+                continue
+            if ctx.program_id() != id(program):
+                continue
+            table_id = ctx.table_id()
+            var_names = recv_map[table_id]
+            print("pull dense:", table_id, var_names)
             self._worker.pull_dense_params(scope, table_id, var_names)
 
     def _init_worker(self, scopes=None):
@@ -967,11 +978,12 @@ class TheOnePSRuntime(RuntimeBase):
         if len(self.origin_main_programs) != len(scopes):
             raise VauleError("len(programs) != len(scopes)")
 
+        self.scopes = scopes
         if not is_test:
             if role_id == 0:
                 self._init_params(scopes, send_ctx, dense_map)
             fleet.util.barrier()
-        self._pull_dense(scopes, send_ctx, dense_map)
+        self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
         # if not self._communicator.is_running():
@@ -1198,7 +1210,11 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save() function, executor must be as Executor type")
 
         import paddle
-        program = self.origin_main_program if main_program is None else main_program
+        program = self.origin_main_programs[
+            0] if main_program is None else main_program
+        _, _, idx = get_program_by_id(self.context, id(program))
+        scope = self.scopes[idx]
+        print("save inference model scope idx:", idx)
 
         if isinstance(program, CompiledProgram):
             raise TypeError(
@@ -1227,12 +1243,14 @@ class TheOnePSRuntime(RuntimeBase):
         sparse_names = self._save_sparse_params(executor, dirname, sparses,
                                                 main_program, mode)
 
-        denses = get_the_one_recv_context(
+        dense_map = get_the_one_recv_context(
+            self.context, split_dense_table=self.is_heter_ps_mode)
+        send_ctx = get_the_one_send_context(
             self.context,
-            is_dense=True,
             split_dense_table=self.is_heter_ps_mode,
-            use_origin_program=True)
-        self._communicator.pull_dense(denses)
+            use_origin_program=self.is_heter_ps_mode,
+            ep_list=self.endpoints)
+        self._pull_dense(program, scope, send_ctx, dense_map)
 
         generate_vars = self.context[
             "user_defined_strategy"].trainer_desc_configs["stat_var_names"]
@@ -1243,7 +1261,7 @@ class TheOnePSRuntime(RuntimeBase):
                 infer_program.list_vars()))
 
         for var in remaining_vars:
-            tensor = var.get_value()
+            tensor = var.get_value(scope)
             paddle.save(
                 tensor,
                 os.path.join(model_path, var.name),
