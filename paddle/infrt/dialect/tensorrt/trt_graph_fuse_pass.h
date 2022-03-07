@@ -15,7 +15,6 @@
 #pragma once
 #include <mlir/Pass/Pass.h>
 #include "paddle/infrt/dialect/infrt_base.h"
-#include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
 namespace trt {
@@ -57,9 +56,7 @@ namespace trt {
 class TRTGraphFusePass
     : public mlir::PassWrapper<TRTGraphFusePass, mlir::FunctionPass> {
  public:
-  void getDependentDialects(mlir::DialectRegistry &registry) const override {
-    registry.insert<TensorRTDialect, ::infrt::dialect::INFRTDialect>();
-  }
+  void getDependentDialects(mlir::DialectRegistry &registry) const override {}
   ::llvm::StringRef getName() const override { return "trtGraphFusePass"; }
   void runOnFunction() override;
 };
