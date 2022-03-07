@@ -17,6 +17,7 @@ import numpy as np
 from paddle import _C_ops
 from paddle.fluid.framework import _test_eager_guard, Variable
 from paddle.fluid import core
+from paddle.fluid.layers.utils import _hash_with_id
 
 import unittest
 
@@ -82,7 +83,7 @@ class TestRunProgram(unittest.TestCase):
             scope = core.Scope()
             attrs = ('global_block', program.desc.block(0), 'start_op_index', 0,
                      'end_op_index', main_program.desc.block(0).op_size(),
-                     'is_test', False, 'program_id', id(program))
+                     'is_test', False, 'program_id', _hash_with_id(program))
 
             _C_ops.run_program([x_t, y_t], [fake_var], [out_t], [scope],
                                [fake_var], *attrs)
