@@ -96,8 +96,8 @@ class __reduce_meanMaker__ : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
 };
 
-DELCARE_INFER_SHAPE_FUNCTOR(reduce_mean, ReduceMeanInferShapeFunctor,
-                            PT_INFER_META(phi::MeanRawInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_mean, ReduceMeanInferShapeFunctor,
+                            PD_INFER_META(phi::MeanRawInferMeta));
 
 REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
