@@ -493,13 +493,9 @@ using ReluGradFunctor = phi::funcs::ReluGradFunctor<T>;
 
 template <typename T>
 using ReluGradGradFunctor = phi::funcs::ReluGradGradFunctor<T>;
+
 template <typename T>
-struct ReluCUDAFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.cwiseMax(static_cast<T>(0));
-  }
-};
+using ReluCUDAFunctor = phi::funcs::ReluCUDAFunctor<T>;
 
 // tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
 template <typename T>

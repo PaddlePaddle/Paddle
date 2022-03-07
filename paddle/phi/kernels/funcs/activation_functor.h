@@ -463,13 +463,13 @@ struct ReluCPUFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// template <typename T>
-// struct ReluCUDAFunctor : public BaseActivationFunctor<T> {
-//   template <typename Device, typename X, typename Out>
-//   void operator()(Device d, X x, Out out) const {
-//     out.device(d) = x.cwiseMax(static_cast<T>(0));
-//   }
-// };
+template <typename T>
+struct ReluCUDAFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.cwiseMax(static_cast<T>(0));
+  }
+};
 
 template <typename T>
 struct ReluGradFunctor : public BaseActivationFunctor<T> {
