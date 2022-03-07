@@ -129,8 +129,11 @@ DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+DECLARE_INFER_SHAPE_FUNCTOR(assign, AssignInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(assign, ops::AssignOp,
                   ops::AssignGradMaker<paddle::framework::OpDesc>,
                   ops::AssignGradMaker<paddle::imperative::OpBase>,
                   ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer,
-                  ops::AssignInferVarType);
+                  ops::AssignInferVarType, AssignInferShapeFunctor);

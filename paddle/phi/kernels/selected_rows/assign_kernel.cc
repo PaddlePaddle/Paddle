@@ -33,12 +33,16 @@ void AssignKernel(const Context& dev_ctx,
 }  // namespace sr
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(
-    assign_sr, CPU, ALL_LAYOUT, phi::AssignKernel<phi::CPUContext>, ALL_DTYPE) {
-}
+PD_REGISTER_GENERAL_KERNEL(assign_sr,
+                           CPU,
+                           ALL_LAYOUT,
+                           phi::sr::AssignKernel<phi::CPUContext>,
+                           ALL_DTYPE) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(
-    assign_sr, GPU, ALL_LAYOUT, phi::AssignKernel<phi::GPUContext>, ALL_DTYPE) {
-}
+PD_REGISTER_GENERAL_KERNEL(assign_sr,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::sr::AssignKernel<phi::GPUContext>,
+                           ALL_DTYPE) {}
 #endif

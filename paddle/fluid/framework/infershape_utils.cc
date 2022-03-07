@@ -123,6 +123,10 @@ class CompatMetaTensor : public phi::MetaTensor {
         return var->Get<phi::DenseTensor>().dims();
       } else if (var->IsType<phi::SelectedRows>()) {
         return var->Get<phi::SelectedRows>().dims();
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // use tensor array size as dims
+        auto& tensor_array = var->Get<framework::LoDTensorArray>();
+        return phi::make_ddim({tensor_array.size()});
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can get dims from DenseTensor or SelectedRows."));
@@ -172,6 +176,18 @@ class CompatMetaTensor : public phi::MetaTensor {
       } else if (var->IsType<phi::SelectedRows>()) {
         auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
         phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        auto* tensor_array = var->GetMutable<framework::LoDTensorArray>();
+        // block inplace using on LoDTensorArray
+        PADDLE_ENFORCE_EQ(
+            tensor_array->size(), 0UL,
+            platform::errors::InvalidArgument(
+                "The inplce operation on LodTensorArray is not allowed now."));
+        PADDLE_ENFORCE_EQ(dims.size(), 1UL,
+                          platform::errors::InvalidArgument(
+                              "LoDTensorArray can only have one dimension."));
+        // only set the array size for LoDTensorArray input
+        tensor_array->resize(dims[0]);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can set dims from DenseTensor or SelectedRows."));
