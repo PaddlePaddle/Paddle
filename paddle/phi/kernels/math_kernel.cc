@@ -208,6 +208,7 @@ PD_REGISTER_KERNEL(divide,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    complex64,
                    complex128) {}
 PD_REGISTER_KERNEL(multiply,
