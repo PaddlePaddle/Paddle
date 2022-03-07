@@ -80,6 +80,8 @@ using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
 #endif
 
+int AnalysisPredictor::clone_num_ = 1;
+
 namespace {
 bool IsPersistable(const framework::VarDesc *var) {
   if (var->Persistable() &&
@@ -1633,7 +1635,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->Init(scope_, inference_program_);
-  x->executor_->ResetTrtOps(++x->clone_num_);
+  x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
   return std::unique_ptr<PaddlePredictor>(x);
 }
 

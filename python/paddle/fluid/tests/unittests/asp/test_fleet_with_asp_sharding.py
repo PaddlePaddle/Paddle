@@ -98,7 +98,7 @@ class TestFleetWithASPSharding(unittest.TestCase):
         feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
         exe.run(startup_prog)
 
-        sparsity.prune_model(train_prog, sharding=True)
+        sparsity.prune_model(train_prog)
 
         data = (np.random.randn(64, 32), np.random.randint(2, size=(64, 1)))
         exe.run(train_prog, feed=feeder.feed([data]))

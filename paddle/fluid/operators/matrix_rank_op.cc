@@ -17,6 +17,7 @@
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/svd_helper.h"
+#include "paddle/phi/kernels/funcs/compare_functors.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
