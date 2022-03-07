@@ -25,8 +25,9 @@ DECLARE_bool(use_curand);
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/operators/index_impl.cu.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #endif
 
 namespace paddle {
@@ -206,21 +207,21 @@ void UniformRandom(const framework::ExecutionContext& context,
   if (gen_cuda->GetIsInitPy() && seed_flag) {
     if (FLAGS_use_curand) {
       using MT = typename details::MPTypeTrait<T>::Type;
-      distribution::uniform_distribution<MT> dist;
-      distribution::uniform_transform<MT> trans(min, max);
-      distribution::distribution_and_transform<T>(dev_cxt, tensor, dist, trans);
+      phi::funcs::uniform_distribution<MT> dist;
+      phi::funcs::uniform_real_transform<MT> trans(min, max);
+      phi::funcs::distribution_and_transform<T>(dev_cxt, tensor, dist, trans);
     } else {
       auto seed_offset = gen_cuda->IncrementOffset(1);
       int64_t gen_offset = size * seed_offset.second;
       auto func =
           UniformGeneratorOffset<T>(min, max, seed_offset.first, diag_num,
                                     diag_step, diag_val, gen_offset);
-      IndexKernel<T, UniformGeneratorOffset<T>>(dev_cxt, tensor, func);
+      phi::IndexKernel<T, UniformGeneratorOffset<T>>(dev_cxt, tensor, func);
     }
   } else {
     auto func =
         UniformGenerator<T>(min, max, seed, diag_num, diag_step, diag_val);
-    IndexKernel<T, UniformGenerator<T>>(dev_cxt, tensor, func);
+    phi::IndexKernel<T, UniformGenerator<T>>(dev_cxt, tensor, func);
   }
 }
 #endif

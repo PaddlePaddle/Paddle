@@ -69,8 +69,8 @@ class TruncGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace operators
 }  // namespace paddle
 
-DELCARE_INFER_SHAPE_FUNCTOR(trunc, TruncInferShapeFunctor,
-                            PT_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(trunc, TruncInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(trunc, ops::TruncOp, ops::TruncOpMaker,

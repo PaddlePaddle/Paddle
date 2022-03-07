@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
@@ -91,6 +92,10 @@ class ArgumentMappingContext {
 
   virtual bool IsDenseTensorOutput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
+
+  // use this function to mark it comes from InferShapeArgumentMappingContext
+  // and will be used in infershape
+  virtual bool IsForInferShape() const = 0;
 };
 
 }  // namespace phi
