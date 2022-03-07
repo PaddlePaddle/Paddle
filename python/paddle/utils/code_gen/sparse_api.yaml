@@ -1,5 +1,5 @@
 - sparse_api : conv3d
-  args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups)
+  args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm)
   output : Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor)
   kernel :
     func : sparse_conv3d

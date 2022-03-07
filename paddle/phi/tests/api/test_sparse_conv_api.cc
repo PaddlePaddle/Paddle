@@ -76,7 +76,7 @@ void TestConv3dBase(const std::vector<int>& indices,
 
   if (!std::is_same<T, phi::dtype::float16>::value) {
     auto outs = paddle::experimental::sparse::conv3d(
-        x, weight, paddings, dilations, strides, 1);
+        x, weight, paddings, dilations, strides, 1, false);
 
     auto out = std::dynamic_pointer_cast<phi::SparseCooTensor>(
         std::get<0>(outs).impl());

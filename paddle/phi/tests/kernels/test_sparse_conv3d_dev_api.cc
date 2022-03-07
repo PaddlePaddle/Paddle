@@ -64,7 +64,8 @@ void TestConv3dBase(const std::vector<int>& indices,
                     const float diff = 1e-3,
                     const bool backward = false,
                     const std::vector<T> features_grad = {},
-                    const std::vector<T> kernel_grad = {}) {
+                    const std::vector<T> kernel_grad = {},
+                    const bool subm = false) {
   phi::CPUContext dev_ctx_cpu;
   dev_ctx_cpu.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -114,6 +115,7 @@ void TestConv3dBase(const std::vector<int>& indices,
                                             dilations,
                                             strides,
                                             1,
+                                            subm,
                                             &rulebook);
 
     ASSERT_EQ(correct_out_dims.size(), out.dims().size());
@@ -155,6 +157,7 @@ void TestConv3dBase(const std::vector<int>& indices,
 
 // test gpu
 #if defined(PADDLE_WITH_CUDA)
+  if (subm) return;
   phi::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
@@ -208,6 +211,7 @@ void TestConv3dBase(const std::vector<int>& indices,
                                             dilations,
                                             strides,
                                             1,
+                                            subm,
                                             &d_rulebook);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
@@ -270,7 +274,8 @@ void TestConv3d(const std::vector<int>& indices,
                 const float diff = 1e-3,
                 const bool backward = false,
                 const std::vector<float> features_grad = {},
-                const std::vector<float> kernel_grad = {}) {
+                const std::vector<float> kernel_grad = {},
+                const bool subm = false) {
   // test float
   TestConv3dBase<float>(indices,
                         features,
@@ -287,7 +292,8 @@ void TestConv3d(const std::vector<int>& indices,
                         diff,
                         backward,
                         features_grad,
-                        kernel_grad);
+                        kernel_grad,
+                        subm);
   // test double
   TestConv3dBase<double>(indices,
                          cast<float, double>(features),
@@ -304,7 +310,8 @@ void TestConv3d(const std::vector<int>& indices,
                          diff,
                          backward,
                          cast<float, double>(features_grad),
-                         cast<float, double>(kernel_grad));
+                         cast<float, double>(kernel_grad),
+                         subm);
 }
 
 TEST(DEV_API, sparse_conv3d) {
@@ -670,31 +677,22 @@ TEST(DEV_API, sparse_conv2d_subm) {
   const int out_channels = 1;
   DDim x_dims = {1, 1, 4, 5, in_channels};
   DDim kernel_dims = {1, 3, 3, in_channels, out_channels};
-  DDim out_dims = {1, 1, 3, 3, out_channels};
-  std::vector<int> paddings = {0, 0, 0};
+  DDim out_dims = {1, 1, 4, 5, out_channels};
+  std::vector<int> paddings = {0, 1, 1};
   std::vector<int> strides = {1, 1, 1};
   std::vector<int> dilations = {1, 1, 1};
 
   const int non_zero_num = 2;
-  std::vector<int> indices_flatten = {0, 0, 0, 0, 3, 0, 2, 3};
+  std::vector<int> indices_flatten = {0, 0, 0, 0, 0, 3, 3, 2};
 
-  std::vector<float> features = {-0.79394531, -0.3125, -0.55029297};
+  std::vector<float> features = {0.8854, -0.1999};
   // 3*3*3=27
-  std::vector<float> kernel = {0.65820312,
-                               0.75048828,
-                               0.21411133,
-                               0.17370605,
-                               0.85546875,
-                               0.53076172,
-                               0.28833008,
-                               0.71044922,
-                               0.00659943};
+  std::vector<float> kernel = {
+      0.6792, 0.8252, 0.9364, 0.9460, 0.6564, 0.7999, 0.2013, 0.3812, 0.5474};
 
-  std::vector<int> out_indices_flatten = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                          0, 0, 2, 2, 2, 1, 2, 0, 1, 2};
+  std::vector<int> out_indices_flatten = {0, 0, 0, 0, 0, 3, 3, 2};
 
-  std::vector<float> out_features = {
-      -0.17004, -0.71338, -0.00206, -0.22205, -0.09009};
+  std::vector<float> out_features = {0.5812, -0.1312};
 
   TestConv3d(indices_flatten,
              features,
@@ -707,7 +705,56 @@ TEST(DEV_API, sparse_conv2d_subm) {
              non_zero_num,
              paddings,
              strides,
-             dilations);
+             dilations,
+             1e-3,
+             false,
+             features,
+             kernel,
+             true);
 }
+
+TEST(DEV_API, sparse_conv3d_subm) {
+  const int in_channels = 1;
+  const int out_channels = 1;
+  DDim x_dims = {1, 4, 4, 5, in_channels};
+  DDim kernel_dims = {3, 3, 3, in_channels, out_channels};
+  DDim out_dims = {1, 4, 4, 5, out_channels};
+  std::vector<int> paddings = {1, 1, 1};
+  std::vector<int> strides = {1, 1, 1};
+  std::vector<int> dilations = {1, 1, 1};
+
+  const int non_zero_num = 3;
+  std::vector<int> indices_flatten = {0, 0, 0, 1, 3, 3, 2, 0, 2, 0, 3, 1};
+
+  std::vector<float> features = {-0.9578, 0.1572, 0.1036};
+  // 3*3*3=27
+  std::vector<float> kernel = {
+      0.1367, 0.4534, 0.2138, 0.8264, 0.7534, 0.3270, 0.2880, 0.1562, 0.7770,
+      0.6902, 0.1981, 0.1369, 0.6582, 0.7582, 0.5640, 0.8894, 0.7350, 0.1845,
+      0.6892, 0.3654, 0.6076, 0.0326, 0.8412, 0.5289, 0.9824, 0.8235, 0.9802};
+
+  std::vector<int> out_indices_flatten = {0, 0, 0, 1, 3, 3, 2, 0, 2, 0, 3, 1};
+
+  std::vector<float> out_features = {-0.7262, 0.1192, 0.0785};
+
+  TestConv3d(indices_flatten,
+             features,
+             x_dims,
+             kernel,
+             kernel_dims,
+             out_indices_flatten,
+             out_features,
+             out_dims,
+             non_zero_num,
+             paddings,
+             strides,
+             dilations,
+             1e-3,
+             false,
+             features,
+             kernel,
+             true);
+}
+
 }  // namespace tests
 }  // namespace phi
