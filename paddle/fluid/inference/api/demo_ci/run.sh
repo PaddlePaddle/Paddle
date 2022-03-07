@@ -21,7 +21,8 @@ TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
 USE_TENSORRT=$5
 TENSORRT_ROOT_DIR=$6 # TensorRT root dir, default to /usr
-MSVC_STATIC_CRT=$7
+WITH_ONNXRUNTIME=$7
+MSVC_STATIC_CRT=$8
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
 
@@ -36,6 +37,26 @@ if [ $3 == ON ]; then
   use_gpu_list='true false'
 else
   use_gpu_list='false'
+fi
+
+mkdir -p $DATA_DIR
+cd $DATA_DIR
+
+if [ $7 == ON ]; then
+  ONNXRUNTIME_LIB=${inference_install_dir}/third_party/install/onnxruntime/lib
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${ONNXRUNTIME_LIB}
+  PADDLE2ONNX_LIB=${inference_install_dir}/third_party/install/paddle2onnx/lib
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE2ONNX_LIB}
+  #download model
+  mkdir -p MobileNetV2
+  cd MobileNetV2
+  if [[ -e "MobileNetV2.inference.model.tar.gz" ]]; then
+    echo "MobileNetV2.inference.model.tar.gz has been downloaded."
+  else
+    wget -q --no-proxy http://paddle-inference-dist.bj.bcebos.com/MobileNetV2.inference.model.tar.gz
+    tar xzf *.tar.gz
+  fi
+  cd ..
 fi
 
 PREFIX=inference-vis-demos%2F
@@ -58,8 +79,7 @@ function download() {
   fi
   cd ..
 }
-mkdir -p $DATA_DIR
-cd $DATA_DIR
+
 vis_demo_list='se_resnext50 ocr mobilenet'
 for vis_demo_name in $vis_demo_list; do
   download $vis_demo_name
@@ -208,6 +228,26 @@ for WITH_STATIC_LIB in ON OFF; do
         --refer=$DATA_DIR/mobilenet/result.txt 
       if [ $? -ne 0 ]; then
         echo "trt demo trt_mobilenet_demo runs fail."
+        exit 1
+      fi
+    fi
+
+    # --------onnxruntime mobilenetv2 on linux/mac------
+    if [ $WITH_ONNXRUNTIME == ON ]; then
+      rm -rf *
+      cmake .. -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=onnxruntime_mobilenet_demo \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
+        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
+      make -j$(nproc)
+      ./onnxruntime_mobilenet_demo \
+        --modeldir=$DATA_DIR/MobileNetV2/MobileNetV2
+      if [ $? -ne 0 ]; then
+        echo "onnxruntime demo onnxruntime_mobilenet_demo runs fail."
         exit 1
       fi
     fi
