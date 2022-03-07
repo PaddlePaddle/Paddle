@@ -535,6 +535,41 @@ class TestPyLayer(unittest.TestCase):
             self.func_test_return_to_tensor()
         self.func_test_return_to_tensor()
 
+    def test_materialize_grads(self):
+        with _test_eager_guard():
+
+            class Tanh(EagerPyLayer):
+                @staticmethod
+                def forward(ctx, x):
+                    return x, x + x
+
+                @staticmethod
+                def backward(ctx, grad, grad2):
+                    self.assertEqual(grad2, paddle.zeros([1]))
+                    return grad
+
+            x = paddle.ones([1], dtype="float64")
+            x.stop_gradient = False
+            Tanh.apply(x)[0].backward()
+
+    def test_dont_materialize_grads(self):
+        with _test_eager_guard():
+
+            class Tanh(EagerPyLayer):
+                @staticmethod
+                def forward(ctx, x):
+                    ctx.set_materialize_grads(False)
+                    return x, x + x
+
+                @staticmethod
+                def backward(ctx, grad, grad2):
+                    self.assertIsNone(grad2)
+                    return grad
+
+            x = paddle.ones([1], dtype="float64")
+            x.stop_gradient = False
+            Tanh.apply(x)[0].backward()
+
 
 class TestPyLayerReturnType(unittest.TestCase):
     def test_forward_args_fake_tensor(self):

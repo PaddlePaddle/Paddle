@@ -21,6 +21,9 @@ namespace experimental {
 namespace detail {
 
 BackendSet GetTensorBackendSet(const Tensor& t) {
+  if (!t.initialized()) {
+    return BackendSet(paddle::experimental::Backend::CPU);
+  }
   BackendSet backend_set(phi::TransToPhiBackend(t.inner_place()));
   switch (t.layout()) {
     case DataLayout::MKLDNN:

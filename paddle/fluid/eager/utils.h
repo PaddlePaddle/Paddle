@@ -125,6 +125,8 @@ class EagerUtils {
       const paddle::experimental::Tensor& target);
   static std::vector<AutogradMeta*> nullable_autograd_meta(
       const std::vector<paddle::experimental::Tensor>& targets);
+  static std::vector<AutogradMeta*> nullable_autograd_meta(
+      const std::vector<paddle::experimental::Tensor*>& targets);
   static AutogradMeta* unsafe_autograd_meta(
       const paddle::experimental::Tensor& target);
   static std::vector<AutogradMeta*> unsafe_autograd_meta(

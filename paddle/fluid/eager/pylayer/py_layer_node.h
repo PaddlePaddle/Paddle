@@ -19,6 +19,8 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 namespace egr {
 
@@ -41,30 +43,36 @@ class GradNodePyLayer : public GradNodeBase {
     return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
   }
 
-  /**
-   * Register ReduceHook
-   * **/
-  void RegisterReduceHook(std::shared_ptr<TensorVoidHook>&& hook);
-
-  /**
-   * Apply ReduceHook here
-   * **/
-  inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
-  void ApplyReduceHooks();
-
   // for paddle.grad get result
   PyObject* GetMutableOutputs() { return outputs_; }
 
+  void SaveForwardOutputsMeta(
+      const std::vector<std::vector<paddle::experimental::Tensor*>>&
+          outputs_tensor) {
+    forward_outputs_meta_.resize(outputs_tensor.size());
+    forward_outputs_place_.resize(outputs_tensor.size());
+    for (size_t i = 0; i < outputs_tensor.size(); i++) {
+      forward_outputs_meta_[i].reserve(outputs_tensor[i].size());
+      forward_outputs_place_[i].reserve(outputs_tensor[i].size());
+      for (auto tensor : outputs_tensor[i]) {
+        if (tensor->is_dense_tensor()) {
+          forward_outputs_meta_[i].push_back(
+              static_cast<phi::DenseTensor*>(tensor->impl().get())->meta());
+        } else {
+          forward_outputs_meta_[i].emplace_back();
+        }
+        forward_outputs_place_[i].emplace_back(
+            phi::TransToPhiBackend(tensor->inner_place()));
+      }
+    }
+  }
+
  private:
-  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
-
-  std::function<paddle::experimental::Tensor(
-      const paddle::experimental::Tensor&)>
-      retain_grad_hook_;
-
-  std::vector<std::shared_ptr<TensorVoidHook>> reduce_hooks_;
   PyObject* ctx_{nullptr};
   PyObject* outputs_{nullptr};
+  std::vector<std::vector<phi::DenseTensorMeta>> forward_outputs_meta_;
+  std::vector<std::vector<paddle::experimental::Backend>>
+      forward_outputs_place_;
 };
 
 }  // namespace egr

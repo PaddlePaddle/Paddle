@@ -112,6 +112,8 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
 
   std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
   inputs_autograd_meta.reserve(inputs_size);
+  std::vector<std::vector<paddle::experimental::Tensor*>> inputs_tensor;
+  inputs_tensor.reserve(inputs_size);
   ctx->forward_input_tensor_is_duplicable.clear();
   ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
   for (size_t i = 0; i < inputs_size; i++) {
@@ -125,24 +127,57 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
           reinterpret_cast<TensorObject*>(obj)->tensor);
       inputs_autograd_meta.push_back({autograd_meta});
+      inputs_tensor.push_back(
+          {&(reinterpret_cast<TensorObject*>(obj)->tensor)});  // NOLINT
       bool stop_gradient =
           autograd_meta == nullptr ? true : autograd_meta->StopGradient();
       if (!stop_gradient) {
         require_any_grad = true;
       }
       ctx->forward_input_tensor_is_duplicable.push_back(false);
-    } else if ((PyList_Check(obj) && IsEagerTensor(PyList_GetItem(obj, 0))) ||
-               (PyTuple_Check(obj) && IsEagerTensor(PyTuple_GetItem(obj, 0)))) {
-      auto tensors = CastPyArg2VectorOfTensor(obj, i);
-      auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensors);
-      for (auto iter : autograd_meta) {
-        bool stop_gradient = iter == nullptr ? true : iter->StopGradient();
-        if (!stop_gradient) {
-          require_any_grad = true;
+    } else if (PyList_Check(obj)) {
+      std::vector<paddle::experimental::Tensor*> tensors;
+      Py_ssize_t len = PyList_Size(obj);
+      for (Py_ssize_t i = 0; i < len; i++) {
+        if (IsEagerTensor(PyList_GetItem(obj, i))) {
+          tensors.push_back(&(
+              reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))->tensor));
         }
       }
-      inputs_autograd_meta.push_back(autograd_meta);
-      ctx->forward_input_tensor_is_duplicable.push_back(true);
+      if (!tensors.empty()) {
+        auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensors);
+        for (auto iter : autograd_meta) {
+          bool stop_gradient = iter == nullptr ? true : iter->StopGradient();
+          if (!stop_gradient) {
+            require_any_grad = true;
+          }
+        }
+        inputs_autograd_meta.push_back(autograd_meta);
+        inputs_tensor.push_back(tensors);
+        ctx->forward_input_tensor_is_duplicable.push_back(true);
+      }
+    } else if (PyTuple_Check(obj)) {
+      std::vector<paddle::experimental::Tensor*> tensors;
+      Py_ssize_t len = PyTuple_Size(obj);
+      for (Py_ssize_t i = 0; i < len; i++) {
+        if (IsEagerTensor(PyTuple_GetItem(obj, i))) {
+          tensors.push_back(
+              &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))
+                    ->tensor));
+        }
+      }
+      if (!tensors.empty()) {
+        auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(tensors);
+        for (auto iter : autograd_meta) {
+          bool stop_gradient = iter == nullptr ? true : iter->StopGradient();
+          if (!stop_gradient) {
+            require_any_grad = true;
+          }
+        }
+        inputs_autograd_meta.push_back(autograd_meta);
+        inputs_tensor.push_back(tensors);
+        ctx->forward_input_tensor_is_duplicable.push_back(true);
+      }
     }
 
     if (!kwargs) {
@@ -243,12 +278,16 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
         inputs_autograd_meta.size());
     ctx->grad_node = grad_node;
 
+    if (ctx->materialize_grads) {
+      grad_node->SaveForwardOutputsMeta(outputs_tensor);
+    }
+
     for (size_t i = 0; i < inputs_autograd_meta.size(); i++) {
       if (ctx->forward_input_tensor_is_duplicable[i]) {
-        grad_node->SetGradOutMeta(&inputs_autograd_meta[i], i);
+        grad_node->SetGradOutMeta(inputs_tensor[i], i);
         grad_node->AddEdges(&inputs_autograd_meta[i], i);
       } else {
-        grad_node->SetGradOutMeta(inputs_autograd_meta[i][0], i);
+        grad_node->SetGradOutMeta(*inputs_tensor[i][0], i);
         grad_node->AddEdges(inputs_autograd_meta[i][0], i);
       }
     }
@@ -257,12 +296,12 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       if (ctx->forward_output_tensor_is_duplicable[i]) {
         egr::EagerUtils::SetOutRankWithSlot(&outputs_autograd_meta[i], i);
         egr::EagerUtils::SetHistory(&outputs_autograd_meta[i], grad_node);
-        grad_node->SetGradInMeta(&outputs_autograd_meta[i], i);
+        grad_node->SetGradInMeta(outputs_tensor[i], i);
         egr::EagerUtils::CheckAndRetainGrad(outputs_tensor[i]);
       } else {
         egr::EagerUtils::SetOutRankWithSlot(outputs_autograd_meta[i][0], i);
         egr::EagerUtils::SetHistory(outputs_autograd_meta[i][0], grad_node);
-        grad_node->SetGradInMeta(outputs_autograd_meta[i][0], i);
+        grad_node->SetGradInMeta(*outputs_tensor[i][0], i);
         egr::EagerUtils::CheckAndRetainGrad(*outputs_tensor[i][0]);
       }
     }

@@ -176,6 +176,49 @@ void GradNodeBase::SetGradInMeta(
   }
 }
 
+void GradNodeBase::SetGradInMeta(
+    const std::vector<paddle::experimental::Tensor*>& fwd_out,
+    size_t slot_rank) {
+  size_t slot_size = fwd_out.size();
+  PADDLE_ENFORCE_LE(
+      slot_rank, (bwd_in_meta_.size() - 1),
+      paddle::platform::errors::InvalidArgument(
+          "Slot Rank should less equal than bwd_in_meta_ size, since "
+          "bwd_in_meta_ is designed to hold as same num as backward "
+          "inputs."));
+  auto& metas = bwd_in_meta_.at(slot_rank);
+  // Init stop gradient vector before use to avoid push back
+  metas.resize(slot_size);
+  for (size_t i = 0; i < slot_size; i++) {
+    auto& meta = metas[i];
+    const auto& fwd_out_tensor = *fwd_out[i];
+    auto* fwd_out_meta =
+        egr::EagerUtils::nullable_autograd_meta(fwd_out_tensor);
+    PADDLE_ENFORCE_NOT_NULL(fwd_out_meta,
+                            paddle::platform::errors::PreconditionNotMet(
+                                "Bwd_in_meta should only be called while "
+                                "autograd_meta is not null. If you got this "
+                                "error, it indicates bugs in framework."));
+    if (fwd_out_meta->StopGradient()) {
+      // Set Stop Gradient only when its true or non-initialized autograd_meta,
+      // since all default value is false.
+      meta.SetStopGradient(fwd_out_meta->StopGradient());
+    }
+
+    // Record TensorMeta
+    if (phi::DenseTensor::classof(fwd_out_tensor.impl().get())) {
+      // Only Copy Meta
+      phi::DenseTensor* dense_tensor =
+          static_cast<phi::DenseTensor*>(fwd_out_tensor.impl().get());
+      meta.SetTensorMeta(dense_tensor->meta());
+      if (paddle::framework::IsComplexType(
+              paddle::framework::TransToProtoVarType(dense_tensor->type()))) {
+        need_complex_to_real_ = true;
+      }
+    }
+  }
+}
+
 void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                                   size_t slot_rank) {
   auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in);
@@ -220,6 +263,41 @@ void GradNodeBase::SetGradOutMeta(
   metas.resize(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
     const auto& fwd_in_tensor = fwd_in[i];
+    auto& meta = metas[i];
+    auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in_tensor);
+    if (fwd_in_meta) {
+      // Set Stop Gradient only when its true or non-initialized autograd_meta,
+      // since all default value is false.
+      meta.SetStopGradient(fwd_in_meta->StopGradient());
+    }
+
+    // Record TensorMeta
+    if (fwd_in_tensor.impl() && fwd_in_tensor.impl().get()) {
+      if (phi::DenseTensor::classof(fwd_in_tensor.impl().get())) {
+        // Only Copy Meta
+        phi::DenseTensor* dense_tensor =
+            static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
+        meta.SetTensorMeta(dense_tensor->meta());
+      }
+    }
+  }
+}
+
+void GradNodeBase::SetGradOutMeta(
+    const std::vector<paddle::experimental::Tensor*>& fwd_in,
+    size_t slot_rank) {
+  size_t slot_size = fwd_in.size();
+  PADDLE_ENFORCE_LE(
+      slot_rank, (bwd_out_meta_.size() - 1),
+      paddle::platform::errors::InvalidArgument(
+          "Slot Rank should less equal than bwd_out_meta_ size, "
+          "since bwd_out_meta_ is designed to hold as same num as "
+          "backward outputs."));
+  auto& metas = bwd_out_meta_.at(slot_rank);
+  // Init stop gradient vector before use to avoid push back
+  metas.resize(slot_size);
+  for (size_t i = 0; i < slot_size; i++) {
+    const auto& fwd_in_tensor = *fwd_in[i];
     auto& meta = metas[i];
     auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in_tensor);
     if (fwd_in_meta) {

@@ -52,10 +52,38 @@ operator()(
   auto backward_args = PyTuple_New(grads.size());
   for (size_t i = 0; i < grads.size(); i++) {
     if (ctx->forward_output_tensor_is_duplicable[i]) {
-      PyTuple_SET_ITEM(backward_args, i, paddle::pybind::ToPyObject(grads[i]));
+      PyObject* pylist = PyList_New((Py_ssize_t)grads[i].size());
+      for (size_t j = 0; j < grads[i].size(); j++) {
+        if (ctx->materialize_grads && !grads[i][j].initialized()) {
+          paddle::experimental::Tensor tensor_tmp;
+          auto dense_tensor = std::make_shared<phi::DenseTensor>();
+          dense_tensor->set_meta(forward_outputs_meta_[i][j]);
+          tensor_tmp.set_impl(dense_tensor);
+          PyList_SET_ITEM(
+              pylist, static_cast<Py_ssize_t>(i),
+              paddle::pybind::ToPyObject(paddle::experimental::zeros_like(
+                  tensor_tmp, tensor_tmp.dtype(),
+                  forward_outputs_place_[i][j])));
+        } else {
+          PyList_SET_ITEM(pylist, static_cast<Py_ssize_t>(i),
+                          paddle::pybind::ToPyObject(grads[i][0], true));
+        }
+      }
+      PyTuple_SET_ITEM(backward_args, i, pylist);
     } else {
-      PyTuple_SET_ITEM(backward_args, i,
-                       paddle::pybind::ToPyObject(grads[i][0]));
+      if (ctx->materialize_grads && !grads[i][0].initialized()) {
+        paddle::experimental::Tensor tensor_tmp;
+        auto dense_tensor = std::make_shared<phi::DenseTensor>();
+        dense_tensor->set_meta(forward_outputs_meta_[i][0]);
+        tensor_tmp.set_impl(dense_tensor);
+        PyTuple_SET_ITEM(
+            backward_args, i,
+            paddle::pybind::ToPyObject(paddle::experimental::zeros_like(
+                tensor_tmp, tensor_tmp.dtype(), forward_outputs_place_[i][0])));
+      } else {
+        PyTuple_SET_ITEM(backward_args, i,
+                         paddle::pybind::ToPyObject(grads[i][0], true));
+      }
     }
   }
 
@@ -101,7 +129,7 @@ operator()(
   for (size_t i = 0; i < ctx->forward_input_tensor_is_duplicable.size(); i++) {
     if (i < outputs_size) {
       PyObject* obj = PyTuple_GET_ITEM(outputs_tuple, i);
-      if (this->OutputMeta()[i].IsStopGradient(0)) {
+      if (this->OutputMeta()[i][0].IsStopGradient()) {
         PADDLE_ENFORCE_EQ(
             obj, Py_None,
             paddle::platform::errors::InvalidArgument(
@@ -118,7 +146,7 @@ operator()(
       }
     } else {
       PADDLE_ENFORCE_EQ(
-          this->OutputMeta()[i].IsStopGradient(0), true,
+          this->OutputMeta()[i][0].IsStopGradient(), true,
           paddle::platform::errors::InvalidArgument(
               "%s's backward function should not return empyt at %d position.",
               name(), i));
@@ -127,16 +155,5 @@ operator()(
   }
 
   return grad_out;
-}
-
-void GradNodePyLayer::RegisterReduceHook(
-    std::shared_ptr<TensorVoidHook>&& hook) {
-  reduce_hooks_.emplace_back(std::move(hook));
-}
-
-void GradNodePyLayer::ApplyReduceHooks() {
-  for (auto& hook : reduce_hooks_) {
-    (*hook)();
-  }
 }
 }  // namespace egr

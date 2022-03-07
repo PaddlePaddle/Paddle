@@ -417,7 +417,12 @@ PyObject* ToPyObject(const std::string& value) {
   return PyUnicode_FromString(value.c_str());
 }
 
-PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
+PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+                     bool return_py_none_if_not_initialize) {
+  if (return_py_none_if_not_initialize && !value.initialized()) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
   PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);

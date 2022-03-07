@@ -400,6 +400,61 @@ class EagerPyLayerContext(object):
         """
         return self.container
 
+    def mark_dirty(self, *args):
+        self.dirty_tensors = args
+
+    def mark_non_differentiable(self, *args):
+        self.non_differentiable = args
+
+    def set_materialize_grads(self, value: bool):
+        """
+        Sets whether to materialize output grad tensors. Default is True.
+
+        This should be called only from inside the `forward` method.
+
+        If True, undefined output grad tensors will be expanded to tensors full
+        of zeros prior to calling the `backward` method.
+
+        If False, undefined output grad tensors will be None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+                import numpy as np
+
+                class Tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        return x, x+x
+
+                    @staticmethod
+                    def backward(ctx, grad, grad2):
+                        assert np.equal(grad2.numpy(), paddle.zeros([1]).numpy())
+                        return grad
+
+                class Tanh2(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        ctx.set_materialize_grads(False)
+                        return x, x+x
+
+                    @staticmethod
+                    def backward(ctx, grad, grad2):
+                        assert grad2==None
+                        return grad
+
+                x = paddle.ones([1], dtype="float64")
+                x.stop_gradient = False
+                Tanh.apply(x)[0].backward()
+
+                x2 = paddle.ones([1], dtype="float64")
+                x2.stop_gradient = False
+                Tanh2.apply(x2)[0].backward()
+        """
+        self.materialize_grads = value
+
 
 class EagerPyLayerBackward(core.eager.PyLayer, EagerPyLayerContext):
     def backward(self, *args):
