@@ -32,15 +32,6 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-// TODO(zhangkaihuo) replace this kernel with KP::InitWithDataIndex
-__global__ void InitByIndexKernel(const int n, int* out1, int* out2) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int i = tid; i < n; i += gridDim.x * blockDim.x) {
-    out1[i] = i;
-    out2[i] = i;
-  }
-}
-
 /**
  * @brief: update the out index and indices
  * unique_keys: save the index of the output feature list
