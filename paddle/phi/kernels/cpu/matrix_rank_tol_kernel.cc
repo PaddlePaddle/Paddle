@@ -17,16 +17,18 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/controlflow/compare_op.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/kernels/cpu/elementwise.h"
-// #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
+#include "paddle/phi/kernels/math_kernel.h"
 
 namespace phi {
 
@@ -104,12 +106,18 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   T rtol_T = 0;
   // DenseTensor atol_dense_tensor;
-  DenseTensor temp_tensor;
+  // DenseTensor temp_tensor;
   if (use_default_tol) {
-    paddle::framework::TensorFromVector<T>(
-        std::vector<T>{0}, dev_ctx, &temp_tensor);
-    atol_tensor = temp_tensor;
+    atol_dense_tensor = paddle::framework::TensorFromVector<T>(
+        std::vector<T>{0}, dev_ctx, &atol_tensor);
+    // atol_tensor = temp_tensor;
     rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
+  } else {
+    // const Scalar temp_tensor(tol);
+    // atol_dense_tensor = Full<float>(dev_ctx, {tol}, atol_tensor);
+    paddle::framework::atol_tensor<T>(
+        std::vector<T>{tol}, dev_ctx, &atol_tensor);
+    // atol_tensor = temp_tensor;
   }
 
   DenseTensor eigenvalue_tensor;
@@ -123,25 +131,30 @@ void MatrixRankTolKernel(const Context& dev_ctx,
     BatchSVD<T>(x_data, eigenvalue_data, batches, rows, cols, k);
   }
 
-  auto dito_T = math::DeviceIndependenceTensorOperations<
-      paddle::platform::CPUDeviceContext,
-      T>(context);
+  // auto dito_T = math::DeviceIndependenceTensorOperations<
+  //     paddle::platform::CPUDeviceContext,
+  //     T>(context);
   std::vector<int> max_eigenvalue_shape =
       phi::vectorize<int>(detail::RemoveLastDim(eigenvalue_tensor.dims()));
-  DenseTensor max_eigenvalue_tensor =
-      dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
+  DenseTensor max_eigenvalue_tensor;
+  //  =
+  //   dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
 
   DenseTensor temp_rtol_tensor;
   paddle::framework::TensorFromVector<T>(std::vector<T>{rtol_T},
                                          &temp_rtol_tensor);
-  DenseTensor rtol_tensor = dito_T.Mul(temp_rtol_tensor, max_eigenvalue_tensor);
+
+  DenseTensor rtol_tensor =
+      phi::Multiply<T>(dev_ctx, temp_rtol_tensor, max_eigenvalue_tensor);
+  // DenseTensor rtol_tensor = dito_T.Mul(temp_rtol_tensor,
+  // max_eigenvalue_tensor);
 
   DenseTensor tol_tensor;
   tol_tensor.Resize(detail::NewAxisDim(dim_out, k));
   dev_ctx.template Alloc<T>(&tol_tensor);
   // tol_tensor.mutable_data<T>(dim_out, context.GetPlace());
 
-  phi::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
+  funcs::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
       dev_ctx,
       atol_tensor,
       rtol_tensor,
@@ -159,30 +172,29 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   int axis = -1;
   if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
-    phi::ElementwiseCompute<paddle::operators::GreaterThanFunctor<T, int64_t>,
-                            T,
-                            int>(
+    funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int>(
         dev_ctx,
         eigenvalue_tensor,
         tol_tensor,
         axis,
-        paddle::operators::GreaterThanFunctor<T, int64_t>(),
+        funcs::GreaterThanFunctor<T, int64_t>(),
         &compare_result);
   } else {
-    phi::ElementwiseCompute<paddle::operators::LessThanFunctor<T, int64_t>,
-                            T,
-                            int>(
+    funcs::ElementwiseCompute<funcs::LessThanFunctor<T, int64_t>, T, int>(
         dev_ctx,
         eigenvalue_tensor,
         tol_tensor,
         axis,
-        paddle::operators::LessThanFunctor<T, int64_t>(),
+        funcs::LessThanFunctor<T, int64_t>(),
         &compare_result);
-    auto dito_int = math::DeviceIndependenceTensorOperations<
-        paddle::platform::CPUDeviceContext,
-        int64_t>(context);
+    // auto dito_int = math::DeviceIndependenceTensorOperations<
+    //     paddle::platform::CPUDeviceContext,
+    //     int64_t>(context);
     std::vector<int> result_shape = phi::vectorize<int>(dim_out);
-    DenseTensor result = dito_int.ReduceSum(compare_result, result_shape);
+    DenseTensor result;
+    ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
+        dev_ctx, compare_result, result, result_shape, true, false);
+    // DenseTensor result = dito_int.ReduceSum(compare_result, result_shape);
     out->ShareDataWith(result);
   }
 }

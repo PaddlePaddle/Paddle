@@ -18,18 +18,20 @@
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/controlflow/compare_op.h"
-#include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
-// #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/gpu/elementwise.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
+#include "paddle/phi/kernels/math_kernel.h"
 
 namespace phi {
 
@@ -314,12 +316,13 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MatrixRankKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      bool hermitian,
-                      bool use_default_tol,
-                      float tol,
-                      DenseTensor* out) {
+void MatrixRankTolKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& atol_tensor,
+                         bool hermitian,
+                         bool use_default_tol,
+                         float tol,
+                         DenseTensor* out) {
   auto* x_data = x.data<T>();
   dev_ctx.template Alloc<int64_t>(out);
 
@@ -333,20 +336,21 @@ void MatrixRankKernel(const Context& dev_ctx,
 
   // const DenseTensor* atol_tensor = nullptr;
   // Scalar temp_tensor;
-  DenseTensor atol_dense_tensor;
+  //   DenseTensor atol_dense_tensor;
   T rtol_T = 0;
   if (use_default_tol) {
     // paddle::framework::TensorFromVector<T>(
     //     std::vector<T>{0}, dev_ctx, &temp_tensor);
     // const Scalar temp_tensor(0);
     // atol_tensor = temp_tensor;
-    atol_dense_tensor = Full<T>(dev_ctx, {0}, atol_tensor);
+    paddle::framework::TensorFromVector<T>(
+        std::vector<T>{0}, dev_ctx, atol_tensor);
     rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
   } else {
     // const Scalar temp_tensor(tol);
-    atol_dense_tensor = Full<float>(dev_ctx, {tol}, atol_tensor);
-    // paddle::framework::TensorFromVector<T>(std::vector<T>{tol},
-    //        dev_ctx, &temp_tensor);
+    // atol_dense_tensor = Full<float>(dev_ctx, {tol}, atol_tensor);
+    paddle::framework::TensorFromVector<T>(
+        std::vector<T>{tol}, dev_ctx, &atol_tensor);
     // atol_tensor = temp_tensor;
   }
 
@@ -391,21 +395,22 @@ void MatrixRankKernel(const Context& dev_ctx,
                      1);
   }
 
-  auto dito_T = paddle::math::DeviceIndependenceTensorOperations<
-      paddle::platform::CUDADeviceContext,
-      T>(context);
   std::vector<int> max_eigenvalue_shape =
       phi::vectorize<int>(detail::RemoveLastDim(eigenvalue_tensor.dims()));
-  DenseTensor max_eigenvalue_tensor =
-      dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
+  DenseTensor max_eigenvalue_tensor;
+  //    = dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
   DenseTensor temp_rtol_tensor;
   paddle::framework::TensorFromVector<T>(
       std::vector<T>{rtol_T}, dev_ctx, &temp_rtol_tensor);
-  DenseTensor rtol_tensor = dito_T.Mul(temp_rtol_tensor, max_eigenvalue_tensor);
+
+  DenseTensor rtol_tensor =
+      phi::Multiply<T>(dev_ctx, temp_rtol_tensor, max_eigenvalue_tensor);
+  //   DenseTensor rtol_tensor = dito_T.Mul(temp_rtol_tensor,
+  //   max_eigenvalue_tensor);
   DenseTensor tol_tensor;
   // tol_tensor.mutable_data<T>(dim_out, context.GetPlace());
   tol_tensor.Resize(dim_out);
-  dev_ctx.template Alloc<T>(tol_tensor);
+  dev_ctx.template Alloc<T>(&tol_tensor);
 
   // ElementwiseComputeEx<GreaterElementFunctor<T>, phi::CUDADeviceContext, T,
   // T>(
@@ -416,9 +421,9 @@ void MatrixRankKernel(const Context& dev_ctx,
   //     GreaterElementFunctor<T>(),
   //     &tol_tensor);
 
-  phi::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
+  funcs::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
       dev_ctx,
-      atol_dense_tensor,
+      atol_tensor,
       rtol_tensor,
       -1,
       GreaterElementFunctor<T>(),
@@ -433,30 +438,27 @@ void MatrixRankKernel(const Context& dev_ctx,
   //                                   context.GetPlace());
   int axis = -1;
 
-  phi::ElementwiseCompute<paddle::operators::GreaterThanFunctor<T, int64_t>,
-                          T,
-                          int64_t>(
+  funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int64_t>(
       dev_ctx,
       eigenvalue_tensor,
       tol_tensor,
       axis,
-      paddle::operators::GreaterThanFunctor<T, int64_t>(),
+      funcs::GreaterThanFunctor<T, int64_t>(),
       &compare_result);
-  auto dito_int = math::DeviceIndependenceTensorOperations<
-      paddle::platform::CUDADeviceContext,
-      int64_t>(context);
+
   std::vector<int> result_shape = phi::vectorize<int>(dim_out);
-  DenseTensor result = dito_int.ReduceSum(compare_result, result_shape);
+  DenseTensor result;
+  ReduceKernelImpl<GPUContext, T, T, phi::funcs::SumFunctor>(
+      dev_ctx, compare_result, result, result_shape, true, false);
+
+  //   DenseTensor result = dito_int.ReduceSum(compare_result, result_shape);
   out->ShareDataWith(result);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(matrix_rank_tol,  // cuda_only
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MatrixRankKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    matrix_rank_tol, GPU, ALL_LAYOUT, phi::MatrixRankTolKernel, float, double) {
+}
 
 #endif  // not PADDLE_WITH_HIP

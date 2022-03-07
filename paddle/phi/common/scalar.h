@@ -156,12 +156,6 @@ class ScalarBase {
     CopyScalar(other, this);
   }
 
-  ScalarBase& operator=(const ScalarBase<T>& other) {
-    dtype_ = other.dtype_;
-    data_.c128 = other.data_.c128;
-    return *this;
-  }
-
   bool FromTensor() const { return is_from_tensor_; }
 
   void SetFromTensor(bool from_tensor) { is_from_tensor_ = from_tensor; }
