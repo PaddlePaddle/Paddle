@@ -552,7 +552,7 @@ def _build_table(statistic_data,
         return ''.join(result)
 
     ###### Print Overview Summary ######
-    headers = ['Name', 'Time', 'Ratio (%)']
+    headers = ['Event Type', 'CPU Time', 'Ratio (%)']
     row_format_list = [""]
     header_sep_list = [""]
     line_length_list = [-SPACING_SIZE]
@@ -576,10 +576,11 @@ def _build_table(statistic_data,
             total_time, unit=time_unit), format_ratio(1)
     ]
     append(row_format.format(*row_values))
-    type_time = collections.defaultdict(int)
+    cpu_type_time = collections.defaultdict(int)
+    gpu_type_time = collections.defaultdict(int)
     for event_type, value in statistic_data.time_range_summary.CPUTimeRangeSum.items(
     ):
-        type_time[event_type] = value
+        cpu_type_time[event_type] = value
 
     gpu_time_range = collections.defaultdict(list)
     for device_id, device_time_ranges in statistic_data.time_range_summary.GPUTimeRange.items(
@@ -588,10 +589,21 @@ def _build_table(statistic_data,
             gpu_time_range[event_type] = merge_ranges(
                 gpu_time_range[event_type], time_range, is_sorted=True)
     for event_type, time_range in gpu_time_range.items():
-        type_time[event_type] += sum_ranges(time_range)
+        gpu_type_time[event_type] = sum_ranges(time_range)
 
-    sorted_items = sorted(type_time.items(), key=lambda x: x[1], reverse=True)
+    sorted_items = sorted(
+        cpu_type_time.items(), key=lambda x: x[1], reverse=True)
     for event_type, time in sorted_items:
+        row_values = [
+            '  {}'.format(str(event_type).split('.')[1]), format_time(
+                time, unit=time_unit), format_ratio(float(time) / total_time)
+        ]
+        append(row_format.format(*row_values))
+    append(header_sep)
+    headers = ['', 'GPU Time', 'Ratio (%)']
+    append(row_format.format(*headers))
+    append(header_sep)
+    for event_type, time in gpu_type_time.items():
         row_values = [
             '  {}'.format(str(event_type).split('.')[1]), format_time(
                 time, unit=time_unit), format_ratio(float(time) / total_time)
@@ -600,9 +612,18 @@ def _build_table(statistic_data,
 
     append(header_sep)
     append(
-        "Note:\nKernel,Memcpy,Memset are events on GPU, which is asynchronous.\n"
-        "Although, we calculate ratio = event time / elapsed time(total time) here.\n"
-    )
+        "Note:\nIn this table, We sum up all collected events in terms of event type.\n"
+        "The time of events collected on host are presented as CPU Time, and as GPU Time if on device.\n"
+        "ratio = CPU(GPU) Time / Total Time."
+        "Events with different types may overlap or inclusion, e.g. Operator includes OperatorInner, so the sum of ratios is not 100%.\n"
+        "The time of events in the same type with overlap will not calculate twice, and all time is summed after merged.\n"
+        "Example:\n"
+        "Thread 1:\n"
+        "  Operator: |___________|     |__________|\n"
+        "Thread 2:\n"
+        "  Operator:   |____________|     |___|\n"
+        "After merged:\n"
+        "  Result:   |______________|  |__________|\n")
     append('-' * line_length)
     append('')
     append('')
@@ -687,7 +708,7 @@ def _build_table(statistic_data,
     if TracerEventType.Communication in statistic_data.time_range_summary.CPUTimeRange:
         headers = [
             'Name',
-            'Time',
+            'Total Time',
             'Ratio (%)',
         ]
         row_format_list = [""]
@@ -759,7 +780,15 @@ def _build_table(statistic_data,
         append(
             "Note:\nCommunication time: Communication Op time and its kernel time on gpu.\n"
             "Computation time: Kernel time, substract kernels belong to communication op.\n"
-            "Overlap time: Communication time intersect with computation time.")
+            "Overlap time: Communication time intersect with computation time.\n"
+            "Example:\n"
+            "Communication:\n"
+            "  CPU:              |_________________|"
+            "  GPU:                                  |______________|"
+            "Total:              |_________________| |______________|"
+            "Computation time(Kernel):\n"
+            "  GPU:         |________________|"
+            "Overlap time:       |___________|")
         append('-' * line_length)
         append('')
         append('')
@@ -941,14 +970,6 @@ def _build_table(statistic_data,
                         ]
                         append(row_format.format(*row_values))
         append(header_sep)
-        append(
-            "Note:\n- means unavailable.\nKernel(Device) time is the computation time of the op on GPU, which is asynchronous.\n"
-            "Except kernel time, all other time is collected on host(cpu).\n"
-            "Op Ratio = (Op Total Time) / (sum(All Op Total Time)).\nOp::Prepare Data Ratio = (Op::Prepare Data Total Time) / (Op Total Time).\n"
-            "Op::Infer Shape Ratio = (Op::Infer Shape Total Time) / (Op Total Time).\nOp::Compute Ratio = (Op::Compute Total Time) / (Op Total Time).\n"
-            "Op::Kernel Ratio = (Op::Kernel Total Time) / (sum(All Op Kernel Total Time))."
-        )
-        append('-' * line_length)
         append('')
         append('')
 
@@ -1005,6 +1026,8 @@ def _build_table(statistic_data,
             ]
             append(row_format.format(*row_values))
         append(header_sep)
+        append('')
+        append('')
     ###### Print UserDefined Summary Report ######
     if statistic_data.event_summary.userdefined_items:
         headers = [
