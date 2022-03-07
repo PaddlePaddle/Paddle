@@ -8,7 +8,7 @@ if(WITH_GPU)
 endif()
 cc_library(phi_enforce INTERFACE SRCS enforce.cc DEPS ${phi_enforce_deps})
 
-cc_library(kernel_factory SRCS kernel_factory.cc DEPS phi_enforce fluid_convert_utils)
+cc_library(kernel_factory SRCS kernel_factory.cc DEPS phi_enforce fluid_convert_utils phi_custom_kernel)
 cc_library(kernel_context SRCS kernel_context.cc DEPS phi_enforce phi_context)
 
 cc_library(ddim SRCS ddim.cc DEPS phi_enforce)
