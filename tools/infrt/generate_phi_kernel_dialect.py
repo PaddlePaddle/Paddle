@@ -15,6 +15,7 @@
 import json
 import sys
 import os
+from get_compat_kernel_signature import get_compat_kernels_info
 
 #TODO @DannyIsFunny: more attr types need to be supported.
 attr_type_converter = {
@@ -56,11 +57,11 @@ def generate_kernel_name(op_name, place_str):
     precision_ = precision_type_converter[precision_.strip()]
     class_name_ = "{}{}".format(
         op_name.replace("_", "").title(), "".join([
-            target_.strip().title(), layout_.strip().title(), precision_.strip()
+            target_.strip().title(), precision_.strip(), layout_.strip().title()
             .title()
         ]))
     alias_ = "{}.{}".format(op_name, ".".join(
-        [target_.strip(), layout_.strip(), precision_.strip()]))
+        [target_.strip(), precision_.strip(), layout_.strip()]))
     return alias_, class_name_
 
 
@@ -69,6 +70,7 @@ def generate_attrs_info(op_name, attrs_info):
     attrs_args_ = ""
     with open(kernel_signature_info_file) as f:
         kernel_attrs_names = json.load(f)
+        kernel_attrs_names.update(get_compat_kernels_info())
     if len(kernel_attrs_names[op_name]["attrs"]) == len(attrs_info):
         for index in range(len(attrs_info)):
             attr_name = kernel_attrs_names[op_name]["attrs"][index]
@@ -122,6 +124,7 @@ def generate_supported_kernel_list(load_dict):
     kernel_attrs_names = {}
     with open(kernel_signature_info_file) as f:
         kernel_attrs_names = json.load(f)
+        kernel_attrs_names.update(get_compat_kernels_info())
     for op_name in load_dict:
         kernel_list = load_dict[op_name]
         for kernel_info in kernel_list:
