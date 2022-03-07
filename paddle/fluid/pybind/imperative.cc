@@ -56,6 +56,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
 
 namespace paddle {
 namespace pybind {
@@ -2072,6 +2073,26 @@ void BindImperative(py::module *m_ptr) {
              return std::make_tuple(
                  *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
                  *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
+           })
+      .def("_get_kernel_signature",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs) {
+             // TODO(xiongkun): move this function outside of tracer.
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               auto to_vector = [](paddle::SmallVector<std::string> &vec) {
+                 return std::vector<std::string>(vec.begin(), vec.end());
+               };
+               auto ret = self.GetExpectedKernelSignature(type, ins_map,
+                                                          outs_map, attrs);
+               auto kernelsig_ins = to_vector(std::get<0>(ret.args));
+               auto kernelsig_attrs = to_vector(std::get<1>(ret.args));
+               auto kernelsig_outs = to_vector(std::get<2>(ret.args));
+               return std::make_tuple(kernelsig_ins, kernelsig_attrs,
+                                      kernelsig_outs);
+             }
            })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
