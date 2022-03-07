@@ -75,8 +75,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
   dev_ctx.Alloc(
       kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
   T* d_kernel_ptr = kernel_grad->data<T>();
-  phi::funcs::SetConstant<Context, T> set_zero;
-  set_zero(dev_ctx, kernel_grad, 0);
+  memset(d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel());
 
   Gather<T>(x.non_zero_elements().data<T>(),
             rulebook_ptr + rulebook_len,

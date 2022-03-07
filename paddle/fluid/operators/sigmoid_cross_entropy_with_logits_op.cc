@@ -12,15 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+const int kIgnoreIndex = -100;
 
 class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
  public:
@@ -209,14 +210,3 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits_grad,
                   ops::SigmoidCrossEntropyWithLogitsGradOp,
                   ops::SigmoidCrossEntropyWithLogitsGradInplaceInferer);
-REGISTER_OP_CPU_KERNEL(
-    sigmoid_cross_entropy_with_logits,
-    ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
-                                             float>,
-    ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,
-                                             double>);
-REGISTER_OP_CPU_KERNEL(sigmoid_cross_entropy_with_logits_grad,
-                       ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::CPUDeviceContext, float>,
-                       ops::SigmoidCrossEntropyWithLogitsGradKernel<
-                           paddle::platform::CPUDeviceContext, double>);
