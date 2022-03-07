@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/macros.h"
 
 namespace phi {
 

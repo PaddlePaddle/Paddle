@@ -33,3 +33,10 @@ def Infrt_ReturnOp : Infrt_Op<"return", [Terminator]> {
   let builders = [OpBuilder<(ins),
                   [{ build($_builder, $_state, llvm::None); }]>];
 }
+
+def Infrt_CvtTensorOp : Infrt_Op<"cvt_tensor", [NoSideEffect]> {
+  let summary = "convert tensor type op";
+  let description = [{convert tensor type op!}];
+  let arguments = (ins AnyType:$input);
+  let results = (outs AnyType:$output);
+}
