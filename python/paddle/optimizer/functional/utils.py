@@ -21,7 +21,8 @@ import numpy as np
 
 def _value_and_gradient(f, x, v=None):
     if in_dygraph_mode():
-        value, gradient = vjp(f, paddle.to_tensor(x), v=v)
+        value, gradient = vjp(f, x, v=v)
+        gradient = gradient[0]
     else:
         JJ = paddle.autograd.functional.Jacobian(f, x)
         gradient = JJ[:][0]
