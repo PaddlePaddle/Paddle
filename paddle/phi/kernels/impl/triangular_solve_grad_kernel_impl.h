@@ -49,7 +49,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
   DenseTensor dy_bst = phi::Empty<T, Context>(dev_ctx, y_bst_dims_array);
   if (dy) {
     // calculate x's conjugate for complex
-    DenseTensor x_conj = phi::Empty<T, Context>(dev_ctx);
+    DenseTensor x_conj;
     x_conj.Resize(x.dims());
 
     phi::funcs::ForRange<Context> x_for_range(dev_ctx, x.numel());
@@ -76,7 +76,7 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
   DenseTensor dx_bst = phi::Empty<T, Context>(dev_ctx, x_bst_dims_array);
   if (dx) {
     // calculate x's conjugate for complex
-    DenseTensor out_conj = phi::Empty<T, Context>(dev_ctx);
+    DenseTensor out_conj;
     out_conj.Resize(out.dims());
 
     phi::funcs::ForRange<Context> out_for_range(dev_ctx, out.numel());
