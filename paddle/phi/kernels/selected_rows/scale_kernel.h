@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,9 +11,22 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/optimizers/adamax_op.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    adamax, ops::AdamaxOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::AdamaxOpKernel<paddle::platform::CUDADeviceContext, double>);
+#pragma once
+
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/selected_rows.h"
+
+namespace phi {
+namespace sr {
+
+template <typename T, typename Context>
+void ScaleKernel(const Context& dev_ctx,
+                 const SelectedRows& x,
+                 const Scalar& scale,
+                 float bias,
+                 bool bias_after_scale,
+                 SelectedRows* out);
+
+}  // namespace sr
+}  // namespace phi

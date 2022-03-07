@@ -274,6 +274,65 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void TriangularSolveInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              bool upper,
+                              bool transpose,
+                              bool unitriangular,
+                              MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  auto x_dims_n = x_dims.size();
+  auto y_dims_n = y_dims.size();
+
+  PADDLE_ENFORCE_GE(x_dims_n,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The input tensor X's dimensions of TriangularSolveOp "
+                        "should be >= 2. But received X's "
+                        "dimensions = %d, X's shape = [%s]",
+                        x_dims.size(),
+                        x_dims));
+
+  PADDLE_ENFORCE_GE(y_dims_n,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The input tensor Y's dimensions of TriangularSolveOp "
+                        "should be >=2. But received Y's "
+                        "dimensions = %d, Y's shape = [%s]",
+                        y_dims.size(),
+                        y_dims));
+
+  PADDLE_ENFORCE_EQ(x_dims[x_dims_n - 2],
+                    x_dims[x_dims_n - 1],
+                    phi::errors::InvalidArgument(
+                        "The inner-most 2 dimensions of Input(X) all should "
+                        "be square matrices "
+                        "But received X's shape[-2] = %d and shape[-1] = %d.",
+                        x_dims[x_dims_n - 2],
+                        x_dims[x_dims_n - 1]));
+
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y_dims);
+
+  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 2);
+  std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(), y_dims_vec.end() - 2);
+
+  std::vector<int64_t> expand_batch_portion =
+      funcs::MatrixGetBroadcastBatchPortion(x_dims_vec_cut, y_dims_vec_cut);
+
+  std::vector<int64_t> y_broadcast_dims({expand_batch_portion});
+  y_broadcast_dims.insert(y_broadcast_dims.end(),
+                          {y_dims_vec[y_dims_n - 2], y_dims_vec[y_dims_n - 1]});
+
+  // dim of 'out' is the same with 'Y' after broadcast
+  out->set_dims(phi::make_ddim(y_broadcast_dims));
+  out->set_dtype(y.dtype());
+  out->set_layout(y.layout());
+  out->share_lod(y);
+}
+
 void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
@@ -397,6 +456,29 @@ void BCELossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void DistInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   float p,
+                   MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  PADDLE_ENFORCE_NE(phi::product(x_dims),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(X) has not been initialized properly. The "
+                        "shape of Input(X) = [%s].",
+                        x_dims));
+  PADDLE_ENFORCE_NE(phi::product(y_dims),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(Y) has not been initialized properly. The "
+                        "shape of Input(Y) = [%s].",
+                        y_dims));
+  out->set_dims({1});
+  out->set_dtype(x.dtype());
+}
+
 void GatherNdInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        MetaTensor* out) {
@@ -441,6 +523,36 @@ void GatherTreeMeta(const MetaTensor& ids,
                         "The shape of Input(Parents) must be same with the "
                         "shape of Input(Ids)."));
   out->set_dims(ids_dims);
+}
+
+void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
+  auto dim_x = x.dims();
+  auto dim_vec = vec.dims();
+  PADDLE_ENFORCE_EQ(
+      dim_x.size(),
+      2,
+      phi::errors::InvalidArgument("The rank of input X should be 2, but is %d",
+                                   dim_x.size()));
+  PADDLE_ENFORCE_EQ(
+      dim_vec.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The rank of input Vec should be 1, but is %d", dim_vec.size()));
+  PADDLE_ENFORCE_EQ(dim_x[1],
+                    dim_vec[0],
+                    phi::errors::InvalidArgument(
+                        "X's second dimension is expected to be equal to "
+                        "Vec's first dimension"
+                        "but recieved X'shape = [%s], Vec's shape = [%s]",
+                        dim_x,
+                        dim_vec));
+
+  auto dim_out = phi::make_ddim({dim_x[0]});
+
+  out->set_dims(dim_out);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 }  // namespace phi
