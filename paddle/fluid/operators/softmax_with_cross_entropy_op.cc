@@ -51,6 +51,11 @@ class SoftmaxWithCrossEntropyOpMaker
         "where labels is ont-hot."
         "Currently, the tensor is generated and used in npu kernel only. ")
         .AsIntermediate();
+    AddAttr<int>("mini_batch_size",
+                 "(int, default: 0), mini batch size in single op. The last "
+                 "mini batch 's size may be less than mini_batch_size. "
+                 "mni_batch_size >= 0. 0 means no mini batch")
+        .SetDefault(0);
 #endif
     AddOutput("Loss",
               "(Tensor, default: Tensor<float>), A tensor in same shape with "

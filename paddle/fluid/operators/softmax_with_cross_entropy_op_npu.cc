@@ -24,6 +24,38 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+// template <typename T>
+void BatchSoftmaxWithCrossEntropy(const framework::ExecutionContext& ctx,
+                                  const Tensor* logits, const Tensor* labels,
+                                  Tensor* softmax, Tensor* loss,
+                                  Tensor* backprop, const int& axis, const int& d) {
+  const int n = SizeToAxis(axis, logits->dims());
+  Tensor logits_2d, labels_1d, loss_1d, backprop_2d, softmax_2d;
+  logits_2d.ShareDataWith(*logits).Resize({n, d});
+  labels_1d.ShareDataWith(*labels).Resize({n});
+  loss_1d.ShareDataWith(*loss).Resize({n});
+  backprop_2d.ShareDataWith(*backprop).Resize({n, d});
+  softmax_2d.ShareDataWith(*softmax).Resize({n, d});
+
+  auto stream =
+      ctx.template device_context<paddle::platform::NPUDeviceContext>()
+          .stream();
+
+  std::vector<int> axes;
+  for (auto i = axis; i < logits->dims().size(); ++i) {
+    axes.push_back(i);
+  }
+  const auto& runner_softmax =
+      NpuOpRunner("SoftmaxV2", {*logits}, {*softmax}, {{"axes", axes}});
+  runner_softmax.Run(stream);
+
+  // SparseSoftmaxCrossEntropyWithLogits
+  const auto& runner_s =
+      NpuOpRunner("SparseSoftmaxCrossEntropyWithLogits", {logits_2d, labels_1d},
+                  {loss_1d, backprop_2d}, {});
+  runner_s.Run(stream);
+}
+
 template <typename DeviceContext, typename T>
 class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
  public:
@@ -34,6 +66,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     auto* loss = ctx.Output<Tensor>("Loss");
     auto* backprop = ctx.Output<Tensor>("Backprop");
     auto soft_label = ctx.Attr<bool>("soft_label");
+    int mini_batch_size = ctx.Attr<int>("mini_batch_size");
     PADDLE_ENFORCE_EQ(soft_label, false,
                       platform::errors::Unimplemented(
                           "soft_label=True is not supported in "
@@ -51,34 +84,47 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
             "but got size of labels is %d and SizeToAxis is %d.",
             labels->numel(), n));
 
+    PADDLE_ENFORCE_GE(
+        mini_batch_size, 0,
+        platform::errors::Unimplemented(
+            "The size of mini batch should be larger or equal to 0,"
+            "but got size of mini batch size is %d",
+            mini_batch_size));
+
     loss->mutable_data<T>(ctx.GetPlace());
     backprop->mutable_data<T>(ctx.GetPlace());
     softmax->mutable_data<T>(ctx.GetPlace());
 
-    Tensor logits_2d, labels_1d, loss_1d, backprop_2d, softmax_2d;
-    logits_2d.ShareDataWith(*logits).Resize({n, d});
-    labels_1d.ShareDataWith(*labels).Resize({n});
-    loss_1d.ShareDataWith(*loss).Resize({n});
-    backprop_2d.ShareDataWith(*backprop).Resize({n, d});
-    softmax_2d.ShareDataWith(*softmax).Resize({n, d});
-
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-
-    std::vector<int> axes;
-    for (auto i = axis; i < logits->dims().size(); ++i) {
-      axes.push_back(i);
+    const char* str_mini_batch = std::getenv("MINI_BATCH_SIZE");
+    if (str_mini_batch){
+      sscanf(str_mini_batch, "%d", &mini_batch_size);
     }
-    const auto& runner_softmax =
-        NpuOpRunner("SoftmaxV2", {*logits}, {*softmax}, {{"axes", axes}});
-    runner_softmax.Run(stream);
 
-    // SparseSoftmaxCrossEntropyWithLogits
-    const auto& runner_s =
-        NpuOpRunner("SparseSoftmaxCrossEntropyWithLogits",
-                    {logits_2d, labels_1d}, {loss_1d, backprop_2d}, {});
-    runner_s.Run(stream);
+    VLOG(0) << "softmax with entropy mini batch size: " << mini_batch_size;
+    if (mini_batch_size == 0) {
+      BatchSoftmaxWithCrossEntropy(ctx, logits, labels, softmax, loss,
+                                   backprop, axis, d);
+      return;
+    }
+    int64_t mini_batch_num = logits->dims()[0] / mini_batch_size + 1;
+    for (int64_t i = 0; i < mini_batch_num; i++) {
+      int64_t min = mini_batch_size * i;
+      if (min >= logits->dims()[0]) {
+        break;
+      }
+      int64_t max =
+          mini_batch_size * i + mini_batch_size;
+      if (max > logits->dims()[0]) {
+        max = logits->dims()[0];
+      }
+      Tensor mini_loss = loss->Slice(min, max);
+      Tensor mini_backprop = backprop->Slice(min, max);
+      Tensor mini_softmax = softmax->Slice(min, max);
+      Tensor mini_logits = logits->Slice(min, max);
+      Tensor mini_labels = labels->Slice(min, max);
+      BatchSoftmaxWithCrossEntropy(ctx, &mini_logits, &mini_labels,
+                                   &mini_softmax, &mini_loss, &mini_backprop, axis, d);
+    }
   }
 };
 
