@@ -119,9 +119,7 @@ class TestFcFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of mul
         x_shape = draw(
-            st.lists(
-                st.integers(
-                    min_value=1, max_value=4), min_size=2, max_size=6))
+            st.lists(st.integers(min_value=1, max_value=4), min_size=2, max_size=6))
         # 2. Generate attr:x_num_col_dims/y_num_col_dims of mul
         x_num_col_dims = draw(
             st.integers(
