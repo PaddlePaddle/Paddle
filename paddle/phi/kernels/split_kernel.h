@@ -50,7 +50,7 @@ std::vector<DenseTensor> Split(const Context& dev_ctx,
   result.reserve(out_number);
 
   for (size_t i = 0; i < out_number; ++i) {
-    result.emplace_back(phi::Empty<T, Context>(dev_ctx));
+    result.emplace_back(DenseTensor());
     out_meta.emplace_back(&result.back());
     out_meta_ptr.push_back(&out_meta.back());
   }
