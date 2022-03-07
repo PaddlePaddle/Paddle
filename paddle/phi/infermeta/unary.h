@@ -52,6 +52,29 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             int axis,
                             MetaTensor* out);
 
+void PoolInferMeta(const MetaTensor& x,
+                   const std::vector<int>& kernel_size,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   bool ceil_mode,
+                   bool exclusive,
+                   const std::string& data_format,
+                   const std::string& pooling_type,
+                   bool global_pooling,
+                   bool adaptive,
+                   const std::string& padding_algorithm,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
+void MaxPoolWithIndexInferMeta(const MetaTensor& x,
+                               const std::vector<int>& kernel_size,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               bool global_pooling,
+                               bool adaptive,
+                               MetaTensor* out,
+                               MetaTensor* mask);
+
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);

@@ -25,7 +25,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-USE_OP(pool2d);
+USE_OP_ITSELF(pool2d);
 USE_OP_DEVICE_KERNEL(pool2d, MKLDNN);
 USE_OP(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);

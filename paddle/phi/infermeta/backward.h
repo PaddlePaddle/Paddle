@@ -47,6 +47,32 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 int axis,
                                 MetaTensor* dx);
 
+void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& out,
+                                   const MetaTensor& mask,
+                                   const MetaTensor& dout,
+                                   const std::vector<int>& kernel_size,
+                                   const std::vector<int>& strides,
+                                   const std::vector<int>& paddings,
+                                   bool global_pooling,
+                                   bool adaptive,
+                                   MetaTensor* dx);
+
+void PoolGradInferMeta(const MetaTensor& x,
+                       const MetaTensor& out,
+                       const MetaTensor& dout,
+                       const std::vector<int>& kernel_size,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       bool ceil_mode,
+                       bool exclusive,
+                       const std::string& data_format,
+                       const std::string& pooling_type,
+                       bool global_pooling,
+                       bool adaptive,
+                       const std::string& padding_algorithm,
+                       MetaTensor* dx);
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,

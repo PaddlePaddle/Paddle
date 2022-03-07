@@ -8,8 +8,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/pool_op.h"
+
 #include <unordered_map>
+#include "paddle/fluid/framework/op_registry.h"
 
 #ifdef PADDLE_WITH_XPU
 namespace paddle {

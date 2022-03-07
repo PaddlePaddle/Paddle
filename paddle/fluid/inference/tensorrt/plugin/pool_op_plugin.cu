@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/plugin/pool_op_plugin.h"
-#include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace inference {
