@@ -160,8 +160,7 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
 
 void FleetWrapper::StopServer() {
   VLOG(3) << "Going to stop server";
-  auto* communicator = Communicator::GetInstance();
-  auto status = communicator->_worker_ptr->stop_server();
+  auto status = worker_ptr_->stop_server();
   status.wait();
 }
 
@@ -619,8 +618,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
-  auto* communicator = Communicator::GetInstance();
-  auto ret = communicator->_worker_ptr->load(path, std::to_string(mode));
+  auto ret = worker_ptr_->load(path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
@@ -629,9 +627,7 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 
 void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
                                      const std::string& path, const int mode) {
-  auto* communicator = Communicator::GetInstance();
-  auto ret =
-      communicator->_worker_ptr->load(table_id, path, std::to_string(mode));
+  auto ret = worker_ptr_->load(table_id, path, std::to_string(mode));
   // auto ret =
   //    pserver_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
   ret.wait();
@@ -642,8 +638,7 @@ void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
 }
 
 void FleetWrapper::SaveModel(const std::string& path, const int mode) {
-  auto* communicator = Communicator::GetInstance();
-  auto ret = communicator->_worker_ptr->save(path, std::to_string(mode));
+  auto ret = worker_ptr_->save(path, std::to_string(mode));
   ret.wait();
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
@@ -653,9 +648,7 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 
 void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
                                      const std::string& path, const int mode) {
-  auto* communicator = Communicator::GetInstance();
-  auto ret =
-      communicator->_worker_ptr->save(table_id, path, std::to_string(mode));
+  auto ret = worker_ptr_->save(table_id, path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "save model of table id: " << table_id
@@ -665,8 +658,7 @@ void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
 
 void FleetWrapper::RecvAndSaveTable(const uint64_t table_id,
                                     const std::string& path) {
-  auto* communicator = Communicator::GetInstance();
-  auto ret = communicator->_worker_ptr->recv_and_save_table(table_id, path);
+  auto ret = worker_ptr_->recv_and_save_table(table_id, path);
   if (ret != 0) {
     LOG(ERROR) << "save model of table id: " << table_id
                << ", to path: " << path << " failed";
@@ -674,8 +666,7 @@ void FleetWrapper::RecvAndSaveTable(const uint64_t table_id,
 }
 
 void FleetWrapper::PrintTableStat(const uint64_t table_id) {
-  auto* communicator = Communicator::GetInstance();
-  auto ret = communicator->_worker_ptr->print_table_stat(table_id);
+  auto ret = worker_ptr_->print_table_stat(table_id);
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {
@@ -684,9 +675,7 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 }
 
 void FleetWrapper::ShrinkSparseTable(int table_id, int threshold) {
-  auto* communicator = Communicator::GetInstance();
-  auto ret =
-      communicator->_worker_ptr->shrink(table_id, std::to_string(threshold));
+  auto ret = worker_ptr_->shrink(table_id, std::to_string(threshold));
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {
@@ -758,24 +747,17 @@ void FleetWrapper::ClientFlush() {
 
 int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
                                                    MsgHandlerFunc handler) {
-  VLOG(1) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
-  auto* communicator = Communicator::GetInstance();
-  // for unittest which does not call fleet.init_worker() first
-  if (communicator == nullptr) {
-    VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler communicator is "
-               "null";
+  if (worker_ptr_.get() == nullptr) {
+    VLOG(0) << "FleetWrapper::Client is null";
     return -1;
   } else {
-    return communicator->_worker_ptr->registe_client2client_msg_handler(
-        msg_type, handler);
+    return worker_ptr_->registe_client2client_msg_handler(msg_type, handler);
   }
 }
 
 std::future<int32_t> FleetWrapper::SendClientToClientMsg(
     int msg_type, int to_client_id, const std::string& msg) {
-  auto* communicator = Communicator::GetInstance();
-  return communicator->_worker_ptr->send_client2client_msg(msg_type,
-                                                           to_client_id, msg);
+  return worker_ptr_->send_client2client_msg(msg_type, to_client_id, msg);
 }
 
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {
