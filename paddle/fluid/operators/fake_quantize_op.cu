@@ -28,13 +28,14 @@ __global__ void FindAbsMaxKernel(const T* in, const int n, T* out) {
   extern __shared__ char* shared_max_data_tmp[];
   auto shared_max_data = reinterpret_cast<T*>(shared_max_data_tmp);
   if (gridDim.x > 1) {
-    shared_max_data[tid] = T(0);
+    T local_max_data = T(0);
     for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
       T tmp = abs(in[i]);
-      if (tmp > shared_max_data[tid]) {
-        shared_max_data[tid] = tmp;
+      if (tmp > local_max_data) {
+        local_max_data = tmp;
       }
     }
+    shared_max_data[tid] = local_max_data;
   } else {
     if (bid < n) {
       shared_max_data[tid] = abs(in[bid]);
@@ -83,13 +84,14 @@ __global__ void FindChannelAbsMaxKernelQuantAxis0(const T* in, const int n,
   int channel_size = n / c;
   const T* in_c = in + blockIdx.x * channel_size;
   extern __shared__ T shared_max_data[];
-  shared_max_data[tid] = T(0);
+  T local_max_data = T(0);
   for (int i = tid; i < channel_size; i += blockDim.x) {
     T tmp = fabs(in_c[i]);
-    if (tmp > shared_max_data[tid]) {
-      shared_max_data[tid] = tmp;
+    if (tmp > local_max_data) {
+      local_max_data = tmp;
     }
   }
+  shared_max_data[tid] = local_max_data;
   __syncthreads();
   for (int i = blockDim.x / 2; i > 0; i >>= 1) {
     if (tid < i && (shared_max_data[tid] < shared_max_data[tid + i])) {
@@ -113,13 +115,14 @@ __global__ void FindChannelAbsMaxKernelQuantAxis1(const T* in, const int n,
   int tid = threadIdx.x;
   int bid = blockIdx.x;
   const T* in_current = in + tid * cout_wh_size + bid * wh_size;
-  shared_max_data[tid] = T(0);
+  T local_max_data = T(0);
   for (int i = 0; i < wh_size; i++) {
     T tmp = fabs(in_current[i]);
-    if (tmp > shared_max_data[tid]) {
-      shared_max_data[tid] = tmp;
+    if (tmp > local_max_data) {
+      local_max_data = tmp;
     }
   }
+  shared_max_data[tid] = local_max_data;
   __syncthreads();
 
   int len = blockDim.x;
