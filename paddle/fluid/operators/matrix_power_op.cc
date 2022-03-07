@@ -119,13 +119,3 @@ REGISTER_OPERATOR(matrix_power, ops::MatrixPowerOp, ops::MatrixPowerOpMaker,
                   ops::MatrixPowerGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(matrix_power_grad, ops::MatrixPowerGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    matrix_power,
-    ops::MatrixPowerKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatrixPowerKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    matrix_power_grad,
-    ops::MatrixPowerGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatrixPowerGradKernel<paddle::platform::CPUDeviceContext, double>);
