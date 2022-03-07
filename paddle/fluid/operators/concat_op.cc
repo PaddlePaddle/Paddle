@@ -205,8 +205,8 @@ class ConcatDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(concat, ConcatInferShapeFunctor,
-                            PT_INFER_META(phi::ConcatInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(concat, ConcatInferShapeFunctor,
+                            PD_INFER_META(phi::ConcatInferMeta));
 
 REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,

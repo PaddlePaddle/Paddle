@@ -110,9 +110,9 @@ void InferShapeUtilsTestKernel(
 }  // namespace framework
 }  // namespace paddle
 
-DELCARE_INFER_SHAPE_FUNCTOR(infer_shape_utils_test,
+DECLARE_INFER_SHAPE_FUNCTOR(infer_shape_utils_test,
                             InferShapeUtilsTestInferShapeFunctor,
-                            PT_INFER_META(paddle::framework::TestInferMeta));
+                            PD_INFER_META(paddle::framework::TestInferMeta));
 REGISTER_OPERATOR(infer_shape_utils_test,
                   paddle::framework::InferShapeUtilsTestOp,
                   paddle::framework::InferShapeUtilsTestOpMaker,
