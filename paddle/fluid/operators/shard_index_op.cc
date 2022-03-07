@@ -96,8 +96,8 @@ Examples:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(shard_index, ShardIndexInferShapeFunctor,
-                            PT_INFER_META(phi::ShardIndexInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(shard_index, ShardIndexInferShapeFunctor,
+                            PD_INFER_META(phi::ShardIndexInferMeta));
 REGISTER_OPERATOR(
     shard_index, ops::ShardIndexOp, ops::ShardIndexOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,

@@ -152,8 +152,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(RollGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(roll, RollInferShapeFunctor,
-                            PT_INFER_META(phi::RollInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(roll, RollInferShapeFunctor,
+                            PD_INFER_META(phi::RollInferMeta));
 
 REGISTER_OPERATOR(roll, ops::RollOp, ops::RollOpMaker,
                   ops::RollGradMaker<paddle::framework::OpDesc>,

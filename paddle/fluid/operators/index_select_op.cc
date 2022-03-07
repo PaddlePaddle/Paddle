@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/index_select_op.h"
+
 #include <memory>
 
 #include "paddle/fluid/framework/infershape_utils.h"
@@ -105,8 +107,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexSelectGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(index_select, IndexSelectInferShapeFunctor,
-                            PT_INFER_META(phi::IndexSelectInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(index_select, IndexSelectInferShapeFunctor,
+                            PD_INFER_META(phi::IndexSelectInferMeta));
 REGISTER_OPERATOR(index_select, ops::IndexSelectOp, ops::IndexSelectOpMaker,
                   ops::IndexSelectGradMaker<paddle::framework::OpDesc>,
                   ops::IndexSelectGradMaker<paddle::imperative::OpBase>,
