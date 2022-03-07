@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,24 +15,12 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/infermeta/binary.h"
-#include "paddle/phi/kernels/empty_kernel.h"
+
 namespace phi {
 
 template <typename T, typename Context>
-void DotKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& y,
-               DenseTensor* out);
+void MultiDotKernel(const Context& ctx,
+                    const std::vector<const DenseTensor*>& x,
+                    DenseTensor* out);
 
-template <typename T, typename Context>
-DenseTensor Dot(const Context& dev_ctx,
-                const DenseTensor& x,
-                const DenseTensor& y) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  DotInferMeta(x, y, &meta_out);
-  DotKernel<T, Context>(dev_ctx, x, y, &dense_out);
-  return dense_out;
-}
 }  // namespace phi
