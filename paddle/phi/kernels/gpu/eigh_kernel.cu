@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_WITH_HIP
+// HIP not support cusolver
+
 #include "paddle/phi/kernels/eigh_kernel.h"
 #include "paddle/phi/kernels/funcs/values_vectors_functor.h"
 
@@ -33,7 +36,7 @@ void EighKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(eigh,
+PD_REGISTER_KERNEL(eigh,  // cuda_only
                    GPU,
                    ALL_LAYOUT,
                    phi::EighKernel,
@@ -41,3 +44,5 @@ PD_REGISTER_KERNEL(eigh,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+#endif  // not PADDLE_WITH_HIP

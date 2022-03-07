@@ -27,8 +27,8 @@
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
 
