@@ -34,41 +34,35 @@ class Primitive(object):
         runner.run_op(self, *args, **kwargs)
 
 
-RESHAPE = Primitive('reshape')
-BCAST = Primitive('broadcast')
-REDUCE = Primitive('reduce')
-TRANSPOSE = Primitive('transpose')
-SPLIT = Primitive('split')
-CONCAT = Primitive('concat')
-SLISELECT = Primitive('slice_select')
-SLIASSIGN = Primitive('slice_assign')
-INDSELECT = Primitive('index_select')
-INDASSIGN = Primitive('index_assign')
 ADD = Primitive('add')
 SUB = Primitive('sub')
 MUL = Primitive('mul')
 DIV = Primitive('div')
-SQRT = Primitive('sqrt')
+NEG = Primitive('neg')
 TANH = Primitive('tanh')
+BCAST = Primitive('broadcast')
+REDUCE = Primitive('reduce')
+SUM = Primitive('sum')
+SLICE = Primitive('slice')
+RESHAPE = Primitive('reshape')
 MATMUL = Primitive('matmul')
-FILL = Primitive('fill_constant')
+IND_SELECT = Primitive('index_select')
+TEN_SELECT = Primitive('tensor_select')
+FILL = Primitive('fill')
 
 nodemakers = {}
 jvpmakers = {}
 transposemakers = {}
-
 
 def add_maker(x, y):
     out_var = make_var()
     node = PrimNode(ADD, out_var, x, y)
     node, out_var
 
-
 def sub_maker(x, y):
     out_var = make_var()
     node = PrimNode(SUB, out_var, x, y)
     return node, out_var
-
 
 def mul_maker(x, y):
     out_var = make_var()
@@ -122,8 +116,7 @@ transposemakers[MUL] = mul_transposemaker
 
 
 class PrimNode(object):
-    def __init__(self, primitive: Primitive, out_var, *in_vars,
-                 **kwargs) -> None:
+    def __init__(self, primitive: Primitive, out_var, *in_vars, **kwargs) ->    None:
         self.op = primitive
         self.out_var = out_var
         self.in_vars = in_vars
@@ -137,7 +130,6 @@ class PrimGraph(object):
     def add_node(self, node, var):
         self.nodes.append(node)
         var.set_def(node)
-
 
 class Var():
     def __init__(self, name, is_tangent=False) -> None:
@@ -166,7 +158,6 @@ class MakeGraph(Runner):
         var, node = op(*args, **kwargs)
         current_graph().add_node(node, var)
 
-
 class JVP(Runner):
     def run_op(self, op, *args, **kwargs):
         jvpmaker = jvpmakers[op]
@@ -178,6 +169,7 @@ class JVP(Runner):
 
 
 class Transpose(Runner):
+
     def run_op(self, op, *args, **kwargs):
         transposemaker = transposemakers[op]
         transpose_fn = transposemaker(*args, **kwargs)
@@ -206,7 +198,6 @@ def linearize(in_vars, out_vars):
 
     return in_dots, out_dot
 
-
 def transpose():
     # transpose all nodes and update bar lookup table
     switch_runner('transpose')
@@ -220,12 +211,11 @@ class ADRunnerState(threading.local):
         self.var_lookup = {}
         self.dot_lookup = {}
         self.bar_lookup = {}
-        self.runners = {
-            'graph': MakeGraph(),
-            'jvp': JVP(),
-            'transpose': Transpose(),
-            'lower2prog': LowerToProgram()
-        }
+        self.runners = {'graph': MakeGraph(),
+                        'jvp': JVP(),
+                        'transpose': Transpose(),
+                        'lower2prog': LowerToProgram()
+                        }
         self.runner = None
 
     def switch_runner(self, kind):
@@ -249,27 +239,21 @@ def make_var(is_tangent=False):
     adrunner_state.vars.append(var)
     return var
 
-
 def is_nodein(node):
     return all(v.def_node is None for v in node.in_vars)
-
 
 def is_nodeout(node):
     pass
 
-
 def subtrace(nodes, in_vars, out_vars):
     pass
-
 
 def current_graph():
     return adrunner_state.graph
 
-
 def var2dot(var):
     lookup_tab = adrunner_state.dot_lookup
     return lookup_tab[var] if var in lookup_tab else None
-
 
 def set_var2dot(var, dot):
     lookup_tab = adrunner_state.dot_lookup
