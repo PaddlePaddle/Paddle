@@ -22,6 +22,9 @@ class TestProcessGroup(TestMultipleGpus):
     def test_process_group_nccl(self):
         self.run_mnist_2gpu('process_group_nccl.py')
 
+    def test_process_group_gloo(self):
+        self.run_mnist_2gpu('process_group_gloo.py')
+
 
 if __name__ == "__main__":
     unittest.main()

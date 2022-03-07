@@ -1,4 +1,4 @@
-// RUN: infrtopt %s | FileCheck %s
+// RUN: phi-ir-exec %s
 // CHECK-LABEL: @ops
 func @ops() {
   %a = pd.feed() {name="input0"} : !infrt.lod_tensor<?xf32,0>

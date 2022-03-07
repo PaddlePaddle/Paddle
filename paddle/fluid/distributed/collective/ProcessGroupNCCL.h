@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
@@ -75,7 +76,7 @@ class ProcessGroupNCCL : public ProcessGroup {
    private:
   };
 
-  ProcessGroupNCCL(const ProcessGroupStrategy& strategy, int rank, int size);
+  ProcessGroupNCCL(const std::shared_ptr<Store>& store, int rank, int size);
 
   const std::string GetBackendName() const override {
     return std::string(NCCL_BACKEND_NAME);
@@ -98,13 +99,27 @@ class ProcessGroupNCCL : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Recv(std::vector<Tensor>& tensors,
                                            int src_rank) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<Tensor>& in_tensors,
+      std::vector<Tensor>& out_tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<Tensor>& in, std::vector<Tensor>& out) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<Tensor>& tensors, const ReduceOptions& opts) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(std::vector<Tensor>& in_tensors,
+                                              std::vector<Tensor>& out_tensors,
+                                              const ScatterOptions&) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
       std::vector<Place> places, int rank, CommType opType,
       const std::vector<Tensor>& inputs);
 
  protected:
-  ProcessGroupStrategy strategy_;
+  std::shared_ptr<Store> store_;
   std::shared_ptr<NCCLCommManager> nccl_comm_;
   std::mutex mutex_;
   std::unordered_map<std::string, std::vector<std::shared_ptr<NCCLCommManager>>>

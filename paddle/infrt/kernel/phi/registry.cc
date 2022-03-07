@@ -42,17 +42,8 @@ void RegisterPhiKernels(host_context::KernelRegistry* registry) {
       INFRT_KERNEL(infrt::kernel::phi::CreateDenseTensorCpuF32Nchw));
   registry->AddKernel("phi_dt.fill_dense_tensor.f32",
                       INFRT_KERNEL(infrt::kernel::phi::FillDenseTensorF32));
-  registry->AddKernel(
-      "phi_dt.fake_phi_kernel",
-      std::bind(&KernelLauncherFunc<decltype(&FakePhiKernel),
-                                    &FakePhiKernel,
-                                    decltype(&FakePhiInferShape),
-                                    &FakePhiInferShape>,
-                KernelLauncher<decltype(&FakePhiKernel),
-                               &FakePhiKernel,
-                               decltype(&FakePhiInferShape),
-                               &FakePhiInferShape>(),
-                std::placeholders::_1));
+  registry->AddKernel("phi_dt.print_tensor",
+                      INFRT_KERNEL(infrt::kernel::phi::PrintDenseTensor));
 }
 
 }  // namespace kernel
