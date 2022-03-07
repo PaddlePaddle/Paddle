@@ -28,7 +28,8 @@ namespace phi {
     host_context::Attribute<std::vector<int64_t>> lod);
 
 void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
-                        host_context::Attribute<std::vector<int64_t>> values);
+                        host_context::Attribute<std::vector<float>> values);
+void PrintDenseTensor(::phi::DenseTensor* dense_tensor);
 
 }  // namespace phi
 }  // namespace kernel

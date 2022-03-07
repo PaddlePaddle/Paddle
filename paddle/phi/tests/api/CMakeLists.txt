@@ -1,7 +1,7 @@
 if(WITH_ROCM)
-  hip_test(test_phi_tensor SRCS test_pten_tensor.cc DEPS phi_tensor phi_function_api manual_api glog)
+  hip_test(test_phi_tensor SRCS test_pten_tensor.cc DEPS phi_tensor phi_function_api glog)
 else()
-  cc_test(test_phi_tensor SRCS test_pten_tensor.cc DEPS phi_tensor phi_function_api manual_api glog)
+  cc_test(test_phi_tensor SRCS test_pten_tensor.cc DEPS phi_tensor phi_function_api glog)
 endif()
 
 cc_test(test_phi_exception SRCS test_pten_exception.cc DEPS gtest)
@@ -25,3 +25,4 @@ cc_test(test_concat_api SRCS test_concat_api.cc DEPS phi_tensor phi_api phi_api_
 cc_test(test_split_api SRCS test_split_api.cc DEPS phi_tensor phi_api phi_api_utils)
 cc_test(test_data_transform SRCS test_data_transform.cc DEPS phi_tensor phi_api phi_api_utils)
 cc_test(test_sparse_utils_api SRCS test_sparse_utils_api.cc DEPS phi_tensor phi_api phi_api_utils)
+cc_test(test_sparse_conv_api SRCS test_sparse_conv_api.cc DEPS phi_tensor phi_api phi_api_utils)

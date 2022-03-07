@@ -109,7 +109,7 @@ template <typename T, typename Context>
 DenseTensor Add(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   AddKernel<T, Context>(dev_ctx, x, y, &dense_out);
@@ -120,7 +120,7 @@ template <typename T, typename Context>
 DenseTensor Subtract(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   SubtractKernel<T, Context>(dev_ctx, x, y, &dense_out);
@@ -131,7 +131,7 @@ template <typename T, typename Context>
 DenseTensor Divide(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   DivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
@@ -142,7 +142,7 @@ template <typename T, typename Context>
 DenseTensor Multiply(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   ElementwiseInferMeta(x, y, &meta_out);
   MultiplyKernel<T, Context>(dev_ctx, x, y, &dense_out);
@@ -154,9 +154,9 @@ DenseTensor Mean(const Context& dev_ctx,
                  const DenseTensor& x,
                  const std::vector<int64_t>& axis,
                  bool keep_dim) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  ReduceInferMetaBase(x, axis, keep_dim, x.dtype(), &meta_out);
+  ReduceInferMetaBase(x, axis, keep_dim, false, x.dtype(), &meta_out);
   MeanKernel<T, Context>(dev_ctx, x, axis, keep_dim, &dense_out);
   return dense_out;
 }
@@ -167,7 +167,7 @@ DenseTensor Sum(const Context& dev_ctx,
                 const std::vector<int64_t>& axis,
                 DataType dtype,
                 bool keep_dim) {
-  auto dense_out = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   SumInferMeta(x, axis, dtype, keep_dim, &meta_out);
   SumKernel<T, Context>(dev_ctx, x, axis, dtype, keep_dim, &dense_out);

@@ -60,7 +60,7 @@ struct ReduceSumForMatmulGrad<GPUContext, T> {
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims) {
     auto stream = dev_ctx.stream();
-    kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+    funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
         dev_ctx, input, output, kps::IdentityFunctor<T>(), reduce_dims, stream);
   }
 };
@@ -329,8 +329,8 @@ void MatmulGradKernel(const Context& dev_ctx,
     x_conj = Conj<T>(dev_ctx, x);
     y_conj = Conj<T>(dev_ctx, y);
 
-    DenseTensor dx_help = Empty<T, Context>(dev_ctx);
-    DenseTensor dy_help = Empty<T, Context>(dev_ctx);
+    DenseTensor dx_help;
+    DenseTensor dy_help;
 
     if (transpose_x) {
       if (transpose_y) {
@@ -596,7 +596,6 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
         ddout_flag = true;
       }
     }
-
     if (ddy) {
       auto ddy_mat = ddy.get();
       if (ddy_mat.dims() != y_help.dims()) {
@@ -687,8 +686,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
       y_conj = Conj<T>(dev_ctx, y);
     }
 
-    DenseTensor dx_help = Empty<T>(dev_ctx);
-    DenseTensor dy_help = Empty<T>(dev_ctx);
+    DenseTensor dx_help;
+    DenseTensor dy_help;
 
     if (transpose_x) {
       if (transpose_y) {
@@ -1374,10 +1373,10 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
     VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                "wastes the memory. So we should avoid the case in reality";
 
-    DenseTensor out_dx_help = Empty<T>(dev_ctx);
-    DenseTensor out_dy_help = Empty<T>(dev_ctx);
-    DenseTensor out_d_ddx_help = Empty<T>(dev_ctx);
-    DenseTensor out_d_ddy_help = Empty<T>(dev_ctx);
+    DenseTensor out_dx_help;
+    DenseTensor out_dy_help;
+    DenseTensor out_d_ddx_help;
+    DenseTensor out_d_ddy_help;
 
     if (out_d_dout) {
       ddx_conj = Conj<T>(dev_ctx, ddx);

@@ -31,13 +31,13 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
   }
 }
 
-std::unique_ptr<phi::DenseTensor> MakePtenDenseTensor(
+std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
     const paddle::framework::Tensor& src) {
   return std::make_unique<phi::DenseTensor>(src);
 }
 
-phi::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
-  auto expected_place = phi::TransToPtenPlace(phi::Backend::CPU);
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
+  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
     if (!platform::is_same_place(tensor.place(), expected_place)) {
@@ -55,21 +55,21 @@ phi::Scalar MakePtenScalarFromVar(const framework::Variable& variable) {
   }
 }
 
-phi::ScalarArray MakePtenScalarArray(const paddle::framework::Tensor& src) {
+phi::ScalarArray MakePhiScalarArray(const paddle::framework::Tensor& src) {
   return {src};
 }
 
-phi::ScalarArray MakePtenScalarArrayFromVar(
+phi::ScalarArray MakePhiScalarArrayFromVar(
     const framework::Variable& variable) {
-  auto expected_place = phi::TransToPtenPlace(phi::Backend::CPU);
+  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
   if (variable.IsType<framework::LoDTensor>()) {
     const auto& tensor = variable.Get<framework::LoDTensor>();
     if (!platform::is_same_place(tensor.place(), expected_place)) {
       framework::LoDTensor tmp_tensor;
       framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
-      return MakePtenScalarArray(tmp_tensor);
+      return MakePhiScalarArray(tmp_tensor);
     } else {
-      return MakePtenScalarArray(tensor);
+      return MakePhiScalarArray(tensor);
     }
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -80,12 +80,12 @@ phi::ScalarArray MakePtenScalarArrayFromVar(
 }
 
 // TODO(chentianyu03): Inplace with ScalarArray constructor
-phi::ScalarArray MakePtenScalarArrayFromVarList(
+phi::ScalarArray MakePhiScalarArrayFromVarList(
     const std::vector<framework::Variable*>& variable_list) {
   if (variable_list.size() == 0) {
     return phi::ScalarArray();
   }
-  auto expected_place = phi::TransToPtenPlace(phi::Backend::CPU);
+  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
 
   std::vector<int64_t> vector_data;
   vector_data.reserve(variable_list.size());
@@ -134,27 +134,6 @@ phi::ScalarArray MakePtenScalarArrayFromVarList(
   result.SetFromTensor(true);
 
   return result;
-}
-
-void ResetTensorDtypeAndLayoutByArgDef(phi::TensorBase* dst,
-                                       const phi::TensorArgDef& arg_def) {
-  VLOG(5) << "ResetTensor by TensorArgDef.";
-  if (phi::DenseTensor::classof(dst)) {
-    auto* dense_t = static_cast<phi::DenseTensor*>(dst);
-    auto* meta = phi::DenseTensorUtils::GetMutableMeta(dense_t);
-    meta->dtype = arg_def.dtype;
-    meta->layout = arg_def.layout;
-  } else if (phi::SelectedRows::classof(dst)) {
-    auto* selected_rows = static_cast<phi::SelectedRows*>(dst);
-    auto* meta =
-        phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value());
-    meta->dtype = arg_def.dtype;
-    meta->layout = arg_def.layout;
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Unsupported tensor type is received when reseting tensor dtype and "
-        "layout by argument definition."));
-  }
 }
 
 }  // namespace experimental

@@ -33,10 +33,11 @@ import paddle.utils.deprecated as deprecated
 class TensorHookRemoveHelper(object):
     """
     A helper class that for removing Tensor gradient's hook.
+    NOTE(wuweilong):the operation weakref.ref(tensor) will cause some unexpected errors in eager mode.
     """
 
     def __init__(self, tensor, hook_id):
-        self._tensor_ref = weakref.ref(tensor)
+        self._tensor = tensor if core._in_eager_mode() else weakref.ref(tensor)
         self._hook_id = hook_id
 
     def remove(self):
@@ -46,7 +47,7 @@ class TensorHookRemoveHelper(object):
         Returns:
             bool: Return True if removed successfully
         """
-        tensor = self._tensor_ref()
+        tensor = self._tensor if core._in_eager_mode() else self._tensor()
         if tensor is not None:
             res = tensor._remove_grad_hook(self._hook_id)
             if res is True:
@@ -93,7 +94,7 @@ def monkey_patch_varbase():
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
         attr_not_need_keys = ['grad', 'T']
-        if isinstance(self, ParamBase):
+        if isinstance(self, (ParamBase, EagerParamBase)):
             attr_kwargs = self.__dict__.copy()
         else:
             attr_names = []
@@ -110,7 +111,7 @@ def monkey_patch_varbase():
 
         attr_kwargs.update(kwargs)
 
-        if to_parameter or isinstance(self, ParamBase):
+        if to_parameter or isinstance(self, (ParamBase, EagerParamBase)):
             del attr_kwargs['persistable']
             # NOTE(Aurelius84): All parameters should be placed into global block.
             attr_kwargs['block'] = attr_kwargs['block'].program.global_block()

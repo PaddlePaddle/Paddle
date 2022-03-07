@@ -20,6 +20,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <new>
 #include <type_traits>
