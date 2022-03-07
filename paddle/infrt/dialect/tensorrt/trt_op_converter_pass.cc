@@ -16,6 +16,7 @@
 #include <mlir/Transforms/DialectConversion.h>
 #include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/pd_ops.h"
+#include "paddle/infrt/dialect/tensorrt/trt_dilaect_types.h"
 
 namespace infrt {
 namespace trt {
@@ -23,8 +24,10 @@ namespace trt {
 #include "paddle/infrt/dialect/tensorrt/pd_lower_to_trt.cpp.inc"  // NOLINT
 
 struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
-  PD2TRT_GraphLower(::mlir::MLIRContext *context) : ::mlir::RewritePattern("pd.graph", 1, context, {"trt.create_engine"}) {}
-  ::mlir::LogicalResult matchAndRewrite(::mlir::Operation *op, ::mlir::PatternRewriter &rewriter) const override {
+  PD2TRT_GraphLower(::mlir::MLIRContext *context)
+      : ::mlir::RewritePattern("pd.graph", 1, context, {"trt.create_engine"}) {}
+  ::mlir::LogicalResult matchAndRewrite(
+      ::mlir::Operation *op, ::mlir::PatternRewriter &rewriter) const override {
     auto casted_op = ::llvm::dyn_cast<mlir::pd::GraphOp>(op);
     ::mlir::Operation::operand_range inputs = casted_op.inputs();
     auto ods_loc = rewriter.getFusedLoc(op->getLoc());
@@ -34,9 +37,11 @@ struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
     for (auto v : inputs) {
       trt_inputs.push_back(v);
     }
-    create_engine_op = rewriter.create<CreateEngineOp>(ods_loc,
-                                                       ::llvm::SmallVector<mlir::Type, 4>(1, TensorRTEngineType::get()),
-                                                       trt_inputs, true/*run_once*/);
+    create_engine_op = rewriter.create<CreateEngineOp>(
+        ods_loc,
+        ::llvm::SmallVector<mlir::Type, 4>(1, EngineType::get()),
+        trt_inputs,
+        true /*run_once*/);
     ::mlir::Block *block = new ::mlir::Block;
     block->getOperations().splice(block->begin(),
                                   casted_op.getBody()->getOperations(),
@@ -44,23 +49,24 @@ struct PD2TRT_GraphLower : public ::mlir::RewritePattern {
                                   casted_op.getBody()->end());
     create_engine_op.body().push_back(block);
 
-    //trt.execute
-    //outputs
+    // trt.execute
+    // outputs
     ::llvm::SmallVector<::mlir::Type, 4> execute_outputs_types;
     for (auto v : casted_op.getODSResults(0)) {
       execute_outputs_types.push_back(v.getType());
     }
-    //inputs
-    ::mlir::SmallVector<::mlir::Value, 4> execute_inputs(create_engine_op.getODSResults(0));
+    // inputs
+    ::mlir::SmallVector<::mlir::Value, 4> execute_inputs(
+        create_engine_op.getODSResults(0));
     for (auto v : inputs) {
       execute_inputs.push_back(v);
     }
-    auto execute_op = rewriter.create<ExecuteOp>(ods_loc,
-                                                execute_outputs_types,
-                                                execute_inputs);
+    auto execute_op = rewriter.create<ExecuteOp>(
+        ods_loc, execute_outputs_types, execute_inputs);
 
     ::llvm::SmallVector<::mlir::Value, 4> replace_values;
-    for (auto v : ::llvm::SmallVector<::mlir::Value, 4>{ execute_op.getODSResults(0) }) {
+    for (auto v :
+         ::llvm::SmallVector<::mlir::Value, 4>{execute_op.getODSResults(0)}) {
       replace_values.push_back(v);
     }
     rewriter.replaceOp(op, replace_values);

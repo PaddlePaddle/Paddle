@@ -15,6 +15,7 @@
 #pragma once
 #include "mlir/IR/Dialect.h"
 #include "mlir/Pass/Pass.h"
+#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
