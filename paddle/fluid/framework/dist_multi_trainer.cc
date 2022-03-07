@@ -63,7 +63,11 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
 }
 
 void DistMultiTrainer::RegisterHeterCallback() {
+#ifdef PADDLE_WITH_PSLIB
   auto fleet_ptr = FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr = paddle::distributed::FleetWrapper::GetInstance();
+#endif
   fleet_ptr->RegisterHeterCallback(
       [this](int worker, int taskid) { workers_[worker]->Schedule(taskid); });
 }

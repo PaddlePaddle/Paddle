@@ -33,16 +33,21 @@ bool FleetWrapper::is_initialized_ = false;
 std::shared_ptr<paddle::distributed::PSCore> FleetWrapper::pserver_ptr_ = NULL;
 std::shared_ptr<paddle::distributed::PSClient> FleetWrapper::worker_ptr_ = NULL;
 
+int FleetWrapper::RegisterHeterCallback(HeterCallBackFunc handler) {
+  VLOG(0) << "RegisterHeterCallback support later";
+  return 0;
+}
+
 int32_t FleetWrapper::CopyTable(const uint64_t src_table_id,
                                 const uint64_t dest_table_id) {
-  VLOG(0) << "support later";
+  VLOG(0) << "CopyTable support later";
   return 0;
 }
 
 int32_t FleetWrapper::CopyTableByFeasign(
     const uint64_t src_table_id, const uint64_t dest_table_id,
     const std::vector<uint64_t>& feasign_list) {
-  VLOG(0) << "support later";
+  VLOG(0) << "CopyTableByFeasign support later";
   return 0;
 }
 
@@ -179,7 +184,7 @@ void FleetWrapper::StopServer() {
 
 void FleetWrapper::FinalizeWorker() {
   VLOG(3) << "Going to finalize worker";
-  pserver_ptr_->finalize_worker();
+  worker_ptr_->finalize_worker();
 }
 
 void FleetWrapper::BarrierWithTable(uint32_t barrier_type) {
@@ -445,7 +450,7 @@ void FleetWrapper::PushDenseVarsAsync(
     float* g = tensor->mutable_data<float>(place);
     paddle::distributed::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
-    VLOG(3) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "
+    VLOG(0) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "
             << table_id << " Temp_data[0] " << g[0] << " Temp_data[-1] "
             << g[tensor->numel() - 1];
   }

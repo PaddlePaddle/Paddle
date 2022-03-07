@@ -1055,7 +1055,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._server.run_server(host, int(port))
 
     def _stop_worker(self):
-        self._communicator.stop()
+        self._worker.stop_worker()
         if self.is_heter_ps_mode:
             assert self._heter_client != None, "heter client should not be None in heterps mode"
             self._heter_client.stop()

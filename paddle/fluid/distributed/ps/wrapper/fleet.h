@@ -76,6 +76,9 @@ class FleetWrapper {
                              const uint64_t dest_table_id,
                              const std::vector<uint64_t>& feasign_list);
 
+  typedef std::function<void(int, int)> HeterCallBackFunc;
+  int RegisterHeterCallback(HeterCallBackFunc handler);
+
   // set client to client communication config
   void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
                               int max_retry);
