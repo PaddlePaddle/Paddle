@@ -35,7 +35,7 @@
     param : [x, y]
   kernel :
     func : add_grad
-    
+
 - backward_api : digamma_grad
   forward : digamma (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
