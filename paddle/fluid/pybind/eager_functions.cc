@@ -135,7 +135,7 @@ static PyObject* eager_api_tensor_copy(PyObject* self, PyObject* args,
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
 
-  dst = src.copy_to(phi::TransToPtenBackend(place), blocking);
+  dst = src.copy_to(phi::TransToPhiBackend(place), blocking);
   egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(
       egr::EagerUtils::autograd_meta(&(src))->StopGradient());
   egr::EagerUtils::autograd_meta(&dst)->SetPersistable(

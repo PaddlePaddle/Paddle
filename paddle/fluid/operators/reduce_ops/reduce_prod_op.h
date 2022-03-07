@@ -19,13 +19,6 @@
 namespace paddle {
 namespace operators {
 
-struct ProdFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->prod(dim);
-  }
-};
-
 struct ProdGradFunctor {
   template <typename DeviceContext, typename X, typename Y, typename DX,
             typename DY, typename Dim>

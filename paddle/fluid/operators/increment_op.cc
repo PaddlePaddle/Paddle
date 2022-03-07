@@ -87,8 +87,8 @@ class IncrementGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(increment, IncrementInferShapeFunctor,
-                            PT_INFER_META(phi::IncrementInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(increment, IncrementInferShapeFunctor,
+                            PD_INFER_META(phi::IncrementInferMeta));
 REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker,
                   ops::IncrementGradOpMaker<paddle::framework::OpDesc>,
                   ops::IncrementGradOpMaker<paddle::imperative::OpBase>,

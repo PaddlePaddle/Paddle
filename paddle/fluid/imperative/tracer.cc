@@ -175,7 +175,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
                      paddle::framework::AttributeMap* passed_default_attrs_,
                      bool use_default_attr_map) {
   platform::RecordEvent op_type_record_event(
-      type, platform::TracerEventType::Operator, 2);
+      type, platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
@@ -205,17 +205,19 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
 
   NameVarMap<VarType> new_ins = ins;
   if (amp_level_ == AmpLevel::O1) {
-    VLOG(5) << "Auto mixed precision run operator: " << type;
     if (amp_dtype_ == phi::DataType::FLOAT16) {
+      VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
       new_ins = AutoCastInputs<VarType>(type, ins);
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+      VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
       new_ins = AutoCastBF16Inputs<VarType>(type, ins);
     }
   } else if (amp_level_ == AmpLevel::O2) {
-    VLOG(5) << "Pure fp16 run operator: " << type;
     if (amp_dtype_ == phi::DataType::FLOAT16) {
+      VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
       new_ins = CastPureFp16Inputs<VarType>(type, ins);
     } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+      VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
       new_ins = CastPureBf16Inputs<VarType>(type, ins);
     }
   }
@@ -251,7 +253,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
 #endif
     } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      platform::DeviceManager::SetDevice(place);
+      phi::DeviceManager::SetDevice(place);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with CustomDevice if use "
