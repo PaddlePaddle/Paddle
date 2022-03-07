@@ -2242,15 +2242,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
           scalar_list.emplace_back(val);
         }
         pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<bool>))) {
-        const auto& vec = BOOST_GET_CONST(std::vector<bool>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` to vector<Scalar> when "

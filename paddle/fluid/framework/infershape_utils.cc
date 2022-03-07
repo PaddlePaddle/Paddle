@@ -437,60 +437,6 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               attr_name, infershape_input.size()));
         }
       }
-    } else if (attr_defs[i].type_index ==
-               std::type_index(typeid(std::vector<phi::Scalar>))) {
-      auto& attr = attr_reader.GetAttr(attr_name);
-      if (std::type_index(attr.type()) ==
-          std::type_index(typeid(std::vector<int32_t>))) {
-        const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<int64_t>))) {
-        const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<float>))) {
-        const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<double>))) {
-        const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(std::vector<bool>))) {
-        const auto& vec = BOOST_GET_CONST(std::vector<bool>, attr);
-        std::vector<phi::Scalar> scalar_list;
-        scalar_list.reserve(vec.size());
-        for (const auto& val : vec) {
-          scalar_list.emplace_back(val);
-        }
-        infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported cast op attribute `%s` to vector<Scalar> when "
-            "construct InferMetaContext.",
-            attr_name));
-      }
     } else if (ctx->HasAttr(attr_name)) {
       // Emplace Back Attr according to the type of attr.
       auto& attr = attr_reader.GetAttr(attr_name);
