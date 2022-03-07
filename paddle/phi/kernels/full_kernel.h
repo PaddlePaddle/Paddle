@@ -41,7 +41,7 @@ template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
                  const ScalarArray& shape,
                  const Scalar& val) {
-  auto dense_out = Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
   CreateInferMeta(shape, dtype, &meta_out);
@@ -53,7 +53,7 @@ template <typename T, typename Context>
 DenseTensor FullLike(const Context& dev_ctx,
                      const DenseTensor& x,
                      const Scalar& val) {
-  auto dense_out = Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
   CreateLikeInferMeta(x, dtype, &meta_out);

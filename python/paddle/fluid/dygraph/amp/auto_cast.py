@@ -411,9 +411,9 @@ def amp_decorate(models,
         import paddle
 
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-        optimzier = paddle.optimizer.SGD(parameters=model.parameters())
+        optimizer = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimzier, level='O2')
+        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimizer, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -426,7 +426,7 @@ def amp_decorate(models,
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
+        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 

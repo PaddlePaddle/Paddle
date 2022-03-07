@@ -344,9 +344,8 @@ struct ReduceConfig {
                      const phi::GPUContext& dev_ctx,
                      phi::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->ResizeAndAllocate(phi::make_ddim(
+      tmp->Resize(phi::make_ddim(
           {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
-
       output_data = dev_ctx.Alloc<Ty>(tmp);
     } else {
       output_data = y_data;
@@ -1053,8 +1052,8 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer,
                             reducer.initial(),
                             stream);
-  phi::DenseTensor tmp =
-      phi::Empty<uint8_t>(dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
+  phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
+      dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
 
   auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
 
@@ -1106,7 +1105,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
   // y_data;
 
   phi::DDim tmp_ddim;
-  phi::DenseTensor tmp = phi::Empty<Ty>(dev_ctx);
+  phi::DenseTensor tmp;
 
   auto x_data = x.data<Tx>();
   auto y_data = y->data<Ty>();
