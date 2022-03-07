@@ -138,6 +138,14 @@ void DiagInferMeta(const MetaTensor& x,
                    float padding_value,
                    MetaTensor* out);
 
+void ArgMinMaxInferMeta(const MetaTensor& x,
+                        int64_t axis,
+                        bool keepdims,
+                        bool flatten,
+                        int dtype,
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
+
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void DiagonalInferMeta(
