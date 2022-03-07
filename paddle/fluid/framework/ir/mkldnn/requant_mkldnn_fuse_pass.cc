@@ -312,9 +312,13 @@ void RequantMkldnnFusePass::ComputeWeightScales(
                              var_quant_scales);
 }
 
-void RequantMkldnnFusePass::PropagateScales() {
-  auto update_scale_op_in_scale = [&]() {};
-}
+// void RequantMkldnnFusePass::PropagateScales() {
+//   auto update_scale_op_in_scale = [&](Node* node, StringPairMap
+//   var_quant_scales, std::string input, std::string output) {
+//     auto pair = var_quant_scales[output];
+
+//   };
+// }
 
 void RequantMkldnnFusePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Convert paddle model to mkldnn quantized model.";

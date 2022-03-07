@@ -44,6 +44,11 @@ class RequantMkldnnFusePass : public FusePassBase {
   void ComputeWeightScales(ir::Graph* graph, Scope* scope,
                            StringPairMap& var_quant_scales)  // NOLINT
       const;
+
+  //   void PropagateScales(
+  //       ir::Graph* graph, Scope* scope,
+  //      StringPairMap& var_quant_scales)  // NOLINT
+  //       const;
 };
 }  // namespace ir
 }  // namespace framework
