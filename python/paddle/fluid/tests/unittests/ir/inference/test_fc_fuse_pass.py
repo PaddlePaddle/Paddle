@@ -72,6 +72,7 @@ class TestFcFusePass(PassAutoScanTest):
             self.add_skip_case(
                 teller3, SkipReasons.TRT_NOT_SUPPORT,
                 "Trt may crash when inputs' dims>=6 under trt8.0 ")
+
         def teller1(program_config, predictor_config):
             # shape of bias should be [1, mul_y_shape[-1]] or [mul_y_shape[-1]]
             x_shape = list(program_config.inputs["mul_x"].shape)
@@ -119,7 +120,9 @@ class TestFcFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of mul
         x_shape = draw(
-            st.lists(st.integers(min_value=1,max_value=4), min_size=2, max_size=6))
+            st.lists(
+                st.integers(
+                    min_value=1, max_value=4), min_size=2, max_size=6))
         # 2. Generate attr:x_num_col_dims/y_num_col_dims of mul
         x_num_col_dims = draw(
             st.integers(
