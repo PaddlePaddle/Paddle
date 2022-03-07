@@ -14,21 +14,15 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
+namespace sr {
 
-// In order to be compatible with the `AsDispensable` input in the original
-// assign op maker, the input parameter here needs to be dispensable, but
-// this looks weird
 template <typename Context>
 void AssignKernel(const Context& dev_ctx,
-                  paddle::optional<const DenseTensor&> x,
-                  DenseTensor* out);
+                  const SelectedRows& x,
+                  SelectedRows* out);
 
-template <typename Context>
-void AssignArrayKernel(const Context& dev_ctx,
-                       const std::vector<const DenseTensor*>& x,
-                       std::vector<DenseTensor*> out);
-
+}  // namespace sr
 }  // namespace phi
