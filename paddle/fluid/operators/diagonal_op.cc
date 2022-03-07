@@ -105,8 +105,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(DiagonalGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(diagonal, DiagonalInferShapeFunctor,
-                            PT_INFER_META(phi::DiagonalInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(diagonal, DiagonalInferShapeFunctor,
+                            PD_INFER_META(phi::DiagonalInferMeta));
 
 REGISTER_OPERATOR(diagonal, ops::DiagonalOp, ops::DiagonalOpMaker,
                   ops::DiagonalGradOpMaker<paddle::framework::OpDesc>,

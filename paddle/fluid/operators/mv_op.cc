@@ -16,8 +16,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -42,33 +45,6 @@ class MVOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "mv");
-    OP_INOUT_CHECK(context->HasInput("Vec"), "Input", "Vec", "mv");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "mv");
-
-    auto dim_x = context->GetInputDim("X");
-    auto dim_vec = context->GetInputDim("Vec");
-    PADDLE_ENFORCE_EQ(
-        dim_x.size(), 2,
-        platform::errors::InvalidArgument(
-            "The rank of input X should be 2, but is %d", dim_x.size()));
-    PADDLE_ENFORCE_EQ(
-        dim_vec.size(), 1,
-        platform::errors::InvalidArgument(
-            "The rank of input Vec should be 1, but is %d", dim_vec.size()));
-    PADDLE_ENFORCE_EQ(dim_x[1], dim_vec[0],
-                      platform::errors::InvalidArgument(
-                          "X's second dimension is expected to be equal to "
-                          "Vec's first dimension"
-                          "but recieved X'shape = [%s], Vec's shape = [%s]",
-                          dim_x, dim_vec));
-
-    framework::DDim dim_out = phi::make_ddim({dim_x[0]});
-
-    context->SetOutputDim("Out", dim_out);
-    context->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 template <typename T>
@@ -118,7 +94,11 @@ class MVOpGrad : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+DECLARE_INFER_SHAPE_FUNCTOR(mv, MvInferShapeFunctor,
+                            PD_INFER_META(phi::MvInferMeta));
+
 REGISTER_OPERATOR(mv, ops::MVOp, ops::MVOpMaker,
                   ops::MVOpGradMaker<paddle::framework::OpDesc>,
-                  ops::MVOpGradMaker<paddle::imperative::OpBase>);
+                  ops::MVOpGradMaker<paddle::imperative::OpBase>,
+                  MvInferShapeFunctor);
 REGISTER_OPERATOR(mv_grad, ops::MVOpGrad);
