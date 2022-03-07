@@ -455,7 +455,7 @@ void BCELossInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
   out->share_lod(input);
 }
- 
+
 void BincountInferMeta(const MetaTensor& x,
                        const paddle::optional<const MetaTensor&> weights,
                        int minlength,
@@ -616,7 +616,7 @@ void LogLossInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
   out->share_lod(input);
 }
- 
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_vec = vec.dims();
@@ -688,5 +688,5 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->share_lod(x);
 }
- 
+
 }  // namespace phi
