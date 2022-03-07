@@ -20,18 +20,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    arg_max,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext, float>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext, double>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
-                                    int64_t>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
-                                    int32_t>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
-                                    int16_t>,
-    paddle::operators::ArgMaxKernel<paddle::platform::CPUDeviceContext,
-                                    uint8_t>);
 REGISTER_OP_VERSION(arg_max)
     .AddCheckpoint(
         R"ROC(
