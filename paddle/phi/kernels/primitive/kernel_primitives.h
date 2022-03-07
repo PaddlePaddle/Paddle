@@ -13,7 +13,27 @@
 // limitations under the License.
 
 #pragma once
+
 #include "paddle/phi/kernels/primitive/helper_primitives.h"
+
+// include file
+#ifdef PADDLE_WITH_XPU_KP
+
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/kernels/primitive/compute_primitives_xpu2.h"
+#include "paddle/phi/kernels/primitive/datamover_primitives_xpu2.h"
+#include "paddle/phi/kernels/primitive/functor_primitives_xpu2.h"
+
+#else
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/primitive/compute_primitives.h"
+#include "paddle/phi/kernels/primitive/datamover_primitives.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
+
+#endif
+
+// macro
 #ifdef PADDLE_WITH_XPU_KP
 
 #define KPStream XPUStream
@@ -21,11 +41,6 @@
 #define _ptr_ _global_ptr_
 #define __forceinline__ __inline__
 #define __restrict__
-
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/kernels/primitive/compute_primitives_xpu2.h"
-#include "paddle/phi/kernels/primitive/datamover_primitives_xpu2.h"
-#include "paddle/phi/kernels/primitive/functor_primitives_xpu2.h"
 
 #define THREAD_ID_X core_id()
 #define THREAD_ID_Y 0
@@ -42,11 +57,8 @@
 #define GRID_NUM_X cluster_num()
 #define GRID_NUM_Y 0
 #define GRID_NUM_Z 0
+
 #else
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/kernels/primitive/compute_primitives.h"
-#include "paddle/phi/kernels/primitive/datamover_primitives.h"
-#include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 #define KPStream gpuStream_t
 #define KPDevice phi::GPUContext
@@ -67,4 +79,5 @@
 #define GRID_NUM_X gridDim.x
 #define GRID_NUM_Y gridDim.y
 #define GRID_NUM_Z gridDim.z
+
 #endif
