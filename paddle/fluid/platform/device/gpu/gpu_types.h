@@ -1,4 +1,5 @@
 // Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 #else
 #include <cuda_runtime.h>
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
 
@@ -69,6 +71,10 @@ DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t, cudnnDropoutDescriptor_t,
 DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t);
 
 DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
+
+// TODO(Ming Huang): Since there is no blasLt handler,
+// use rocblas_handle for workround.
+DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
 
 using CUDAGraphID = unsigned long long;  // NOLINT
 
