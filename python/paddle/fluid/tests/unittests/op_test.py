@@ -29,6 +29,7 @@ from copy import copy
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.framework import _dygraph_tracer
 import paddle.fluid.core as core
 from paddle.fluid.framework import _in_eager_mode
 from paddle.fluid.framework import _test_eager_guard
@@ -395,6 +396,7 @@ class OpTest(unittest.TestCase):
             hasattr(self, "attrs") and "use_xpu" in self.attrs and
             self.attrs["use_xpu"] == True)
 
+    # set the self.output_dtype .
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):
             return isinstance(input, (np.ndarray, np.generic))
@@ -482,7 +484,12 @@ class OpTest(unittest.TestCase):
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.is_bfloat16_op():
+            self.dtype = np.uint16
+            self.__class__.dtype = self.dtype
+            self.output_dtype = np.uint16
+        else:
+            self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         inputs = append_input_output(block, op_proto, self.inputs, True,
                                      self.dtype)
         outputs = append_input_output(block, op_proto, self.outputs, False,
@@ -674,6 +681,91 @@ class OpTest(unittest.TestCase):
         else:
             return var_dict
 
+    def _check_api_outs_by_dygraph_outs(self, api_outs, dygraph_outs, place):
+        """ for quick verify, here we take a simplest strategy:
+                1. we only check variable in api_outs.
+                2. we simply check the numpy (tensor) .
+                3. we set atol and rtol as 1e-5, because they are unrelated to dtype.
+        """
+        for name in api_outs:
+            np_api = np.array(api_outs[name])
+            np_dyg = np.array(dygraph_outs[name])
+            self.assertTrue(
+                np.allclose(
+                    np_api, np_dyg, equal_nan=False),
+                "Output (" + name + ") has diff at " + str(place) + "\nExpect "
+                + str(np_dyg) + "\n" + "But Got" + str(np_api) + " in class " +
+                self.__class__.__name__)
+
+    def _calc_python_api_output(self, place):
+        def prepare_python_api_arguments(op_proto_ins, op_proto_attrs,
+                                         kernel_sig):
+            """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
+            """
+            # NOTE(xiongkun): why don't use input arguments dicts ? 
+            # Because we don't know the python api name of each arguments.
+            inputs_sig, attrs_sig, outputs_sig = kernel_sig
+            input_arguments = [op_proto_ins[name] for name in inputs_sig]
+            attr_arguments = {
+                name: op_proto_attrs[name]
+                for name in attrs_sig if name in op_proto_attrs
+            }
+            return input_arguments, attr_arguments
+
+        def construct_output_dict_by_kernel_sig(ret_tuple, output_sig):
+            if not isinstance(ret_tuple, (tuple, list)):
+                ret_tuple = [ret_tuple]
+            assert len(output_sig) == len(
+                ret_tuple), "expect %d outputs, but get %d outputs" % (
+                    len(output_sig), len(ret_tuple))
+            return {a: b for a, b in zip(output_sig, ret_tuple)}
+
+        def assumption_assert_and_transform(args, argvs):
+            """
+            currently only support "X" is [Tensor], don't support multi-tensor in "X"
+            """
+            for inp in args:
+                assert isinstance(inp, list) and len(
+                    inp
+                ) == 1, "currently only support `X` is [Tensor], don't support multi-tensor in `X`"
+            args = [inp[0] for inp in args]
+            return args, argvs
+
+        def cal_python_api(python_api, args, argvs, kernel_sig):
+            args, argvs = assumption_assert_and_transform(args, argvs)
+            inputs_sig, attrs_sig, outputs_sig = kernel_sig
+            ret_tuple = python_api(*args, **argvs)
+            return construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+
+        with fluid.dygraph.base.guard(place=place):
+            block = fluid.default_main_program().global_block()
+            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+            # prepare input variable
+            inputs = self.append_input_output_for_dygraph(op_proto, self.inputs,
+                                                          True, False, block)
+            # prepare output variable
+            outputs = self.append_input_output_for_dygraph(
+                op_proto, self.outputs, False, False, block)
+
+            # prepare attrbutes
+            attrs_outputs = {}
+            if hasattr(self, "attrs"):
+                for attrs_name in self.attrs:
+                    if self.attrs[attrs_name] is not None:
+                        attrs_outputs[attrs_name] = self.attrs[attrs_name]
+
+            kernel_sig = _dygraph_tracer()._get_kernel_signature(
+                self.op_type, inputs, outputs, attrs_outputs)
+
+            assert hasattr(
+                self, "python_api"
+            ), "Please set the `self.python_api` if you want to compare python api output."
+            arg, argv = prepare_python_api_arguments(inputs, attrs_outputs,
+                                                     kernel_sig)
+            """ we directly return the cal_python_api value because the value is already tensor. 
+            """
+            return cal_python_api(self.python_api, arg, argv, kernel_sig)
+
     def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
         with fluid.dygraph.base.guard(place=place):
@@ -694,6 +786,7 @@ class OpTest(unittest.TestCase):
                 for attrs_name in self.attrs:
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
+
             block.append_op(
                 type=self.op_type,
                 inputs=inputs,
@@ -1135,7 +1228,7 @@ class OpTest(unittest.TestCase):
                 else:
                     atol = 2
             else:
-                atol = 1e-2
+                atol = 1e-1
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
@@ -1145,6 +1238,12 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
+
+            if hasattr(self, "python_api"):
+                api_outs = self._calc_python_api_output(place)
+                self._check_api_outs_by_dygraph_outs(api_outs, dygraph_outs,
+                                                     place)
+
         if check_eager:
             with _test_eager_guard():
                 eager_dygraph_outs = self._calc_dygraph_output(

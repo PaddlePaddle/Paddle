@@ -17,6 +17,7 @@
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/svd_helper.h"
+#include "paddle/phi/kernels/funcs/compare_functors.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -224,15 +225,15 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
 
     int axis = -1;
     if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
-      ElementwiseComputeEx<GreaterThanFunctor<T, int64_t>,
+      ElementwiseComputeEx<phi::funcs::GreaterThanFunctor<T, int64_t>,
                            platform::CPUDeviceContext, T, int>(
           context, &eigenvalue_tensor, &tol_tensor, axis,
-          GreaterThanFunctor<T, int64_t>(), &compare_result);
+          phi::funcs::GreaterThanFunctor<T, int64_t>(), &compare_result);
     } else {
-      ElementwiseComputeEx<LessThanFunctor<T, int64_t>,
+      ElementwiseComputeEx<phi::funcs::LessThanFunctor<T, int64_t>,
                            platform::CPUDeviceContext, T, int>(
           context, &eigenvalue_tensor, &tol_tensor, axis,
-          LessThanFunctor<T, int64_t>(), &compare_result);
+          phi::funcs::LessThanFunctor<T, int64_t>(), &compare_result);
     }
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext,

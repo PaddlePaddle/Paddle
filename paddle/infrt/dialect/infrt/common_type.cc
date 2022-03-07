@@ -43,46 +43,49 @@ llvm::Optional<PrecisionType> GetPrecisionType(llvm::StringRef key) {
     return llvm::None;
 }
 
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, TargetType type) {
+llvm::StringRef GetString(TargetType type) {
+  llvm::StringRef str;
   switch (type) {
     case (TargetType::CPU):
-      os << "CPU";
+      str = "CPU";
       break;
     case (TargetType::GPU):
-      os << "GPU";
+      str = "GPU";
       break;
     default:
-      os << "Unsupported";
+      str = "Unsupported";
   }
-  return os;
+  return str;
 }
 
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, LayoutType type) {
+llvm::StringRef GetString(LayoutType type) {
+  llvm::StringRef str;
   switch (type) {
     case (LayoutType::NCHW):
-      os << "NCHW";
+      str = "NCHW";
       break;
     case (LayoutType::NHWC):
-      os << "NHWC";
+      str = "NHWC";
       break;
     default:
-      os << "Unsupported";
+      str = "Unsupported";
   }
-  return os;
+  return str;
 }
 
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, PrecisionType type) {
+llvm::StringRef GetString(PrecisionType type) {
+  llvm::StringRef str;
   switch (type) {
     case (PrecisionType::FLOAT32):
-      os << "FP32";
+      str = "FP32";
       break;
     case (PrecisionType::FLOAT16):
-      os << "FP16";
+      str = "FP16";
       break;
     default:
-      os << "Unsupported";
+      str = "Unsupported";
   }
-  return os;
+  return str;
 }
 
 }  // namespace infrt

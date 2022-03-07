@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include <limits>
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/log_softmax_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 
@@ -311,7 +311,7 @@ void LaunchLogSoftmaxForwardCUDAKernelNotLastAxis(T *output_data,
 template <typename T>
 class LogSoftmaxKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
-  using MPDType = typename details::MPTypeTrait<T>::Type;
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -433,7 +433,7 @@ void LaunchSoftmaxBackwardForLastAxis(T *grad_input, const T *grad_output,
 template <typename T>
 class LogSoftmaxGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
-  using MPDType = typename details::MPTypeTrait<T>::Type;
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -468,16 +468,18 @@ class LogSoftmaxGradKernel<platform::CUDADeviceContext, T>
   }
 };
 
-}  // operators
-}  // paddle
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     log_softmax, ops::LogSoftmaxKernel<plat::CUDADeviceContext, float>,
     ops::LogSoftmaxKernel<plat::CUDADeviceContext, double>,
-    ops::LogSoftmaxKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::LogSoftmaxKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::LogSoftmaxKernel<plat::CUDADeviceContext, plat::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(
     log_softmax_grad, ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, float>,
     ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, double>,
-    ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, plat::float16>,
+    ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, plat::bfloat16>);

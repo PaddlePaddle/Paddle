@@ -14,10 +14,10 @@
 
 #pragma once
 // framework deps
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-// pten deps
+// Phi deps
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/api_declare.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
@@ -31,7 +31,7 @@
  * provide variable in
  * paddle::framework::ExecutionContext to support it. We should remove this as
  * soon as we finish our latest
- * Pten Lib, and use paddle::experimental::Tensor instead.
+ * Phi Lib, and use paddle::experimental::Tensor instead.
  *
  * Note: Keep this class as clean as possible.
  * This class should only support method declared in

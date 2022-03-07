@@ -43,7 +43,7 @@ template <typename T, typename Context>
 void FakeDot(const Context& dev_ctx,
              const phi::DenseTensor& x,
              const phi::DenseTensor& y,
-             const std::vector<phi::DenseTensor>& fake_input_vec,
+             const std::vector<const phi::DenseTensor*>& fake_input_vec,
              bool fake_attr_bool,
              int fake_attr_int,
              float fake_attr_float,
@@ -146,12 +146,10 @@ TEST(CustomKernel, custom_kernel_dot) {
               custom_fake_dot_kernels.end());
 
   // 3.before register
-  auto& kernel_factory_instance = phi::KernelFactory::Instance();
   auto& kernels = phi::KernelFactory::Instance().kernels();
-  EXPECT_TRUE(!kernel_factory_instance.HasCompatiblePtenKernel(op_name));
+  EXPECT_TRUE(kernels.find(op_name) == kernels.end());
 
-  // mock fake_dot is supported by phi for HasCompatiblePtenKernel check while
-  // registering
+  // mock fake_dot is supported by phi for check while registering
   auto& fake_dot_kernels = kernels[op_name];
 
   EXPECT_TRUE(fake_dot_kernels.find(
@@ -196,7 +194,7 @@ TEST(CustomKernel, custom_kernel_dot) {
               fake_dot_kernels.end());
 
   // 4.kernel select
-  auto kernel = kernel_factory_instance.SelectKernelOrThrowError(
+  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       op_name, phi::KernelKey(backend, layout, phi::DataType::UINT8));
 
   // 5.prepare parameters for kernel
@@ -251,7 +249,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   phi::dtype::float16 fake_attr_f16 = phi::dtype::float16(5);
   phi::DataType fake_attr_dtype = phi::DataType::UINT32;
   paddle::framework::LoDTensor tmp_tensor;
-  tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPtenPlace(backend));
+  tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPhiPlace(backend));
   phi::Scalar fake_attr_scalar{tmp_tensor};
   phi::ScalarArray fake_attr_scalar_array;
   std::vector<int64_t> fake_attr_int64_vec;
@@ -271,7 +269,7 @@ TEST(CustomKernel, custom_kernel_dot) {
 
   auto dense_out = std::make_shared<phi::DenseTensor>(
       phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPtenPlace(backend)),
+          phi::TransToPhiPlace(backend)),
       phi::DenseTensorMeta());
 
   phi::MetaTensor meta_out(dense_out.get());
