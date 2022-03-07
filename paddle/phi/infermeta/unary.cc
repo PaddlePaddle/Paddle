@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <set>
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -323,6 +324,11 @@ void InferMetaFromVecValue(const MetaTensor& x,
     // are the same.
     out->share_lod(x);
   }
+}
+
+void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({1}));
+  out->set_dtype(DataType::BOOL);
 }
 
 void MultinomialInferMeta(const MetaTensor& x,
