@@ -61,15 +61,8 @@ void Conv3dGradKernel(const Context& dev_ctx,
   phi::DenseTensor out_grad_features =
       phi::Empty(dev_ctx, std::move(out_grad_features_meta));
 
-  dev_ctx.Alloc(
-      &in_features, in_features.dtype(), sizeof(T) * in_features.numel());
   T* in_features_ptr = in_features.data<T>();
-  dev_ctx.Alloc(
-      &d_x_features, d_x_features.dtype(), sizeof(T) * d_x_features.numel());
   T* d_x_features_ptr = d_x_features.data<T>();
-  dev_ctx.Alloc(&out_grad_features,
-                out_grad_features.dtype(),
-                sizeof(T) * out_grad_features.numel());
   T* out_grad_features_ptr = out_grad_features.data<T>();
   kernel_grad->Resize(kernel_dims);
   dev_ctx.Alloc(

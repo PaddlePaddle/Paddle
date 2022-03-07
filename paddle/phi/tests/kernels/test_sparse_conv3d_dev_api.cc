@@ -78,9 +78,6 @@ void TestConv3dBase(const std::vector<int>& indices,
   DenseTensor indices_tensor = phi::Empty(
       dev_ctx_cpu,
       DenseTensorMeta(DataType::INT32, {4, non_zero_num}, DataLayout::NCHW));
-  dev_ctx_cpu.Alloc(&indices_tensor,
-                    indices_tensor.dtype(),
-                    sizeof(int) * indices_tensor.numel());
   memcpy(
       indices_tensor.data<int>(), indices.data(), indices.size() * sizeof(int));
   DenseTensor features_tensor = phi::Empty(
@@ -88,9 +85,6 @@ void TestConv3dBase(const std::vector<int>& indices,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       {non_zero_num, in_channels},
                       DataLayout::NHWC));
-  dev_ctx_cpu.Alloc(&features_tensor,
-                    features_tensor.dtype(),
-                    features_tensor.numel() * sizeof(T));
   memcpy(
       features_tensor.data<T>(), features.data(), features.size() * sizeof(T));
 
@@ -101,8 +95,6 @@ void TestConv3dBase(const std::vector<int>& indices,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       kernel_dims,
                       DataLayout::NHWC));
-  dev_ctx_cpu.Alloc(
-      &kernel_tensor, kernel_tensor.dtype(), kernel_tensor.numel() * sizeof(T));
   memcpy(kernel_tensor.data<T>(), kernel.data(), kernel.size() * sizeof(T));
 
   auto f_verify = [&](const T* real_data, const std::vector<T>& correct_data) {
@@ -169,9 +161,6 @@ void TestConv3dBase(const std::vector<int>& indices,
   DenseTensor d_indices_tensor = phi::Empty(
       dev_ctx_gpu,
       DenseTensorMeta(DataType::INT32, {4, non_zero_num}, DataLayout::NCHW));
-  dev_ctx_gpu.Alloc(&d_indices_tensor,
-                    d_indices_tensor.dtype(),
-                    sizeof(int) * d_indices_tensor.numel());
   phi::Copy(
       dev_ctx_gpu, indices_tensor, phi::GPUPlace(), true, &d_indices_tensor);
 
@@ -180,9 +169,6 @@ void TestConv3dBase(const std::vector<int>& indices,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       {non_zero_num, in_channels},
                       DataLayout::NHWC));
-  dev_ctx_gpu.Alloc(&d_features_tensor,
-                    d_features_tensor.dtype(),
-                    sizeof(T) * d_features_tensor.numel());
   phi::Copy(
       dev_ctx_gpu, features_tensor, phi::GPUPlace(), true, &d_features_tensor);
 
@@ -193,9 +179,6 @@ void TestConv3dBase(const std::vector<int>& indices,
       DenseTensorMeta(paddle::experimental::CppTypeToDataType<T>::Type(),
                       kernel_dims,
                       DataLayout::NHWC));
-  dev_ctx_gpu.Alloc(&d_kernel_tensor,
-                    d_kernel_tensor.dtype(),
-                    sizeof(T) * d_kernel_tensor.numel());
   phi::Copy(
       dev_ctx_gpu, kernel_tensor, phi::GPUPlace(), true, &d_kernel_tensor);
 
@@ -219,9 +202,6 @@ void TestConv3dBase(const std::vector<int>& indices,
   DenseTensor h_indices_tensor = phi::Empty(
       dev_ctx_cpu,
       DenseTensorMeta(DataType::INT32, {4, d_out.nnz()}, DataLayout::NCHW));
-  dev_ctx_cpu.Alloc(&h_indices_tensor,
-                    h_indices_tensor.dtype(),
-                    sizeof(int) * h_indices_tensor.numel());
   phi::Copy(dev_ctx_gpu,
             d_out.non_zero_indices(),
             phi::CPUPlace(),
@@ -239,9 +219,6 @@ void TestConv3dBase(const std::vector<int>& indices,
                       {d_out.nnz()},
                       d_out.layout()));
 
-  dev_ctx_cpu.Alloc(&h_features_tensor,
-                    h_features_tensor.dtype(),
-                    sizeof(T) * h_features_tensor.numel());
   phi::Copy(dev_ctx_gpu,
             d_out.non_zero_elements(),
             phi::CPUPlace(),

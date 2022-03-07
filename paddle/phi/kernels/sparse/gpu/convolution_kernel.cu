@@ -204,13 +204,7 @@ int ProductRuleBook(const Context& dev_ctx,
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
   const int* indices_ptr = non_zero_indices.data<int>();
-  dev_ctx.Alloc(counter_per_kernel,
-                counter_per_kernel->dtype(),
-                sizeof(int) * counter_per_kernel->numel());
   int* counter_ptr = counter_per_kernel->data<int>();
-  dev_ctx.Alloc(offsets_per_kernel,
-                offsets_per_kernel->dtype(),
-                sizeof(int) * offsets_per_kernel->numel());
   int* offsets_ptr = offsets_per_kernel->data<int>();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   const int rulebook_rows = 3;
@@ -347,8 +341,6 @@ int ProductRuleBook(const Context& dev_ctx,
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
-  dev_ctx.Alloc(
-      &out_indices, out_indices.dtype(), sizeof(int) * out_indices.numel());
   int* out_indices_ptr = out_indices.data<int>();
 
   config =
@@ -443,11 +435,7 @@ void Conv3dKernel(const Context& dev_ctx,
       phi::Empty(dev_ctx, std::move(in_features_meta));
   phi::DenseTensor out_features =
       phi::Empty(dev_ctx, std::move(out_features_meta));
-  dev_ctx.Alloc(
-      &in_features, in_features.dtype(), sizeof(T) * in_features.numel());
   T* in_features_ptr = in_features.data<T>();
-  dev_ctx.Alloc(
-      &out_features, out_features.dtype(), sizeof(T) * out_features.numel());
   T* out_features_ptr = out_features.data<T>();
 
   auto config =
@@ -464,8 +452,6 @@ void Conv3dKernel(const Context& dev_ctx,
   // 3. call gemm for every werght
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   auto* out_values = out->mutable_non_zero_elements();
-  dev_ctx.Alloc(
-      out_values, out_values->dtype(), sizeof(T) * out_values->numel());
   T* out_values_ptr = out_values->data<T>();
 
   const T* kernel_ptr = kernel.data<T>();
