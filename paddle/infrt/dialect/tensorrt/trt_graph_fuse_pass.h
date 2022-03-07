@@ -25,32 +25,31 @@ namespace trt {
  *
  * source func:
  *
- * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()...
- *  %c = "trt.create_engine"(%a) {
+ * func @main(%a : tensor<?xf32>) -> tensor<?xf32> {
+ *  %c = "pd.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
- *     "Infrt.return" %m
+ *     "infrt.return" (%m)
  *  } ...
- *  %d = "trt.create_engine"(%c) {
+ *  %d = "pd.graph"(%c) {
  *      %m = "pd.conv3d"(%c)...
- *      "Infrt.return" %m
+ *      "infrt.return" (%m)
  *  } ...
- *  %f = "trt.create_engine"(%a) {
+ *  %f = "pd.graph"(%a) {
  *      %m = "pd.conv2d"(%a)...
- *      "Infrt.return" %m
+ *      "infrt.return" (%m)
  *  } ...
- *  "pd.fetch" %d, %f
+ *  "infrt.return" (%d, %f)..
+ * }
  *
  * destination func:
- * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()...
- *  %d, %f = "trt.create_engine"(%a) {
+ * func @main(%a : tensor<?xf32>) -> tensor<?xf32> {
+ *  %d, %f = "pd.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
  *     %n = "pd.conv3d"(%m)...
  *     %s = "pd.conv2d"(%a)...
- *     "Infrt.return" %n, %s
+ *     "infrt.return" (%n, %s)
  *  } ...
- *  "pd.fetch" %d, %f
+ *  "infrt.return" (%d, %f)
  * }
  */
 class TRTGraphFusePass
