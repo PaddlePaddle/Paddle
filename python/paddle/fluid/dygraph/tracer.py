@@ -31,9 +31,31 @@ final_state_name_mapping = {
         "out": "Out",
     },
     "elementwise_add": {
-        "final_op_name": "add",
+        "final_op_name": "final_state_add",
         "x": "X",
         "y": "Y",
+    },
+    "trunc": {
+        "final_op_name": "final_state_trunc",
+        "x": "X",
+        "out": "Out",
+    },
+    "abs": {
+        "final_op_name": "final_state_abs",
+        "x": "X",
+        "out": "Out",
+    },
+    "digamma": {
+        "final_op_name": "final_state_digamma",
+        "x": "X",
+        "out": "Out",
+    },
+    "diagonal": {
+        "final_op_name": "final_state_diagonal",
+        "x": "Input",
+        "offset": "offset",
+        "axis1": "axis1",
+        "axis2": "axis2",
         "out": "Out",
     }
 }

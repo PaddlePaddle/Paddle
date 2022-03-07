@@ -1140,7 +1140,7 @@ class OpTest(unittest.TestCase):
                 else:
                     atol = 2
             else:
-                atol = 1e-2
+                atol = 1e-1
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:

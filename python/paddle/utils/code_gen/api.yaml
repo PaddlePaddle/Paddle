@@ -125,7 +125,7 @@
   args : (Tensor x, int64_t[] axis={}, bool keep_dim=false)
   output : Tensor
   infer_meta :
-    func : ReduceInferMeta
+    func : MeanInferMeta
   kernel :
     func : mean
 
@@ -194,3 +194,49 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Backend place=Backend::UNDEFINED)
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
+
+- api : digamma
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : digamma
+  backward : digamma_grad
+
+- api : abs
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : abs
+  backward : abs_grad
+
+- api : trunc
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : trunc
+  backward : trunc_grad
+
+# - api : norm
+#   args : (Tensor x, int axis, float epsilon, bool is_test)
+#   output : Tensor(out), Tensor(norm)
+#   infer_meta :
+#     func : NormInferMeta
+#   kernel :
+#     func : norm
+#   intermediate : norm
+#   backward : norm_grad
+
+- api : diagonal
+  args : (Tensor x, int offset, int axis1, int axis2)
+  output : Tensor
+  infer_meta :
+    func : DiagonalInferMeta
+  kernel :
+    func : diagonal
+  backward : diagonal_grad

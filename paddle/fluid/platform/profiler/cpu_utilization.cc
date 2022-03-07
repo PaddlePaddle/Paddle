@@ -54,19 +54,16 @@ void CpuUtilization::RecordBeginTimeInfo() {
   if (stat_file != nullptr) {
     char temp_str[200];
     uint64_t temp_lu;
-    while (true) {
-      int retval = fscanf(
-          stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
-                     "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-          temp_str, &system_tms_start_.tms_utime, &nice_time_start_,
-          &system_tms_start_.tms_stime, &idle_start_, &iowait_start_,
-          &irq_start_, &softirq_start_, &steal_start_, &temp_lu, &temp_lu);
-      if (std::string(temp_str).find("cpu") != 0) {
-        break;
-      }
-      if (retval != 11) {
-        return;
-      }
+    int retval = fscanf(
+        stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
+                   "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
+        temp_str, &system_tms_start_.tms_utime, &nice_time_start_,
+        &system_tms_start_.tms_stime, &idle_start_, &iowait_start_, &irq_start_,
+        &softirq_start_, &steal_start_, &temp_lu, &temp_lu);
+    if (retval != 11) {
+      LOG(WARNING)
+          << "Failed to read cpu utilization information at record beginning."
+          << std::endl;
     }
     fclose(stat_file);
   }
@@ -90,19 +87,17 @@ void CpuUtilization::RecordEndTimeInfo() {
   if (stat_file != nullptr) {
     char temp_str[200];
     uint64_t temp_lu;
-    while (true) {
-      int retval = fscanf(
-          stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
-                     "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
-          temp_str, &system_tms_end_.tms_utime, &nice_time_end_,
-          &system_tms_end_.tms_stime, &idle_end_, &iowait_end_, &irq_end_,
-          &softirq_end_, &steal_end_, &temp_lu, &temp_lu);
-      if (std::string(temp_str).find("cpu") != 0) {
-        break;
-      }
-      if (retval != 11) {
-        return;
-      }
+    int retval = fscanf(
+        stat_file, "%s %" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64
+                   "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64 "%" PRIu64,
+        temp_str, &system_tms_end_.tms_utime, &nice_time_end_,
+        &system_tms_end_.tms_stime, &idle_end_, &iowait_end_, &irq_end_,
+        &softirq_end_, &steal_end_, &temp_lu, &temp_lu);
+
+    if (retval != 11) {
+      LOG(WARNING)
+          << "Failed to read cpu utilization information at record end."
+          << std::endl;
     }
     fclose(stat_file);
   }

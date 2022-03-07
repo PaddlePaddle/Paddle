@@ -16,9 +16,11 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
@@ -60,6 +62,25 @@ class TestRecurrentFeed(unittest.TestCase):
                 original_in1.stop_gradient = True
                 rt.clear_gradients()
 
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                fluid.default_startup_program().random_seed = seed
+                fluid.default_main_program().random_seed = seed
+                original_in1 = to_variable(original_np1)
+                original_in2 = to_variable(original_np2)
+                original_in1.stop_gradient = False
+                original_in2.stop_gradient = False
+                rt = RecurrentTest("RecurrentTest")
+
+                for i in range(3):
+                    sum_out, out = rt(original_in1, original_in2)
+                    original_in1 = out
+                    eager_sum_out_value = sum_out.numpy()
+                    sum_out.backward()
+                    eager_dyout = out.gradient()
+                    original_in1.stop_gradient = True
+                    rt.clear_gradients()
+
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -88,8 +109,11 @@ class TestRecurrentFeed(unittest.TestCase):
                 original_np1 = static_out_value
 
         self.assertTrue(np.array_equal(static_sum_out, sum_out_value))
+        self.assertTrue(np.array_equal(static_sum_out, eager_sum_out_value))
         self.assertTrue(np.array_equal(static_dout, dyout))
+        self.assertTrue(np.array_equal(static_dout, eager_dyout))
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

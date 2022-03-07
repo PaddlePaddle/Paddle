@@ -47,6 +47,8 @@ enum DataType {
 
 enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU };
 
+enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
+
 /// \brief Represents an n-dimensional array of values.
 /// The Tensor is used to store the input or output of the network.
 /// Zero copy means that the tensor supports direct copy of host or device data
@@ -91,6 +93,17 @@ class PD_INFER_DECL Tensor {
   /// \param data The pointer of the data, from which the tensor will copy.
   template <typename T>
   void CopyFromCpu(const T* data);
+
+  /// \brief Share the data with tensor data.
+  /// It's usually used to set the tensor data.
+  /// \param data The pointer of the data, from which the tensor will share.
+  /// \param shape The shape of data.
+  /// \param place The place of data.
+  /// \param layout The layout of data. Only NCHW is supported now.
+  template <typename T>
+  void ShareExternalData(const T* data, const std::vector<int>& shape,
+                         PlaceType place,
+                         DataLayout layout = DataLayout::kNCHW);
 
   /// \brief Experimental interface.
   /// It's usually used to set the input tensor data with Strings data type.
