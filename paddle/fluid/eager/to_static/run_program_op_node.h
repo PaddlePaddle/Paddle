@@ -397,26 +397,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     RunProgramGradAPI(x_, params_, grads[0], step_scope_, attrs_, x_grad_ptr,
                       params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
-    PADDLE_ENFORCE_EQ(
-        x_grad_ptr[0]->defined(), true,
-        paddle::platform::errors::InvalidArgument("defined eror"));
-    PADDLE_ENFORCE_EQ(
-        x_grad_ptr[0]->initialized(), true,
-        paddle::platform::errors::InvalidArgument("initialized eror"));
-    auto *xxx =
-        dynamic_cast<const phi::DenseTensor *>(x_grad_ptr[0]->impl().get());
-    PADDLE_ENFORCE_NOT_NULL(
-        xxx, paddle::platform::errors::InvalidArgument("dynamic_cast eror"));
-
-    PADDLE_ENFORCE_EQ(
-        x_grad[0].defined(), true,
-        paddle::platform::errors::InvalidArgument("defined eror"));
-    PADDLE_ENFORCE_EQ(
-        x_grad[0].initialized(), true,
-        paddle::platform::errors::InvalidArgument("initialized eror"));
-    auto *xx = dynamic_cast<const phi::DenseTensor *>(x_grad[0].impl().get());
-    PADDLE_ENFORCE_NOT_NULL(
-        xx, paddle::platform::errors::InvalidArgument("dynamic_cast eror"));
     return {x_grad, params_grad};
   }
 
