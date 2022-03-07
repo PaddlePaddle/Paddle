@@ -573,6 +573,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(pool2d, Pool2dInferShapeFunctor,
                             PD_INFER_META(phi::PoolInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad, Pool2dGradInferShapeFunctor,
                             PD_INFER_META(phi::PoolGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad_grad, Pool2dDoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::PoolInferMeta));
 
 REGISTER_OPERATOR(
     pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
@@ -583,7 +585,8 @@ REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad,
                   ops::Pool2dOpGradGradMaker<paddle::framework::OpDesc>,
                   ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>,
                   Pool2dGradInferShapeFunctor);
-REGISTER_OPERATOR(pool2d_grad_grad, ops::PoolOp);
+REGISTER_OPERATOR(pool2d_grad_grad, ops::PoolOp,
+                  Pool2dDoubleGradInferShapeFunctor);
 
 DECLARE_INFER_SHAPE_FUNCTOR(pool3d, Pool3dInferShapeFunctor,
                             PD_INFER_META(phi::PoolInferMeta));

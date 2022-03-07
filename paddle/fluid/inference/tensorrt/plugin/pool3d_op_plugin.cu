@@ -108,15 +108,15 @@ int Pool3DPlugin::enqueue(int batchSize, const void *const *inputs,
   output_shape.insert(output_shape.begin(), batchSize);
 
   if (pool3d_type_ == Pool3DType::max) {
-    phi::funcs : MaxPool<float> pool_process;
-    phi::funcs : Pool3dDirectCUDAFunctor<phi::funcs : MaxPool<float>, float>
-                     pool3d_forward;
+    phi::funcs::MaxPool<float> pool_process;
+    phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::MaxPool<float>, float>
+        pool3d_forward;
     pool3d_forward(idata, input_shape, output_shape, ksize_, strides_,
                    paddings_, true, adaptive_, odatas[0], stream, pool_process);
   } else if (pool3d_type_ == Pool3DType::avg) {
-    phi::funcs : AvgPool<float> pool_process;
-    phi::funcs : Pool3dDirectCUDAFunctor<phi::funcs : AvgPool<float>, float>
-                     pool3d_forward;
+    phi::funcs::AvgPool<float> pool_process;
+    phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::AvgPool<float>, float>
+        pool3d_forward;
     pool3d_forward(idata, input_shape, output_shape, ksize_, strides_,
                    paddings_, true, adaptive_, odatas[0], stream, pool_process);
   }
@@ -349,15 +349,15 @@ int Pool3DPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
   }
 
   if (pool3d_type_ == "max") {
-    phi::funcs : MaxPool<float> pool_process;
-    phi::funcs : Pool3dDirectCUDAFunctor<phi::funcs : MaxPool<float>, float>
-                     pool3d_forward;
+    phi::funcs::MaxPool<float> pool_process;
+    phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::MaxPool<float>, float>
+        pool3d_forward;
     pool3d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
                    true, adaptive_, output, stream, pool_process);
   } else if (pool3d_type_ == "avg") {
-    phi::funcs : AvgPool<float> pool_process;
-    phi::funcs : Pool3dDirectCUDAFunctor<phi::funcs : AvgPool<float>, float>
-                     pool3d_forward;
+    phi::funcs::AvgPool<float> pool_process;
+    phi::funcs::Pool3dDirectCUDAFunctor<phi::funcs::AvgPool<float>, float>
+        pool3d_forward;
     pool3d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
                    true, adaptive_, output, stream, pool_process);
   }

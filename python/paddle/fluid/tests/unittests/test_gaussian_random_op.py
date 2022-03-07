@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
 import paddle
 
 
@@ -62,6 +62,50 @@ class TestGaussianRandomOp(OpTest):
         self.assertTrue(
             np.allclose(
                 hist, hist2, rtol=0, atol=0.01),
+            "hist: " + str(hist) + " hist2: " + str(hist2))
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestGaussianRandomBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "gaussian_random"
+        self.set_attrs()
+        self.inputs = {}
+        self.use_mkldnn = False
+        self.attrs = {
+            "shape": [123, 92],
+            "mean": self.mean,
+            "std": self.std,
+            "seed": 10,
+            "dtype": paddle.fluid.core.VarDesc.VarType.BF16,
+            "use_mkldnn": self.use_mkldnn
+        }
+        paddle.seed(10)
+
+        self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
+
+    def set_attrs(self):
+        self.mean = 1.0
+        self.std = 2.
+
+    def test_check_output(self):
+        self.check_output_with_place_customized(
+            self.verify_output, place=core.CUDAPlace(0))
+
+    def verify_output(self, outs):
+        outs = convert_uint16_to_float(outs)
+        self.assertEqual(outs[0].shape, (123, 92))
+        hist, _ = np.histogram(outs[0], range=(-3, 5))
+        hist = hist.astype("float32")
+        hist /= float(outs[0].size)
+        data = np.random.normal(size=(123, 92), loc=1, scale=2)
+        hist2, _ = np.histogram(data, range=(-3, 5))
+        hist2 = hist2.astype("float32")
+        hist2 /= float(outs[0].size)
+        self.assertTrue(
+            np.allclose(
+                hist, hist2, rtol=0, atol=0.05),
             "hist: " + str(hist) + " hist2: " + str(hist2))
 
 

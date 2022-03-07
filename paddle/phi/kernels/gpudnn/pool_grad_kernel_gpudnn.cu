@@ -161,7 +161,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
-    layout = DataLayout::kNCHW;
+    layout = GPUDNNDataLayout::kNCHW;
 
     std::vector<int> axis{0, 3, 1, 2};
 
@@ -405,6 +405,8 @@ void Pool3dGradGPUDNNKernel(const Context& ctx,
 
 }  // namespace phi
 
+using phi::dtype::float16;
+
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
 PD_REGISTER_KERNEL(pool2d_grad,
@@ -412,19 +414,19 @@ PD_REGISTER_KERNEL(pool2d_grad,
                    ALL_LAYOUT,
                    phi::Pool2dGradGPUDNNKernel,
                    float,
-                   dtype::float16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool2d_grad_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Pool2dDoubleGradGPUDNNKernel,
                    float,
-                   dtype::float16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool3d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
-                   Pool3dGradGPUDNNKernel,
+                   phi::Pool3dGradGPUDNNKernel,
                    float,
-                   phi::dtype::float16) {}
+                   float16) {}
 #else
 PD_REGISTER_KERNEL(pool2d_grad,
                    GPUDNN,
@@ -432,19 +434,19 @@ PD_REGISTER_KERNEL(pool2d_grad,
                    phi::Pool2dGradGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool2d_grad_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Pool2dDoubleGradGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool3d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Pool3dGradGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   float16) {}
 #endif

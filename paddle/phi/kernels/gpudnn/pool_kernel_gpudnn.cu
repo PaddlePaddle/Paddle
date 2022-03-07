@@ -289,20 +289,14 @@ void Pool3dGPUDNNKernel(const Context& ctx,
 
 }  // namespace phi
 
+using phi::dtype::float16;
+
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-PD_REGISTER_KERNEL(pool2d,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::Pool2dGPUDNNKernel,
-                   float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(pool3d,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::Pool3dGPUDNNKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    pool2d, GPUDNN, ALL_LAYOUT, phi::Pool2dGPUDNNKernel, float, float16) {}
+PD_REGISTER_KERNEL(
+    pool3d, GPUDNN, ALL_LAYOUT, phi::Pool3dGPUDNNKernel, float, float16) {}
 #else
 PD_REGISTER_KERNEL(pool2d,
                    GPUDNN,
@@ -310,12 +304,12 @@ PD_REGISTER_KERNEL(pool2d,
                    phi::Pool2dGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool3d,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Pool3dGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   float16) {}
 #endif
