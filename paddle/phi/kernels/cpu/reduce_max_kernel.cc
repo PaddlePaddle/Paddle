@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/reduce_max_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/infermeta/binary.h"
-#include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 namespace phi {
 
@@ -27,12 +27,13 @@ void MaxRawKernel(const Context& dev_ctx,
                   const std::vector<int64_t>& dims,
                   bool keep_dim,
                   bool reduce_all,
-                  DenseTensor* out);
+                  DenseTensor* out) {
+  auto out_dtype = x.dtype();
+  phi::Reduce<CPUContext, T, phi::funcs::MaxFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
 
-template <typename T, typename Context>
-void MaxKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const std::vector<int64_t>& dims,
-               bool keep_dim,
-               DenseTensor* out);
 }  // namespace phi
+
+PD_REGISTER_KERNEL(
+    max_raw, CPU, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
