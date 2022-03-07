@@ -19,13 +19,13 @@ from paddle.fluid.core import TracerEventType
 
 class SortedKeys(Enum):
     r"""
-    Sorted keys for printing op summary table.
+    Sorted keys for printing summary table.
     """
-    OpTotal = 0
-    OpAvg = 1
-    OpMax = 2
-    OpMin = 3
-    KernelTotal = 4
-    KernelAvg = 5
-    KernelMax = 6
-    KernelMin = 7
+    CPUTotal = 0
+    CPUAvg = 1
+    CPUMax = 2
+    CPUMin = 3
+    GPUTotal = 4
+    GPUAvg = 5
+    GPUMax = 6
+    GPUMin = 7

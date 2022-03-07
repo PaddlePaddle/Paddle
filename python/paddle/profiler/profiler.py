@@ -453,7 +453,7 @@ class Profiler:
             self.profiler_result.save(path, format)
 
     def summary(self,
-                sorted_by=SortedKeys.OpTotal,
+                sorted_by=SortedKeys.CPUTotal,
                 op_detail=True,
                 thread_sep=False,
                 time_unit='ms'):
