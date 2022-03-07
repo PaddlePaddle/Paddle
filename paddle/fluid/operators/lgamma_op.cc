@@ -76,8 +76,8 @@ class LgammaGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(lgamma, LgammaInferShapeFunctor,
-                            PT_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(lgamma, LgammaInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(lgamma, ops::LgammaOp, ops::LgammaOpMaker,
                   ops::LgammaGradMaker<paddle::framework::OpDesc>,
