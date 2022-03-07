@@ -27,6 +27,9 @@ class TRT_PaddleAttr <string name, string description> :
       Attr<CPred<"$_self.isa<mlir::trt::" # name # "Attr>()">,
           "PaddlePaddle " # description # " attribute">;
 
+def TRT_EngineType :
+      Type<CPred<"$_self.isa<::infrt::trt::EngineType>()">, "!trt.engine">,
+      BuildableType<"getType<::infrt::trt::EngineType>()">;
 
 //===----------------------------------------------------------------------===//
 // PaddlePaddle type definitions
