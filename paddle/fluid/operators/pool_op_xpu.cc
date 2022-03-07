@@ -11,10 +11,13 @@ limitations under the License. */
 
 #include <unordered_map>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor.h"
 
 #ifdef PADDLE_WITH_XPU
 namespace paddle {
 namespace operators {
+
+using platform::Tensor;
 
 xpu::Pooling_t XPUPoolingType(const std::string& pooltype, bool exclusive,
                               bool is_test) {
