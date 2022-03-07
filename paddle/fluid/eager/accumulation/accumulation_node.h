@@ -35,8 +35,8 @@ class GradNodeAccumulation : public GradNodeBase {
 
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
-      override;
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+      const bool create_graph = false) override;
 
   std::string name() { return "GradNodeAccumulation"; }
 

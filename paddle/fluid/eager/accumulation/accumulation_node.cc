@@ -39,8 +39,8 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
 }
 
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
-operator()(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
+operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
+           const bool create_graph) {
   VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(

@@ -19,6 +19,7 @@ from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
 import numpy as np
+import paddle.compat as cpt
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -61,6 +62,36 @@ class TestEagerGrad(TestCase):
         with _test_eager_guard():
             self.func_simple_example_eager_grad()
         self.func_simple_example_eager_grad()
+    
+    def func_simple_example_eager_grad_allow_unused(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        np_z = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        z = paddle.to_tensor(np_z, dtype="float64", stop_gradient=False)
+        out_z = paddle.nn.functional.sigmoid(z)
+        out = paddle.matmul(x, y)
+
+        dx = fluid.dygraph.grad(out, [x, z], allow_unused=True)
+       
+        dout = np.ones_like(np_y)
+        expected_dx = np.matmul(dout, np.transpose(np_y))
+ 
+        self.assertTrue(np.allclose(dx[0].numpy(), expected_dx[0]))
+         
+        try:
+           dx = fluid.dygraph.grad(out, [x, z])
+        except ValueError as e:
+            error_msg = cpt.get_exception_message(e)
+            assert error_msg.find("allow_unused") > 0
+
+    def test_simple_example_eager_grad_allow_unused(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad_allow_unused()
+        self.func_simple_example_eager_grad_allow_unused()
 
 
 class TestDygraphDoubleGrad(TestCase):

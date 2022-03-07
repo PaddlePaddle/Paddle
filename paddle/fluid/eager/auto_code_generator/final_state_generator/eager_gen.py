@@ -533,7 +533,7 @@ class {} : public egr::GradNodeBase {{
   ~{}() override = default;
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads) override;
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads, const bool create_graph = false) override;
   std::string name() override {{ return \" {} \"; }}
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
@@ -609,7 +609,7 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
 
     grad_node_name = GetGradNodeName(fwd_api_name)
     FUNCTION_TEMPLATE = """
-std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {{
+std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads, const bool create_graph) {{
     // Call grad_api function
     auto grad_api_returns = paddle::experimental::{}({});
     {}

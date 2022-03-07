@@ -34,6 +34,14 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   // pass
   std::unordered_map<GradNodeBase*, int> node_in_degree_map;
 
+  // init potential startup node's indegree
+  std::queue<GradNodeBase*> queue_tmp = init_queue;
+  while (!queue_tmp.empty()) {
+    GradNodeBase* node = queue_tmp.front();
+    queue_tmp.pop();
+    node_in_degree_map[node] = 0;
+  }
+
   // Copy nodes
   std::queue<GradNodeBase*> queue = init_queue;
   std::unordered_set<GradNodeBase*> visited;
@@ -164,6 +172,7 @@ void GetGraphInfoBetweenTargets(
       }
     }
   }
+
   UpdateGraphInfo(target_nodes, depending_nodes, potential_stop_nodes);
 }
 
@@ -193,17 +202,33 @@ void GetTargetNodesInfo(const std::vector<paddle::experimental::Tensor>& inputs,
 
 std::vector<paddle::experimental::Tensor> GetResults(
     const std::vector<paddle::experimental::Tensor>& inputs,
-    std::unordered_map<GradNodeBase*, paddle::experimental::Tensor>&
-        result_map) {
+    const std::unordered_map<GradNodeBase*, paddle::experimental::Tensor>&
+        results_map,
+    bool allow_unused) {
   VLOG(1) << "Run in GetResults";
   if (inputs.empty()) return {};
 
   std::vector<paddle::experimental::Tensor> results;
   results.reserve(inputs.size());
-  for (auto input : inputs) {
+  auto results_map_ = results_map;
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    auto& input = inputs[i];
     AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(input);
     auto target_node = auto_grad_meta->GetMutableGradNode().get();
-    results.emplace_back(result_map[target_node]);
+
+    if (results_map_.find(target_node) != results_map_.end()) {
+      // TODO(wuweilong): set StopGradient
+      // result_map[target_node].SetOverridedStopGradient(!create_graph_);
+      results.emplace_back(results_map_[target_node]);
+    } else {
+      PADDLE_ENFORCE_EQ(allow_unused, true,
+                        paddle::platform::errors::InvalidArgument(
+                            "The %d-th input does not appear in the backward "
+                            "graph. Please check the input variable or set "
+                            "allow_unused=True to get None result.",
+                            i));
+      results.emplace_back();
+    }
   }
   return results;
 }
@@ -219,6 +244,20 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
   // *Cross-batch accumulation happens at forward pass
+
+  /* --- Preprocess --- */
+
+  // TODO(wuweilong): output tensor duplicate check
+  // TODO(wuweilong): build no_grad_vars_grads according no_grad_vars
+  // TODO(wuweilong): output tensor' gradient is not in no_grad_vars
+
+  // TODO(wuweilong): check input tensor has grad op and stop_gradient = False
+  // TODO(wuweilong): input tensor duplicate check
+  // TODO(wuweilong): input tensor' gradient is not in no_grad_vars
+
+  // TODO(wuweilong): Prune output_targets which is not the input of startup_ops
+  // TODO(wuweilong): input == output case
+  // TODO(wuweilong): output_targets.size() should eaqul to output_grads.size()
 
   /* --- Initialization --- */
   // 1. Init queue with starting nodes
@@ -288,13 +327,27 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       getInDegreeMap(queue);
 
   std::unordered_map<GradNodeBase*, AutogradMeta*> target_nodes_inputmeta_map;
-  std::unordered_set<GradNodeBase*> target_nodes;
+  std::unordered_set<GradNodeBase*> target_nodes;  // should be updated?
   GetTargetNodesInfo(inputs, &target_nodes, &target_nodes_inputmeta_map);
 
   std::unordered_map<GradNodeBase*, GradNodeBase*> depending_nodes;
   std::unordered_set<GradNodeBase*> potential_stop_nodes;
   GetGraphInfoBetweenTargets(queue, &target_nodes, &depending_nodes,
                              &potential_stop_nodes);
+
+  std::unordered_set<GradNodeBase*> startup_ops_;
+  // ready_queue store all startup nodes
+  std::queue<GradNodeBase*> ready_queue;
+
+  // startup op's indegree should be 0
+  for (auto& pair : node_in_degree_map) {
+    if (pair.second == 0) {
+      auto* op = pair.first;
+      startup_ops_.emplace(op);
+      ready_queue.emplace(op);
+    }
+  }
+  VLOG(1) << " startup_ops' size is :" << startup_ops_.size();
 
   std::unordered_map<GradNodeBase*, paddle::experimental::Tensor> results_map;
 
@@ -306,9 +359,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   //    |- Prepare for next node
   // 3. Update queue
   VLOG(6) << "Run Backward";
-  while (!queue.empty()) {
-    GradNodeBase* node = queue.front();
-    queue.pop();
+  while (!ready_queue.empty()) {
+    GradNodeBase* node = ready_queue.front();
+    ready_queue.pop();
 
     // Run node: This is where Hook happens
     PADDLE_ENFORCE(
@@ -334,7 +387,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     // Run Pre Backward Node and get outputs
     std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
-        (*node)(node_input_buffer->Buffers());
+        (*node)(node_input_buffer->Buffers(), create_graph);
     // TODO(jiabin): Should we erase it or find a more efficient way.
     node_input_buffers_dict.erase(node);
 
@@ -410,13 +463,13 @@ std::vector<paddle::experimental::Tensor> RunBackward(
         }
 
         if (node_in_degree_map[next_node] == 0 && !is_potential_stop_node) {
-          queue.emplace(std::move(next_node));
+          ready_queue.emplace(std::move(next_node));
         }
       }
     }
   }
   if (!inputs.empty()) {
-    return GetResults(inputs, results_map);
+    return GetResults(inputs, results_map, allow_unused);
   }
 
   VLOG(1) << "Run backward in the end, return {}";
