@@ -1082,6 +1082,17 @@ void TransposeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void TransposeGradInferMeta(const MetaTensor& x,
+                            const std::vector<int>& axis,
+                            MetaTensor* out) {
+  std::vector<int> reversed_axis(axis);
+  for (size_t i = 0; i < axis.size(); i++) {
+    reversed_axis[axis[i]] = i;
+  }
+
+  TransposeInferMeta(x, reversed_axis, out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);

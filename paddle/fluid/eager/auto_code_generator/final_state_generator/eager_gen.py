@@ -1175,7 +1175,7 @@ if __name__ == "__main__":
         print("Generated Forward Definition: ", forward_definition_str)
         print("Generated Forward Declaration: ", forward_declaration_str)
         forward_definition_str += definition_declaration_pair[0]
-        forward_declaration_str += definition_declaration_pair[1]
+        forward_declaration_str += definition_declaration_pair[1] + "\n"
 
         # For python-level API dispatch
         CollectCoreOpsInformation(fwd_api_name, forward_inputs_position_map,
