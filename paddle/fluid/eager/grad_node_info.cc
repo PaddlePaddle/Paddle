@@ -30,6 +30,7 @@
 namespace egr {
 
 GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
+  VLOG(6) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
   // adj_edges has the same num as backward outputs
@@ -49,11 +50,15 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
     // its pre-ops
     if (meta && !meta->StopGradient()) {
       auto node = meta->GetMutableGradNode();
-      if (node) {
+      if (node && node.get()) {
+        VLOG(6) << "Add Edges for slot: " << slot_id
+                << " which is: " << meta->GetMutableGradNode()->name();
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                          meta->OutRankInfo());
       } else {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
+        VLOG(6) << "Add Edges for slot: " << slot_id
+                << " which is: " << meta->GetMutableGradNode()->name();
         adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
                                          meta->OutRankInfo());
       }
@@ -70,7 +75,7 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
           "inputs's slot num."));
   if (meta && !meta->StopGradient()) {
     auto node = meta->GetMutableGradNode();
-    if (node) {
+    if (node && node.get()) {
       VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
               << this->name() << " to " << meta->GetMutableGradNode()->name();
       adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
@@ -244,7 +249,7 @@ GradNodeBase::ApplyGradientHooks(
     if (!out.defined() || !out.initialized()) {
       out = (*hook)(tensors[slot_id][rank]);
     } else {
-      // If more than one hook is registered, the input to the next hook func
+      // If more than one hook is registered, the input to the next hook func
       // should be the output of the previous hook
       out = (*hook)(out);
     }

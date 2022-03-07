@@ -16,14 +16,8 @@ import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
-import paddle.optimizer
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
-
-paddle.enable_static()
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
@@ -32,14 +26,14 @@ class TestBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
-        self.set_feed()
+        self.set_data_feed()
         self.set_feed_attr()
-        self.set_attrs()
+        self.set_op_attrs()
 
     def set_atol(self):
         self.atol = 1e-3
 
-    def set_feed(self):
+    def set_data_feed(self):
         self.feed = {
             "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float32'),
         }
@@ -47,23 +41,20 @@ class TestBase(IPUOpTest):
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed.values()]
         self.feed_list = list(self.feed.keys())
-        self.feed_dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
-        ]
+        self.feed_dtype = [x.dtype for x in self.feed.values()]
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['dtype'] = 'float16'
 
     def _test_base(self, run_ipu=True):
-        scope = fluid.core.Scope()
+        scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        SEED = self.SEED
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        main_prog.random_seed = self.SEED
+        startup_prog.random_seed = self.SEED
 
-        with fluid.scope_guard(scope):
+        with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],
@@ -82,8 +73,8 @@ class TestBase(IPUOpTest):
             if run_ipu:
                 feed_list = self.feed_list
                 ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.SetGraphConfig(is_training=self.is_training)
-                program = compiler.IPUCompiledProgram(
+                ipu_strategy.set_graph_config(is_training=self.is_training)
+                program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
             else:
@@ -103,27 +94,91 @@ class TestBase(IPUOpTest):
         self.assertTrue(res0.shape == res1.shape)
 
 
-class TestCase1(TestBase):
-    def set_attrs(self):
+class TestCase2(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_data_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float16'),
+        }
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'float32'
+
+
+class TestCase3(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_data_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float32'),
+        }
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'int32'
+
+
+class TestCase4(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_data_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('int32'),
+        }
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'float32'
+
+
+class TestCase5(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_data_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float16'),
+        }
+
+    def set_op_attrs(self):
+        self.attrs = {}
+        self.attrs['dtype'] = 'int32'
+
+
+class TestCase6(TestBase):
+    def set_atol(self):
+        self.atol = 1e-10
+
+    def set_data_feed(self):
+        self.feed = {
+            "x": np.random.uniform(size=[1, 3, 3, 3]).astype('int32'),
+        }
+
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['dtype'] = 'float16'
 
 
 @unittest.skip('float64 is not supported')
 class TestCase2(TestBase):
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['dtype'] = 'float64'
 
 
 @unittest.skip('skip float16 to float32')
 class TestCase3(TestBase):
-    def set_feed(self):
+    def set_data_feed(self):
         self.feed = {
             "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float16'),
         }
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['dtype'] = 'float32'
 
@@ -133,13 +188,13 @@ class TestCase4(TestBase):
     def set_atol(self):
         self.atol = 1
 
-    def set_feed(self):
+    def set_data_feed(self):
         self.feed = {
             "x": np.random.randint(
                 low=1, high=100, size=[1, 3, 3, 3]).astype('int32'),
         }
 
-    def set_attrs(self):
+    def set_op_attrs(self):
         self.attrs = {}
         self.attrs['dtype'] = 'int8'
 

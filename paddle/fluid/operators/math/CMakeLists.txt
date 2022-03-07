@@ -1,5 +1,3 @@
-add_subdirectory(detail)
-
 if (WITH_ASCEND_CL)
   cc_library(beam_search_npu SRCS beam_search_npu.cc DEPS npu_op_runner)
 endif()
@@ -18,8 +16,7 @@ math_library(im2col)
 math_library(sample_prob)
 math_library(sampler DEPS generator)
 
-math_library(gru_compute DEPS activation_functions math_function)
-math_library(lstm_compute DEPS activation_functions)
+# math_library(math_function DEPS blas dense_tensor tensor)
 math_library(maxouting)
 math_library(pooling)
 
@@ -29,7 +26,6 @@ else()
     math_library(selected_rows_functor DEPS selected_rows_utils math_function blas)
 endif()
 
-math_library(sequence2batch)
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
@@ -74,7 +70,6 @@ if(WITH_GPU AND (NOT WITH_ROCM))
     endif()
 endif()
 
-cc_test(cpu_vec_test SRCS cpu_vec_test.cc DEPS blas cpu_info)
 if(WITH_TESTING AND TEST im2col_test)
     set_tests_properties(im2col_test PROPERTIES TIMEOUT 120)
 endif()
