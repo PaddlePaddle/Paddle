@@ -8,7 +8,7 @@ if(WITH_GPU)
 endif()
 cc_library(phi_enforce INTERFACE SRCS enforce.cc DEPS ${phi_enforce_deps})
 
-cc_library(kernel_factory SRCS kernel_factory.cc DEPS phi_enforce fluid_convert_utils phi_custom_kernel)
+cc_library(kernel_factory SRCS kernel_factory.cc DEPS phi_enforce fluid_convert_utils)
 cc_library(kernel_context SRCS kernel_context.cc DEPS phi_enforce phi_context)
 
 cc_library(ddim SRCS ddim.cc DEPS phi_enforce)
@@ -25,7 +25,7 @@ cc_library(infermeta_utils SRCS infermeta_utils.cc DEPS meta_tensor)
 cc_library(selected_rows SRCS selected_rows_impl.cc DEPS dense_tensor phi_enforce ddim memcpy)
 cc_library(phi_device_context SRCS device_context.cc DEPS dense_tensor selected_rows)
 
-cc_library(phi_custom_kernel SRCS custom_kernel.cc DEPS kernel_factory convert_utils op_registry phi_tensor_raw)
+cc_library(phi_custom_kernel SRCS custom_kernel.cc DEPS kernel_factory)
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
