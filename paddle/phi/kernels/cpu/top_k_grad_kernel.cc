@@ -107,7 +107,7 @@ void TopkGradKernel(const Context& dev_ctx,
     trans_dO.Resize(trans_dims);
     trans_ind.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_dO);
-    dev_ctx.template Alloc<T>(&trans_ind);
+    dev_ctx.template Alloc<int64_t>(&trans_ind);
     int ndims = trans.size();
 
     // Do transpose
