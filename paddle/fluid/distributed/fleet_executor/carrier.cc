@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
@@ -46,7 +48,8 @@ void Carrier::Init(
     const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
     const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
     const framework::ProgramDesc& program, framework::Scope* scope,
-    int64_t num_micro_batches, const platform::Place& place) {
+    int64_t num_micro_batches, const platform::Place& place,
+    const std::vector<std::string>& inference_root_scope_vars) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
   interceptor_id_to_node_ = interceptor_id_to_node;
@@ -60,7 +63,7 @@ void Carrier::Init(
   microbatch_scopes_.resize(num_micro_batches);
   for (int i = 0; i < num_micro_batches; ++i) {
     microbatch_scopes_[i] = &minibatch_scope_->NewScope();
-    CopyParameters(i, program);
+    CopyParameters(i, program, inference_root_scope_vars);
   }
 
   // TODO(fleet_exe dev): thread pool
@@ -80,12 +83,23 @@ void Carrier::Release() {
 
 Carrier::~Carrier() { VLOG(3) << "Carrier's destructor."; }
 
-void Carrier::CopyParameters(int microbatch_id,
-                             const framework::ProgramDesc& program) {
+void Carrier::CopyParameters(
+    int microbatch_id, const framework::ProgramDesc& program,
+    const std::vector<std::string>& inference_root_scope_vars) {
   auto& global_block = program.Block(0);
 
+  std::map<std::string, int> inference_root_scope_var_map;
+  for (auto var_name : inference_root_scope_vars) {
+    inference_root_scope_var_map.insert({var_name, 1});
+  }
   for (auto& var : global_block.AllVars()) {
-    if (var->Persistable() && microbatch_id == 0) {
+    std::string var_name = var->Name();
+    bool force_root = inference_root_scope_var_map.find(var_name) !=
+                      inference_root_scope_var_map.end();
+    if (force_root) {
+      VLOG(4) << var_name << " will be forced to be created in the root scope.";
+    }
+    if ((var->Persistable() || force_root) && microbatch_id == 0) {
       auto* ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
       VLOG(5) << "Create persistable var: " << var->Name()
