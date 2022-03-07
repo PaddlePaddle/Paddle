@@ -110,12 +110,11 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
               "and second dimension of prior_box_dims is %d",
               target_box_dims[1], box_score_dims[1], prior_box_dims[1]));
     }
-    ctx->SetOutputDim("DecodeBox", framework::make_ddim({target_box_dims[0],
-                                                         target_box_dims[1]}));
+    ctx->SetOutputDim("DecodeBox",
+                      phi::make_ddim({target_box_dims[0], target_box_dims[1]}));
     ctx->ShareLoD("TargetBox", /*->*/ "DecodeBox");
-    ctx->SetOutputDim(
-        "OutputAssignBox",
-        framework::make_ddim({prior_box_dims[0], prior_box_dims[1]}));
+    ctx->SetOutputDim("OutputAssignBox",
+                      phi::make_ddim({prior_box_dims[0], prior_box_dims[1]}));
     ctx->ShareLoD("PriorBox", /*->*/ "OutputAssignBox");
   }
 };

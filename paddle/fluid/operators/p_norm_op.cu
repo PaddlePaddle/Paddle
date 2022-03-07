@@ -39,6 +39,11 @@ __device__ __forceinline__ int sgn(T val) {
 __device__ __forceinline__ platform::float16 inline_abs(platform::float16 x) {
   return static_cast<platform::float16>(abs(static_cast<float>(x)));
 }
+
+__device__ __forceinline__ platform::bfloat16 inline_abs(platform::bfloat16 x) {
+  return static_cast<platform::bfloat16>(abs(static_cast<float>(x)));
+}
+
 __device__ __forceinline__ float inline_abs(float x) { return abs(x); }
 __device__ __forceinline__ double inline_abs(double x) { return abs(x); }
 
@@ -51,6 +56,11 @@ __device__ __forceinline__ int inline_sign(double x) { return sgn<double>(x); }
 __device__ __forceinline__ platform::float16 inline_pow(
     platform::float16 base, platform::float16 exponent) {
   return static_cast<platform::float16>(
+      pow(static_cast<float>(base), static_cast<float>(exponent)));
+}
+__device__ __forceinline__ platform::bfloat16 inline_pow(
+    platform::bfloat16 base, platform::bfloat16 exponent) {
+  return static_cast<platform::bfloat16>(
       pow(static_cast<float>(base), static_cast<float>(exponent)));
 }
 __device__ __forceinline__ float inline_pow(float base, float exponent) {
@@ -105,25 +115,28 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
 
     using MT = typename details::MPTypeTrait<T>::Type;
     if (porder == 0) {
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
-          *in_x, out_norm, NonzeroFunctor<T>(), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, NonzeroFunctor<T>(),
+          reduce_axis, stream);
     } else if (porder == INFINITY) {
-      TensorReduceFunctorImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
-          *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::MaxFunctor, AbsFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
+          reduce_axis, stream);
     } else if (porder == -INFINITY) {
-      TensorReduceFunctorImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
-          *in_x, out_norm, AbsFunctor<T>(), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::MinFunctor, AbsFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm, AbsFunctor<T>(),
+          reduce_axis, stream);
     } else {
-      TensorReduceFunctorImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
-          *in_x, out_norm, UnsignedPowFunctor<T>(porder), reduce_axis, stream);
+      TensorReduceImpl<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
+          ctx.cuda_device_context(), *in_x, out_norm,
+          UnsignedPowFunctor<T>(porder), reduce_axis, stream);
 
       const framework::Tensor* tmp_norm = out_norm;
       std::vector<const framework::Tensor*> ins = {tmp_norm};
       std::vector<framework::Tensor*> outs = {out_norm};
       const auto& cuda_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<
-          ElementwiseType::kUnary, T, T, UnsignedPowFunctor<T>>(
+      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
           cuda_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
     }
   }
@@ -177,7 +190,7 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
     auto& cuda_ctx = ctx.template device_context<DeviceContext>();
 
     if (porder == 0) {
-      math::SetConstant<DeviceContext, T> set_zero;
+      phi::funcs::SetConstant<DeviceContext, T> set_zero;
       set_zero(cuda_ctx, out_dx, static_cast<T>(0));
     } else if (porder == INFINITY || porder == -INFINITY) {
       AbsMaxAndMinGradFunctor<T> functor;
@@ -199,9 +212,11 @@ using CUDA = paddle::platform::CUDADeviceContext;
 
 REGISTER_OP_CUDA_KERNEL(p_norm,
                         ops::PnormCUDAKernel<CUDA, paddle::platform::float16>,
+                        ops::PnormCUDAKernel<CUDA, paddle::platform::bfloat16>,
                         ops::PnormCUDAKernel<CUDA, float>,
                         ops::PnormCUDAKernel<CUDA, double>);
 REGISTER_OP_CUDA_KERNEL(
     p_norm_grad, ops::PnormGradCUDAKernel<CUDA, paddle::platform::float16>,
+    ops::PnormGradCUDAKernel<CUDA, paddle::platform::bfloat16>,
     ops::PnormGradCUDAKernel<CUDA, float>,
     ops::PnormGradCUDAKernel<CUDA, double>);

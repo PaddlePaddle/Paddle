@@ -78,7 +78,7 @@ class MLUDeviceContext : public DeviceContext {
   explicit MLUDeviceContext(MLUPlace place);
   virtual ~MLUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  Place GetPlace() const override;
+  const Place& GetPlace() const override;
 
   int GetComputeCapability() const;
 

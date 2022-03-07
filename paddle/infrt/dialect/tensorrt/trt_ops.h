@@ -28,6 +28,7 @@
 #include <mlir/Interfaces/InferTypeOpInterface.h>
 #include <mlir/Interfaces/LoopLikeInterface.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
+#include "paddle/infrt/dialect/basic_kernels.h"
 
 namespace infrt {
 namespace trt {

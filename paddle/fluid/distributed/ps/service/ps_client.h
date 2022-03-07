@@ -128,6 +128,17 @@ class PSClient {
                                            const uint64_t *keys, size_t num,
                                            bool is_training) = 0;
 
+  virtual std::future<int32_t> pull_sparse_param(float **select_values,
+                                                 size_t table_id,
+                                                 const uint64_t *keys,
+                                                 size_t num, bool is_training) {
+    VLOG(0) << "Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
+  }
+
   virtual ::std::future<int32_t> pull_sparse_ptr(char **select_values,
                                                  size_t table_id,
                                                  const uint64_t *keys,

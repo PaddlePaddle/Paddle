@@ -27,6 +27,8 @@ import paddle.fluid as fluid
 import numpy as np
 from paddle.fluid import compiler, Program, program_guard
 
+paddle.enable_static()
+
 
 # Situation 1: Attr(shape) is a list(without tensor)
 class TestFillConstantOp1(OpTest):
@@ -449,5 +451,4 @@ class TestFillConstantOpError(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

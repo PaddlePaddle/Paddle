@@ -28,7 +28,7 @@ namespace paddle {
 namespace distributed {
 
 using framework::LoDTensor;
-using pten::SelectedRows;
+using phi::SelectedRows;
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 
@@ -113,7 +113,9 @@ int Communicator::SetClients(std::vector<uint64_t> &host_sign_list) {
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
                                 int table_id, Scope *scope) {
-  platform::RecordEvent record_event("Communicator->RpcRecvDense");
+  platform::RecordEvent record_event("Communicator->RpcRecvDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   std::vector<paddle::distributed::Region> regions;
   regions.reserve(varnames.size());
   for (auto &t : varnames) {
@@ -169,7 +171,9 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
 
 void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
                                      int table_id, const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendDenseParam");
+  platform::RecordEvent record_event("Communicator->RpcSendDenseParam",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto place = platform::CPUPlace();
   std::vector<paddle::distributed::Region> regions;
   for (auto &t : varnames) {
@@ -206,7 +210,9 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
 }
 
 void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendDense");
+  platform::RecordEvent record_event("Communicator->RpcSendDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &var_names = ctx.origin_varnames;
   auto &table_id = ctx.table_id;
   auto dense_data = std::make_shared<std::vector<float>>();
@@ -250,7 +256,9 @@ void Communicator::RpcSendDense(const CommContext &ctx, const Scope &scope) {
 
 void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
                                       const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendSparseParam");
+  platform::RecordEvent record_event("Communicator->RpcSendSparseParam",
+                                     platform::TracerEventType::Communication,
+                                     1);
   size_t request_call_num = _worker_ptr->get_server_nums();
   std::vector<float *> push_g_vec;
 
@@ -287,13 +295,15 @@ void Communicator::RpcSendSparseParam(const std::string &varname, int table_id,
 
 void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
                                  const Scope &scope) {
-  platform::RecordEvent record_event("Communicator->RpcSendSparse");
+  platform::RecordEvent record_event("Communicator->RpcSendSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   size_t request_call_num = _worker_ptr->get_server_nums();
   std::vector<uint64_t> sparse_push_keys;
   std::vector<float *> push_g_vec;
 
   auto *send_var = scope.FindVar(var_name);
-  auto *tensor = send_var->GetMutable<pten::SelectedRows>();
+  auto *tensor = send_var->GetMutable<phi::SelectedRows>();
   auto dim = tensor->value().dims()[1];
   std::transform(tensor->rows().begin(), tensor->rows().end(),
                  std::back_inserter(sparse_push_keys),
@@ -338,7 +348,9 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
 
 void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
                                  Scope *scope) {
-  platform::RecordEvent record_event("Communicator->RpcRecvSparse");
+  platform::RecordEvent record_event("Communicator->RpcRecvSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto *send_var = scope->Var(varname);
   auto *tensor = send_var->GetMutable<framework::LoDTensor>();
   auto dim = tensor->dims()[1];
@@ -354,7 +366,7 @@ void Communicator::RpcRecvSparse(const std::string &varname, int table_id,
 
   bool training = true;
 
-  auto status = _worker_ptr->pull_sparse(
+  auto status = _worker_ptr->pull_sparse_param(
       (float **)push_g_vec.data(), table_id,  // NOLINT
       sparse_push_keys.data(), sparse_push_keys.size(), training);
   status.wait();
@@ -406,7 +418,9 @@ void Communicator::SendGlobalStep(const CommContext &ctx, int batches,
   if (batches == 0) {
     return;
   }
-  platform::RecordEvent record_event("Communicator->SendGlobalStep");
+  platform::RecordEvent record_event("Communicator->SendGlobalStep",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &table_id = ctx.table_id;
   size_t request_call_num = _worker_ptr->get_server_nums();
 
@@ -852,7 +866,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
     VLOG(3) << "send step_counter into queue";
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
-    tensor->Resize(framework::make_ddim({1}));
+    tensor->Resize(phi::make_ddim({1}));
     auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
     out_d[0] = 1;
     send_varname_to_queue_[table_name]->Push(tmp_var);
@@ -994,7 +1008,8 @@ void SyncCommunicator::BarrierRecv() {
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
                            const framework::Scope &scope) {
-  platform::RecordEvent record_event("GeoCommunicator->Send");
+  platform::RecordEvent record_event(
+      "GeoCommunicator->Send", platform::TracerEventType::Communication, 1);
   waiting_ = false;
   auto before_send = GetCurrentUS();
   auto table_name = var_names[0];
@@ -1012,10 +1027,10 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
 
   auto *var = scope.FindVar(table_name);
 
-  PADDLE_ENFORCE_EQ(var->IsType<pten::SelectedRows>(), true,
+  PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(), true,
                     platform::errors::InvalidArgument(
                         "Only need to send Sparse Grad in Geo mode."));
-  auto &rows = var->Get<pten::SelectedRows>().rows();
+  auto &rows = var->Get<phi::SelectedRows>().rows();
 
   // insert ids which has not been record
   for (size_t j = 0; j < rows.size(); j++) {
@@ -1029,7 +1044,7 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
     auto &sparse_ids_set = iter.second;
     auto sparse_ids_vec = std::make_shared<std::vector<int64_t>>();
     sparse_ids_vec->assign(sparse_ids_set.begin(), sparse_ids_set.end());
-    sparse_id_queues_.at(key)->Push(sparse_ids_vec);
+    sparse_id_queues_.at(key)->Put(sparse_ids_vec);
     VLOG(3) << "push " << sparse_ids_vec->size() << " ids to " << key
             << "'s queue";
   }
@@ -1051,7 +1066,10 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
-    if (!ctx.is_sparse) continue;
+    if (!ctx.is_sparse) {
+      parallel_task_nums_ += 1;
+      continue;
+    }
     auto &varnames = ctx.origin_varnames;
     PADDLE_ENFORCE_EQ(
         varnames.size(), 1,
@@ -1060,12 +1078,11 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     for (auto &splited_var : ctx.splited_varnames) {
       parallel_task_nums_ += 1;
       sparse_id_queues_.insert(
-          std::pair<std::string, std::shared_ptr<BlockingQueue<
-                                     std::shared_ptr<std::vector<int64_t>>>>>(
+          std::pair<std::string, paddle::framework::Channel<
+                                     std::shared_ptr<std::vector<int64_t>>>>(
               splited_var,
-              std::make_shared<
-                  BlockingQueue<std::shared_ptr<std::vector<int64_t>>>>(
-                  send_queue_size_)));
+              paddle::framework::MakeChannel<
+                  std::shared_ptr<std::vector<int64_t>>>(send_queue_size_)));
     }
   }
 
@@ -1135,7 +1152,9 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
 }
 
 void GeoCommunicator::SendDense(const CommContext &send_ctx) {
-  platform::RecordEvent record_event("GeoCommunicator->SendDense");
+  platform::RecordEvent record_event("GeoCommunicator->SendDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &var_names = send_ctx.origin_varnames;
   auto &table_id = send_ctx.table_id;
   for (auto &varname : var_names) {
@@ -1153,14 +1172,12 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
     auto &t_latest = var_latest->Get<framework::LoDTensor>();
     auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
 
-    auto cpu_ctx = paddle::platform::CPUDeviceContext();
+    paddle::platform::CPUDeviceContext cpu_ctx;
     auto *var_delta = delta_scope_->Var(varname);
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
 
-    auto blas =
-        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-            cpu_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
     blas.VSUB(t_latest.numel(), t_latest.data<float>(),
               t_timestamp->data<float>(), t_delta->data<float>());
 
@@ -1176,14 +1193,16 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
 }
 
 void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
-  platform::RecordEvent record_event("GeoCommunicator->RecvDense");
+  platform::RecordEvent record_event("GeoCommunicator->RecvDense",
+                                     platform::TracerEventType::Communication,
+                                     1);
   auto &table_id = send_ctx.table_id;
   auto &varnames = recv_varname_to_ctx_.at(table_id);
   // 1. recv from pserver
   RpcRecvDense(varnames, table_id, pserver_scope_.get());
 
   // 2.1 pserver - old => delta; 2.2 latest + old => latest 2.3 old => pserver
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
   for (auto &varname : varnames) {
     auto *var_latest = recv_scope_->FindVar(varname);
     auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
@@ -1198,9 +1217,7 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
     auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
     t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
 
-    auto blas =
-        paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-            cpu_ctx);
+    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
     blas.VSUB(t_latest->numel(), t_pserver.data<float>(), t_old->data<float>(),
               t_delta->data<float>());
     blas.VADD(t_latest->numel(), t_latest->data<float>(),
@@ -1235,15 +1252,17 @@ void GeoCommunicator::InitSparse(const std::string &var_name, int table_id) {
 
 std::vector<int64_t> GeoCommunicator::MergeSparseIds(
     const std::string &send_varname) {
-  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds");
+  platform::RecordEvent record_event("GeoCommunicator->MergeSparseIds",
+                                     platform::TracerEventType::Communication,
+                                     1);
   size_t merge_num = 0, wait_times = 0;
   std::unordered_set<int64_t> sparse_ids;
   while (merge_num < static_cast<size_t>(max_merge_var_num_)) {
     VLOG(3) << "Merge Number of " << send_varname << " = " << merge_num;
     if (sparse_id_queues_.at(send_varname)->Size() > 0) {
       wait_times = 0;
-      std::shared_ptr<std::vector<int64_t>> pop_ids =
-          sparse_id_queues_.at(send_varname)->Pop();
+      std::shared_ptr<std::vector<int64_t>> pop_ids = nullptr;
+      sparse_id_queues_.at(send_varname)->Get(pop_ids);
       for (size_t j = 0; j < pop_ids->size(); j++) {
         sparse_ids.insert(pop_ids->at(j));
       }
@@ -1267,7 +1286,12 @@ std::vector<int64_t> GeoCommunicator::MergeSparseIds(
 void GeoCommunicator::SendSparse(const std::string &varname,
                                  std::vector<int64_t> &sparse_ids, int table_id,
                                  int ep_idx) {
-  platform::RecordEvent record_event("GeoCommunicator->SendSparse");
+  platform::RecordEvent record_event("GeoCommunicator->SendSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
+  if (sparse_ids.size() == 0) {
+    return;
+  }
   std::string param_name = SplitedGradToParam(varname);
   VLOG(1) << "In GeoCommunicator::SendSparse(" << varname << " " << param_name
           << ", ids.size = " << sparse_ids.size() << ", table_id: " << table_id
@@ -1287,10 +1311,10 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   auto *t_old = var_old->GetMutable<framework::LoDTensor>();
 
   auto dims1 = t_latest.dims()[1];
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  paddle::platform::CPUDeviceContext cpu_ctx;
 
   auto *var_delta = delta_scope_->Var(varname);
-  auto *t_delta = var_delta->GetMutable<pten::SelectedRows>();
+  auto *t_delta = var_delta->GetMutable<phi::SelectedRows>();
   auto *var_t_value = t_delta->mutable_value();
   var_t_value->Resize({static_cast<int64_t>(sparse_ids.size()), dims1});
   auto *t_value = var_t_value->mutable_data<float>(cpu_ctx.GetPlace());
@@ -1298,9 +1322,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   t_delta->set_rows(sparse_ids);
   t_delta->set_height(t_latest.dims()[0]);
 
-  auto blas =
-      paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-          cpu_ctx);
+  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
   float coefficient = 1.0 / static_cast<float>(trainers_);
 
   std::vector<float *> push_g_vec;
@@ -1313,6 +1335,10 @@ void GeoCommunicator::SendSparse(const std::string &varname,
               t_value + j * dims1,
               t_old->data<float>() + sparse_ids[j] * dims1);
     push_g_vec.push_back(t_value + j * dims1);
+
+    VLOG(5) << "DEBUG GeoCommunicator::SendSparse send sparse key "
+            << sparse_ids[j] << " value[0] " << push_g_vec[j][0]
+            << " value[-1] " << push_g_vec[j][dims1 - 1];
   }
 
   ++_async_call_num;
@@ -1337,7 +1363,9 @@ void GeoCommunicator::SendSparse(const std::string &varname,
 
 void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
                                  int ep_idx) {
-  platform::RecordEvent record_event("GeoCommunicator->RecvSparse");
+  platform::RecordEvent record_event("GeoCommunicator->RecvSparse",
+                                     platform::TracerEventType::Communication,
+                                     1);
   // 1. recv from pserver
   std::vector<uint64_t> keys;
   std::vector<float> values;
@@ -1361,12 +1389,13 @@ void GeoCommunicator::RecvSparse(const std::string &varname, int table_id,
   std::vector<float> v_delta;
   v_delta.resize(numel);
 
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
-  auto blas =
-      paddle::operators::math::GetBlas<platform::CPUDeviceContext, float>(
-          cpu_ctx);
+  paddle::platform::CPUDeviceContext cpu_ctx;
+  auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
 
   for (auto j = 0; j < static_cast<int>(keys.size()); ++j) {
+    VLOG(5) << "DEBUG GeoCommunicator::RecvSparse recv sparse key" << keys[j]
+            << "value[0] " << values[j * dims1] << " value[-1] "
+            << values[j * dims1 + dims1 - 1];
     float *latest_data = t_latest->data<float>() + keys[j] * dims1;
     float *old_data = t_old->data<float>() + keys[j] * dims1;
     // pserver - old => delta

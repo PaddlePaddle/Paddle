@@ -19,7 +19,7 @@
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/pten/core/kernel_factory.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_sequential_run, false,
@@ -263,7 +263,15 @@ void deal_operator_base(const platform::Place& place,
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
-  op_func_node->type_ = OpFuncType::kQueueSync;  // alway Sync
+  if (platform::is_gpu_place(place)) {
+    op_func_node->type_ = OpFuncType::kQueueAsync;
+  } else if (platform::is_cpu_place(place)) {
+    op_func_node->type_ = OpFuncType::kQueueSync;
+  } else {
+    PADDLE_THROW(
+        platform::errors::Fatal("Unsupported current place %s", place));
+  }
+
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
 
@@ -399,14 +407,14 @@ void build_op_func_list(const platform::Place& place,
       auto exec_ctx =
           ExecutionContext(*op_with_kernel, scope, *dev_ctx, runtime_context);
 
-      auto run_pten_kernel = false;
-      if (pten::KernelFactory::Instance().HasCompatiblePtenKernel(
+      auto run_phi_kernel = false;
+      if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
               op_with_kernel->Type())) {
-        auto pt_kernel_key = op_with_kernel->ChoosePtenKernel(exec_ctx);
-        auto pt_kernel_name = op_with_kernel->PtenKernelSignature()->name;
+        auto pt_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+        auto pt_kernel_name = op_with_kernel->PhiKernelSignature()->name;
 
-        if (op_with_kernel->PtenKernel()->IsValid()) {
-          run_pten_kernel = true;
+        if (op_with_kernel->PhiKernel()->IsValid()) {
+          run_phi_kernel = true;
         } else {
           auto kernels_iter = all_op_kernels.find(op_with_kernel->Type());
           if (kernels_iter == all_op_kernels.end() ||
@@ -414,26 +422,26 @@ void build_op_func_list(const platform::Place& place,
                   kernels_iter->second.end()) {
             auto pt_cpu_kernel_key = FallBackToCpu(
                 expected_kernel_key, pt_kernel_key, *op_with_kernel);
-            op_with_kernel->ResetPtenKernel(
-                new pten::Kernel(pten::KernelFactory::Instance().SelectKernel(
+            op_with_kernel->ResetPhiKernel(
+                new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                     pt_kernel_name, pt_cpu_kernel_key)));
-            if (op_with_kernel->PtenKernel()->IsValid()) {
+            if (op_with_kernel->PhiKernel()->IsValid()) {
               VLOG(6) << "Static mode PrepareImpl - kernel name: "
                       << pt_kernel_name
                       << " | kernel key: " << pt_cpu_kernel_key
-                      << " | kernel: " << *(op_with_kernel->PtenKernel());
-              run_pten_kernel = true;
+                      << " | kernel: " << *(op_with_kernel->PhiKernel());
+              run_phi_kernel = true;
             }
           }
         }
       }
       VLOG(3) << op_with_kernel->Type()
               << " : expected_kernel_key : " << expected_kernel_key;
-      if (run_pten_kernel) {
-        pten::KernelContext pt_kernel_context;
-        op_with_kernel->BuildPtenKernelContext(runtime_context, dev_ctx,
-                                               &pt_kernel_context);
-        op_func_node.pt_kernel_ = op_with_kernel->PtenKernel();
+      if (run_phi_kernel) {
+        phi::KernelContext pt_kernel_context;
+        op_with_kernel->BuildPhiKernelContext(runtime_context, dev_ctx,
+                                              &pt_kernel_context);
+        op_func_node.pt_kernel_ = op_with_kernel->PhiKernel();
 
         (*op_func_node.pt_kernel_)(&pt_kernel_context);
       } else {
@@ -486,8 +494,8 @@ void build_op_func_list(const platform::Place& place,
       if (var->IsType<LoDTensor>()) {
         garbages->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-      } else if (var->IsType<pten::SelectedRows>()) {
-        garbages->emplace_back(var->GetMutable<pten::SelectedRows>()
+      } else if (var->IsType<phi::SelectedRows>()) {
+        garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
                                    ->mutable_value()
                                    ->MoveMemoryHolder());
       } else if (var->IsType<LoDTensorArray>()) {

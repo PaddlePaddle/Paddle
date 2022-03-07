@@ -134,7 +134,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::INT16, XPUPlace()),
-                     pOpKernelType(vartype::INT8, XPUPlace()),
+                     pOpKernelType(vartype::UINT8, XPUPlace()),
                      pOpKernelType(vartype::BOOL, XPUPlace()),
                      pOpKernelType(vartype::FP64, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
@@ -196,6 +196,7 @@ XPUOpMap& get_kl2_ops() {
       {"hard_swish_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"hard_swish", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"huber_loss_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"huber_loss", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
@@ -317,6 +318,9 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace())})},
       {"softmax_with_cross_entropy",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"softplus", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"softplus_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"split", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                               pOpKernelType(vartype::INT32, XPUPlace())})},
       {"squeeze2_grad",
@@ -383,6 +387,10 @@ XPUOpMap& get_kl2_ops() {
                               pOpKernelType(vartype::FP32, XPUPlace())})},
 
       // AddMore
+      {"sequence_conv",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"sequence_conv_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
   };
 
   return s_xpu2_kernels;

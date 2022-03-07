@@ -22,6 +22,10 @@ class CPUDeviceContext;
 }  // namespace platform
 }  // namespace paddle
 
+namespace phi {
+class CPUContext;
+}  // namespace phi
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -31,12 +35,12 @@ namespace math {
  * col =
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
-template <class T>
-class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
-                    platform::CPUDeviceContext, T> {
+template <class T, typename DeviceContext>
+class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, DeviceContext,
+                    T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& im, const std::vector<int>& dilation,
+  void operator()(const DeviceContext& context, const framework::Tensor& im,
+                  const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col,
                   const DataLayout data_layout) {
@@ -73,12 +77,11 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
  * col =
  *   [input_channels, filter_height, filter_width, output_height, output_width]
  */
-template <class T>
-class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
-                    platform::CPUDeviceContext, T> {
+template <class T, typename DeviceContext>
+class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, DeviceContext,
+                    T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& col,
+  void operator()(const DeviceContext& context, const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im,
@@ -155,22 +158,30 @@ template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CPUDeviceContext, float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CPUDeviceContext, double>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                             phi::CPUContext, float>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
+                             phi::CPUContext, double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CPUDeviceContext, float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                              platform::CPUDeviceContext, double>;
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+                             phi::CPUContext, float>;
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
+                             phi::CPUContext, double>;
 
 /*
  * im = [input_channels, input_height, input_width]
  * col =
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
-template <class T>
-class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
-                    platform::CPUDeviceContext, T> {
+template <class T, typename DeviceContext>
+class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF, DeviceContext,
+                    T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& im, const std::vector<int>& dilation,
+  void operator()(const DeviceContext& context, const framework::Tensor& im,
+                  const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col,
                   const DataLayout data_layout) {
@@ -235,12 +246,11 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
  * col =
  *   [output_height, output_width, input_channels, filter_height, filter_width]
  */
-template <class T>
-class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
-                    platform::CPUDeviceContext, T> {
+template <class T, typename DeviceContext>
+class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF, DeviceContext,
+                    T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& col,
+  void operator()(const DeviceContext& context, const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im,
@@ -316,11 +326,18 @@ template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                              platform::CPUDeviceContext, float>;
 template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                              platform::CPUDeviceContext, double>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
+                             phi::CPUContext, float>;
+template class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
+                             phi::CPUContext, double>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                              platform::CPUDeviceContext, float>;
 template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                              platform::CPUDeviceContext, double>;
-
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
+                             phi::CPUContext, float>;
+template class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
+                             phi::CPUContext, double>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -260,7 +260,7 @@ void FillHashTable(const framework::ExecutionContext& ctx, const T* input,
   int block = 1024;
 #endif
   const auto& dev_ctx = ctx.cuda_device_context();
-  int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
+  int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   // 1. Insert data into keys and values.
@@ -334,7 +334,7 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
   int block = 1024;
 #endif
   const auto& dev_ctx = ctx.cuda_device_context();
-  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
+  int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (outputs->size() + block - 1) / block;
   int64_t grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
   ReindexSrcOutput<

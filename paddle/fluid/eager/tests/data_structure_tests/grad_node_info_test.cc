@@ -17,8 +17,9 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/tests/data_structure_tests/grad_node_test.h"
-#include "paddle/pten/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 
 TEST(GradNodeInfo, GradSlotMeta) {
   auto grad_slot = egr::GradSlotMeta();
@@ -32,26 +33,26 @@ TEST(GradNodeInfo, GradSlotMeta) {
   CHECK_EQ(grad_slot.Size(), 2);
 }
 
-TEST(GradNodeInfo, GradNodeBase) {
+void TestGradNodeBase(bool is_remove_gradient_hook) {
   VLOG(6) << "Construct Grad Node";
   auto grad_test_node0 = std::make_shared<eager_test::GradTestNode>(
       /* val */ 5.0, /* in_num */ 2, /* out_num */ 2);
   auto grad_test_node1 = std::make_shared<eager_test::GradTestNode>();
-  std::vector<std::vector<egr::EagerTensor>> grads;
-  pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-      pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
-  std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  std::vector<std::vector<paddle::experimental::Tensor>> grads;
+  phi::DenseTensorMeta meta =
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+  std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
           .get(),
       meta);
   auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
   dt_ptr[0] = 5.0f;
-  egr::EagerTensor et1(dt);
+  paddle::experimental::Tensor et1(dt);
   grads = {{et1}};
   VLOG(6) << "Test Grad Node Call";
   auto res = (*grad_test_node0)(grads);
-  CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(res[0][0].impl())
+  CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(res[0][0].impl())
                ->data<float>()[0],
            6.0f);
   VLOG(6) << "Test Add Edges";
@@ -93,11 +94,12 @@ TEST(GradNodeInfo, GradNodeBase) {
   CHECK_EQ(grad_test_node2->OutputMeta()[0].Size(), 1);
 
   VLOG(6) << "Test Gradient Hook";
-  auto gradient_hook = [](const egr::EagerTensor& et) -> egr::EagerTensor {
-    egr::EagerTensor res;
-    pten::DenseTensorMeta meta = pten::DenseTensorMeta(
-        pten::DataType::FLOAT32, paddle::framework::make_ddim({1, 1}));
-    std::shared_ptr<pten::DenseTensor> dt = std::make_shared<pten::DenseTensor>(
+  auto gradient_hook = [](
+      const paddle::experimental::Tensor& et) -> paddle::experimental::Tensor {
+    paddle::experimental::Tensor res;
+    phi::DenseTensorMeta meta =
+        phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+    std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
         std::make_unique<paddle::experimental::DefaultAllocator>(
             paddle::platform::CPUPlace())
             .get(),
@@ -105,32 +107,31 @@ TEST(GradNodeInfo, GradNodeBase) {
     auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
     dt_ptr[0] = 6.0f;
     auto* et_ptr =
-        std::dynamic_pointer_cast<pten::DenseTensor>(et.impl())->data<float>();
+        std::dynamic_pointer_cast<phi::DenseTensor>(et.impl())->data<float>();
     dt_ptr[0] += et_ptr[0];
     res.set_impl(dt);
     VLOG(6) << "Running Gradient Hook";
     return res;
   };
-  grad_test_node0->RegisterGradientHook(0, 0, gradient_hook);
-  // 5 + 6
+  int64_t hook_id = grad_test_node0->RegisterGradientHook(
+      0, 0, std::make_shared<egr::CppTensorHook>(gradient_hook));
+
+  if (is_remove_gradient_hook) {
+    // Remove GradientHook
+    grad_test_node0->RemoveGradientHook(hook_id);
+  }
+
+  // Check results
   auto grad_hook_res = grad_test_node0->ApplyGradientHooks(grads);
   CHECK_EQ(
-      std::dynamic_pointer_cast<pten::DenseTensor>(grad_hook_res[0][0].impl())
+      std::dynamic_pointer_cast<phi::DenseTensor>(grad_hook_res[0][0].impl())
           ->data<float>()[0],
-      11.0);
+      is_remove_gradient_hook ? 5.0 : 11.0);
+}
 
-  VLOG(6) << "Test Reduce Hook";
-  auto reduce_hook = [&](void) -> void {
-    auto* et_ptr =
-        std::dynamic_pointer_cast<pten::DenseTensor>(et1.impl())->data<float>();
-    et_ptr[0] = 100.0;
-    VLOG(6) << "Running Reduce Hook";
-  };
-  grad_test_node0->RegisterReduceHook(reduce_hook);
-  grad_test_node0->ApplyReduceHooks();
-  CHECK_EQ(std::dynamic_pointer_cast<pten::DenseTensor>(et1.impl())
-               ->data<float>()[0],
-           100.0);
+TEST(GradNodeInfo, GradNodeBase) {
+  TestGradNodeBase(true);
+  TestGradNodeBase(false);
 }
 
 TEST(GradNodeInfo, Edge) {

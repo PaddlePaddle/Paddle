@@ -38,6 +38,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
+#include "paddle/fluid/platform/device/device_wrapper.h"
+
 DECLARE_bool(use_pinned_memory);
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -428,6 +430,51 @@ void MLUAllocator::Free(void* p, size_t size, size_t index) {
 }
 
 bool MLUAllocator::UseGpu() const { return true; }
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void* CustomAllocator::Alloc(size_t* index, size_t size) {
+  if (size <= 0) return nullptr;
+
+  void* p;
+  auto place = platform::CustomPlace(dev_type_, dev_id_);
+  auto device = phi::DeviceManager::GetDeviceWithPlace(place);
+  p = device->MemoryAllocate(size);
+  if (LIKELY(p)) {
+    VLOG(4) << "CustomAllocator::Alloc " << p << " size " << size;
+    *index = 0;
+    plug_alloc_size += size;
+  } else {
+    size_t avail, total;
+
+    phi::DeviceManager::MemoryStats(place, &total, &avail);
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+        "\n\nOut of memory error on %s %d. "
+        "total memory is %s, used memory is %s, "
+        "available memory is only %s.\n\n",
+        dev_type_, dev_id_, string::HumanReadableSize(total),
+        string::HumanReadableSize(total - avail),
+        string::HumanReadableSize(avail)));
+  }
+  return p;
+}
+
+void CustomAllocator::Free(void* p, size_t size, size_t index) {
+  VLOG(4) << "CustomAllocator::Free " << p << " size " << size;
+  PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
+                                  "The index should be 0, index is %d", index));
+  PADDLE_ENFORCE_GE(plug_alloc_size, size,
+                    platform::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated gpu memory (%d)",
+                        size, plug_alloc_size));
+  plug_alloc_size -= size;
+  auto place = platform::CustomPlace(dev_type_, dev_id_);
+  auto device = phi::DeviceManager::GetDeviceWithPlace(place);
+  device->MemoryDeallocate(p, size);
+}
+
+bool CustomAllocator::UseGpu() const { return true; }
 #endif
 
 }  // namespace detail

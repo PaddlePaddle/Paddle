@@ -134,7 +134,7 @@ class TreeConvOp : public framework::OperatorWithKernel {
                 filter_dims[0], vector_dims[2]));
       }
     }
-    auto output_dims = framework::make_ddim(
+    auto output_dims = phi::make_ddim(
         {vector_dims[0], vector_dims[1], filter_dims[2], filter_dims[3]});
     ctx->SetOutputDim("Out", output_dims);
   }

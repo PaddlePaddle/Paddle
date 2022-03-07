@@ -37,25 +37,27 @@ class GradTensorHolder {
 
   GradTensorHolder(const GradTensorHolder& other) = default;
 
-  explicit GradTensorHolder(std::vector<std::vector<egr::EagerTensor>>&& inputs)
+  explicit GradTensorHolder(
+      std::vector<std::vector<paddle::experimental::Tensor>>&& inputs)
       : buffer_(std::move(inputs)) {}
 
   GradTensorHolder& operator=(const GradTensorHolder& other) = default;
 
   // Create new tensor and copy tensor->impl
-  void add(size_t slot_id, size_t rank, const egr::EagerTensor& t,
+  void add(size_t slot_id, size_t rank, const paddle::experimental::Tensor& t,
            bool fill_one = false);
 
-  const std::vector<egr::EagerTensor>& operator[](const size_t& pos) {
+  const std::vector<paddle::experimental::Tensor>& operator[](
+      const size_t& pos) {
     return buffer_[pos];
   }
 
-  const std::vector<std::vector<egr::EagerTensor>>& Buffers() {
+  const std::vector<std::vector<paddle::experimental::Tensor>>& Buffers() {
     return buffer_;
   }
 
  private:
-  std::vector<std::vector<egr::EagerTensor>> buffer_;
+  std::vector<std::vector<paddle::experimental::Tensor>> buffer_;
 };
 
 }  // namespace egr

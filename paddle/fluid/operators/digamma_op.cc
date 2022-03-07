@@ -64,13 +64,6 @@ class DigammaGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), dout_dims);
     ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
   }
-
-  framework::KernelSignature GetExpectedPtenKernelArgs(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::KernelSignature("digamma_grad",
-                                      {framework::GradVarName("Out"), "X"}, {},
-                                      {framework::GradVarName("X")});
-  }
 };
 
 template <typename T>

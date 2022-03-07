@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/controlflow/compare_op.h"
-#include <algorithm>
-#include <string>
-#include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/pten/common/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -60,31 +58,6 @@ class CompareOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* context) const override {
-    OpComment comment;
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", comment.type);
-    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", comment.type);
-    auto dim_x = context->GetInputDim("X");
-    auto dim_y = context->GetInputDim("Y");
-
-    if (context->GetInputDim("X") == context->GetInputDim("Y")) {
-      context->ShareDim("X", /*->*/ "Out");
-      context->ShareLoD("X", /*->*/ "Out");
-    } else {
-      int max_dim = std::max(dim_x.size(), dim_y.size());
-      int axis = std::abs(dim_x.size() - dim_y.size());
-      std::vector<int> x_dims_array(max_dim);
-      std::vector<int> y_dims_array(max_dim);
-      std::vector<int> out_dims_array(max_dim);
-      GetBroadcastDimsArrays(dim_x, dim_y, x_dims_array.data(),
-                             y_dims_array.data(), out_dims_array.data(),
-                             max_dim, axis);
-      context->SetOutputDim("Out", framework::make_ddim(out_dims_array));
-      // to do
-      context->ShareLoD("X", /*->*/ "Out");
-    }
-  }
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
@@ -94,7 +67,7 @@ class CompareOp : public framework::OperatorWithKernel {
       kt.place_ = platform::CPUPlace();
     } else {
       if (ctx.Input<framework::LoDTensor>("X")->place().GetType() !=
-          pten::AllocationType::GPUPINNED) {
+          phi::AllocationType::GPUPINNED) {
         kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
       } else {
         kt.place_ = ctx.GetPlace();
@@ -116,37 +89,31 @@ class CompareOp : public framework::OperatorWithKernel {
               "In order to force fill output variable to gpu memory.",     \
               false));
 
-#define REGISTER_COMPARE_OP(op_type, _equation)                           \
-  struct _##op_type##Comment {                                            \
-    static char type[];                                                   \
-    static char equation[];                                               \
-  };                                                                      \
-  char _##op_type##Comment::type[]{#op_type};                             \
-  char _##op_type##Comment::equation[]{_equation};                        \
-  REGISTER_OPERATOR(                                                      \
-      op_type, ::paddle::operators::CompareOp<_##op_type##Comment>,       \
-      ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>,      \
-      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
-      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>); \
+#define REGISTER_COMPARE_OP(op_type, _equation)                          \
+  struct _##op_type##Comment {                                           \
+    static char type[];                                                  \
+    static char equation[];                                              \
+  };                                                                     \
+  char _##op_type##Comment::type[]{#op_type};                            \
+  char _##op_type##Comment::equation[]{_equation};                       \
+  DECLARE_INFER_SHAPE_FUNCTOR(op_type, op_type##_InferShapeFunctor,      \
+                              PD_INFER_META(phi::CompareInferMeta));     \
+  REGISTER_OPERATOR(                                                     \
+      op_type, ::paddle::operators::CompareOp<_##op_type##Comment>,      \
+      ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>,     \
+      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,  \
+      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>, \
+      op_type##_InferShapeFunctor);                                      \
   REGISTER_COMPARE_OP_VERSION(op_type);
 
 REGISTER_COMPARE_OP(less_than, "Out = X < Y");
-REGISTER_COMPARE_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor,
-                        paddle::operators::GreaterThanFunctor);
+
 REGISTER_COMPARE_OP(less_equal, "Out = X <= Y");
-REGISTER_COMPARE_KERNEL(less_equal, CPU, paddle::operators::LessEqualFunctor,
-                        paddle::operators::GreaterEqualFunctor);
+
 REGISTER_COMPARE_OP(greater_than, "Out = X > Y");
-REGISTER_COMPARE_KERNEL(greater_than, CPU,
-                        paddle::operators::GreaterThanFunctor,
-                        paddle::operators::LessThanFunctor);
+
 REGISTER_COMPARE_OP(greater_equal, "Out = X >= Y");
-REGISTER_COMPARE_KERNEL(greater_equal, CPU,
-                        paddle::operators::GreaterEqualFunctor,
-                        paddle::operators::LessEqualFunctor);
+
 REGISTER_COMPARE_OP(equal, "Out = X == Y");
-REGISTER_COMPARE_KERNEL(equal, CPU, paddle::operators::EqualFunctor,
-                        paddle::operators::EqualFunctor);
+
 REGISTER_COMPARE_OP(not_equal, "Out = X != Y");
-REGISTER_COMPARE_KERNEL(not_equal, CPU, paddle::operators::NotEqualFunctor,
-                        paddle::operators::NotEqualFunctor);

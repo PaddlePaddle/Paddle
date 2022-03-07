@@ -1,4 +1,4 @@
-#add_subdirectory(final_state_generator)
+add_subdirectory(final_state_generator)
 
 set(EAGER_GENERETOR_DEPS ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
 

@@ -101,18 +101,10 @@ def train_mlp(model,
         optimizer = ShardingOptimizerStage2(
             params=model.parameters(), optim=optimizer, group=group)
         model = ShardingStage2(
-            model,
-            optimizer,
-            group=group,
-            buffer_max_size=2**21,
-            accumulate_grads=batch_size == 20)
+            model, optimizer, group=group, buffer_max_size=2**21)
     elif sharding_stage == 3:
         model = ShardingStage3(
-            model,
-            optimizer=optimizer,
-            group=group,
-            accumulate_grads=batch_size == 20,
-            sync_comm=recompute)
+            model, optimizer=optimizer, group=group, sync_comm=recompute)
 
     # check optimizer.minimize() error
     if test_minimize:
@@ -145,6 +137,10 @@ def train_mlp(model,
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label)
             avg_loss = paddle.mean(x=loss.cast(dtype=paddle.float32))
+
+            if batch_size == 20:
+                avg_loss = avg_loss / 5
+
             if not use_pure_fp16:
                 avg_loss.backward()
             else:
@@ -215,7 +211,7 @@ def test_stage2_stage3():
             stage3_params[i].numpy(),
             stage3_params_add[i].numpy(),
             rtol=1e-6,
-            atol=1e-6)
+            atol=1e-4)
 
     # fp16
     stage2_params = train_mlp(
@@ -227,7 +223,7 @@ def test_stage2_stage3():
             stage2_params[i].numpy(),
             stage3_params[i].numpy(),
             rtol=1e-4,
-            atol=1e-4)
+            atol=1e-3)
 
     # fp16 recompute
     stage3_params = train_mlp(

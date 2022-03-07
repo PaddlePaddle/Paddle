@@ -31,7 +31,8 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
-    ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");
