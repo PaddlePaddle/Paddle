@@ -35,8 +35,11 @@ namespace trt {
 
 class TensorRTDialect : public mlir::Dialect {
  public:
-  explicit TensorRTDialect(mlir::MLIRContext* context);
+  explicit TensorRTDialect(mlir::MLIRContext *context);
   static llvm::StringRef getDialectNamespace() { return "trt"; }
+  mlir::Type parseType(mlir::DialectAsmParser &parser) const;  // NOLINT
+  void printType(mlir::Type type,
+                 mlir::DialectAsmPrinter &printer) const;  // NOLINT
 };
 
 }  // namespace trt
