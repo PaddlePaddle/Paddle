@@ -398,6 +398,10 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           infer_meta_context.EmplaceBackAttr(std::move(
               phi::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
         } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int64_t>))) {
+          infer_meta_context.EmplaceBackAttr(std::move(
+              phi::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int))) {
           infer_meta_context.EmplaceBackAttr(
               phi::ScalarArray({BOOST_GET_CONST(int, attr)}));
