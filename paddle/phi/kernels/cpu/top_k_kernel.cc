@@ -123,7 +123,7 @@ static void FullTopK(Type input_height,
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const DenseTensor& k_t,
+                paddle::optional<const DenseTensor&> k_t,
                 int k,
                 int axis,
                 bool largest,
@@ -140,8 +140,8 @@ void TopkKernel(const Context& dev_ctx,
   }
 
   // if K tensor is not null, will the use K tesnor as k
-  if (k_t.initialized()) {
-    k = k_t.data<int>()[0];
+  if (k_t.is_initialized()) {
+    k = (k_t.get_ptr())->data<int>()[0];
     auto out_dims = out->dims();
     // accroding to axis to set K value in the dim
     out_dims[axis] = k;

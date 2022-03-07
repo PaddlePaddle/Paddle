@@ -21,7 +21,7 @@ namespace phi {
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const DenseTensor& k_t,
+                paddle::optional<const DenseTensor&> k_t,
                 int k_int,
                 int axis,
                 bool largest,

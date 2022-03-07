@@ -39,7 +39,7 @@ namespace ops = paddle::operators;
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const DenseTensor& k_t,
+                paddle::optional<const DenseTensor&> k_t,
                 int k,
                 int axis,
                 bool largest,
@@ -52,9 +52,9 @@ void TopkKernel(const Context& dev_ctx,
   // calcluate the real axis
   if (axis < 0) axis += in_dims.size();
 
-  if (k_t.initialized()) {
+  if (k_t.is_initialized()) {
     DenseTensor k_host;
-    Copy(dev_ctx, k_t, CPUPlace(), false, &k_host);
+    Copy(dev_ctx, *(k_t.get_ptr()), CPUPlace(), false, &k_host);
     k = k_host.data<int>()[0];
     phi::DDim out_dims = out->dims();
     out_dims[axis] = k;
