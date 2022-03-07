@@ -33,6 +33,19 @@ bool FleetWrapper::is_initialized_ = false;
 std::shared_ptr<paddle::distributed::PSCore> FleetWrapper::pserver_ptr_ = NULL;
 std::shared_ptr<paddle::distributed::PSClient> FleetWrapper::worker_ptr_ = NULL;
 
+int32_t FleetWrapper::CopyTable(const uint64_t src_table_id,
+                                const uint64_t dest_table_id) {
+  VLOG(0) << "support later";
+  return 0;
+}
+
+int32_t FleetWrapper::CopyTableByFeasign(
+    const uint64_t src_table_id, const uint64_t dest_table_id,
+    const std::vector<uint64_t>& feasign_list) {
+  VLOG(0) << "support later";
+  return 0;
+}
+
 void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
                                           int connect_timeout_ms,
                                           int max_retry) {
@@ -374,6 +387,7 @@ void FleetWrapper::PullDenseVarsAsync(
   }
   auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
   pull_dense_status->push_back(std::move(status));
+  VLOG(0) << "debug zcb pscore fleet->PullDenseVarsAsync ret";
 }
 
 void FleetWrapper::PullDenseVarsSync(
@@ -741,8 +755,13 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
 }
 
 void FleetWrapper::ClientFlush() {
-  auto ret = pserver_ptr_->_worker_ptr->flush();
+  VLOG(0) << "debug zcb begin client flush";
+  auto ret = worker_ptr_->flush();
   ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "Client Flush failed";
+  }
 }
 
 int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,

@@ -27,6 +27,7 @@ limitations under the License. */
 #include <utility>        // NOLINT
 #include <vector>
 
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -108,6 +109,7 @@ class PullDenseWorker {
 
  private:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::distributed::FleetWrapper> new_fleet_ptr_;
   PullDenseWorkerParameter param_;
   DownpourWorkerParameter dwp_param_;
   Scope* root_scope_;
@@ -350,7 +352,7 @@ class DownpourLiteWorker : public HogwildWorker {
   virtual void TrainFilesWithProfiler();
 
  protected:
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::distributed::FleetWrapper> fleet_ptr_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
   void FillSparseValue(size_t table_id);
   void PushGradients();

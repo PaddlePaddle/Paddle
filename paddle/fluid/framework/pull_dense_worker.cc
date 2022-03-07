@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <time.h>
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/device_worker.h"
 
 namespace phi {
@@ -61,7 +62,13 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     last_versions_[tid] = 0;
     current_version_[tid] = 0;
   }
+
+#ifdef PADDLE_WITH_PSLIB
   fleet_ptr_ = FleetWrapper::GetInstance();
+#else
+  new_fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   copy_streams_.clear();
 #endif
@@ -170,6 +177,11 @@ void PullDenseWorker::PullDense(bool force_update) {
       VLOG(3) << "pull dense " << force_update << " " << tid;
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, false);
+#elif defined(PADDLE_WITH_PSCORE)
+      VLOG(0) << "debug zcb pull dense worker begin pull dense";
+      new_fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid,
+                                         dense_value_names_[tid],
+                                         &pull_dense_status_, true);
 #else
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, true);
@@ -209,6 +221,9 @@ bool PullDenseWorker::CheckUpdateParam(uint64_t table_id) {
   auto& version = training_versions_[table_id];
   current_version_[table_id] =
       *(std::min_element(version.begin(), version.end()));
+  VLOG(0) << "debug zcb PullDenseWorker::CheckUpdateParam "
+          << current_version_[table_id] << " " << last_versions_[table_id]
+          << " " << threshold_;
   if (current_version_[table_id] - last_versions_[table_id] <
       static_cast<size_t>(threshold_)) {
     return false;

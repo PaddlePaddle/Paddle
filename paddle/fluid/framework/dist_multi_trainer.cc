@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -54,10 +55,10 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
     workers_[i]->SetWorkerNum(thread_num_);
   }
 
-  VLOG(3) << "going to initialize pull dense worker";
+  VLOG(0) << "going to initialize pull dense worker";
   pull_dense_worker_ = PullDenseWorker::GetInstance();
   pull_dense_worker_->Initialize(trainer_desc);
-  VLOG(3) << "initialize pull dense worker";
+  VLOG(0) << "initialize pull dense worker";
   SetDebug(trainer_desc.debug());
 }
 
@@ -176,8 +177,13 @@ void DistMultiTrainer::Finalize() {
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
 
-  // flush local client push queue
+// flush local client push queue
+#ifdef PADDLE_WITH_PSLIB
   auto fleet_ptr_ = FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
+  VLOG(0) << "debug zcb dist multi trainer call client-> flush";
+#endif
   fleet_ptr_->ClientFlush();
 }
 

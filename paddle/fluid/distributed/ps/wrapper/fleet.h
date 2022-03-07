@@ -69,6 +69,13 @@ class FleetWrapper {
     client2client_max_retry_ = 3;
   }
 
+  // TODO(zhaocaibei123: later)
+  int32_t CopyTable(const uint64_t src_table_id, const uint64_t dest_table_id);
+
+  int32_t CopyTableByFeasign(const uint64_t src_table_id,
+                             const uint64_t dest_table_id,
+                             const std::vector<uint64_t>& feasign_list);
+
   // set client to client communication config
   void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
                               int max_retry);

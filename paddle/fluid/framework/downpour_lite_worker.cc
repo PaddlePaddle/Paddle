@@ -87,7 +87,7 @@ void DownpourLiteWorker::Initialize(const TrainerDesc& desc) {
   need_to_push_sparse_ = param_.push_sparse();
   need_to_push_dense_ = param_.push_dense();
 
-  fleet_ptr_ = FleetWrapper::GetInstance();
+  fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
   // for sparse value accessor, embedding only
@@ -499,47 +499,49 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
     copy_table_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
 
-    VLOG(3) << "program config size: " << param_.program_config_size();
-    for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
-         ++i) {
-      uint64_t tid = static_cast<uint64_t>(
-          param_.program_config(0).pull_sparse_table_id(i));
-      TableParameter table;
-      for (auto j : param_.sparse_table()) {
-        if (j.table_id() == tid) {
-          table = j;
-          break;
-        }
-      }
-      timeline.Start();
-      fleet_ptr_->PullSparseVarsSync(
-          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
-      timeline.Pause();
-      pull_sparse_time += timeline.ElapsedSec();
-      total_time += timeline.ElapsedSec();
-      timeline.Start();
-      CollectLabelInfo(i);
-      timeline.Pause();
-      collect_label_time += timeline.ElapsedSec();
-      total_time += timeline.ElapsedSec();
-      timeline.Start();
-      FillSparseValue(i);
-      timeline.Pause();
-      fill_sparse_time += timeline.ElapsedSec();
-      total_time += timeline.ElapsedSec();
-      timeline.Start();
-      auto nid_iter = std::find(sparse_value_names_[tid].begin(),
-                                sparse_value_names_[tid].end(),
-                                adjust_ins_weight_config_.nid_slot());
-      if (nid_iter != sparse_value_names_[tid].end()) {
-        AdjustInsWeight();
-      }
-      timeline.Pause();
-      adjust_ins_weight_time += timeline.ElapsedSec();
-      total_time += timeline.ElapsedSec();
-    }
-    VLOG(3) << "Fill sparse value for all sparse table done.";
+    //    VLOG(3) << "program config size: " << param_.program_config_size();
+    //    for (int i = 0; i <
+    //    param_.program_config(0).pull_sparse_table_id_size();
+    //         ++i) {
+    //      uint64_t tid = static_cast<uint64_t>(
+    //          param_.program_config(0).pull_sparse_table_id(i));
+    //      TableParameter table;
+    //      for (auto j : param_.sparse_table()) {
+    //        if (j.table_id() == tid) {
+    //          table = j;
+    //          break;
+    //        }
+    //      }
+    //      timeline.Start();
+    //      fleet_ptr_->PullSparseVarsSync(
+    //          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+    //          &feature_values_[tid], table.fea_dim(),
+    //          sparse_value_names_[tid]);
+    //      timeline.Pause();
+    //      pull_sparse_time += timeline.ElapsedSec();
+    //      total_time += timeline.ElapsedSec();
+    //      timeline.Start();
+    //      CollectLabelInfo(i);
+    //      timeline.Pause();
+    //      collect_label_time += timeline.ElapsedSec();
+    //      total_time += timeline.ElapsedSec();
+    //      timeline.Start();
+    //      FillSparseValue(i);
+    //      timeline.Pause();
+    //      fill_sparse_time += timeline.ElapsedSec();
+    //      total_time += timeline.ElapsedSec();
+    //      timeline.Start();
+    //      auto nid_iter = std::find(sparse_value_names_[tid].begin(),
+    //                                sparse_value_names_[tid].end(),
+    //                                adjust_ins_weight_config_.nid_slot());
+    //      if (nid_iter != sparse_value_names_[tid].end()) {
+    //        AdjustInsWeight();
+    //      }
+    //      timeline.Pause();
+    //      adjust_ins_weight_time += timeline.ElapsedSec();
+    //      total_time += timeline.ElapsedSec();
+    //    }
+    //    VLOG(3) << "Fill sparse value for all sparse table done.";
 
     int run_op_idx = 0;
     for (auto& op : ops_) {
@@ -579,30 +581,31 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
                             "Tensor %s contains NAN.", var_name));
     }
 
-    if (need_to_push_sparse_) {
-      for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
-           ++i) {
-        uint64_t tid = static_cast<uint64_t>(
-            param_.program_config(0).push_sparse_table_id(i));
-        TableParameter table;
-        for (auto i : param_.sparse_table()) {
-          if (i.table_id() == tid) {
-            table = i;
-            break;
-          }
-        }
-        timeline.Start();
-        fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
-            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_,
-            scale_sparse_gradient_with_batch_size_);
-        timeline.Pause();
-        push_sparse_time += timeline.ElapsedSec();
-        total_time += timeline.ElapsedSec();
-      }
-    }
+//    if (need_to_push_sparse_) {
+//      for (int i = 0; i <
+//      param_.program_config(0).push_sparse_table_id_size();
+//           ++i) {
+//        uint64_t tid = static_cast<uint64_t>(
+//            param_.program_config(0).push_sparse_table_id(i));
+//        TableParameter table;
+//        for (auto i : param_.sparse_table()) {
+//          if (i.table_id() == tid) {
+//            table = i;
+//            break;
+//          }
+//        }
+//        timeline.Start();
+//        fleet_ptr_->PushSparseVarsWithLabelAsync(
+//            *thread_scope_, tid, features_[tid], feature_labels_[tid],
+//            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+//            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+//            dump_slot_, &sparse_push_keys_[tid], no_cvm_,
+//            scale_sparse_gradient_with_batch_size_);
+//        timeline.Pause();
+//        push_sparse_time += timeline.ElapsedSec();
+//        total_time += timeline.ElapsedSec();
+//      }
+//    }
 
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
     if (copy_table_config_.need_copy()) {
@@ -616,54 +619,56 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
     }
 #endif
 
-    if (need_to_push_dense_) {
-      timeline.Start();
-      for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
-           ++i) {
-        uint64_t tid = static_cast<uint64_t>(
-            param_.program_config(0).push_dense_table_id(i));
-        fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch);
-      }
-      timeline.Pause();
-      push_dense_time += timeline.ElapsedSec();
-      total_time += timeline.ElapsedSec();
-      VLOG(3) << "push sparse and dense gradient done.";
-      int32_t tmp_push_dense_wait_times = -1;
-      static uint32_t push_dense_wait_times =
-          static_cast<uint32_t>(tmp_push_dense_wait_times);
-      if (push_dense_status_.size() >= push_dense_wait_times) {
-        for (auto& t : push_dense_status_) {
-          t.wait();
-        }
-        push_dense_status_.resize(0);
-      }
-
-      if (tmp_push_dense_wait_times == -1) {
-        push_dense_status_.resize(0);
-      }
-    }
-
-    if (need_to_push_sparse_) {
-      int32_t tmp_push_sparse_wait_times = -1;
-      static uint32_t push_sparse_wait_times =
-          static_cast<uint32_t>(tmp_push_sparse_wait_times);
-      if (push_sparse_status_.size() >= push_sparse_wait_times) {
-        for (auto& t : push_sparse_status_) {
-          t.wait();
-        }
-        push_sparse_status_.resize(0);
-      }
-
-      if (tmp_push_sparse_wait_times == -1) {
-        push_sparse_status_.resize(0);
-      }
-
-      VLOG(3) << "going to increase thread version";
-      VLOG(3) << "push dense table id size: "
-              << param_.program_config(0).push_dense_table_id_size();
-    }
+    //    if (need_to_push_dense_) {
+    //      timeline.Start();
+    //      for (int i = 0; i <
+    //      param_.program_config(0).push_dense_table_id_size();
+    //           ++i) {
+    //        uint64_t tid = static_cast<uint64_t>(
+    //            param_.program_config(0).push_dense_table_id(i));
+    //        fleet_ptr_->PushDenseVarsAsync(
+    //            *thread_scope_, tid, dense_grad_names_[tid],
+    //            &push_sparse_status_,
+    //            scale_datanorm_, cur_batch);
+    //      }
+    //      timeline.Pause();
+    //      push_dense_time += timeline.ElapsedSec();
+    //      total_time += timeline.ElapsedSec();
+    //      VLOG(3) << "push sparse and dense gradient done.";
+    //      int32_t tmp_push_dense_wait_times = -1;
+    //      static uint32_t push_dense_wait_times =
+    //          static_cast<uint32_t>(tmp_push_dense_wait_times);
+    //      if (push_dense_status_.size() >= push_dense_wait_times) {
+    //        for (auto& t : push_dense_status_) {
+    //          t.wait();
+    //        }
+    //        push_dense_status_.resize(0);
+    //      }
+    //
+    //      if (tmp_push_dense_wait_times == -1) {
+    //        push_dense_status_.resize(0);
+    //      }
+    //    }
+    //
+    //    if (need_to_push_sparse_) {
+    //      int32_t tmp_push_sparse_wait_times = -1;
+    //      static uint32_t push_sparse_wait_times =
+    //          static_cast<uint32_t>(tmp_push_sparse_wait_times);
+    //      if (push_sparse_status_.size() >= push_sparse_wait_times) {
+    //        for (auto& t : push_sparse_status_) {
+    //          t.wait();
+    //        }
+    //        push_sparse_status_.resize(0);
+    //      }
+    //
+    //      if (tmp_push_sparse_wait_times == -1) {
+    //        push_sparse_status_.resize(0);
+    //      }
+    //
+    //      VLOG(3) << "going to increase thread version";
+    //      VLOG(3) << "push dense table id size: "
+    //              << param_.program_config(0).push_dense_table_id_size();
+    //    }
 
     if (need_to_push_dense_) {
       for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
@@ -765,6 +770,7 @@ void DownpourLiteWorker::TrainFiles() {
   int cur_batch;
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
+      VLOG(3) << "Begin to copy table";
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
         CopySparseTable();
         CopyDenseTable();
@@ -1000,6 +1006,7 @@ void DownpourLiteWorker::TrainFiles() {
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
+        VLOG(0) << "debug zcb pull_dense_worker->IncreaseThreadVersion";
         pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
       }
     }
