@@ -60,14 +60,14 @@ KernelSignature ReduceMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
     bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
-    // InferShape, so we must return the "mean_raw" KernelSignature.
-    // And the InferMeta function(i.e. MeanRawInferMeta) is accordance with the
-    // "mean_raw" KernelSignature
+    // InferShape, so we must return the "max_raw" KernelSignature.
+    // And the InferMeta function(i.e. MaxRawInferMeta) is accordance with the
+    // "max_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
-          "mean_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+          "max_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
     }
-    return KernelSignature("mean", {"X"}, {"dim", "keep_dim"}, {"Out"});
+    return KernelSignature("max", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
   return KernelSignature("unregistered", {}, {}, {});
 }
