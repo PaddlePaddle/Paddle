@@ -24,12 +24,11 @@ class VarDesc;
 
 namespace paddle {
 namespace operators {
-class ReshapePrimOp : public framework::OperatorBase {
+class AddPrimOp : public framework::OperatorBase {
  public:
-  ReshapePrimOp(const std::string &type,
-                const framework::VariableNameMap &inputs,
-                const framework::VariableNameMap &outputs,
-                const framework::AttributeMap &attrs)
+  AddPrimOp(const std::string &type, const framework::VariableNameMap &inputs,
+            const framework::VariableNameMap &outputs,
+            const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
@@ -39,44 +38,43 @@ class ReshapePrimOp : public framework::OperatorBase {
   }
 }
 
-class ReshapePrimOpMaker : public framework::OpProtoAndCheckerMaker {
+class AddPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The input tensor of reshape_p op.");
-    AddOutput("Y", "(Tensor), The output tensor of reshape_p op.");
-    AddAttr<std::vector<size_t>>("shape", "The target shape to reshape to.");
+    AddInput("X", "(Tensor), The input tensor of add_p op.");
+    AddInput("Y", "(Tensor), The input tensor of add_p op.");
+    AddOutput("Z", "(Tensor), The output tensor of add_p op.");
     AddComment(R"DOC(TODO
 )DOC");
   }
 };
 
-class ReshapePrimOpShapeInference : public framework::InferShapeBase {
+class AddPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
-    framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
+    framework::InferShapeVarPtr z_var_ptr = ctx->GetOutputVarPtrs("Z")[0];
 
     framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
 
-    // TODO(lml): add correct infershape
-    BOOST_GET(framework::VarDesc *, y_var_ptr)->SetShape(x_var->GetShape());
+    BOOST_GET(framework::VarDesc *, z_var_ptr)->SetShape(x_var->GetShape());
   }
 };
 
-class ReshapePrimOpVarTypeInference
+class AddPrimOpVarTypeInference
     : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto x_name = Input(ctx, "X");
-    auto y_name = Output(ctx, "Y");
+    auto z_name = Output(ctx, "Z");
     SetType(ctx, z_name, GetType(ctx, x_name));
-    SetDataType(ctx, y_name, GetDataType(ctx, x_name));
+    SetDataType(ctx, z_name, GetDataType(ctx, x_name));
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(reshape_p, paddle::operators::ReshapePrimOp,
-                  paddle::operators::ReshapePrimOpShapeInference,
-                  paddle::operators::ReshapePrimOpVarTypeInference);
+REGISTER_OPERATOR(add_p, paddle::operators::AddPrimOp,
+                  paddle::operators::AddPrimOpShapeInference,
+                  paddle::operators::AddPrimOpVarTypeInference);
