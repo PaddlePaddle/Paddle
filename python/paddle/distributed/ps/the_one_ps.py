@@ -936,7 +936,7 @@ class TheOnePSRuntime(RuntimeBase):
             # self._communicator.set_clients(all_info)
             # self._communicator.create_client_to_client_connection()
             self._worker.set_clients(all_info)
-            # self._worker.create_client_to_client_connection()
+            self._worker.create_client2client_connection()
             print('create c2c connection done')
         else:
             print('cannot create c2c connection')

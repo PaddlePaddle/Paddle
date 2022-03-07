@@ -40,6 +40,9 @@ class PsProgramBuilder(object):
     def _build_trainer_desc(self):
         opt_info = self.loss.block.program._fleet_opt
         opt_info = {} if opt_info is None else opt_info
+        opt_info["trainer"] = opt_info.get("trainer", "DistMultiTrainer")
+        opt_info["device_worker"] = opt_info.get("device_worker",
+                                                 "DownpourLite")
         pid = str(id(self.cloned_main))
         program_configs = {
             pid: {
