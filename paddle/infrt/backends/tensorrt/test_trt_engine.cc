@@ -17,8 +17,8 @@
 #include <NvInfer.h>
 #include <NvInferRuntime.h>
 #include <NvInferRuntimeCommon.h>
-#include "glog/logging.h"
-#include "gtest/gtest.h"
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 #include "paddle/fluid/inference/tensorrt/plugin/split_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
@@ -86,7 +86,7 @@ TrtUniquePtr<nvinfer1::INetworkDefinition> ConstructNetwork(
 inline float sigmoid(float x) { return 1.f / (1.f + exp(-1 * x)); }
 
 TEST(trt, run_static) {
-  TRTEngine static_trt_engine(0);
+  TrtEngine static_trt_engine(0);
   auto net = ConstructNetwork(
       static_trt_engine.GetTrtBuilder(), nvinfer1::Dims3{3, 28, 28}, true);
   BuildOptions static_build_options;
@@ -164,7 +164,7 @@ TEST(trt, run_static) {
 }
 
 TEST(trt, run_dynamic) {
-  TRTEngine engine(0);
+  TrtEngine engine(0);
   auto net = ConstructNetwork(
       engine.GetTrtBuilder(), nvinfer1::Dims4{-1, 3, -1, -1}, false);
   BuildOptions build_options;
