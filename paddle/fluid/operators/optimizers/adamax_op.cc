@@ -92,7 +92,7 @@ division by 0 error.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(adamax, AdamaxInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adamax, AdamaxInferMetaFunctor,
                             PD_INFER_META(phi::AdamaxInferMeta));
 
 REGISTER_OPERATOR(
