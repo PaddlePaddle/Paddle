@@ -192,9 +192,9 @@ def _new_process_group_impl(backend, store, rank, world_size, group_name,
 
     pg = None
     if backend == "gloo":
-        pg = core.ProcessGroupGloo(gloo_store, rank, nranks)
+        pg = core.ProcessGroupGloo(gloo_store, rank, world_size)
     elif backend == "nccl":
-        pg = core.ProcessGroupGloo(store, rank, nranks)
+        pg = core.ProcessGroupNCCL(store, rank, world_size)
 
     return pg
 
@@ -232,7 +232,7 @@ def init_parallel_env(rank=None,
 
     global _group_name
     global _default_group_name
-    if _default_group_name in _group_name:
+    if _default_group_name in _group_map:
         raise RuntimeError(
             "The distributed process group has been initialized.")
 
@@ -282,7 +282,7 @@ def init_parallel_env(rank=None,
     ranks = [i for i in range(world_size)]
     group = Group(rank, pg, ranks, _default_group_name)
 
-    _group_name[_default_group_name] = group
+    _group_map[_default_group_name] = group
     return group
 
 
@@ -333,7 +333,7 @@ def new_group(ranks=None,
     else:
         pg = None
     group = Group(global_rank, pg, ranks, group_name)
-    _group_name[group_name] = group
+    _group_map[group_name] = group
 
     return group
 
