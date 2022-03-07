@@ -55,7 +55,7 @@ void TRTOpTellerPass::runOnFunction() {
     graph_op.body().push_back(block);
     op->moveBefore(block, block->begin());
     builder.setInsertionPointToEnd(block);
-    builder.create<mlir::pd::ReturnOp>(loc, op->getResults());
+    builder.create<::infrt::ReturnOp>(loc, op->getResults());
   }
 }
 }  // namespace trt

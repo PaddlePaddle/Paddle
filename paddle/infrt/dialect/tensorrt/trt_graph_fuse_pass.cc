@@ -98,7 +98,7 @@ void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
                                 copy_range.begin(),
                                 copy_range.end());
   builder.setInsertionPointToEnd(block);
-  builder.create<::mlir::pd::ReturnOp>(loc, outputs);
+  builder.create<::infrt::ReturnOp>(loc, outputs);
   graph_op.body().push_back(block);
 
   // mapping the output

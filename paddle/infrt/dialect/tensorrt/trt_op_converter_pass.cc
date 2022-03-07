@@ -16,7 +16,7 @@
 #include <mlir/Transforms/DialectConversion.h>
 #include "paddle/infrt/dialect/infrt_base.h"
 #include "paddle/infrt/dialect/pd_ops.h"
-#include "paddle/infrt/dialect/tensorrt/trt_dilaect_types.h"
+#include "paddle/infrt/dialect/tensorrt/trt_dialect_types.h"
 
 namespace infrt {
 namespace trt {

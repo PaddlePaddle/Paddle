@@ -19,7 +19,7 @@
 #include <mlir/Interfaces/CallInterfaces.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 #include "paddle/infrt/common/global.h"
-#include "paddle/infrt/dialect/tensorrt/trt_dilaect_types.h"
+#include "paddle/infrt/dialect/tensorrt/trt_dialect_types.h"
 
 namespace infrt {
 namespace trt {

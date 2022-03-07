@@ -8,7 +8,7 @@ include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/tensorrt/trt_op_base.td"
 
 
-def TRT_CreateEngineOp : TRT_Op<"create_engine", [SingleBlockImplicitTerminator<"::mlir::pd::ReturnOp">]> {
+def TRT_CreateEngineOp : TRT_Op<"create_engine", [SingleBlockImplicitTerminator<"::infrt::ReturnOp">]> {
   let summary = "trt CreateEngine Op";
   let description = [{
     Describe a tensorrt subgraph.
