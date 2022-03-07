@@ -108,6 +108,98 @@ void AucInferMeta(const MetaTensor& input,
   }
 }
 
+void AdamaxInferMeta(const MetaTensor& param,
+                     const MetaTensor& grad,
+                     const MetaTensor& learning_rate,
+                     const MetaTensor& moment,
+                     const MetaTensor& inf_norm,
+                     const MetaTensor& beta1_pow,
+                     float beta1,
+                     float beta2,
+                     float epsilon,
+                     MetaTensor* param_out,
+                     MetaTensor* moment_out,
+                     MetaTensor* inf_norm_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_NE(
+      product(lr_dims),
+      0,
+      errors::InvalidArgument("Maybe the Input variable LearningRate has not "
+                              "been initialized. You may need to confirm "
+                              "if you put exe.run(startup_program) "
+                              "after optimizer.minimize function."));
+  PADDLE_ENFORCE_EQ(
+      product(lr_dims),
+      1,
+      errors::InvalidArgument("Learning rate should have 1 dimension"));
+  auto beta1_pow_dims = beta1_pow.dims();
+  PADDLE_ENFORCE_EQ(product(beta1_pow_dims),
+                    1,
+                    errors::InvalidArgument(
+                        "Beta1 power accumulator should have 1 dimension"));
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      grad.dims(),
+      errors::InvalidArgument(
+          "Param and Grad input of AdamaxOp should have same dimension"));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment.dims(),
+      errors::InvalidArgument(
+          "Param and Moment input of AdamaxOp should have same dimension"));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      inf_norm.dims(),
+      errors::InvalidArgument(
+          "Param and InfNorm input of AdamaxOp should have same dimension"));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  moment_out->set_dims(param_dims);
+  moment_out->set_dtype(moment.dtype());
+
+  inf_norm_out->set_dims(param_dims);
+  inf_norm_out->set_dtype(inf_norm.dtype());
+}
+
+void AdadeltaInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& avg_squared_grad,
+                       const MetaTensor& avg_squared_update,
+                       float rho,
+                       float epsilon,
+                       MetaTensor* param_out,
+                       MetaTensor* avg_squared_grad_out,
+                       MetaTensor* avg_squared_update_out) {
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      grad.dims(),
+      errors::InvalidArgument(
+          "Param and grad input of AdadeltaOp should have same dimension."));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      avg_squared_grad.dims(),
+      errors::InvalidArgument("Param and AvgSquaredGrad input of AdadeltaOp "
+                              "should have same dimension"));
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      avg_squared_update.dims(),
+      errors::InvalidArgument("Param and AvgSquaredUpdate input of AdadeltaOp "
+                              "should have same dimension"));
+
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  avg_squared_grad_out->set_dims(param_dims);
+  avg_squared_grad_out->set_dtype(avg_squared_grad.dtype());
+
+  avg_squared_update_out->set_dims(param_dims);
+  avg_squared_update_out->set_dtype(avg_squared_update.dtype());
+}
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
