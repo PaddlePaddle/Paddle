@@ -16,10 +16,6 @@
 
 namespace phi {
 
-KernelSignature MvOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("mv", {"X", "Vec"}, {}, {"Out"});
-}
-
 KernelSignature MvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("mv_grad",
                          {"X", "Vec", GradVarName("Out")},
@@ -29,5 +25,4 @@ KernelSignature MvGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(mv, phi::MvOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(mv_grad, phi::MvGradOpArgumentMapping);

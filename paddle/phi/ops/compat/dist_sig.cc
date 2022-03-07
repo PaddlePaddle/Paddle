@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/is_empty_op.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    is_empty, ops::IsEmptyOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::IsEmptyOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::IsEmptyOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::IsEmptyOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+namespace phi {
+
+KernelSignature DistGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("dist_grad",
+                         {"X", "Y", "Out", GradVarName("Out")},
+                         {"p"},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(dist_grad, phi::DistGradOpArgumentMapping);

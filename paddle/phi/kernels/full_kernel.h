@@ -17,7 +17,6 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/selected_rows.h"
 
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -32,13 +31,6 @@ void FullKernel(const Context& dev_ctx,
                 DenseTensor* out);
 
 template <typename T, typename Context>
-void FullSR(const Context& dev_ctx,
-            const ScalarArray& shape,
-            const Scalar& val,
-            DataType dtype,
-            SelectedRows* out);
-
-template <typename T, typename Context>
 void FullLikeKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const Scalar& val,
@@ -49,7 +41,7 @@ template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
                  const ScalarArray& shape,
                  const Scalar& val) {
-  auto dense_out = Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
   CreateInferMeta(shape, dtype, &meta_out);
@@ -61,7 +53,7 @@ template <typename T, typename Context>
 DenseTensor FullLike(const Context& dev_ctx,
                      const DenseTensor& x,
                      const Scalar& val) {
-  auto dense_out = Empty<T, Context>(dev_ctx);
+  DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
   CreateLikeInferMeta(x, dtype, &meta_out);
