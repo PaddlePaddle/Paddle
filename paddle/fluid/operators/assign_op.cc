@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -35,26 +38,6 @@ class AssignOp : public framework::OperatorWithKernel {
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    if (ctx->HasInput("X")) {
-      auto type = ctx->GetInputsVarType("X")[0];
-      if (type == framework::proto::VarType::SELECTED_ROWS ||
-          type == framework::proto::VarType::LOD_TENSOR) {
-        ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-        if (type == framework::proto::VarType::LOD_TENSOR) {
-          ctx->ShareLoD("X", /*->*/ "Out");
-        }
-      } else if (type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-        if (ctx->IsRuntime()) {
-          // The runtime output shape is determined in kernel.
-          return;
-        } else {
-          ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-        }
-      }
-    }
-  }
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(

@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/selected_rows/assign_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/assign_kernel.h"
 
 namespace phi {
 namespace sr {
@@ -27,7 +28,7 @@ void AssignKernel(const Context& dev_ctx,
                   SelectedRows* out) {
   out->set_rows(x.rows());
   out->set_height(x.height());
-  AssignKernel<Context>(dev_ctx, x.value(), out->mutable_value());
+  phi::AssignKernel<Context>(dev_ctx, x.value(), out->mutable_value());
 }
 
 }  // namespace sr

@@ -126,7 +126,7 @@ class CompatMetaTensor : public phi::MetaTensor {
       } else if (var->IsType<framework::LoDTensorArray>()) {
         // use tensor array size as dims
         auto& tensor_array = var->Get<framework::LoDTensorArray>();
-        return phi::make_ddim({tensor_array.size()});
+        return phi::make_ddim({static_cast<int64_t>(tensor_array.size())});
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can get dims from DenseTensor or SelectedRows."));
@@ -146,6 +146,10 @@ class CompatMetaTensor : public phi::MetaTensor {
         return var->Get<phi::DenseTensor>().dtype();
       } else if (var->IsType<phi::SelectedRows>()) {
         return var->Get<phi::SelectedRows>().dtype();
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // NOTE(chenweihang): do nothing
+        // Unsupported get dtype from LoDTensorArray now
+        return phi::DataType::UNDEFINED;
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can get dtype from DenseTensor or SelectedRows."));
@@ -207,6 +211,9 @@ class CompatMetaTensor : public phi::MetaTensor {
       } else if (var->IsType<phi::SelectedRows>()) {
         auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
         phi::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // NOTE(chenweihang): do nothing
+        // Unsupported set dtype for LoDTensorArray now
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Currently, only can set dtype from DenseTensor or SelectedRows."));

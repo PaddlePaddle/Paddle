@@ -2127,14 +2127,14 @@ void OperatorWithKernel::BuildPhiKernelContext(
           auto* tensor_array =
               var->template GetMutable<framework::LoDTensorArray>();
           PADDLE_ENFORCE_GT(
-              tensor_array.size(), 0UL,
+              tensor_array->size(), 0UL,
               platform::errors::InvalidArgument(
                   "The output TensorArray Variable contains no elements."));
           for (auto& t : *tensor_array) {
             tensor_vector.emplace_back(&t);
           }
           pt_kernel_context->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-          end_idx += tensor_array.size() - 1;
+          end_idx += tensor_array->size() - 1;
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
