@@ -655,7 +655,6 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             MetaConfig config) {
   auto x_dims = x.dims();
   auto labels_dims = label.dims();
-
   int rank = x_dims.size();
   PADDLE_ENFORCE_EQ(rank,
                     labels_dims.size(),
