@@ -293,11 +293,11 @@ function(op_library TARGET)
     # Define operators that don't need pybind here.
     foreach(manual_pybind_op "compare_all_op" "compare_op" "logical_op" "bitwise_op" "nccl_op"
     "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op")
-    
-            if ("${TARGET}" STREQUAL "${manual_pybind_op}")
-                set(pybind_flag 1)
-            endif()
-        endforeach()
+
+        if ("${TARGET}" STREQUAL "${manual_pybind_op}")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
 
     # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
     # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
