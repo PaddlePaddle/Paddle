@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -29,5 +30,22 @@ void LayerNormKernel(const Context& ctx,
                      DenseTensor* out,
                      DenseTensor* mean,
                      DenseTensor* variance);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename T>
+class LayerNormDirectCUDAFunctor {
+ public:
+  void operator()(gpuStream_t stream,
+                  const T* input,
+                  std::vector<int> input_shape,
+                  const T* bias,
+                  const T* scale,
+                  T* output,
+                  T* mean,
+                  T* variance,
+                  int begin_norm_axis,
+                  float eps);
+};
+#endif
 
 }  // namespace phi

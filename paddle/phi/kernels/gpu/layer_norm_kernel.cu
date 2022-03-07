@@ -20,6 +20,37 @@
 
 namespace phi {
 
+template <typename T>
+void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
+                                               const T *input,
+                                               std::vector<int> input_shape,
+                                               const T *bias,
+                                               const T *scale,
+                                               T *output,
+                                               T *mean,
+                                               T *variance,
+                                               int begin_norm_axis,
+                                               float eps) {
+  const auto x_dims = phi::make_ddim(input_shape);
+  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
+  int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
+  int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
+  switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
+    FIXED_BLOCK_DIM_CASE(paddle::operators::LayerNormForward<
+                         T,
+                         T,
+                         kBlockDim><<<batch_size, kBlockDim, 0, stream>>>(
+        input, scale, bias, output, mean, variance, eps, feature_size));
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Product from begin_norm_axis to end in layer_norm must be larger "
+          "than 1"));
+      break;
+  }
+}
+
+template class LayerNormDirectCUDAFunctor<float>;
+
 template <typename T, typename Context>
 void LayerNormKernel(const Context &dev_ctx,
                      const DenseTensor &x,
