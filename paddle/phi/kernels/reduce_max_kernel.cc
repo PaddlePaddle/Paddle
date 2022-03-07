@@ -33,3 +33,7 @@ void MaxKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     max, CPU, ALL_LAYOUT, phi::MaxKernel, float, double, int, int64_t) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(
+    max, GPU, ALL_LAYOUT, phi::MaxKernel, float, double, int, int64_t) {}
+#endif
