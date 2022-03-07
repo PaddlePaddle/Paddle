@@ -27,57 +27,53 @@
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
+#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+
 namespace phi {
 
 template <typename T, typename Context>
 void EighGradKernel(const Context& dev_ctx,
-                    const DenseTensor& out_v,
                     const DenseTensor& out_w,
-                    const DenseTensor& dout_v,
+                    const DenseTensor& out_v,
                     const DenseTensor& dout_w,
+                    const DenseTensor& dout_v,
                     DenseTensor* dx) {
-  //   using ValueType = phi::dtype::Real<T>;
-  //   dev_ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
+  auto& dims = out_v.dims();
+  const int m = dims[dims.size() - 1];
+  DenseTensor tV =
+      phi::TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
+  DenseTensor W =
+      phi::Subtract<phi::dtype::Real<T>>(dev_ctx,
+                                         phi::funcs::Unsqueeze(out_w, -2),
+                                         phi::funcs::Unsqueeze(out_w, -1));
+  DenseTensor result = phi::Matmul<T>(dev_ctx, tV, dout_v);
+  result.Resize(dims);
+  dev_ctx.template Alloc<T>(&result);
 
-  //   auto& dims = out_w.dims();
-  //   const int m = dims[dims.size() - 1];
-
-  //   DenseTensor tW =
-  //       phi::TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_w));
-  //   DenseTensor W = phi::Subtract<ValueType>(dev_ctx,
-  //                                            phi::funcs::Unsqueeze(out_v,
-  //                                            -2),
-  //                                            phi::funcs::Unsqueeze(out_v,
-  //                                            -1));
-  //   DenseTensor result = phi::Matmul<T>(dev_ctx, tW, out_w_grad);
-  //   result.Resize(dims);
-  //   dev_ctx.template Alloc<T>(&result);
-
-  //   std::vector<int> out_shape = phi::vectorize<int>(dims);
-  //   DenseTensor constant;
-  //   constant.Resize(phi::make_ddim(out_shape));
-  //   dev_ctx.template Alloc<T>(&constant);
-  //   phi::funcs::SetConstant<Context, T>()(dev_ctx, &constant, T(0.5));
-
-  //   result = phi::Subtract<T>(
-  //       dev_ctx,
-  //       result,
-  //       phi::Conj<T>(dev_ctx, phi::TransposeLast2Dim<T>(dev_ctx, result)));
-  //   result = phi::Multiply<T>(dev_ctx, result, constant);
-
-  //   if(result.type() != W.type()){
-  //     W = phi::Cast<T>(dev_ctx, W, result.type());
-  //     //   auto x_vector = EigenVector<T>::Flatten(&result);
-  //     //   auto y_vector = EigenVector<ValueType>::Flatten(&W);
-  //     //   auto out_vector = EigenVector<T>::Flatten(&result);
-  //     //   auto& place = *ctx.eigen_device();
-  //     //   out_vector.device(place) = x_vector / y_vector;
-  //   } else {
-  //     result = phi::Divide<T>(dev_ctx, result, W);
-  //   }
-  //   result = phi::funcs::DiagFill<T, T>(dev_ctx, m, m, m, 0, dout_v, result);
-  //   *dx = phi::Matmul<T>(dev_ctx, out_w, phi::Matmul<T>(dev_ctx, result,
-  //   tW));
+  std::vector<int> out_shape = phi::vectorize<int>(dims);
+  DenseTensor constant;
+  constant.Resize(phi::make_ddim(out_shape));
+  dev_ctx.template Alloc<T>(&constant);
+  phi::funcs::SetConstant<Context, T>()(dev_ctx, &constant, T(0.5));
+  result = phi::Subtract<T>(
+      dev_ctx,
+      result,
+      phi::Conj<T>(dev_ctx, phi::TransposeLast2Dim<T>(dev_ctx, result)));
+  result = phi::Multiply<T>(dev_ctx, result, constant);
+  if (result.type() != W.type()) {
+    auto x_vector = EigenVector<T>::Flatten(result);
+    auto y_vector = EigenVector<phi::dtype::Real<T>>::Flatten(W);
+    auto out_vector = EigenVector<T>::Flatten(result);
+    auto& place = *dev_ctx.eigen_device();
+    out_vector.device(place) = x_vector / y_vector;
+  } else {
+    result = phi::Divide<T>(dev_ctx, result, W);
+  }
+  result = phi::funcs::DiagFill<T, phi::dtype::Real<T>>(
+      dev_ctx, m, m, m, 0, dout_w, result);
+  *dx = phi::Matmul<T>(dev_ctx, out_v, phi::Matmul<T>(dev_ctx, result, tV));
 }
 
 }  // namespace phi

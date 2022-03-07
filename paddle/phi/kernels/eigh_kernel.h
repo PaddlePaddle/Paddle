@@ -23,7 +23,7 @@ template <typename T, typename Context>
 void EighKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::string& uplo,
-                DenseTensor* out_v,
-                DenseTensor* out_w);
+                DenseTensor* out_w,
+                DenseTensor* out_v);
 
 }  // namespace phi

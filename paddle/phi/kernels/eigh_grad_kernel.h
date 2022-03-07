@@ -21,10 +21,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void EighGardKernel(const Context& dev_ctx,
-                    const DenseTensor& out_v,
                     const DenseTensor& out_w,
-                    const DenseTensor& dout_v,
+                    const DenseTensor& out_v,
                     const DenseTensor& dout_w,
+                    const DenseTensor& dout_v,
                     DenseTensor* dx);
 
 }  // namespace phi

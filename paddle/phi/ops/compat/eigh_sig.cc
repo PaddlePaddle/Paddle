@@ -16,11 +16,6 @@
 
 namespace phi {
 
-KernelSignature EighOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "eigh", {"X"}, {"UPLO"}, {"Eigenvalues", "Eigenvectors"});
-}
-
 KernelSignature EighGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("eigh_grad",
                          {"Eigenvalues",
@@ -33,5 +28,4 @@ KernelSignature EighGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(eigh, phi::EighOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(eigh_grad, phi::EighGradOpArgumentMapping);

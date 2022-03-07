@@ -24,11 +24,11 @@ template <typename T, typename Context>
 void EighKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::string& uplo,
-                DenseTensor* out_v,
-                DenseTensor* out_w) {
+                DenseTensor* out_w,
+                DenseTensor* out_v) {
   bool is_lower = (uplo == "L");
   phi::funcs::MatrixEighFunctor<Context, T> functor;
-  functor(dev_ctx, x, out_v, out_w, is_lower, true);
+  functor(dev_ctx, x, out_w, out_v, is_lower, true);
 }
 
 }  // namespace phi

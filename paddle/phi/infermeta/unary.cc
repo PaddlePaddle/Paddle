@@ -1084,8 +1084,8 @@ void TransposeInferMeta(const MetaTensor& x,
 
 void EighInferMeta(const MetaTensor& x,
                    const std::string& uplo,
-                   MetaTensor* out_v,
-                   MetaTensor* out_w) {
+                   MetaTensor* out_w,
+                   MetaTensor* out_v) {
   auto input_dim = x.dims();
   auto rank = input_dim.size();
 
@@ -1110,8 +1110,8 @@ void EighInferMeta(const MetaTensor& x,
   for (auto i = 0; i < rank - 1; i++) {
     values_dim.emplace_back(input_dim[i]);
   }
-  out_v->set_dims(phi::make_ddim(values_dim));
-  out_w->set_dims(input_dim);
+  out_w->set_dims(phi::make_ddim(values_dim));
+  out_v->set_dims(input_dim);
 }
 
 }  // namespace phi
