@@ -15,8 +15,6 @@
 #include "paddle/fluid/framework/ir/mkldnn/conv_elementwise_add_mkldnn_fuse_pass.h"
 
 #include <functional>
-#include <list>
-#include <map>
 #include <memory>
 #include <tuple>
 
@@ -27,52 +25,6 @@
 namespace paddle {
 namespace framework {
 namespace ir {
-
-bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
-  auto find_node = [](ir::Graph* graph, const Node* node) -> Node* {
-    for (auto n : graph->Nodes()) {
-      if (n == node) {
-        return n;
-      }
-    }
-
-    return nullptr;
-  };
-
-  if (from == to) {
-    return true;
-  }
-
-  std::map<Node*, bool> visited;
-
-  for (auto& node : GraphTraits::DFS(*graph)) {
-    visited[&node] = false;
-  }
-
-  visited[from] = true;
-
-  std::list<Node*> queue;
-  queue.push_back(from);
-
-  while (!queue.empty()) {
-    auto cur = find_node(graph, queue.front());
-    queue.pop_front();
-
-    if (!cur) return false;
-
-    for (auto n : cur->outputs) {
-      if (n == to) {
-        return true;
-      }
-
-      if (!visited[n]) {
-        visited[n] = true;
-        queue.push_back(n);
-      }
-    }
-  }
-  return false;
-}
 
 template <typename T>
 paddle::optional<T> HasAttribute(const Node& op, const std::string& attr) {

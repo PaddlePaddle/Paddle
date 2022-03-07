@@ -15,8 +15,6 @@
 #include "paddle/fluid/framework/ir/mkldnn/fc_elementwise_add_mkldnn_fuse_pass.h"
 
 #include <functional>
-#include <list>
-#include <map>
 #include <memory>
 #include <tuple>
 
@@ -27,8 +25,6 @@
 namespace paddle {
 namespace framework {
 namespace ir {
-
-bool IsReachable(ir::Graph* graph, Node* from, Node* to);
 
 FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
   AddOpCompat(OpCompat("fc"))

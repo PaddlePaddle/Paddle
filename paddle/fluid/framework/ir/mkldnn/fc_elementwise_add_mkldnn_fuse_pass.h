@@ -30,7 +30,6 @@ namespace ir {
 
 using GraphWithStats = std::pair<ir::Graph*, int>;
 
-bool IsReachable(ir::Graph* graph, Node* from, Node* to);
 
 class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
