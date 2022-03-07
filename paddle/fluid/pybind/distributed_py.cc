@@ -197,7 +197,7 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroupNCCL,
              std::shared_ptr<distributed::ProcessGroupNCCL>>(
       *m, "ProcessGroupNCCL", ProcessGroup)
-      .def(py::init<const distributed::ProcessGroupStrategy &, int, int>(),
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int>(),
            py::call_guard<py::gil_scoped_release>());
 #endif
 
@@ -209,44 +209,6 @@ void BindDistributed(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("synchronize", &distributed::ProcessGroup::Task::Synchronize,
            py::call_guard<py::gil_scoped_release>());
-
-  // define parallel strategy, it will be removed
-  py::class_<distributed::ProcessGroupStrategy> pg_strategy(
-      *m, "ProcessGroupStrategy", "");
-  pg_strategy.def(py::init())
-      .def_property("nranks",
-                    [](const distributed::ProcessGroupStrategy &self) {
-                      return self.nranks_;
-                    },
-                    [](distributed::ProcessGroupStrategy &self, int nranks) {
-                      self.nranks_ = nranks;
-                    })
-      .def_property("local_rank",
-                    [](const distributed::ProcessGroupStrategy &self) {
-                      return self.local_rank_;
-                    },
-                    [](distributed::ProcessGroupStrategy &self,
-                       int local_rank) { self.local_rank_ = local_rank; })
-      .def_property(
-          "trainer_endpoints",
-          [](const distributed::ProcessGroupStrategy &self) {
-            return self.trainer_endpoints_;
-          },
-          [](distributed::ProcessGroupStrategy &self,
-             std::vector<std::string> eps) { self.trainer_endpoints_ = eps; })
-      .def_property("current_endpoint",
-                    [](const distributed::ProcessGroupStrategy &self) {
-                      return self.current_endpoint_;
-                    },
-                    [](distributed::ProcessGroupStrategy &self,
-                       const std::string &ep) { self.current_endpoint_ = ep; })
-      .def_property("nrings",
-                    [](const distributed::ProcessGroupStrategy &self) {
-                      return self.nrings_;
-                    },
-                    [](distributed::ProcessGroupStrategy &self, int nrings) {
-                      self.nrings_ = nrings;
-                    });
 
 #if defined(PADDLE_WITH_GLOO)
   py::class_<GlooOptions>(*m, "GlooOptions")
@@ -279,9 +241,7 @@ void BindDistributed(py::module *m) {
              return std::make_shared<ProcessGroupGloo>(store, rank, world_size,
                                                        opts);
            }),
-           py::arg("store"), py::arg("rank"),
-           py::arg("world_size"),  // py::arg("timeout") =
-                                   // kProcessGroupDefaultTimeout,
+           py::arg("store"), py::arg("rank"), py::arg("world_size"),
            py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",
                   &ProcessGroupGloo::createDefaultDevice);

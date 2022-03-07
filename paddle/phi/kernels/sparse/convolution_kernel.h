@@ -14,11 +14,24 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
+
+template <typename T, typename Context>
+DenseTensor Empty(const Context& dev_ctx) {
+  phi::DenseTensor dense_out(
+      phi::make_intrusive<paddle::experimental::SharedStorage>(
+          dev_ctx.GetPlace()),
+      {paddle::experimental::CppTypeToDataType<T>::Type(),
+       {-1},
+       DataLayout::NCHW});
+  return dense_out;
+}
+
 namespace sparse {
 
 struct Dims4D {

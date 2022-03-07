@@ -403,6 +403,11 @@ class MLUCnnl {
                      const void* const inputs[],
                      const cnnlTensorDescriptor_t output_desc, void* output);
 
+  static void Concat(const MLUDeviceContext& dev_ctx, const int pack_num,
+                     const int axis, const cnnlTensorDescriptor_t inputs_desc[],
+                     const void* const inputs[],
+                     const cnnlTensorDescriptor_t output_desc, void* output);
+
   static void Cast(const ExecutionContext& ctx, cnnlCastDataType_t cast_type,
                    const cnnlTensorDescriptor_t input_desc, const void* input,
                    const cnnlTensorDescriptor_t output_desc, void* output);
@@ -561,6 +566,12 @@ class MLUCnnl {
                            void* output);
 
   static void Split(const ExecutionContext& ctx, int split_num, int axis,
+                    const cnnlTensorDescriptor_t input_desc,
+                    const void* input_ptr,
+                    const cnnlTensorDescriptor_t output_descs[],
+                    void* output_ptrs[]);
+
+  static void Split(const MLUDeviceContext& dev_ctx, int split_num, int axis,
                     const cnnlTensorDescriptor_t input_desc,
                     const void* input_ptr,
                     const cnnlTensorDescriptor_t output_descs[],

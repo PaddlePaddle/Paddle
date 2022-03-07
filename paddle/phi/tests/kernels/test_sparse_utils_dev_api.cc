@@ -90,6 +90,10 @@ void TestDenseToSparseCoo(const DenseTensor& dense_x,
 
   phi::CPUContext dev_ctx_cpu;
   dev_ctx_cpu.Init();
+  dev_ctx_cpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get());
 
   // 1. test cpu
   auto cpu_sparse_out =
@@ -300,6 +304,11 @@ void TestSparseCsrToCoo(const DDim& dense_dims,
 
   // 1. test cpu
   phi::CPUContext dev_ctx_cpu;
+  dev_ctx_cpu.Init();
+  dev_ctx_cpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get());
   auto cpu_sparse_out = sparse::SparseCsrToCoo<T>(dev_ctx_cpu, csr);
   CheckResult<T, int64_t>(&dev_ctx_cpu,
                           cpu_sparse_out,
@@ -473,6 +482,11 @@ void TestCooToCsr(const DDim& dense_dims,
 
   // 1. test cpu
   phi::CPUContext dev_ctx_cpu;
+  dev_ctx_cpu.Init();
+  dev_ctx_cpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get());
   auto cpu_sparse_out = sparse::SparseCooToCsr<T>(dev_ctx_cpu, coo);
   CheckCsrResult<T, int64_t>(&dev_ctx_cpu,
                              cpu_sparse_out,
@@ -563,6 +577,11 @@ void TestDenseToSparseCsr(const DenseTensor& dense_x,
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
   phi::CPUContext dev_ctx_cpu;
+  dev_ctx_cpu.Init();
+  dev_ctx_cpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get());
 
   // 1. test cpu
   auto cpu_sparse_out = sparse::DenseToSparseCsr<T>(dev_ctx_cpu, dense_x);
@@ -667,6 +686,11 @@ void TestSparseCooToDense(const DDim& dense_dims,
                           const int64_t non_zero_num,
                           const int64_t sparse_dim) {
   phi::CPUContext dev_ctx_cpu;
+  dev_ctx_cpu.Init();
+  dev_ctx_cpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get());
   const auto alloc = std::make_shared<paddle::experimental::DefaultAllocator>(
       paddle::platform::CPUPlace());
 
@@ -836,6 +860,11 @@ void TestSparseCsrToDense(const DDim& dense_dims,
 
   // 1. test cpu
   phi::CPUContext dev_ctx_cpu;
+  dev_ctx_cpu.Init();
+  dev_ctx_cpu.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get());
   DenseTensor cpu_sparse_out = sparse::SparseCsrToDense<T>(dev_ctx_cpu, csr);
   int cmp_cpu = memcmp(cpu_sparse_out.data<T>(),
                        dense_data.data(),
