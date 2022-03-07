@@ -1,4 +1,5 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -3439,6 +3440,31 @@ All parameter, weight, gradient are variables in Paddle.
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fuse_elewise_add_act_ops = True
+                     )DOC")
+      .def_property(
+          "fuse_gemm_epilogue",
+          [](const BuildStrategy &self) { return self.fuse_gemm_epilogue_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_gemm_epilogue_ = b;
+          },
+          R"DOC((bool, optional): fuse_gemm_epilogue indicate whether
+                to fuse matmul_op, elemenewist_add_op and activation_op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_gemm_epilogue = True
                      )DOC")
       .def_property(
           "fuse_bn_act_ops",
