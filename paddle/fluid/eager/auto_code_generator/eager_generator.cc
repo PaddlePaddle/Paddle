@@ -1556,9 +1556,23 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   core_ops_returns_info[op_type] = return_contents;
 
   // [Generation] ComputeRequireGrad -> GradNodeCreation
+
   if (!bwd_info.GenerateForwardOnly()) {
     std::string grad_node_creation_body_str =
         GenerateGradNodeCreationContent(fwd_info, bwd_info);
+
+    // Add event record
+    std::string event_name = op_type + "_node_creation";
+    const char* NODE_CREATION_TEMPLATE =
+        "{\n"
+        "   paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
+        "paddle::platform::TracerEventType::Operator, 1);\n"
+        "   %s\n"
+        "}";
+
+    grad_node_creation_body_str = paddle::string::Sprintf(
+        NODE_CREATION_TEMPLATE, event_name, grad_node_creation_body_str);
+
     generated_function_body += grad_node_creation_body_str;
     generated_function_body += "\n";
 
@@ -1617,10 +1631,20 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if ((*iter) == ',') dygraph_function_args_str.erase(iter);
   }
 
-  const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n\n%s\n}\n\n";
+  const char* DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE =
+      "paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
+      "paddle::platform::TracerEventType::Operator, 1);";
+  std::string event_name = op_type + "_dygraph_entrance";
+  std::string fwd_record_event_str = paddle::string::Sprintf(
+      DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE, event_name);
+  const char* FWD_FUNCTION_TEMPLATE =
+      "%s %s(%s) {\n\n"
+      " %s\n"
+      " %s\n"
+      "}\n\n";
   std::string fwd_function_str = paddle::string::Sprintf(
       FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name,
-      dygraph_function_args_str, generated_function_body);
+      dygraph_function_args_str, fwd_record_event_str, generated_function_body);
 
   // [Generation] Generate forward functions header
   const char* FWD_HEADER_TEMPLATE = "%s %s(%s);\n";
@@ -2243,8 +2267,9 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"\n"
       "#include "
-      "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n\n"
-      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n";
+      "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n"
+      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);

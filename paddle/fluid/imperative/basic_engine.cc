@@ -389,6 +389,9 @@ static void PerformBackwardInplace(const std::string& op_type,
 }
 
 void BasicEngine::Execute() {
+  platform::RecordEvent backward_record_event(
+      "backward_run", platform::TracerEventType::Operator, 1);
+
   if (init_nodes_.empty()) {
     return;
   }

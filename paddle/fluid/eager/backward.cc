@@ -19,6 +19,8 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -77,6 +79,9 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
 void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
                  const std::vector<paddle::experimental::Tensor>& grad_tensors,
                  bool retain_graph) {
+  paddle::platform::RecordEvent backward_record_event(
+      "backward_run", paddle::platform::TracerEventType::Operator, 1);
+
   VLOG(6) << "Start Backward";
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
@@ -157,6 +162,8 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
   // 3. Update queue
   VLOG(6) << "Run Backward";
   while (!queue.empty()) {
+    paddle::platform::RecordEvent node_record_event(
+        "node_time", paddle::platform::TracerEventType::Operator, 1);
     GradNodeBase* node = queue.front();
     queue.pop();
 
