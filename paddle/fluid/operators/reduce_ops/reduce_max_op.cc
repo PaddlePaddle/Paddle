@@ -18,7 +18,6 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
-// REGISTER_REDUCE_OP(reduce_max);
 namespace ops = paddle::operators;
 
 class ReduceMaxOpMaker : public ops::ReduceOpMaker {
