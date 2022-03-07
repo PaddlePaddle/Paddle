@@ -170,18 +170,6 @@ class TestCase6(TestBase):
         self.feed_fp16 = {"x": x.astype(np.float16), "y": x.astype(np.float16)}
 
 
-class TestCase7(TestBase):
-    def set_data_feed(self):
-        x = np.random.uniform(size=[1, 12, 128, 64])
-        y = np.random.uniform(size=[1, 12, 128, 64])
-
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
-
-    def set_op_attrs(self):
-        self.attrs = {"transpose_x": False, "transpose_y": True, "alpha": 0.125}
-
-
 @unittest.skip("not supported")
 class TestCase6_2(TestCase6):
     def set_data_feed(self):
@@ -200,6 +188,18 @@ class TestCase6_2(TestCase6):
 
 class TestCase7(TestBase):
     def set_data_feed(self):
+        x = np.random.uniform(size=[1, 12, 128, 64])
+        y = np.random.uniform(size=[1, 12, 128, 64])
+
+        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
+        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+
+    def set_op_attrs(self):
+        self.attrs = {"transpose_x": False, "transpose_y": True, "alpha": 0.125}
+
+
+class TestCase8(TestBase):
+    def set_data_feed(self):
         x = np.random.uniform(size=[3, 1])
         y = np.random.uniform(size=[1, 2])
 
@@ -208,7 +208,7 @@ class TestCase7(TestBase):
 
 
 @unittest.skip("not supported")
-class TestCase7_2(TestBase):
+class TestCase8_2(TestBase):
     def set_data_feed(self):
         x = np.random.uniform(size=[3])
         y = np.random.uniform(size=[2])
@@ -225,7 +225,7 @@ class TestCase7_2(TestBase):
 
 
 @unittest.skip("dim > 4 is not supported")
-class TestCase8(TestBase):
+class TestCase9(TestBase):
     def set_data_feed(self):
         x = np.random.uniform(size=[6, 5, 4, 2, 3])
 
