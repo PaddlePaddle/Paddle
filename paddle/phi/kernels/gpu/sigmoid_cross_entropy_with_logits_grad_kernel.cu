@@ -105,6 +105,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
                          norm,
                          sizeof(T),
                          dev_ctx.stream());
+    dev_ctx.Wait();
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
 
@@ -112,7 +113,9 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
     std::vector<DenseTensor *> div_outs = {in_grad};
     auto div_functor = DivFunctor<T>(*norm_cpu_ptr);
     phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs, div_functor);
+
     delete norm_tensor;
+    delete counts_tensor;
   }
 }
 

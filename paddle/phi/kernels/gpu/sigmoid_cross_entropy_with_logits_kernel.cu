@@ -105,6 +105,7 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
                          norm,
                          sizeof(T),
                          dev_ctx.stream());
+    dev_ctx.Wait();
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
 
