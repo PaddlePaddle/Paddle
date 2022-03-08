@@ -34,11 +34,13 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/viterbi_decode_functor.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 
@@ -248,17 +250,13 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   // We create tensor buffer in order to avoid allocating memory frequently
   // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...
   int buffer_size = batch_size * (n_labels + 1) * seq_len + 10 * batch_size;
-  DenseTensor int_buffer;
-  int_buffer.Resize(phi::make_ddim({buffer_size}));
-  dev_ctx.template Alloc<int64_t>(&int_buffer);
+  DenseTensor int_buffer = Empty<int64_t>(dev_ctx, {buffer_size});
   funcs::TensorBuffer int_tensor_buffer(int_buffer);
   // create float tensor buffer
   // 10 means allocate 10*batch_size*n_labels bytes, such as alpha, alpha_max
   buffer_size = batch_size * (seq_len + 10) * n_labels +
                 (batch_size + 2) * n_labels * n_labels;
-  DenseTensor float_buffer;
-  float_buffer.Resize(phi::make_ddim({buffer_size}));
-  dev_ctx.template Alloc<T>(&float_buffer);
+  DenseTensor float_buffer = Empty<T>(dev_ctx, {buffer_size});
   funcs::TensorBuffer float_tensor_buffer(float_buffer);
   DenseTensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
   phi::Copy(dev_ctx, length, curr_place, false, &left_length);
@@ -277,7 +275,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   // create and init required tensor
   DenseTensor input_exp =
       float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
-  funcs::TransCompute<Context, T>(3, dev_ctx, input, &input_exp, {1, 0, 2});
+  TransposeKernel<T, Context>(dev_ctx, input, {1, 0, 2}, &input_exp);
   DenseTensor trans_exp =
       float_tensor_buffer.GetBufferBlock({n_labels, n_labels});
   phi::Copy(dev_ctx, transition, curr_place, false, &trans_exp);
@@ -395,7 +393,7 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
     MulInt(dev_ctx, last_ids, int_mask, &last_ids);
     AddInt(dev_ctx, last_ids_update, last_ids, &last_ids);
   }
-  funcs::TransCompute<Context, int64_t>(2, dev_ctx, tpath, path, {1, 0});
+  TransposeKernel<int64_t, Context>(dev_ctx, tpath, {1, 0}, path);
 }
 
 }  // namespace phi

@@ -27,14 +27,6 @@ void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     MetaTensor* out,
                                     MetaConfig config = MetaConfig());
 
-void ViterbiDecodeInferMeta(const MetaTensor& input,
-                            const MetaTensor& transition,
-                            const MetaTensor& length,
-                            bool include_bos_eos_tag,
-                            MetaTensor* scores,
-                            MetaTensor* path,
-                            MetaConfig config = MetaConfig());
-
 void BroadcastTensorsInferMeta(const std::vector<MetaTensor*>& x,
                                std::vector<MetaTensor*> out);
 
