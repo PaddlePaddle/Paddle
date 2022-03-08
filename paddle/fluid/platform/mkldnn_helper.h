@@ -560,22 +560,28 @@ inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
 }
 
 inline void RegisterModelLayout(
-    std::vector<std::unique_ptr<framework::OperatorBase>>& ops) {
-  // Make some lambda with param of string
-  for (auto& op : ops) {
-    if (op->HasAttr("data_format")) {
-      auto data_format = op->Attr<std::string>("data_format");
-      platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-          data_format.compare("NHWC") == 0 ? framework::DataLayout::kNHWC
-                                           : framework::DataLayout::kNCHW);
-      return;
-    }
-    if (op->HasAttr("data_layout")) {
-      auto data_format = op->Attr<std::string>("data_layout");
-      platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-          data_format.compare("NHWC") == 0 ? framework::DataLayout::kNHWC
-                                           : framework::DataLayout::kNCHW);
-      return;
+    std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
+    const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    auto check_attrib = [&](std::string& attrib_name) -> bool {
+      if (op->HasAttr(attrib_name)) {
+        auto data_format = op->Attr<std::string>(attrib_name);
+        platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+            data_format.compare("NHWC") == 0 ? framework::DataLayout::kNHWC
+                                             : framework::DataLayout::kNCHW);
+        return true;
+      } else {
+        return false;
+      }
+    };
+
+    for (auto& op : ops) {
+      if (check_attrib("data_format")) {
+        return;
+      }
+      if (check_attrib("data_layout")) {
+        return;
+      }
     }
   }
 }

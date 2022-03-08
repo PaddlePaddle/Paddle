@@ -177,7 +177,7 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
-  platform::RegisterModelLayout(ctx->ops_);
+  platform::RegisterModelLayout(ctx->ops_, place_);
 #endif
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars,
                      keep_kid_scopes);
