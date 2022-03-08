@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -150,7 +151,7 @@ class EagerUtils {
     if (require_any_grad && autograd_meta) {
       PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() &&
                             egr::egr_utils_api::IsLeafTensor(target),
-                        false, platform::errors::InvalidArgument(
+                        false, paddle::platform::errors::InvalidArgument(
                                    "Leaf Var (%s) that doesn't stop gradient "
                                    "can't use inplace strategy.",
                                    target.name()));

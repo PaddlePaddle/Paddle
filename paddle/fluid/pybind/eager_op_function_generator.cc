@@ -154,9 +154,7 @@ static inline std::string TempName(const std::string& name) {
 }
 
 std::string GenerateOpFunctionsBody(
-    const paddle::framework::proto::OpProto* op_proto, std::string func_name,
-    bool use_inplace_strategy = false,
-    std::map<std::string, std::string> inplace_map = {}) {
+    const paddle::framework::proto::OpProto* op_proto, std::string func_name) {
   auto& op_type = op_proto->type();
   std::string input_args = "";
   std::string call_api_str = "auto out = " + op_type + "_dygraph_function(";
@@ -379,6 +377,32 @@ GenerateOpFunctions() {
 
     op_function_list.emplace_back(std::move(op_function_str));
     bind_function_list.emplace_back(std::move(bind_function_str));
+
+    // NOTE(pangyoki): Inplace Strategy.
+    // In this case, output will reuse input varbase.
+    // Dygraph mode needs to be aligned with the in-place strategy in static
+    // mode, and the mapping relationships between output and input that have
+    // been defined in static mode should be used in dygraph mode.
+    // Find which ops need to use Inplace strategy in static mode, and get the
+    // mapping relationship between Inplace output and input.
+    auto& infer_inplace =
+        paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
+    if (infer_inplace) {
+      // Reuse Varbase Inplace OP: op_type_.
+      // The inplace OP needs a new implementation method.
+      std::string inplace_op_type = op_type + "_";
+      std::string inplace_func_name = "eager_api_" + inplace_op_type;
+      std::string inplace_op_function_str =
+          GenerateOpFunctionsBody(op_proto, inplace_func_name);
+
+      // generate pybind item
+      auto inplace_bind_function_str =
+          paddle::string::Sprintf(PYBIND_ITEM_TEMPLATE, inplace_op_type,
+                                  inplace_func_name, inplace_op_type);
+
+      op_function_list.emplace_back(std::move(inplace_op_function_str));
+      bind_function_list.emplace_back(std::move(inplace_bind_function_str));
+    }
   }
   return std::make_tuple(op_function_list, bind_function_list);
 }

@@ -792,13 +792,13 @@ def GenerateNodeCreationCodes(
 
     // Get AutoGradMeta
 {}
-{}
     bool trace_backward = egr::Controller::Instance().HasGrad();
 
     bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
 {}
     // Forward API Call
     {}
+{}
 {}
     if(require_any_grad) {{
         egr::EagerUtils::PassStopGradient({});
@@ -826,8 +826,8 @@ def GenerateNodeCreationCodes(
 
 """
     node_creation_str = NODE_CREATION_TEMPLATE.format(
-        inputs_autograd_meta_str, outputs_autograd_meta_str,
-        compute_require_grad_args_str, check_inplace_str, forward_call_str,
+        inputs_autograd_meta_str, compute_require_grad_args_str,
+        check_inplace_str, forward_call_str, outputs_autograd_meta_str,
         bump_inplace_version_str, pass_stop_gradient_args_str,
         node_construction_str, set_attributes_str, set_tensor_wrappers_str,
         set_grad_out_meta_str, set_edges_str, set_out_rank_str, set_history_str,

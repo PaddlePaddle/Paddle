@@ -129,7 +129,7 @@ class TensorWrapper {
           inplace_version_counter.CurrentVersion();
       PADDLE_ENFORCE_EQ(
           current_inplace_version, inplace_version_snapshot_,
-          platform::errors::PermissionDenied(
+          paddle::platform::errors::PermissionDenied(
               "Tensor '%s' used in gradient computation has been "
               "modified by an inplace operation. "
               "Its version is %d but the expected version is %d. "
