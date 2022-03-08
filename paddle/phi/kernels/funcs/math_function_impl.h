@@ -28,7 +28,8 @@ void SetConstant<DeviceContext, T>::operator()(
     const DeviceContext& context, paddle::framework::Tensor* tensor, T num) {
   if (num == static_cast<T>(0)) {
     if (std::is_same<DeviceContext,
-                     paddle::platform::CPUDeviceContext>::value) {
+                     paddle::platform::CPUDeviceContext>::value ||
+        std::is_same<DeviceContext, phi::CPUContext>::value) {
       auto* ptr = context.template Alloc<T>(tensor);
       size_t nbytes = tensor->numel() * sizeof(T);
       std::memset(ptr, 0, nbytes);
@@ -36,7 +37,8 @@ void SetConstant<DeviceContext, T>::operator()(
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (std::is_same<DeviceContext,
-                     paddle::platform::CUDADeviceContext>::value) {
+                     paddle::platform::CUDADeviceContext>::value ||
+        std::is_same<DeviceContext, phi::GPUContext>::value) {
       auto* ptr = context.template Alloc<T>(tensor);
       size_t nbytes = tensor->numel() * sizeof(T);
       auto stream = reinterpret_cast<const phi::GPUContext&>(context).stream();
