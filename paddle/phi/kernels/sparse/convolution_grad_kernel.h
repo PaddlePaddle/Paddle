@@ -32,6 +32,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       const int groups,
+                      const bool subm,
                       DenseTensor* x_grad,
                       DenseTensor* kernel_grad);
 
@@ -44,7 +45,8 @@ std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
                                     const std::vector<int>& paddings,
                                     const std::vector<int>& dilations,
                                     const std::vector<int>& strides,
-                                    const int groups) {
+                                    const int groups,
+                                    const bool subm) {
   DenseTensor x_grad = phi::Empty<T, Context>(dev_ctx);
   DenseTensor kernel_grad = phi::Empty<T, Context>(dev_ctx);
   // TODO(zhangkaihuo): call InferMeta func here
@@ -57,6 +59,7 @@ std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
                                dilations,
                                strides,
                                groups,
+                               subm,
                                &x_grad,
                                &kernel_grad);
   std::vector<DenseTensor> out(2);

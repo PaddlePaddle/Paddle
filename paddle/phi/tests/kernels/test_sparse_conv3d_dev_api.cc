@@ -149,7 +149,8 @@ void TestConv3dBase(const std::vector<int>& indices,
                                                              paddings,
                                                              dilations,
                                                              strides,
-                                                             1);
+                                                             1,
+                                                             subm);
       f_verify(grads[0].data<T>(), features_grad);
       f_verify(grads[1].data<T>(), kernel_grad);
     }
@@ -681,17 +682,23 @@ TEST(DEV_API, sparse_conv2d_subm) {
   std::vector<int> strides = {1, 1, 1};
   std::vector<int> dilations = {1, 1, 1};
 
-  const int non_zero_num = 2;
-  std::vector<int> indices_flatten = {0, 0, 0, 0, 0, 3, 3, 2};
+  const int non_zero_num = 4;
+  std::vector<int> indices_flatten = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 3, 3, 2, 2, 3};
 
-  std::vector<float> features = {0.8854, -0.1999};
+  std::vector<float> features = {0.8854, 0.6505, -0.1999, 0.3583};
   // 3*3*3=27
   std::vector<float> kernel = {
-      0.6792, 0.8252, 0.9364, 0.9460, 0.6564, 0.7999, 0.2013, 0.3812, 0.5474};
+      0.9364, 0.9460, 0.6564, 0.7999, 0.2013, 0.3812, 0.5474, 0.1016, 0.3368};
 
-  std::vector<int> out_indices_flatten = {0, 0, 0, 0, 0, 3, 3, 2};
+  std::vector<int> out_indices_flatten = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 3, 3, 2, 2, 3};
 
-  std::vector<float> out_features = {0.5812, -0.1312};
+  std::vector<float> out_features = {0.1782, 0.2313, 0.7117, 0.5214};
+
+  std::vector<float> features_grad = {0.0359, 1.2080, 0.5838, 0.4541};
+  std::vector<float> kernel_grad = {
+      0.3391, 0.4630, 0.0000, -0.1042, 0.3528, 0.2550, 0.0000, -0.0462, 0.0829};
 
   TestConv3d(indices_flatten,
              features,
@@ -706,9 +713,9 @@ TEST(DEV_API, sparse_conv2d_subm) {
              strides,
              dilations,
              1e-3,
-             false,
-             features,
-             kernel,
+             true,
+             features_grad,
+             kernel_grad,
              true);
 }
 
@@ -736,6 +743,12 @@ TEST(DEV_API, sparse_conv3d_subm) {
 
   std::vector<float> out_features = {-0.7262, 0.1192, 0.0785};
 
+  std::vector<float> features_grad = {-0.5506, 0.0904, 0.0595};
+  std::vector<float> kernel_grad = {
+      0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+      0.0000, 0.0000, 0.0000, 0.0000, 0.7224, 0.0000, 0.0000, 0.0000, 0.0000,
+      0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000};
+
   TestConv3d(indices_flatten,
              features,
              x_dims,
@@ -749,9 +762,9 @@ TEST(DEV_API, sparse_conv3d_subm) {
              strides,
              dilations,
              1e-3,
-             false,
-             features,
-             kernel,
+             true,
+             features_grad,
+             kernel_grad,
              true);
 }
 
