@@ -54,7 +54,7 @@ void FullLikeKernel(const Context& dev_ctx,
 
   auto common_type_value = static_cast<CommonType>(value);
 
-  // Judge the fill value is valid
+  // Check whether the filled value is valid
   bool is_out_range = true;
   if (std::isinf(value) || std::isnan(value)) {
     is_out_range = false;
