@@ -16,6 +16,10 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/ext_compat_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace tests {
