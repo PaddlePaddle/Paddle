@@ -95,7 +95,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
     backprop->mutable_data<T>(ctx.GetPlace());
     softmax->mutable_data<T>(ctx.GetPlace());
 
-    const char* str_mini_batch = std::getenv("FLAGS_softmax_with_entropy_mini_batch_size");
+    const char* str_mini_batch = std::getenv("FLAGS_softmax_with_cross_entropy_mini_batch_size");
     if (str_mini_batch){
       sscanf(str_mini_batch, "%d", &mini_batch_size);
     }
@@ -164,7 +164,7 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
     // const int n = SizeToAxis(axis, logits_grad->dims());
     const int d = SizeFromAxis(axis, logits_grad->dims());
     int mini_batch_size = ctx.Attr<int>("mini_batch_size");
-    const char* str_mini_batch = std::getenv("FLAGS_softmax_with_entropy_mini_batch_size");
+    const char* str_mini_batch = std::getenv("FLAGS_softmax_with_cross_entropy_mini_batch_size");
     if (str_mini_batch){
       sscanf(str_mini_batch, "%d", &mini_batch_size);
     }
