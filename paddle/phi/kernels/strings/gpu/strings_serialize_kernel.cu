@@ -103,7 +103,7 @@ void Serialize(const Context& dev_ctx,
   auto strings_size = GetAllStringsSize(dev_ctx, src_str, numel);
   strings_size += sizeof(int32_t) * (numel + 1);
 
-  dst->Resize({strings_size});
+  dst->Resize(phi::make_ddim({strings_size}));
   uint8_t* strings_data = dev_ctx.template Alloc<uint8_t>(dst);
   auto* strings_offset = reinterpret_cast<int*>(strings_data);
 

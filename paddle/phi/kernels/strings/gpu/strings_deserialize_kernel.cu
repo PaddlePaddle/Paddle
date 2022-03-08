@@ -50,7 +50,7 @@ void Deserialize(const Context& dev_ctx,
       &numel, strings_data, sizeof(numel), cudaMemcpyDeviceToHost);
 #endif
   numel = numel / sizeof(int) - 1;
-  dst->Resize({numel});
+  dst->Resize(phi::make_ddim({numel}));
   dtype::pstring* dst_str = dev_ctx.template Alloc<dtype::pstring>(dst);
 
   dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
