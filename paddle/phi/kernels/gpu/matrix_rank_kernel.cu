@@ -15,19 +15,9 @@
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
-#include <algorithm>
-#include <vector>
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/phi/backends/dynload/cusolver.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/scalar.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/funcs/complex_functors.h"
-#include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/gpu/elementwise.h"
-#include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
+#include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
 
 namespace phi {
 
@@ -39,9 +29,15 @@ void MatrixRankKernel(const Context& dev_ctx,
                       float tol,
                       DenseTensor* out) {
   DenseTensor atol_tensor;
-  paddle::framework::TensorFromVector<T>(
-      std::vector<T>{tol}, dev_ctx, &atol_tensor);
-  MatrixRankTolKernel(dev_ctx, x, atol_tensor, hermite, use_default_tol, out);
+  if (use_default_tol) {
+    paddle::framework::TensorFromVector(
+        std::vector<T>{0}, dev_ctx, &atol_tensor);
+  } else {
+    paddle::framework::TensorFromVector(
+        std::vector<T>{tol}, dev_ctx, &atol_tensor);
+  }
+  MatrixRankTolKernel<T, Context>(
+      dev_ctx, x, atol_tensor, hermitian, use_default_tol, out);
 }
 
 }  // namespace phi

@@ -161,4 +161,10 @@ void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
                         MetaTensor* out);
 
+void MatrixRankMeta(const MetaTensor& x,
+                    bool use_default_tol,
+                    bool hermitian,
+                    float tol,
+                    MetaTensor* out);
+
 }  // namespace phi

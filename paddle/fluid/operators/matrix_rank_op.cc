@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/matrix_rank_op.h"
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -70,9 +69,9 @@ class MatrixRankeOp : public framework::OperatorWithKernel {
         std::vector<int> x_batch_dims_array(max_dim);
         std::vector<int> tol_dims_array(max_dim);
         std::vector<int> out_dims_array(max_dim);
-        GetBroadcastDimsArrays(dim_x_batch, dim_tol, x_batch_dims_array.data(),
-                               tol_dims_array.data(), out_dims_array.data(),
-                               max_dim, axis);
+        phi::funcs::GetBroadcastDimsArrays(
+            dim_x_batch, dim_tol, x_batch_dims_array.data(),
+            tol_dims_array.data(), out_dims_array.data(), max_dim, axis);
         ctx->SetOutputDim("Out", phi::make_ddim(out_dims_array));
       }
     } else {

@@ -27,7 +27,6 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                          const DenseTensor& atol_tensor,
                          bool hermitian,
                          bool use_default_tol,
-                         float tol,
                          DenseTensor* out);
 
 }  // namespace phi

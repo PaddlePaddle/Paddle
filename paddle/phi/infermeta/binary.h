@@ -118,4 +118,10 @@ void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             MetaTensor* out,
                                             MetaConfig config = MetaConfig());
 
+void MatrixRankTolMeta(const MetaTensor& x,
+                       const MetaTensor& tol_tensor,
+                       bool use_default_tol,
+                       bool hermitian,
+                       MetaTensor* out);
+
 }  // namespace phi

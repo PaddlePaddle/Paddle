@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
 
@@ -25,10 +26,17 @@ void MatrixRankKernel(const Context& dev_ctx,
                       float tol,
                       DenseTensor* out) {
   DenseTensor atol_tensor;
-  paddle::framework::TensorFromVector<T>(
-      std::vector<T>{tol}, dev_ctx, &atol_tensor);
-  MatrixRankTolKernel(dev_ctx, x, atol_tensor, hermite, use_default_tol, out);
+  if (use_default_tol) {
+    paddle::framework::TensorFromVector(
+        std::vector<T>{0}, dev_ctx, &atol_tensor);
+  } else {
+    paddle::framework::TensorFromVector(
+        std::vector<T>{tol}, dev_ctx, &atol_tensor);
+  }
+  MatrixRankTolKernel<T, Context>(
+      dev_ctx, x, atol_tensor, hermitian, use_default_tol, out);
 }
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(

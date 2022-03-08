@@ -31,6 +31,4 @@ KernelSignature MatrixRankOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PD_REGISTER_BASE_KERNEL_NAME(fill_constant, full);
-
 PD_REGISTER_ARG_MAPPING_FN(matrix_rank, phi::MatrixRankOpArgumentMapping);

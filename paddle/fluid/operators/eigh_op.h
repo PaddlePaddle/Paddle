@@ -21,6 +21,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+
 template <typename DeviceContext, typename T>
 class EighKernel : public framework::OpKernel<T> {
  public:

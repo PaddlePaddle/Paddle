@@ -20,7 +20,6 @@
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -28,8 +27,7 @@
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
 #include "paddle/phi/kernels/math_kernel.h"
 
@@ -321,7 +319,6 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                          const DenseTensor& atol_tensor,
                          bool hermitian,
                          bool use_default_tol,
-                         float tol,
                          DenseTensor* out) {
   auto* x_data = x.data<T>();
   dev_ctx.template Alloc<int64_t>(out);
@@ -339,19 +336,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   //   DenseTensor atol_dense_tensor;
   T rtol_T = 0;
   if (use_default_tol) {
-    // paddle::framework::TensorFromVector<T>(
-    //     std::vector<T>{0}, dev_ctx, &temp_tensor);
-    // const Scalar temp_tensor(0);
-    // atol_tensor = temp_tensor;
-    paddle::framework::TensorFromVector<T>(
-        std::vector<T>{0}, dev_ctx, atol_tensor);
     rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
-  } else {
-    // const Scalar temp_tensor(tol);
-    // atol_dense_tensor = Full<float>(dev_ctx, {tol}, atol_tensor);
-    paddle::framework::TensorFromVector<T>(
-        std::vector<T>{tol}, dev_ctx, &atol_tensor);
-    // atol_tensor = temp_tensor;
   }
 
   // Must Copy X once, because the gesvdj will destory the content when exit.
@@ -446,10 +431,15 @@ void MatrixRankTolKernel(const Context& dev_ctx,
       funcs::GreaterThanFunctor<T, int64_t>(),
       &compare_result);
 
-  std::vector<int> result_shape = phi::vectorize<int>(dim_out);
+  std::vector<int64_t> result_shape = phi::vectorize<int64_t>(dim_out);
   DenseTensor result;
-  ReduceKernelImpl<GPUContext, T, T, phi::funcs::SumFunctor>(
-      dev_ctx, compare_result, result, result_shape, true, false);
+  funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      dev_ctx,
+      compare_result,
+      &result,
+      kps::IdentityFunctor<T>(),
+      result_shape,
+      dev_ctx.stream());
 
   //   DenseTensor result = dito_int.ReduceSum(compare_result, result_shape);
   out->ShareDataWith(result);
@@ -457,8 +447,11 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    matrix_rank_tol, GPU, ALL_LAYOUT, phi::MatrixRankTolKernel, float, double) {
-}
+PD_REGISTER_KERNEL(matrix_rank_tol,  // cuda_only
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MatrixRankTolKernel,
+                   float,
+                   double) {}
 
 #endif  // not PADDLE_WITH_HIP
