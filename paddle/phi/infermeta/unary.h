@@ -63,6 +63,13 @@ void CopyToInferMeta(const MetaTensor& x,
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
+void CumsumInferMeta(const MetaTensor& x,
+                     int axis,
+                     bool flatten,
+                     bool exclusive,
+                     bool reverse,
+                     MetaTensor* out);
+
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
 
 void InferMetaFromVecValue(const MetaTensor& x,
