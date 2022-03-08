@@ -1268,7 +1268,6 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
       phi::errors::InvalidArgument(
           "Input(Condition) should have number of dimension at least 1"));
   out->set_dims(phi::make_ddim({-1, rank}));
-  out->set_dtype(condition.dtype());
 }
 
 }  // namespace phi
