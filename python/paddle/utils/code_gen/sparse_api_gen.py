@@ -24,9 +24,6 @@ class SparseAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
         super(SparseAPI, self).__init__(api_item_yaml)
 
-    def get_api_name(self, api_item_yaml):
-        return api_item_yaml['sparse_api']
-
     def get_api_func_name(self):
         return self.api
 
