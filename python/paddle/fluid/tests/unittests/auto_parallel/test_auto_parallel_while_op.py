@@ -174,6 +174,7 @@ def get_program():
             dtype='float32')
         label = static.data(
             name="label", shape=[batch_size, sequence_len, 1], dtype='float32')
+
         data_holder = [input, label]
         # dataloader
         dataloader = paddle.io.DataLoader.from_generator(
@@ -194,6 +195,17 @@ def get_program():
                 "dims_mapping": [-1, -1, -1]
             })
 
+        # fill constant bsz like
+        tmp = paddle.fluid.layers.fill_constant_batch_size_like(
+            input=input, shape=[-1, 16, 0, 48], dtype='float32', value=0)
+        auto.shard_tensor(
+            tmp,
+            dist_attr={
+                "process_mesh": _g_process_mesh,
+                "dims_mapping": [-1, 0, -1, -1]
+            })
+
+        # model
         mlp_start = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,
@@ -395,6 +407,9 @@ def completion(train_program, start_program, dist_context):
                         op_dist_attr.impl_idx = 0
                     else:
                         op_dist_attr.impl_idx = 1
+            elif op.type == "fill_constant_batch_size_like":
+                op_dist_attr.impl_type = "fill_constant_batch_size_like"
+                op_dist_attr.impl_idx = 0
             else:
                 op_dist_attr.impl_type = "default"
                 op_dist_attr.impl_idx = 0
@@ -428,12 +443,25 @@ class TestMLP(unittest.TestCase):
         dist_main_prog, dist_startup_prog = partition(
             train_program, start_program, dist_context)
         global_block_ops = dist_main_prog.blocks[0].ops
+
+        fill_op = None
+        for op in global_block_ops:
+            if op.type == "fill_constant_batch_size_like":
+                fill_op = op
+
         global_block_ops = [op.type for op in global_block_ops]
         sub_block_ops = dist_main_prog.blocks[1].ops
         sub_block_ops = [op.type for op in sub_block_ops]
 
         self.assertTrue("c_allreduce_sum" in global_block_ops)
         self.assertTrue("c_allreduce_sum" in sub_block_ops)
+
+        # test fill_constant_batch_size_like
+
+        self.assertTrue(fill_op is not None)
+        ref_shape = [-1, 8, 0, 48]
+        shape = fill_op.attr("shape")
+        self.assertTrue(ref_shape == shape)
 
 
 if __name__ == "__main__":

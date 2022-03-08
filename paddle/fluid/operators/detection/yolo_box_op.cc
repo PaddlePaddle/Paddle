@@ -9,7 +9,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/detection/yolo_box_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -102,7 +101,12 @@ class YoloBoxOp : public framework::OperatorWithKernel {
                           "But received class_num (%s)",
                           class_num));
 
-    int box_num = dim_x[2] * dim_x[3] * anchor_num;
+    int box_num;
+    if ((dim_x[2] > 0 && dim_x[3] > 0) || ctx->IsRuntime()) {
+      box_num = dim_x[2] * dim_x[3] * anchor_num;
+    } else {
+      box_num = -1;
+    }
     std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
     ctx->SetOutputDim("Boxes", phi::make_ddim(dim_boxes));
 
@@ -235,8 +239,6 @@ REGISTER_OPERATOR(
     yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(yolo_box, ops::YoloBoxKernel<float>,
-                       ops::YoloBoxKernel<double>);
 
 REGISTER_OP_VERSION(yolo_box)
     .AddCheckpoint(

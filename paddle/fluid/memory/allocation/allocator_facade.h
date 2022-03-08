@@ -49,6 +49,8 @@ class AllocatorFacade {
 
   static AllocatorFacade& Instance();
 
+  AllocatorFacadePrivate* GetPrivate() const;
+
   const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
@@ -73,13 +75,14 @@ class AllocatorFacade {
                                           size_t size,
                                           const phi::Stream& stream);
 
+  AllocationPtr Alloc(const platform::Place& place, size_t size,
+                      const phi::Stream& stream);
+
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                     const phi::Stream& stream);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
-  AllocationPtr Alloc(const platform::Place& place, size_t size,
-                      const gpuStream_t& stream);
   uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);
   void RecordStream(std::shared_ptr<Allocation> allocation,
                     const gpuStream_t& stream);
@@ -96,6 +99,10 @@ class AllocatorFacade {
  private:
   AllocatorFacade();
   AllocatorFacadePrivate* m_;
+#ifdef PADDLE_WITH_CUDA
+  std::unordered_map<CUDAGraphID, std::unique_ptr<AllocatorFacadePrivate>>
+      cuda_graph_map_;
+#endif
 };
 
 }  // namespace allocation
