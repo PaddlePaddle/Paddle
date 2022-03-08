@@ -28,6 +28,7 @@ from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
+import paddle.profiler as profiler
 
 
 class TensorHookRemoveHelper(object):
@@ -242,6 +243,9 @@ def monkey_patch_varbase():
 
         """
         if framework.in_dygraph_mode():
+            record_event = profiler.RecordEvent(
+                "Gradient Backward", profiler.TracerEventType.Backward)
+            record_event.begin()
             if grad_tensor is not None:
                 if core._in_eager_mode():
                     assert isinstance(
@@ -277,6 +281,7 @@ def monkey_patch_varbase():
                     core.dygraph_run_backward([self], [grad_tensor],
                                               retain_graph,
                                               framework._dygraph_tracer())
+            record_event.end()
         else:
             raise ValueError(
                 "Variable.backward() is only available in DyGraph mode")
