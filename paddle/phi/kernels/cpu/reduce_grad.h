@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_grad_functions.h"
 
 namespace phi {
@@ -95,19 +96,23 @@ void ReduceGradKernel(const Context& dev_ctx,
                       DataType out_dtype,
                       DenseTensor* x_grad) {
   if (in_dtype != DataType::UNDEFINED) {
-    auto tmp_tensor = phi::Cast<T>(dev_ctx, out_grad, in_dtype);
+    DenseTensorMeta x_grad_meta(out_dtype, x_grad->dims(), x_grad->layout());
+    DenseTensor x_grad_tmp =
+        phi::Empty<Context>(dev_ctx, std::move(x_grad_meta));
     ComputeFromInput<Context, T, Functor, kNoNeedBufferX, kNoNeedBufferY>(
         dev_ctx,
         x,
         out_grad,
         out,
-        tmp_tensor,
+        out_grad,
         dims,
         keep_dim,
         reduce_all,
         in_dtype,
         out_dtype,
-        x_grad);
+        &x_grad_tmp);
+
+    phi::CastKernel<T>(dev_ctx, x_grad_tmp, in_dtype, x_grad);
   } else {
     ComputeFromInput<Context, T, Functor, kNoNeedBufferX, kNoNeedBufferY>(
         dev_ctx,
