@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/distribution_helper.h"
 #include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
@@ -39,6 +40,44 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+struct RandomGeneratorDstValFunctor {
+  const float dropout_prob_;
+  const bool is_upscale_in_train_;
+  HOSTDEVICE inline RandomGeneratorDstValFunctor(const float dropout_prob,
+                                                 const bool is_upscale_in_train)
+      : dropout_prob_(dropout_prob),
+        is_upscale_in_train_(is_upscale_in_train) {}
+
+  HOSTDEVICE inline T operator()(const T src_val, const float4 rand) const {
+    using MT = typename details::MPTypeTrait<T>::Type;
+    MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob_));
+    if ((&rand.x)[j] < dropout_prob_) {
+      return 0;
+    } else {
+      return is_upscale_in_train_
+                 ? static_cast<T>(static_cast<MT>(src_val) * factor)
+                 : src_val;
+    }
+  }
+};
+
+template <typename T>
+struct RandomGeneratorMaskValFunctor {
+  const float dropout_prob_;
+  HOSTDEVICE inline RandomGeneratorMaskValFunctor(const float dropout_prob)
+      : dropout_prob_(dropout_prob) {}
+
+  HOSTDEVICE inline T operator()(const T src_val, const float4 rand) const {
+    using MT = typename details::MPTypeTrait<T>::Type;
+    if ((&rand.x)[j] < dropout_prob) {
+      return 0;
+    } else {
+      return 1;
+    }
+  }
+};
 
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
@@ -92,10 +131,12 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
   hiprandStatePhilox4_32_10_t state;
   hiprand_init(seed, idx, increment, &state);
+  using SType = hiprandStatePhilox4_32_10_t;
 #else
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
+  using SType = curandStatePhilox4_32_10_t;
 #endif
 
   MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
@@ -103,30 +144,32 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
     LoadT src_val;
     platform::Load<T, VecSize>(&src[i], &src_val);
 
-#ifdef PADDLE_WITH_HIP
+    constexpr int kCount = 4;
+    T args[kCount];
+    MaskLoadT mask_result[kCount];
+    LoadT dst_result[kCount];
     float4 rand = hiprand_uniform4(&state);
-#else
-    float4 rand = curand_uniform4(&state);
-#endif
+    kps::ElementwiseRandom<SType, T, kCount, 1,
+                           distribution::normal_distribution<float>>(
+        &args[0], distribution::normal_distribution<float>(), &state);
 
     LoadT dst_val;
     MaskLoadT mask_val;
 
-#pragma unroll
-    for (int j = 0; j < VecSize; j++) {
-      if ((&rand.x)[j] < dropout_prob) {
-        dst_val[j] = 0;
-        mask_val[j] = 0;
-      } else {
-        dst_val[j] = is_upscale_in_train
-                         ? static_cast<T>(static_cast<MT>(src_val[j]) * factor)
-                         : src_val[j];
-        mask_val[j] = 1;
-      }
-    }
+    auto dst_val_functor =
+        RandomGeneratorDstValFunctor<T>(dropout_prob, is_upscale_in_train);
+    auto mask_val_functor = RandomGeneratorMaskValFunctor<T>(dropout_prob);
 
-    platform::Store<T, VecSize>(dst_val, &dst[i]);
-    platform::Store<MaskType, VecSize>(mask_val, &mask[i]);
+    kps::ElementwiseBinary<T, LoadT, kCount, 1, 1,
+                           RandomGeneratorDstValFunctor<T>>(
+        &dst_result[0], &args[0], dst_val_functor);
+    kps::ElementwiseBinary<T, MaskLoadT, kCount, 1, 1,
+                           RandomGeneratorMaskValFunctor<T>>(
+        &mask_result[0], &args[0], mask_val_functor);
+    kps::WriteData<LoadT, LoadT, kCount, 1, 1, true>(dst_val, &dst_result[0],
+                                                     n - i);
+    kps::WriteData<MaskLoadT, MaskLoadT, kCount, 1, 1, true>(
+        mask_val, &mask_result[0], n - i);
   }
 }
 
