@@ -1,4 +1,5 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,12 +80,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
+#include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/imperative.h"
+#include "paddle/fluid/pybind/io.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
-#ifndef PADDLE_ON_INFERENCE
-#include "paddle/fluid/pybind/eager.h"
-#endif
-#include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
@@ -103,7 +103,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
-#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
@@ -529,9 +528,8 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
-#ifndef PADDLE_ON_INFERENCE
+  BindImperative(&m);
   BindEager(&m);
-#endif
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -744,8 +742,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
-
-  BindImperative(&m);
 
   py::class_<framework::Tensor> framework_tensor(m, "Tensor",
                                                  py::buffer_protocol());
@@ -1673,7 +1669,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_device_type", []() {
     std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    device_types = platform::DeviceManager::GetAllDeviceTypes();
+    device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed"
@@ -1687,7 +1683,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_custom_device_type", []() {
     std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+    device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_all_custom_device_type because you have installed"
@@ -1701,7 +1697,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_available_device", [] {
     std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    devices = platform::DeviceManager::GetAllDeviceList();
+    devices = phi::DeviceManager::GetAllDeviceList();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_available_device because you have installed"
@@ -1715,7 +1711,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_available_custom_device", [] {
     std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    devices = platform::DeviceManager::GetAllCustomDeviceList();
+    devices = phi::DeviceManager::GetAllCustomDeviceList();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
@@ -1752,10 +1748,10 @@ All parameter, weight, gradient are variables in Paddle.
                std::exit(-1);
              }
 
-             if (LIKELY(platform::DeviceManager::HasDeviceType(device_type) &&
-                        platform::DeviceManager::IsCustom(device_type))) {
+             if (LIKELY(phi::DeviceManager::HasDeviceType(device_type) &&
+                        phi::DeviceManager::IsCustom(device_type))) {
                int dev_count = static_cast<int>(
-                   platform::DeviceManager::GetDeviceCount(device_type));
+                   phi::DeviceManager::GetDeviceCount(device_type));
                if (UNLIKELY(dev_id >= dev_count)) {
                  if (dev_count == 0) {
                    LOG(ERROR) << "Cannot use " << device_type
@@ -3444,6 +3440,31 @@ All parameter, weight, gradient are variables in Paddle.
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fuse_elewise_add_act_ops = True
+                     )DOC")
+      .def_property(
+          "fuse_gemm_epilogue",
+          [](const BuildStrategy &self) { return self.fuse_gemm_epilogue_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_gemm_epilogue_ = b;
+          },
+          R"DOC((bool, optional): fuse_gemm_epilogue indicate whether
+                to fuse matmul_op, elemenewist_add_op and activation_op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_gemm_epilogue = True
                      )DOC")
       .def_property(
           "fuse_bn_act_ops",

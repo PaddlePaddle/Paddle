@@ -260,5 +260,6 @@ class TestYoloBoxOpHW(TestYoloBoxOp):
         self.iou_aware_factor = 0.5
 
 
-if (__name__ == '__main__'):
+if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

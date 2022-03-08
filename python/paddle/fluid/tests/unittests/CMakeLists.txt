@@ -116,7 +116,7 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
 
-if(ON_INFER)
+if(NOT WITH_PYTHON AND ON_INFER)
     LIST(REMOVE_ITEM TEST_OPS test_eager_trace_op)
 endif()
 
@@ -125,6 +125,17 @@ if(NOT WITH_GPU)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op)
     LIST(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
     LIST(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
+    LIST(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
+    LIST(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
+endif()
+
+if (WITH_GPU)
+    if (CUDA_VERSION LESS 11.6)
+        LIST(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
+        LIST(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
+        LIST(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
+    endif()
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
@@ -627,7 +638,7 @@ set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
     add_subdirectory(distributed_passes)
-  
+    add_subdirectory(ps)
     add_subdirectory(auto_parallel)
 
     # FIXME(typhoonzero): add these tests back

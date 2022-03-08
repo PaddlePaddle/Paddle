@@ -16,7 +16,10 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -27,10 +30,6 @@ class SeluOp : public framework::OperatorWithKernel {
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    return UnaryOpUnchangedInferShape(ctx);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -121,7 +120,12 @@ class SeluGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(selu, SeluInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
 REGISTER_OPERATOR(selu, ops::SeluOp, ops::SeluOpMaker, ops::SeluOpInferVarType,
                   ops::SeluGradMaker<paddle::framework::OpDesc>,
-                  ops::SeluGradMaker<paddle::imperative::OpBase>);
+                  ops::SeluGradMaker<paddle::imperative::OpBase>,
+                  SeluInferShapeFunctor);
+
 REGISTER_OPERATOR(selu_grad, ops::SeluGradOp);
