@@ -577,10 +577,10 @@ inline void RegisterModelLayout(
     };
 
     for (auto& op : ops) {
-      if (check_attrib(op, "data_format")) {
+      if (check_attrib(op, std::string("data_format"))) {
         return;
       }
-      if (check_attrib(op, "data_layout")) {
+      if (check_attrib(op, std::string("data_layout"))) {
         return;
       }
     }
