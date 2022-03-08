@@ -24,7 +24,7 @@ from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
                                TracerEventType)
 
 from .utils import RecordEvent, wrap_optimizers
-from .profiler_statistic import SortedKeys
+from .profiler_statistic import StatisticData, _build_table, SortedKeys
 
 
 class ProfilerState(Enum):
@@ -466,4 +466,14 @@ class Profiler:
             thread_sep: print op table each thread.
             time_unit: can be chosen form ['s', 'ms', 'us', 'ns']
         """
-        pass
+        if self.profiler_result:
+            statistic_data = StatisticData(
+                self.profiler_result.get_data(),
+                self.profiler_result.get_extra_info())
+            print(
+                _build_table(
+                    statistic_data,
+                    sorted_by=sorted_by,
+                    op_detail=op_detail,
+                    thread_sep=thread_sep,
+                    time_unit=time_unit))
