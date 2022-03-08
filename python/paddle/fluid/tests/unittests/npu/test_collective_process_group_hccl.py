@@ -15,7 +15,9 @@
 from __future__ import print_function
 
 import unittest
-from ..test_parallel_dygraph_dataparallel import TestMultipleGpus
+import sys
+sys.path.append("..")
+from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestProcessGroup(TestMultipleGpus):

@@ -56,11 +56,8 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             pg = init_process_group()
 
-            # test allreduce sum
-            # rank 0
             x = np.random.random(self.shape).astype(self.dtype)
             tensor_x = paddle.to_tensor(x)
-            # rank 1
             y = np.random.random(self.shape).astype(self.dtype)
             tensor_y = paddle.to_tensor(y)
 
@@ -76,11 +73,8 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             print("test allreduce sum api ok")
 
-            # test allreduce max
-            # rank 0
             x = np.random.random(self.shape).astype(self.dtype)
             tensor_x = paddle.to_tensor(x)
-            # rank 1
             y = np.random.random(self.shape).astype(self.dtype)
             tensor_y = paddle.to_tensor(y)
 
