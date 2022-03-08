@@ -19,7 +19,8 @@ register_operators(EXCLUDES
     fused_attention_op
     fused_transformer_op
     fused_feedforward_op
-    resnet_unit_op)
+    resnet_unit_op
+    fused_gemm_epilogue_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -78,5 +79,9 @@ if (WITH_GPU OR WITH_ROCM)
         op_library(resnet_unit_op)
         cc_test(test_cudnn_norm_conv SRCS cudnn_norm_conv_test.cc DEPS conv_op blas im2col vol2col depthwise_conv eigen_function tensor op_registry device_context generator memory)
         cc_test(test_cudnn_bn_add_relu SRCS cudnn_bn_add_relu_test.cc DEPS batch_norm_op fused_bn_add_activation_op tensor op_registry device_context generator memory)
+    endif()
+
+    if (CUDA_VERSION GREATER_EQUAL 11.6)
+        op_library(fused_gemm_epilogue_op)
     endif()
 endif()

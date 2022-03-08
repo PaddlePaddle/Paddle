@@ -14,8 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace phi {
@@ -100,6 +103,159 @@ void SubtractDoubleGradImpl(const Context& dev_ctx,
     ddout->mutable_data<T>(dev_ctx.GetPlace());
     funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
         dev_ctx, ddx_safe, ddy_safe, axis, funcs::SubtractFunctor<T>(), ddout);
+  }
+}
+
+/*
+******************************
+    Divide Grad
+******************************
+*/
+
+template <typename T>
+struct DivGradDX {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout / y; }
+};
+
+template <typename T>
+struct DivGradDX<phi::dtype::complex<T>> {
+  HOSTDEVICE phi::dtype::complex<T> operator()(
+      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> y,
+      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> dout) const {
+    phi::dtype::complex<T> y_conj(y.real, -y.imag);
+    return dout / y_conj;
+  }
+};
+
+template <typename T>
+struct DivGradDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return -dout * out / y;
+  }
+};
+
+template <typename T>
+struct DivGradDY<paddle::platform::complex<T>> {
+  HOSTDEVICE phi::dtype::complex<T> operator()(
+      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> y,
+      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> dout) const {
+    phi::dtype::complex<T> out_div_y_conj((out / y).real, -(out / y).imag);
+    return -dout * out_div_y_conj;
+  }
+};
+
+template <typename T>
+struct DivDoubleDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return y * out * dout - x * dout;
+  }
+};
+
+template <typename T, typename Context>
+void DivideDoubleGradKernel(const Context& dev_ctx,
+                            const DenseTensor& y,
+                            const DenseTensor& out,
+                            const DenseTensor& dx,
+                            paddle::optional<const DenseTensor&> ddx,
+                            paddle::optional<const DenseTensor&> ddy,
+                            int axis,
+                            DenseTensor* dy,
+                            DenseTensor* dout,
+                            DenseTensor* ddout) {
+  if (dy) {
+    dy->Resize(y.dims());
+    dev_ctx.template Alloc<T>(dy);
+  }
+  if (dout) {
+    dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout);
+  }
+  if (ddout) {
+    ddout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(ddout);
+  }
+  // ddX_safe == null ? 0 : ddX
+  // ddY_safe == null ? 0 : ddY
+  DenseTensor ddX_safe, ddY_safe;
+  phi::funcs::GetDoubleGradSafeTensor<Context, T>(
+      dev_ctx, dx, ddx.get_ptr(), &ddX_safe);
+  phi::funcs::GetDoubleGradSafeTensor<Context, T>(
+      dev_ctx, y, ddy.get_ptr(), &ddY_safe);
+
+  // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
+  // dY = Out * dX * ddY / Y - dX * ddX / Y
+  // dOut = - dX * ddY
+  // To save memory, (1) dout can be used as 'tmp' tensor, (2) ddout can
+  // inplace ddx
+  DenseTensor tmp;
+  if (dout) {
+    tmp = *dout;
+  } else {
+    tmp.Resize(out.dims());
+    dev_ctx.template Alloc<T>(&tmp);
+  }
+  if (dy) {
+    // dX_div_Y = dX / Y;
+    DenseTensor dX_div_Y = tmp;
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::DivideFunctor<T>,
+                                      funcs::InverseDivideFunctor<T>>(
+        dev_ctx, dx, y, &dX_div_Y, axis);
+
+    // NOTE(dengkaipeng): in the following ElemwiseGradCompute, for the
+    // first output tensor is nullptr, the branch to calculate first
+    // output tensor will not be activated, DivGradDx function will not
+    // be called and can be ignored, the first branch has little effect
+    // on running speed.
+
+    // dY = Out * dX * ddY / Y - dX * ddX / Y
+    phi::funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivDoubleDY<T>>(
+        dev_ctx,
+        ddX_safe,
+        ddY_safe,
+        out,
+        dX_div_Y,
+        axis,
+        nullptr,
+        dy,
+        DivGradDX<T>(),
+        DivDoubleDY<T>());
+  }
+
+  if (ddout) {
+    // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::MultiplyFunctor<T>,
+                                      funcs::InverseMultiplyFunctor<T>>(
+        dev_ctx, out, ddY_safe, &tmp, axis);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::SubtractFunctor<T>,
+                                      funcs::InverseSubtractFunctor<T>>(
+        dev_ctx, ddX_safe, tmp, &tmp, axis);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::DivideFunctor<T>,
+                                      funcs::InverseDivideFunctor<T>>(
+        dev_ctx, tmp, y, ddout, axis);
+  }
+
+  if (dout) {
+    // dOut = - dX * ddY
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::MultiplyFunctor<T>,
+                                      funcs::InverseMultiplyFunctor<T>>(
+        dev_ctx, dx, ddY_safe, dout, axis);
+    auto& place = *dev_ctx.eigen_device();
+    auto dout_result = phi::EigenVector<T>::Flatten(*dout);
+    dout_result.device(place) = static_cast<T>(-1) * dout_result;
   }
 }
 

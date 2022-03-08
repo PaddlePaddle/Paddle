@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using platform::Tensor;
+using framework::Tensor;
 
 xpu::Pooling_t XPUPoolingType(const std::string& pooltype, bool exclusive,
                               bool is_test) {

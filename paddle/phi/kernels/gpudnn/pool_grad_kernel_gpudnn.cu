@@ -251,8 +251,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
   auto handle = ctx.cudnn_handle();
   ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
   if (input_grad) {
-    T* input_grad_data = transformed_input_grad.mutable_data<T>(
-        transformed_input_grad.dims(), ctx.GetPlace());
+    T* input_grad_data = ctx.template Alloc<T>(&transformed_input_grad);
 // Because beta is zero, it is unnecessary to reset input_grad.
 #ifdef PADDLE_WITH_HIP
     char* pool_workspace;
