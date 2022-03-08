@@ -12,125 +12,41 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/adam_op.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/optimizers/adamw_op.h"
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 
-void AdamOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("Param"), true,
-      platform::errors::NotFound("Input(Param) of AdamOp should not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("Grad"), true,
-      platform::errors::NotFound("Input(Grad) of AdamOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Moment1"), true,
-                    platform::errors::NotFound(
-                        "Input(Moment1) of AdamOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Moment2"), true,
-                    platform::errors::NotFound(
-                        "Input(Moment2) of AdamOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
-                    platform::errors::NotFound(
-                        "Input(LearningRate) of AdamOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Beta1Pow"), true,
-                    platform::errors::NotFound(
-                        "Input(Beta1Pow) of AdamOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"), true,
-                    platform::errors::NotFound(
-                        "Input(Beta2Pow) of AdamOp should not be null."));
+class AdamOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
-                    platform::errors::NotFound(
-                        "Output(ParamOut) of AdamOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment1Out"), true,
-                    platform::errors::NotFound(
-                        "Output(Moment1Out) of AdamOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"), true,
-                    platform::errors::NotFound(
-                        "Output(Moment2Out) of AdamOp should not be null."));
-
-  auto lr_dims = ctx->GetInputDim("LearningRate");
-  PADDLE_ENFORCE_NE(
-      phi::product(lr_dims), 0,
-      platform::errors::InvalidArgument(
-          "The number of LearningRate shall not be 0, but received %d. Maybe "
-          "the Input variable LearningRate has not "
-          "been initialized. You may need to confirm "
-          "if you put exe.run(startup_program) "
-          "after optimizer.minimize function.",
-          phi::product(lr_dims)));
-  PADDLE_ENFORCE_EQ(
-      phi::product(lr_dims), 1,
-      platform::errors::InvalidArgument(
-          "Learning rate should have 1 dimension, but received %d",
-          phi::product(lr_dims)));
-  auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
-  VLOG(3) << "dims of Beta1Pow : [" << beta1_pow_dims << "]";
-  PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims), 1,
-                    platform::errors::InvalidArgument(
-                        "The size of Beta1 power accumulator should be greater "
-                        "than 0, but received %d.",
-                        phi::product(beta1_pow_dims)));
-  auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
-  VLOG(3) << "dims of Beta2Pow : [" << beta2_pow_dims << "]";
-  PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims), 1,
-                    platform::errors::InvalidArgument(
-                        "The size of Beta2 power accumulator should be greater "
-                        "than 0, but received %d.",
-                        phi::product(beta2_pow_dims)));
-
-  auto param_dims = ctx->GetInputDim("Param");
-  if (ctx->GetInputsVarType("Grad")[0] ==
-      framework::proto::VarType::LOD_TENSOR) {
-    PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Grad"),
-        platform::errors::InvalidArgument(
-            "Param and Grad input of AdamOp should have same dimension. But "
-            "received Param dims: [%s], Grad dims: [%s].",
-            param_dims, ctx->GetInputDim("Grad")));
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const {
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
-  PADDLE_ENFORCE_EQ(
-      param_dims, ctx->GetInputDim("Moment1"),
-      platform::errors::InvalidArgument(
-          "Param and Moment1 input of AdamOp should have same dimension. But "
-          "received Param dims: [%s], Moment1 dims: [%s].",
-          param_dims, ctx->GetInputDim("Moment1")));
-  PADDLE_ENFORCE_EQ(
-      param_dims, ctx->GetInputDim("Moment2"),
-      platform::errors::InvalidArgument(
-          "Param and Moment2 input of AdamOp should have same dimension. But "
-          "received Param dims: [%s], Moment2 dims: [%s].",
-          param_dims, ctx->GetInputDim("Moment2")));
 
-  ctx->SetOutputDim("ParamOut", param_dims);
-  ctx->SetOutputDim("Moment1Out", param_dims);
-  ctx->SetOutputDim("Moment2Out", param_dims);
-  ctx->SetOutputDim("Beta1PowOut", beta1_pow_dims);
-  ctx->SetOutputDim("Beta2PowOut", beta2_pow_dims);
-}
-
-framework::OpKernelType AdamOp::GetExpectedKernelType(
-    const framework::ExecutionContext &ctx) const {
-  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-  return framework::OpKernelType(input_data_type, ctx.GetPlace());
-}
-
-framework::OpKernelType AdamOp::GetKernelTypeForVar(
-    const std::string &var_name, const framework::Tensor &tensor,
-    const framework::OpKernelType &expected_kernel_type) const {
-  if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
-      var_name == "SkipUpdate") {
-    return expected_kernel_type;
-  } else {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
+        var_name == "SkipUpdate") {
+      return expected_kernel_type;
+    } else {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
+    }
   }
-}
+};
 
 class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -232,6 +148,10 @@ $$
   }
 };
 
+class AdamWOp : public AdamOp {
+  using AdamOp::AdamOp;
+};
+
 class AdamWOpMaker : public AdamOpMaker {
  public:
   void Make() {
@@ -255,13 +175,23 @@ class AdamWOpMaker : public AdamOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(adam, ops::AdamOp, ops::AdamOpMaker);
 
-REGISTER_OP_WITHOUT_GRADIENT(adamw, ops::AdamWOp, ops::AdamWOpMaker);
+DECLARE_INFER_SHAPE_FUNCTOR(adam, AdamInferMetaFunctor,
+                            PD_INFER_META(phi::AdamInferMeta));
 
-REGISTER_OP_CPU_KERNEL(
-    adam, ops::AdamOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AdamOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OPERATOR(
+    adam, ops::AdamOp, ops::AdamOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    AdamInferMetaFunctor);
+
+DECLARE_INFER_SHAPE_FUNCTOR(adamw, AdamwInferMetaFunctor,
+                            PD_INFER_META(phi::AdamwInferMeta));
+REGISTER_OPERATOR(
+    adamw, ops::AdamWOp, ops::AdamWOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    AdamwInferMetaFunctor);
 
 REGISTER_OP_VERSION(adam)
     .AddCheckpoint(
