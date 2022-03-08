@@ -79,19 +79,6 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
         }
 
 
-class TestFillAnyLikeOpOverflow(TestFillAnyLikeOp):
-    def init(self):
-        self.value = 1e100
-
-    def test_check_output(self):
-        exception = None
-        try:
-            self.check_output(check_dygraph=False)
-        except ValueError as ex:
-            exception = ex
-        self.assertIsNotNone(exception)
-
-
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
     def init(self):
         self.dtype = np.float16
