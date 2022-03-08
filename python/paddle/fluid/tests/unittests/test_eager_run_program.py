@@ -18,6 +18,7 @@ from paddle import _C_ops
 from paddle.fluid.framework import _test_eager_guard, Variable
 from paddle.fluid import core
 from paddle.fluid.layers.utils import _hash_with_id
+import paddle.compat as cpt
 
 import unittest
 
@@ -34,6 +35,23 @@ def _append_backward_desc(main_program, outs):
         paddle.fluid.backward.gradients(targets=targets, inputs=[])
 
     return program
+
+
+# def _set_grad_type(params, train_program):
+#     # NOTE: if user set sparse gradient mode, the param's gradient
+#     # will be SelectedRows, not LoDTensor. But tracer will just
+#     # set param grad VarBase by forward VarBase(LoDTensor)
+#     # If we don't change grad_var type here, RunProgramOp need
+#     # transform SelectedRows to LoDTensor forcibly, it may not
+#     # be user wanted result.
+#     for param in params:
+#         grad_name = param.name + core.grad_var_suffix()
+#         grad_var = train_program.desc.block(0).find_var(
+#             cpt.to_bytes(grad_name))
+#         # NOTE: cannot find var desc maybe no problem, such as in batch_norm
+#         if grad_var is None:
+#             continue
+#         param._set_grad_type(grad_var.type())
 
 
 def _create_out(var):
@@ -92,7 +110,8 @@ class TestRunProgram(unittest.TestCase):
             loss.backward()
 
             self.assertTrue(np.array_equal(np.ones([2, 2]) * 4, out_t.numpy()))
-            self.assertTrue(np.array_equal(np.ones([2, 4]), x_t.grad.numpy()))
+            self.assertTrue(
+                np.array_equal(np.ones([2, 4]) * 0.5, x_t.grad.numpy()))
             self.assertTrue(
                 np.array_equal(np.ones([4, 2]) * 0.5, y_t.grad.numpy()))
 

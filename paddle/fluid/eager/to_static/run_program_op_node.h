@@ -274,7 +274,6 @@ inline void RunProgramGradAPI(
     std::vector<paddle::experimental::Tensor *> &x_grad,      // NOLINT
     std::vector<paddle::experimental::Tensor *> &params_grad  // NOLINT
     ) {
-  VLOG(2) << "RunProgramGradOpKernel Compute";
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
 
@@ -382,9 +381,20 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     VLOG(3) << "out_grads[0].size() : " << grads[0].size();
     std::vector<paddle::experimental::Tensor> x_grad;
     std::vector<paddle::experimental::Tensor> params_grad;
+    ConstructGradTensors(x_, &x_grad);
+    ConstructGradTensors(params_, &params_grad);
+    std::vector<paddle::experimental::Tensor *> x_grad_ptr;
+    std::vector<paddle::experimental::Tensor *> params_grad_ptr;
+    for (auto &i : x_grad) {
+      x_grad_ptr.emplace_back(&i);
+    }
+    for (auto &i : params_grad) {
+      params_grad_ptr.emplace_back(&i);
+    }
 
-    auto x_grad_ptr = ConstructGradTensors(x_, &x_grad);
-    auto params_grad_ptr = ConstructGradTensors(params_, &params_grad);
+    // auto x_grad_ptr = ConstructGradTensors(x_);
+    // auto params_grad_ptr = ConstructGradTensors(params_);
+
     PADDLE_ENFORCE_EQ(
         grads[0].size(), fwd_out_names_.size(),
         paddle::platform::errors::InvalidArgument(
@@ -398,6 +408,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                       params_grad_ptr);
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
     return {x_grad, params_grad};
+    // return {x_grad, details::DereferenceTensors(params_grad_ptr)};
   }
 
   // SetAttrMap
@@ -422,10 +433,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   }
 
  protected:
-  std::vector<paddle::experimental::Tensor *> ConstructGradTensors(
+  void ConstructGradTensors(
       const std::vector<paddle::experimental::Tensor> &fwd_tensors,
       std::vector<paddle::experimental::Tensor> *grad_tensors) {
-    std::vector<paddle::experimental::Tensor *> res;
     // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     VLOG(3) << "fwd_tensors.size(): " << fwd_tensors.size();
@@ -433,9 +443,16 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       grad_tensors->emplace_back(fwd_t.impl());
       auto &grad_t = grad_tensors->back();
       grad_t.set_name(fwd_t.name() + "@GRAD");
-      res.emplace_back(&grad_t);
     }
-    return res;
+  }
+
+  void ConstructGradTensors(
+      const std::vector<paddle::experimental::Tensor> &fwd_tensors) {
+    VLOG(3) << "fwd_tensors.size(): " << fwd_tensors.size();
+    for (auto &fwd_t : fwd_tensors) {
+      auto grad_tesnor = egr::EagerUtils::unsafe_autograd_meta(fwd_t)->Grad();
+      grad_tesnor.set_name(fwd_t.name() + "@GRAD");
+    }
   }
 
  private:
