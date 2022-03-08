@@ -1,27 +1,22 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+#include "paddle/phi/kernels/arg_min_max_kernel.h"
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#pragma once
-#include <string>
-#include <type_traits>
-#include <vector>
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -68,7 +63,6 @@ struct VisitDataArgMinMaxFunctor {
   int64_t axis;
   bool keepdims;
   bool flatten;
-  int dtype;
   DenseTensor* out;
 
   explicit VisitDataArgMinMaxFunctor(const Context& dev_ctx,
@@ -76,14 +70,12 @@ struct VisitDataArgMinMaxFunctor {
                                      int64_t axis,
                                      bool keepdims,
                                      bool flatten,
-                                     int dtype,
                                      DenseTensor* out)
       : dev_ctx(dev_ctx),
         x(x),
         axis(axis),
         keepdims(keepdims),
         flatten(flatten),
-        dtype(dtype),
         out(out) {}
   template <typename Tout>
   void apply() const {
@@ -153,13 +145,13 @@ void ArgMinMaxKernel(const Context& dev_ctx,
         static_cast<paddle::framework::proto::VarType::Type>(
             paddle::framework::proto::VarType::INT64),
         VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
-            dev_ctx, x, axis, keepdims, flatten, dtype, out));
+            dev_ctx, x, axis, keepdims, flatten, out));
     return;
   }
   paddle::framework::VisitDataTypeTiny(
       static_cast<paddle::framework::proto::VarType::Type>(dtype),
       VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
-          dev_ctx, x, axis, keepdims, flatten, dtype, out));
+          dev_ctx, x, axis, keepdims, flatten, out));
 }
 
 template <typename T, typename Context>
@@ -187,3 +179,25 @@ void ArgMaxKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(arg_min,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ArgMinKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   int16_t,
+                   uint8_t) {}
+
+PD_REGISTER_KERNEL(arg_max,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ArgMaxKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   int16_t,
+                   uint8_t) {}
