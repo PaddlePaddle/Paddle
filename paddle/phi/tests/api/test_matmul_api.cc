@@ -29,8 +29,11 @@ limitations under the License. */
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul_double_grad, CPU, ALL_LAYOUT);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+#endif
 
 namespace paddle {
 namespace tests {
