@@ -157,7 +157,6 @@ void TestConv3dBase(const std::vector<int>& indices,
 
 // test gpu
 #if defined(PADDLE_WITH_CUDA)
-  if (subm) return;
   phi::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
   dev_ctx_gpu.SetAllocator(
