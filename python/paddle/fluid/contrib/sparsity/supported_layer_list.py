@@ -28,13 +28,13 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
     # The double transpose ops here make sure pruning direction consistent with cuSparseLt.
     # SPMMA in cuSparseLt: D = (AxB) + C, where matrix A (mxk) is sparse matrix.
     # cuSparseLt would prune matrix A along k dimension.
-    # In sparse training, layer weight matriices is viewed sparse matrix A, so
+    # In sparse training, layer weight matrices is viewed sparse matrix A, so
     # the math fomula should be 'Act(WX + b)'. However, default fomula in PaddlePaddle
     #  is 'Act(XW + b)'. For enabling SPMMA, weights and inputs should be transposed 
     # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune alog k dimension 
     # of W^T, which is m dimension of W. Moreove, all mask generating functions in 
     # sparsity/utils is row-major pruning. That is the reason we have to transpose weight 
-    # matrices beforce invoking create_mask. Then we transpose the result maks to make 
+    # matrices beforce invoking create_mask. Then we transpose the result mask to make 
     # sure its shape to be the same as the input weight.
     weight_sparse_mask = sparsity.create_mask(
         weight_nparray.T, func_name=func_name, n=n, m=m).T
@@ -52,7 +52,7 @@ supported_layers_and_prune_func_map = {}
 
 def add_supported_layer(layer, pruning_func=None):
     r"""
-    Add supported layers and its corresponding pruning functino.
+    Add supported layers and its corresponding pruning function.
 
     Args:
         name (string|Layer): The name or type of layer, needed to support. If layer is `Layer` then 
