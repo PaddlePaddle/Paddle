@@ -252,8 +252,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
     def __next__(self):
         trace_event = profiler.RecordEvent(
-             name="_DataLoaderIterSingleProcess",
-             event_type=profiler.TracerEventType.Dataloader)
+            name="_DataLoaderIterSingleProcess",
+            event_type=profiler.TracerEventType.Dataloader)
         trace_event.begin()
         try:
             if in_dygraph_mode():
@@ -696,8 +696,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
     def __next__(self):
         trace_event = profiler.RecordEvent(
-             name="_DataLoaderIterMultiProcess",
-             event_type=profiler.TracerEventType.Dataloader)
+            name="_DataLoaderIterMultiProcess",
+            event_type=profiler.TracerEventType.Dataloader)
         trace_event.begin()
         try:
             # _batches_outstanding here record the total batch data number

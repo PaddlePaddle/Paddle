@@ -906,7 +906,7 @@ class Layer(object):
             self._built = True
      
         with profiler.RecordEvent(self.full_name(),
-                                   profiler.TracerEventType.Forward):
+                                  profiler.TracerEventType.Forward):
             outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
