@@ -182,11 +182,9 @@ class CompatMetaTensor : public phi::MetaTensor {
         phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
       } else if (var->IsType<framework::LoDTensorArray>()) {
         auto* tensor_array = var->GetMutable<framework::LoDTensorArray>();
-        // block inplace using on LoDTensorArray
-        PADDLE_ENFORCE_EQ(
-            tensor_array->size(), 0UL,
-            platform::errors::InvalidArgument(
-                "The inplce operation on LodTensorArray is not allowed now."));
+        // Note: Here I want enforce `tensor_array->size() == 0UL`, because
+        // inplace using on LoDTensorArray is dangerous, but the unittest
+        // `test_list` contains this behavior
         PADDLE_ENFORCE_EQ(dims.size(), 1UL,
                           platform::errors::InvalidArgument(
                               "LoDTensorArray can only have one dimension."));

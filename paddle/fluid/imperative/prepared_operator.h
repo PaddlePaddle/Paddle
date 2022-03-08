@@ -334,10 +334,6 @@ void BuildDygraphPhiKernelContext(
           paddle::SmallVector<phi::TensorBase*> tensor_vector;
           auto* tensor_array =
               var->template GetMutable<framework::LoDTensorArray>();
-          PADDLE_ENFORCE_GT(
-              tensor_array->size(), 0UL,
-              platform::errors::InvalidArgument(
-                  "The output TensorArray Variable contains no elements."));
           for (auto& t : *tensor_array) {
             tensor_vector.emplace_back(&t);
           }

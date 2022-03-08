@@ -2126,10 +2126,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
           paddle::SmallVector<phi::TensorBase*> tensor_vector;
           auto* tensor_array =
               var->template GetMutable<framework::LoDTensorArray>();
-          PADDLE_ENFORCE_GT(
-              tensor_array->size(), 0UL,
-              platform::errors::InvalidArgument(
-                  "The output TensorArray Variable contains no elements."));
+          // Note: If the input LoDTensorArray size is 0, the output
+          // LoDTensorArray is also 0
           for (auto& t : *tensor_array) {
             tensor_vector.emplace_back(&t);
           }
