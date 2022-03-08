@@ -1624,7 +1624,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   VLOG(6) << "Generated return codes";
 
   // [Generation] Get Full Function
-  std::string function_name = op_type + " dygraph";
+  std::string function_name = op_type + "_dygraph_function";
 
   if (dygraph_function_args_str.size() > 0) {
     auto iter = dygraph_function_args_str.begin();
