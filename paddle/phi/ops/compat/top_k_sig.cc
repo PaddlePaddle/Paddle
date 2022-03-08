@@ -24,7 +24,6 @@ KernelSignature TopkOpArgumentMapping(const ArgumentMappingContext& ctx) {
   } else {
     return KernelSignature(
         "top_k", {"X"}, {"k", "axis", "largest", "sorted"}, {"Out", "Indices"});
-
   }
 }
 
