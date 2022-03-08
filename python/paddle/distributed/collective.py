@@ -95,30 +95,33 @@ class Group():
     The abstract representation of group.
     """
 
-    def __init__(self, rank, pg, ranks=[], name=None):
+    def __init__(self, rank, rank_num, id=0, ranks=[], pg=None, name=None):
         self.rank = rank
-        assert len(ranks) >= 2, "At least two ranks are required for a group."
-        self.pg = pg
+        self.nranks = rank_num
+        self.id = id
         self.ranks = ranks
+        assert len(ranks) == rank_num
+        self.pg = pg
         self.name = name
 
     def is_member(self):
-        return self.rank in self.ranks
+        return len(self.ranks) > 1 and self.rank >= 0
 
-    def get_group_rank(self):
-        if self.is_member():
-            return self.ranks.index(self.rank)
+    def get_group_rank(self, rank):
+        if self.is_member() and rank in self.ranks:
+            return self.ranks.index(rank)
         else:
-            return None
+            return -1
 
-    def get_process_group(self):
+    @property
+    def process_group(self):
         return self.pg
 
     def __repr__(self):
-        debug_str = "rank: {}, nranks: {}, ranks: ".format(self.rank,
-                                                           self.nranks)
+        debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
+            self.rank, self.nranks, self.id)
         debug_str += ", ".join(map(str, self.ranks))
-        debug_str += ". "
+        debug_str += ". name: {}".format(self.name)
         return debug_str
 
 
@@ -132,12 +135,17 @@ def _get_global_env():
     return _global_env
 
 
-# group map : the map of all group
-# Dict[name, Group]
+# group map : the map of all group, 0 for GlobalGroup
+# Dict[int, Group]
 _group_map = {}
+
+# group map by name : the map of all group
+# Dict[name, Group]
+_group_map_by_name = {}
 
 # Name of the default global group for init_process_group
 _default_group_name = "_default_pg"
+_group_name_id = 1
 
 _valid_backend_list = ['nccl', 'gloo', 'hccl']
 _default_store = None  # the default tcp store
@@ -147,13 +155,22 @@ _default_backend = None
 def _get_group_map():
     global _group_map
     if not _group_map:
-        raise RuntimeError("Call paddle.distributed.init_process_group first "
-                           "to initialize the distributed environment.")
+        genv = _get_global_env()
+        _group_map[0] = Group(
+            genv.rank, genv.world_size, ranks=list(range(genv.world_size)))
     return _group_map
 
 
+def _get_group_map_by_name():
+    global _group_map_by_name
+    if not _group_map_by_name:
+        raise RuntimeError("Call paddle.distributed.init_process_group first "
+                           "to initialize the distributed environment.")
+    return _group_map_by_name
+
+
 def _get_default_group():
-    return _get_group_map()[_default_group_name]
+    return _get_group_map_by_name()[_default_group_name]
 
 
 def _new_ring_id():
@@ -232,7 +249,7 @@ def init_parallel_env(rank=None,
 
     global _group_name
     global _default_group_name
-    if _default_group_name in _group_map:
+    if _default_group_name in _group_map_by_name:
         raise RuntimeError(
             "The distributed process group has been initialized.")
 
@@ -249,12 +266,11 @@ def init_parallel_env(rank=None,
                                              "set or unset at the same time.")
         trainer_id = os.getenv("PADDLE_TRAINER_ID", None)
         trainer_num = os.getenv("PADDLE_TRAINERS_NUM", None)
-        assert trainer_id and trainer_num, (
-            "If rank and world_size are not "
-            "set, please start your training with paddle.distributed.launch "
-            "module.")
-        rank = int(trainer_id)
-        world_size = int(trainer_num)
+        if not trainer_id or not trainer_num:
+            warnings.warn(
+                "If rank and world_size are not set, please start "
+                "your training with paddle.distributed.launch module.")
+        return
 
     if rank < 0 or world_size <= rank or world_size < 2:
         raise ValueError(
@@ -282,7 +298,8 @@ def init_parallel_env(rank=None,
     ranks = [i for i in range(world_size)]
     group = Group(rank, pg, ranks, _default_group_name)
 
-    _group_map[_default_group_name] = group
+    paddle.fluid.dygraph.parallel_helper._set_parallel_ctx(True)
+    _group_map_by_name[_default_group_name] = group
     return group
 
 
@@ -313,7 +330,11 @@ def new_group(ranks=None,
 
     """
     global _default_group_name
-    if not group_name or group_name == _default_group_name:
+    global _group_name_id
+    if group_name is None:
+        group_name = _default_group_name + str(_group_name_id)
+        _group_name_id += 1
+    if group_name == _default_group_name:
         raise ValueError("group_name must be specified and it cannot be '{}' "
                          "which is used for the default process group created "
                          "by init_process_group.".format(_default_group_name))
@@ -325,15 +346,17 @@ def new_group(ranks=None,
         "size of new group must be less than or "
         "equal to that of the default global group.")
     size = len(ranks)
+    assert size > 1, "A group must have at least two memebers."
     ranks = sorted(ranks)
     if global_rank in ranks:
         rank = ranks.index(global_rank)
         pg = _new_process_group_impl(backend, _default_store, rank, size,
                                      group_name, pg_options)
     else:
+        rank = -1
         pg = None
     group = Group(global_rank, pg, ranks, group_name)
-    _group_map[group_name] = group
+    _group_map_by_name[group_name] = group
 
     return group
 
@@ -362,7 +385,7 @@ def barrier(group=None):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        return group.get_process_group().barrier()
+        return group.process_group.barrier()
 
     temp = fill_constant([1], dtype="int32", value="1")
     op_type = 'barrier'
@@ -497,8 +520,8 @@ def broadcast(tensor, src, group=None, async_op=False):
     assert gsrc >= 0, ("src rank out of group, need global rank")
 
     if in_dygraph_mode():
-        group = _default_group if group is None else group
-        task = group.broadcast(tensor, gsrc)
+        group = _get_default_group() if group is None else group
+        task = group.process_group.broadcast(tensor, gsrc)
         if use_calc_stream:
             task.wait()
             return None
@@ -907,6 +930,8 @@ def _c_identity(tensor, group=None):
         Tensor.
     """
     if group is not None and not group.is_member():
+        with open("/tmp/test.txt", 'w+') as f:
+            f.writelines(str(group))
         return
     ring_id = 0 if group is None else group.id
 
