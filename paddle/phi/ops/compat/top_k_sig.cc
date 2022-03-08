@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature TopkOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("K") {
+  if (ctx.HasInput("K")) {
     return KernelSignature(
         "top_k", {"X"}, {"K", "axis", "largest", "sorted"}, {"Out", "Indices"});
 
