@@ -78,6 +78,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_python.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
 #include "paddle/fluid/pybind/eager.h"
@@ -2913,6 +2916,88 @@ All parameter, weight, gradient are variables in Paddle.
   });
 
   m.def("size_of_dtype", framework::SizeOfType);
+  py::class_<paddle::platform::ProfilerResult>(m, "_ProfilerResult")
+      .def(py::init<>())
+      .def("get_data", &paddle::platform::ProfilerResult::GetData,
+           py::return_value_policy::automatic_reference)
+      .def("save", &paddle::platform::ProfilerResult::Save)
+      .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo);
+
+  py::class_<paddle::platform::DevicePythonNode>(m, "DevicePythonNode")
+      .def(py::init<>())
+      .def_readwrite("name", &paddle::platform::DevicePythonNode::name)
+      .def_readwrite("type", &paddle::platform::DevicePythonNode::type)
+      .def_readwrite("start_ns", &paddle::platform::DevicePythonNode::start_ns)
+      .def_readwrite("end_ns", &paddle::platform::DevicePythonNode::end_ns)
+      .def_readwrite("device_id",
+                     &paddle::platform::DevicePythonNode::device_id)
+      .def_readwrite("context_id",
+                     &paddle::platform::DevicePythonNode::context_id)
+      .def_readwrite("stream_id",
+                     &paddle::platform::DevicePythonNode::stream_id);
+
+  py::class_<paddle::platform::HostPythonNode>(m, "HostPythonNode")
+      .def(py::init<>())
+      .def_readwrite("name", &paddle::platform::HostPythonNode::name)
+      .def_readwrite("type", &paddle::platform::HostPythonNode::type)
+      .def_readwrite("start_ns", &paddle::platform::HostPythonNode::start_ns)
+      .def_readwrite("end_ns", &paddle::platform::HostPythonNode::end_ns)
+      .def_readwrite("process_id",
+                     &paddle::platform::HostPythonNode::process_id)
+      .def_readwrite("thread_id", &paddle::platform::HostPythonNode::thread_id)
+      .def_readwrite("children_node",
+                     &paddle::platform::HostPythonNode::children_node_ptrs)
+      .def_readwrite("runtime_node",
+                     &paddle::platform::HostPythonNode::runtime_node_ptrs)
+      .def_readwrite("device_node",
+                     &paddle::platform::HostPythonNode::device_node_ptrs);
+
+  py::class_<paddle::platform::Profiler>(m, "_Profiler")
+      .def("create", &paddle::platform::Profiler::Create,
+           py::return_value_policy::take_ownership)
+      .def("prepare",
+           [](paddle::platform::Profiler *profiler) {
+             platform::EnableHostEventRecorder();
+             profiler->Prepare();
+           })
+      .def("start", &paddle::platform::Profiler::Start)
+      .def("stop",
+           [](paddle::platform::Profiler *profiler) {
+             platform::DisableHostEventRecorder();
+             return profiler->Stop();
+           },
+           py::return_value_policy::automatic_reference);
+
+  py::class_<paddle::platform::ProfilerOptions>(m, "ProfilerOptions")
+      .def(py::init<>())
+      .def_readwrite("trace_switch",
+                     &paddle::platform::ProfilerOptions::trace_switch);
+
+  py::class_<platform::RecordEvent>(m, "_RecordEvent")
+      .def(py::init([](std::string name, platform::TracerEventType type) {
+        return std::make_unique<platform::RecordEvent>(
+            name, type, 1, paddle::platform::EventRole::kOrdinary);
+      }))
+      .def("end", [](platform::RecordEvent *event) { event->End(); });
+
+  py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
+      .value("Operator", paddle::platform::TracerEventType::Operator)
+      .value("Dataloader", paddle::platform::TracerEventType::Dataloader)
+      .value("ProfileStep", paddle::platform::TracerEventType::ProfileStep)
+      .value("CudaRuntime", paddle::platform::TracerEventType::CudaRuntime)
+      .value("Kernel", paddle::platform::TracerEventType::Kernel)
+      .value("Memcpy", paddle::platform::TracerEventType::Memcpy)
+      .value("Memset", paddle::platform::TracerEventType::Memset)
+      .value("UserDefined", paddle::platform::TracerEventType::UserDefined)
+      .value("OperatorInner", paddle::platform::TracerEventType::OperatorInner)
+      .value("Forward", paddle::platform::TracerEventType::Forward)
+      .value("Backward", paddle::platform::TracerEventType::Backward)
+      .value("Optimization", paddle::platform::TracerEventType::Optimization)
+      .value("Communication", paddle::platform::TracerEventType::Communication)
+      .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
+      .value("PythonUserDefined",
+             paddle::platform::TracerEventType::PythonUserDefined);
+  m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);

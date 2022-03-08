@@ -10,7 +10,7 @@ add_subdirectory(funcs)
 set_property(GLOBAL PROPERTY PHI_KERNELS "")
 
 # [ 1. Common kernel compilation dependencies ]
-set(COMMON_KERNEL_DEPS dense_tensor sparse_coo_tensor sparse_csr_tensor kernel_context kernel_factory arg_map_context convert_utils lod_utils)
+set(COMMON_KERNEL_DEPS dense_tensor sparse_coo_tensor sparse_csr_tensor kernel_context kernel_factory arg_map_context convert_utils lod_utils custom_kernel)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} eigen_function blas math_function im2col vol2col concat_and_split_functor softmax)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
@@ -27,11 +27,18 @@ kernel_library(full_kernel DEPS ${COMMON_KERNEL_DEPS} empty_kernel)
 # Some kernels depend on some targets that are not commonly used.
 # These targets are not suitable for common dependencies.
 # In this case, you need to manually generate them here.
-set(MANUAL_BUILD_KERNELS math_kernel softmax_kernel softmax_grad_kernel triangular_solve_grad_kernel eigh_kernel)
+
+set(MANUAL_BUILD_KERNELS math_kernel softmax_kernel softmax_grad_kernel triangular_solve_grad_kernel maxout_kernel maxout_grad_kernel put_along_axis_kernel put_along_axis_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel eigh_kernel)
 kernel_library(math_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel)
 kernel_library(softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(triangular_solve_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_reduce)
+kernel_library(maxout_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
+kernel_library(maxout_grad_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
+kernel_library(put_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
+kernel_library(put_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
+kernel_library(take_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
+kernel_library(take_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
 kernel_library(eigh_kernel DEPS ${COMMON_KERNEL_DEPS} lapack_function)
 
 # 4. auto parse and build kernel targets by cmake
