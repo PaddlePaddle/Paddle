@@ -20,26 +20,19 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename T, typename Context, bool LogMode = false>
+template <typename T, typename Context>
 void SoftmaxRawGPUDNNKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             int axis,
                             DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  SoftmaxForwardCUDAKernelDriver<T, LogMode>(dev_ctx, x, axis, out);
+  SoftmaxForwardCUDAKernelDriver<T>(dev_ctx, x, axis, out);
 }
 
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(softmax,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::SoftmaxRawGPUDNNKernel,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(log_softmax,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::SoftmaxRawGPUDNNKernel,
@@ -56,23 +49,8 @@ PD_REGISTER_KERNEL(softmax,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(log_softmax,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::SoftmaxRawGPUDNNKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(softmax,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::SoftmaxRawGPUDNNKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(log_softmax,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::SoftmaxRawGPUDNNKernel,

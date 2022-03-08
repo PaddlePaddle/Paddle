@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/softmax_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
@@ -21,40 +19,41 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void SoftmaxGradGPUDNNKernel(const Context& dev_ctx,
-                             const DenseTensor& out,
-                             const DenseTensor& out_grad,
-                             int axis,
-                             DenseTensor* x_grad) {
+void LogSoftmaxGradGPUDNNKernel(const Context& dev_ctx,
+                                const DenseTensor& out,
+                                const DenseTensor& out_grad,
+                                int axis,
+                                DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx, out, out_grad, axis, x_grad);
+  SoftmaxBackwardCUDAKernelDriver<T, true>(
+      dev_ctx, out, out_grad, axis, x_grad);
 }
 
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(softmax_grad,
+PD_REGISTER_KERNEL(log_softmax_grad,
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::SoftmaxGradGPUDNNKernel,
+                   phi::LogSoftmaxGradGPUDNNKernel,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
-PD_REGISTER_KERNEL(softmax_grad,
+PD_REGISTER_KERNEL(log_softmax_grad,
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::SoftmaxGradGPUDNNKernel,
+                   phi::LogSoftmaxGradGPUDNNKernel,
                    float,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #else
-PD_REGISTER_KERNEL(softmax_grad,
+PD_REGISTER_KERNEL(log_softmax_grad,
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::SoftmaxGradGPUDNNKernel,
+                   phi::LogSoftmaxGradGPUDNNKernel,
                    float,
                    double,
                    phi::dtype::float16) {}
