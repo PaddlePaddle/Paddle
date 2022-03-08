@@ -53,7 +53,7 @@ UnicodeFlagMap<GPUContext, uint8_t>::UnicodeFlagMap(uint8_t* flag_map) {
   uint32_t gUMapSize = sizeof(UNIFLAG_MAP);
 // Cannot use RecordedGpuMalloc, because it depend on a static instance
 // StatRegistry
-#ifdef __HIPCC__
+#ifdef PADDLE_WITH_HIP
   hipMalloc(reinterpret_cast<void**>(&m_charcases_map), gUMapSize);
   phi::backends::gpu::GpuMemcpySync(
       m_charcases_map, flag_map, gUMapSize, hipMemcpyHostToDevice);
@@ -67,7 +67,7 @@ UnicodeFlagMap<GPUContext, uint8_t>::UnicodeFlagMap(uint8_t* flag_map) {
 template <>
 UnicodeFlagMap<GPUContext, uint16_t>::UnicodeFlagMap(uint16_t* flag_map) {
   uint32_t gCMapSize = sizeof(CHARCASES_MAP);
-#ifdef __HIPCC__
+#ifdef PADDLE_WITH_HIP
   hipMalloc(reinterpret_cast<void**>(&m_charcases_map), gCMapSize);
   phi::backends::gpu::GpuMemcpySync(
       m_charcases_map, flag_map, gCMapSize, hipMemcpyHostToDevice);
@@ -80,7 +80,7 @@ UnicodeFlagMap<GPUContext, uint16_t>::UnicodeFlagMap(uint16_t* flag_map) {
 
 template <>
 UnicodeFlagMap<GPUContext, uint16_t>::~UnicodeFlagMap() {
-#ifdef __HIPCC__
+#ifdef PADDLE_WITH_HIP
   hipFree(reinterpret_cast<void*>(m_charcases_map));
 #else
   cudaFree(reinterpret_cast<void*>(m_charcases_map));
@@ -89,7 +89,7 @@ UnicodeFlagMap<GPUContext, uint16_t>::~UnicodeFlagMap() {
 
 template <>
 UnicodeFlagMap<GPUContext, uint8_t>::~UnicodeFlagMap() {
-#ifdef __HIPCC__
+#ifdef PADDLE_WITH_HIP
   hipFree(reinterpret_cast<void*>(m_charcases_map));
 #else
   cudaFree(reinterpret_cast<void*>(m_charcases_map));
