@@ -53,6 +53,7 @@ PD_REGISTER_KERNEL(take_along_axis,
                    GPU,
                    ALL_LAYOUT,
                    phi::TakeAlongAxisKernel,
+                   float
                    double,
                    int64_t,
                    int,
