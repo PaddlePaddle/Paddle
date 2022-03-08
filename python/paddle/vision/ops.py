@@ -36,7 +36,6 @@ __all__ = [ #noqa
     'PSRoIPool',
     'roi_align',
     'RoIAlign',
-    'ConvNormActivation',
 ]
 
 
