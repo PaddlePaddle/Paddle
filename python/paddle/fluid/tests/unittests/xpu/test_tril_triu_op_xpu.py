@@ -39,6 +39,7 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
             self.initTestCase()
             self.real_op_type = np.random.choice(['triu', 'tril'])
             self.real_np_op = getattr(np, self.real_op_type)
+            self.init_dtype()
             self.set_xpu()
             self.op_type = "tril_triu"
             self.inputs = {'X': self.X}
@@ -50,6 +51,9 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
                 'Out': self.real_np_op(self.X, self.diagonal)
                 if self.diagonal else self.real_np_op(self.X)
             }
+
+        def init_dtype(self):
+            self.dtype = self.in_type
 
         def set_xpu(self):
             self.__class__.use_xpu = True
