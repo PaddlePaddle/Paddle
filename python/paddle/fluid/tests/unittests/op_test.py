@@ -730,8 +730,6 @@ class OpTest(unittest.TestCase):
             api_params, api_defaults = [
                 remove_name(item) for item in parse_arg_and_kwargs(api)
             ]
-            #import pdb
-            #pdb.set_trace() 
             api_defaults = to_defaults_list(api_params, api_defaults)
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             inputs_and_attrs = inputs_sig + attrs_sig
