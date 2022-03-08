@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,35 +13,62 @@
 // limitations under the License.
 
 #pragma once
-#include <vector>
-#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DDim = framework::DDim;
+template <typename Context, typename T, class Enable = void>
+struct IndexSelectAdd {
+  void operator()(const Context& ctx,
+                  int slice_size,
+                  const T* src_pointer,
+                  const T* p_pointer,
+                  T* dist_pointer) {
+    for (int i = 0; i < slice_size; i++) {
+      dist_pointer[i] = src_pointer[i] + p_pointer[i];
+    }
+  }
+};
 
-template <typename DeviceContext, typename T, typename IndexT = int>
-void IndexSelectInner(const framework::ExecutionContext& context,
-                      LoDTensor* input, const LoDTensor& index,
-                      LoDTensor* output, int dim) {
+template <typename Context, typename T>
+struct IndexSelectAdd<
+    Context,
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const Context& ctx,
+                  int slice_size,
+                  const T* src_pointer,
+                  const T* p_pointer,
+                  T* dist_pointer) {
+    auto blas = phi::funcs::GetBlas<Context, T>(ctx);
+    blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
+  }
+};
+
+template <typename Context, typename T, typename IndexT = int>
+void IndexSelectInner(const Context& ctx,
+                      DenseTensor* input,
+                      const DenseTensor& index,
+                      DenseTensor* output,
+                      int dim) {
   auto input_dim = input->dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
   auto index_size = index.dims()[0];
 
-  LoDTensor index_cpu_copy;
-  if (!platform::is_cpu_place(index.place())) {
-    framework::TensorCopySync(index, platform::CPUPlace(), &index_cpu_copy);
+  DenseTensor index_cpu_copy;
+  if (!paddle::platform::is_cpu_place(index.place())) {
+    phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
   }
-  const IndexT* index_data = platform::is_cpu_place(index.place())
+  const IndexT* index_data = paddle::platform::is_cpu_place(index.place())
                                  ? index.data<IndexT>()
                                  : index_cpu_copy.data<IndexT>();
-  output->mutable_data<T>(context.GetPlace());
+  ctx.template Alloc<T>(output);
 
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
@@ -55,19 +82,23 @@ void IndexSelectInner(const framework::ExecutionContext& context,
 
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
-        index_data[i], 0,
-        platform::errors::InvalidArgument(
+        index_data[i],
+        0,
+        phi::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_data[i]));
+            input_dim[dim],
+            index_data[i]));
     PADDLE_ENFORCE_LT(
-        index_data[i], input_dim[dim],
-        platform::errors::InvalidArgument(
+        index_data[i],
+        input_dim[dim],
+        phi::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_data[i]));
+            input_dim[dim],
+            index_data[i]));
   }
 
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
@@ -76,11 +107,10 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   input->Resize(phi::make_ddim({outer_nums, input_dim[dim], slice_size}));
   output->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
 
-  auto input_tensor = framework::EigenTensor<T, 3>::From(*input);
-  auto output_tensor = framework::EigenTensor<T, 3>::From(*output);
+  auto input_tensor = EigenTensor<T, 3>::From(*input);
+  auto output_tensor = EigenTensor<T, 3>::From(*output);
 
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
+  auto& place = *ctx.eigen_device();
 
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
@@ -91,41 +121,24 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   output->Resize(output_dim);
 }
 
-template <typename DeviceContext, typename T, class Enable = void>
-struct IndexSelectAdd {
-  void operator()(const framework::ExecutionContext& ctx, int slice_size,
-                  const T* src_pointer, const T* p_pointer, T* dist_pointer) {
-    for (int i = 0; i < slice_size; i++) {
-      dist_pointer[i] = src_pointer[i] + p_pointer[i];
-    }
-  }
-};
-template <typename DeviceContext, typename T>
-struct IndexSelectAdd<
-    DeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext& ctx, int slice_size,
-                  const T* src_pointer, const T* p_pointer, T* dist_pointer) {
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
-    blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
-  }
-};
-
-template <typename DeviceContext, typename T, typename IndexT = int>
-void IndexSelectGradInner(const framework::ExecutionContext& context,
-                          const LoDTensor& out_grad, const LoDTensor& index,
-                          LoDTensor* x_grad, int dim) {
+template <typename Context, typename T, typename IndexT = int>
+void IndexSelectGradInner(const Context& ctx,
+                          const DenseTensor& out_grad,
+                          const DenseTensor& index,
+                          DenseTensor* x_grad,
+                          int dim) {
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();
-  const T* p_output = x_grad->mutable_data<T>(context.GetPlace());
-  T* out_data = x_grad->mutable_data<T>(context.GetPlace());
+
+  const T* p_output = ctx.template Alloc<T>(x_grad);
+  T* out_data = ctx.template Alloc<T>(x_grad);
+
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
 
-  auto& dev_ctx = context.template device_context<DeviceContext>();
-  phi::funcs::SetConstant<DeviceContext, T> set_constant;
-  set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
+  phi::funcs::SetConstant<Context, T> set_constant;
+  set_constant(ctx, x_grad, static_cast<T>(0.0));
 
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
@@ -155,12 +168,11 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
       auto src = input_data + input_start_offset + j * slice_size;
       auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
-      IndexSelectAdd<DeviceContext, T> index_select_add;
-      index_select_add(context, slice_size, src, p_out, dst);
+      IndexSelectAdd<Context, T> index_select_add;
+      index_select_add(ctx, slice_size, src, p_out, dst);
     }
   }
   x_grad->Resize(output_dim);
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
