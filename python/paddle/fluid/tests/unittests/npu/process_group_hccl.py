@@ -33,7 +33,7 @@ def init_process_group(strategy=None):
     rank = ParallelEnv().local_rank
     is_master = True if rank == 0 else False
     store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
-    pg_group = core.ProcessGroupNCCL(store, rank, nranks)
+    pg_group = core.ProcessGroupHCCL(store, rank, nranks)
 
     return pg_group
 
@@ -55,8 +55,6 @@ class TestProcessGroupFp32(unittest.TestCase):
                               paddle.distributed.ParallelEnv().dev_id)
 
             pg = init_process_group()
-            print("rank:", pg.rank(), "size:", pg.size(), "name:", pg.name())
-            print("test new group api ok")
 
             # test allreduce sum
             # rank 0
