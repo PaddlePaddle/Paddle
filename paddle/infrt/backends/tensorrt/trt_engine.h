@@ -56,13 +56,18 @@ using namespace nvinfer1;  // NOLINT
 //
 // We have encapsulated this logic, please use the following programming model.
 //
-// TRTEngine trt_engine;
+// TrtEngine trt_engine;
 // trt_engine.Build(...);
 // trt_engine.SetUpInference(...);
 // trt_engine.Run(...);
-class TRTEngine {
+class TrtEngine {
  public:
-  explicit TRTEngine(int device_id);
+  explicit TrtEngine(int device_id = 0);
+
+  TrtEngine(const TrtEngine&) = delete;
+  TrtEngine& operator=(const TrtEngine&) = delete;
+  TrtEngine(TrtEngine&&) = default;
+  TrtEngine& operator=(TrtEngine&&) = default;
 
   nvinfer1::IBuilder* GetTrtBuilder();
 

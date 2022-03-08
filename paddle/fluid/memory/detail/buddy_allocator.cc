@@ -26,6 +26,7 @@ DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {
