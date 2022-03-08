@@ -48,6 +48,14 @@ set(sparse_bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_bw_a
 set(sparse_bw_api_header_file_tmp ${sparse_bw_api_header_file}.tmp)
 set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
 
+# sparse bw api file
+set(sparse_bw_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api_gen.py)
+set(sparse_bw_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api.yaml)
+set(sparse_bw_api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_bw_api.h)
+set(sparse_bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_bw_api.cc)
+set(sparse_bw_api_header_file_tmp ${sparse_bw_api_header_file}.tmp)
+set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
+
 # wrapped infermeta file
 set(wrapped_infermeta_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py)
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)

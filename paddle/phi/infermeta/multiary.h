@@ -20,6 +20,18 @@ namespace phi {
 
 std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors);
 
+void AucInferMeta(const MetaTensor& input,
+                  const MetaTensor& label,
+                  const MetaTensor& stat_pos,
+                  const MetaTensor& stat_neg,
+                  const std::string& curve,
+                  int num_thresholds,
+                  int slide_steps,
+                  MetaTensor* auc,
+                  MetaTensor* stat_pos_out,
+                  MetaTensor* stat_neg_out,
+                  MetaConfig config = MetaConfig());
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,

@@ -155,7 +155,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 {kernel_context_code}
   phi_kernel(&kernel_context);
 
-  return {self.gene_return_code()};"""
+  return api_output;"""
 
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()

@@ -35,7 +35,8 @@ class ForwardAPI(BaseAPI):
     def parse_intermediate(self, api_item_yaml):
         if 'intermediate' in api_item_yaml:
             intermediate_outs = [
-                item.strip() for item in api_item_yaml['intermediate']
+                item.strip()
+                for item in api_item_yaml['intermediate'].split(',')
             ]
             return True, intermediate_outs
         else:
@@ -67,7 +68,7 @@ class ForwardAPI(BaseAPI):
                 if name not in self.intermediate_outs:
                     return_out_list.append(i)
             if len(return_out_list) == 1:
-                return f"std::get<{i}>(api_output)"
+                return f"std::get<{return_out_list[0]}>(api_output)"
             else:
                 selected_code = [
                     f"std::get<{i}>(api_output)" for i in return_out_list
@@ -201,6 +202,10 @@ def generate_api(api_yaml_path, header_file_path, source_file_path,
         if foward_api.is_dygraph_api:
             dygraph_header_file.write(foward_api.gene_api_declaration())
             dygraph_source_file.write(foward_api.gene_api_code())
+
+            foward_api.is_dygraph_api = False
+            header_file.write(foward_api.gene_api_declaration())
+            source_file.write(foward_api.gene_api_code())
         else:
             header_file.write(foward_api.gene_api_declaration())
             source_file.write(foward_api.gene_api_code())
