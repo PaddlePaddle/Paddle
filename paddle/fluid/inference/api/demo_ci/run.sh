@@ -113,7 +113,8 @@ for WITH_STATIC_LIB in ON OFF; do
       -DDEMO_NAME=simple_on_word2vec \
       -DWITH_GPU=$TEST_GPU_CPU \
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
-      -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT
+      -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
+      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
     msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
     for use_gpu in $use_gpu_list; do
       Release/simple_on_word2vec.exe \
@@ -132,7 +133,8 @@ for WITH_STATIC_LIB in ON OFF; do
       -DDEMO_NAME=vis_demo \
       -DWITH_GPU=$TEST_GPU_CPU \
       -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
-      -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT
+      -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
+      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
     msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
     for use_gpu in $use_gpu_list; do
       for vis_demo_name in $vis_demo_list; do
@@ -158,7 +160,8 @@ for WITH_STATIC_LIB in ON OFF; do
         -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
         -DMSVC_STATIC_CRT=$MSVC_STATIC_CRT \
         -DUSE_TENSORRT=$USE_TENSORRT \
-        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
+        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
       msbuild  /maxcpucount /property:Configuration=Release cpp_inference_demo.sln
       Release/trt_mobilenet_demo.exe \
         --modeldir=$DATA_DIR/mobilenet/model \
@@ -176,7 +179,8 @@ for WITH_STATIC_LIB in ON OFF; do
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=simple_on_word2vec \
       -DWITH_GPU=$TEST_GPU_CPU \
-      -DWITH_STATIC_LIB=$WITH_STATIC_LIB
+      -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
     make -j$(nproc)
     word2vec_model=$DATA_DIR'/word2vec/word2vec.inference.model'
     if [ -d $word2vec_model ]; then
@@ -196,7 +200,8 @@ for WITH_STATIC_LIB in ON OFF; do
       -DWITH_MKL=$TURN_ON_MKL \
       -DDEMO_NAME=vis_demo \
       -DWITH_GPU=$TEST_GPU_CPU \
-      -DWITH_STATIC_LIB=$WITH_STATIC_LIB
+      -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
+      -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
     make -j$(nproc)
     for use_gpu in $use_gpu_list; do
       for vis_demo_name in $vis_demo_list; do
