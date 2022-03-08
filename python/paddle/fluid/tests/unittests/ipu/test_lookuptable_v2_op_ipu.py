@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,9 +35,9 @@ class TestBase(IPUOpTest):
         return True
 
     def set_data_feed(self):
-        data = np.array([[[1], [3]], [[2], [4]], [[4], [127]]])
-        self.feed_cpu = {"x": data.astype(np.int64)}
-        self.feed_ipu = {"x": data.astype(np.int32)}
+        x = np.array([[[1], [3]], [[2], [4]], [[4], [127]]])
+        self.feed_cpu = {"x": x.astype(np.int64)}
+        self.feed_ipu = {"x": x.astype(np.int32)}
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_cpu.values()]
@@ -46,11 +46,11 @@ class TestBase(IPUOpTest):
 
     def set_op_attrs(self):
         self.attrs = {
-            "size": [128, 16],
-            "is_sparse": False,
-            "is_distributed": False,
+            "num_embeddings": 128,
+            "embedding_dim": 16,
+            "sparse": False,
             "padding_idx": -1,
-            "dtype": 'float32'
+            "weight_attr": None
         }
 
     def _test_base(self, exec_mode):
@@ -67,7 +67,8 @@ class TestBase(IPUOpTest):
                     shape=self.feed_shape[0],
                     dtype='int64')
 
-                out = paddle.fluid.layers.embedding(x, **self.attrs)
+                embedding = paddle.nn.Embedding(**self.attrs)
+                out = embedding(x)
 
                 if self.is_training:
                     loss = paddle.mean(out)
@@ -119,7 +120,6 @@ class TestBase(IPUOpTest):
             if mode > ExecutionMode.IPU_FP32 and (not self.fp16_enabled or
                                                   self.is_training):
                 break
-
             output_dict[mode] = self._test_base(mode).flatten()
 
         self.check(output_dict)
