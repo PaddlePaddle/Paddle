@@ -80,7 +80,7 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
                  const std::vector<paddle::experimental::Tensor>& grad_tensors,
                  bool retain_graph) {
   paddle::platform::RecordEvent backward_record_event(
-      "backward_run", paddle::platform::TracerEventType::Operator, 1);
+      "backward", paddle::platform::TracerEventType::Operator, 1);
 
   VLOG(6) << "Start Backward";
   // *Gradient Hook should happen at node-level
@@ -162,9 +162,12 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
   // 3. Update queue
   VLOG(6) << "Run Backward";
   while (!queue.empty()) {
-    paddle::platform::RecordEvent node_record_event(
-        "node_time", paddle::platform::TracerEventType::Operator, 1);
     GradNodeBase* node = queue.front();
+
+    paddle::platform::RecordEvent node_record_event(
+        typeid(*node).name() + " grad node",
+        paddle::platform::TracerEventType::Operator, 1);
+
     queue.pop();
 
     // Run node: This is where Hook happens

@@ -1562,7 +1562,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         GenerateGradNodeCreationContent(fwd_info, bwd_info);
 
     // Add event record
-    std::string event_name = op_type + "_node_creation";
+    std::string event_name = op_type + " node creation";
     const char* NODE_CREATION_TEMPLATE =
         "{\n"
         "   paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
@@ -1624,7 +1624,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   VLOG(6) << "Generated return codes";
 
   // [Generation] Get Full Function
-  std::string function_name = op_type + "_dygraph_function";
+  std::string function_name = op_type + " dygraph";
 
   if (dygraph_function_args_str.size() > 0) {
     auto iter = dygraph_function_args_str.begin();
@@ -1634,7 +1634,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   const char* DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE =
       "paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
       "paddle::platform::TracerEventType::Operator, 1);";
-  std::string event_name = op_type + "_dygraph_entrance";
+  std::string event_name = op_type + " dygraph";
   std::string fwd_record_event_str = paddle::string::Sprintf(
       DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE, event_name);
   const char* FWD_FUNCTION_TEMPLATE =

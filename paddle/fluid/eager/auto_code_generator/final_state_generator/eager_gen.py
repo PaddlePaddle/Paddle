@@ -887,7 +887,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
         backward_fwd_input_map, backward_grad_input_map,
         backward_grad_output_map, backward_attrs_list, optional_inputs)
 
-    node_event_name = fwd_api_name + "_node_creation"
+    node_event_name = fwd_api_name + " node creation"
     NODE_CREATION_TEMPLATE = """{{\n
            paddle::platform::RecordEvent node_creation_record_event(\"{}\", paddle::platform::TracerEventType::Operator, 1);\n
            {}\n
@@ -895,7 +895,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     node_creation_str = NODE_CREATION_TEMPLATE.format(node_event_name,
                                                       node_creation_str)
 
-    dygraph_event_str = f"paddle::platform::RecordEvent dygraph_entrance_record_event(\"{fwd_api_name}_dygraph_entrance\", paddle::platform::TracerEventType::Operator, 1);"
+    dygraph_event_str = f"paddle::platform::RecordEvent dygraph_entrance_record_event(\"{fwd_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);"
 
     FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{

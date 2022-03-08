@@ -94,7 +94,7 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
         dygraph_function_call_list[pos] = f"{name}"
     dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
-    pythonc_event_str = f"paddle::platform::RecordEvent pythonc_record_event(\"{fwd_api_name}_pythonc\", paddle::platform::TracerEventType::Operator, 1);"
+    pythonc_event_str = f"paddle::platform::RecordEvent pythonc_record_event(\"{fwd_api_name} pybind_imperative_func\", paddle::platform::TracerEventType::Operator, 1);"
 
     PYTHON_C_FUNCTION_TEMPLATE = """
 static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
