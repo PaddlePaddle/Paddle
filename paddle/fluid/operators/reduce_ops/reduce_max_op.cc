@@ -27,7 +27,7 @@ class ReduceMaxOpMaker : public ops::ReduceOpMaker {
 };
 
 DECLARE_INFER_SHAPE_FUNCTOR(reduce_max, ReduceMaxInferShapeFunctor,
-                            PD_INFER_META(phi::MaxRawInferMeta));
+                            PD_INFER_META(phi::ReduceInferMetaBase));
 
 REGISTER_OPERATOR(
     reduce_max, ops::ReduceOp, ReduceMaxOpMaker,

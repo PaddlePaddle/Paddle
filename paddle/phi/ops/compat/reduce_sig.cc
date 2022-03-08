@@ -21,7 +21,7 @@ KernelSignature ReduceSumOpArgumentMapping(const ArgumentMappingContext& ctx) {
     bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
     // InferShape, so we must return the "sum_raw" KernelSignature.
-    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
+    // And the InferMeta function(i.e. SumRawInferMeta) is accordance with
     // the "sum_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature("sum_raw",
@@ -40,7 +40,8 @@ KernelSignature ReduceMeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
     bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
     // InferShape, so we must return the "mean_raw" KernelSignature.
-    // And the InferMeta function(i.e. MeanRawInferMeta) is accordance with the
+    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
+    // the
     // "mean_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
@@ -61,7 +62,8 @@ KernelSignature ReduceMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
     bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
     // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
     // InferShape, so we must return the "max_raw" KernelSignature.
-    // And the InferMeta function(i.e. MaxRawInferMeta) is accordance with the
+    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
+    // the
     // "max_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(

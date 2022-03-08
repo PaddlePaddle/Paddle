@@ -382,7 +382,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   ReshapeInferMeta(x, shape, out, config);
 }
 
-/*  Why not use ReduceInferMetaBase directly?
+/*  Why not use SumRawInferMeta directly?
     Because we need make InferMetaFunction's args follow the design of api.yaml
 */
 void SumInferMeta(const MetaTensor& x,
@@ -391,7 +391,7 @@ void SumInferMeta(const MetaTensor& x,
                   bool keep_dim,
                   MetaTensor* out) {
   bool reduce_all = false;
-  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, dtype, out);
+  SumRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out);
 }
 
 DDim ReduceInferDim(const MetaTensor& x,
@@ -463,12 +463,12 @@ DDim ReduceInferDim(const MetaTensor& x,
   return out_dim;
 }
 
-void ReduceInferMetaBase(const MetaTensor& x,
-                         const std::vector<int64_t>& axis,
-                         bool keep_dim,
-                         bool reduce_all,
-                         DataType dtype,
-                         MetaTensor* out) {
+void SumRawInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     bool reduce_all,
+                     DataType dtype,
+                     MetaTensor* out) {
   DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
 
   DataType out_dtype;
@@ -488,39 +488,23 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void MaxRawInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keep_dim,
-                     bool reduce_all,
-                     MetaTensor* out) {
+void ReduceInferMetaBase(const MetaTensor& x,
+                         const std::vector<int64_t>& axis,
+                         bool keep_dim,
+                         bool reduce_all,
+                         MetaTensor* out) {
   DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
 
-void MaxInferMeta(const MetaTensor& x,
-                  const std::vector<int64_t>& axis,
-                  bool keep_dim,
-                  MetaTensor* out) {
+void ReduceInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     MetaTensor* out) {
   bool reduce_all = false;
-  MaxRawInferMeta(x, axis, keep_dim, reduce_all, out);
-}
-
-void MeanRawInferMeta(const MetaTensor& x,
-                      const std::vector<int64_t>& axis,
-                      bool keep_dim,
-                      bool reduce_all,
-                      MetaTensor* out) {
-  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
-}
-
-void MeanInferMeta(const MetaTensor& x,
-                   const std::vector<int64_t>& axis,
-                   bool keep_dim,
-                   MetaTensor* out) {
-  bool reduce_all = false;
-  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
+  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
 }
 
 void TransferLayoutInferMeta(const MetaTensor& x,
