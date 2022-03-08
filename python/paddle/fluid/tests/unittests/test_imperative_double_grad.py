@@ -79,6 +79,7 @@ class TestEagerGrad(TestCase):
         dout = np.ones_like(np_y)
         expected_dx = np.matmul(dout, np.transpose(np_y))
         self.assertTrue(np.allclose(dx[0].numpy(), expected_dx[0]))
+        self.assertTrue(dx[1], None)
 
         try:
             dx = fluid.dygraph.grad(out, [x, z])

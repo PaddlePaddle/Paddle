@@ -141,7 +141,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self, PyObject* args,
       egr::Grad(tensors, inputs, grad_tensors, retain_graph, create_graph,
                 only_inputs, allow_unused, no_grad_vars);
   VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
-  return ToPyObject(result);
+  return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
