@@ -12,7 +12,6 @@ limitations under the License. */
 #pragma once
 #include <string>
 
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/kernels/strings/unicode.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -20,6 +19,10 @@ limitations under the License. */
 #include <thrust/execution_policy.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/transform.h"
+
 namespace phi {
 namespace strings {
 

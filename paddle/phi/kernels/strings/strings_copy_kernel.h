@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/core/string_tensor.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/memory/memcpy.h"
 
 namespace phi {
 namespace strings {

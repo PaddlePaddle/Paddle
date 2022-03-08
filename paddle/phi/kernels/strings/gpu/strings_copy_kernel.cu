@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/strings/strings_copy_kernel.h"
 #include "paddle/phi/kernels/strings/strings_serialize_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 
 using pstring = ::phi::dtype::pstring;
 

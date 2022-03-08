@@ -10,7 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/kernels/strings/case_convert_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/pstring.h"
