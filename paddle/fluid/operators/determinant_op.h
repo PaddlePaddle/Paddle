@@ -19,13 +19,13 @@
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
@@ -233,7 +233,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     inverse_A.Resize(input->dims());
     inverse_A.mutable_data<T>(context.GetPlace());
 
-    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
+    phi::funcs::MatrixInverseFunctor<DeviceContext, T> mat_inv;
     mat_inv(orig_dev_ctx, *input, &inverse_A);
 
     VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
@@ -391,7 +391,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     inverse_A.Resize(input->dims());
     inverse_A.mutable_data<T>(context.GetPlace());
 
-    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
+    phi::funcs::MatrixInverseFunctor<DeviceContext, T> mat_inv;
     mat_inv(orig_dev_ctx, *input, &inverse_A);
 
     VLOG(3) << "inverse(A) dims: " << inverse_A.dims();

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/graph_send_recv_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -171,13 +171,3 @@ REGISTER_OPERATOR(graph_send_recv, ops::GraphSendRecvOP,
                   ops::GraphSendRecvGradOpMaker<paddle::framework::OpDesc>,
                   ops::GraphSendRecvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(graph_send_recv_grad, ops::GraphSendRecvGradOp);
-REGISTER_OP_CPU_KERNEL(graph_send_recv, ops::GraphSendRecvOpKernel<CPU, float>,
-                       ops::GraphSendRecvOpKernel<CPU, double>,
-                       ops::GraphSendRecvOpKernel<CPU, int>,
-                       ops::GraphSendRecvOpKernel<CPU, int64_t>);
-
-REGISTER_OP_CPU_KERNEL(graph_send_recv_grad,
-                       ops::GraphSendRecvGradOpKernel<CPU, float>,
-                       ops::GraphSendRecvGradOpKernel<CPU, double>,
-                       ops::GraphSendRecvGradOpKernel<CPU, int>,
-                       ops::GraphSendRecvGradOpKernel<CPU, int64_t>);
