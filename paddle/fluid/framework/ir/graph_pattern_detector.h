@@ -556,6 +556,19 @@ struct FCMKLDNN : public PatternBase {
   PATTERN_DECL_NODE(output);
 };
 
+struct FCResidual : public PatternBase {
+  FCResidual(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc_residual") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(fc_op);
+  PATTERN_DECL_NODE(fc_input);
+  PATTERN_DECL_NODE(fc_weights);
+  PATTERN_DECL_NODE(fc_residual_data);
+  PATTERN_DECL_NODE(fc_output);
+};
+
 //
 // \brief   Pattern looking for fc and a directly following activation
 // operator.

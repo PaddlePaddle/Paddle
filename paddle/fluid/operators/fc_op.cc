@@ -187,6 +187,11 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
+    AddAttr<bool>("fuse_residual_connection",
+                "(bool, default false) Only used in mkldnn kernel. Used "
+                "whenever fc output is as an input to residual connection.")
+      .SetDefault(false)
+      .AsExtra();    
     AddComment(R"DOC(
 Fully Connected Operator.
 

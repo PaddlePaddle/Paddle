@@ -1046,6 +1046,25 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
   return fc_out_var;
 }
 
+PDNode *patterns::FCResidual::operator()() {
+  auto fc_op = pattern->NewNode(fc_op_repr())->assert_is_op("fc");
+
+  auto input_var = pattern->NewNode(fc_input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("fc", "Input");
+
+  auto weights_var = pattern->NewNode(fc_weights_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("fc", "W");
+
+  auto output_var = pattern->NewNode(fc_output_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("fc", "Out");
+
+  fc_op->LinksFrom({input_var, weights_var}).LinksTo({output_var});
+  return output_var;
+}
+
 PDNode *patterns::FCActOneDNN::operator()(const std::string &act_type) {
   auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
   auto *fc_out = pattern->NewNode(fc_out_repr())
