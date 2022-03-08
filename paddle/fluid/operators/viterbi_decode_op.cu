@@ -11,8 +11,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/viterbi_decode_op.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -62,10 +62,11 @@ int64_t ComputeBlockSize(int64_t col) {
 
 template <template <typename T> typename BinaryFunctor, typename T>
 struct BinaryOperation<platform::CUDADeviceContext, BinaryFunctor, T> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx, const Tensor& lhs,
-                  const Tensor& rhs, Tensor* output) {
-    std::vector<const Tensor*> ins{&lhs, &rhs};
-    std::vector<Tensor*> outs{output};
+  void operator()(const platform::CUDADeviceContext& dev_ctx,
+                  const framework::Tensor& lhs, const framework::Tensor& rhs,
+                  framework::Tensor* output) {
+    std::vector<const framework::Tensor*> ins{&lhs, &rhs};
+    std::vector<framework::Tensor*> outs{output};
     paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T,
                                                    T>(dev_ctx, ins, &outs, -1,
                                                       BinaryFunctor<T>());
@@ -75,10 +76,11 @@ struct BinaryOperation<platform::CUDADeviceContext, BinaryFunctor, T> {
 template <template <typename InT, typename OutT> typename CompareFunctor,
           typename T>
 struct GetMask<platform::CUDADeviceContext, CompareFunctor, T> {
-  void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
-                  const Tensor& rhs, Tensor* mask) {
-    std::vector<const Tensor*> ins = {&lhs, &rhs};
-    std::vector<Tensor*> outs = {mask};
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor& lhs, const framework::Tensor& rhs,
+                  framework::Tensor* mask) {
+    std::vector<const framework::Tensor*> ins = {&lhs, &rhs};
+    std::vector<framework::Tensor*> outs = {mask};
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
         dev_ctx, ins, &outs, CompareFunctor<int64_t, T>());
@@ -131,8 +133,9 @@ struct ARange<platform::CUDADeviceContext> {
 
 template <typename T, typename IndType>
 struct Argmax<platform::CUDADeviceContext, T, IndType> {
-  void operator()(const framework::ExecutionContext& ctx, const Tensor& input,
-                  Tensor* out_idx, Tensor* out, int axis) {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor& input, framework::Tensor* out_idx,
+                  framework::Tensor* out, int axis) {
     framework::DDim input_dims = input.dims();
     int64_t numel = input.numel();
     int64_t groups = numel / input_dims[axis];
@@ -166,8 +169,8 @@ struct Argmax<platform::CUDADeviceContext, T, IndType> {
 template <typename T>
 struct GetMaxValue<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
-                  const Tensor& input, T* max_value) {
-    Tensor out_data;
+                  const framework::Tensor& input, T* max_value) {
+    framework::Tensor out_data;
     out_data.Resize(phi::make_ddim({1}));
     out_data.mutable_data<T>(platform::CUDAPlace());
     switch (ComputeBlockSize(input.numel())) {
@@ -177,7 +180,7 @@ struct GetMaxValue<platform::CUDADeviceContext, T> {
               1, input.numel(), 1, input.data<int64_t>(), nullptr,
               out_data.data<int64_t>()));
     }
-    Tensor max_value_tensor;
+    framework::Tensor max_value_tensor;
     framework::TensorCopy(out_data, platform::CPUPlace(), &max_value_tensor);
     *max_value = max_value_tensor.data<T>()[0];
   }
@@ -185,9 +188,10 @@ struct GetMaxValue<platform::CUDADeviceContext, T> {
 
 template <typename T, typename IndexT>
 struct Gather<platform::CUDADeviceContext, T, IndexT> {
-  void operator()(const platform::CUDADeviceContext& ctx, const Tensor& src,
-                  const Tensor& index, Tensor* output) {
-    GPUGather<T, IndexT>(ctx, src, index, output);
+  void operator()(const platform::CUDADeviceContext& ctx,
+                  const framework::Tensor& src, const framework::Tensor& index,
+                  framework::Tensor* output) {
+    phi::funcs::GPUGather<T, IndexT>(ctx, src, index, output);
   }
 };
 

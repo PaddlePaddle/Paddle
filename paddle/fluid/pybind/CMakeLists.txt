@@ -2,7 +2,7 @@ set(PYBIND_DEPS init pybind python proto_desc memory executor fleet_wrapper box_
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
-  cost_model cuda_graph_with_memory_pool fleet_executor global_utils phi_utils tcp_store)
+  cost_model cuda_graph_with_memory_pool fleet_executor global_utils phi_utils tcp_store new_profiler)
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -84,6 +84,12 @@ if(NOT ON_INFER)
   set (PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if (WITH_NCCL)
     set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
+  endif()
+  if (WITH_GLOO)
+    set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
+  endif()
+  if(WITH_ASCEND)
+    set (PYBIND_DEPS ${PYBIND_DEPS} processgroup_hccl)
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
