@@ -11,6 +11,7 @@ limitations under the License. */
 // disable numpy compile error
 #include <Python.h>
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -41,6 +42,36 @@ namespace py = ::pybind11;
 
 PyTypeObject* p_pylayer_type;
 extern PyTypeObject* p_tensor_type;
+
+std::set<paddle::experimental::Tensor*> GetNonDifferentiableNames(
+    PyObject* obj) {
+  std::set<paddle::experimental::Tensor*> result;
+  if (obj == nullptr) {
+    return result;
+  }
+  if (IsEagerTensor(obj)) {
+    result.insert(&reinterpret_cast<TensorObject*>(obj)->tensor);  // NOLINT
+  } else if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    for (Py_ssize_t i = 0; i < len; i++) {
+      if (IsEagerTensor(PyList_GetItem(obj, i))) {
+        result.insert(
+            &reinterpret_cast<TensorObject*>(PyList_GetItem(obj, i))  // NOLINT
+                 ->tensor);
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    for (Py_ssize_t i = 0; i < len; i++) {
+      if (IsEagerTensor(PyTuple_GetItem(obj, i))) {
+        result.insert(
+            &reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, i))  // NOLINT
+                 ->tensor);
+      }
+    }
+  }
+  return result;
+}
 
 PyObject* PyLayerNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
@@ -267,9 +298,16 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
   VLOG(6) << "PyLayer forward function finish...";
 
   if (require_any_grad && trace_backward) {
-    for (auto autograd_metas : outputs_autograd_meta) {
-      for (auto autograd_meta : autograd_metas) {
-        autograd_meta->WeakSetStopGradient(false);
+    auto non_differentiable =
+        GetNonDifferentiableNames(ctx->non_differentiable);
+    for (size_t i = 0; i < outputs_autograd_meta.size(); i++) {
+      for (size_t j = 0; j < outputs_autograd_meta[i].size(); j++) {
+        if (non_differentiable.find(outputs_tensor[i][j]) !=
+            non_differentiable.end()) {
+          outputs_autograd_meta[i][j]->SetStopGradient(true);
+        } else {
+          outputs_autograd_meta[i][j]->WeakSetStopGradient(false);
+        }
       }
     }
 

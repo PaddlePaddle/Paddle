@@ -404,6 +404,43 @@ class EagerPyLayerContext(object):
         self.dirty_tensors = args
 
     def mark_non_differentiable(self, *args):
+        """
+        Marks outputs as non-differentiable.
+        This should be called at most once, only from inside thethe `forward` method, 
+        and all arguments should be tensor outputs.
+
+        This will mark outputs as not requiring gradients, increasing the
+        efficiency of backward computation. You still need to accept a gradient
+        for each output in `backward`, but it's always going to
+        be a zero tensor with the same shape as the shape of a corresponding
+        output.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.autograd import PyLayer
+                import numpy as np
+
+                class Tanh(PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        a = x + x
+                        b = x + x + x
+                        ctx.mark_non_differentiable(a)
+                        return a, b
+
+                    @staticmethod
+                    def backward(ctx, grad_a, grad_b):
+                        assert np.equal(grad_a.numpy(), paddle.zeros([1]).numpy())
+                        assert np.equal(grad_b.numpy(), paddle.ones([1], dtype="float64").numpy())
+                        return grad_b
+
+                x = paddle.ones([1], dtype="float64")
+                x.stop_gradient = False
+                a, b = Tanh.apply(x)
+                b.sum().backward()
+        """
         self.non_differentiable = args
 
     def set_materialize_grads(self, value: bool):

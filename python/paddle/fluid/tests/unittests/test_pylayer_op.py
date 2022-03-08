@@ -570,6 +570,49 @@ class TestPyLayer(unittest.TestCase):
             x.stop_gradient = False
             Tanh.apply(x)[0].backward()
 
+    def test_mark_non_differentiable(self):
+        with _test_eager_guard():
+
+            class Tanh(EagerPyLayer):
+                @staticmethod
+                def forward(ctx, x):
+                    a = x + x
+                    ctx.mark_non_differentiable(a)
+                    return a
+
+                @staticmethod
+                def backward(ctx, grad):
+                    self.assertTrue(False)  # should not be call
+                    return paddle.ones([1], dtype="float64")
+
+            x = paddle.ones([1], dtype="float64")
+            x.stop_gradient = False
+            y = Tanh.apply(x)
+            y.sum().backward()
+
+    def test_mark_non_differentiable2(self):
+        with _test_eager_guard():
+
+            class Tanh(EagerPyLayer):
+                @staticmethod
+                def forward(ctx, x):
+                    a = x + x
+                    b = x + x + x
+                    ctx.mark_non_differentiable(a)
+                    return a, b
+
+                @staticmethod
+                def backward(ctx, grad_a, grad_b):
+                    self.assertEqual(grad_a, paddle.zeros([1]))
+                    self.assertEqual(grad_b, paddle.ones([1], dtype="float64"))
+                    return grad_b
+
+            x = paddle.ones([1], dtype="float64")
+            x.stop_gradient = False
+            a, b = Tanh.apply(x)
+            b.sum().backward()
+            self.assertEqual(x.grad, paddle.ones([1], dtype="float64"))
+
 
 class TestPyLayerReturnType(unittest.TestCase):
     def test_forward_args_fake_tensor(self):
