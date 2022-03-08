@@ -37,7 +37,8 @@ const std::unordered_set<std::string> standard_kernel_suffixs({
  * after 2.0, and can no longer be occupied by the previously abandoned ops.
  * They are marked here uniformly.
  */
-const std::unordered_set<std::string> deprecated_op_names({"flatten",
+const std::unordered_set<std::string> deprecated_op_names({"diag",
+                                                           "flatten",
                                                            "flatten_grad",
                                                            "matmul",
                                                            "matmul_grad",
@@ -165,7 +166,7 @@ struct ArgumentMappingFnRegistrar {
 };
 
 #define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)                \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
       PD_REGISTER_base_kernel_name_ns_check_##op_type,                         \
       "PD_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
   static const ::phi::BaseKernelNameRegistrar                                  \
@@ -173,7 +174,7 @@ struct ArgumentMappingFnRegistrar {
   int TouchBaseKernelNameSymbol_##op_type() { return 0; }
 
 #define PD_DECLARE_BASE_KERNEL_NAME(op_type)                              \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
       PD_DECLARE_ai_name_ns_check_##op_type,                              \
       "PD_DECLARE_BASE_KERNEL_NAME must be called in global namespace."); \
   extern int TouchBaseKernelNameSymbol_##op_type();                       \
@@ -181,7 +182,7 @@ struct ArgumentMappingFnRegistrar {
       TouchBaseKernelNameSymbol_##op_type()
 
 #define PD_REGISTER_ARG_MAPPING_FN(op_type, arg_mapping_fn)              \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
       PD_REGISTER_arg_map_fn_ns_check_##op_type,                         \
       "PD_REGISTER_ARG_MAPPING_FN must be called in global namespace."); \
   static const ::phi::ArgumentMappingFnRegistrar                         \
@@ -189,7 +190,7 @@ struct ArgumentMappingFnRegistrar {
   int TouchArgumentMappingFnSymbol_##op_type() { return 0; }
 
 #define PD_DECLARE_ARG_MAPPING_FN(op_type)                              \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
       PD_DECLARE_arg_map_fn_ns_check_##op_type,                         \
       "PD_DECLARE_ARG_MAPPING_FN must be called in global namespace."); \
   extern int TouchArgumentMappingFnSymbol_##op_type();                  \

@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-paddle::experimental::DataType TransToPtenDataType(
+paddle::experimental::DataType TransToPhiDataType(
     const paddle::framework::proto::VarType::Type& dtype) {
   // Set the order of case branches according to the frequency with
   // the data type is used

@@ -17,13 +17,19 @@
 //===----------------------------------------------------------------------===//
 // Dialect
 //===----------------------------------------------------------------------===//
+#include <llvm/ADT/StringMap.h>
 #include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/Dialect.h>
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
+#include "paddle/infrt/dialect/infrt/common_type.h"
 
 #include "paddle/infrt/dialect/infrt/infrt_opsDialect.h.inc"
 #define GET_TYPEDEF_CLASSES
 #include "paddle/infrt/dialect/infrt/infrt_opsTypes.h.inc"
+
+#define GET_ATTRDEF_CLASSES
+#include "paddle/infrt/dialect/infrt/infrt_opsAttributes.h.inc"
+
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/infrt/infrt_ops.h.inc"

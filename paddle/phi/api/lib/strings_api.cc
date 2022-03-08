@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/strings_api.h"
 
 #include "paddle/phi/api/lib/api_registry.h"
-#include "paddle/phi/api/lib/api_utils.h"
+
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/strings_api_utils.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -67,7 +67,7 @@ PADDLE_API Tensor empty_like(const Tensor& x, Backend place) {
   kernel_backend = ParseBackendWithInputOrder(place, x);
   if (kernel_backend == Backend::UNDEFINED) {
     auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-    auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
     kernel_backend = kernel_key.backend();
   }
 
@@ -103,7 +103,7 @@ PADDLE_API Tensor lower(const Tensor& x, const std::string& encoding) {
   DataType kernel_data_type = DataType::STRING;
 
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   if (kernel_backend == Backend::UNDEFINED) {
     kernel_backend = kernel_key.backend();
   }
@@ -142,7 +142,7 @@ PADDLE_API Tensor upper(const Tensor& x, const std::string& encoding) {
   DataType kernel_data_type = DataType::STRING;
 
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
-  auto kernel_key = kernel_key_set.GetHigestPriorityKernelKey();
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   if (kernel_backend == Backend::UNDEFINED) {
     kernel_backend = kernel_key.backend();
   }

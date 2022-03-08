@@ -118,6 +118,10 @@ class StringTensor : public TensorBase,
   const dtype::pstring* data() const;
   dtype::pstring* data();
 
+  void clear() {
+    holder_.reset();
+    meta_.offset = 0;
+  }
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
                      size_t requested_size = 0);

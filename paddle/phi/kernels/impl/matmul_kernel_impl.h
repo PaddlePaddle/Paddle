@@ -38,7 +38,7 @@ static void GetBroadcastFromDims(const int x_ndim,
     PADDLE_ENFORCE_EQ(
         x_bd_dims[i] == y_bd_dims[i] || x_bd_dims[i] <= 1 || y_bd_dims[i] <= 1,
         true,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X) and Input(Y) has error dim."
             "X_broadcast's shape[%s] must be equal to Y_broadcast's shape[%s],"
             "or X_broadcast's shape[%s] <= 1, or Y_broadcast's shape[%s] <= 1,"
@@ -110,7 +110,7 @@ void MatMulFunction(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         M,
         N,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "X's numbers must be equal to Y's numbers,"
             "when X/Y's dims =1. But received X has [%d] elements,"
             "received Y has [%d] elements",
@@ -135,27 +135,27 @@ void MatMulFunction(const Context& dev_ctx,
   if (x_ndim == 1) {
     const int N = X.numel();
     if (trans_y) {
-      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 1],
-                        N,
-                        paddle::platform::errors::InvalidArgument(
-                            "Input(Y) has error dim."
-                            "Y'dims[%d] must be equal to %d"
-                            "But received Y'dims[%d] is %d",
-                            y_ndim - 1,
-                            N,
-                            y_ndim - 1,
-                            y_dims[y_ndim - 1]));
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 1],
+          N,
+          phi::errors::InvalidArgument("Input(Y) has error dim."
+                                       "Y'dims[%d] must be equal to %d"
+                                       "But received Y'dims[%d] is %d",
+                                       y_ndim - 1,
+                                       N,
+                                       y_ndim - 1,
+                                       y_dims[y_ndim - 1]));
     } else {
-      PADDLE_ENFORCE_EQ(y_dims[y_ndim - 2],
-                        N,
-                        paddle::platform::errors::InvalidArgument(
-                            "Input(Y) has error dim."
-                            "Y'dims[%d] must be equal to %d"
-                            "But received Y'dims[%d] is %d",
-                            y_ndim - 2,
-                            N,
-                            y_ndim - 2,
-                            y_dims[y_ndim - 2]));
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 2],
+          N,
+          phi::errors::InvalidArgument("Input(Y) has error dim."
+                                       "Y'dims[%d] must be equal to %d"
+                                       "But received Y'dims[%d] is %d",
+                                       y_ndim - 2,
+                                       N,
+                                       y_ndim - 2,
+                                       y_dims[y_ndim - 2]));
     }
     std::vector<std::int64_t> out_dims(y_ndim - 1);
     if (trans_y) {
@@ -213,27 +213,27 @@ void MatMulFunction(const Context& dev_ctx,
   if (y_ndim == 1) {
     const int N = Y.numel();
     if (trans_x) {
-      PADDLE_ENFORCE_EQ(x_dims[x_ndim - 2],
-                        N,
-                        paddle::platform::errors::InvalidArgument(
-                            "Input(X) has error dim."
-                            "X'dims[%d] must be equal to %d"
-                            "But received X'dims[%d] is %d",
-                            x_ndim - 2,
-                            N,
-                            x_ndim - 2,
-                            x_dims[x_ndim - 2]));
+      PADDLE_ENFORCE_EQ(
+          x_dims[x_ndim - 2],
+          N,
+          phi::errors::InvalidArgument("Input(X) has error dim."
+                                       "X'dims[%d] must be equal to %d"
+                                       "But received X'dims[%d] is %d",
+                                       x_ndim - 2,
+                                       N,
+                                       x_ndim - 2,
+                                       x_dims[x_ndim - 2]));
     } else {
-      PADDLE_ENFORCE_EQ(x_dims[x_ndim - 1],
-                        N,
-                        paddle::platform::errors::InvalidArgument(
-                            "Input(X) has error dim."
-                            "X'dims[%d] must be equal to %d"
-                            "But received X'dims[%d] is %d",
-                            x_ndim - 1,
-                            N,
-                            x_ndim - 1,
-                            x_dims[x_ndim - 1]));
+      PADDLE_ENFORCE_EQ(
+          x_dims[x_ndim - 1],
+          N,
+          phi::errors::InvalidArgument("Input(X) has error dim."
+                                       "X'dims[%d] must be equal to %d"
+                                       "But received X'dims[%d] is %d",
+                                       x_ndim - 1,
+                                       N,
+                                       x_ndim - 1,
+                                       x_dims[x_ndim - 1]));
     }
     std::vector<std::int64_t> out_dims(x_ndim - 1);
     if (trans_x) {
@@ -292,27 +292,27 @@ void MatMulFunction(const Context& dev_ctx,
   const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
   const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
   if (trans_y) {
-    PADDLE_ENFORCE_EQ(y_dims[y_ndim - 1],
-                      K,
-                      paddle::platform::errors::InvalidArgument(
-                          "Input(Y) has error dim."
-                          "Y'dims[%d] must be equal to %d"
-                          "But received Y'dims[%d] is %d",
-                          y_ndim - 1,
-                          K,
-                          y_ndim - 1,
-                          y_dims[y_ndim - 1]));
+    PADDLE_ENFORCE_EQ(
+        y_dims[y_ndim - 1],
+        K,
+        phi::errors::InvalidArgument("Input(Y) has error dim."
+                                     "Y'dims[%d] must be equal to %d"
+                                     "But received Y'dims[%d] is %d",
+                                     y_ndim - 1,
+                                     K,
+                                     y_ndim - 1,
+                                     y_dims[y_ndim - 1]));
   } else {
-    PADDLE_ENFORCE_EQ(y_dims[y_ndim - 2],
-                      K,
-                      paddle::platform::errors::InvalidArgument(
-                          "Input(Y) has error dim."
-                          "Y'dims[%d] must be equal to %d"
-                          "But received Y'dims[%d] is %d",
-                          y_ndim - 2,
-                          K,
-                          y_ndim - 2,
-                          y_dims[y_ndim - 2]));
+    PADDLE_ENFORCE_EQ(
+        y_dims[y_ndim - 2],
+        K,
+        phi::errors::InvalidArgument("Input(Y) has error dim."
+                                     "Y'dims[%d] must be equal to %d"
+                                     "But received Y'dims[%d] is %d",
+                                     y_ndim - 2,
+                                     K,
+                                     y_ndim - 2,
+                                     y_dims[y_ndim - 2]));
   }
   const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
   const int ndim = (std::max)(x_ndim, y_ndim);
@@ -493,16 +493,16 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_NE(phi::product(x.dims()),
-                    0,
-                    paddle::platform::errors::InvalidArgument(
-                        "The Input(X) dims size must not be equal 0,"
-                        " but reviced dims size is 0. "));
-  PADDLE_ENFORCE_NE(phi::product(y.dims()),
-                    0,
-                    paddle::platform::errors::InvalidArgument(
-                        "The Input(Y) dims size must not be equal 0,"
-                        " but reviced dims size is 0. "));
+  PADDLE_ENFORCE_NE(
+      phi::product(x.dims()),
+      0,
+      phi::errors::InvalidArgument("The Input(X) dims size must not be equal 0,"
+                                   " but reviced dims size is 0. "));
+  PADDLE_ENFORCE_NE(
+      phi::product(y.dims()),
+      0,
+      phi::errors::InvalidArgument("The Input(Y) dims size must not be equal 0,"
+                                   " but reviced dims size is 0. "));
   MatMulFunction<Context, T>(dev_ctx, x, y, out, transpose_x, transpose_y);
 }
 

@@ -34,12 +34,27 @@ class MetaConfig;
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
+// meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
+void UnchangedInferMetaCheckAxis(const MetaTensor& x,
+                                 int axis,
+                                 MetaTensor* out);
+
+void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
                       MetaTensor* out);
 
+void GumbelSoftmaxInferMeta(const MetaTensor& x,
+                            float temperature,
+                            bool hard,
+                            int axis,
+                            MetaTensor* out);
+
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
+
+void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
 void CopyToInferMeta(const MetaTensor& x,
                      Backend backend,
@@ -48,9 +63,25 @@ void CopyToInferMeta(const MetaTensor& x,
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
+void CumsumInferMeta(const MetaTensor& x,
+                     int axis,
+                     bool flatten,
+                     bool exclusive,
+                     bool reverse,
+                     MetaTensor* out);
+
+void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
+
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
                            MetaTensor* out);
+
+void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void MultinomialInferMeta(const MetaTensor& x,
+                          int num_samples,
+                          bool replacement,
+                          MetaTensor* out);
 
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
@@ -66,13 +97,20 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
 void ReduceInferMetaBase(const MetaTensor& x,
                          const std::vector<int64_t>& axis,
                          bool keep_dim,
+                         bool reduce_all,
                          DataType dtype,
                          MetaTensor* out);
 
-void ReduceInferMeta(const MetaTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keep_dim,
-                     MetaTensor* out);
+void MeanRawInferMeta(const MetaTensor& x,
+                      const std::vector<int64_t>& axis,
+                      bool keep_dim,
+                      bool reduce_all,
+                      MetaTensor* out);
+
+void MeanInferMeta(const MetaTensor& x,
+                   const std::vector<int64_t>& axis,
+                   bool keep_dim,
+                   MetaTensor* out);
 
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,
@@ -87,9 +125,12 @@ void TransferLayoutInferMeta(const MetaTensor& x,
 void SplitInferMeta(const MetaTensor& x_meta,
                     const ScalarArray& num_or_sections,
                     const Scalar& axis,
-                    std::vector<MetaTensor>* out,
+                    std::vector<MetaTensor*> out,
                     MetaConfig config = MetaConfig());
 
+void UnbindInferMeta(const MetaTensor& x,
+                     int axis,
+                     std::vector<MetaTensor>* outs);
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
@@ -100,4 +141,24 @@ void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& dilations,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void DiagInferMeta(const MetaTensor& x,
+                   int offset,
+                   float padding_value,
+                   MetaTensor* out);
+
+void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
+
+void DiagonalInferMeta(
+    const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
+
+void PixelShuffleInferMeta(const MetaTensor& x,
+                           int upscale_factor,
+                           const std::string& data_format,
+                           MetaTensor* out);
+
+void TransposeInferMeta(const MetaTensor& x,
+                        const std::vector<int>& axis,
+                        MetaTensor* out);
+
 }  // namespace phi

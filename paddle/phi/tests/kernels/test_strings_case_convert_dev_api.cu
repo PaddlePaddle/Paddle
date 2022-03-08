@@ -126,8 +126,6 @@ TEST(DEV_API, strings_cast_convert_utf8) {
       phi::strings::Empty(*cpu_ctx, std::move(meta));
   StringTensor cpu_strings_upper_out =
       phi::strings::Empty(*cpu_ctx, std::move(meta));
-  const char* cpu_results[] = {cpu_strings_lower_out.data()[0].data(),
-                               cpu_strings_upper_out.data()[0].data()};
   std::string utf8_str = "óÓsscHloëË";
   pstring* cpu_strings_x_data =
       cpu_ctx->template Alloc<pstring>(&cpu_strings_x);
@@ -149,6 +147,8 @@ TEST(DEV_API, strings_cast_convert_utf8) {
       *dev_ctx, gpu_strings_upper_out, false, &cpu_strings_upper_out);
 
   // 4. check results
+  const char* cpu_results[] = {cpu_strings_lower_out.data()[0].data(),
+                               cpu_strings_upper_out.data()[0].data()};
   ASSERT_EQ(cpu_strings_lower_out.numel(), 1);
   ASSERT_EQ(cpu_strings_upper_out.numel(), 1);
   for (int i = 0; i < 2; ++i) {

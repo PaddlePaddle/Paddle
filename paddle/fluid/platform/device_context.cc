@@ -1,4 +1,6 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -32,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace memory {
@@ -171,6 +174,7 @@ inline void EmplaceDeviceContext(
                                     .get());
           dev_ctx->SetGenerator(framework::DefaultCPUGenerator().get());
         }
+        dev_ctx->SetHostGenerator(framework::DefaultCPUGenerator().get());
         dev_ctx->SetHostAllocator(
             memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(platform::CPUPlace())
@@ -322,7 +326,8 @@ NPUDeviceContext::~NPUDeviceContext() {
 }
 
 void NPUDeviceContext::Wait() const {
-  platform::RecordEvent record_event("NPUDeviceContext/wait");
+  platform::RecordEvent record_event("NPUDeviceContext/wait",
+                                     platform::TracerEventType::UserDefined, 2);
   VLOG(4) << "NPU context(" << this << ")  Wait";
   stream_->Wait();
 }
@@ -462,6 +467,9 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   InitCuBlasContext();
   InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  InitCuBlasLtContext();
+#endif
   InitCuSparseContext();
   InitCuSolverContext();
 #endif
@@ -473,6 +481,9 @@ void CUDAContext::SetStream(gpuStream_t stream) {
     DestoryCuDNNContext();
     DestoryCuBlasContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+    DestoryCuBlasLtContext();
+#endif
     DestoryCuSolverContext();
 #endif
 
@@ -482,6 +493,9 @@ void CUDAContext::SetStream(gpuStream_t stream) {
     InitCuBlasContext();
     InitCuDNNContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+    InitCuBlasLtContext();
+#endif
     InitCuSolverContext();
 #endif
   }
@@ -492,6 +506,9 @@ CUDAContext::~CUDAContext() {
   DestoryCuDNNContext();
   DestoryCuBlasContext();
 #ifndef PADDLE_WITH_HIP
+#if CUDA_VERSION >= 11060
+  InitCuBlasLtContext();
+#endif
   DestoryCuSparseContext();
   DestoryCuSolverContext();
 #endif
@@ -548,6 +565,14 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
   }
   return phi::GPUContext::cublas_handle();
 }
+#if CUDA_VERSION >= 11060
+cublasLtHandle_t CUDADeviceContext::cublaslt_handle() const {
+  if (thread_ctx_.count(this)) {
+    return context()->CublasLtHandle()->GetCublasLtHandle();
+  }
+  return phi::GPUContext::cublaslt_handle();
+}
+#endif
 cusparseHandle_t CUDADeviceContext::cusparse_handle() const {
   if (thread_ctx_.count(this)) {
     return context()->CusparseHandle()->GetCusparseHandle();
@@ -900,7 +925,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
 CustomDeviceContext::CustomDeviceContext(CustomPlace place)
     : phi::CustomContext(place) {
   Init();
-  stream_.reset(new platform::stream::Stream(place, stream()));
+  stream_.reset(new phi::stream::Stream(place, stream()));
 }
 
 CustomDeviceContext::~CustomDeviceContext() {}

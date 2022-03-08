@@ -324,7 +324,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, framework::TransToPtenDataType(type));
+      self->ResetHolderWithType(holder, framework::TransToPhiDataType(type));
     } else {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
@@ -348,10 +348,16 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
       auto type = framework::ToDataType(std::type_index(typeid(T)));
-      self->ResetHolderWithType(holder, framework::TransToPtenDataType(type));
+      self->ResetHolderWithType(holder, framework::TransToPhiDataType(type));
     } else {
-      auto dst = self->mutable_data<T>(place);
-      std::memcpy(dst, array.data(), array.nbytes());
+      // IPU does not store Tensor data, Tensor will be created on CPU
+      if (!self->initialized()) {
+        auto dst = self->mutable_data<T>(place);
+        std::memcpy(dst, array.data(), array.nbytes());
+      } else {
+        auto dst = self->mutable_data<T>(self->place());
+        std::memcpy(dst, array.data(), array.nbytes());
+      }
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -387,10 +393,10 @@ void SetTensorFromPyArrayT(
   } else if (paddle::platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::Place tmp_place = place;
-    platform::DeviceGuard guard(tmp_place);
+    phi::DeviceGuard guard(tmp_place);
     auto dst = self->mutable_data<T>(place);
 
-    platform::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopyH2D(
+    phi::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopyH2D(
         reinterpret_cast<void *>(dst),
         const_cast<void *>(reinterpret_cast<const void *>(array.data())),
         array.nbytes());
@@ -512,7 +518,7 @@ void SetUVATensorFromPyArray(
           cuda_device_pointer, need_allocate_size,
           platform::CUDAPlace(device_id));
   self_tensor->ResetHolderWithType(holder,
-                                   framework::TransToPtenDataType(data_type));
+                                   framework::TransToPhiDataType(data_type));
 #endif
 }
 

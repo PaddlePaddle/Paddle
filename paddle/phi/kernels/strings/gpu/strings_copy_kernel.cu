@@ -69,13 +69,12 @@ void Copy(const Context& dev_ctx,
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     CPUContext* dst_ctx = reinterpret_cast<CPUContext*>(pool.Get(dst_place));
 
-    DenseTensor gpu_serialized =
-        phi::Empty<uint8_t, GPUContext>(dev_ctx, {1}, DataType::UINT8);
+    DenseTensor gpu_serialized = phi::Empty<uint8_t, GPUContext>(dev_ctx, {1});
     phi::strings::Serialize(dev_ctx, src, &gpu_serialized);
 
     DenseTensor cpu_serialized =
-        phi::EmptyLike<uint8_t>(*dst_ctx, gpu_serialized, DataType::UINT8);
-    phi::Copy(dev_ctx, gpu_serialized, false, &cpu_serialized);
+        phi::EmptyLike<uint8_t>(*dst_ctx, gpu_serialized);
+    phi::Copy(dev_ctx, gpu_serialized, dst_place, false, &cpu_serialized);
 
     phi::strings::Deserialize(*dst_ctx, cpu_serialized, dst);
   } else if (paddle::platform::is_cpu_place(src_place) &&  // NOLINT
@@ -84,13 +83,13 @@ void Copy(const Context& dev_ctx,
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     CPUContext* src_ctx = reinterpret_cast<CPUContext*>(pool.Get(src_place));
 
-    DenseTensor cpu_serialized =
-        phi::Empty<uint8_t, CPUContext>(*src_ctx, {1}, DataType::UINT8);
+    DenseTensor cpu_serialized = phi::Empty<uint8_t, CPUContext>(*src_ctx, {1});
     phi::strings::Serialize(*src_ctx, src, &cpu_serialized);
 
     DenseTensor gpu_serialized =
-        phi::EmptyLike<uint8_t>(dev_ctx, cpu_serialized, DataType::UINT8);
-    phi::Copy(dev_ctx, cpu_serialized, false, &gpu_serialized);
+        phi::EmptyLike<uint8_t>(dev_ctx, cpu_serialized);
+    phi::Copy(
+        dev_ctx, cpu_serialized, dev_ctx.GetPlace(), false, &gpu_serialized);
 
     phi::strings::Deserialize(dev_ctx, gpu_serialized, dst);
   } else if (paddle::platform::is_gpu_place(src_place) &&  // NOLINT

@@ -37,7 +37,7 @@ inline phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor) {
 /* ------------------ for output ----------------------- */
 inline phi::StringTensor* SetStringsKernelOutput(Backend backend, Tensor* out) {
   if (!out->initialized()) {
-    auto place = phi::TransToPtenPlace(backend);
+    auto place = phi::TransToPhiPlace(backend);
     auto strings_tensor = std::make_shared<phi::StringTensor>(
         paddle::memory::AllocShared(place, 0), phi::StringTensorMeta());
     out->set_impl(strings_tensor);

@@ -244,28 +244,16 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (0, 5), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (0, 5), 1e-5
+        yield self.create_inference_config(), (0, 5), 2e-2
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (1, 4), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 4), 1e-5
-
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Half and len(
-                    self.dynamic_shape.min_input_shape) != 0:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt when dynamic fp16 mode.")
+        yield self.create_inference_config(), (1, 4), 2e-2
 
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 

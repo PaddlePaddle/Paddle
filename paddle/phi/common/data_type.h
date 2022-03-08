@@ -87,7 +87,7 @@ inline size_t SizeOf(DataType data_type) {
   return 0;
 }
 
-#define PT_FOR_EACH_DATA_TYPE(_)      \
+#define PD_FOR_EACH_DATA_TYPE(_)      \
   _(bool, DataType::BOOL)             \
   _(int8_t, DataType::INT8)           \
   _(uint8_t, DataType::UINT8)         \
@@ -111,25 +111,25 @@ struct DataTypeToCppType;
 template <typename T>
 struct CppTypeToDataType;
 
-#define PT_SPECIALIZE_DataTypeToCppType(cpp_type, data_type) \
+#define PD_SPECIALIZE_DataTypeToCppType(cpp_type, data_type) \
   template <>                                                \
   struct DataTypeToCppType<data_type> {                      \
     using type = cpp_type;                                   \
   };
 
-PT_FOR_EACH_DATA_TYPE(PT_SPECIALIZE_DataTypeToCppType)
+PD_FOR_EACH_DATA_TYPE(PD_SPECIALIZE_DataTypeToCppType)
 
-#undef PT_SPECIALIZE_DataTypeToCppType
+#undef PD_SPECIALIZE_DataTypeToCppType
 
-#define PT_SPECIALIZE_CppTypeToDataType(cpp_type, data_type) \
+#define PD_SPECIALIZE_CppTypeToDataType(cpp_type, data_type) \
   template <>                                                \
   struct CppTypeToDataType<cpp_type> {                       \
     constexpr static DataType Type() { return data_type; }   \
   };
 
-PT_FOR_EACH_DATA_TYPE(PT_SPECIALIZE_CppTypeToDataType)
+PD_FOR_EACH_DATA_TYPE(PD_SPECIALIZE_CppTypeToDataType)
 
-#undef PT_SPECIALIZE_CppTypeToDataType
+#undef PD_SPECIALIZE_CppTypeToDataType
 
 inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
   switch (dtype) {

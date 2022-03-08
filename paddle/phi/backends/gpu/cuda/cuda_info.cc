@@ -14,7 +14,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-// TODO(pten): remove fluid headers.
+// TODO(phi): remove fluid headers.
 #include "paddle/fluid/platform/enforce.h"
 
 static std::once_flag g_device_props_size_init_flag;
@@ -74,13 +74,13 @@ int GetGPUDeviceCount() {
 }
 
 int GetGPUComputeCapability(int id) {
-  PADDLE_ENFORCE_LT(id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   id,
+                                   GetGPUDeviceCount()));
   int major, minor;
   auto major_error_code =
       cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, id);
@@ -93,26 +93,26 @@ int GetGPUComputeCapability(int id) {
 }
 
 int GetGPURuntimeVersion(int id) {
-  PADDLE_ENFORCE_LT(id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   id,
+                                   GetGPUDeviceCount()));
   int runtime_version = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaRuntimeGetVersion(&runtime_version));
   return runtime_version;
 }
 
 int GetGPUDriverVersion(int id) {
-  PADDLE_ENFORCE_LT(id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   id,
+                                   GetGPUDeviceCount()));
   int driver_version = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDriverGetVersion(&driver_version));
   return driver_version;
@@ -125,13 +125,13 @@ bool TensorCoreAvailable() {
 }
 
 int GetGPUMultiProcessors(int id) {
-  PADDLE_ENFORCE_LT(id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   id,
+                                   GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaDeviceGetAttribute(&count, cudaDevAttrMultiProcessorCount, id));
@@ -139,13 +139,13 @@ int GetGPUMultiProcessors(int id) {
 }
 
 int GetGPUMaxThreadsPerMultiProcessor(int id) {
-  PADDLE_ENFORCE_LT(id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   id,
+                                   GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
       &count, cudaDevAttrMaxThreadsPerMultiProcessor, id));
@@ -154,13 +154,13 @@ int GetGPUMaxThreadsPerMultiProcessor(int id) {
 }
 
 int GetGPUMaxThreadsPerBlock(int id) {
-  PADDLE_ENFORCE_LT(id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   id,
+                                   GetGPUDeviceCount()));
   int count;
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaDeviceGetAttribute(&count, cudaDevAttrMaxThreadsPerBlock, id));
@@ -174,13 +174,13 @@ int GetCurrentDeviceId() {
 }
 
 std::array<int, 3> GetGpuMaxGridDimSize(int id) {
-  PADDLE_ENFORCE_LT(id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   id,
+                                   GetGPUDeviceCount()));
   std::array<int, 3> ret;
   int size;
   auto error_code_x = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimX, id);
@@ -213,7 +213,7 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
   }
 
   if (id < 0 || id >= static_cast<int>(g_device_props.size())) {
-    PADDLE_THROW(paddle::platform::errors::OutOfRange(
+    PADDLE_THROW(phi::errors::OutOfRange(
         "The device id %d is out of range [0, %d), where %d is the number of "
         "devices on this machine. Because the device id should be greater than "
         "or equal to zero and smaller than the number of gpus. Please input "
@@ -233,13 +233,13 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
 
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
-  PADDLE_ENFORCE_LT(id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   id,
+                                   GetGPUDeviceCount()));
   PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(id));
 }
 
@@ -294,13 +294,13 @@ gpuError_t GpuGetLastError() { return cudaGetLastError(); }
 // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
 // for more detail about managed memory requirements
 bool IsGPUManagedMemorySupported(int dev_id) {
-  PADDLE_ENFORCE_LT(dev_id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        dev_id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      dev_id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   dev_id,
+                                   GetGPUDeviceCount()));
 #if defined(__linux__) || defined(_WIN32)
   int ManagedMemoryAttr;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
@@ -312,13 +312,13 @@ bool IsGPUManagedMemorySupported(int dev_id) {
 }
 
 bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
-  PADDLE_ENFORCE_LT(dev_id,
-                    GetGPUDeviceCount(),
-                    paddle::platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        dev_id,
-                        GetGPUDeviceCount()));
+  PADDLE_ENFORCE_LT(
+      dev_id,
+      GetGPUDeviceCount(),
+      phi::errors::InvalidArgument("Device id must be less than GPU count, "
+                                   "but received id is: %d. GPU count is: %d.",
+                                   dev_id,
+                                   GetGPUDeviceCount()));
 #ifdef __linux__
   return IsGPUManagedMemorySupported(dev_id) &&
          GetGPUComputeCapability(dev_id) >= 60;

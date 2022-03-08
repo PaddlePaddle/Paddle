@@ -62,6 +62,9 @@ TEST(DEV_API, strings_copy) {
   phi::strings::Copy(*gpu_dev_ctx, string_gpu1, false, &string_gpu2);
   // gpu->cpu
   phi::strings::Copy(*gpu_dev_ctx, string_gpu2, false, &string_dst);
+  for (int64_t i = 0; i < string_src.numel(); i++) {
+    ASSERT_EQ(string_src.data()[i], string_dst.data()[i]);
+  }
 }
 
 }  // namespace tests
