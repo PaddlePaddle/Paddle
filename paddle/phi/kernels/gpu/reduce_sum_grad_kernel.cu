@@ -14,26 +14,12 @@
 
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
 
-#include "paddle/phi/kernels/cpu/reduce_grad.h"
-namespace phi {
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/gpu/reduce_grad.h"
 
-struct SumGradFunctor {
-  template <typename DeviceContext,
-            typename X,
-            typename Y,
-            typename DX,
-            typename DY,
-            typename Dim>
-  void operator()(const DeviceContext& place,
-                  X* x,
-                  Y* y,
-                  DX* dx,
-                  DY* dy,
-                  const Dim& dim,
-                  int size) {
-    dx->device(place) = dy->broadcast(dim);
-  }
-};
+namespace phi {
 
 template <typename T, typename Context>
 void ReduceSumGradKernel(const Context& dev_ctx,
@@ -45,16 +31,60 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          DataType in_dtype,
                          DataType out_dtype,
                          DenseTensor* x_grad) {
-  ReduceGradKernel<Context, T, SumGradFunctor, true>(dev_ctx,
-                                                     x,
-                                                     out_grad,
-                                                     paddle::none,
-                                                     dims,
-                                                     keep_dim,
-                                                     reduce_all,
-                                                     in_dtype,
-                                                     out_dtype,
-                                                     x_grad);
+  auto* in_x = &x;
+  auto* d_out = &out_grad;
+  auto* d_x = x_grad;
+
+  auto pt_out_dtype = in_dtype;
+
+  // get reduce_dim and reduce_num for reduce_mean_grad
+  int dim_size = in_x->dims().size();
+  std::vector<int> reduce_dims =
+      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+
+  auto update_dims = vectorize(d_x->dims());
+  int reduce_num = 1;
+  for (auto i : reduce_dims) {
+    reduce_num *= (in_x->dims())[i];
+    update_dims[i] = 1;
+  }
+  // make new tensor
+  DenseTensor new_d_out(d_out->dtype());
+  new_d_out.ShareDataWith(*d_out);
+  new_d_out.Resize(phi::make_ddim(update_dims));
+  if (in_dtype != DataType::UNDEFINED) {
+    dev_ctx.Alloc(d_x, in_dtype);
+  } else {
+    dev_ctx.Alloc(d_x, d_out->dtype());
+  }
+
+  auto pt_d_out = new_d_out;
+  auto pt_d_x = *d_x;
+  if (in_dtype == DataType::UNDEFINED) {
+    pt_out_dtype = d_out->dtype();
+  }
+  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+
+  phi::ReduceGrad<T, kps::IdentityFunctor<T, MPType>>(
+      dev_ctx,
+      &pt_d_out,
+      &pt_d_x,
+      pt_out_dtype,
+      kps::IdentityFunctor<T, MPType>(reduce_num));
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(sum_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ReduceSumGradKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
