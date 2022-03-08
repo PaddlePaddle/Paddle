@@ -299,8 +299,8 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     //    local_keys[i].data(), key_size);
     int32_t cnt = 0;
     while (true) {
-      auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(i,
-          reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
+      auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+          i, reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
           local_keys[i].data(), key_size);
       bool flag = true;
 
@@ -378,8 +378,8 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
     int32_t cnt = 0;
     while (true) {
       auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-          i, reinterpret_cast<char**>(local_dim_ptr[i][j].data()), this->table_id_,
-          local_dim_keys[i][j].data(), key_size);
+          i, reinterpret_cast<char**>(local_dim_ptr[i][j].data()),
+          this->table_id_, local_dim_keys[i][j].data(), key_size);
       bool flag = true;
 
       tt.wait();
