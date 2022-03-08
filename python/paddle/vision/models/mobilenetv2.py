@@ -16,7 +16,7 @@ import paddle
 import paddle.nn as nn
 from paddle.utils.download import get_weights_path_from_url
 
-from ._utils import _make_divisible
+from .utils import _make_divisible
 
 __all__ = []
 
