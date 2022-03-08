@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 #include "paddle/phi/core/custom_kernel.h"
 
 namespace phi {
@@ -50,6 +55,25 @@ void RegisterCustomKernels(const CustomKernelMap& custom_kernel_map) {
   }
 }
 
+void LoadCustomKernelLib(const std::string& dso_lib_path, void* dso_handle) {
+#ifdef _LINUX
+  typedef phi::CustomKernelMap& get_custom_kernel_map_t();
+  auto* func = reinterpret_cast<get_custom_kernel_map_t*>(
+      dlsym(dso_handle, "PD_GetCustomKernelMap"));
+
+  if (func == nullptr) {
+    LOG(WARNING) << "Skipped lib [" << dso_lib_path << "]: fail to find "
+                 << "PD_GetCustomKernelMap symbol in this lib.";
+    return;
+  }
+  auto& custom_kernel_map = func();
+  phi::RegisterCustomKernels(custom_kernel_map);
+  LOG(INFO) << "Successed in loading custom kernels in lib: " << dso_lib_path;
+#else
+  VLOG(3) << "Unsupported: Custom kernel is only implemented on Linux.";
+#endif
+  return;
+}
 }  // namespace phi
 
 #ifdef __cplusplus

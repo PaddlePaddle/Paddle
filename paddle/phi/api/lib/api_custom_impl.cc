@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 
+#include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/api_registry.h"
-#include "paddle/phi/api/lib/api_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/storage.h"

@@ -15,192 +15,111 @@
 from __future__ import print_function
 
 import unittest
-import os
 import numpy as np
-import gc
 
 import paddle
 import paddle.profiler as profiler
-import paddle.profiler.statistic_helper as statistic_helper
-
-
-class TestStatisticHelper(unittest.TestCase):
-    def test_sum_ranges_case1(self):
-        src = [(1, 3), (4, 10), (11, 15)]
-        self.assertEqual(statistic_helper.sum_ranges(src), 12)
-
-    def test_sum_ranges_case2(self):
-        src = [(3, 3), (5, 5), (7, 7)]
-        self.assertEqual(statistic_helper.sum_ranges(src), 0)
-
-    def test_merge_self_ranges_case1(self):
-        src = [(1, 5), (2, 7), (4, 9), (14, 19)]
-        dst = statistic_helper.merge_self_ranges(src)
-        self.assertEqual(dst, [(1, 9), (14, 19)])
-        src = [(4, 9), (14, 19), (1, 5), (2, 7)]
-        dst = statistic_helper.merge_self_ranges(src)
-        self.assertEqual(dst, [(1, 9), (14, 19)])
-
-    def test_merge_self_ranges_case2(self):
-        src = [(1, 1), (2, 3), (4, 7), (5, 12)]
-        dst = statistic_helper.merge_self_ranges(src)
-        self.assertEqual(dst, [(1, 1), (2, 3), (4, 12)])
-        src = [(5, 12), (1, 1), (2, 3), (4, 7)]
-        dst = statistic_helper.merge_self_ranges(src)
-        self.assertEqual(dst, [(1, 1), (2, 3), (4, 12)])
-
-    def test_merge_ranges_case1(self):
-        src1 = [(1, 2), (5, 7), (9, 14)]
-        src2 = [(1, 2), (4, 9), (13, 15)]
-        dst = statistic_helper.merge_ranges(src1, src2)
-        self.assertEqual(dst, [(1, 2), (4, 15)])
-        dst = statistic_helper.merge_ranges(src1, src2, True)
-        self.assertEqual(dst, [(1, 2), (4, 15)])
-
-    def test_merge_ranges_case2(self):
-        src1 = [(5, 7), (1, 2), (9, 14)]
-        src2 = [(4, 9), (1, 2), (13, 15)]
-        dst = statistic_helper.merge_ranges(src1, src2)
-        self.assertEqual(dst, [(1, 2), (4, 15)])
-
-    def test_intersection_ranges_case1(self):
-        src1 = [(1, 7), (9, 12), (14, 18)]
-        src2 = [(3, 8), (10, 13), (15, 19)]
-        dst = statistic_helper.intersection_ranges(src1, src2)
-        self.assertEqual(dst, [(3, 7), (10, 12), (15, 18)])
-        dst = statistic_helper.intersection_ranges(src1, src2, True)
-        self.assertEqual(dst, [(3, 7), (10, 12), (15, 18)])
-
-    def test_intersection_ranges_case2(self):
-        src1 = [(9, 12), (1, 7), (14, 18)]
-        src2 = [(10, 13), (3, 8), (15, 19)]
-        dst = statistic_helper.intersection_ranges(src1, src2)
-        self.assertEqual(dst, [(3, 7), (10, 12), (15, 18)])
-        src1 = [(1, 7), (14, 18)]
-        src2 = [(6, 9), (10, 13)]
-        dst = statistic_helper.intersection_ranges(src1, src2, True)
-        self.assertEqual(dst, [(6, 7)])
-
-    def test_subtract_ranges_case1(self):
-        src1 = [(1, 10), (12, 15)]
-        src2 = [(3, 7), (9, 11)]
-        dst = statistic_helper.subtract_ranges(src1, src2)
-        self.assertEqual(dst, [(1, 3), (7, 9), (12, 15)])
-        dst = statistic_helper.subtract_ranges(src1, src2, True)
-        self.assertEqual(dst, [(1, 3), (7, 9), (12, 15)])
-
-    def test_subtract_ranges_case2(self):
-        src1 = [(12, 15), (1, 10)]
-        src2 = [(9, 11), (3, 7)]
-        dst = statistic_helper.subtract_ranges(src1, src2)
-        self.assertEqual(dst, [(1, 3), (7, 9), (12, 15)])
 
 
 class TestProfiler(unittest.TestCase):
     def test_profiler(self):
-        repeat = 20
-        #test_profiler_cpu
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.CPU], scheduler=[10, 20])
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        #test_profiler_gpu
-        prof = None
-        gc.enable()
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU], scheduler=[10, 20])
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        prof.summary()
+        def my_trace_back(prof):
+            profiler.export_chrome_tracing('./test_profiler_chrometracing/')(
+                prof)
+            profiler.export_protobuf('./test_profiler_pb/')(prof)
 
-        #test_profiler_both
-        prof = None
-        gc.enable()
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU],
-            scheduler=[10, 20])
-        prof.start()
         x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
+        x = paddle.to_tensor(
+            x_value, stop_gradient=False, place=paddle.CPUPlace())
         y = x / 2.0
         ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
+        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU], ) as prof:
             y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        prof.summary()
+        prof = None
+        with profiler.Profiler(
+                targets=[profiler.ProfilerTarget.CPU],
+                scheduler=(1, 2)) as prof:
+            with profiler.RecordEvent(name='test'):
+                y = x / 2.0
+        prof = None
+        with profiler.Profiler(
+                targets=[profiler.ProfilerTarget.CPU],
+                scheduler=profiler.make_scheduler(
+                    closed=0, ready=1, record=1, repeat=1),
+                on_trace_ready=my_trace_back) as prof:
+            y = x / 2.0
+        prof = None
+        with profiler.Profiler(
+                targets=[profiler.ProfilerTarget.CPU],
+                scheduler=profiler.make_scheduler(
+                    closed=0, ready=0, record=2, repeat=1),
+                on_trace_ready=my_trace_back) as prof:
+            for i in range(3):
+                y = x / 2.0
+                prof.step()
+        prof = None
+        with profiler.Profiler(
+                targets=[profiler.ProfilerTarget.CPU],
+                scheduler=lambda x: profiler.ProfilerState.RECORD_AND_RETURN,
+                on_trace_ready=my_trace_back) as prof:
+            for i in range(2):
+                y = x / 2.0
+                prof.step()
 
-        # test_profiler_sheduler
-        prof = None
-        gc.enable()
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU],
-            scheduler=profiler.make_scheduler(
-                closed=1, ready=1, record=3, repeat=1))
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        prof.summary()
+        def my_sheduler(num_step):
+            if num_step % 5 < 2:
+                return profiler.ProfilerState.RECORD_AND_RETURN
+            elif num_step % 5 < 3:
+                return profiler.ProfilerState.READY
+            elif num_step % 5 < 4:
+                return profiler.ProfilerState.RECORD
+            else:
+                return profiler.ProfilerState.CLOSED
 
-        # test_profiler_logger
+        def my_sheduler1(num_step):
+            if num_step % 5 < 2:
+                return profiler.ProfilerState.RECORD
+            elif num_step % 5 < 3:
+                return profiler.ProfilerState.READY
+            elif num_step % 5 < 4:
+                return profiler.ProfilerState.RECORD
+            else:
+                return profiler.ProfilerState.CLOSED
+
         prof = None
-        gc.enable()
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU],
-            scheduler=profiler.make_scheduler(
-                closed=1, ready=1, record=3, repeat=1),
-            on_trace_ready=profiler.export_chrome_tracing('./test_profiler'))
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
-        prof.summary()
+        with profiler.Profiler(
+                targets=[profiler.ProfilerTarget.CPU],
+                scheduler=lambda x: profiler.ProfilerState.RECORD_AND_RETURN,
+                on_trace_ready=my_trace_back) as prof:
+            for i in range(2):
+                y = x / 2.0
+                prof.step()
         prof = None
-        gc.enable()
-        prof = profiler.Profiler(
-            targets=[profiler.ProfilerTarget.GPU, profiler.ProfilerTarget.CPU],
-            scheduler=profiler.make_scheduler(
-                closed=1, ready=1, record=3, repeat=1), )
-        prof.start()
-        x_value = np.random.randn(2, 3, 3)
-        x = paddle.to_tensor(x_value, stop_gradient=False)
-        y = x / 2.0
-        ones_like_y = paddle.ones_like(y)
-        for i in range(repeat):
-            y = x / 2.0
-            paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
-            prof.step()
-        prof.stop()
+        with profiler.Profiler(
+                targets=[profiler.ProfilerTarget.CPU],
+                scheduler=my_sheduler,
+                on_trace_ready=my_trace_back) as prof:
+            for i in range(5):
+                y = x / 2.0
+                prof.step()
+        prof = None
+        with profiler.Profiler(
+                targets=[profiler.ProfilerTarget.CPU],
+                scheduler=my_sheduler1) as prof:
+            for i in range(5):
+                y = x / 2.0
+                prof.step()
+        prof = None
+        with profiler.Profiler(
+                targets=[profiler.ProfilerTarget.CPU],
+                scheduler=profiler.make_scheduler(
+                    closed=1, ready=1, record=2, repeat=1, skip_first=1),
+                on_trace_ready=my_trace_back) as prof:
+            for i in range(5):
+                y = x / 2.0
+                paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)
+                prof.step()
+
         prof.export(path='./test_profiler_pb.pb', format='pb')
         prof.summary()
         result = profiler.utils.load_profiler_result('./test_profiler_pb.pb')
