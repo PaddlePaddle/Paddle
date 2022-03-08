@@ -37,8 +37,8 @@ set(sparse_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_
 set(sparse_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_api.yaml)
 set(sparse_api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/sparse_api.h)
 set(sparse_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_api.cc)
-set(sparse_api_header_file_tmp ${api_header_file}.tmp)
-set(sparse_api_source_file_tmp ${api_source_file}.tmp)
+set(sparse_api_header_file_tmp ${sparse_api_header_file}.tmp)
+set(sparse_api_source_file_tmp ${sparse_api_source_file}.tmp)
 
 # sparse bw api file
 set(sparse_bw_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/sparse_bw_api_gen.py)
