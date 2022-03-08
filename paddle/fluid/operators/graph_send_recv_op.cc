@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,59 +23,6 @@ namespace operators {
 class GraphSendRecvOP : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GraphSendRecv");
-    OP_INOUT_CHECK(ctx->HasInput("Src_index"), "Input", "Src_index",
-                   "GraphSendRecv");
-    OP_INOUT_CHECK(ctx->HasInput("Dst_index"), "Input", "Dst_index",
-                   "GraphSendRecv");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GraphSendRecv");
-
-    auto src_index_dims = ctx->GetInputDim("Src_index");
-    if (src_index_dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(src_index_dims[1], 1,
-                        platform::errors::InvalidArgument(
-                            "The last dim of Src_index should be 1 when it "
-                            "is 2D, but we get %d",
-                            src_index_dims[1]));
-    } else {
-      PADDLE_ENFORCE_EQ(
-          src_index_dims.size(), 1,
-          platform::errors::InvalidArgument(
-              "The Src_index should be 1D, when it is not 2D, but we get %d",
-              src_index_dims.size()));
-    }
-
-    auto dst_index_dims = ctx->GetInputDim("Dst_index");
-    if (dst_index_dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(dst_index_dims[1], 1,
-                        platform::errors::InvalidArgument(
-                            "The last dim of Dst_index should be 1 when it "
-                            "is 2D, but we get %d",
-                            dst_index_dims[1]));
-    } else {
-      PADDLE_ENFORCE_EQ(
-          dst_index_dims.size(), 1,
-          platform::errors::InvalidArgument("The Dst_index should be 1D, "
-                                            "when it is not 2D, but we get %d",
-                                            dst_index_dims.size()));
-    }
-
-    PADDLE_ENFORCE_EQ(
-        src_index_dims[0], dst_index_dims[0],
-        platform::errors::InvalidArgument(
-            "Src_index and Dst_index should have the same shape."));
-
-    auto dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("Out", dims);
-
-    if (ctx->Attrs().Get<std::string>("pool_type") == "MEAN") {
-      OP_INOUT_CHECK(ctx->HasOutput("Dst_count"), "Output", "Dst_count",
-                     "GraphSendRecv");
-      ctx->SetOutputDim("Dst_count", {dims[0]});
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -164,10 +114,12 @@ class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
 
+DECLARE_INFER_SHAPE_FUNCTOR(graph_send_recv, GraphSendRecvInferShapeFunctor,
+                            PD_INFER_META(phi::GraphSendRecvInferMeta));
 REGISTER_OPERATOR(graph_send_recv, ops::GraphSendRecvOP,
                   ops::GraphSendRecvOpMaker,
                   ops::GraphSendRecvGradOpMaker<paddle::framework::OpDesc>,
-                  ops::GraphSendRecvGradOpMaker<paddle::imperative::OpBase>);
+                  ops::GraphSendRecvGradOpMaker<paddle::imperative::OpBase>,
+                  GraphSendRecvInferShapeFunctor);
 REGISTER_OPERATOR(graph_send_recv_grad, ops::GraphSendRecvGradOp);
