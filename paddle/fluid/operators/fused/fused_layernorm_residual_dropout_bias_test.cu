@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <time.h>
 
+#include <iostream>
 #include <random>
 #include <vector>
 
@@ -192,7 +193,6 @@ struct TestFusedLayernormResidualDropoutBias {
             residual_vec[i * cols + j] + out2[i * cols + j];
       }
     }
-
     LayerNorm<T>(scale_vec, layernorm_bias_vec, correct_out, &correct_means,
                  &correct_vars, &correct_layernorm_out, epsilon, rows, cols,
                  *ctx);
@@ -264,6 +264,7 @@ struct TestFusedLayernormResidualDropoutBias {
 
 template <typename T>
 static void BaseTest(const bool is_fp16 = false) {
+  std::cerr << "1" << std::endl;
   const int rows = 16;
   T default_diff = !is_fp16 ? static_cast<T>(1e-4) : static_cast<T>(1e-2);
   for (auto cols : {16, 17}) {
