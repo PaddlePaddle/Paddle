@@ -18,15 +18,18 @@ limitations under the License. */
 // In order to avoid including the header files of each backend in turn,
 // add this header file
 // Note: Limit the entry of DeviceContext to backends to avoid multiple include
-// path replacement after implementing pten DeviceContext
+// path replacement after implementing phi DeviceContext
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
 // TODO(wilber): DeviceContextPool nees include fluid file.
 #include "paddle/fluid/platform/device_context.h"
 
 namespace phi {
 using DeviceContextPool = paddle::platform::DeviceContextPool;
 }  // namespace phi
+#endif

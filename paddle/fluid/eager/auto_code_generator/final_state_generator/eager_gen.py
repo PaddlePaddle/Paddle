@@ -24,6 +24,19 @@ core_ops_args_info = {}
 core_ops_args_type_info = {}
 
 
+yaml_types_mapping = {
+    'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
+    'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
+    'Backend' : 'paddle::experimental::Backend', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
+    'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
+    'Tensor' : 'Tensor',
+    'Tensor[]' : 'std::vector<Tensor>',
+    'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
+    'Scalar' : 'paddle::experimental::Scalar',
+    'ScalarArray' : 'paddle::experimental::ScalarArray'
+}
+
+
 def ParseArguments():
     parser = argparse.ArgumentParser(
         description='Eager Code Generator Args Parser')
@@ -59,7 +72,9 @@ def IsPlainTensorType(string):
 
 
 def IsVectorTensorType(string):
-    vector_tensor_types = ['list(Tensor)']
+    vector_tensor_types = [
+        'std::vector<std::vector<Tensor>>', 'std::vector<Tensor>'
+    ]
     if string in vector_tensor_types:
         return True
     return False
@@ -127,6 +142,40 @@ def ReadBwdFile(filepath):
 ######################
 ###  Yaml Parsers  ###
 ######################
+def IntermediateValidationCheck(intermediate_outputs, forward_returns_list):
+    # intermediate_outputs : [name0, name1, ...]
+    # forward_returns_list : [[ret_name, type, orig_pos], ...]
+    """
+    Check whether intermediate_outputs are positioned
+    at the very end of forward_returns_list
+    """
+
+    intermediate_positions = range(
+        len(forward_returns_list) - len(intermediate_outputs),
+        len(forward_returns_list))
+    for ret_name, _, pos in forward_returns_list:
+        if ret_name in intermediate_outputs:
+            assert pos in intermediate_positions
+
+
+def ParseDispensable(string):
+    # string: "X, Y"
+    return [v.strip() for v in string.split(",")]
+
+
+def ParseIntermediate(string):
+    return [v.strip() for v in string.split(",")]
+
+
+def ParseNoNeedBuffer(string):
+    # string: "x, y"
+    no_need_buffer_set = set()
+    for name in string.split(","):
+        no_need_buffer_set.add(name.strip())
+
+    return no_need_buffer_set
+
+
 def ParseYamlArgs(string):
     # Example: const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y
 
@@ -146,6 +195,9 @@ def ParseYamlArgs(string):
         arg_name = m.group(3).split("=")[0].strip()
         default_value = m.group(3).split("=")[1].strip() if len(
             m.group(3).split("=")) > 1 else None
+
+        assert arg_type in yaml_types_mapping.keys()
+        arg_type = yaml_types_mapping[arg_type]
         if "Tensor" in arg_type:
             assert default_value is None
             inputs_list.append([arg_name, arg_type, i])
@@ -156,35 +208,30 @@ def ParseYamlArgs(string):
 
 
 def ParseYamlReturns(string):
-    # Example: Tensor, Tensor
-
-    # list = [ ["", ret_type, orig_position], ...]
-    returns_list = []
-
-    returns = [x.strip() for x in string.strip().split(",")]
-    for i in range(len(returns)):
-        ret = returns[i]
-        returns_list.append(["", ret, i])
-
-    return returns_list
-
-
-def ParseYamlReturnsWithName(string):
-    # Example: Tensor(out), Tensor(out1)
+    # Example0: Tensor(out), Tensor(out1)
+    # Example1: Tensor, Tensor
+    # Example2: Tensor[](out), Tensor
 
     # list = [ [ret_name, ret_type, orig_position], ...]
     returns_list = []
 
     returns = [x.strip() for x in string.strip().split(",")]
 
-    atype = r'(.*?)'
-    aname = r'(.*?)'
-    pattern = f'{atype}\({aname}\)'
     for i in range(len(returns)):
         ret = returns[i]
-        m = re.search(pattern, ret)
-        ret_type = m.group(1)
-        ret_name = m.group(2)
+
+        ret_name = ""
+        if "(" in ret and ")" in ret:
+            # Remove trailing ')'
+            ret = ret[:-1]
+            ret_type = ret.split("(")[0].strip()
+            ret_name = ret.split("(")[1].strip()
+        else:
+            ret_type = ret.strip()
+
+        assert ret_type in yaml_types_mapping.keys()
+        ret_type = yaml_types_mapping[ret_type]
+
         assert "Tensor" in ret_type
         returns_list.append([ret_name, ret_type, i])
 
@@ -206,7 +253,7 @@ def ParseYamlForwardFromBackward(string):
     function_returns = m.group(3)
 
     forward_inputs_list, forward_attrs_list = ParseYamlArgs(function_args)
-    forward_returns_list = ParseYamlReturnsWithName(function_returns)
+    forward_returns_list = ParseYamlReturns(function_returns)
 
     return forward_inputs_list, forward_attrs_list, forward_returns_list
 
@@ -236,7 +283,7 @@ def ParseYamlBackward(args_str, returns_str):
     args_str = re.search(args_pattern, args_str).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
-    returns_list = ParseYamlReturnsWithName(returns_str)
+    returns_list = ParseYamlReturns(returns_str)
 
     return inputs_list, attrs_list, returns_list
 
@@ -397,7 +444,7 @@ def SlotNameMatching(backward_inputs_list, backward_returns_list,
 
 
 def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
-                            backward_attrs_list):
+                            backward_attrs_list, no_need_buffer_set):
     # Inputs:
     # fwd_api_name = ""
     # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
@@ -410,15 +457,20 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
     set_tensor_wrapper_methods_str = ""
     tensor_wrapper_members_str = ""
     for tname, (ttype, is_fwd_input, _) in backward_fwd_input_map.items():
+        if tname in no_need_buffer_set:
+            no_need_buffer = "true"
+        else:
+            no_need_buffer = "false"
+
         tensor_wrapper_name = GetSavedName(tname)
         if IsPlainTensorType(ttype):
             SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """
    void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{     
-     {} = egr::TensorWrapper({}, full_reserved);
+     {} = egr::TensorWrapper({}, full_reserved, {});
    }}
 """
             set_tensor_wrapper_methods_str += SET_PLAIN_TENSOR_WRAPPER_TEMPLATE.format(
-                tname, tname, tensor_wrapper_name, tname)
+                tname, tname, tensor_wrapper_name, tname, no_need_buffer)
 
             PLAIN_TENSOR_MEMBER_TEMPLATE = """
    egr::TensorWrapper {};
@@ -430,12 +482,12 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
             SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = """
    void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved) {{
      for(const auto& eager_tensor : {}) {{
-        {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved) );
+        {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved, {}) );
      }};
    }}
 """
             set_tensor_wrapper_methods_str += SET_VECTOR_TENSOR_WRAPPER_TEMPLATE.format(
-                tname, tname, tname, tensor_wrapper_name)
+                tname, tname, tname, tensor_wrapper_name, no_need_buffer)
 
             VECTOR_TENSOR_MEMBER_TEMPLATE = """
    std::vector<egr::TensorWrapper> {};
@@ -457,11 +509,18 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
         set_attribute_methods_str += SET_ATTR_METHOD_TEMPLATE.format(
             aname, GetConstReference(atype), aname, saved_attr_name, aname)
 
-        ATTRIBUTE_MEMBER_TEMPLATE = """
-   {} {} = {};
-"""
-        attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
-            RemoveConstAndReference(atype), saved_attr_name, default_val)
+        if default_val:
+            ATTRIBUTE_MEMBER_TEMPLATE = """
+       {} {} = {};
+    """
+            attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
+                RemoveConstAndReference(atype), saved_attr_name, default_val)
+        else:
+            ATTRIBUTE_MEMBER_TEMPLATE = """
+       {} {};
+    """
+            attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
+                RemoveConstAndReference(atype), saved_attr_name)
     # End: SetAttributes & Attribute Members
 
     grad_node_name = GetGradNodeName(fwd_api_name)
@@ -475,7 +534,7 @@ class {} : public egr::GradNodeBase {{
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads) override;
-  
+  std::string name() override {{ return \" {} \"; }}
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
   // SetAttributes
@@ -490,8 +549,9 @@ class {} : public egr::GradNodeBase {{
 """
     node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
         grad_node_name, grad_node_name, grad_node_name, grad_node_name,
-        set_tensor_wrapper_methods_str, set_attribute_methods_str,
-        tensor_wrapper_members_str, attribute_members_str)
+        grad_node_name, set_tensor_wrapper_methods_str,
+        set_attribute_methods_str, tensor_wrapper_members_str,
+        attribute_members_str)
 
     return node_declaration_str
 
@@ -562,11 +622,11 @@ std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std:
     return node_definition_str
 
 
-def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
-                              forward_inputs_position_map,
-                              forward_outputs_position_map, forward_attrs_list,
-                              backward_fwd_input_map, backward_grad_input_map,
-                              backward_grad_output_map, backward_attrs_list):
+def GenerateNodeCreationCodes(
+        fwd_api_name, bwd_api_name, forward_inputs_position_map,
+        forward_outputs_position_map, forward_attrs_list,
+        backward_fwd_input_map, backward_grad_input_map,
+        backward_grad_output_map, backward_attrs_list, optional_inputs):
     # fwd_api_name = ""
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
@@ -640,10 +700,17 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
     # SetTensorWrappers
     set_tensor_wrappers_list = []
     for name, (_, is_fwd_input, _) in backward_fwd_input_map.items():
+        is_optional = (name in optional_inputs)
         if is_fwd_input:
-            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
+            if is_optional:
+                set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
+            else:
+                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
-            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
+            if is_optional:
+                set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, false);"
+            else:
+                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
         set_tensor_wrappers_list.append(set_tensor_wrappers)
     set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
 
@@ -732,7 +799,8 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
                               forward_inputs_position_map,
                               forward_outputs_position_map, forward_attrs_list,
                               backward_fwd_input_map, backward_grad_input_map,
-                              backward_grad_output_map, backward_attrs_list):
+                              backward_grad_output_map, backward_attrs_list,
+                              optional_inputs, intermediate_outputs):
     # fwd_api_name = ""
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
@@ -741,6 +809,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
     # backward_grad_output_map = { "name" : [type, fwd_position, orig_position] ...}
     # backward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
+    # optional_inputs = ["name0", ...]
 
     # Get Function Args
     num_inputs = len(forward_attrs_list) + len(forward_inputs_position_map.keys(
@@ -750,17 +819,18 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     inputs_call_list = ["" for i in range(num_inputs)]
     for name, (ttype, pos) in forward_inputs_position_map.items():
         inputs_call_list[pos] = f"{name}"
+        is_optional = (name in optional_inputs)
         if IsPlainTensorType(ttype):
-            inputs_args_definition_list[
-                pos] = f"const paddle::experimental::Tensor& {name}"
-            inputs_args_declaration_list[
-                pos] = f"const paddle::experimental::Tensor& {name}"
+            if is_optional:
+                arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
+            else:
+                arg_str = f"const paddle::experimental::Tensor& {name}"
         else:
             assert IsVectorTensorType(ttype)
-            inputs_args_definition_list[
-                pos] = f"const std::vector<paddle::experimental::Tensor>& {name}"
-            inputs_args_declaration_list[
-                pos] = f"const std::vector<paddle::experimental::Tensor>& {name}"
+            arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+
+        inputs_args_definition_list[pos] = arg_str
+        inputs_args_declaration_list[pos] = arg_str
 
     for name, atype, default_val, pos in forward_attrs_list:
         inputs_call_list[pos] = name
@@ -776,13 +846,20 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     inputs_call_args_str = ", ".join(inputs_call_list)
 
     # Forward Full Logic
-    forward_call_str = f"auto api_result = paddle::experimental::{fwd_api_name}({inputs_call_args_str});"
+    if len(intermediate_outputs) == 0:
+        function_name = fwd_api_name
+    else:
+        function_name = fwd_api_name + "_intermediate"
+    forward_call_str = f"auto api_result = paddle::experimental::{function_name}({inputs_call_args_str});"
 
     # Get return type list & outputs
-    num_outputs = len(forward_outputs_position_map.keys())
+    num_outputs = len(forward_outputs_position_map.keys()) - len(
+        intermediate_outputs)
     returns_type_list = ["" for i in range(num_outputs)]
     returns_list = ["" for i in range(num_outputs)]
     for name, (rtype, pos) in forward_outputs_position_map.items():
+        if name in intermediate_outputs:
+            continue
         if num_outputs == 1:
             returns_list[0] = f"api_result"
         else:
@@ -808,7 +885,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
         fwd_api_name, bwd_api_name, forward_inputs_position_map,
         forward_outputs_position_map, forward_attrs_list,
         backward_fwd_input_map, backward_grad_input_map,
-        backward_grad_output_map, backward_attrs_list)
+        backward_grad_output_map, backward_attrs_list, optional_inputs)
 
     FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{
@@ -997,6 +1074,10 @@ if __name__ == "__main__":
         assert 'output' in fwd_api.keys()
         assert 'backward' in fwd_api.keys()
 
+        no_need_buffer_set = set()
+        if 'no_need_buffer' in fwd_api.keys():
+            no_need_buffer_set = ParseNoNeedBuffer(fwd_api['no_need_buffer'])
+
         fwd_api_name = fwd_api['api']
         fwd_args_str = fwd_api['args']
         fwd_returns_str = fwd_api['output']
@@ -1008,6 +1089,12 @@ if __name__ == "__main__":
         assert 'args' in bwd_api.keys()
         assert 'output' in bwd_api.keys()
         assert 'forward' in bwd_api.keys()
+
+        # Parse Dispensable Inputs
+        optional_inputs = []
+        if 'optional' in fwd_api.keys():
+            optional_inputs = ParseDispensable(fwd_api['optional'])
+
         bwd_forward_str = bwd_api['forward']
         bwd_args_str = bwd_api['args']
         bwd_returns_str = bwd_api['output']
@@ -1018,6 +1105,12 @@ if __name__ == "__main__":
         print("Parsed Forward Inputs List: ", forward_inputs_list)
         print("Prased Forward Attrs List: ", forward_attrs_list)
         print("Parsed Forward Returns List: ", forward_returns_list)
+
+        intermediate_outputs = []
+        if 'intermediate' in fwd_api.keys():
+            intermediate_outputs = ParseIntermediate(fwd_api['intermediate'])
+
+        IntermediateValidationCheck(intermediate_outputs, forward_returns_list)
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         orig_forward_inputs_list, orig_forward_attrs_list, orig_forward_returns_list = ParseYamlForward(
@@ -1062,7 +1155,8 @@ if __name__ == "__main__":
 
         # Node Declaration Generation
         node_declaration_str += GenerateNodeDeclaration(
-            fwd_api_name, backward_fwd_input_map, backward_attrs_list)
+            fwd_api_name, backward_fwd_input_map, backward_attrs_list,
+            no_need_buffer_set)
         print("Generated Node Declaration: ", node_declaration_str)
 
         node_definition_str += GenerateNodeDefinition(
@@ -1076,7 +1170,8 @@ if __name__ == "__main__":
             fwd_api_name, bwd_api_name, forward_inputs_position_map,
             forward_outputs_position_map, forward_attrs_list,
             backward_fwd_input_map, backward_grad_input_map,
-            backward_grad_output_map, backward_attrs_list)
+            backward_grad_output_map, backward_attrs_list, optional_inputs,
+            intermediate_outputs)
         print("Generated Forward Definition: ", forward_definition_str)
         print("Generated Forward Declaration: ", forward_declaration_str)
         forward_definition_str += definition_declaration_pair[0]

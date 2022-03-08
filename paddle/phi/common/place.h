@@ -188,6 +188,7 @@ class MLUPlace : public Place {
 
 class CustomPlace : public Place {
  public:
+  CustomPlace() : Place(AllocationType::CUSTOM, 0, "") {}
   explicit CustomPlace(const std::string dev_type)
       : Place(AllocationType::CUSTOM, 0, dev_type) {}
   CustomPlace(const std::string dev_type, int device_id)

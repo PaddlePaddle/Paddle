@@ -250,30 +250,41 @@ if [ "${EMPTY_GRAD_OP_REGISTERED}" != "" ] && [ "${GIT_PT_ID}" != "" ]; then
     check_approval 1 43953930 46782768 22165420 22361972
 fi
 
-HAS_MODIFIED_PTEN_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
-PTEN_INCLUDE_FLUID_FILES=""
-for CHANGE_FILE in ${HAS_MODIFIED_PTEN_FILES}; do
-    PTEN_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep "#include \"paddle/fluid/" || true`
-    if [ "${PTEN_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-        PTEN_INCLUDE_FLUID_FILES="${PTEN_INCLUDE_FLUID_FILES} ${CHANGE_FILE}"
+HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
+PHI_INCLUDE_FLUID_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do
+    PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep "#include \"paddle/fluid/" || true`
+    if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        PHI_INCLUDE_FLUID_FILES="${PHI_INCLUDE_FLUID_FILES} ${CHANGE_FILE}"
     fi 
 done
-if [ "${PTEN_INCLUDE_FLUID_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (chenwhql, MingMingShangTian, YuanRisheng or zyfncg) approval for the including paddle/fluid header in paddle/phi files(${PTEN_INCLUDE_FLUID_FILES}).\n"
+if [ "${PHI_INCLUDE_FLUID_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (chenwhql, MingMingShangTian, YuanRisheng or zyfncg) approval for the including paddle/fluid header in paddle/phi files(${PHI_INCLUDE_FLUID_FILES}).\n"
     check_approval 1 chenwhql MingMingShangTian YuanRisheng zyfncg
 fi
 
-HAS_MODIFIED_PTEN_KERNEL_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/kernels" || true`
-PTEN_USE_MUTABLE_DATA_FILES=""
-for CHANGE_FILE in ${HAS_MODIFIED_PTEN_KERNEL_FILES}; do
-    PTEN_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "mutable_data" || true`
-    if [ "${PTEN_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-        PTEN_USE_MUTABLE_DATA_FILES="${PTEN_USE_MUTABLE_DATA_FILES} ${CHANGE_FILE}"
+HAS_MODIFIED_PHI_KERNEL_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/kernels" || true`
+PHI_USE_MUTABLE_DATA_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_KERNEL_FILES}; do
+    PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "mutable_data" || true`
+    if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        PHI_USE_MUTABLE_DATA_FILES="${PHI_USE_MUTABLE_DATA_FILES} ${CHANGE_FILE}"
     fi 
 done
-if [ "${PTEN_USE_MUTABLE_DATA_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You can not use the DenseTensor::mutable_data() method in paddle/phi/kernels files(${PTEN_USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, MingMingShangTian, YuanRisheng or zyfncg) review and approve.\n"
+if [ "${PHI_USE_MUTABLE_DATA_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You can not use the DenseTensor::mutable_data() method in paddle/phi/kernels files(${PHI_USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, MingMingShangTian, YuanRisheng or zyfncg) review and approve.\n"
     check_approval 1 chenwhql Shixiaowei02 MingMingShangTian YuanRisheng zyfncg
+fi
+PHI_USE_HOSTALLOC_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_KERNEL_FILES}; do
+    PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "HostAlloc" || true`
+    if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        PHI_USE_HOSTALLOC_FILES="${PHI_USE_HOSTALLOC_FILES} ${CHANGE_FILE}"
+    fi
+done
+if [ "${PHI_USE_HOSTALLOC_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (phlrain, chenwhql) approval for the usage of phi::DeviceContext::HostAlloc() method in paddle/phi/kernels files(${PHI_USE_HOSTALLOC_FILES})\n"
+    check_approval 1 phlrain chenwhql
 fi
   
 ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"`

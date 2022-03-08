@@ -31,9 +31,9 @@ USE_OP(elementwise_mul);
 USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
 USE_OP(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
-USE_OP(conv2d);
+USE_OP_ITSELF(conv2d);
 USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);
 
 namespace paddle {
@@ -55,7 +55,7 @@ class CacheTester {
     onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
-  bool Analyze(unsigned short int num_entries) {
+  bool Analyze(uint16_t num_entries) {
     //  Number of created objects in cache should be as expected (num_entries)
     return onednn_dev_ctx_->GetCachedObjectsNumber() == num_entries;
   }

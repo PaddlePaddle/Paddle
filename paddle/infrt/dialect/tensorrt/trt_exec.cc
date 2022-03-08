@@ -19,6 +19,7 @@
 #include "paddle/infrt/dialect/mlir_loader.h"
 #include "paddle/infrt/dialect/tensorrt/trt_graph_fuse_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_graph_split_pass.h"
+#include "paddle/infrt/dialect/tensorrt/trt_op_converter_pass.h"
 #include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
 
 int main(int argc, char** argv) {
@@ -36,9 +37,10 @@ int main(int argc, char** argv) {
   mlir::PassManager pm(context);
 
   mlir::OpPassManager& trt_pass_manager = pm.nest<mlir::FuncOp>();
-  trt_pass_manager.addPass(std::make_unique<infrt::trt::trtOpTellerPass>());
-  trt_pass_manager.addPass(std::make_unique<infrt::trt::trtGraphFusePass>());
-  trt_pass_manager.addPass(std::make_unique<infrt::trt::trtGraphSplitPass>(10));
+  trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTOpTellerPass>());
+  trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTGraphFusePass>());
+  trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTGraphSplitPass>(1));
+  trt_pass_manager.addPass(std::make_unique<infrt::trt::TRTOpConverterPass>());
   if (mlir::failed(pm.run(*module))) {
     std::cout << "\npass failed!\n" << std::endl;
     return 4;

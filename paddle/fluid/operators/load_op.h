@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {

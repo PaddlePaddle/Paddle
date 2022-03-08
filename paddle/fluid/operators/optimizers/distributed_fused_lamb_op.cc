@@ -33,12 +33,7 @@ class DistributedFusedLambOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "ParamInfo") {
-      return expected_kernel_type;
-    } else {
-      return framework::OperatorWithKernel::GetKernelTypeForVar(
-          var_name, tensor, expected_kernel_type);
-    }
+    return expected_kernel_type;
   }
 };
 
@@ -71,28 +66,31 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
              "The fp32 beta1 power accumulator tensor. Its shape is [1].");
     AddInput("Beta2Pow",
              "The fp32 beta2 power accumulator tensor. Its shape is [1].");
-    AddInput("FusedIndices",
-             "The param index of each element in FP32FusedParam. Its shape is "
-             "[M1+M2]. It is like [0,0,0,1,1,1,1,2,2,...].");
     AddInput(
         "FusedParamOffsets",
         "The numel offset of each parameter inside the FP32FusedParam. Its "
         "shape is [param_num + 1]. It is like [0, n_0, n_0 + n_1, n_0 + n_1 "
-        "+ n_2, ...].");
-    AddInput("FP32ShardFusedParamOffsets",
-             "The sharded numel offset of each parameter in the local rank. "
-             "Its shape is [fp32_local_param_num + 1].");
-    AddInput("FP16ShardFusedParamOffsets",
-             "The sharded numel offset of each parameter in the local rank. "
-             "Its shape is [fp16_local_param_num + 1].");
-    AddInput("WeightDecay",
-             "The sharded fp32 weight decay tensor. Its shape is [(M1+M2)/N].");
+        "+ n_2, ...]. It should be in CPUPlace.");
+    AddInput(
+        "FP32ShardFusedParamOffsets",
+        "The sharded numel offset of each parameter in the local rank. "
+        "Its shape is [fp32_local_param_num + 1]. It should be in CPUPlace.");
+    AddInput(
+        "FP16ShardFusedParamOffsets",
+        "The sharded numel offset of each parameter in the local rank. "
+        "Its shape is [fp16_local_param_num + 1]. It should be in CPUPlace.");
     AddInput("ParamInfo",
              "The param info. It should be in CPUPlace, and its shape is [6]"
-             "CPUPlace, and its shape is [6]. It is "
+             "CPUPlace, and its shape is [8]. It is "
              "[fp32_shard_param_start_idx, fp32_local_param_num, "
-             "fp32_global_param_num, fp16_shard_param_start_idx, "
-             "fp16_local_param_num, fp16_global_param_num].");
+             "fp32_global_param_num, fp32_weight_decay_end_idx, "
+             "fp16_shard_param_start_idx, "
+             "fp16_local_param_num, fp16_global_param_num, "
+             "fp16_weight_decay_end_idx].");
+    AddInput("ParamOrder",
+             "The reordered parameter order. Inside this op, "
+             "the parameter would be reordered by data type and weight decay "
+             "value.");
 
     AddInput("LearningRate",
              "The fp32 learning rate tensor. Its shape is [1].");
@@ -121,6 +119,7 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         "max_global_grad_norm",
         "The maximum global gradient l2-norm value for clipping. If "
         "max_global_grad_norm <= 0, no clipping would be performed.");
+    AddAttr<float>("weight_decay", "The weight decay value.");
     AddAttr<bool>("clip_after_allreduce",
                   "Whether to clip before allreduce, only valid when the "
                   "world size is larger than 1.");

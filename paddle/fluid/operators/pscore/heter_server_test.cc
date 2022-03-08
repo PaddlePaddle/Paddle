@@ -17,6 +17,9 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
+#include <random>
+#include <sstream>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
@@ -32,6 +35,19 @@ using VarMsg = ::paddle::distributed::VariableMessage;
 USE_OP_ITSELF(scale);
 
 std::shared_ptr<distributed::HeterServer> b_rpc_service;
+
+std::string get_ip_port() {
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist(4444, 25000);
+  int port = dist(rng);
+  std::string ip_port;
+  std::stringstream temp_str;
+  temp_str << "127.0.0.1:";
+  temp_str << port;
+  temp_str >> ip_port;
+  return ip_port;
+}
 
 framework::BlockDesc* AppendSendAndRecvBlock(framework::ProgramDesc* program) {
   auto root_block = program->MutableBlock(0);
@@ -178,16 +194,17 @@ void StartSendAndRecvServer(std::string endpoint) {
 
   b_rpc_service->SetRequestHandler(b_req_handler);
   LOG(INFO) << "before HeterServer::RunServer";
-  std::thread server_thread(std::bind(RunServer, b_rpc_service));
+  RunServer(b_rpc_service);
+  // std::thread server_thread(std::bind(RunServer, b_rpc_service));
 
-  server_thread.join();
+  // server_thread.join();
 }
 
 TEST(SENDANDRECV, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  std::string endpoint = "127.0.0.1:4444";
-  std::string previous_endpoint = "127.0.0.1:4444";
+  std::string endpoint = get_ip_port();
+  std::string previous_endpoint = endpoint;
   LOG(INFO) << "before StartSendAndRecvServer";
   b_rpc_service = distributed::HeterServer::GetInstance();
   std::thread server_thread(StartSendAndRecvServer, endpoint);

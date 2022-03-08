@@ -20,16 +20,13 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
-
-// Note: mixed_vector include many header now, LoD will be
-// used on CUDA device? Can we use small_vector here?
-// @zhanlve: Rollback to original LoD for now
-#include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/utils/any.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
 using DDim = phi::DDim;
-using LoD = std::vector<paddle::framework::Vector<size_t>>;
+using LoD = std::vector<std::vector<size_t>>;
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///

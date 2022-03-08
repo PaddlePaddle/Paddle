@@ -20,7 +20,7 @@ import string
 
 from six.moves import cStringIO
 from ..proto import framework_pb2
-from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, in_dygraph_mode
+from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, in_dygraph_mode, _in_eager_mode
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
 from paddle import _C_ops

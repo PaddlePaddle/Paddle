@@ -388,7 +388,9 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                            : global_scope_->GetMutableScope();
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
-    platform::RecordEvent infershape_event("InferShape");
+    platform::RecordEvent infershape_event(
+        "infer_shape", platform::TracerEventType::OperatorInner, 1,
+        platform::EventRole::kInnerOp);
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr)
       op_with_kernel->Info().infer_shape_(
@@ -408,22 +410,24 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     }
   }
   {
-    platform::RecordEvent compute_event("Compute");
+    platform::RecordEvent compute_event(
+        "compute", platform::TracerEventType::OperatorInner, 1,
+        platform::EventRole::kInnerOp);
     if (op_with_kernel == nullptr) {
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
-      // fit for pten
-      if (instr_node.PtenKernel() && instr_node.PtenKernel()->IsValid()) {
-        VLOG(4) << "Run pten kernel: " << op->Type();
+      // fit for phi
+      if (instr_node.PhiKernel() && instr_node.PhiKernel()->IsValid()) {
+        VLOG(4) << "Run phi kernel: " << op->Type();
         VLOG(4) << instr_node.InnerRuntimeContext().get() << " "
                 << &instr_node.DeviceContext();
         phi::KernelContext pt_kernel_context;
-        op_with_kernel->BuildPtenKernelContext(
+        op_with_kernel->BuildPhiKernelContext(
             *instr_node.InnerRuntimeContext().get(),
             const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
             &pt_kernel_context);
 
-        (*instr_node.PtenKernel())(&pt_kernel_context);
+        (*instr_node.PhiKernel())(&pt_kernel_context);
 
       } else {
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
@@ -557,7 +561,8 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
             << " runs on " << platform::GetCurrentThreadName();
 
     auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(op->Type().c_str());
+    platform::RecordEvent instruction_event(
+        op->Type(), platform::TracerEventType::Operator, 1);
     interpreter::WaitEvent(instr_node, place_);
 
     try {

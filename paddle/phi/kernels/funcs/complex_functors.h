@@ -20,55 +20,11 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/hostdevice.h"
 
 namespace phi {
 namespace funcs {
-
-template <bool B, typename T>
-struct cond {
-  static constexpr bool value = B;
-  using type = T;
-};
-
-template <bool B, typename TrueF, typename FalseF>
-struct eval_if {
-  using type = typename TrueF::type;
-};
-
-template <typename TrueF, typename FalseF>
-struct eval_if<false, TrueF, FalseF> {
-  using type = typename FalseF::type;
-};
-
-template <bool B, typename T, typename F>
-using eval_if_t = typename eval_if<B, T, F>::type;
-
-template <typename Head, typename... Tail>
-struct select {
-  using type = eval_if_t<Head::value, Head, select<Tail...>>;
-};
-
-template <typename T>
-struct select<T> {
-  using type = T;
-};
-
-template <bool B, typename T>
-struct select<cond<B, T>> {
-  // last one had better be true!
-  static_assert(B, "No match select type!");
-  using type = T;
-};
-
-template <typename Head, typename... Tail>
-using select_t = typename select<Head, Tail...>::type;
-
-template <typename T>
-using Real =
-    select_t<cond<std::is_same<T, phi::dtype::complex<float>>::value, float>,
-             cond<std::is_same<T, phi::dtype::complex<double>>::value, double>,
-             T>;
 
 template <typename T, typename RealT>
 using Complex = typename std::enable_if<!std::is_same<T, RealT>::value>::type;
@@ -91,9 +47,9 @@ template <typename T, typename Enable = void>
 struct RealFunctor;
 
 template <typename T>
-struct RealFunctor<T, Complex<T, Real<T>>> {
+struct RealFunctor<T, Complex<T, dtype::Real<T>>> {
  public:
-  RealFunctor(const T* input, Real<T>* output, int64_t numel)
+  RealFunctor(const T* input, dtype::Real<T>* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -102,7 +58,7 @@ struct RealFunctor<T, Complex<T, Real<T>>> {
 
  private:
   const T* input_;
-  Real<T>* output_;
+  dtype::Real<T>* output_;
   int64_t numel_;
 };
 
@@ -110,8 +66,8 @@ template <typename T, typename Enable = void>
 struct ImagFunctor;
 
 template <typename T>
-struct ImagFunctor<T, Complex<T, Real<T>>> {
-  ImagFunctor(const T* input, Real<T>* output, int64_t numel)
+struct ImagFunctor<T, Complex<T, dtype::Real<T>>> {
+  ImagFunctor(const T* input, dtype::Real<T>* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -119,7 +75,7 @@ struct ImagFunctor<T, Complex<T, Real<T>>> {
   }
 
   const T* input_;
-  Real<T>* output_;
+  dtype::Real<T>* output_;
   int64_t numel_;
 };
 
@@ -127,8 +83,8 @@ template <typename T, typename Enable = void>
 struct AbsFunctor;
 
 template <typename T>
-struct AbsFunctor<T, Complex<T, Real<T>>> {
-  AbsFunctor(const T* input, Real<T>* output, int64_t numel)
+struct AbsFunctor<T, Complex<T, dtype::Real<T>>> {
+  AbsFunctor(const T* input, dtype::Real<T>* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -136,12 +92,12 @@ struct AbsFunctor<T, Complex<T, Real<T>>> {
   }
 
   const T* input_;
-  Real<T>* output_;
+  dtype::Real<T>* output_;
   int64_t numel_;
 };
 
 template <typename T>
-struct AbsFunctor<T, NoComplex<T, Real<T>>> {
+struct AbsFunctor<T, NoComplex<T, dtype::Real<T>>> {
   AbsFunctor(const T* input, T* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
@@ -155,8 +111,58 @@ struct AbsFunctor<T, NoComplex<T, Real<T>>> {
 };
 
 template <typename T>
+struct AbsGradCUDAFunctor {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+
+  HOSTDEVICE inline T operator()(const T x, const T dout) const {
+    T output;
+    if (x == T(0)) {
+      output = T(0);
+    } else {
+      output = T(dout) * (x / T(std::abs(x)));
+    }
+    return output;
+  }
+};
+
+template <>
+struct AbsGradCUDAFunctor<phi::dtype::complex<float>> {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+  HOSTDEVICE inline phi::dtype::complex<float> operator()(
+      const phi::dtype::complex<float> x, const float dout) const {
+    phi::dtype::complex<float> output;
+    if (x == phi::dtype::complex<float>(0)) {
+      output = phi::dtype::complex<float>(0);
+    } else {
+      output = phi::dtype::complex<float>(dout) *
+               (x / phi::dtype::complex<float>(abs(x)));
+    }
+    return output;
+  }
+};
+
+template <>
+struct AbsGradCUDAFunctor<phi::dtype::complex<double>> {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+  HOSTDEVICE inline phi::dtype::complex<double> operator()(
+      const phi::dtype::complex<double> x, const double dout) const {
+    phi::dtype::complex<double> output;
+    if (x == phi::dtype::complex<double>(0)) {
+      output = phi::dtype::complex<double>(0);
+    } else {
+      output = phi::dtype::complex<double>(dout) *
+               (x / phi::dtype::complex<double>(abs(x)));
+    }
+    return output;
+  }
+};
+
+template <typename T>
 struct AbsGradFunctor {
-  AbsGradFunctor(const Real<T>* dout, const T* x, T* output, int64_t numel)
+  AbsGradFunctor(const dtype::Real<T>* dout,
+                 const T* x,
+                 T* output,
+                 int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -167,7 +173,7 @@ struct AbsGradFunctor {
     }
   }
 
-  const Real<T>* dout_;
+  const dtype::Real<T>* dout_;
   const T* x_;
   T* output_;
   int64_t numel_;
@@ -287,8 +293,8 @@ template <typename T, typename Enable = void>
 struct RealToComplexFunctor;
 
 template <typename T>
-struct RealToComplexFunctor<T, Complex<T, Real<T>>> {
-  RealToComplexFunctor(const Real<T>* input, T* output, int64_t numel)
+struct RealToComplexFunctor<T, Complex<T, dtype::Real<T>>> {
+  RealToComplexFunctor(const dtype::Real<T>* input, T* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -296,7 +302,7 @@ struct RealToComplexFunctor<T, Complex<T, Real<T>>> {
     output_[idx].imag = 0;
   }
 
-  const Real<T>* input_;
+  const dtype::Real<T>* input_;
   T* output_;
   int64_t numel_;
 };
@@ -305,8 +311,8 @@ template <typename T, typename Enable = void>
 struct ImagToComplexFunctor;
 
 template <typename T>
-struct ImagToComplexFunctor<T, Complex<T, Real<T>>> {
-  ImagToComplexFunctor(const Real<T>* input, T* output, int64_t numel)
+struct ImagToComplexFunctor<T, Complex<T, dtype::Real<T>>> {
+  ImagToComplexFunctor(const dtype::Real<T>* input, T* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -314,7 +320,7 @@ struct ImagToComplexFunctor<T, Complex<T, Real<T>>> {
     output_[idx].imag = input_[idx];
   }
 
-  const Real<T>* input_;
+  const dtype::Real<T>* input_;
   T* output_;
   int64_t numel_;
 };
@@ -323,9 +329,9 @@ template <typename T, typename Enable = void>
 struct RealImagToComplexFunctor;
 
 template <typename T>
-struct RealImagToComplexFunctor<T, Complex<T, Real<T>>> {
-  RealImagToComplexFunctor(const Real<T>* input_real,
-                           const Real<T>* input_imag,
+struct RealImagToComplexFunctor<T, Complex<T, dtype::Real<T>>> {
+  RealImagToComplexFunctor(const dtype::Real<T>* input_real,
+                           const dtype::Real<T>* input_imag,
                            T* output,
                            int64_t numel)
       : input_real_(input_real),
@@ -338,8 +344,8 @@ struct RealImagToComplexFunctor<T, Complex<T, Real<T>>> {
     output_[idx].imag = input_imag_[idx];
   }
 
-  const Real<T>* input_real_;
-  const Real<T>* input_imag_;
+  const dtype::Real<T>* input_real_;
+  const dtype::Real<T>* input_imag_;
   T* output_;
   int64_t numel_;
 };
@@ -376,8 +382,8 @@ struct AngleFunctor;
 
 // angel function for complex
 template <typename T>
-struct AngleFunctor<T, phi::funcs::Complex<T, phi::funcs::Real<T>>> {
-  AngleFunctor(const T* input, phi::funcs::Real<T>* output, int64_t numel)
+struct AngleFunctor<T, phi::funcs::Complex<T, dtype::Real<T>>> {
+  AngleFunctor(const T* input, dtype::Real<T>* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -385,13 +391,13 @@ struct AngleFunctor<T, phi::funcs::Complex<T, phi::funcs::Real<T>>> {
   }
 
   const T* input_;
-  phi::funcs::Real<T>* output_;
+  dtype::Real<T>* output_;
   int64_t numel_;
 };
 
 // angel function for real
 template <typename T>
-struct AngleFunctor<T, phi::funcs::NoComplex<T, phi::funcs::Real<T>>> {
+struct AngleFunctor<T, phi::funcs::NoComplex<T, dtype::Real<T>>> {
   AngleFunctor(const T* input, T* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
 
@@ -409,25 +415,22 @@ struct AngleGradFunctor;
 
 // angle grad for complex
 template <typename T>
-struct AngleGradFunctor<T, phi::funcs::Complex<T, phi::funcs::Real<T>>> {
-  AngleGradFunctor(const phi::funcs::Real<T>* dout,
-                   const T* x,
-                   T* dx,
-                   int64_t numel)
+struct AngleGradFunctor<T, phi::funcs::Complex<T, dtype::Real<T>>> {
+  AngleGradFunctor(const dtype::Real<T>* dout, const T* x, T* dx, int64_t numel)
       : dout_(dout), x_(x), dx_(dx), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
     if (x_[idx] == T(0)) {
       dx_[idx] = T(0);
     } else {
-      const phi::funcs::Real<T> r_square =
+      const phi::dtype::Real<T> r_square =
           x_[idx].real * x_[idx].real + x_[idx].imag * x_[idx].imag;
       dx_[idx] = T(-dout_[idx] * x_[idx].imag / r_square,
                    dout_[idx] * x_[idx].real / r_square);
     }
   }
 
-  const phi::funcs::Real<T>* dout_;
+  const phi::dtype::Real<T>* dout_;
   const T* x_;
   T* dx_;
   int64_t numel_;
@@ -435,16 +438,13 @@ struct AngleGradFunctor<T, phi::funcs::Complex<T, phi::funcs::Real<T>>> {
 
 // angle grad for real
 template <typename T>
-struct AngleGradFunctor<T, phi::funcs::NoComplex<T, phi::funcs::Real<T>>> {
-  AngleGradFunctor(const phi::funcs::Real<T>* dout,
-                   const T* x,
-                   T* dx,
-                   int64_t numel)
+struct AngleGradFunctor<T, phi::funcs::NoComplex<T, dtype::Real<T>>> {
+  AngleGradFunctor(const dtype::Real<T>* dout, const T* x, T* dx, int64_t numel)
       : dout_(dout), x_(x), dx_(dx), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const { dx_[idx] = 0; }
 
-  const phi::funcs::Real<T>* dout_;
+  const dtype::Real<T>* dout_;
   const T* x_;
   T* dx_;
   int64_t numel_;
