@@ -204,7 +204,7 @@ std::vector<paddle::experimental::Tensor> GetResults(
     const std::vector<paddle::experimental::Tensor>& inputs,
     const std::unordered_map<GradNodeBase*, paddle::experimental::Tensor>&
         results_map,
-    bool allow_unused) {
+    bool allow_unused, bool create_graph) {
   VLOG(1) << "Run in GetResults";
   if (inputs.empty()) return {};
 
@@ -217,9 +217,11 @@ std::vector<paddle::experimental::Tensor> GetResults(
     auto target_node = auto_grad_meta->GetMutableGradNode().get();
 
     if (results_map_.find(target_node) != results_map_.end()) {
-      // TODO(wuweilong): set StopGradient
-      // result_map[target_node].SetOverridedStopGradient(!create_graph_);
-      results.emplace_back(results_map_[target_node]);
+      // set StopGradient = !create_graph
+      auto result = results_map_[target_node];
+      AutogradMeta* tensor_auto_grad_meta = EagerUtils::autograd_meta(&result);
+      tensor_auto_grad_meta->SetStopGradient(!create_graph);
+      results.emplace_back(result);
     } else {
       PADDLE_ENFORCE_EQ(allow_unused, true,
                         paddle::platform::errors::InvalidArgument(
@@ -469,7 +471,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     }
   }
   if (!inputs.empty()) {
-    return GetResults(inputs, results_map, allow_unused);
+    return GetResults(inputs, results_map, allow_unused, create_graph);
   }
 
   VLOG(1) << "Run backward in the end, return {}";
