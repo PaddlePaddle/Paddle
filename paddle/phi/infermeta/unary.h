@@ -260,4 +260,9 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
 
+void RollInferMeta(const MetaTensor& x,
+                   const ScalarArray& shifts,
+                   const ScalarArray& axis,
+                   MetaTensor* out);
+
 }  // namespace phi
