@@ -18,11 +18,9 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
-#include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace memory {
@@ -69,7 +67,6 @@ class Stat : public StatBase {
   int64_t GetPeakValue() override { return peak_value_; }
 
   void Update(int64_t increment) override {
-    VLOG(1) << "Current Value = " << GetCurrentValue() + increment;
     ThreadLocalStatType thread_local_stat =
         ThreadDataRegistry<ThreadLocalStatType>::GetInstance()
             .GetCurrentThreadData();
@@ -84,8 +81,9 @@ class Stat : public StatBase {
       while (prev_value < current_value &&
              !peak_value_.compare_exchange_weak(prev_value, current_value)) {
       }
-      // VLOG(1) << "current value: " << current_value << "; peak value: " <<
-      // peak_value_;
+
+      VLOG(8) << "Update peak_value, after update, peak_value = " << peak_value_
+              << " , current value = " << current_value;
     }
     ThreadDataRegistry<ThreadLocalStatType>::GetInstance().SetCurrentThreadData(
         thread_local_stat);
@@ -106,7 +104,7 @@ int64_t StatGetCurrentValue(const std::string& stat_type, int dev_id);
 int64_t StatGetPeakValue(const std::string& stat_type, int dev_id);
 void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
 
-#define MEMORY_STAT_FUNC_ID_CASE(item, id)                               \
+#define MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)                          \
   case id:                                                               \
     stat = paddle::memory::Stat<                                         \
         paddle::memory::ThreadLocalStatDevice##id##item>::GetInstance(); \
@@ -116,24 +114,24 @@ void StatUpdate(const std::string& stat_type, int dev_id, int64_t increment);
   do {                                                                \
     paddle::memory::StatBase* stat = nullptr;                         \
     switch (id) {                                                     \
-      MEMORY_STAT_FUNC_ID_CASE(item, 0);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 1);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 2);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 3);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 4);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 5);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 6);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 7);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 8);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 9);                              \
-      MEMORY_STAT_FUNC_ID_CASE(item, 10);                             \
-      MEMORY_STAT_FUNC_ID_CASE(item, 11);                             \
-      MEMORY_STAT_FUNC_ID_CASE(item, 12);                             \
-      MEMORY_STAT_FUNC_ID_CASE(item, 13);                             \
-      MEMORY_STAT_FUNC_ID_CASE(item, 14);                             \
-      MEMORY_STAT_FUNC_ID_CASE(item, 15);                             \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 0);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 1);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 2);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 3);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 4);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 5);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 6);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 7);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 8);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 9);                         \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 10);                        \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 11);                        \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 12);                        \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 13);                        \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 14);                        \
+      MEMORY_STAT_FUNC_SWITHCH_CASE(item, 15);                        \
       default:                                                        \
-        PADDLE_THROW(platform::errors::OutOfRange(                    \
+        PADDLE_THROW(paddle::platform::errors::OutOfRange(            \
             "Only support device id between [0, 15] in memory stats," \
             "not support device id: %d",                              \
             id));                                                     \

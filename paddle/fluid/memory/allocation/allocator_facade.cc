@@ -30,6 +30,7 @@
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_managed_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
+#include "paddle/fluid/memory/allocation/stat_allocator.h"
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -292,6 +293,8 @@ class AllocatorFacadePrivate {
       WrapCUDARetryAllocator(FLAGS_gpu_allocator_retry_time);
     }
 
+    WrapStatAllocator();
+
     CheckAllocThreadSafe();
 
 #ifdef PADDLE_WITH_CUDA
@@ -465,6 +468,7 @@ class AllocatorFacadePrivate {
       InitAutoGrowthCUDAAllocator(p, stream);
       WrapStreamSafeCUDAAllocator(p, stream);
       WrapCUDARetryAllocator(p, stream, FLAGS_gpu_allocator_retry_time);
+      WrapStatAllocator(p, stream);
     }
   }
 
@@ -637,6 +641,11 @@ class AllocatorFacadePrivate {
             "Retry time should be larger than 0, but got %d", retry_time));
     std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
     allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
+  }
+
+  void WrapStatAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
+    allocator = std::make_shared<StatAllocator>(allocator);
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -816,6 +825,15 @@ class AllocatorFacadePrivate {
     for (auto& pair : allocators_) {
       if (platform::is_gpu_place(pair.first)) {
         pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
+      }
+    }
+  }
+
+  void WrapStatAllocator() {
+    for (auto& pair : allocators_) {
+      // Now memory stats is only supported for GPU
+      if (platform::is_gpu_place(pair.first)) {
+        pair.second = std::make_shared<StatAllocator>(pair.second);
       }
     }
   }

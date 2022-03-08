@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/stats.h"
 
+#include "paddle/fluid/memory/allocation/spin_lock.h"
+#include "paddle/fluid/platform/variant.h"
+
 namespace paddle {
 namespace memory {
 
@@ -57,8 +60,6 @@ class StatRegistry {
   }
 
   void Update(const std::string& stat_type, int dev_id, int64_t increment) {
-    // VLOG(1) << "Update: type = " << stat_type << "  id = " << dev_id << "
-    // increment = " << increment;
     stat_map_[GetStatKey(stat_type, dev_id)]->Update(increment);
   }
 
