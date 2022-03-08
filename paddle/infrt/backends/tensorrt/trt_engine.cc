@@ -17,7 +17,7 @@
 
 #include <NvInferRuntime.h>
 #include <NvInferRuntimeCommon.h>
-#include "glog/logging.h"
+#include <glog/logging.h>
 #include "paddle/phi/backends/dynload/tensorrt.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
@@ -40,26 +40,26 @@ static nvinfer1::IRuntime* createInferRuntime(
       phi::dynload::createInferRuntime_INTERNAL(&logger, NV_TENSORRT_VERSION));
 }
 
-TRTEngine::TRTEngine(int device_id) : device_id_(device_id) {
+TrtEngine::TrtEngine(int device_id) : device_id_(device_id) {
   FreshDeviceId();
   logger_.reset(new TrtLogger());
   builder_.reset(createInferBuilder(logger_->GetTrtLogger()));
   phi::dynload::initLibNvInferPlugins(&logger_->GetTrtLogger(), "");
 }
 
-nvinfer1::IBuilder* TRTEngine::GetTrtBuilder() {
+nvinfer1::IBuilder* TrtEngine::GetTrtBuilder() {
   CHECK_NOTNULL(builder_);
   return builder_.get();
 }
 
-void TRTEngine::Build(TrtUniquePtr<nvinfer1::INetworkDefinition> network,
+void TrtEngine::Build(TrtUniquePtr<nvinfer1::INetworkDefinition> network,
                       const BuildOptions& build_options) {
   FreshDeviceId();
   ModelToBuildEnv(std::move(network), build_options);
   CHECK_NOTNULL(engine_);
 }
 
-bool TRTEngine::ModelToBuildEnv(
+bool TrtEngine::ModelToBuildEnv(
     TrtUniquePtr<nvinfer1::INetworkDefinition> network,
     const BuildOptions& build) {
   CHECK_NOTNULL(builder_);
@@ -70,7 +70,7 @@ bool TRTEngine::ModelToBuildEnv(
   return true;
 }
 
-bool TRTEngine::NetworkToEngine(const BuildOptions& build) {
+bool TrtEngine::NetworkToEngine(const BuildOptions& build) {
   TrtUniquePtr<IBuilderConfig> config{builder_->createBuilderConfig()};
   CHECK_NOTNULL(config);
   CHECK(SetupNetworkAndConfig(build, *network_, *config));
@@ -91,7 +91,7 @@ bool TRTEngine::NetworkToEngine(const BuildOptions& build) {
   return true;
 }
 
-bool TRTEngine::SetupNetworkAndConfig(const BuildOptions& build,
+bool TrtEngine::SetupNetworkAndConfig(const BuildOptions& build,
                                       INetworkDefinition& network,
                                       IBuilderConfig& config) {
   builder_->setMaxBatchSize(build.max_batch);
@@ -235,7 +235,7 @@ bool TRTEngine::SetupNetworkAndConfig(const BuildOptions& build,
   return true;
 }
 
-bool TRTEngine::SetUpInference(
+bool TrtEngine::SetUpInference(
     const InferenceOptions& inference,
     const std::unordered_map<std::string, phi::DenseTensor*>& inputs,
     std::unordered_map<std::string, phi::DenseTensor*>* outputs) {
@@ -261,7 +261,7 @@ bool TRTEngine::SetUpInference(
   return true;
 }
 
-void TRTEngine::Run(const phi::GPUContext& ctx) {
+void TrtEngine::Run(const phi::GPUContext& ctx) {
   if (is_dynamic_shape_) {
     DynamicRun(ctx);
   } else {
@@ -269,7 +269,7 @@ void TRTEngine::Run(const phi::GPUContext& ctx) {
   }
 }
 
-void TRTEngine::StaticRun(const phi::GPUContext& ctx) {
+void TrtEngine::StaticRun(const phi::GPUContext& ctx) {
   const int num_bindings = engine_->getNbBindings();
   std::vector<void*> buffers(num_bindings, nullptr);
 
@@ -303,7 +303,7 @@ void TRTEngine::StaticRun(const phi::GPUContext& ctx) {
       runtime_batch, buffers.data(), ctx.stream(), nullptr);
 }
 
-void TRTEngine::DynamicRun(const phi::GPUContext& ctx) {
+void TrtEngine::DynamicRun(const phi::GPUContext& ctx) {
   const int num_bindings = engine_->getNbBindings();
   std::vector<void*> buffers(num_bindings, nullptr);
 
@@ -339,14 +339,14 @@ void TRTEngine::DynamicRun(const phi::GPUContext& ctx) {
   contexts_.front()->enqueueV2(buffers.data(), ctx.stream(), nullptr);
 }
 
-void TRTEngine::FreshDeviceId() {
+void TrtEngine::FreshDeviceId() {
   int count;
   cudaGetDeviceCount(&count);
   CHECK_LT(device_id_, count);
   phi::backends::gpu::SetDeviceId(device_id_);
 }
 
-void TRTEngine::GetEngineInfo() {
+void TrtEngine::GetEngineInfo() {
 #if IS_TRT_VERSION_GE(8200)
   LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(

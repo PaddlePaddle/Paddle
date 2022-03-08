@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 
+#include "paddle/phi/common/place.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"

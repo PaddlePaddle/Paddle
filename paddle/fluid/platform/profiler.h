@@ -216,6 +216,7 @@ void NvprofEnableRecordEvent();
 void NvprofDisableRecordEvent();
 
 void EnableHostEventRecorder();
+void DisableHostEventRecorder();
 
 // Defined for UT
 std::string PrintHostEvents();
