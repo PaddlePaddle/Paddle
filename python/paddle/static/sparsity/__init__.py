@@ -1,5 +1,5 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 NVIDIA Corporation.  All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,11 +18,13 @@ from ...fluid.contrib.sparsity import decorate  #noqa: F401
 from ...fluid.contrib.sparsity import prune_model  #noqa: F401
 from ...fluid.contrib.sparsity import set_excluded_layers  #noqa: F401
 from ...fluid.contrib.sparsity import reset_excluded_layers  #noqa: F401
+from ...fluid.contrib.sparsity import add_supported_layer  #noqa: F401
 
 __all__ = [     #noqa
     'calculate_density',
     'decorate',
     'prune_model',
     'set_excluded_layers',
-    'reset_excluded_layers'
+    'reset_excluded_layers',
+    'add_supported_layer'
 ]

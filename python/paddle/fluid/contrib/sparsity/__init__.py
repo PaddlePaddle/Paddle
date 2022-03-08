@@ -1,5 +1,5 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 NVIDIA Corporation.  All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,10 +29,11 @@ from .asp import decorate
 from .asp import prune_model
 from .asp import set_excluded_layers
 from .asp import reset_excluded_layers
+from .supported_layer_list import add_supported_layer
 
 __all__ = [
     'calculate_density', 'check_mask_1d', 'get_mask_1d', 'check_mask_2d',
     'get_mask_2d_greedy', 'get_mask_2d_best', 'create_mask', 'check_sparsity',
     'MaskAlgo', 'CheckMethod', 'decorate', 'prune_model', 'set_excluded_layers',
-    'reset_excluded_layers'
+    'reset_excluded_layers', 'add_supported_layer'
 ]
