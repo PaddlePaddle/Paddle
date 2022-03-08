@@ -36,12 +36,18 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
 
     class TestTrilTriuOp(XPUOpTest):
         def setUp(self):
+            self.init_dtype()
             self.initTestCase()
             self.real_op_type = np.random.choice(['triu', 'tril'])
             self.real_np_op = getattr(np, self.real_op_type)
-            self.init_dtype()
             self.set_xpu()
             self.op_type = "tril_triu"
+            if self.dtype == np.int32:
+                self.X = np.arange(
+                    1, self.get_Xshape_prod() + 1,
+                    dtype=self.dtype).reshape(self.Xshape)
+            else:
+                self.X = np.random.random(self.Xshape).astype(dtype=self.dtype)
             self.inputs = {'X': self.X}
             self.attrs = {
                 'diagonal': self.diagonal,
@@ -55,6 +61,12 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
         def init_dtype(self):
             self.dtype = self.in_type
 
+        def get_Xshape_prod(self):
+            ret = 1
+            for v in self.Xshape:
+                ret *= v
+            return ret
+
         def set_xpu(self):
             self.__class__.use_xpu = True
             self.__class__.no_need_check_grad = True
@@ -67,42 +79,32 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
 
         def initTestCase(self):
             self.diagonal = None
-            self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
+            self.Xshape = (10, 10)
 
     class TestTrilTriuOp1(TestTrilTriuOp):
         def initTestCase(self):
             self.diagonal = -3
-            self.X = np.random.random((2, 2, 3, 4, 5)).astype(dtype=self.dtype)
+            self.Xshape = (5, 5)
 
     class TestTrilTriuOp2(TestTrilTriuOp):
         def initTestCase(self):
             self.diagonal = 4
-            self.X = np.random.random((1, 2, 3, 4, 5)).astype(dtype=self.dtype)
+            self.Xshape = (11, 17)
 
     class TestTrilTriuOp3(TestTrilTriuOp):
         def initTestCase(self):
-            self.diagonal = 1
-            self.X = np.random.random((2, 3, 3, 4, 5)).astype(dtype=self.dtype)
+            self.diagonal = 10
+            self.Xshape = (25, 25)
 
     class TestTrilTriuOp4(TestTrilTriuOp):
         def initTestCase(self):
-            self.diagonal = 100
-            self.X = np.random.random((2, 3, 3, 4, 5)).astype(dtype=self.dtype)
+            self.diagonal = -10
+            self.Xshape = (33, 11)
 
     class TestTrilTriuOp5(TestTrilTriuOp):
         def initTestCase(self):
-            self.diagonal = 0
-            self.X = np.random.random(((10, 10, 1, 1))).astype(dtype=self.dtype)
-
-    class TestTrilTriuOp6(TestTrilTriuOp):
-        def initTestCase(self):
-            self.diagonal = -1
-            self.X = np.random.random(((10, 10, 1, 1))).astype(dtype=self.dtype)
-
-    class TestTrilTriuOp7(TestTrilTriuOp):
-        def initTestCase(self):
-            self.diagonal = 1
-            self.X = np.random.random(((10, 10, 1, 1))).astype(dtype=self.dtype)
+            self.diagonal = 11
+            self.Xshape = (1, 99)
 
 
 class TestTrilTriuOpError(unittest.TestCase):

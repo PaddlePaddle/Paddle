@@ -32,14 +32,12 @@ class TrilTriuXPUKernel : public framework::OpKernel<T> {
     const bool lower = context.Attr<bool>("lower");
 
     const auto& dims = x->dims();
-    const auto H = dims[dims.size() - 2];
-    const auto W = dims[dims.size() - 1];
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     std::vector<int> xshape;
-    xshape.push_back(H);
-    xshape.push_back(W);
+    for (int i = 0; i < dims.size(); i++) {
+      xshape.push_back(dims[i]);
+    }
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = 0;
     if (lower) {
       r = xpu::tril(dev_ctx.x_context(), x_data, out_data, xshape, diagonal);
