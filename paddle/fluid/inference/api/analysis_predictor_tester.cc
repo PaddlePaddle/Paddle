@@ -426,6 +426,14 @@ TEST(Predictor, Run) {
   predictor->TryShrinkMemory();
 }
 
+TEST(Predictor, EnableONNXRuntime) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.EnableONNXRuntime();
+  config.EnableORTOptimization();
+  auto predictor = CreatePredictor(config);
+}
+
 TEST(Tensor, CpuShareExternalData) {
   Config config;
   config.SetModel(FLAGS_dirname);
