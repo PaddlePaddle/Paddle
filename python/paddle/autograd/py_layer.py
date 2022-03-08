@@ -587,3 +587,12 @@ class EagerPyLayer(
 
         raise NotImplementedError(
             "You must implement the backward function for PyLayer.")
+
+
+def once_differentiable(backward):
+    def wrapper(ctx, *args):
+        with paddle.fluid.dygraph.no_grad():
+            outputs = backward(ctx, *args)
+        return outputs
+
+    return wrapper
