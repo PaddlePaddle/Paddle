@@ -62,7 +62,7 @@ class TestEagerGrad(TestCase):
         with _test_eager_guard():
             self.func_simple_example_eager_grad()
         self.func_simple_example_eager_grad()
-    
+
     def func_simple_example_eager_grad_allow_unused(self):
         np.random.seed(2021)
         paddle.set_device('cpu')
@@ -76,14 +76,12 @@ class TestEagerGrad(TestCase):
         out = paddle.matmul(x, y)
 
         dx = fluid.dygraph.grad(out, [x, z], allow_unused=True)
-       
         dout = np.ones_like(np_y)
         expected_dx = np.matmul(dout, np.transpose(np_y))
- 
         self.assertTrue(np.allclose(dx[0].numpy(), expected_dx[0]))
-         
+
         try:
-           dx = fluid.dygraph.grad(out, [x, z])
+            dx = fluid.dygraph.grad(out, [x, z])
         except ValueError as e:
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("allow_unused") > 0
