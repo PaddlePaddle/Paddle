@@ -409,8 +409,20 @@ void BuildDygraphPhiKernelContext(
             experimental::MakePhiScalarFromVar(ins_vector[0]->Var())));
       }
 
+    } else if (ins.find(attr_names[i]) != ins.end()) {
+      // deal tensor attr here
+      auto& ins_vector = ins.at(attr_names[i]);
+      auto tensor_attr =
+          experimental::MakePhiScalarFromVar(ins_vector[0]->Var());
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+        int val = tensor_attr.template to<int>();
+        kernel_ctx->EmplaceBackAttr(val);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented("only support int here"));
+      }
     } else {
       // TODO(chenweihang): support other attrs later
+
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
