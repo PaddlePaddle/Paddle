@@ -89,7 +89,7 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
       reduce_dim.push_back(i);
     }
 
-    kernels::TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+    funcs::TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
         dev_ctx,
         *counts_tensor,
         norm_tensor,

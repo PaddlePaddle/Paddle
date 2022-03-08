@@ -25,10 +25,10 @@ core_ops_args_type_info = {}
 
 
 yaml_types_mapping = {
-    'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
+    'int' : 'int', 'int32' : 'int32_t', 'int64' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'Backend' : 'paddle::experimental::Backend', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
-    'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
+    'int64[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
     'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
@@ -509,11 +509,18 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
         set_attribute_methods_str += SET_ATTR_METHOD_TEMPLATE.format(
             aname, GetConstReference(atype), aname, saved_attr_name, aname)
 
-        ATTRIBUTE_MEMBER_TEMPLATE = """
-   {} {} = {};
-"""
-        attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
-            RemoveConstAndReference(atype), saved_attr_name, default_val)
+        if default_val:
+            ATTRIBUTE_MEMBER_TEMPLATE = """
+       {} {} = {};
+    """
+            attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
+                RemoveConstAndReference(atype), saved_attr_name, default_val)
+        else:
+            ATTRIBUTE_MEMBER_TEMPLATE = """
+       {} {};
+    """
+            attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
+                RemoveConstAndReference(atype), saved_attr_name)
     # End: SetAttributes & Attribute Members
 
     grad_node_name = GetGradNodeName(fwd_api_name)

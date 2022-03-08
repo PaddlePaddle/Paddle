@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <set>
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -153,6 +154,24 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
   out->set_layout(x.layout());
+}
+
+void CumsumInferMeta(const MetaTensor& x,
+                     int axis,
+                     bool flatten,
+                     bool exclusive,
+                     bool reverse,
+                     MetaTensor* out) {
+  auto x_dims = x.dims();
+  if (flatten) {
+    out->set_dims(phi::make_ddim({phi::product(x_dims)}));
+    out->set_dtype(x.dtype());
+  } else {
+    out->set_dims(x_dims);
+    out->set_dtype(x.dtype());
+  }
+
+  out->share_lod(x);
 }
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
@@ -305,6 +324,11 @@ void InferMetaFromVecValue(const MetaTensor& x,
     // are the same.
     out->share_lod(x);
   }
+}
+
+void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({1}));
+  out->set_dtype(DataType::BOOL);
 }
 
 void MultinomialInferMeta(const MetaTensor& x,
@@ -981,6 +1005,11 @@ void DiagInferMeta(const MetaTensor& x,
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   out->set_dims({1});
+}
+
+void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(DataType::BOOL);
 }
 
 void PixelShuffleInferMeta(const MetaTensor& x,
