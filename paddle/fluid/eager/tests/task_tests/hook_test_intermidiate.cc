@@ -27,6 +27,8 @@
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+
 namespace egr {
 
 paddle::experimental::Tensor hook_function(

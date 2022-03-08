@@ -30,6 +30,8 @@
 #include "paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+
 namespace egr {
 
 TEST(Generated, Sigmoid) {

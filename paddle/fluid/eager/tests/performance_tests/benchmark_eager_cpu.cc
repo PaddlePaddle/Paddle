@@ -33,6 +33,10 @@
 #include "gperftools/profiler.h"
 #endif
 
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
