@@ -493,13 +493,6 @@ int32_t MemorySparseTable::push_sparse(const uint64_t* keys,
             const float* update_data =
                 values + push_data_idx * update_value_col;
 
-            // for debug
-            std::cout << "debug zcb push sparse key: " << key << " values: ";
-            for (int aa = 0; aa < update_value_col; ++aa) {
-              std::cout << update_data[aa] << " ";
-            }
-            std::cout << "\n";
-
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
               if (FLAGS_pserver_enable_create_feasign_randomly &&

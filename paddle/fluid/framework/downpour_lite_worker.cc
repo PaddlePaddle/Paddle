@@ -1006,7 +1006,6 @@ void DownpourLiteWorker::TrainFiles() {
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
-        VLOG(0) << "debug zcb pull_dense_worker->IncreaseThreadVersion";
         pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
       }
     }

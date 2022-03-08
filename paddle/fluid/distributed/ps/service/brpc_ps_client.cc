@@ -240,7 +240,6 @@ int32_t BrpcPsClient::initialize() {
   // _print_thread =
   //     std::thread(std::bind(&BrpcPsClient::print_queue_size_thread, this));
 
-  VLOG(0) << "debug zcb client initialize succ";
   return 0;
 }
 
@@ -896,11 +895,7 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
     }
   }
 
-  std::cout << "debug zcb client pull sparse h4\n";
   for (size_t i = 0; i < num; ++i) {
-    VLOG(0) << "debug zcb shard_num: " << shard_num;
-    VLOG(0) << "debug zcb request_call_num: " << request_call_num;
-    VLOG(0) << "debug zcb key[i]: " << keys[i];
     size_t shard_id = get_sparse_shard(shard_num, request_call_num, keys[i]);
     shard_sorted_kvs->at(shard_id).push_back({keys[i], select_values[i]});
   }

@@ -141,12 +141,10 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
       google::protobuf::TextFormat::ParseFromString(dist_desc, &ps_param);
       InitGFlag(ps_param.init_gflags());
       int servers = host_sign_list.size();
-      VLOG(0) << "debug zcb init worker servers.size: " << servers;
       ps_env_.set_ps_servers(&host_sign_list, servers);
       worker_ptr_ = std::shared_ptr<paddle::distributed::PSClient>(
           paddle::distributed::PSClientFactory::create(ps_param));
       worker_ptr_->configure(ps_param, dense_pull_regions, ps_env_, index);
-      VLOG(3) << "debug zcb init worker: " << (worker_ptr_ != NULL);
     }
   } else {
     VLOG(3) << "Client can be initialized only once";
@@ -392,7 +390,6 @@ void FleetWrapper::PullDenseVarsAsync(
   }
   auto status = worker_ptr_->pull_dense(regions.data(), regions.size(), tid);
   pull_dense_status->push_back(std::move(status));
-  VLOG(0) << "debug zcb pscore fleet->PullDenseVarsAsync ret";
 }
 
 void FleetWrapper::PullDenseVarsSync(
@@ -450,7 +447,7 @@ void FleetWrapper::PushDenseVarsAsync(
     float* g = tensor->mutable_data<float>(place);
     paddle::distributed::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
-    VLOG(0) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "
+    VLOG(3) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "
             << table_id << " Temp_data[0] " << g[0] << " Temp_data[-1] "
             << g[tensor->numel() - 1];
   }
@@ -617,13 +614,6 @@ void FleetWrapper::PushSparseFromTensorAsync(
 
   for (auto i = 0u; i < push_keys.size(); ++i) {
     push_g_vec[i] = push_values.at(i).data();
-
-    // for debug
-    std::cout << "push sparse key: " << push_keys[i] << " values: ";
-    for (auto gg : push_values[i]) {
-      std::cout << gg << " ";
-    }
-    std::cout << "\n";
   }
 
   //  auto* communicator = Communicator::GetInstance();
@@ -760,7 +750,6 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
 }
 
 void FleetWrapper::ClientFlush() {
-  VLOG(0) << "debug zcb begin client flush";
   auto ret = worker_ptr_->flush();
   ret.wait();
   int32_t err_code = ret.get();

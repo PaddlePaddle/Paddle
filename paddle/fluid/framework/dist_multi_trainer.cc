@@ -186,7 +186,6 @@ void DistMultiTrainer::Finalize() {
   auto fleet_ptr_ = FleetWrapper::GetInstance();
 #else
   auto fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
-  VLOG(0) << "debug zcb dist multi trainer call client-> flush";
 #endif
   fleet_ptr_->ClientFlush();
 }

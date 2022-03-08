@@ -178,7 +178,6 @@ void PullDenseWorker::PullDense(bool force_update) {
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, false);
 #elif defined(PADDLE_WITH_PSCORE)
-      VLOG(0) << "debug zcb pull dense worker begin pull dense";
       new_fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid,
                                          dense_value_names_[tid],
                                          &pull_dense_status_, true);
@@ -221,9 +220,6 @@ bool PullDenseWorker::CheckUpdateParam(uint64_t table_id) {
   auto& version = training_versions_[table_id];
   current_version_[table_id] =
       *(std::min_element(version.begin(), version.end()));
-  VLOG(0) << "debug zcb PullDenseWorker::CheckUpdateParam "
-          << current_version_[table_id] << " " << last_versions_[table_id]
-          << " " << threshold_;
   if (current_version_[table_id] - last_versions_[table_id] <
       static_cast<size_t>(threshold_)) {
     return false;
