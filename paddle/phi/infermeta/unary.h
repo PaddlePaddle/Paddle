@@ -184,4 +184,12 @@ void EighInferMeta(const MetaTensor& x,
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
+void ShardIndexInferMeta(const MetaTensor& in,
+                         int index_num,
+                         int nshards,
+                         int shard_id,
+                         int ignore_value,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
+
 }  // namespace phi
