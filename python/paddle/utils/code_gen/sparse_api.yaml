@@ -11,7 +11,7 @@
   invoke : to_dense_impl(x, backend)
 
 - sparse_api : to_sparse_coo
-  args : (Tensor x, Backend backend, int64_t sparse_dim)
+  args : (Tensor x, Backend backend, int64 sparse_dim)
   output : Tensor(out@SparseCooTensor)
   invoke : to_sparse_coo_impl(x, backend, sparse_dim)
 

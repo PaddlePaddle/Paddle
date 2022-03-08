@@ -1041,6 +1041,11 @@ void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dims({1});
 }
 
+void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(DataType::BOOL);
+}
+
 void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,

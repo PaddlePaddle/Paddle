@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,17 +17,18 @@ limitations under the License. */
 #include <string>
 #include "Eigen/Core"
 #include "Eigen/LU"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 
-template <typename DeviceContext, typename T>
-void compute_inverse_eigen(const DeviceContext& context,
-                           const framework::Tensor& a,
-                           framework::Tensor* a_inv) {
+namespace phi {
+namespace funcs {
+
+template <typename Context, typename T>
+void ComputeInverseEigen(const Context& dev_ctx,
+                         const DenseTensor& a,
+                         DenseTensor* a_inv) {
   using Matrix =
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using EigenMatrixMap = Eigen::Map<Matrix>;
@@ -38,7 +39,7 @@ void compute_inverse_eigen(const DeviceContext& context,
   int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
 
   const T* a_ptr = a.data<T>();
-  T* a_inv_ptr = a_inv->mutable_data<T>(context.GetPlace());
+  T* a_inv_ptr = a_inv->mutable_data<T>(dev_ctx.GetPlace());
 
   for (int i = 0; i < batch_size; ++i) {
     ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);
@@ -47,20 +48,20 @@ void compute_inverse_eigen(const DeviceContext& context,
     lu.compute(mat);
 
     const T min_abs_pivot = lu.matrixLU().diagonal().cwiseAbs().minCoeff();
-    PADDLE_ENFORCE_GT(
-        min_abs_pivot, static_cast<T>(0),
-        platform::errors::InvalidArgument("Input is not invertible."));
+    PADDLE_ENFORCE_GT(min_abs_pivot,
+                      static_cast<T>(0),
+                      errors::InvalidArgument("Input is not invertible."));
     mat_inv.noalias() = lu.inverse();
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 class MatrixInverseFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& a,
-                  framework::Tensor* a_inv);
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& a,
+                  DenseTensor* a_inv);
 };
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
