@@ -369,4 +369,41 @@ void ElementwiseDivGrad(const GPUContext &dev_ctx,
   }
 }
 
+/*
+******************************
+    Mul Grad
+******************************
+*/
+
+template <typename T>
+void ElementwiseMulGrad(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        const DenseTensor &dout,
+                        DenseTensor *dx,
+                        DenseTensor *dy,
+                        int axis) {
+  const auto place = dev_ctx.GetPlace();
+
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &y, &x};
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
+        dev_ctx,
+        place,
+        axis,
+        ins,
+        dout,
+        dx,
+        dy,
+        funcs::MultiplyGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &y};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+        dev_ctx, place, axis, ins, dout, dx, funcs::MultiplyGradFunctor<T>());
+  } else if (dx == nullptr && dy != nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &x};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+        dev_ctx, place, axis, ins, dout, dy, funcs::MultiplyGradFunctor<T>());
+  }
+}
 }  // namespace phi
