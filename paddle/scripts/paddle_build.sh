@@ -2562,7 +2562,7 @@ EOF
     infer_ut_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${TENSORRT_ROOT_DIR:-/usr}
+             ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
     TEST_EXIT_CODE=$?
     infer_ut_endTime_s=`date +%s`
     echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"

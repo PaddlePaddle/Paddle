@@ -50,6 +50,9 @@ link_directories("${PADDLE_LIB}/paddle/lib")
 if (WITH_ONNXRUNTIME)
   include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/include")
   include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/include")
+
+  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib")
+  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib")
 endif()
 
 if (WIN32)
@@ -157,7 +160,6 @@ else()
 endif()
 
 if (WITH_ONNXRUNTIME)
-  link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib")
   if(WIN32)
     set(DEPS ${DEPS} ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.lib paddle2onnx)
   elseif(APPLE)
@@ -228,6 +230,14 @@ if(WIN32)
   else()
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll ${CMAKE_BINARY_DIR}/Release
+    )
+  endif()
+  if(WITH_ONNXRUNTIME)
+    add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/lib/onnxruntime.dll
+      ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+    COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB_THIRD_PARTY_PATH}paddle2onnx/lib/paddle2onnx.dll
+      ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
     )
   endif()
   if(NOT WITH_STATIC_LIB)
