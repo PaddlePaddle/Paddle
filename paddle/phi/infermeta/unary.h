@@ -98,6 +98,17 @@ void MeanRawInferMeta(const MetaTensor& x,
                       bool reduce_all,
                       MetaTensor* out);
 
+void MaxRawInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     bool reduce_all,
+                     MetaTensor* out);
+
+void MaxInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& axis,
+                  bool keep_dim,
+                  MetaTensor* out);
+
 void MeanInferMeta(const MetaTensor& x,
                    const std::vector<int64_t>& axis,
                    bool keep_dim,

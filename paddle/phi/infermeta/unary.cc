@@ -394,12 +394,10 @@ void SumInferMeta(const MetaTensor& x,
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, dtype, out);
 }
 
-void ReduceInferMetaBase(const MetaTensor& x,
-                         const std::vector<int64_t>& axis,
-                         bool keep_dim,
-                         bool reduce_all,
-                         DataType dtype,
-                         MetaTensor* out) {
+DDim ReduceInferDim(const MetaTensor& x,
+                    const std::vector<int64_t>& axis,
+                    bool keep_dim,
+                    bool reduce_all) {
   auto x_rank = x.dims().size();
 
   std::vector<int64_t> formated_axis = axis;
@@ -462,6 +460,17 @@ void ReduceInferMetaBase(const MetaTensor& x,
   }
   DDim out_dim = phi::make_ddim(out_dim_vector);
 
+  return out_dim;
+}
+
+void ReduceInferMetaBase(const MetaTensor& x,
+                         const std::vector<int64_t>& axis,
+                         bool keep_dim,
+                         bool reduce_all,
+                         DataType dtype,
+                         MetaTensor* out) {
+  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+
   DataType out_dtype;
   if (dtype != DataType::UNDEFINED) {
     out_dtype = dtype;
@@ -477,6 +486,25 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_dims(out_dim);
   out->set_dtype(out_dtype);
   out->set_layout(x.layout());
+}
+
+void MaxRawInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     bool reduce_all,
+                     MetaTensor* out) {
+  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
+void MaxInferMeta(const MetaTensor& x,
+                  const std::vector<int64_t>& axis,
+                  bool keep_dim,
+                  MetaTensor* out) {
+  bool reduce_all = false;
+  MaxRawInferMeta(x, axis, keep_dim, reduce_all, out);
 }
 
 void MeanRawInferMeta(const MetaTensor& x,
