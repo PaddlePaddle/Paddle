@@ -28,8 +28,8 @@ namespace cub = hipcub;
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/argsort_functor.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef __HIPCC__
 namespace rocprim {
@@ -184,9 +184,8 @@ void ArgsortGradKernel(const Context& dev_ctx,
     DenseTensor trans_ind;
     trans_ind.Resize(trans_dims);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
-    int ndims = trans.size();
-    TransCompute<Context, T>(ndims, dev_ctx, out_grad, &trans_dO, trans);
-    TransCompute<Context, int64_t>(ndims, dev_ctx, indices, &trans_ind, trans);
+    TransposeKernel<T, Context>(dev_ctx, out_grad, trans, &trans_dO);
+    TransposeKernel<int64_t, Context>(dev_ctx, indices, trans, &trans_ind);
 
     const int64_t input_height =
         phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
@@ -200,7 +199,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
         dev_ctx, &trans_dO, &trans_ind, &tmp_out, input_height, input_width);
 
     // transpose back
-    TransCompute<Context, T>(ndims, dev_ctx, tmp_out, in_grad, trans);
+    TransposeKernel<T, Context>(dev_ctx, tmp_out, trans, in_grad);
     return;
   }
 }

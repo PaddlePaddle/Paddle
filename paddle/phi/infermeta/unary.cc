@@ -45,10 +45,8 @@ void ArgsortInferMeta(const MetaTensor& input,
       phi::errors::InvalidArgument(
           "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
 
-  output->set_dims(in_dims);
-  output->set_dtype(input.dtype());
-  indices->set_dims(in_dims);
-  indices->set_dtype(input.dtype());
+  output->share_dims(input);
+  indices->share_dims(input);
   output->share_lod(input);
   indices->share_lod(input);
 }

@@ -16,9 +16,9 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/argsort_functor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 
@@ -106,9 +106,8 @@ void ArgsortKernel(const Context& dev_ctx,
     DenseTensor trans_inp;
     trans_inp.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_inp);
-    int ndims = trans.size();
     // Do transpose
-    TransCompute<Context, T>(ndims, dev_ctx, input, &trans_inp, trans);
+    TransposeKernel<T, Context>(dev_ctx, input, trans, &trans_inp);
 
     const int64_t input_height =
         phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
@@ -132,9 +131,9 @@ void ArgsortKernel(const Context& dev_ctx,
                          descending);
 
     dev_ctx.template Alloc<int64_t>(indices);
-    TransCompute<Context, int64_t>(ndims, dev_ctx, tmp_indices, indices, trans);
+    TransposeKernel<int64_t, Context>(dev_ctx, tmp_indices, trans, indices);
     // transpose back
-    TransCompute<Context, T>(ndims, dev_ctx, tmp_out, output, trans);
+    TransposeKernel<T, Context>(dev_ctx, tmp_out, trans, output);
   }
 }
 
