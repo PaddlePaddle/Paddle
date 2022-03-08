@@ -563,7 +563,8 @@ inline void RegisterModelLayout(
     std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
     const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
-    auto check_attrib = [&](std::string& attrib_name) -> bool {
+    auto check_attrib = [&](std::unique_ptr<framework::OperatorBase>& op,
+                            std::string& attrib_name) -> bool {
       if (op->HasAttr(attrib_name)) {
         auto data_format = op->Attr<std::string>(attrib_name);
         platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
@@ -576,10 +577,10 @@ inline void RegisterModelLayout(
     };
 
     for (auto& op : ops) {
-      if (check_attrib("data_format")) {
+      if (check_attrib(op, "data_format")) {
         return;
       }
-      if (check_attrib("data_layout")) {
+      if (check_attrib(op, "data_layout")) {
         return;
       }
     }
