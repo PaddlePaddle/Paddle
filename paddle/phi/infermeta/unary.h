@@ -242,4 +242,17 @@ void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
+void ShardIndexInferMeta(const MetaTensor& in,
+                         int index_num,
+                         int nshards,
+                         int shard_id,
+                         int ignore_value,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
+
+void RollInferMeta(const MetaTensor& x,
+                   const ScalarArray& shifts,
+                   const ScalarArray& axis,
+                   MetaTensor* out);
+
 }  // namespace phi
