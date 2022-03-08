@@ -25,6 +25,7 @@ import paddle
 class TestConcatOp(OpTest):
     def setUp(self):
         self.op_type = "concat"
+        self.python_api = paddle.concat
         self.dtype = self.get_dtype()
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}

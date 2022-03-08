@@ -210,7 +210,8 @@ struct KernelRegistrar {
     if (reg_type == RegType::INNER) {
       KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
     } else {
-      CustomKernelMap::Instance().Kernels()[kernel_name][kernel_key] = kernel;
+      CustomKernelMap::Instance().RegisterCustomKernel(
+          kernel_name, kernel_key, kernel);
     }
   }
 };
