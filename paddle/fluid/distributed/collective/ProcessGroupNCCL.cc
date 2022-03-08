@@ -156,36 +156,27 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupNCCL::NCCLTask::Synchronize() { Wait(kWaitTimeout); }
 
-ProcessGroupNCCL::ProcessGroupNCCL(const ProcessGroupStrategy& strategy,
+ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
                                    int rank, int size)
-    : ProcessGroup(rank, size), strategy_(strategy) {}
-
-void ProcessGroupNCCL::BcastNCCLId(
-    std::vector<ncclUniqueId>& nccl_ids,  // NOLINT
-    int root, int server_fd) {
-  if (strategy_.local_rank_ == root) {
-    std::vector<std::string> other_trainers;
-    for (auto& ep : strategy_.trainer_endpoints_) {
-      if (ep != strategy_.current_endpoint_) {
-        other_trainers.push_back(ep);
-      }
-    }
-    platform::SendBroadCastCommID(other_trainers, &nccl_ids);
-  } else {
-    platform::RecvBroadCastCommID(server_fd, strategy_.current_endpoint_,
-                                  &nccl_ids);
-  }
-}
+    : ProcessGroup(rank, size), store_(store) {}
 
 void ProcessGroupNCCL::BroadcastUniqueNCCLID(
     std::vector<ncclUniqueId>& nccl_ids) {  // NOLINT
-
-  int server_fd = -1;
-  if (rank_ != 0) {
-    server_fd = platform::SocketServer::GetInstance(strategy_.current_endpoint_)
-                    .socket();
+  if (rank_ == 0) {
+    for (size_t i = 0; i < nccl_ids.size(); i++) {
+      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(i);
+      auto nccl_id = std::vector<uint8_t>(
+          reinterpret_cast<uint8_t*>(&nccl_ids[i]),
+          reinterpret_cast<uint8_t*>(&nccl_ids[i]) + NCCL_UNIQUE_ID_BYTES);
+      store_->set(key, nccl_id);
+    }
+  } else {
+    for (size_t i = 0; i < nccl_ids.size(); i++) {
+      auto key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(i);
+      auto ret = store_->get(key);
+      std::memcpy(&nccl_ids[i], ret.data(), ret.size());
+    }
   }
-  BcastNCCLId(nccl_ids, 0, server_fd);
 }
 
 // create NCCLManager cache for places_key
@@ -213,8 +204,8 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
   }
   BroadcastUniqueNCCLID(nccl_ids);
 
-  VLOG(3) << "init nccl rank: " << strategy_.local_rank_
-          << ", nranks: " << strategy_.nranks_ << ", place: " << places_key
+  VLOG(3) << "init nccl rank: " << rank_ << ", nranks: " << size_
+          << ", place: " << places_key
           << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
 
   std::vector<std::unique_ptr<CUDADeviceContext>> dev_ctx;
