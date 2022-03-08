@@ -100,7 +100,7 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
       sscanf(str_mini_batch, "%d", &mini_batch_size);
     }
 
-    VLOG(0) << "softmax with entropy mini batch size: " << mini_batch_size;
+    VLOG(3) << "softmax with entropy mini batch size: " << mini_batch_size;
     if (mini_batch_size == 0) {
       BatchSoftmaxWithCrossEntropy(ctx, logits, labels, softmax, loss,
                                    backprop, axis, d);
@@ -128,6 +128,23 @@ class SoftmaxWithCrossEntropyNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+void BatchedSoftmaxWithCrossEntropyGrad(const framework::ExecutionContext& ctx, const Tensor* backprop, const Tensor* loss_grad, const Tensor* logits_grad, const int& axis, const int& d){
+    const int n = SizeToAxis(axis, logits_grad->dims());
+
+    Tensor logits_grad_2d, loss_grad_1d, backprop_2d;
+
+    logits_grad_2d.ShareDataWith(*logits_grad).Resize({n, d});
+    loss_grad_1d.ShareDataWith(*loss_grad).Resize({n});
+    backprop_2d.ShareDataWith(*backprop).Resize({n, d});
+
+    auto stream =
+        ctx.template device_context<paddle::platform::NPUDeviceContext>()
+            .stream();
+    const auto& runner_mul =
+        NpuOpRunner("Mul", {*loss_grad, *backprop}, {*logits_grad}, {});
+    runner_mul.Run(stream);
+}
+
 template <typename DeviceContext, typename T>
 class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
  public:
@@ -144,21 +161,38 @@ class SoftmaxWithCrossEntropyGradNPUKernel : public framework::OpKernel<T> {
 
     const int rank = logits_grad->dims().size();
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
-    const int n = SizeToAxis(axis, logits_grad->dims());
+    // const int n = SizeToAxis(axis, logits_grad->dims());
     const int d = SizeFromAxis(axis, logits_grad->dims());
+    int mini_batch_size = ctx.Attr<int>("mini_batch_size");
+    const char* str_mini_batch = std::getenv("MINI_BATCH_SIZE");
+    if (str_mini_batch){
+      sscanf(str_mini_batch, "%d", &mini_batch_size);
+    }
 
-    Tensor logits_grad_2d, loss_grad_1d, backprop_2d;
+    if (mini_batch_size == 0) {
+      BatchedSoftmaxWithCrossEntropyGrad(ctx, backprop, loss_grad,
+                                   logits_grad, axis, d);
+      return;
+    }
+    int64_t mini_batch_num = logits_grad->dims()[0] / mini_batch_size + 1;
+    for (int64_t i = 0; i < mini_batch_num; i++) {
+      int64_t min = mini_batch_size * i;
+      if (min >= logits_grad->dims()[0]) {
+        break;
+      }
+      int64_t max = mini_batch_size * i + mini_batch_size;
+      if (max > logits_grad->dims()[0]) {
+        max = logits_grad->dims()[0];
+      }
 
-    logits_grad_2d.ShareDataWith(*logits_grad).Resize({n, d});
-    loss_grad_1d.ShareDataWith(*loss_grad).Resize({n});
-    backprop_2d.ShareDataWith(*backprop).Resize({n, d});
+      Tensor mini_loss_grad = loss_grad->Slice(min, max);
+      Tensor mini_backprop = backprop->Slice(min, max);
+      Tensor mini_logits_grad = logits_grad->Slice(min, max);
+      BatchedSoftmaxWithCrossEntropyGrad(ctx, &mini_backprop, &mini_loss_grad,
+                                   &mini_logits_grad, axis, d);
+    }
 
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    const auto& runner_mul =
-        NpuOpRunner("Mul", {*loss_grad, *backprop}, {*logits_grad}, {});
-    runner_mul.Run(stream);
+
   }
 };
 }  // namespace operators
