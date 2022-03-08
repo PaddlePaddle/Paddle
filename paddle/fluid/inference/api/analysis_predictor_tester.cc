@@ -365,6 +365,12 @@ TEST(AnalysisPredictor, enable_onnxruntime) {
 #else
   ASSERT_TRUE(!config.use_onnxruntime());
 #endif
+  config.EnableORTOptimization()
+#ifdef PADDLE_WITH_ONNXRUNTIME
+      ASSERT_TRUE(config.ort_optimization_enabled());
+#else
+      ASSERT_TRUE(!config.ort_optimization_enabled());
+#endif
   config.DisableONNXRuntime();
   ASSERT_TRUE(!config.use_onnxruntime());
 }

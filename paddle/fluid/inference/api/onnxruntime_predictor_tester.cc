@@ -37,6 +37,7 @@ TEST(ONNXRuntimePredictor, onnxruntime_on) {
   config.SetModel(FLAGS_dirname + "/inference.pdmodel",
                   FLAGS_dirname + "/inference.pdiparams");
   config.EnableONNXRuntime();
+  config.EnableORTOptimization();
   config.SetCpuMathLibraryNumThreads(2);
   LOG(INFO) << config.Summary();
 

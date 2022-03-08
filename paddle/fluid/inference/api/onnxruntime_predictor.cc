@@ -100,8 +100,11 @@ bool ONNXRuntimePredictor::Init() {
                       config_.model_from_memory());
 
   Ort::SessionOptions session_options;
+  if (config_.ort_optimization_enabled()) {
+    session_options.SetGraphOptimizationLevel(
+        GraphOptimizationLevel::ORT_ENABLE_ALL);
+  }
   // Turn optimization off first, and then turn it on when it's stable
-  // session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
   // session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
   // session_options.EnableCpuMemArena();
   // session_options.EnableMemPattern();

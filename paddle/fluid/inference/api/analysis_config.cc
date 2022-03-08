@@ -184,6 +184,17 @@ void AnalysisConfig::DisableONNXRuntime() {
   Update();
 }
 
+void AnalysisConfig::EnableORTOptimization() {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  enable_ort_optimization_ = true;
+#else
+  LOG(ERROR) << "Please compile with onnxruntime to EnableORTOptimization()";
+  enable_ort_optimization_ = false;
+#endif
+
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
