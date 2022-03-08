@@ -84,15 +84,11 @@ template <typename T, typename Context>
 void MatrixRankTolKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& atol_tensor,
-                         bool hermitian,
                          bool use_default_tol,
+                         bool hermitian,
                          DenseTensor* out) {
-  // const Tensor* x = context.Input<Tensor>("X");
   auto* x_data = x.data<T>();
-  // auto* out = context.Output<Tensor>("Out");
   dev_ctx.template Alloc<int64_t>(out);
-  // out->mutable_data<int64_t>(context.GetPlace());
-  // bool hermitian = context.Attr<bool>("hermitian");
 
   auto dim_x = x.dims();
   auto dim_out = out->dims();
@@ -103,47 +99,43 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   int batches = numel / (rows * cols);
 
   T rtol_T = 0;
-  // DenseTensor atol_dense_tensor;
-  // DenseTensor temp_tensor;
+
   if (use_default_tol) {
-    // atol_tensor = temp_tensor;
     rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
   }
 
   DenseTensor eigenvalue_tensor;
-  // auto* eigenvalue_data = eigenvalue_tensor.mutable_data<T>(
-  //     detail::GetEigenvalueDim(dim_x, k), context.GetPlace());
   eigenvalue_tensor.Resize(detail::GetEigenvalueDim(dim_x, k));
   auto* eigenvalue_data = dev_ctx.template Alloc<T>(&eigenvalue_tensor);
+
   if (hermitian) {
     BatchEigenvalues<T>(x_data, eigenvalue_data, batches, rows, cols, k);
   } else {
     BatchSVD<T>(x_data, eigenvalue_data, batches, rows, cols, k);
   }
 
-  // auto dito_T = math::DeviceIndependenceTensorOperations<
-  //     paddle::platform::CPUDeviceContext,
-  //     T>(context);
-  std::vector<int> max_eigenvalue_shape =
-      phi::vectorize<int>(detail::RemoveLastDim(eigenvalue_tensor.dims()));
   DenseTensor max_eigenvalue_tensor;
-  //  =
-  //   dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
+  max_eigenvalue_tensor.Resize(detail::RemoveLastDim(eigenvalue_tensor.dims()));
+  dev_ctx.template Alloc<T>(&max_eigenvalue_tensor);
 
+  ReduceKernelImpl<Context, T, T, phi::funcs::MaxFunctor>(
+      dev_ctx,
+      eigenvalue_tensor,
+      &max_eigenvalue_tensor,
+      std::vector<int64_t>{-1},
+      false,
+      false);
   DenseTensor temp_rtol_tensor;
   paddle::framework::TensorFromVector<T>(std::vector<T>{rtol_T},
                                          &temp_rtol_tensor);
-
+  std::cout << "\n1111111111111\n";
   DenseTensor rtol_tensor =
       phi::Multiply<T>(dev_ctx, temp_rtol_tensor, max_eigenvalue_tensor);
-  // DenseTensor rtol_tensor = dito_T.Mul(temp_rtol_tensor,
-  // max_eigenvalue_tensor);
 
   DenseTensor tol_tensor;
   tol_tensor.Resize(detail::NewAxisDim(dim_out, k));
   dev_ctx.template Alloc<T>(&tol_tensor);
-  // tol_tensor.mutable_data<T>(dim_out, context.GetPlace());
-
+  std::cout << "\n1111111111112\n";
   funcs::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
       dev_ctx,
       atol_tensor,
@@ -156,10 +148,8 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   DenseTensor compare_result;
   compare_result.Resize(detail::NewAxisDim(dim_out, k));
-  dev_ctx.template Alloc<T>(&compare_result);
-  // compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
-  //                                      context.GetPlace());
-
+  dev_ctx.template Alloc<int64_t>(&compare_result);
+  std::cout << "\n1111111111113\n";
   int axis = -1;
   if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
     funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int>(
@@ -177,13 +167,29 @@ void MatrixRankTolKernel(const Context& dev_ctx,
         axis,
         funcs::LessThanFunctor<T, int64_t>(),
         &compare_result);
-
-    std::vector<int64_t> result_shape = phi::vectorize<int64_t>(dim_out);
-    DenseTensor result;
-    ReduceKernelImpl<Context, T, T, phi::funcs::SumFunctor>(
-        dev_ctx, compare_result, &result, result_shape, true, false);
-    // DenseTensor result = dito_int.ReduceSum(compare_result, result_shape);
+    std::cout << "\n1111111111144414\n";
+    // DenseTensor result;
+    // result.Resize(dim_out);
+    // dev_ctx.template Alloc<T>(&result);
+    std::cout << "\n1111111111144416677\n";
+    std::cout << "compare_result: " << compare_result << "\n";
+    DenseTensor result = phi::Sum<T>(dev_ctx,
+                                     compare_result,
+                                     std::vector<int64_t>{-1},
+                                     compare_result.dtype(),
+                                     false);
+    // SumKernel<T, Context>(dev_ctx, compare_result, std::vector<int64_t>{-1},
+    // compare_result.type(), );
+    // ReduceKernelImpl<Context, T, T, phi::funcs::SumFunctor>(
+    //     dev_ctx,
+    //     compare_result,
+    //     &result,
+    //     std::vector<int64_t>{-1},
+    //     true,
+    //     false);
+    std::cout << "\n1111111111116\n";
     out->ShareDataWith(result);
+    std::cout << "\n1111111111115\n";
   }
 }
 }  // namespace phi

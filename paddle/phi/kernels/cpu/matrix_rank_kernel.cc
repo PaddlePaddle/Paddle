@@ -21,9 +21,9 @@ namespace phi {
 template <typename T, typename Context>
 void MatrixRankKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      bool hermitian,
-                      bool use_default_tol,
                       float tol,
+                      bool use_default_tol,
+                      bool hermitian,
                       DenseTensor* out) {
   DenseTensor atol_tensor;
   if (use_default_tol) {
@@ -34,7 +34,7 @@ void MatrixRankKernel(const Context& dev_ctx,
         std::vector<T>{tol}, dev_ctx, &atol_tensor);
   }
   MatrixRankTolKernel<T, Context>(
-      dev_ctx, x, atol_tensor, hermitian, use_default_tol, out);
+      dev_ctx, x, atol_tensor, use_default_tol, hermitian, out);
 }
 
 }  // namespace phi

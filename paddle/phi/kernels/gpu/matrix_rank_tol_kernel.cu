@@ -317,8 +317,8 @@ template <typename T, typename Context>
 void MatrixRankTolKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& atol_tensor,
-                         bool hermitian,
                          bool use_default_tol,
+                         bool hermitian,
                          DenseTensor* out) {
   auto* x_data = x.data<T>();
   dev_ctx.template Alloc<int64_t>(out);
@@ -331,9 +331,6 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   auto numel = x.numel();
   int batches = numel / (rows * cols);
 
-  // const DenseTensor* atol_tensor = nullptr;
-  // Scalar temp_tensor;
-  //   DenseTensor atol_dense_tensor;
   T rtol_T = 0;
   if (use_default_tol) {
     rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
@@ -348,8 +345,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   DenseTensor eigenvalue_tensor;
   eigenvalue_tensor.Resize(detail::GetEigenvalueDim(dim_x, k));
   auto* eigenvalue_data = dev_ctx.template Alloc<T>(&eigenvalue_tensor);
-  // auto* eigenvalue_data = eigenvalue_tensor.mutable_data<T>(
-  //   detail::GetEigenvalueDim(dim_x, k), context.GetPlace());
+
   if (hermitian) {
     SyevjBatched<T>(
         dev_ctx, batches, rows, x_tmp.data<T>(), eigenvalue_data, info_ptr);
@@ -360,12 +356,8 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   } else {
     DenseTensor U, VH;
     U.Resize(detail::GetUDDim(dim_x, k));
-    auto* u_data = dev_ctx.template Alloc<T>(&U);
-    // auto* u_data =
-    //     U.mutable_data<T>(detail::GetUDDim(dim_x, k), context.GetPlace());
-    // auto* vh_data =
-    //     VH.mutable_data<T>(detail::GetVHDDim(dim_x, k), context.GetPlace());
     VH.Resize(detail::GetVHDDim(dim_x, k));
+    auto* u_data = dev_ctx.template Alloc<T>(&U);
     auto* vh_data = dev_ctx.template Alloc<T>(&VH);
     GesvdjBatched<T>(dev_ctx,
                      batches,
@@ -380,31 +372,26 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                      1);
   }
 
-  std::vector<int> max_eigenvalue_shape =
-      phi::vectorize<int>(detail::RemoveLastDim(eigenvalue_tensor.dims()));
   DenseTensor max_eigenvalue_tensor;
-  //    = dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
+  dev_ctx.template Alloc<T>(&max_eigenvalue_tensor);
+  max_eigenvalue_tensor.Resize(detail::RemoveLastDim(eigenvalue_tensor.dims()));
+
+  funcs::TensorReduceImpl<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
+      dev_ctx,
+      eigenvalue_tensor,
+      &max_eigenvalue_tensor,
+      kps::IdentityFunctor<T>(),
+      std::vector<int>{-1},
+      dev_ctx.stream());
   DenseTensor temp_rtol_tensor;
   paddle::framework::TensorFromVector<T>(
       std::vector<T>{rtol_T}, dev_ctx, &temp_rtol_tensor);
 
   DenseTensor rtol_tensor =
       phi::Multiply<T>(dev_ctx, temp_rtol_tensor, max_eigenvalue_tensor);
-  //   DenseTensor rtol_tensor = dito_T.Mul(temp_rtol_tensor,
-  //   max_eigenvalue_tensor);
   DenseTensor tol_tensor;
-  // tol_tensor.mutable_data<T>(dim_out, context.GetPlace());
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<T>(&tol_tensor);
-
-  // ElementwiseComputeEx<GreaterElementFunctor<T>, phi::CUDADeviceContext, T,
-  // T>(
-  //     context,
-  //     atol_tensor,
-  //     &rtol_tensor,
-  //     -1,
-  //     GreaterElementFunctor<T>(),
-  //     &tol_tensor);
 
   funcs::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
       dev_ctx,
@@ -415,14 +402,11 @@ void MatrixRankTolKernel(const Context& dev_ctx,
       &tol_tensor);
 
   tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
-
   DenseTensor compare_result;
   compare_result.Resize(detail::NewAxisDim(dim_out, k));
-  dev_ctx.template Alloc<T>(&compare_result);
-  // compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
-  //                                   context.GetPlace());
-  int axis = -1;
+  dev_ctx.template Alloc<int64_t>(&compare_result);
 
+  int axis = -1;
   funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int64_t>(
       dev_ctx,
       eigenvalue_tensor,
@@ -431,17 +415,22 @@ void MatrixRankTolKernel(const Context& dev_ctx,
       funcs::GreaterThanFunctor<T, int64_t>(),
       &compare_result);
 
-  std::vector<int64_t> result_shape = phi::vectorize<int64_t>(dim_out);
-  DenseTensor result;
-  funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      dev_ctx,
-      compare_result,
-      &result,
-      kps::IdentityFunctor<T>(),
-      result_shape,
-      dev_ctx.stream());
+  //   DenseTensor result;
+  //   result.Resize(dim_out);
+  //   dev_ctx.template Alloc<T>(&result);
+  DenseTensor result = phi::Sum<T>(dev_ctx,
+                                   compare_result,
+                                   std::vector<int64_t>{-1},
+                                   compare_result.type(),
+                                   false);
+  //   funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+  //       dev_ctx,
+  //       compare_result,
+  //       &result,
+  //       kps::IdentityFunctor<T>(),
+  //       std::vector<int>{-1},
+  //       dev_ctx.stream());
 
-  //   DenseTensor result = dito_int.ReduceSum(compare_result, result_shape);
   out->ShareDataWith(result);
 }
 

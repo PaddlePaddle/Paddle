@@ -24,10 +24,9 @@ namespace phi {
 template <typename T, typename Context>
 void MatrixRankKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const Scalar& atol_tensor,
-                      bool hermitian,
-                      bool use_default_tol,
                       float tol,
+                      bool use_default_tol,
+                      bool hermitian,
                       DenseTensor* out);
 
 }  // namespace phi
