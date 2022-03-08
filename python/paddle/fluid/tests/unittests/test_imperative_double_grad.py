@@ -122,7 +122,7 @@ class TestDygraphDoubleGrad(TestCase):
             allow_unused=allow_unused)
 
     @dygraph_guard
-    def test_exception(self):
+    def func_exception(self):
         with self.assertRaises(AssertionError):
             self.grad(None, None)
 
@@ -150,6 +150,11 @@ class TestDygraphDoubleGrad(TestCase):
 
         with self.assertRaises(AssertionError):
             self.grad([random_var(shape)], [random_var(shape)], no_grad_vars=1)
+
+    def test_exception(self):
+        with _test_eager_guard():
+            self.func_exception()
+        self.func_exception()
 
     @dygraph_guard
     def test_simple_example(self):
