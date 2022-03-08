@@ -139,7 +139,7 @@ void TopkKernel(const Context& dev_ctx,
   }
 
   int k = k_scalar.to<int>();
-  if (k_scalar.is_from_tensor_) {
+  if (k_scalar.FromTensor()) {
     auto out_dims = out->dims();
     // accroding to axis to set K value in the dim
     out_dims[axis] = k;

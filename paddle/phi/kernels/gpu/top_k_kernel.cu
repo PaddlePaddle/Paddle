@@ -52,7 +52,7 @@ void TopkKernel(const Context& dev_ctx,
   if (axis < 0) axis += in_dims.size();
 
   int k = k_scalar.to<int>();
-  if (k_scalar.is_from_tensor_) {
+  if (k_scalar.FromTensor()) {
     phi::DDim out_dims = out->dims();
     out_dims[axis] = k;
     out->Resize(out_dims);
