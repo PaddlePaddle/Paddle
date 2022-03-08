@@ -17,10 +17,15 @@
 namespace phi {
 
 KernelSignature TopkOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("top_k",
-                         {"X", "K"},
-                         {"k", "axis", "largest", "sorted"},
-                         {"Out", "Indices"});
+  if (ctx.HasInput("K") {
+    return KernelSignature(
+        "top_k", {"X"}, {"K", "axis", "largest", "sorted"}, {"Out", "Indices"});
+
+  } else {
+    return KernelSignature(
+        "top_k", {"X"}, {"k", "axis", "largest", "sorted"}, {"Out", "Indices"});
+
+  }
 }
 
 KernelSignature TopkGradOpArgumentMapping(const ArgumentMappingContext& ctx) {

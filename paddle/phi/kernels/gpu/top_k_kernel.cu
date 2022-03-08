@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/funcs/transpose.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -39,8 +39,7 @@ namespace ops = paddle::operators;
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                paddle::optional<const DenseTensor&> k_t,
-                int k,
+                const Scalar& k_scalar,
                 int axis,
                 bool largest,
                 bool sorted,
@@ -52,10 +51,8 @@ void TopkKernel(const Context& dev_ctx,
   // calcluate the real axis
   if (axis < 0) axis += in_dims.size();
 
-  if (k_t.is_initialized()) {
-    DenseTensor k_host;
-    Copy(dev_ctx, *(k_t.get_ptr()), CPUPlace(), false, &k_host);
-    k = k_host.data<int>()[0];
+  int k = k_scalar.to<int>();
+  if (k_scalar.is_from_tensor_) {
     phi::DDim out_dims = out->dims();
     out_dims[axis] = k;
     out->Resize(out_dims);

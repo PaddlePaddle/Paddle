@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/transpose.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -123,8 +123,7 @@ static void FullTopK(Type input_height,
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                paddle::optional<const DenseTensor&> k_t,
-                int k,
+                const Scalar& k_scalar,
                 int axis,
                 bool largest,
                 bool sorted,
@@ -139,9 +138,8 @@ void TopkKernel(const Context& dev_ctx,
     axis += in_dims.size();
   }
 
-  // if K tensor is not null, will the use K tesnor as k
-  if (k_t.is_initialized()) {
-    k = (k_t.get_ptr())->data<int>()[0];
+  int k = k_scalar.to<int>();
+  if (k_scalar.is_from_tensor_) {
     auto out_dims = out->dims();
     // accroding to axis to set K value in the dim
     out_dims[axis] = k;

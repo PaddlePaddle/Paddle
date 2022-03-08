@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -21,8 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                paddle::optional<const DenseTensor&> k_t,
-                int k,
+                const Scalar& k_scalar,
                 int axis,
                 bool largest,
                 bool sorted,
