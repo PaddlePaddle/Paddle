@@ -235,6 +235,7 @@ void LinspaceInferMeta(const MetaTensor& start,
                                    "but received input shape is [%s].",
                                    step_dims));
   out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(start.dtype());
 }
 
 }  // namespace phi

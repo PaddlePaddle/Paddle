@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/funcs/data_transform.h"
+#include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {

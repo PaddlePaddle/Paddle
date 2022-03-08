@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/data_transform.h"
+#include "paddle/phi/kernels/funcs/data_type_transform.h"
 
 namespace phi {
 
