@@ -433,8 +433,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
 def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
 
-    assert Weight_var.name not in dist_op_context.already_init_sync_vars, "{} is in {}.".format(
-        Weight_var.name, dist_op_context.already_init_sync_vars)
+    if Weight_var.name in dist_op_context.already_init_sync_vars:
+        return
     assert startup_block.has_var(Weight_var.name)
     dist_op_context.already_init_sync_vars.add(Weight_var.name)
     param = startup_block.var(Weight_var.name)
@@ -819,6 +819,8 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                                 out_var_dist_attr)
 
         intermediate_var_0 = main_block.create_var(
+            name=unique_name.generate_with_ignorable_key(".".join(
+                ["c_allreduce_sum", 'tmp'])),
             shape=Out_var.shape,
             dtype=Out_var.dtype,
             type=Out_var.type,
@@ -1323,6 +1325,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                                 out_var_dist_attr)
 
         intermediate_var_0 = main_block.create_var(
+            name=unique_name.generate_with_ignorable_key(".".join(
+                ["c_allreduce_sum", 'tmp'])),
             shape=Out_var.shape,
             dtype=Out_var.dtype,
             type=Out_var.type,

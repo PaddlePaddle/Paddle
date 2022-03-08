@@ -88,10 +88,22 @@ class HostStatisticNode:
     def __getattr__(self, name):
         return getattr(self.hostnode, name)
 
+def traverse_tree(nodetrees):
+    results = collections.defaultdict(list)
+    for thread_id, rootnode in nodetrees.items():
+        stack = []
+        stack.append(rootnode)
+        threadlist = results[thread_id]
+        while stack:
+            current_node = stack.pop()
+            threadlist.append(current_node)
+            for childnode in current_node.children_node:
+                stack.append(childnode)
+    return results
 
-def warp_tree(nodetrees):
+def wrap_tree(nodetrees):
     '''
-    Using HostStatisticNode to warp original profiler result tree, and calculate node statistic metrics.
+    Using HostStatisticNode to wrap original profiler result tree, and calculate node statistic metrics.
     '''
     node_statistic_tree = {}
     results = collections.defaultdict(list)
@@ -351,7 +363,7 @@ class EventSummary:
         r"""
         Analysis operator event in the nodetress.
         """
-        node_statistic_trees, thread2host_statistic_nodes = warp_tree(nodetrees)
+        node_statistic_trees, thread2host_statistic_nodes = wrap_tree(nodetrees)
         for threadid, host_statistic_nodes in thread2host_statistic_nodes.items(
         ):
             for host_statistic_node in host_statistic_nodes[
