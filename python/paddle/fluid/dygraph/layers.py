@@ -540,9 +540,8 @@ class Layer(object):
 
         """
         ret = [
-            param
-            for _, param in self.named_parameters(
-                include_sublayers=include_sublayers)
+            param for _, param in
+            self.named_parameters(include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -797,9 +796,8 @@ class Layer(object):
 
         """
         ret = [
-            buffer
-            for _, buffer in self.named_buffers(
-                include_sublayers=include_sublayers)
+            buffer for _, buffer in
+            self.named_buffers(include_sublayers=include_sublayers)
         ]
         return ret
 
@@ -904,7 +902,7 @@ class Layer(object):
                         self._parameters.values())
 
             self._built = True
-     
+
         with profiler.RecordEvent(self.full_name(),
                                   profiler.TracerEventType.Forward):
             outputs = self.forward(*inputs, **kwargs)
