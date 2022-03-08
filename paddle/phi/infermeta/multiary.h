@@ -47,6 +47,10 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void StackInferMeta(const std::vector<MetaTensor*>& x,
+                    int axis,
+                    MetaTensor* out);
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,

@@ -369,6 +369,52 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void StackInferMeta(const std::vector<MetaTensor*>& x,
+                    int axis,
+                    MetaTensor* out) {
+  PADDLE_ENFORCE_GT(x.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "Number of Inputs(x) must be larger than 0, but"
+                        " received value is:%d.",
+                        x.size()));
+  const auto& input_dims = GetMetaTensorsDim(x);
+  for (size_t i = 1; i < input_dims.size(); ++i) {
+    PADDLE_ENFORCE_EQ(input_dims[i],
+                      input_dims[0],
+                      phi::errors::InvalidArgument(
+                          "Dims of all Inputs(X) must be the same, but"
+                          " received input %d dim is:%d not equal to input 0"
+                          " dim:%d.",
+                          i,
+                          input_dims[i],
+                          input_dims[0]));
+  }
+  int rank = input_dims[0].size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -(rank + 1),
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d, "
+          "but received axis is:%d.",
+          rank,
+          axis));
+  PADDLE_ENFORCE_LT(
+      axis,
+      rank + 1,
+      phi::errors::InvalidArgument(
+          "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d, "
+          "but received axis is:%d",
+          rank,
+          axis));
+  if (axis < 0) axis += (rank + 1);
+  auto vec = phi::vectorize<int>(input_dims[0]);
+  vec.insert(vec.begin() + axis, input_dims.size());
+  out->set_dims(phi::make_ddim(vec));
+  out->set_dtype(x.at(0)->dtype());
+  out->share_lod(*x.at(0));
+}
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,

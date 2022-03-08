@@ -137,6 +137,12 @@ void SplitInferMeta(const MetaTensor& x_meta,
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor>* outs);
+
+void UnStackInferMeta(const MetaTensor& x,
+                      int axis,
+                      int num,
+                      std::vector<MetaTensor*> outs);
+
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 

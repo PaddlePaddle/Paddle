@@ -339,4 +339,54 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
     dst_count->set_dtype(DataType::INT32);
   }
 }
+
+void RangeInferMeta(const MetaTensor& Start,
+                    const MetaTensor& End,
+                    const MetaTensor& Step,
+                    MetaTensor* out) {
+  auto start_dims = Start.dims();
+  auto end_dims = End.dims();
+  auto step_dims = Step.dims();
+  PADDLE_ENFORCE_EQ(
+      start_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The dim of the shape of Input(Start) should be 1, but got %d",
+          start_dims.size()));
+
+  PADDLE_ENFORCE_EQ(start_dims[0],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The first dim of the shape of Input(Start) should "
+                        "be 1, but got %d",
+                        start_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      end_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The dim of the shape of Input(End) should be 1, but got %d",
+          end_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      end_dims[0],
+      1,
+      phi::errors::InvalidArgument("The first dim of the shape of "
+                                   "Input(End) should be 1, but got %d",
+                                   end_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      step_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The dim of the shape of Input(Step) should be 1, but got %d",
+          step_dims.size()));
+
+  PADDLE_ENFORCE_EQ(step_dims[0],
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The first dim of the shape of Input(Step) should "
+                        "be 1, but got %d",
+                        step_dims[0]));
+  out->set_dims({-1});
+}
+
 }  // namespace phi
