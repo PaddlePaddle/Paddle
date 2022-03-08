@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/metrics/accuracy_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -123,13 +123,10 @@ with the input Out(Inference).
 }  // namespace operators
 }  // namespace paddle
 
+// FIXME(typhoonzero): types of T is for infernece data.
+// label data is always int.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-// FIXME(typhoonzero): types of T is for infernece data.
-// label data is always int.
-REGISTER_OP_CPU_KERNEL(accuracy,
-                       ops::AccuracyKernel<paddle::platform::CPUPlace, float>,
-                       ops::AccuracyKernel<paddle::platform::CPUPlace, double>);

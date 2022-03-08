@@ -117,7 +117,7 @@ endif()
 cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 
 # seperate init from device_context to avoid cycle dependencies
-cc_library(init SRCS init.cc DEPS device_context phi_custom_kernel)
+cc_library(init SRCS init.cc DEPS device_context custom_kernel)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
