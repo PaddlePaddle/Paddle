@@ -69,7 +69,7 @@ class TestFcFusePass(PassAutoScanTest):
                         return True
                 return False
 
-            self.add_skip_case(
+            self.add_ignore_check_case(
                 teller3, SkipReasons.TRT_NOT_SUPPORT,
                 "Trt may crash when inputs' dims>=6 under trt8.0 ")
 
