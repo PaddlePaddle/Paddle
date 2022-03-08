@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/string_tensor.h"
-#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 
 namespace phi {
 

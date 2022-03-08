@@ -227,7 +227,7 @@ HOSTDEVICE inline pstring& pstring::operator=(pstring&& str) {
 // Comparison
 
 HOSTDEVICE inline int pstring::compare(const char* str, size_t len) const {
-  int ret = PD_Memcmp(data(), str, std::min(len, size()));
+  int ret = PD_Memcmp(data(), str, (len < size()) ? len : size());
 
   if (ret < 0) return -1;
   if (ret > 0) return +1;
