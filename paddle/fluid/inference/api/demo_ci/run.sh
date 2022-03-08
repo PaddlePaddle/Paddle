@@ -225,7 +225,8 @@ for WITH_STATIC_LIB in ON OFF; do
         -DWITH_GPU=$TEST_GPU_CPU \
         -DWITH_STATIC_LIB=$WITH_STATIC_LIB \
         -DUSE_TENSORRT=$USE_TENSORRT \
-        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
+        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
       make -j$(nproc)
       ./trt_mobilenet_demo \
         --modeldir=$DATA_DIR/mobilenet/model \
