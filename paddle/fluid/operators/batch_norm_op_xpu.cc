@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,23 +38,15 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
     bool global_stats = test_mode || use_global_stats;
     const auto &data_layout_str = ctx.Attr<std::string>("data_layout");
     const auto data_layout = framework::StringToDataLayout(data_layout_str);
-    PADDLE_ENFORCE_EQ(data_layout, DataLayout::kNCHW,
-                      platform::errors::InvalidArgument(
-                          "The 'data_layout' attribute must be NCHW. But "
-                          "recevived 'data_layout' is [%s].",
-                          data_layout_str));
-
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4,
-                      platform::errors::InvalidArgument(
-                          "The input tensor X's dimension must equal to 4. But "
-                          "received X's shape = [%s], X's dimension = [%d].",
-                          x_dims, x_dims.size()));
+    int temp = x_dims[3];
+    temp = (x_dims.size() != 4) ? 1 : temp;
+    bool is_nchw = (data_layout == DataLayout::kNCHW);
     const int N = x_dims[0];
-    const int C = x_dims[1];
-    const int H = x_dims[2];
-    const int W = x_dims[3];
+    const int C = is_nchw ? x_dims[1] : temp;
+    const int H = is_nchw ? x_dims[2] : x_dims[1];
+    const int W = is_nchw ? temp : x_dims[2];
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
     const auto *x_data = x->data<T>();
@@ -87,18 +79,31 @@ class BatchNormXPUKernel : public framework::OpKernel<T> {
       if (ctx.HasInput("MomentumTensor")) {
         const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
         Tensor mom_cpu;
-        TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
+        paddle::framework::TensorCopySync(*mom_tensor, platform::CPUPlace(),
+                                          &mom_cpu);
         momentum = mom_tensor->data<float>()[0];
       }
-
-      int r = xpu::batch_norm<T>(dev_ctx.x_context(), x_data, y_data, N, C, H,
-                                 W, epsilon, momentum, scale_data, bias_data,
-                                 saved_mean_data, saved_variance_data,
-                                 mean_out_data, variance_out_data, true);
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::External(
-                            "The batch_norm XPU API return wrong value[%d %s]",
-                            r, XPUAPIErrorMsg[r]));
+      if (C == 1) {
+        int r = xpu::batch_norm<T>(dev_ctx.x_context(), x_data, y_data, N, 1, H,
+                                   W, epsilon, momentum, scale_data, bias_data,
+                                   saved_mean_data, saved_variance_data,
+                                   mean_out_data, variance_out_data, true);
+        PADDLE_ENFORCE_EQ(
+            r, xpu::Error_t::SUCCESS,
+            platform::errors::External(
+                "The batch_norm XPU API return wrong value[%d %s]", r,
+                XPUAPIErrorMsg[r]));
+      } else {
+        int r = xpu::batch_norm<T>(dev_ctx.x_context(), x_data, y_data, N, C, H,
+                                   W, epsilon, momentum, scale_data, bias_data,
+                                   saved_mean_data, saved_variance_data,
+                                   mean_out_data, variance_out_data, is_nchw);
+        PADDLE_ENFORCE_EQ(
+            r, xpu::Error_t::SUCCESS,
+            platform::errors::External(
+                "The batch_norm XPU API return wrong value[%d %s]", r,
+                XPUAPIErrorMsg[r]));
+      }
     } else {
       const auto *mean = ctx.Input<Tensor>("Mean");
       const auto *variance = ctx.Input<Tensor>("Variance");
