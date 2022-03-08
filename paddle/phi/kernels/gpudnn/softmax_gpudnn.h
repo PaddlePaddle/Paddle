@@ -355,7 +355,8 @@ __global__ void WarpSoftmaxForward(T* softmax,
       kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, UnaryLogFunctor<AccT>>(
           &srcdata[i][0][0], &srcdata[i][0][0], UnaryLogFunctor<AccT>());
       kps::ElementwiseUnary<AccT, T, kVItem, 1, 1, UnarySubFunctor<AccT>>(
-          &out_tmp[i][0][0], &srcdata[i][0][0],
+          &out_tmp[i][0][0],
+          &srcdata[i][0][0],
           UnarySubFunctor<AccT>(std::log(sum[i])));
     } else {
       kps::ElementwiseUnary<AccT, T, kVItem, 1, 1, UnaryDivFunctor<AccT>>(
@@ -443,13 +444,21 @@ __global__ void WarpSoftmaxBackward(T* dst,
   AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
   AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
   if (LogMode) {
-    kps::Reduce<AccT, kVItem, kBatchSize, 1, kps::AddFunctor<AccT>,
+    kps::Reduce<AccT,
+                kVItem,
+                kBatchSize,
+                1,
+                kps::AddFunctor<AccT>,
                 kps::details::ReduceMode::kLocalMode>(
         &sum[0], &grad_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
   } else {
     kps::ElementwiseBinary<AccT, AccT, kStep, 1, 1, kps::MulFunctor<AccT>>(
         &sum_tmp[0][0][0], &gradptr[0], &srcptr[0], kps::MulFunctor<AccT>());
-    kps::Reduce<AccT, kVItem, kBatchSize, 1, kps::AddFunctor<AccT>,
+    kps::Reduce<AccT,
+                kVItem,
+                kBatchSize,
+                1,
+                kps::AddFunctor<AccT>,
                 kps::details::ReduceMode::kLocalMode>(
         &sum[0], &sum_tmp[0][0][0], kps::AddFunctor<AccT>(), true);
   }
@@ -467,13 +476,17 @@ __global__ void WarpSoftmaxBackward(T* dst,
       kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, ExpMulFunctor<AccT>>(
           &out[i][0][0], &srcptr[0], ExpMulFunctor<AccT>(sum[i]));
       kps::ElementwiseBinary<AccT, T, kVItem, 1, 1, kps::SubFunctor<AccT>>(
-          &out_tmp[i][0][0], &gradptr[0], &out[i][0][0],
+          &out_tmp[i][0][0],
+          &gradptr[0],
+          &out[i][0][0],
           kps::SubFunctor<AccT>());
     } else {
       kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, UnarySubFunctor<AccT>>(
           &out[i][0][0], &gradptr[0], UnarySubFunctor<AccT>(sum[i]));
       kps::ElementwiseBinary<AccT, T, kVItem, 1, 1, kps::MulFunctor<AccT>>(
-          &out_tmp[i][0][0], &srcptr[0], &out[i][0][0],
+          &out_tmp[i][0][0],
+          &srcptr[0],
+          &out[i][0][0],
           kps::MulFunctor<AccT>());
     }
     VecT* dst_v = reinterpret_cast<VecT*>(&dst[(first_batch + i) * stride]);
@@ -656,11 +669,16 @@ __global__ void NormalSoftmaxForward(
   }
 }
 
-template <typename T, typename AccT,
-          template <typename, typename> class Functor, bool LogMode>
-__global__ void NormalSoftmaxBackward(T* input_grad, const T* output_grad,
-                                      const T* output, int high_dim,
-                                      int mid_dim, int low_dim) {
+template <typename T,
+          typename AccT,
+          template <typename, typename> class Functor,
+          bool LogMode>
+__global__ void NormalSoftmaxBackward(T* input_grad,
+                                      const T* output_grad,
+                                      const T* output,
+                                      int high_dim,
+                                      int mid_dim,
+                                      int low_dim) {
   using kMode = kps::details::ReduceMode;
   const int high_stride = mid_dim * low_dim;
   const int mid_stride = low_dim;
@@ -737,14 +755,26 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
   dim3 grid, block;
   GetLaunchConfig(high_dim, mid_dim, low_dim, &grid, &block);
   if (LogMode) {
-    NormalSoftmaxBackward<T, AccT, LogSoftmaxBackwardFunctor,
+    NormalSoftmaxBackward<T,
+                          AccT,
+                          LogSoftmaxBackwardFunctor,
                           LogMode><<<grid, block, 0, dev_ctx.stream()>>>(
-        input_grad_data, output_grad_data, output_data, high_dim, mid_dim,
+        input_grad_data,
+        output_grad_data,
+        output_data,
+        high_dim,
+        mid_dim,
         low_dim);
   } else {
-    NormalSoftmaxBackward<T, AccT, SoftmaxBackwardFunctor,
+    NormalSoftmaxBackward<T,
+                          AccT,
+                          SoftmaxBackwardFunctor,
                           LogMode><<<grid, block, 0, dev_ctx.stream()>>>(
-        input_grad_data, output_grad_data, output_data, high_dim, mid_dim,
+        input_grad_data,
+        output_grad_data,
+        output_data,
+        high_dim,
+        mid_dim,
         low_dim);
   }
 }
@@ -1037,35 +1067,5 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
 #endif
   }
 }
-
-template <typename T, bool LogMode = false>
-class SoftmaxCUDNNKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
-
-    int input_axis = ctx.Attr<int>("axis");
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    SoftmaxForwardCUDAKernelDriver<T, LogMode>(dev_ctx, *x, input_axis, out);
-  }
-};
-
-template <typename T, bool LogMode = false>
-class SoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    dx->mutable_data<T>(ctx.GetPlace());
-
-    int input_axis = ctx.Attr<int>("axis");
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    SoftmaxBackwardCUDAKernelDriver<T, LogMode>(dev_ctx, *out, *dout,
-                                                input_axis, dx);
-  }
-};
 
 }  // namespace phi
