@@ -89,18 +89,20 @@ class BaseAPI(object):
         attr_types_map = {
             'ScalarArray': 'const ScalarArray&',
             'Scalar': 'const Scalar&',
+            'uint8': 'uint8_t',
             'int': 'int',
-            'int32_t': 'int32_t',
-            'int64_t': 'int64_t',
+            'int32': 'int32_t',
+            'int64': 'int64_t',
             'long': 'long',
             'size_t': 'size_t',
             'float': 'float',
             'double': 'double',
             'bool': 'bool',
+            'str': 'const std::string&',
             'Backend': 'Backend',
             'DataLayout': 'DataLayout',
             'DataType': 'DataType',
-            'int64_t[]': 'const std::vector<int64_t>&',
+            'int64[]': 'const std::vector<int64_t>&',
             'int[]': 'const std::vector<int>&',
             'long[]': 'const std::vector<int64_t>&'
         }
@@ -110,8 +112,8 @@ class BaseAPI(object):
             'ScalarArray': 'const paddle::optional<ScalarArray>&',
             'Scalar': 'const paddle::optional<Scalar>&',
             'int': 'paddle::optional<int>',
-            'int32_t': 'paddle::optional<int32_t>',
-            'int64_t': 'paddle::optional<int64_t>',
+            'int32': 'paddle::optional<int32_t>',
+            'int64': 'paddle::optional<int64_t>',
             'size_t': 'paddle::optional<size_t>',
             'float': 'paddle::optional<float>',
             'double': 'paddle::optional<double>',
@@ -119,7 +121,7 @@ class BaseAPI(object):
             'Backend': 'paddle::optional<Backend>',
             'DataLayout': 'paddle::optional<DataLayout>',
             'DataType': 'paddle::optional<DataType>',
-            'int64_t[]': 'paddle::optional<std::vector<int64_t>>',
+            'int64[]': 'paddle::optional<std::vector<int64_t>>',
             'int[]': 'paddle::optional<std::vector<int>>'
         }
 
