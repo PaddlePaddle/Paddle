@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,17 +35,23 @@ class TestBase(IPUOpTest):
         return True
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {"x": data.astype(np.float32)}
-        self.feed_fp16 = {"x": data.astype(np.float16)}
+        x = np.array([[[1], [3]], [[2], [4]], [[4], [127]]])
+        self.feed_cpu = {"x": x.astype(np.int64)}
+        self.feed_ipu = {"x": x.astype(np.int32)}
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
-        self.feed_list = list(self.feed_fp32.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
+        self.feed_shape = [x.shape for x in self.feed_cpu.values()]
+        self.feed_list = list(self.feed_cpu.keys())
+        self.feed_dtype = [x.dtype for x in self.feed_cpu.values()]
 
     def set_op_attrs(self):
-        self.attrs = {"perm": [0, 2, 3, 1]}
+        self.attrs = {
+            "num_embeddings": 128,
+            "embedding_dim": 16,
+            "sparse": False,
+            "padding_idx": -1,
+            "weight_attr": None
+        }
 
     def _test_base(self, exec_mode):
         scope = paddle.static.Scope()
@@ -59,11 +65,18 @@ class TestBase(IPUOpTest):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype='float32')
+                    dtype='int64')
 
-                out = paddle.fluid.layers.transpose(x, **self.attrs)
+                embedding = paddle.nn.Embedding(**self.attrs)
+                out = embedding(x)
 
-            fetch_list = [out.name]
+                if self.is_training:
+                    loss = paddle.mean(out)
+                    adam = paddle.optimizer.Adam(learning_rate=1e-2)
+                    adam.minimize(loss)
+                    fetch_list = [loss.name]
+                else:
+                    fetch_list = [out.name]
 
             if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
@@ -85,36 +98,43 @@ class TestBase(IPUOpTest):
             else:
                 program = main_prog
 
-            feed = self.feed_fp32
-            if exec_mode > ExecutionMode.IPU_FP32:
-                feed = self.feed_fp16
+            feed = self.feed_cpu
+            if exec_mode > ExecutionMode.CPU_FP32:
+                feed = self.feed_ipu
 
-            result = exe.run(program, feed=feed, fetch_list=fetch_list)
-            return result[0]
+            if self.is_training:
+                result = []
+                for _ in range(self.epoch):
+                    loss_res = exe.run(program,
+                                       feed=feed,
+                                       fetch_list=fetch_list)
+                    result.append(loss_res[0])
+                return np.array(result)
+            else:
+                result = exe.run(program, feed=feed, fetch_list=fetch_list)
+                return result[0]
 
     def test(self):
         output_dict = {}
         for mode in ExecutionMode:
-            if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
+            if mode > ExecutionMode.IPU_FP32 and (not self.fp16_enabled or
+                                                  self.is_training):
                 break
             output_dict[mode] = self._test_base(mode).flatten()
 
-        self.check(output_dict, check_shape=True)
+        self.check(output_dict)
 
 
-class TestCase1(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {"perm": [0, 1, 2, 3]}
+class TestTrainCase1(TestBase):
+    def set_atol(self):
+        self.atol = 1e-7
+        self.rtol = 1e-6
+        self.atol_fp16 = 1e-3
+        self.rtol_fp16 = 1e-3
 
-
-class TestCase2(TestBase):
-    def set_data_feed(self):
-        data = np.random.uniform(size=[1, 2, 3, 4, 5])
-        self.feed_fp32 = {"x": data.astype(np.float32)}
-        self.feed_fp16 = {"x": data.astype(np.float16)}
-
-    def set_op_attrs(self):
-        self.attrs = {"perm": [4, 0, 2, 3, 1]}
+    def set_training(self):
+        self.is_training = True
+        self.epoch = 10
 
 
 if __name__ == "__main__":

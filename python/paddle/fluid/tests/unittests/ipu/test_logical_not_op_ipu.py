@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,24 +28,19 @@ class TestBase(IPUOpTest):
         self.set_training()
         self.set_data_feed()
         self.set_feed_attr()
-        self.set_op_attrs()
 
     @property
     def fp16_enabled(self):
         return True
 
     def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10])
-        self.feed_fp32 = {"x": data.astype(np.float32)}
-        self.feed_fp16 = {"x": data.astype(np.float16)}
+        data = np.random.uniform(size=[2, 20, 30528])
+        self.feed = {"in_0": data.astype('bool')}
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
-        self.feed_list = list(self.feed_fp32.keys())
-        self.feed_dtype = [x.dtype for x in self.feed_fp32.values()]
-
-    def set_op_attrs(self):
-        self.attrs = {"perm": [0, 2, 3, 1]}
+        self.feed_shape = [x.shape for x in self.feed.values()]
+        self.feed_list = list(self.feed.keys())
+        self.feed_dtype = [x.dtype for x in self.feed.values()]
 
     def _test_base(self, exec_mode):
         scope = paddle.static.Scope()
@@ -59,9 +54,9 @@ class TestBase(IPUOpTest):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype='float32')
+                    dtype="bool")
 
-                out = paddle.fluid.layers.transpose(x, **self.attrs)
+                out = paddle.fluid.layers.logical_not(x)
 
             fetch_list = [out.name]
 
@@ -85,36 +80,17 @@ class TestBase(IPUOpTest):
             else:
                 program = main_prog
 
-            feed = self.feed_fp32
-            if exec_mode > ExecutionMode.IPU_FP32:
-                feed = self.feed_fp16
-
-            result = exe.run(program, feed=feed, fetch_list=fetch_list)
+            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
             return result[0]
 
-    def test(self):
+    def test_base(self):
         output_dict = {}
         for mode in ExecutionMode:
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
-            output_dict[mode] = self._test_base(mode).flatten()
+            output_dict[mode] = self._test_base(mode).astype(np.int32)
 
         self.check(output_dict, check_shape=True)
-
-
-class TestCase1(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {"perm": [0, 1, 2, 3]}
-
-
-class TestCase2(TestBase):
-    def set_data_feed(self):
-        data = np.random.uniform(size=[1, 2, 3, 4, 5])
-        self.feed_fp32 = {"x": data.astype(np.float32)}
-        self.feed_fp16 = {"x": data.astype(np.float16)}
-
-    def set_op_attrs(self):
-        self.attrs = {"perm": [4, 0, 2, 3, 1]}
 
 
 if __name__ == "__main__":
