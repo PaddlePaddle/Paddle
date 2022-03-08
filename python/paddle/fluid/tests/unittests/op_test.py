@@ -1406,10 +1406,6 @@ class OpTest(unittest.TestCase):
                                 lambda x, y: x * y, expect_t.shape, 1) == 0:
                         pass
                     else:
-                        print("A", imperative_actual_t.shape,
-                              imperative_actual_t)
-                        print("B", expect_t.shape, expect_t)
-                        print("res", np.allclose(imperative_actual_t, expect_t))
                         self.assertTrue(
                             np.allclose(
                                 imperative_actual_t,

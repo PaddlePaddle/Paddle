@@ -1845,6 +1845,15 @@ static std::string GenerateSingleOpBase(
   const char* ATTRS_TEMPLATE = "  auto& %s = this->attr_map_;\n";
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
+  if (fwd_op_type == "cast") {
+    // swtich in out dtype
+    const char* CAST_GRAD =
+        "  auto temp_type = %s[\"in_dtype\"];\n"
+        "  %s[\"in_dtype\"] = %s[\"out_dtype\"];\n"
+        "  %s[\"out_dtype\"] = temp_type;\n";
+    grad_attrs_str += paddle::string::Sprintf(CAST_GRAD, attrs_name, attrs_name,
+                                              attrs_name, attrs_name);
+  }
   for (const auto& iter : grad_attrs) {
     if (IgnoreGradAttribute(fwd_op_type, iter.first)) continue;
     std::pair<std::string, std::string> type_val =
