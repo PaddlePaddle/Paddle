@@ -65,8 +65,8 @@ class LinspaceOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(linspace, LinspaceInferShapeFunctor,
-                            PT_INFER_META(phi::LinspaceInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(linspace, LinspaceInferShapeFunctor,
+                            PD_INFER_META(phi::LinspaceInferMeta));
 REGISTER_OPERATOR(
     linspace, ops::LinspaceOp, ops::LinspaceOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
