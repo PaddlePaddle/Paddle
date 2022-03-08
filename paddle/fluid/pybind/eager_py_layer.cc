@@ -311,6 +311,8 @@ PyObject* pylayer_method_apply(PyObject* cls, PyObject* args,
       }
     }
 
+    // TODO(pangyoki) add inplace, inplaced tensor is ctx->dirty_tensors
+
     auto grad_node = std::make_shared<egr::GradNodePyLayer>(
         reinterpret_cast<PyObject*>(ctx), outputs_autograd_meta.size(),
         inputs_autograd_meta.size());
