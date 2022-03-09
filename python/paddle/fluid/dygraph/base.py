@@ -621,7 +621,8 @@ def grad(outputs,
         for var in no_grad_vars:
             if core._in_eager_mode():
                 assert isinstance(
-                    var, core.Tensor), "no_grad_vars can only contains Tensor"
+                    var,
+                    core.eager.Tensor), "no_grad_vars can only contains Tensor"
             else:
                 assert isinstance(
                     var,
