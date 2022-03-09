@@ -115,8 +115,8 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
     phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs, div_functor);
 
     delete norm_tensor;
-    delete counts_tensor;
   }
+  delete counts_tensor;
 }
 
 }  // namespace phi
