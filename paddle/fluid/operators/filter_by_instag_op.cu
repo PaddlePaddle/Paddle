@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
+// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
+
+#if defined(PADDLE_WITH_CUDA)
 #include <cooperative_groups.h>
 #endif
 
@@ -33,7 +35,7 @@
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
 namespace cg = cooperative_groups;
 #endif
 
@@ -50,7 +52,7 @@ using Vector = framework::Vector<T>;
 #define WARP_SIZE 32
 #define MAX_WARP_NUM 32
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
 
 template <typename T>
 __global__ void filter_copy_fuse_kernel(
@@ -94,27 +96,29 @@ __global__ void filter_copy_fuse_kernel(
 
   if (N < ins_end) ins_end = N;
 
-  if (!x1_lods_filled) {
-    for (int p = ins_start; p < ins_end; p++) {
-      x1_lods_data[p] = p;
+  /*
+    if (!x1_lods_filled) {
+      for (int p = ins_start; p < ins_end; p++) {
+        x1_lods_data[p] = p;
+      }
+      if (idx == 0) {
+        x1_lods_data[N] = N;
+      }
     }
-    if (idx == 0) {
-      x1_lods_data[N] = N;
-    }
-  }
 
-  if (!x2_lods_filled) {
-    for (int p = ins_start; p < ins_end; p++) {
-      x2_lods_data[p] = p;
+    if (!x2_lods_filled) {
+      for (int p = ins_start; p < ins_end; p++) {
+        x2_lods_data[p] = p;
+      }
+      if (idx == 0) {
+        x2_lods_data[N] = N;
+      }
     }
-    if (idx == 0) {
-      x2_lods_data[N] = N;
-    }
-  }
 
-  if (!x1_lods_filled || !x2_lods_filled) {
-    b.sync();
-  }
+    if (!x1_lods_filled || !x2_lods_filled) {
+      b.sync();
+    }
+  */
 
   int flag_data[5];
   int prefix_sum_data[5];
@@ -358,7 +362,7 @@ template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
+#if defined(PADDLE_WITH_CUDA)
 
     auto gpu_place = context.GetPlace();
 
@@ -582,7 +586,7 @@ template <typename T>
 class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
+#if defined(PADDLE_WITH_CUDA)
 
     auto gpu_place = context.GetPlace();
     gpuStream_t current_stream = context.cuda_device_context().stream();
