@@ -44,19 +44,19 @@ class TestAddMMOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input', 'X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['Input', 'X', 'Y'], 'Out', check_eager=False)
 
     def test_check_grad_x(self):
-        self.check_grad(['X'], 'Out', no_grad_set=None, check_eager=True)
+        self.check_grad(['X'], 'Out', no_grad_set=None, check_eager=False)
 
     def test_check_grad_y(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=None, check_eager=True)
+        self.check_grad(['Y'], 'Out', no_grad_set=None, check_eager=False)
 
     def test_check_grad_input(self):
-        self.check_grad(['Input'], 'Out', no_grad_set=None, check_eager=True)
+        self.check_grad(['Input'], 'Out', no_grad_set=None, check_eager=False)
 
 
 class TestAddMMOpError(unittest.TestCase):
@@ -180,8 +180,8 @@ class TestAddMMOp2(TestAddMMOp):
             'Alpha': 0.1,
             'Beta': 1.0,
         }
-        self.outputs = {'Out': self.attrs['beta'] * self.inputs['Input'] + \
-                        self.attrs['alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])}
+        self.outputs = {'Out': self.attrs['Beta'] * self.inputs['Input'] + \
+                        self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])}
 
 
 class TestAddMMOp3(OpTest):

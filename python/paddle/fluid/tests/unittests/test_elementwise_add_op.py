@@ -41,7 +41,8 @@ class TestElementwiseAddOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def check_eager(self):
-        return (self.use_mkldnn == False and self.axis == -1)
+        #return (self.use_mkldnn == False and self.axis == -1)
+        return False
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -133,21 +134,21 @@ class TestBF16ElementwiseAddOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output_with_place(place, check_eager=False)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_eager=False)
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['Y'], 'Out', no_grad_set=set("X"), check_eager=True)
+            place, ['Y'], 'Out', no_grad_set=set("X"), check_eager=False)
 
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', no_grad_set=set('Y'), check_eager=True)
+            place, ['X'], 'Out', no_grad_set=set('Y'), check_eager=False)
 
 
 @skip_check_grad_ci(
@@ -598,7 +599,7 @@ class TestComplexElementwiseAddOp(OpTest):
         self.grad_y = self.grad_out
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
         self.check_grad(

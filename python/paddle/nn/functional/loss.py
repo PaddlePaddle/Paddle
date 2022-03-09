@@ -36,7 +36,7 @@ from ...static import Variable
 from paddle.utils import deprecated
 from paddle import _C_ops
 from paddle import in_dynamic_mode
-from paddle.framework import core
+from paddle.framework import core, _in_eager_mode
 
 __all__ = []
 
