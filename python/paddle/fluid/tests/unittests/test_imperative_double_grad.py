@@ -21,6 +21,7 @@ from unittest import TestCase
 import numpy as np
 import paddle.compat as cpt
 from paddle.fluid.framework import _test_eager_guard
+import paddle.fluid.core as core
 
 
 def _dygraph_guard_(func):
@@ -86,16 +87,34 @@ class TestEagerGrad(TestCase):
         # x is unused input in the graph
         self.assertEqual(dx[1], None)
 
+    def test_simple_example_eager_grad_allow_unused(self):
+        with _test_eager_guard():
+            self.func_simple_example_eager_grad_allow_unused()
+        self.func_simple_example_eager_grad_allow_unused()
+
+    def func_simple_example_eager_grad_not_allow_unused(self):
+        np.random.seed(2021)
+        paddle.set_device('cpu')
+        np_x = np.random.random((3, 3))
+        np_y = np.random.random((3, 1))
+        np_z = np.random.random((3, 1))
+        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        z = paddle.to_tensor(np_z, dtype="float64", stop_gradient=False)
+        out_z = paddle.nn.functional.sigmoid(z)
+        out = paddle.matmul(x, y)
+
         try:
+            # allow_unused is false in default
             dx = fluid.dygraph.grad(out, [x, z])
         except ValueError as e:
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("allow_unused") > 0
 
-    def test_simple_example_eager_grad_allow_unused(self):
+    def test_simple_example_eager_grad_not_allow_unused(self):
         with _test_eager_guard():
-            self.func_simple_example_eager_grad_allow_unused()
-        self.func_simple_example_eager_grad_allow_unused()
+            self.func_simple_example_eager_grad_not_allow_unused()
+        self.func_simple_example_eager_grad_not_allow_unused()
 
 
 class TestDygraphDoubleGrad(TestCase):
@@ -157,7 +176,7 @@ class TestDygraphDoubleGrad(TestCase):
         self.func_exception()
 
     @dygraph_guard
-    def test_simple_example(self):
+    def func_simple_example(self):
         x = random_var(self.shape)
         x.stop_gradient = False
         y = x + 1
@@ -169,11 +188,15 @@ class TestDygraphDoubleGrad(TestCase):
             self.assertTrue(np.all(dx.numpy() == 1))
             self.assertNotEqual(dx.stop_gradient, create_graph)
 
-            dx_mul_2, = self.grad(
-                [y, x], [x], create_graph=create_graph, retain_graph=True)
-            self.assertEqual(dx_mul_2.shape, x.shape)
-            self.assertTrue(np.all(dx_mul_2.numpy() == 2))
-            self.assertNotEqual(dx_mul_2.stop_gradient, create_graph)
+            if core._in_eager_mode():
+                # NOTE(wuweilong): when Scale GradNode's bias issue is fixed, enable this case
+                pass
+            else:
+                dx_mul_2, = self.grad(
+                    [y, x], [x], create_graph=create_graph, retain_graph=True)
+                self.assertEqual(dx_mul_2.shape, x.shape)
+                self.assertTrue(np.all(dx_mul_2.numpy() == 2))
+                self.assertNotEqual(dx_mul_2.stop_gradient, create_graph)
 
             none_grad, = self.grad(
                 [x], [y], create_graph=create_graph, allow_unused=True)
@@ -185,6 +208,42 @@ class TestDygraphDoubleGrad(TestCase):
             self.assertTrue(np.all(grad_with_none_and_not_none.numpy() == 1))
             self.assertNotEqual(grad_with_none_and_not_none.stop_gradient,
                                 create_graph)
+
+    def test_simple_example(self):
+        with _test_eager_guard():
+            self.func_simple_example()
+        self.func_simple_example()
+
+    @dygraph_guard
+    def func_example_no_grad_vars(self):
+        x = random_var(self.shape)
+        x_np = x.numpy()
+        numel = x_np.size
+        x.stop_gradient = False
+
+        y1 = fluid.layers.relu(x)
+        y2 = fluid.layers.relu(x)
+        z = y1 + y2
+        w = z * z
+
+        w_mean = fluid.layers.reduce_mean(w)
+        del y1, z, w
+
+        dx_actual, = self.grad(
+            [w_mean], [x], create_graph=True, no_grad_vars=[y2])
+
+        self.assertFalse(y2.stop_gradient)
+        self.assertFalse(dx_actual.stop_gradient)
+
+        dx_expected = (1.0 / float(numel) * (np.maximum(x_np, 0) + y2.numpy()) *
+                       (x_np > 0) * 2).astype('float32')
+
+        self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
+
+    def test_example_no_grad_vars(self):
+        with _test_eager_guard():
+            self.func_example_no_grad_vars()
+        self.func_example_no_grad_vars()
 
     @dygraph_guard
     def test_none_one_initial_gradient(self):
