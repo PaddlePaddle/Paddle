@@ -27,6 +27,7 @@ namespace phi {
 template <typename Context, typename T, int Rank>
 void ExpandAs(const Context& context,
               const DenseTensor& x,
+              const DenseTensor& y,
               const std::vector<int>& target_shape,
               DenseTensor* out) {
   auto* in0 = &x;
@@ -85,10 +86,10 @@ void ExpandAs(const Context& context,
   out->Resize(out_dims);
   context.template Alloc<T>(out);
   auto x0 = EigenTensor<T, Rank>::From(*in0, new_in_dims);
-  auto y = EigenTensor<T, Rank>::From(*out, out_dims);
+  auto y0 = EigenTensor<T, Rank>::From(*out, out_dims);
   auto& place = *context.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
-      place, y, x0, bcast_dims);
+      place, y0, x0, bcast_dims);
 }
 
 template <typename T, typename Context>
