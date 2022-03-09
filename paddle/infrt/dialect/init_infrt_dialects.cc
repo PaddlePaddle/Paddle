@@ -35,10 +35,10 @@ void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
                   dt::DTDialect,
                   mlir::pd::PaddleDialect,
 #ifdef INFRT_WITH_PHI
-                  phi::PHIDialect,
                   phi::PHIDenseTensorDialect,
                   phi::PHICPUKernelDialect,
-                  phi::PHIGPUKernelDialect
+                  phi::PHIGPUKernelDialect,
+                  phi::PHIDialect
 #endif
                   >();
 }
