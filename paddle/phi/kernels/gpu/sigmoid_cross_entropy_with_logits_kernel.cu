@@ -69,17 +69,12 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(counts_tensor);
   counts_tensor->Resize(out->dims());
 
-  int limit = out->numel();
-  int blocks = NumBlocks(limit);
-  int threads = kNumCUDAThreads;
   std::vector<const DenseTensor *> ins = {&x, &label};
   std::vector<DenseTensor *> outs = {out, counts_tensor};
   auto functor = SigmoidFwdFunctor<T>(ignore_index);
-  constexpr int Size = 2;
-  phi::funcs::ElementwiseKernel<T, decltype(functor), Size>(
+  phi::funcs::ElementwiseKernel<T, decltype(functor), 2>(
       dev_ctx, ins, &outs, functor);
   if (normalize) {
-    T *counts = dev_ctx.template Alloc<T>(counts_tensor);
     DenseTensor *norm_tensor = new DenseTensor();
     norm_tensor->Resize({sizeof(T)});
     dev_ctx.template Alloc<T>(norm_tensor);
@@ -89,13 +84,8 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
       reduce_dim.push_back(i);
     }
 
-    funcs::TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
-        dev_ctx,
-        *counts_tensor,
-        norm_tensor,
-        NonzeroFunctor<T>(),
-        reduce_dim,
-        dev_ctx.stream());
+    funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+        dev_ctx, *counts_tensor, norm_tensor, NonzeroFunctor<T>(), reduce_dim);
     T *norm = dev_ctx.template Alloc<T>(norm_tensor);
     auto norm_cpu_mem = paddle::memory::Alloc(phi::CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
@@ -114,8 +104,8 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
     phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs, div_functor);
 
     delete norm_tensor;
-    delete counts_tensor;
   }
+  delete counts_tensor;
 }
 
 }  // namespace phi

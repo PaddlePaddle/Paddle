@@ -53,6 +53,23 @@ inline HcclDataType ToHCCLDataType(framework::proto::VarType::Type type) {
   }
 }
 
+inline HcclDataType ToHCCLDataType(experimental::DataType type) {
+  if (type == experimental::DataType::FLOAT32) {
+    return HCCL_DATA_TYPE_FP32;
+  } else if (type == experimental::DataType::FLOAT16) {
+    return HCCL_DATA_TYPE_FP16;
+  } else if (type == experimental::DataType::INT64) {
+    return HCCL_DATA_TYPE_INT64;
+  } else if (type == experimental::DataType::INT32) {
+    return HCCL_DATA_TYPE_INT32;
+  } else if (type == experimental::DataType::INT8) {
+    return HCCL_DATA_TYPE_INT8;
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This datatype in hccl is not supported."));
+  }
+}
+
 // NOTE(minqiyang): according to the ncclGroupEnd documentations:
 // https://docs.nvidia.com/deeplearning/sdk/nccl-api/ncclapidoc.html,
 // ncclGroupEnd will wait for all communicators to be initialized, which will

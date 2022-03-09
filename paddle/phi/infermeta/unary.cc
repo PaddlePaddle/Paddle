@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <set>
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -153,6 +154,24 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
   out->set_layout(x.layout());
+}
+
+void CumsumInferMeta(const MetaTensor& x,
+                     int axis,
+                     bool flatten,
+                     bool exclusive,
+                     bool reverse,
+                     MetaTensor* out) {
+  auto x_dims = x.dims();
+  if (flatten) {
+    out->set_dims(phi::make_ddim({phi::product(x_dims)}));
+    out->set_dtype(x.dtype());
+  } else {
+    out->set_dims(x_dims);
+    out->set_dtype(x.dtype());
+  }
+
+  out->share_lod(x);
 }
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
@@ -307,6 +326,11 @@ void InferMetaFromVecValue(const MetaTensor& x,
   }
 }
 
+void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({1}));
+  out->set_dtype(DataType::BOOL);
+}
+
 void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
@@ -382,7 +406,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   ReshapeInferMeta(x, shape, out, config);
 }
 
-/*  Why not use ReduceInferMetaBase directly?
+/*  Why not use SumRawInferMeta directly?
     Because we need make InferMetaFunction's args follow the design of api.yaml
 */
 void SumInferMeta(const MetaTensor& x,
@@ -391,15 +415,13 @@ void SumInferMeta(const MetaTensor& x,
                   bool keep_dim,
                   MetaTensor* out) {
   bool reduce_all = false;
-  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, dtype, out);
+  SumRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out);
 }
 
-void ReduceInferMetaBase(const MetaTensor& x,
-                         const std::vector<int64_t>& axis,
-                         bool keep_dim,
-                         bool reduce_all,
-                         DataType dtype,
-                         MetaTensor* out) {
+DDim ReduceInferDim(const MetaTensor& x,
+                    const std::vector<int64_t>& axis,
+                    bool keep_dim,
+                    bool reduce_all) {
   auto x_rank = x.dims().size();
 
   std::vector<int64_t> formated_axis = axis;
@@ -462,6 +484,17 @@ void ReduceInferMetaBase(const MetaTensor& x,
   }
   DDim out_dim = phi::make_ddim(out_dim_vector);
 
+  return out_dim;
+}
+
+void SumRawInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     bool reduce_all,
+                     DataType dtype,
+                     MetaTensor* out) {
+  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+
   DataType out_dtype;
   if (dtype != DataType::UNDEFINED) {
     out_dtype = dtype;
@@ -479,20 +512,23 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void MeanRawInferMeta(const MetaTensor& x,
-                      const std::vector<int64_t>& axis,
-                      bool keep_dim,
-                      bool reduce_all,
-                      MetaTensor* out) {
-  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
+void ReduceInferMetaBase(const MetaTensor& x,
+                         const std::vector<int64_t>& axis,
+                         bool keep_dim,
+                         bool reduce_all,
+                         MetaTensor* out) {
+  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
-void MeanInferMeta(const MetaTensor& x,
-                   const std::vector<int64_t>& axis,
-                   bool keep_dim,
-                   MetaTensor* out) {
+void ReduceInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     MetaTensor* out) {
   bool reduce_all = false;
-  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, DataType::UNDEFINED, out);
+  ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
 }
 
 void TransferLayoutInferMeta(const MetaTensor& x,
@@ -981,6 +1017,11 @@ void DiagInferMeta(const MetaTensor& x,
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   out->set_dims({1});
+}
+
+void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(DataType::BOOL);
 }
 
 void PixelShuffleInferMeta(const MetaTensor& x,
