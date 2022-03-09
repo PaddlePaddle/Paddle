@@ -701,17 +701,18 @@ def GenerateNodeCreationCodes(
     set_tensor_wrappers_list = []
     for name, (atype, is_fwd_input, pos) in backward_fwd_input_map.items():
         is_optional = (name in optional_inputs)
-        if IsVectorTensorType(atype):
-            tw_name = f"api_result[{pos}]"
-        else:
-            tw_name = f"api_result"
 
         if is_fwd_input:
             if is_optional:
-                set_tensor_wrappers = f"        if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, true);"
+                set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
             else:
-                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({tw_name}, true);"
+                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
+            if IsVectorTensorType(atype):
+                tw_name = f"api_result[{pos}]"
+            else:
+                tw_name = f"api_result"
+
             if is_optional:
                 set_tensor_wrappers = f"        if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
             else:
