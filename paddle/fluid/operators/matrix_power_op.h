@@ -18,9 +18,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
 namespace paddle {
 namespace operators {
@@ -67,7 +67,7 @@ void MatrixPowerFunction(const Tensor* X, const int n, Tensor* Out,
     framework::TensorCopy(*X, ctx.GetPlace(), dev_ctx, &new_x);
   } else {
     // newX = X^{-1}, n = -n
-    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
+    phi::funcs::MatrixInverseFunctor<DeviceContext, T> mat_inv;
     mat_inv(dev_ctx, *X, &new_x);
     new_n = -n;
   }
@@ -200,7 +200,7 @@ void MatrixPowerGradFunction(const Tensor* X, const Tensor* Out,
     framework::TensorCopy(*X, ctx.GetPlace(), dev_ctx, &new_x);
   } else {
     // newX = X^{-1}, n = -n
-    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
+    phi::funcs::MatrixInverseFunctor<DeviceContext, T> mat_inv;
     mat_inv(dev_ctx, *X, &new_x);
     new_n = -n;
   }
