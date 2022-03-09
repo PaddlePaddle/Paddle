@@ -32,6 +32,15 @@ void AucInferMeta(const MetaTensor& input,
                   MetaTensor* stat_neg_out,
                   MetaConfig config = MetaConfig());
 
+void NllLossRawInferMeta(const MetaTensor& input,
+                         const MetaTensor& label,
+                         paddle::optional<const MetaTensor&> weight,
+                         int64_t ignore_index,
+                         const std::string& reduction,
+                         MetaTensor* out,
+                         MetaTensor* total_weight,
+                         MetaConfig config = MetaConfig());
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
