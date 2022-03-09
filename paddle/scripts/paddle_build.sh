@@ -2660,11 +2660,9 @@ function test_op_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_op_benchmark.sh
 }
 
-
 function test_model_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_model_benchmark.sh
 }
-
 
 function summary_check_problems() {
     set +x
