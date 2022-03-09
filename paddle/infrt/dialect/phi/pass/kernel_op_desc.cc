@@ -209,8 +209,7 @@ std::vector<PhiKernelDesc> GetCandidateKernels(
     const paddle::SmallVector<phi::TensorArgDef>& output_arg =
         args_def.output_defs();
     for (auto tensor_arg : input_arg) {
-      phi_kernel_desc.input_types.emplace_back(
-          ConvertPlaceFromPhi(tensor_arg));
+      phi_kernel_desc.input_types.emplace_back(ConvertPlaceFromPhi(tensor_arg));
     }
     for (auto tensor_arg : output_arg) {
       phi_kernel_desc.output_types.emplace_back(

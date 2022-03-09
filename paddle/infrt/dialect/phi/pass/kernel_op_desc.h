@@ -22,7 +22,7 @@
 namespace infrt {
 
 struct PhiKernelDesc {
-  std::vector<Place> input_types;  // kernel input place
+  std::vector<Place> input_types;   // kernel input place
   std::vector<Place> output_types;  // kernel output place
   Place kernel_type;                // kernel place
 };
