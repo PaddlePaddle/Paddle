@@ -27,7 +27,7 @@ kernel_library(full_kernel DEPS ${COMMON_KERNEL_DEPS} empty_kernel)
 # Some kernels depend on some targets that are not commonly used.
 # These targets are not suitable for common dependencies.
 # In this case, you need to manually generate them here.
-set(MANUAL_BUILD_KERNELS math_kernel softmax_kernel softmax_grad_kernel triangular_solve_grad_kernel maxout_kernel maxout_grad_kernel put_along_axis_kernel put_along_axis_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel)
+set(MANUAL_BUILD_KERNELS math_kernel softmax_kernel softmax_grad_kernel triangular_solve_grad_kernel maxout_kernel maxout_grad_kernel put_along_axis_kernel put_along_axis_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel matrix_power_kernel matrix_power_grad_kernel)
 kernel_library(math_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel)
 kernel_library(softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
@@ -38,6 +38,8 @@ kernel_library(put_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_k
 kernel_library(put_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
 kernel_library(take_along_axis_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
 kernel_library(take_along_axis_grad_kernel DEPS ${COMMON_KERNEL_DEPS} gather_scatter_kernel)
+kernel_library(matrix_power_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
+kernel_library(matrix_power_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_inverse)
 
 # 4. auto parse and build kernel targets by cmake
 register_kernels(EXCLUDES ${COMMON_BAISC_KERNELS} ${MANUAL_BUILD_KERNELS} DEPS ${COMMON_KERNEL_DEPS} ${COMMON_BAISC_KERNELS} )
