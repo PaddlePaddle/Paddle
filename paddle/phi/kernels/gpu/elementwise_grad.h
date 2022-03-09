@@ -14,11 +14,95 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
-#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 
 namespace phi {
+
+template <typename T>
+void ReduceWrapper(const GPUContext &dev_ctx,
+                   int axis,
+                   DenseTensor *src,
+                   DenseTensor *dst) {
+  std::vector<int> reduce_dims =
+      funcs::GetReduceDim(dst->dims(), src->dims(), axis);
+  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      dev_ctx, *src, dst, kps::IdentityFunctor<T>(), reduce_dims);
+}
+
+template <ElementwiseType ET, typename T, typename Functor>
+void GetGradXAndYOut(const GPUContext &dev_ctx,
+                     const Place &place,
+                     int axis,
+                     std::vector<const DenseTensor *> ins,
+                     const DenseTensor &dout,
+                     DenseTensor *dx,
+                     DenseTensor *dy,
+                     Functor func) {
+  DenseTensor tmp_dx;
+  DenseTensor tmp_dy;
+  dev_ctx.Alloc<T>(dx);
+  dev_ctx.Alloc<T>(dy);
+  std::vector<DenseTensor *> outs;
+  if (dx->dims() == dout.dims() && dy->dims() == dout.dims()) {
+    outs = {dx, dy};
+  } else if (dx->dims() != dout.dims() && dy->dims() == dout.dims()) {
+    tmp_dx.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dx);
+    outs = {&tmp_dx, dy};
+  } else if (dx->dims() == dout.dims() && dy->dims() != dout.dims()) {
+    tmp_dy.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dy);
+    outs = {dx, &tmp_dy};
+  } else if (dx->dims() != dout.dims() && dy->dims() != dout.dims()) {
+    tmp_dy.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dy);
+    tmp_dx.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dx);
+    outs = {&tmp_dx, &tmp_dy};
+  }
+
+  funcs::BroadcastKernel<ET, T, T, decltype(func), 2>(
+      dev_ctx, ins, &outs, axis, func);
+
+  if (dx->dims() != dout.dims() && dy->dims() == dout.dims()) {
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
+  } else if (dx->dims() == dout.dims() && dy->dims() != dout.dims()) {
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dy, dy);
+  } else if (dx->dims() != dout.dims() && dy->dims() != dout.dims()) {
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dy, dy);
+  }
+}
+
+template <ElementwiseType ET, typename T, typename Functor>
+void GetGradXOrYOut(const GPUContext &dev_ctx,
+                    const Place &place,
+                    int axis,
+                    std::vector<const DenseTensor *> ins,
+                    const DenseTensor &dout,
+                    DenseTensor *dxy,
+                    Functor func) {
+  DenseTensor tmp_dxy;
+  dev_ctx.Alloc<T>(dxy);
+
+  std::vector<DenseTensor *> outs;
+  if (dxy->dims() != dout.dims()) {
+    tmp_dxy.Resize(dout.dims());
+    dev_ctx.Alloc<T>(&tmp_dxy);
+    outs = {&tmp_dxy};
+  } else {
+    outs = {dxy};
+  }
+
+  funcs::BroadcastKernel<ET, T, T>(dev_ctx, ins, &outs, axis, func);
+  if (dxy->dims() != dout.dims()) {
+    ReduceWrapper<T>(dev_ctx, axis, &tmp_dxy, dxy);
+  }
+}
 
 /*
 ******************************
@@ -83,9 +167,8 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims);
     }
   }
   // dy
@@ -98,9 +181,8 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, dout, dy, kps::IdentityFunctor<T>(), reduce_dims);
     }
   }
 }
@@ -196,9 +278,8 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims);
     }
   }
   // dy
@@ -217,9 +298,8 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      kernels::TensorReduceImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
-          ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
+          ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims);
     }
   }
 }
@@ -243,4 +323,41 @@ void elementwise_sub_grad(const GPUContext &ctx,
       dx->mutable_data<T>(ctx.GetPlace()),
       dy->mutable_data<T>(ctx.GetPlace()));
 }
+/*
+******************************
+    Div Grad
+******************************
+*/
+template <typename T>
+void ElementwiseDivGrad(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        const DenseTensor &out,
+                        const DenseTensor &dout,
+                        DenseTensor *dx,
+                        DenseTensor *dy,
+                        int axis = -1) {
+  const auto place = dev_ctx.GetPlace();
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &out, &y};
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
+        dev_ctx,
+        place,
+        axis,
+        ins,
+        dout,
+        dx,
+        dy,
+        funcs::DivGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &y};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+        dev_ctx, place, axis, ins, dout, dx, funcs::DivGradXFunctor<T>());
+  } else if (dy != nullptr && dx == nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &out, &y};
+    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+        dev_ctx, place, axis, ins, dout, dy, funcs::DivGradYFunctor<T>());
+  }
+}
+
 }  // namespace phi

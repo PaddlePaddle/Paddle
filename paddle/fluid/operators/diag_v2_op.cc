@@ -62,8 +62,8 @@ class DiagV2OpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(diag_v2, DiagInferShapeFunctor,
-                            PT_INFER_META(phi::DiagInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(diag_v2, DiagInferShapeFunctor,
+                            PD_INFER_META(phi::DiagInferMeta));
 
 REGISTER_OPERATOR(
     diag_v2, ops::DiagV2Op, ops::DiagV2OpMaker,

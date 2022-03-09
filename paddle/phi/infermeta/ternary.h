@@ -37,4 +37,30 @@ void AddmmInferMeta(const MetaTensor& input,
                     float beta,
                     MetaTensor* out);
 
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad);
+
+void ScatterInferMeta(const MetaTensor& x,
+                      const MetaTensor& index,
+                      const MetaTensor& updates,
+                      bool overwrite,
+                      MetaTensor* out);
+
+void ScatterNdAddInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& updates,
+                           MetaTensor* out);
+
+void LerpInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   const MetaTensor& weight,
+                   MetaTensor* out);
+
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       MetaTensor* out);
+
 }  // namespace phi

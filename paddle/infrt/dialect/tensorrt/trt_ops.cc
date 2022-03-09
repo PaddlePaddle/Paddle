@@ -13,21 +13,46 @@
 // limitations under the License.
 
 #include "paddle/infrt/dialect/tensorrt/trt_ops.h"
+#include <mlir/IR/DialectImplementation.h>
 #include <mlir/IR/Matchers.h>
 #include <mlir/IR/OpImplementation.h>
 #include <mlir/IR/PatternMatch.h>
 #include <mlir/Interfaces/CallInterfaces.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
+#include "paddle/infrt/dialect/tensorrt/trt_dilaect_types.h"
 
 namespace infrt {
 namespace trt {
 
 TensorRTDialect::TensorRTDialect(mlir::MLIRContext *context)
     : mlir::Dialect("trt", context, mlir::TypeID::get<TensorRTDialect>()) {
+  addTypes<EngineType>();
   addOperations<
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/tensorrt/trt_ops.cpp.inc"  // NOLINT
       >();
+}
+
+mlir::Type TensorRTDialect::parseType(mlir::DialectAsmParser &parser) const {
+  llvm::StringRef keyword;
+  if (parser.parseKeyword(&keyword)) return mlir::Type();
+  // parse trt dilaect types, for example: !trt.engine
+  if (keyword == "engine") {
+    return infrt::trt::EngineType::get(getContext());
+  }
+  parser.emitError(parser.getCurrentLocation(), "unknown infrt::trt type: ")
+      << keyword;
+  return mlir::Type();
+}
+
+void TensorRTDialect::printType(mlir::Type type,
+                                mlir::DialectAsmPrinter &printer) const {
+  // print trt dilaect types, for example: !trt.engien
+  if (type.isa<infrt::trt::EngineType>()) {
+    printer << "engine";
+    return;
+  }
+  llvm_unreachable("unknown infrt::trt type.");
 }
 
 }  // namespace trt
