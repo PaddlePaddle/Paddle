@@ -36,6 +36,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
 
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
