@@ -40,12 +40,12 @@ def get_program_by_id(context, program_id):
     programs = context["origin_main_programs"]
     for i, program in enumerate(programs):
         if id(program) == program_id:
-            return program, context["origin_startup_programs"][i]
-    return None, None
+            return program, context["origin_startup_programs"][i], i
+    return None, None, None
 
 
 def parse_table_class(varname, program_id, context):
-    main_program, startup_program = get_program_by_id(context, program_id)
+    main_program, startup_program, idx = get_program_by_id(context, program_id)
     for op in main_program.global_block().ops:
         if not is_distributed_sparse_op(op) and not is_sparse_op(op):
             continue
@@ -60,7 +60,7 @@ def parse_table_class(varname, program_id, context):
 
 
 def check_embedding_dim(accessor_proto, varname, program_id, context):
-    main_program, startup_program = get_program_by_id(context, program_id)
+    main_program, startup_program, idx = get_program_by_id(context, program_id)
     embedding_dim = 0
     for var in main_program.list_vars():
         if var.name == varname:
@@ -94,10 +94,9 @@ class Service:
 
 class GpuService(Service):
     def __init__(self):
-        super(GpuService).__init__(self)
+        super(GpuService, self).__init__()
 
     def _set(self, service_proto):
-        super(GpuService)._set(service_proto)
         service_proto.server_class = 'PsLocalServer'
         service_proto.client_class = 'PsLocalClient'
 
@@ -111,7 +110,8 @@ class Accessor:
 
     # TableAccessorParameter accessor
     def _set(self, accessor_proto, varname, program_id, context):
-        main_program, startup_program = get_program_by_id(context, program_id)
+        main_program, startup_program, idx = get_program_by_id(context,
+                                                               program_id)
         embedding_dim = 0
         for var in main_program.list_vars():
             if var.name == varname:
@@ -236,7 +236,8 @@ class CommonAccessor(Accessor):
         self.opt_init_map = opt_init_map
 
     def parse_entry(self, varname, program_id, context):
-        main_program, startup_program = get_program_by_id(context, program_id)
+        main_program, startup_program, idx = get_program_by_id(context,
+                                                               program_id)
         for op in main_program.global_block().ops:
             if not is_distributed_sparse_op(op) and not is_sparse_op(op):
                 continue
@@ -290,8 +291,8 @@ class CommonAccessor(Accessor):
         print("parse_by_optimizer table_id:{} is_datanorm:{}".format(
             ctx.table_id(), ctx.is_datanorm_table()))
 
-        main_program, startup_program = get_program_by_id(context,
-                                                          ctx.program_id())
+        main_program, startup_program, idx = get_program_by_id(context,
+                                                               ctx.program_id())
         pserver_id = get_role_id(context['role_maker'])
         pserver_num = len(get_ps_endpoints(context['role_maker']))
         optimizer_ops = get_optimize_ops(main_program)
@@ -359,10 +360,11 @@ class CommonAccessor(Accessor):
                     param = main_program.global_block().vars[oop.input(
                         formal_name)[0]]
                     #TODO: for dense learning_rate, can be different from sparse lr
-                    if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                    if formal_name == "LearningRate" and param.name != "learning_rate_" + str(
+                            idx):
                         warnings.warn("will support decay soon")
                         param = main_program.global_block().vars[
-                            "learning_rate_0"]
+                            "learning_rate_" + str(idx)]
 
                     initializer = self.get_initializer_attr(param.name,
                                                             startup_program)
@@ -404,10 +406,11 @@ class CommonAccessor(Accessor):
                 else:
                     param = main_program.global_block().vars[oop.input(
                         formal_name)[0]]
-                    if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                    if formal_name == "LearningRate" and param.name != "learning_rate_" + str(
+                            idx):
                         warnings.warn("will support decay soon")
                         param = main_program.global_block().vars[
-                            "learning_rate_0"]
+                            "learning_rate_" + str(idx)]
 
                     if shape is None:
                         if is_sparse:
@@ -707,6 +710,7 @@ class PsDescBuilder(object):
         self.ps_mode = context['ps_mode']
         self.is_heter_ps_mode = context['is_heter_ps_mode']
         self.use_ps_gpu = context['use_ps_gpu']
+        self.barrier_table_id = None
         self.send_ctx = get_the_one_send_context(
             self.context,
             use_origin_program=True,
@@ -767,6 +771,8 @@ class PsDescBuilder(object):
             table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add(
             )
             table._set(table_proto)
+            if type(table) == BarrierTable and self.barrier_table_id is None:
+                self.barrier_table_id = table.idx
         self.service._set(
             self.ps_desc.server_param.downpour_server_param.service_param)
         return text_format.MessageToString(self.ps_desc)
@@ -820,9 +826,9 @@ class TheOnePSRuntime(RuntimeBase):
         self.context['tensor_table'] = {}
         build_var_distributed(self.context)
 
-        endpoints = get_ps_endpoints(self.role_maker)
+        self.endpoints = get_ps_endpoints(self.role_maker)
         self.string_hosts = []
-        for idx, ep in enumerate(endpoints):
+        for idx, ep in enumerate(self.endpoints):
             host, port = ep.split(":")
             pshost = fluid.core.PSHost(host, int(port), idx)
             self.string_hosts.append(pshost.serialize_to_string())
@@ -848,7 +854,7 @@ class TheOnePSRuntime(RuntimeBase):
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
-        proto_txt = worker_desc + "\n" + server_desc
+        proto_txt = worker_desc
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("worker: \n{}".format(proto_txt))
@@ -859,7 +865,7 @@ class TheOnePSRuntime(RuntimeBase):
             self.context,
             split_dense_table=self.is_heter_ps_mode,
             use_origin_program=self.is_heter_ps_mode,
-            ep_list=endpoints)
+            ep_list=self.endpoints)
         trainer_config = self.context['trainer']
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
@@ -876,10 +882,7 @@ class TheOnePSRuntime(RuntimeBase):
         kwargs["trainer_id"] = self.role_maker._role_id()
         kwargs["trainers"] = self.role_maker._worker_num()
 
-        for table in server.servers[0].tables:  #TODO
-            if table.table_class == "BarrierTable":
-                kwargs["barrier_table_id"] = table.id
-                break
+        kwargs["barrier_table_id"] = self.ps_desc_builder.barrier_table_id
 
         if self.context['ps_mode'] == DistributedMode.SYNC:
             sync_kwargs = sync_strategy_envs()
@@ -1009,7 +1012,7 @@ class TheOnePSRuntime(RuntimeBase):
             if origin_varname.endswith("@GRAD"):
                 return False
 
-            if origin_varname == "learning_rate_0":
+            if origin_varname.startswith("learning_rate_"):
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
@@ -1113,7 +1116,7 @@ class TheOnePSRuntime(RuntimeBase):
                 "in fleet.save() function, executor must be as Executor type")
 
         if main_program is None:
-            main_program = self.context['origin_ps_main_program']
+            main_program = self.context['origin_main_program']
 
         if isinstance(main_program, CompiledProgram):
             raise TypeError(

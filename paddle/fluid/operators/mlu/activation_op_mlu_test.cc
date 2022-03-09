@@ -22,7 +22,7 @@ limitations under the License. */
 namespace fw = paddle::framework;
 namespace plat = paddle::platform;
 
-USE_OP(relu);
+USE_OP_ITSELF(relu);
 USE_OP_DEVICE_KERNEL(relu, MLU);
 
 // relu
