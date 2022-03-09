@@ -82,12 +82,12 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
 }
 
 template <typename T, typename AccT, int VecSize, int Num>
-__device__ __forceinline__ void ThreadReduce(const T* x, const T* y, int size,
-                                             const int offset, AccT* out_mean,
-                                             AccT* out_var) {
-  // const T* x = arrs[0];
-  // const T* y;
-  // if(Num == 2) y = arrs[1];
+__device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
+                                             int size, const int offset,
+                                             AccT* out_mean, AccT* out_var) {
+  const T* x = arrs[0];
+  const T* y;
+  if (Num == 2) y = arrs[1];
   using VecT = kps::details::VectorType<T, VecSize>;
   int tid = threadIdx.x;
   if (offset > 0) {
@@ -95,13 +95,13 @@ __device__ __forceinline__ void ThreadReduce(const T* x, const T* y, int size,
     if (Num == 2) y -= offset;
     size += offset;
     if (tid >= offset) {
-      // if(Num == 1){
-      //   *out_mean += x[tid];
-      //   *out_var += x[tid] * x[tid];
-      // }else if(Num==2){
-      *out_mean += y[tid];
-      *out_var += y[tid] * x[tid];
-      // }
+      if (Num == 1) {
+        *out_mean += x[tid];
+        *out_var += x[tid] * x[tid];
+      } else if (Num == 2) {
+        *out_mean += y[tid];
+        *out_var += y[tid] * x[tid];
+      }
     }
     size -= blockDim.x;
     x += blockDim.x;
@@ -121,26 +121,26 @@ __device__ __forceinline__ void ThreadReduce(const T* x, const T* y, int size,
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
-      // if(Num == 1){
-      //   *out_mean += ins_x[i];
-      //   *out_var += ins_x[i] * ins_x[i];
-      // }else if(Num==2){
-      *out_mean += ins_y[i];
-      *out_var += ins_y[i] * ins_x[i];
-      // }
+      if (Num == 1) {
+        *out_mean += ins_x[i];
+        *out_var += ins_x[i] * ins_x[i];
+      } else if (Num == 2) {
+        *out_mean += ins_y[i];
+        *out_var += ins_y[i] * ins_x[i];
+      }
     }
   }
 
   // scalar part
   tid = size - remain + threadIdx.x;
   for (; tid < size; tid += blockDim.x) {
-    // if(Num == 1){
-    //   *out_mean += x[tid];
-    //   *out_var += x[tid] * x[tid];
-    // }else{
-    *out_mean += y[tid];
-    *out_var += y[tid] * x[tid];
-    // }
+    if (Num == 1) {
+      *out_mean += x[tid];
+      *out_var += x[tid] * x[tid];
+    } else {
+      *out_mean += y[tid];
+      *out_var += y[tid] * x[tid];
+    }
   }
 }
 
@@ -168,9 +168,9 @@ __global__ void VectorizedGetMeanAndVarNCHW(const T* x, T* mean, T* var,
   AccT x_var = static_cast<AccT>(0);
   const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
   x += i * size;
-  // phi::Array<const T*, 1> ins;
-  // ins[0] = x;
-  ThreadReduce<T, AccT, VecSize, 1>(x, x, size, input_offset, &x_mean, &x_var);
+  phi::Array<const T*, 1> ins;
+  ins[0] = x;
+  ThreadReduce<T, AccT, VecSize, 1>(ins, size, input_offset, &x_mean, &x_var);
 
   x_mean = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
       x_mean, kps::AddFunctor<AccT>());
@@ -419,10 +419,10 @@ __global__ void VectorizedGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
   const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
   x += i * imsize;
 
-  // phi::Array<const T*, 2> ins;
-  // ins[0] = x;
-  // ins[1] = dy;
-  ThreadReduce<T, AccT, VecSize, 2>(x, dy, imsize, input_offset, &db_sum,
+  phi::Array<const T*, 2> ins;
+  ins[0] = x;
+  ins[1] = dy;
+  ThreadReduce<T, AccT, VecSize, 2>(ins, imsize, input_offset, &db_sum,
                                     &ds_sum);
 
   ds_sum = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
@@ -586,13 +586,11 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     T* d_scale_data = nullptr;
     if (d_scale) {
       d_scale->mutable_data<T>(ctx.GetPlace());
-      set_zero(dev_ctx, d_scale, static_cast<T>(0));
       d_scale_data = d_scale->data<T>();
     }
     T* d_bias_data = nullptr;
     if (d_bias) {
       d_bias->mutable_data<T>(ctx.GetPlace());
-      set_zero(dev_ctx, d_bias, static_cast<T>(0));
       d_bias_data = d_bias->data<T>();
     }
 
@@ -669,6 +667,9 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
       }
 
     } else {
+      set_zero(dev_ctx, d_scale, static_cast<T>(0));
+      set_zero(dev_ctx, d_bias, static_cast<T>(0));
+
       Tensor temp_var;
       temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
       set_zero(dev_ctx, &temp_var, static_cast<T>(0));
