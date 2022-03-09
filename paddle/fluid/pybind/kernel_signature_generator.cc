@@ -15,7 +15,7 @@
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -44,29 +44,41 @@ int main(int argc, char **argv) {
   paddle::framework::InitDefaultKernelSignatureMap();
   auto &kernel_signature_map = phi::DefaultKernelSignatureMap::Instance();
   auto &kernel_factory = phi::KernelFactory::Instance();
-  std::cout << "{";
+  std::string kernel_signature_map_str{"{"};
   for (const auto &op_kernel_pair : kernel_factory.kernels()) {
     if (kernel_signature_map.Has(op_kernel_pair.first)) {
-      std::cout << "\"" << op_kernel_pair.first << "\":{";
+      kernel_signature_map_str =
+          kernel_signature_map_str + "\"" + op_kernel_pair.first + "\":{";
       auto &args = kernel_signature_map.Get(op_kernel_pair.first).args;
-      std::cout << "\"inputs\":[";
-      for (auto name : std::get<0>(args)) {
-        std::cout << "\"" << name << "\",";
+
+      kernel_signature_map_str += "\"inputs\":[";
+      auto inputs_ = std::get<0>(args);
+      for (size_t i = 0; i < inputs_.size(); i++) {
+        kernel_signature_map_str =
+            kernel_signature_map_str + "\"" + inputs_[i] + "\",";
       }
-      if (std::get<0>(args).size() > 0) std::cout << "\b";
-      std::cout << "],\"attrs\":[";
-      for (auto name : std::get<1>(args)) {
-        std::cout << "\"" << name << "\",";
+      if (inputs_.size()) kernel_signature_map_str.pop_back();
+
+      kernel_signature_map_str += "],\"attrs\":[";
+      auto attrs_ = std::get<1>(args);
+      for (size_t i = 0; i < attrs_.size(); i++) {
+        kernel_signature_map_str =
+            kernel_signature_map_str + "\"" + attrs_[i] + "\",";
       }
-      if (std::get<1>(args).size() > 0) std::cout << "\b";
-      std::cout << "],\"outputs\":[";
-      for (auto name : std::get<2>(args)) {
-        std::cout << "\"" << name << "\",";
+      if (attrs_.size()) kernel_signature_map_str.pop_back();
+      kernel_signature_map_str += "],\"outputs\":[";
+      auto outputs_ = std::get<2>(args);
+      for (size_t i = 0; i < outputs_.size(); i++) {
+        kernel_signature_map_str =
+            kernel_signature_map_str + "\"" + outputs_[i] + "\",";
       }
-      if (std::get<2>(args).size() > 0) std::cout << "\b";
-      std::cout << "]},";
+
+      if (outputs_.size()) kernel_signature_map_str.pop_back();
+      kernel_signature_map_str += "]},";
     }
   }
-  std::cout << "\b}" << std::endl;
+  kernel_signature_map_str.pop_back();
+  kernel_signature_map_str += "}\n";
+  std::cout << kernel_signature_map_str;
   return 0;
 }

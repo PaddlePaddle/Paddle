@@ -31,6 +31,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
+#include "paddle/phi/kernels/cpu/elementwise_grad.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
@@ -44,6 +45,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/gpu/elementwise_grad.h"
 
 #endif
 
@@ -133,7 +135,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
 
 inline framework::DDim trim_trailing_singular_dims(
     const framework::DDim &dims) {
-  return phi::funcs::trim_trailing_singular_dims(dims);
+  return phi::funcs::TrimTrailingSingularDims(dims);
 }
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP,
@@ -144,17 +146,9 @@ void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
                          const framework::Tensor &dout, int axis,
                          framework::Tensor *dx, framework::Tensor *dy,
                          DX_OP dx_op, DY_OP dy_op) {
-  const framework::DDim &x_dim = x.dims();
-  const framework::DDim &y_dim = y.dims();
   const auto &dev_ctx = ctx.template device_context<DeviceContext>();
-  if (x.dims() == y.dims()) {
-    phi::funcs::ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP,
-                                               Tout>(
-        dev_ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
-  } else {
-    phi::ElemwiseGradComputeWithBroadcast<T, DX_OP, DY_OP, Tout>(
-        dev_ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
-  }
+  phi::funcs::ElemwiseGradCompute<DeviceContext, T, DX_OP, DY_OP, Tout>(
+      dev_ctx, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
 }
 
 // It is a common implementation to compute binary calculation with the support
@@ -173,19 +167,9 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
   z->mutable_data<OutType>(ctx.GetPlace());
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-    const auto &dev_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
-    phi::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func,
-                                                 z);
-
-#endif
-    return;
-  }
-  const auto &dev_ctx =
-      ctx.template device_context<platform::CPUDeviceContext>();
-  phi::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis, func, z);
+  const auto &dev_ctx = ctx.template device_context<DeviceContext>();
+  phi::funcs::ElementwiseCompute<Functor, T, OutType>(dev_ctx, *x, *y, axis,
+                                                      func, z);
 }
 
 // FusedElemwiseAndAct
@@ -443,8 +427,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  phi::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                           &is_run_common_broadcast);
+  phi::funcs::GetMidDims(x_dim, y_dim, axis, &pre, &n, &post,
+                         &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -991,8 +975,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
   int pre, n, post, is_run_common_broadcast;
-  phi::funcs::get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
-                           &is_run_common_broadcast);
+  phi::funcs::GetMidDims(x_dim, y_dim, axis, &pre, &n, &post,
+                         &is_run_common_broadcast);
   const T *x_data = nullptr;
   const T *y_data = nullptr;
   if (x->IsInitialized()) x_data = x->data<T>();
@@ -1183,14 +1167,6 @@ static inline std::vector<int> GetReduceDim(const framework::DDim &in,
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T>
-void ReduceWrapper(const platform::CUDADeviceContext &dev_ctx, int axis,
-                   framework::Tensor *src, framework::Tensor *dst) {
-  std::vector<int> reduce_dims = GetReduceDim(dst->dims(), src->dims(), axis);
-  TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      dev_ctx, *src, dst, kps::IdentityFunctor<T>(), reduce_dims,
-      dev_ctx.stream());
-}
 
 template <ElementwiseType ET, typename T, typename Functor>
 void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx,
@@ -1198,36 +1174,8 @@ void GetGradXAndYOut(const platform::CUDADeviceContext &dev_ctx,
                      std::vector<const framework::Tensor *> ins,
                      const framework::Tensor *dout, framework::Tensor *dx,
                      framework::Tensor *dy, Functor func) {
-  framework::Tensor tmp_dx;
-  framework::Tensor tmp_dy;
-  dx->mutable_data<T>(place);
-  dy->mutable_data<T>(place);
-  std::vector<framework::Tensor *> outs;
-  if (dx->dims() == dout->dims() && dy->dims() == dout->dims()) {
-    outs = {dx, dy};
-  } else if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
-    tmp_dx.mutable_data<T>(dout->dims(), place);
-    outs = {&tmp_dx, dy};
-  } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
-    tmp_dy.mutable_data<T>(dout->dims(), place);
-    outs = {dx, &tmp_dy};
-  } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
-    tmp_dy.mutable_data<T>(dout->dims(), place);
-    tmp_dx.mutable_data<T>(dout->dims(), place);
-    outs = {&tmp_dx, &tmp_dy};
-  }
-
-  paddle::operators::LaunchElementwiseCudaKernel<ET, T, T, decltype(func), 2>(
-      dev_ctx, ins, &outs, axis, func);
-
-  if (dx->dims() != dout->dims() && dy->dims() == dout->dims()) {
-    ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
-  } else if (dx->dims() == dout->dims() && dy->dims() != dout->dims()) {
-    ReduceWrapper<T>(dev_ctx, axis, &tmp_dy, dy);
-  } else if (dx->dims() != dout->dims() && dy->dims() != dout->dims()) {
-    ReduceWrapper<T>(dev_ctx, axis, &tmp_dx, dx);
-    ReduceWrapper<T>(dev_ctx, axis, &tmp_dy, dy);
-  }
+  phi::GetGradXAndYOut<ET, T, Functor>(dev_ctx, place, axis, ins, *dout, dx, dy,
+                                       func);
 }
 
 template <ElementwiseType ET, typename T, typename Functor>
@@ -1236,22 +1184,8 @@ void GetGradXOrYOut(const platform::CUDADeviceContext &dev_ctx,
                     std::vector<const framework::Tensor *> ins,
                     const framework::Tensor *dout, framework::Tensor *dxy,
                     Functor func) {
-  framework::Tensor tmp_dxy;
-  dxy->mutable_data<T>(place);
-
-  std::vector<framework::Tensor *> outs;
-  if (dxy->dims() != dout->dims()) {
-    tmp_dxy.mutable_data<T>(dout->dims(), place);
-    outs = {&tmp_dxy};
-  } else {
-    outs = {dxy};
-  }
-
-  paddle::operators::LaunchElementwiseCudaKernel<ET, T, T>(dev_ctx, ins, &outs,
-                                                           axis, func);
-  if (dxy->dims() != dout->dims()) {
-    ReduceWrapper<T>(dev_ctx, axis, &tmp_dxy, dxy);
-  }
+  phi::GetGradXOrYOut<ET, T, Functor>(dev_ctx, place, axis, ins, *dout, dxy,
+                                      func);
 }
 
 #endif

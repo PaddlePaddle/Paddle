@@ -73,7 +73,9 @@ def logger_config(log_path, logging_name):
     return logger
 
 
-logger = logger_config(log_path='/ps_log', logging_name='ps_log')
+ps_log_root_dir = '/ps_log/'
+logger = logger_config(
+    log_path='/ps_usr_print_log', logging_name='ps_usr_print_log')
 
 
 class DistributedMode:
@@ -448,9 +450,8 @@ def get_the_one_send_context(context,
     idx = 0
     for i, program in enumerate(origin_programs):
         merged_dense_pairs = context['merged_dense_pairs'][i]
-        idx += get_dense_send_context(program, send_ctx, idx,
-                                      merged_dense_pairs, trainer_id,
-                                      split_dense_table)
+        idx = get_dense_send_context(program, send_ctx, idx, merged_dense_pairs,
+                                     trainer_id, split_dense_table)
     distibuted_varnames = get_sparse_tablenames(origin_programs, True)
     print("public distibuted_varnames:", distibuted_varnames)
     for i, program in enumerate(origin_programs):
