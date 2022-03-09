@@ -16,40 +16,83 @@ limitations under the License. */
 
 namespace phi {
 
-#define DefineActGradDepXOpArgMap(func_name, op_name)                        \
-  KernelSignature func_name##GradOpArgumentMapping(                          \
-      const ArgumentMappingContext& ctx) {                                   \
-    return KernelSignature(                                                  \
-        op_name "_grad", {"X", GradVarName("Out")}, {}, {GradVarName("X")}); \
+#define DefineActGradDepXOpArgMap(func_name, op_name, attrs) \
+  KernelSignature func_name##GradOpArgumentMapping(          \
+      const ArgumentMappingContext& ctx) {                   \
+    return KernelSignature(op_name "_grad",                  \
+                           {"X", GradVarName("Out")},        \
+                           attrs,                            \
+                           {GradVarName("X")});              \
   }
 
-#define DefineActGradDepOutOpArgMap(func_name, op_name)                        \
-  KernelSignature func_name##GradOpArgumentMapping(                            \
-      const ArgumentMappingContext& ctx) {                                     \
-    return KernelSignature(                                                    \
-        op_name "_grad", {"Out", GradVarName("Out")}, {}, {GradVarName("X")}); \
+#define DefineActGradDepOutOpArgMap(func_name, op_name, attrs) \
+  KernelSignature func_name##GradOpArgumentMapping(            \
+      const ArgumentMappingContext& ctx) {                     \
+    return KernelSignature(op_name "_grad",                    \
+                           {"Out", GradVarName("Out")},        \
+                           attrs,                              \
+                           {GradVarName("X")});                \
   }
+
+#define comma ,
+
+DefineActGradDepXOpArgMap(Cos, "cos", {});
+DefineActGradDepXOpArgMap(Tan, "tan", {});
+DefineActGradDepXOpArgMap(Acos, "acos", {});
+DefineActGradDepXOpArgMap(Sin, "sin", {});
+DefineActGradDepXOpArgMap(Asin, "asin", {});
+DefineActGradDepXOpArgMap(Atan, "atan", {});
+DefineActGradDepXOpArgMap(Sinh, "sinh", {});
+DefineActGradDepXOpArgMap(Cosh, "cosh", {});
+DefineActGradDepXOpArgMap(Asinh, "asinh", {});
+DefineActGradDepXOpArgMap(Acosh, "acosh", {});
+DefineActGradDepXOpArgMap(Atanh, "atanh", {});
+DefineActGradDepXOpArgMap(BRelu, "brelu", {"t_min" comma "t_max"});
+DefineActGradDepXOpArgMap(LeakyRelu, "leaky_relu", {"alpha"});
+DefineActGradDepXOpArgMap(ThresholdedRelu, "thresholded_relu", {"threshold"});
+
+DefineActGradDepOutOpArgMap(Relu, "relu", {});
+DefineActGradDepOutOpArgMap(Tanh, "tanh", {});
+DefineActGradDepOutOpArgMap(Relu6, "relu6", {"threshold"});
 
 KernelSignature ReluDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("relu_double_grad", {"Out", "DDX"}, {}, {"DDOut"});
 }
 
-DefineActGradDepXOpArgMap(Cos, "cos");
-DefineActGradDepXOpArgMap(Tan, "tan");
-DefineActGradDepXOpArgMap(Acos, "acos");
-DefineActGradDepXOpArgMap(Sin, "sin");
-DefineActGradDepXOpArgMap(Asin, "asin");
-DefineActGradDepXOpArgMap(Atan, "atan");
-DefineActGradDepXOpArgMap(Sinh, "sinh");
-DefineActGradDepXOpArgMap(Cosh, "cosh");
-DefineActGradDepXOpArgMap(Asinh, "asinh");
-DefineActGradDepXOpArgMap(Acosh, "acosh");
-DefineActGradDepXOpArgMap(Atanh, "atanh");
-DefineActGradDepOutOpArgMap(Relu, "relu");
+KernelSignature TanhDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "tanh_double_grad", {"Out", "DDX", "DOut"}, {}, {"DOutNew", "DDOut"});
+}
+
+KernelSignature TanhTripleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("tanh_triple_grad",
+                         {"Out", "DDX", "DOut", "D_DDOut", "D_DOut_New"},
+                         {},
+                         {"D_OutNew", "D_DOut", "D_DDx"});
+}
+
+KernelSignature LeakyReluDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "leaky_relu_double_grad", {"X", "DDX"}, {"alpha"}, {"DDOut"});
+}
+
+KernelSignature Relu6OpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("relu6", {"X"}, {"threshold"}, {"Out"});
+}
+
+KernelSignature LeakyReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("leaky_relu", {"X"}, {"alpha"}, {"Out"});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(relu_grad_grad, relu_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(tanh_grad_grad, tanh_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(leaky_relu_grad_grad, leaky_relu_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(cos_grad, phi::CosGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(tan_grad, phi::TanGradOpArgumentMapping);
@@ -65,3 +108,18 @@ PD_REGISTER_ARG_MAPPING_FN(atanh_grad, phi::AtanhGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu_grad, phi::ReluGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu_grad_grad,
                            phi::ReluDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(tanh_grad, phi::TanhGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(tanh_grad_grad,
+                           phi::TanhDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(tanh_triple_grad,
+                           phi::TanhTripleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(relu6, phi::Relu6OpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(relu6_grad, phi::Relu6GradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(brelu_grad, phi::BReluGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(leaky_relu, phi::LeakyReluOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(leaky_relu_grad,
+                           phi::LeakyReluGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(leaky_relu_grad_grad,
+                           phi::LeakyReluDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(thresholded_relu_grad,
+                           phi::ThresholdedReluGradOpArgumentMapping);

@@ -39,6 +39,61 @@ void ReluDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& ddx,
                           DenseTensor* ddout);
 
+template <typename T, typename Context>
+void TanhDoubleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& out,
+                          const DenseTensor& ddx,
+                          const DenseTensor& dout,
+                          DenseTensor* dout_new,
+                          DenseTensor* ddout);
+
+template <typename T, typename Context>
+void TanhTripleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& out,
+                          const DenseTensor& ddx,
+                          const DenseTensor& dout,
+                          const DenseTensor& d_ddout,
+                          const DenseTensor& d_dout_new,
+                          DenseTensor* d_out_new,
+                          DenseTensor* d_dout,
+                          DenseTensor* d_ddx);
+
+template <typename T, typename Context>
+void Relu6GradKernel(const Context& dev_ctx,
+                     const DenseTensor& out,
+                     const DenseTensor& dout,
+                     float threshold,
+                     DenseTensor* dx);
+
+template <typename T, typename Context>
+void BReluGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& dout,
+                     float t_min,
+                     float t_max,
+                     DenseTensor* dx);
+
+template <typename T, typename Context>
+void LeakyReluGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         float alpha,
+                         DenseTensor* dx);
+
+template <typename T, typename Context>
+void LeakyReluDoubleGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& ddx,
+                               float alpha,
+                               DenseTensor* ddout);
+
+template <typename T, typename Context>
+void ThresholdedGradKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& dout,
+                           float threshold,
+                           DenseTensor* dx);
+
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Cos);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Tan);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Acos);
@@ -51,5 +106,6 @@ DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Asinh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Acosh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Atanh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepOut(Relu);
+DECLARE_ACTIVATION_GRAD_KERNEL_DepOut(Tanh);
 
 }  // namespace phi

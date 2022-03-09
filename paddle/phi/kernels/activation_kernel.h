@@ -36,5 +36,31 @@ DECLARE_ACTIVATION_KERNEL(Asinh)
 DECLARE_ACTIVATION_KERNEL(Acosh)
 DECLARE_ACTIVATION_KERNEL(Atanh)
 DECLARE_ACTIVATION_KERNEL(Relu)
+DECLARE_ACTIVATION_KERNEL(Tanh)
+
+template <typename T, typename Context>
+void BReluKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 float t_min,
+                 float t_max,
+                 DenseTensor* out);
+
+template <typename T, typename Context>
+void Relu6Kernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 float threshold,
+                 DenseTensor* out);
+
+template <typename T, typename Context>
+void LeakyReluKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     float alpha,
+                     DenseTensor* out);
+
+template <typename T, typename Context>
+void ThresholdedReluKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           float threshold,
+                           DenseTensor* out);
 
 }  // namespace phi

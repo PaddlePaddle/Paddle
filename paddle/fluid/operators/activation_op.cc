@@ -1482,6 +1482,8 @@ REGISTER_ACTIVATION_OP(cosh, Cosh, CoshFunctor, CoshGradFunctor);
 REGISTER_ACTIVATION_OP(asinh, Asinh, AsinhFunctor, AsinhGradFunctor);
 REGISTER_ACTIVATION_OP(acosh, Acosh, AcoshFunctor, AcoshGradFunctor);
 REGISTER_ACTIVATION_OP(atanh, Atanh, AtanhFunctor, AtanhGradFunctor);
+REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
+REGISTER_ACTIVATION_OP(brelu, BRelu, BReluFunctor, BReluGradFunctor);
 
 /* ==========================    sigmoid register  =============================
  */
@@ -1567,23 +1569,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpTripleGrad<ops::TanhTripleGradFunctor<float>::FwdDeps()>,
     ops::ActivationTripleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(tanh, Tanh, TanhFunctor, TanhGradFunctor);
-REGISTER_OP_CPU_KERNEL(
-    tanh_grad_grad, ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
-                                              ops::TanhGradGradFunctor<float>>,
-    ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
-                              ops::TanhGradGradFunctor<double>>,
-    ops::TanhDoubleGradKernel<plat::CPUDeviceContext,
-                              ops::TanhGradGradFunctor<plat::float16>>);
-// Register TripleGrad Kernel
-REGISTER_OP_CPU_KERNEL(
-    tanh_triple_grad,
-    ops::TanhTripeGradKernel<plat::CPUDeviceContext,
-                             ops::TanhTripleGradFunctor<float>>,
-    ops::TanhTripeGradKernel<plat::CPUDeviceContext,
-                             ops::TanhTripleGradFunctor<double>>,
-    ops::TanhTripeGradKernel<plat::CPUDeviceContext,
-                             ops::TanhTripleGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ==========================    relu register  ============================= */
@@ -1623,16 +1608,6 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad2<ops::LeakyReluGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInferer);
 
-REGISTER_ACTIVATION_CPU_KERNEL(leaky_relu, LeakyRelu, LeakyReluFunctor,
-                               LeakyReluGradFunctor);
-REGISTER_OP_CPU_KERNEL(
-    leaky_relu_grad_grad,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::LeakyReluGradGradFunctor<float>>,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::LeakyReluGradGradFunctor<double>>,
-    ops::ActivationDoubleGradKernel<
-        plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ========================    elu  register     ============================ */
