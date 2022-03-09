@@ -14,15 +14,25 @@
 
 #pragma once
 
-#include "paddle/infrt/backends/host/phi_allocator.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/infrt/dialect/infrt/common_type.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace infrt {
-namespace kernel {
-namespace phi {
 
-backends::CpuPhiAllocator CreateCpuAllocator();
+phi::Backend cvtTarget2Phi(TargetType target);
+TargetType cvtTargetFromPhi(phi::Backend backend);
 
-}  // namespace phi
-}  // namespace kernel
+phi::DataType cvtPrecision2Phi(PrecisionType precision);
+PrecisionType cvtPrecisionFromPhi(phi::DataType datatype);
+
+phi::DataLayout cvtLayout2Phi(LayoutType layout);
+LayoutType cvtLayoutFromPhi(phi::DataLayout layout);
+
+phi::KernelKey cvtPlace2Phi(const Place& place);
+Place cvtPlaceFromPhi(phi::TensorArgDef tensor_arg);
+
 }  // namespace infrt
