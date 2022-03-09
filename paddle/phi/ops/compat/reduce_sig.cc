@@ -91,11 +91,46 @@ KernelSignature ReduceMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("unregistered", {}, {}, {});
 }
 
+KernelSignature ReduceAnyOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
+    // InferShape, so we must return the "min_raw" KernelSignature.
+    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
+    // the
+    // "min_raw" KernelSignature
+    if (ctx.IsForInferShape() || reduce_all) {
+      return KernelSignature(
+          "any_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+    }
+    return KernelSignature("any", {"X"}, {"dim", "keep_dim"}, {"Out"});
+  }
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
+KernelSignature ReduceAllOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
+    // InferShape, so we must return the "min_raw" KernelSignature.
+    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
+    // the
+    // "min_raw" KernelSignature
+    if (ctx.IsForInferShape() || reduce_all) {
+      return KernelSignature(
+          "all_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+    }
+    return KernelSignature("all", {"X"}, {"dim", "keep_dim"}, {"Out"});
+  }
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_mean, mean);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_max, max);
+PD_REGISTER_BASE_KERNEL_NAME(reduce_min, min);
 
 PD_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);
