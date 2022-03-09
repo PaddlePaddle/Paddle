@@ -115,7 +115,7 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
     StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
                         decrease_axis, out_dims_vector.data(), axes.size(),
                         false);
-    framework::DDim out_dims(framework::make_ddim(out_dims_vector));
+    framework::DDim out_dims(phi::make_ddim(out_dims_vector));
 
     // check whether need to reverse (false: stride > 0; true: stride < 0)
     std::vector<int> reverse_vector(starts.size(), 0);
@@ -172,7 +172,7 @@ class StridedSliceNPUKernel : public framework::OpKernel<T> {
       if (new_out_shape.size() == 0) {
         new_out_shape.push_back(1);
       }
-      out_dims_origin = framework::make_ddim(new_out_shape);
+      out_dims_origin = phi::make_ddim(new_out_shape);
     }
 
     bool need_reverse = false;

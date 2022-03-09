@@ -56,12 +56,13 @@ class QrGPUKernel : public framework::OpKernel<T> {
     int tau_stride = min_mn;
 
     if (compute_q) {
-      q.mutable_data<math::Real<T>>(
+      q.mutable_data<phi::dtype::Real<T>>(
           context.GetPlace(),
-          size_t(batch_size * m * k * sizeof(math::Real<T>)));
+          size_t(batch_size * m * k * sizeof(phi::dtype::Real<T>)));
     }
-    r.mutable_data<math::Real<T>>(
-        context.GetPlace(), size_t(batch_size * k * n * sizeof(math::Real<T>)));
+    r.mutable_data<phi::dtype::Real<T>>(
+        context.GetPlace(),
+        size_t(batch_size * k * n * sizeof(phi::dtype::Real<T>)));
 
     auto dito =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
@@ -70,14 +71,15 @@ class QrGPUKernel : public framework::OpKernel<T> {
     // Note: allocate temporary tensors because of lacking in-place operatios.
     // Prepare qr
     Tensor qr;
-    qr.mutable_data<math::Real<T>>(
-        context.GetPlace(), size_t(batch_size * m * n * sizeof(math::Real<T>)));
+    qr.mutable_data<phi::dtype::Real<T>>(
+        context.GetPlace(),
+        size_t(batch_size * m * n * sizeof(phi::dtype::Real<T>)));
     // BatchedGeqrf performs computation in-place and 'qr' must be a copy of
     // input
     paddle::framework::TensorCopy(x, context.GetPlace(), &qr);
 
     // Prepare tau
-    auto tau_dims_vec = framework::vectorize<int>(x_dims);
+    auto tau_dims_vec = phi::vectorize<int>(x_dims);
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
     Tensor tau = dito.Fill(tau_dims_vec, 0);
@@ -116,7 +118,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
         framework::TensorCopy(sliced_q, q.place(), &q);
       } else {
         if (m > n) {
-          auto new_qr_dims_vec = framework::vectorize<int>(x_dims);
+          auto new_qr_dims_vec = phi::vectorize<int>(x_dims);
           new_qr_dims_vec[new_qr_dims_vec.size() - 1] = m;
           Tensor new_qr = dito.Fill(new_qr_dims_vec, 0);
           auto new_qr_data = new_qr.mutable_data<T>(context.GetPlace());
@@ -124,7 +126,8 @@ class QrGPUKernel : public framework::OpKernel<T> {
           for (int i = 0; i < batch_size; ++i) {
             memory::Copy(dev_ctx.GetPlace(), (new_qr_data + i * new_qr_stride),
                          dev_ctx.GetPlace(), (qr_data + i * qr_stride),
-                         qr_stride * sizeof(math::Real<T>), dev_ctx.stream());
+                         qr_stride * sizeof(phi::dtype::Real<T>),
+                         dev_ctx.stream());
           }
           BatchedOrgqr<platform::CUDADeviceContext, T>(
               dev_ctx, batch_size, m, m, min_mn, new_qr_data, m, tau_data,

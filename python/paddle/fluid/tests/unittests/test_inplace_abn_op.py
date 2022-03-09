@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import compiler
 import paddle.fluid.unique_name as unique_name
+import paddle
 
 
 class TestInplaceANBOpTraining(unittest.TestCase):
@@ -138,14 +139,14 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 outs[0].name if not only_forward else None,
                 build_strategy=build_strategy,
                 exec_strategy=exec_strategy)
-            bn_fetches = exe.run(program=comp_prog1,
+            bn_fetches = exe.run(program=main,
                                  feed={'input': data},
                                  fetch_list=fetch_name)
             fetch_outs.append(bn_fetches)
             fetch_names.append(fetch_name)
 
-        for bn_val, inplace_abn_val, name1, name2 in zip(*(fetch_outs +
-                                                           fetch_names)):
+        for bn_val, inplace_abn_val, name1, name2 in zip(*(
+                fetch_outs + fetch_names)):
             self.assertTrue(
                 np.allclose(
                     bn_val, inplace_abn_val, atol=1e-2),
@@ -156,6 +157,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
     def test_op(self):
         use_cudas = [False, True] if core.is_compiled_with_cuda() else [False]
+        #use_cudas = [False]
         for use_cuda in use_cudas:
             place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
             layouts = ["NCHW", "NHWC"]
@@ -186,4 +188,5 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

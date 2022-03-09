@@ -18,6 +18,7 @@ import unittest
 import paddle
 from paddle.fluid import core
 import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
@@ -42,12 +43,11 @@ def get_dist_prog(train_program,
     parallelizer._dist_context = dist_context
 
     # serial forward & backward completion
-    complete_train_program = auto.complete_annotation(
-        train_program, dist_context
+    completer = Completer(dist_context)
+    complete_train_program = completer.complete_forward_annotation(
+        train_program
     ) if complete_train_program is None else complete_train_program
-
-    # parallelizer._apply_serial_forward_pass(complete_train_program,
-    #                                         startup_program)
+    dist_context.block_state.parse_forward_blocks(complete_train_program)
 
     params_grads = parallelizer._generate_backward(
         complete_train_program,
@@ -93,9 +93,9 @@ class TestDistributedTensor(unittest.TestCase):
         rank_id = 1
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        dist_main_prog, dist_startup_prog, _ = get_dist_prog(
-            train_program, startup_program, dist_context, rank_id,
-            complete_train_program)
+        dist_context = DistributedContext()
+        dist_main_prog, dist_startup_prog, complete_train_program = get_dist_prog(
+            train_program, startup_program, dist_context, rank_id, None)
         dist_context.dist_main_programs[rank_id] = dist_main_prog
         dist_context.dist_startup_programs[rank_id] = dist_startup_prog
         name = "layer_norm_1.tmp_2"

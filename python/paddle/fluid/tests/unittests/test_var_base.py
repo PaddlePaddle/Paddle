@@ -51,6 +51,10 @@ class TestVarBase(unittest.TestCase):
                     np.array_equal(x.numpy(), np.array([1.2], 'float16')))
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP16)
 
+                # set_default_dtype take effect on int
+                x = paddle.to_tensor(1, place=place)
+                self.assertTrue(x.dtype, core.VarDesc.VarType.INT64)
+
                 # set_default_dtype take effect on float
                 x = paddle.to_tensor(1.2, place=place, stop_gradient=False)
                 self.assertTrue(
@@ -1090,6 +1094,20 @@ class TestVarBase(unittest.TestCase):
         7.5211e-01, 3.6094e-01, 4.7034e-01, 1.7355e-01, 8.9763e-01, 7.6165e-01, 3.7557e-01, 2.4157e-01, 2.9074e-01, 3.2458e-01, 4.3049e-01, 5.7171e-01,
         7.3509e-02, 3.6087e-02, 5.5341e-01, 4.3993e-01, 9.2601e-01, 6.5248e-01, 3.0640e-01, 4.5727e-01, 9.2104e-01, 8.2688e-01, 2.4243e-01, 7.4937e-01,
         8.9448e-01, 7.0981e-01, 8.0783e-01, 4.7065e-01, 5.7154e-01, 7.2319e-01, 4.6777e-01, 5.0465e-01])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str_bf16(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
+        a = paddle.cast(a, dtype=core.VarDesc.VarType.BF16)
+        paddle.set_printoptions(precision=4)
+        a_str = str(a)
+
+        expected = '''Tensor(shape=[2, 2], dtype=bfloat16, place=Place(cpu), stop_gradient=True,
+       [[1.5000, 1.    ],
+        [0.    , 0.    ]])'''
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()

@@ -83,6 +83,8 @@ class ReduceOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
+    // Ensure that the output type and input type are consistent.
+    layer->getOutput(0)->setType(layer->getInput(0)->getType());
     RreplenishLayerAndOutput(layer, op_type, {output_name}, test_mode);
   }
 

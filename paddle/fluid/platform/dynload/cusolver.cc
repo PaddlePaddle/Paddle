@@ -18,9 +18,6 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag cusolver_dso_flag;
-void *cusolver_dso_handle;
-
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 CUSOLVER_ROUTINE_EACH(DEFINE_WRAP);

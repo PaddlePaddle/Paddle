@@ -16,6 +16,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace paddle {
@@ -27,19 +28,31 @@ constexpr const char* kQueueDestructEvent = "QueueDestruct";
 class EventsWaiter;
 
 struct WorkQueueOptions {
-  WorkQueueOptions(size_t num_threads, bool allow_spinning, bool track_task)
-      : num_threads(num_threads),
+  WorkQueueOptions(const std::string& name, size_t num_threads,
+                   bool allow_spinning, bool track_task)
+      : name(name),
+        num_threads(num_threads),
         allow_spinning(allow_spinning),
-        track_task(track_task) {}
+        track_task(track_task) {
+    Validate();
+  }
 
-  WorkQueueOptions(size_t num_threads, bool allow_spinning, bool track_task,
-                   bool detached, EventsWaiter* waiter)
-      : num_threads(num_threads),
+  WorkQueueOptions(const std::string& name, size_t num_threads,
+                   bool allow_spinning, bool track_task, bool detached,
+                   EventsWaiter* waiter)
+      : name(name),
+        num_threads(num_threads),
         allow_spinning(allow_spinning),
         track_task(track_task),
         detached(detached),
-        events_waiter(waiter) {}
+        events_waiter(waiter) {
+    Validate();
+  }
 
+  // throw an exception if there is an invalid option
+  void Validate() const;
+
+  std::string name;
   size_t num_threads;
   bool allow_spinning;
   // If you need to blocking the calling  thread to wait "queue empty", set

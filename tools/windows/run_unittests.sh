@@ -120,8 +120,7 @@ disable_win_trt_test="^test_trt_convert_conv2d$|\
 ^test_trt_convert_scale$"
 
 # /*==================Fixed Disabled Windows GPU inference_api_test unittests==============================*/
-disable_win_inference_api_test="^test_analyzer_capi_exp_pd_config$|\
-^trt_quant_int8_yolov3_r50_test$|\
+disable_win_inference_api_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_trt_dynamic_shape_ernie$|\
 ^test_trt_dynamic_shape_ernie_fp16_ser_deser$|\
 ^lite_resnet50_test$|\

@@ -147,7 +147,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
 
     auto scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
 
-    std::vector<int> dims_y = framework::vectorize<int>(Y_t->dims());
+    std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
     if (dims_y.size() == no_batch_dims.size() + 1) {
       if (dims_y[0] == 1) dims_y.erase(dims_y.begin());
     }

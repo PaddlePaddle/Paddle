@@ -40,7 +40,7 @@ class StubRootReader : public paddle::framework::ReaderBase {
 TEST(READER, decorate_chain) {
   paddle::framework::proto::VarType::Type dtype =
       paddle::framework::proto::VarType::FP32;
-  paddle::framework::DDim dim = paddle::framework::make_ddim({5, 7});
+  paddle::framework::DDim dim = phi::make_ddim({5, 7});
   std::vector<paddle::framework::DDim> init_dims(4, dim);
   std::vector<paddle::framework::proto::VarType::Type> init_types(4, dtype);
   std::vector<bool> init_need_check(4, true);

@@ -57,3 +57,5 @@ class PaddleDialect : public Dialect {
 
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/pd_ops.hpp.inc"
+#define GET_OP_CLASSES
+#include "paddle/infrt/dialect/pd_extra_ops.hpp.inc"

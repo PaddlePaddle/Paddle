@@ -27,15 +27,7 @@ class CPUDeviceContext;
 }  // namespace paddle
 
 REGISTER_REDUCE_OP(reduce_prod);
-REGISTER_OP_CPU_KERNEL(reduce_prod,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         float, ops::ProdFunctor>,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         double, ops::ProdFunctor>,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         int, ops::ProdFunctor>,
-                       ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                                         int64_t, ops::ProdFunctor>);
+
 REGISTER_OP_CPU_KERNEL(reduce_prod_grad,
                        ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
                                              float, ops::ProdGradFunctor>,

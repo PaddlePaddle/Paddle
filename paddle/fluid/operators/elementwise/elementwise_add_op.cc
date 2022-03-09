@@ -33,34 +33,6 @@ class CPUDeviceContext;
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct SameDimsElemwiseAdd<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    blas.VADD(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-  }
-};
-
-template <typename T>
-struct SameDimsElemwiseAdd<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    eigen_z.device(place) = eigen_x + eigen_y;
-  }
-};
-
 class ElementwiseAddOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Add"; }
@@ -144,55 +116,6 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(elementwise_add_triple_grad, ops::ElementwiseOpTripleGrad,
                   ops::ElementwiseTripleGradOpInplaceInferer,
                   ops::ElementwiseTripleGradNoBufVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add_grad,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::ElementwiseAddGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add_grad_grad,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseAddDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_add_triple_grad,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseAddTripleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
 
 // A specialization elementwise_add operator, used in gradient accumulation with
 // inplace addto.

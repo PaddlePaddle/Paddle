@@ -38,7 +38,7 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
 
     // handle reduce_all
     if (input2->dims().size() == 1 && input2->dims()[0] == 1) {
-      for (int64_t i = 0; i < framework::product(input0->dims()); ++i) {
+      for (int64_t i = 0; i < phi::product(input0->dims()); ++i) {
         output_d[i] = input2_d[0];
       }
       return;
@@ -74,13 +74,14 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
     auto dims = context.Attr<std::vector<int>>("dim");
     if (context.GetPlace().GetType() == platform::CPUPlace().GetType() &&
         dims.size() == 1) {
-      int in_dtype = context.Attr<int>("in_dtype");
+      int in_dtype = context.Attr<int>("out_dtype");
 
       if (in_dtype >= 0) {
         Tensor tmp_tensor;
         auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
-        auto in_kernel_type =
-            framework::OpKernelType(pre_input->type(), context.GetPlace());
+        auto in_kernel_type = framework::OpKernelType(
+            framework::TransToProtoVarType(pre_input->dtype()),
+            context.GetPlace());
         auto out_kernel_type = framework::OpKernelType(
             static_cast<framework::proto::VarType::Type>(in_dtype),
             context.GetPlace());

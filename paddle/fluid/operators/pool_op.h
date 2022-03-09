@@ -20,8 +20,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__HIPCC__) || defined(__NVCC__)
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #endif
@@ -79,7 +79,7 @@ inline void UpdatePadding(std::vector<T>* paddings, const bool global_pooling,
                           const std::vector<T>& strides,
                           const std::vector<T>& ksize) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = framework::vectorize<T>(data_dims);
+  auto data_shape = phi::vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);
@@ -172,9 +172,9 @@ class PoolKernel : public framework::OpKernel<T> {
     auto in_x_dims = in_x->dims();
     framework::DDim data_dims;
     if (channel_last) {
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     } else {
-      data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+      data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
     }
 
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
@@ -206,10 +206,9 @@ class PoolKernel : public framework::OpKernel<T> {
               adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)
             auto stream = dev_ctx.stream();
-            TensorReduceFunctorImpl<T, T, kps::AddFunctor,
-                                    kps::DivideFunctor<T>>(
-                *in_x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim,
-                stream);
+            TensorReduceImpl<T, T, kps::AddFunctor, kps::DivideFunctor<T>>(
+                dev_ctx, *in_x, out, kps::DivideFunctor<T>(reduce_num),
+                reduce_dim, stream);
 #else  // for cpu
             paddle::operators::math::Pool2dFunctor<
                 DeviceContext, paddle::operators::math::AvgPool<T>, T>
@@ -281,9 +280,9 @@ class PoolGradKernel : public framework::OpKernel<T> {
     auto in_x_dims = in_x->dims();
     framework::DDim data_dims;
     if (channel_last) {
-      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+      data_dims = phi::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
     } else {
-      data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+      data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
@@ -300,7 +299,7 @@ class PoolGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
-      paddle::operators::math::SetConstant<DeviceContext, T> set_constant;
+      phi::funcs::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx, in_x_grad, static_cast<T>(0.0));
 
       switch (ksize.size()) {

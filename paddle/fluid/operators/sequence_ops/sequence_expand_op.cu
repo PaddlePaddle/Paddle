@@ -157,7 +157,9 @@ struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
         out_offset[2 * x_lod_size + i] = ref_lod[i];
       }
 
-      const size_t* out_offset_data = out_offset.CUDAData(context.GetPlace());
+      paddle::framework::MixVector<size_t> mixv_out_offset(&out_offset);
+      const size_t* out_offset_data =
+          mixv_out_offset.CUDAData(context.GetPlace());
       const size_t* x_lod_data = out_offset_data + x_lod_size;
       const size_t* ref_lod_data = out_offset_data + 2 * x_lod_size;
 
@@ -183,7 +185,7 @@ struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
                   const framework::Vector<size_t>& x_lod, /*expand source lod*/
                   const framework::Vector<size_t>& ref_lod, /*expand based lod*/
                   LoDTensor* dx) {
-    int x_item_length = framework::product(dx->dims()) / dx->dims()[0];
+    int x_item_length = phi::product(dx->dims()) / dx->dims()[0];
     framework::Vector<size_t> out_offset(x_lod.size());
     GetOutputOffset(x_lod, ref_lod, &out_offset);
 
@@ -193,11 +195,14 @@ struct SequenceExpandGradFunctor<platform::CUDADeviceContext, T> {
     int block_x = static_cast<int>(ref_lod.size());
     dim3 block_size(thread_x, thread_y, thread_z);
     dim3 grid_size(block_x, 1);
+    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
+    paddle::framework::MixVector<size_t> mixv_x_lod(&x_lod);
+    paddle::framework::MixVector<size_t> mixv_out_offset(&out_offset);
     sequence_expand_grad_kernel<<<grid_size, block_size, 0, context.stream()>>>(
-        dout.data<T>(), ref_lod.CUDAData(context.GetPlace()),
-        x_lod.CUDAData(context.GetPlace()),
-        out_offset.CUDAData(context.GetPlace()), ref_lod.size(), x_item_length,
-        dx->mutable_data<T>(context.GetPlace()));
+        dout.data<T>(), mixv_ref_lod.CUDAData(context.GetPlace()),
+        mixv_x_lod.CUDAData(context.GetPlace()),
+        mixv_out_offset.CUDAData(context.GetPlace()), ref_lod.size(),
+        x_item_length, dx->mutable_data<T>(context.GetPlace()));
   }
 };
 

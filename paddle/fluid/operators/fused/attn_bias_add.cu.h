@@ -50,8 +50,8 @@ template <typename InT, typename OutT, int ShapeSize, int VecSize,
           int DATA_PER_THREAD, typename Functor>
 __global__ void BroadcastKernelBinary(
     const InT* __restrict__ in0, const InT* __restrict__ in1, OutT* out,
-    framework::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
-    framework::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
+    phi::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
+    phi::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
         configlists,
     int main_tid, int tail_tid, Functor func) {
   int fix = blockIdx.x * blockDim.x * VecSize;
@@ -89,9 +89,9 @@ __global__ void BroadcastKernelBinary(
 template <typename T>
 void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
                            const T* in0, const T* in1, T* out) {
-  int in_vec_size = std::min(platform::GetVectorizedSize<T>(in0),
-                             platform::GetVectorizedSize<T>(in1));
-  int out_vec_size = std::min(4, platform::GetVectorizedSize<T>(out));
+  int in_vec_size =
+      std::min(phi::GetVectorizedSize<T>(in0), phi::GetVectorizedSize<T>(in1));
+  int out_vec_size = std::min(4, phi::GetVectorizedSize<T>(out));
   int vec_size = std::min(out_vec_size, in_vec_size);
 
   int numel = m * n;
@@ -104,8 +104,8 @@ void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
   int main_tid = numel / (data_per_thread * vec_size * threads);
   int tail_tid = numel % (data_per_thread * vec_size * threads);
 
-  framework::Array<kps::details::BroadcastConfig<2>, MAX_INPUT_NUM> configlists;
-  framework::Array<bool, MAX_INPUT_NUM> use_broadcast;
+  phi::Array<kps::details::BroadcastConfig<2>, MAX_INPUT_NUM> configlists;
+  phi::Array<bool, MAX_INPUT_NUM> use_broadcast;
 
   use_broadcast[0] = false;
   use_broadcast[1] = false;
@@ -191,10 +191,9 @@ void SetConfigForColumnReduce(const int max_threads, const int reduce_num,
 
   int num_block = (max_threads / left_num);
   if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
-    *blocking_size =
-        pten::kernels::details::GetLastPow2(reduce_num / num_block);
+    *blocking_size = phi::funcs::details::GetLastPow2(reduce_num / num_block);
     if (*blocking_size <= 1) {
-      *blocking_size = pten::kernels::details::GetLastPow2(sqrt(reduce_num));
+      *blocking_size = phi::funcs::details::GetLastPow2(sqrt(reduce_num));
     } else if (*blocking_size * 2 < reduce_num) {
       *blocking_size *= 2;
     }

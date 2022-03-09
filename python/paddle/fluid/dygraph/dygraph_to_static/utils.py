@@ -548,8 +548,10 @@ def func_to_source_code(function, dedent=True):
             "The type of 'function' should be a function or method, but received {}.".
             format(type(function).__name__))
     source_code_list, _ = inspect.getsourcelines(function)
+    # Replace comments with blank lines so that error messages are not misplaced
     source_code_list = [
-        line for line in source_code_list if not line.lstrip().startswith('#')
+        line if not line.lstrip().startswith('#') else '\n'
+        for line in source_code_list
     ]
     source_code = ''.join(source_code_list)
     if dedent:

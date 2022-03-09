@@ -24,92 +24,103 @@ from op_test_xpu import OpTest, XPUOpTest
 import paddle
 from paddle.fluid import Program, program_guard
 
-
-class TestClipOp(XPUOpTest):
-    def set_xpu(self):
-        self.__class__.use_xpu = True
-        self.place = paddle.XPUPlace(0)
-
-    def setUp(self):
-        self.set_xpu()
-        self.max_relative_error = 0.006
-
-        self.inputs = {}
-        self.initTestCase()
-
-        self.op_type = "clip"
-        self.attrs = {}
-        self.attrs['min'] = self.min
-        self.attrs['max'] = self.max
-        if 'Min' in self.inputs:
-            min_v = self.inputs['Min']
-        else:
-            min_v = self.attrs['min']
-
-        if 'Max' in self.inputs:
-            max_v = self.inputs['Max']
-        else:
-            max_v = self.attrs['max']
-
-        input = np.random.random(self.shape).astype("float32")
-        input[np.abs(input - min_v) < self.max_relative_error] = 0.5
-        input[np.abs(input - max_v) < self.max_relative_error] = 0.5
-        self.inputs['X'] = input
-        self.outputs = {'Out': np.clip(self.inputs['X'], min_v, max_v)}
-
-    def test_check_output(self):
-        paddle.enable_static()
-        self.check_output_with_place(self.place)
-        paddle.disable_static()
-
-    def test_check_grad_normal(self):
-        paddle.enable_static()
-        self.check_grad_with_place(self.place, ['X'], 'Out')
-        paddle.disable_static()
-
-    def initTestCase(self):
-        self.shape = (4, 10, 10)
-        self.max = 0.8
-        self.min = 0.3
-        self.inputs['Max'] = np.array([0.8]).astype('float32')
-        self.inputs['Min'] = np.array([0.1]).astype('float32')
+import op_test
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 
-class TestCase1(TestClipOp):
-    def initTestCase(self):
-        self.shape = (8, 16, 8)
-        self.max = 0.7
-        self.min = 0.0
+class XPUTestClipOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'clip'
+        self.use_dynamic_create_class = False
 
+    class TestClipOp(XPUOpTest):
+        def setUp(self):
+            self.init_dtype()
+            self.set_xpu()
+            self.op_type = "clip"
+            self.place = paddle.XPUPlace(0)
+            self.inputs = {}
+            self.init_data()
+            self.set_attrs()
+            self.set_inputs()
+            self.outputs = {
+                'Out': np.clip(self.inputs['X'], self.min_v, self.max_v)
+            }
 
-class TestCase2(TestClipOp):
-    def initTestCase(self):
-        self.shape = (8, 16)
-        self.max = 1.0
-        self.min = 0.0
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
+            self.__class__.op_type = self.dtype
 
+        def init_data(self):
+            self.shape = (4, 10, 10)
+            self.max = 0.8
+            self.min = 0.3
 
-class TestCase3(TestClipOp):
-    def initTestCase(self):
-        self.shape = (4, 8, 16)
-        self.max = 0.7
-        self.min = 0.2
+        def set_inputs(self):
+            if 'Min' in self.inputs:
+                min_v = self.inputs['Min']
+            else:
+                min_v = self.attrs['min']
 
+            if 'Max' in self.inputs:
+                max_v = self.inputs['Max']
+            else:
+                max_v = self.attrs['max']
 
-class TestCase4(TestClipOp):
-    def initTestCase(self):
-        self.shape = (4, 8, 8)
-        self.max = 0.7
-        self.min = 0.2
-        self.inputs['Max'] = np.array([0.8]).astype('float32')
-        self.inputs['Min'] = np.array([0.3]).astype('float32')
+            self.min_v = min_v
+            self.max_v = max_v
+            self.max_relative_error = 0.006
+            input = np.random.random(self.shape).astype("float32")
+            input[np.abs(input - min_v) < self.max_relative_error] = 0.5
+            input[np.abs(input - max_v) < self.max_relative_error] = 0.5
+            self.inputs['X'] = input
 
+        def set_attrs(self):
+            self.attrs = {}
+            self.attrs['min'] = self.min
+            self.attrs['max'] = self.max
 
-class TestCase5(TestClipOp):
-    def initTestCase(self):
-        self.shape = (4, 8, 16)
-        self.max = 0.5
-        self.min = 0.5
+        def init_dtype(self):
+            self.dtype = self.in_type
+
+        def test_check_output(self):
+            paddle.enable_static()
+            self.check_output_with_place(self.place)
+            paddle.disable_static()
+
+    class TestClipOp1(TestClipOp):
+        def init_data(self):
+            self.shape = (8, 16, 8)
+            self.max = 0.7
+            self.min = 0.0
+
+    class TestClipOp2(TestClipOp):
+        def init_data(self):
+            self.shape = (8, 16)
+            self.max = 1.0
+            self.min = 0.0
+
+    class TestClipOp3(TestClipOp):
+        def init_data(self):
+            self.shape = (4, 8, 16)
+            self.max = 0.7
+            self.min = 0.2
+
+    class TestClipOp4(TestClipOp):
+        def init_data(self):
+            self.shape = (4, 8, 8)
+            self.max = 0.7
+            self.min = 0.2
+            self.inputs['Max'] = np.array([0.8]).astype('float32')
+            self.inputs['Min'] = np.array([0.3]).astype('float32')
+
+    class TestClipOp5(TestClipOp):
+        def init_data(self):
+            self.shape = (4, 8, 16)
+            self.max = 0.5
+            self.min = 0.5
 
 
 class TestClipOpError(unittest.TestCase):
@@ -211,6 +222,10 @@ class TestInplaceClipAPI(TestClipAPI):
     def _executed_api(self, x, min=None, max=None):
         return x.clip_(min, max)
 
+
+support_types = get_xpu_op_support_types('clip')
+for stype in support_types:
+    create_test_class(globals(), XPUTestClipOp, stype)
 
 if __name__ == '__main__':
     unittest.main()

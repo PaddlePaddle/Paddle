@@ -38,7 +38,7 @@ void NPUPinnedAllocator::ProcessEventsAndFree() {
   }
 }
 
-pten::Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
+phi::Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
   std::lock_guard<std::mutex> lock(mtx_);
   ProcessEventsAndFree();
   void *ptr;
@@ -50,7 +50,7 @@ pten::Allocation *NPUPinnedAllocator::AllocateImpl(size_t size) {
   return new Allocation(ptr, size, platform::NPUPinnedPlace());
 }
 
-void NPUPinnedAllocator::FreeImpl(pten::Allocation *allocation) {
+void NPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
   std::lock_guard<std::mutex> lock(mtx_);
   void *ptr = allocation->ptr();
   auto iter = npu_events_.find(allocation);
@@ -83,7 +83,7 @@ uint64_t NPUPinnedAllocator::ReleaseImpl(const platform::Place &place) {
   return static_cast<uint64_t>(0);
 }
 
-void NPUPinnedAllocator::RecordEvent(pten::Allocation *allocation,
+void NPUPinnedAllocator::RecordEvent(phi::Allocation *allocation,
                                      aclrtStream stream) {
   std::lock_guard<std::mutex> lock(mtx_);
   aclrtEvent event = nullptr;

@@ -69,15 +69,19 @@ class TestAdamOp1(OpTest):
 
 
 class TestAdamOp2(OpTest):
+    def set_shape(self):
+        self.shape = (102, 105)
+
     def setUp(self):
         '''Test Adam Op with supplied attributes
         '''
         self.op_type = "adam"
-        param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
-        moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
+        self.set_shape()
+        param = np.random.uniform(-1, 1, self.shape).astype("float32")
+        grad = np.random.uniform(-1, 1, self.shape).astype("float32")
+        moment1 = np.random.uniform(-1, 1, self.shape).astype("float32")
         # The second moment is positive
-        moment2 = np.random.random((102, 105)).astype("float32")
+        moment2 = np.random.random(self.shape).astype("float32")
 
         learning_rate = 0.001
         beta1 = 0.9
@@ -111,6 +115,11 @@ class TestAdamOp2(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestAdamOnlyTailOp(TestAdamOp2):
+    def set_shape(self):
+        self.shape = (3)
 
 
 class TestAdamOpMultipleSteps(OpTest):

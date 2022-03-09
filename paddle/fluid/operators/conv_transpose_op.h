@@ -20,11 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/vol2col.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -48,14 +47,14 @@ static void Slice(const framework::ExecutionContext& context,
     extents[i] = in_dims[i];
   }
 
-  std::vector<int64_t> out_shape_vec = framework::vectorize(in_dims);
+  std::vector<int64_t> out_shape_vec = phi::vectorize(in_dims);
   for (size_t i = 0; i < axes_vec.size(); ++i) {
     offsets[axes_vec[i]] = begin_vec[i];
     extents[axes_vec[i]] = end_vec[i] - begin_vec[i];
     out_shape_vec[axes_vec[i]] = end_vec[i] - begin_vec[i];
   }
 
-  framework::DDim out_dims(framework::make_ddim(out_shape_vec));
+  framework::DDim out_dims(phi::make_ddim(out_shape_vec));
   out->mutable_data<T>(out_dims, context.GetPlace());
 
   auto in_t =
@@ -153,21 +152,21 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
 
     framework::DDim in_data_dims;
     if (data_layout != framework::DataLayout::kNHWC) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
     }
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
     // input_shape_vec: {n, c, h, w} or {n, c, d, h, w} for channel_first
     // input_shape_vec: {n, h, w, c} or {n, d, h, w, c} for channel_last
-    std::vector<int64_t> input_shape_vec = framework::vectorize(input->dims());
+    std::vector<int64_t> input_shape_vec = phi::vectorize(input->dims());
     // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
-    std::vector<int64_t> filter_shape_vec = framework::vectorize(filter.dims());
+    std::vector<int64_t> filter_shape_vec = phi::vectorize(filter.dims());
 
     // use col_shape in the im2col and col2im (or vol2col and col2vol)
     // calculation
@@ -187,11 +186,11 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
         col_shape_vec[j + 1 + data_dim] = input_shape_vec[j + 1];
       }
     }
-    DDim col_shape(framework::make_ddim(col_shape_vec));
+    DDim col_shape(phi::make_ddim(col_shape_vec));
 
     // use col_matrix_shape in the gemm calculation
     // size: (o_c/g * k_h * k_w, h * w) or (o_c/g * k_d * k_h * k_w, d * h * w)
-    DDim col_matrix_shape = framework::flatten_to_2d(col_shape, data_dim + 1);
+    DDim col_matrix_shape = phi::flatten_to_2d(col_shape, data_dim + 1);
 
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
@@ -205,7 +204,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     // output size: (o_c, o_h, o_w) or (o_c, o_d, o_h, o_w) for channel_first
     // output size: (o_h, o_w, o_c) or (o_d, o_h, o_w, o_c) for channel_last
     DDim output_shape =
-        framework::slice_ddim(output->dims(), 1, output->dims().size());
+        phi::slice_ddim(output->dims(), 1, output->dims().size());
 
     // input matrix size: (i_c, h * w) or (i_c, d * h * w) for channel_first
     // input matrix size: (h * w, i_c) or (d * h * w, i_c) for channel_last
@@ -226,9 +225,9 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     filter.Resize(filter_matrix_shape);
 
     output->mutable_data<T>(context.GetPlace());
-    math::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     set_zero(dev_ctx, output, static_cast<T>(0));
 
     int in_step =
@@ -351,21 +350,21 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
 
     framework::DDim in_data_dims;
     if (data_layout != framework::DataLayout::kNHWC) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
     } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
     }
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
     // input_shape_vec: {n, c, h, w} or {n, c, d, h, w} for channel_first
     // input_shape_vec: {n, h, w, c} or {n, d, h, w, c} for channel_last
-    std::vector<int64_t> input_shape_vec = framework::vectorize(input->dims());
+    std::vector<int64_t> input_shape_vec = phi::vectorize(input->dims());
     // filter_shape_vec: {i_c, o_c, k_h, k_w} or {i_c, o_c, k_d, k_h, k_w}
-    std::vector<int64_t> filter_shape_vec = framework::vectorize(filter.dims());
+    std::vector<int64_t> filter_shape_vec = phi::vectorize(filter.dims());
 
     // use col_shape in the im2col and col2im (or vol2col and col2vol)
     // calculation
@@ -385,16 +384,16 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
         col_shape_vec[j + 1 + data_dim] = input_shape_vec[j + 1];
       }
     }
-    DDim col_shape(framework::make_ddim(col_shape_vec));
+    DDim col_shape(phi::make_ddim(col_shape_vec));
 
     // use col_matrix_shape in the gemm calculation
     // size: (o_c * k_h * k_w, h * w) or (o_c * k_d * k_h * k_w, d * h * w)
-    DDim col_matrix_shape = framework::flatten_to_2d(col_shape, data_dim + 1);
+    DDim col_matrix_shape = phi::flatten_to_2d(col_shape, data_dim + 1);
 
     // output size: (o_c, o_h, o_w) or (o_c, o_d, o_h, o_w) for channel_first
     // output size: (o_h, o_w, o_c) or (o_d, o_h, o_w, o_c) for channel_last
-    DDim output_shape = framework::slice_ddim(output_grad->dims(), 1,
-                                              output_grad->dims().size());
+    DDim output_shape =
+        phi::slice_ddim(output_grad->dims(), 1, output_grad->dims().size());
 
     // input matrix size: (i_c, h * w) or (i_c, d * h * w) for channel_first
     // input matrix size: (h * w, i_c) or (d * h * w, i_c) for channel_last
@@ -425,7 +424,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // im2col + gemm (similar to conv-forward)
     // input need to compute gradient
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     if (input_grad || filter_grad) {
       Tensor col;
       col.mutable_data<T>(col_shape, context.GetPlace());
@@ -437,7 +436,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
       col_matrix.Resize(col_matrix_shape);
 
       Tensor filter_grad_;
-      math::SetConstant<DeviceContext, T> set_zero;
+      phi::funcs::SetConstant<DeviceContext, T> set_zero;
 
       math::Im2ColFunctor<math::ColFormat::kCFO, DeviceContext, T> im2col;
       math::Vol2ColFunctor<DeviceContext, T> vol2col;
@@ -578,130 +577,5 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
-class DepthwiseConvTransposeKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const std::string data_layout_str =
-        context.Attr<std::string>("data_format");
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
-    const Tensor* input = context.Input<Tensor>("Input");
-    Tensor filter = *context.Input<Tensor>("Filter");
-    Tensor* output = context.Output<Tensor>("Output");
-    output->mutable_data<T>(context.GetPlace());
-
-    int groups = context.Attr<int>("groups");
-    PADDLE_ENFORCE_EQ(
-        groups, filter.dims()[0],
-        platform::errors::InvalidArgument(
-            "groups should be error to the 1st dimension of filter. But "
-            "received groups is %d and filter dimension[0] is %d",
-            groups, filter.dims()[0]));
-
-    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
-    std::string padding_algorithm =
-        context.Attr<std::string>("padding_algorithm");
-    for (auto v : dilations) {
-      PADDLE_ENFORCE_EQ(v, 1, platform::errors::InvalidArgument(
-                                  "dilations should be 1 in depthwise conv. "
-                                  "But received dilations is %d",
-                                  v));
-    }
-
-    auto in_dims = input->dims();
-    auto filter_dims = filter.dims();
-
-    framework::DDim in_data_dims;
-    if (data_layout != framework::DataLayout::kNHWC) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-    } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
-    }
-    framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
-
-    output->mutable_data<T>(context.GetPlace());
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(dev_ctx, output, static_cast<T>(0));
-
-    math::DepthwiseConvInputGradFunctor<DeviceContext, T>
-        depthwiseConvInputGrad;
-    depthwiseConvInputGrad(
-        dev_ctx, *output, filter, *input, strides,
-        std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
-        dilations, output, data_layout);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const std::string data_layout_str =
-        context.Attr<std::string>("data_format");
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
-    const Tensor* input = context.Input<Tensor>("Input");
-    const Tensor* output_grad =
-        context.Input<Tensor>(framework::GradVarName("Output"));
-    Tensor* input_grad =
-        context.Output<Tensor>(framework::GradVarName("Input"));
-    Tensor* filter_grad =
-        context.Output<Tensor>(framework::GradVarName("Filter"));
-    Tensor filter = *context.Input<Tensor>("Filter");
-
-    if (!input_grad && !filter_grad) return;
-
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> strides = context.Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
-    std::string padding_algorithm =
-        context.Attr<std::string>("padding_algorithm");
-
-    auto in_dims = input->dims();
-    auto filter_dims = filter.dims();
-
-    framework::DDim in_data_dims;
-    if (data_layout != framework::DataLayout::kNHWC) {
-      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-    } else {
-      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
-    }
-    framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
-    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
-                             in_data_dims, strides, ksize);
-
-    if (input_grad) {
-      math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
-      depthwiseConv(
-          dev_ctx, *output_grad, filter, strides,
-          std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
-          dilations, input_grad, data_layout);
-    }
-
-    if (filter_grad) {
-      math::SetConstant<DeviceContext, T> set_zero;
-      filter_grad->mutable_data<T>(context.GetPlace());
-      set_zero(dev_ctx, filter_grad, static_cast<T>(0));
-
-      math::DepthwiseConvFilterGradFunctor<DeviceContext, T>
-          depthwiseConvFilterGrad;
-      depthwiseConvFilterGrad(
-          dev_ctx, *output_grad, *input, strides,
-          std::vector<int>{paddings[0], paddings[2], paddings[1], paddings[3]},
-          dilations, filter_grad, data_layout);
-    }
-  }
-};
 }  // namespace operators
 }  // namespace paddle

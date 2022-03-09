@@ -27,8 +27,8 @@
 */
 namespace egr {
 
-void ScaleAPI(const egr::EagerTensor& x, float scale, float bias,
-              bool bias_after_scale, egr::EagerTensor* out);
+void ScaleAPI(const paddle::experimental::Tensor& x, float scale, float bias,
+              bool bias_after_scale, paddle::experimental::Tensor* out);
 
 class GradNodeScale : public GradNodeBase {
  public:
@@ -38,13 +38,15 @@ class GradNodeScale : public GradNodeBase {
   ~GradNodeScale() override = default;
 
   // Functor: perform backward computations
-  virtual std::vector<std::vector<egr::EagerTensor>> operator()(
-      const std::vector<std::vector<egr::EagerTensor>>& grads) override;
+  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads)
+      override;
 
-  void SetTensorWrappers_X(const std::vector<egr::EagerTensor>& tensors);
+  void SetTensorWrappers_X(
+      const std::vector<paddle::experimental::Tensor>& tensors);
 
   void SetAttributes_scale(float scale);
-
+  std::string name() override { return ""; }
   // Members: define fwd input tensors
   // For Scale there is no fwd input tensor needed
  private:
