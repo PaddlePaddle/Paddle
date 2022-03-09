@@ -37,15 +37,15 @@ static uint16_t* get_charcases_map() {
   return CHARCASES_MAP;
 }
 
-template class UnicodeFlagMap<CPUContext, uint8_t>;
-template class UnicodeFlagMap<CPUContext, uint16_t>;
-
 template <>
 UnicodeFlagMap<CPUContext, uint8_t>
     UnicodeFlagMap<CPUContext, uint8_t>::m_instance(UNIFLAG_MAP);
 template <>
 UnicodeFlagMap<CPUContext, uint16_t>
     UnicodeFlagMap<CPUContext, uint16_t>::m_instance(get_charcases_map());
+
+template class UnicodeFlagMap<CPUContext, uint8_t>;
+template class UnicodeFlagMap<CPUContext, uint16_t>;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
@@ -96,15 +96,14 @@ UnicodeFlagMap<GPUContext, uint8_t>::~UnicodeFlagMap() {
 #endif
 }
 
-template class UnicodeFlagMap<GPUContext, uint8_t>;
-template class UnicodeFlagMap<GPUContext, uint16_t>;
-
 template <>
 UnicodeFlagMap<GPUContext, uint8_t>
     UnicodeFlagMap<GPUContext, uint8_t>::m_instance(UNIFLAG_MAP);
 template <>
 UnicodeFlagMap<GPUContext, uint16_t>
     UnicodeFlagMap<GPUContext, uint16_t>::m_instance(get_charcases_map());
+template class UnicodeFlagMap<GPUContext, uint8_t>;
+template class UnicodeFlagMap<GPUContext, uint16_t>;
 #endif
 
 }  // namespace strings
