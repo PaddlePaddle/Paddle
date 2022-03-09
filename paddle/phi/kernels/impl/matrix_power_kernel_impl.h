@@ -42,10 +42,8 @@ void MatrixPowerFunction(const DenseTensor* X,
                          const Context& ctx) {
   const auto& x_dims = X->dims();
   const int x_ndim = x_dims.size();
-  // T* out_data = Out->mutable_data<T>(ctx.GetPlace());
   T* out_data = ctx.template Alloc<T>(Out);
 
-  // auto& dev_ctx = ctx.template device_context<Context>();
   paddle::platform::ForRange<Context> for_range(ctx, X->numel());
 
   if (n == 0) {
@@ -57,7 +55,6 @@ void MatrixPowerFunction(const DenseTensor* X,
 
   auto blas = phi::funcs::GetBlas<Context, T>(ctx);
 
-  // DenseTensor new_x = ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
   DenseTensor new_x;
   new_x.Resize(X->dims());
   ctx.template Alloc<T>(&new_x);
@@ -95,7 +92,6 @@ void MatrixPowerFunction(const DenseTensor* X,
     // Note: C[i] matrices in MatMul must not overlap, i.e. the individual
     // gemm operations must be computable independently; otherwise,
     // undefined behavior is expected.
-    // Tensor temp = ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
     DenseTensor temp;
     temp.Resize(X->dims());
     ctx.template Alloc<T>(&temp);
@@ -116,7 +112,6 @@ void MatrixPowerFunction(const DenseTensor* X,
     return;
   } else if (new_n == 4) {
     // Out = (newX * newX) * (newX * newX)
-    // Tensor temp = ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
     DenseTensor temp;
     temp.Resize(X->dims());
     ctx.template Alloc<T>(&temp);
@@ -141,8 +136,6 @@ void MatrixPowerFunction(const DenseTensor* X,
   int bit = 0;
   DenseTensor z = DenseTensor(X->dtype());
   bool out_inited = false;
-  // Tensor temp_out = ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
-  // Tensor temp_z = ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
   DenseTensor temp_out;
   temp_out.Resize(X->dims());
   ctx.template Alloc<T>(&temp_out);
@@ -162,7 +155,6 @@ void MatrixPowerFunction(const DenseTensor* X,
                   static_cast<T>(0));
       paddle::framework::TensorCopy(temp_z, ctx.GetPlace(), ctx, &z);
     } else {
-      // z = ctx.AllocateTmpTensor<T, Context>(X->dims(), ctx);
       z.Resize(X->dims());
       ctx.template Alloc<T>(&z);
       paddle::framework::TensorCopy(new_x, ctx.GetPlace(), ctx, &z);

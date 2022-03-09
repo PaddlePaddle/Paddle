@@ -28,11 +28,9 @@ void MatrixPowerGradFunction(const DenseTensor* X,
                              const int n,
                              DenseTensor* dX,
                              const Context& ctx) {
-  // dX->mutable_data<T>(ctx.GetPlace());
   ctx.template Alloc<T>(dX);
   const auto& x_dims = X->dims();
 
-  // auto& dev_ctx = ctx.template device_context<Context>();
   auto blas = phi::funcs::GetBlas<Context, T>(ctx);
 
   if (n == 0) {
@@ -73,7 +71,6 @@ void MatrixPowerGradFunction(const DenseTensor* X,
     return;
   }
 
-  // Tensor new_x = ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
   DenseTensor new_x;
   new_x.Resize(X->dims());
   ctx.template Alloc<T>(&new_x);
@@ -95,8 +92,6 @@ void MatrixPowerGradFunction(const DenseTensor* X,
   tensor_list[0] = std::make_shared<DenseTensor>(new_x);
   int index = 1;
   while (index < new_n - 1) {
-    // tensor_list[index] = std::make_shared<DenseTensor>(
-    //     ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx));
     DenseTensor tensor_list_index;
     tensor_list_index.Resize(X->dims());
     ctx.template Alloc<T>(&tensor_list_index);
@@ -115,7 +110,6 @@ void MatrixPowerGradFunction(const DenseTensor* X,
   // Second, \nabla newX = \sum_{i = 0}^{n - 1} (newX^{T}^{i}
   //                      * \nabla Out
   //                      * (newX^{T}^{n - i - 1})
-  // Tensor dx_new = ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
   DenseTensor dx_new;
   dx_new.Resize(X->dims());
   ctx.template Alloc<T>(&dx_new);
@@ -126,8 +120,6 @@ void MatrixPowerGradFunction(const DenseTensor* X,
               static_cast<T>(1),
               &dx_new,
               static_cast<T>(0));
-  //   Tensor da_an_minus1 =
-  //       ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
   DenseTensor da_an_minus1;
   da_an_minus1.Resize(X->dims());
   ctx.template Alloc<T>(&da_an_minus1);
@@ -142,8 +134,6 @@ void MatrixPowerGradFunction(const DenseTensor* X,
       X->numel(), static_cast<T>(1), da_an_minus1.data<T>(), dx_new.data<T>());
   int start = 0;
   while (start < new_n - 2) {
-    // Tensor a_da = ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
-    // Tensor a_da_a = ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
     DenseTensor a_da;
     a_da.Resize(X->dims());
     ctx.template Alloc<T>(&a_da);
@@ -174,8 +164,6 @@ void MatrixPowerGradFunction(const DenseTensor* X,
     paddle::framework::TensorCopy(dx_new, ctx.GetPlace(), ctx, dX);
   } else {
     // \nabla X = newX^{T} * \nabla newX * newX^{T}
-    // Tensor temp_dx =
-    //    ctx.AllocateTmpTensor<T, Context>(X->dims(), dev_ctx);
     DenseTensor temp_dx;
     temp_dx.Resize(X->dims());
     ctx.template Alloc<T>(&temp_dx);
@@ -204,11 +192,6 @@ void MatrixPowerGradKernel(const Context& ctx,
                            const DenseTensor& out_grad,
                            int n,
                            DenseTensor* x_grad) {
-  // const Tensor* X = ctx.Input<Tensor>("X");
-  // const Tensor* Out = ctx.Input<Tensor>("Out");
-  // const Tensor* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  // const int n = ctx.Attr<int>("n");
-  // Tensor* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
   auto X = &x;
   auto Out = &out;
   auto dOut = &out_grad;
