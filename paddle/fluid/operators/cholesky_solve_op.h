@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 #include "paddle/phi/kernels/math_kernel.h"

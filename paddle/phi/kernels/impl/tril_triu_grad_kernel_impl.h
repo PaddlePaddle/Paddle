@@ -14,9 +14,10 @@
 
 #pragma once
 
+#include "paddle/phi/kernels/tril_triu_grad_kernel.h"
+
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
-#include "paddle/phi/kernels/tril_triu_grad_kernel.h"
 
 namespace phi {
 

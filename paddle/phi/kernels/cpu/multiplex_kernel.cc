@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/multiplex_kernel.h"
-#include "paddle/fluid/memory/memcpy.h"
 
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 

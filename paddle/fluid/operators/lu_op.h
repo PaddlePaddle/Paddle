@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
+#include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 
 namespace paddle {
 namespace operators {
