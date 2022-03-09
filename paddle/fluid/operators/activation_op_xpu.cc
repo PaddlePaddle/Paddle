@@ -14,8 +14,10 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/activation_op.h"
 #include <string>
+
+#include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
 namespace paddle {
@@ -364,6 +366,50 @@ struct XPUPowFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUSoftPlusFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Output<Tensor>("Out");
+    const T *x_data = x->data<T>();
+    T *y_data = y->mutable_data<T>(ctx.GetPlace());
+
+    float beta = ctx.Attr<float>("beta");
+    float threshold = ctx.Attr<float>("threshold");
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    int r =
+        xpu::softplus(xpu_context, x_data, y_data, x->numel(), beta, threshold);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "softplus");
+  }
+};
+
+template <typename T>
+struct XPUSoftPlusGradFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const auto *x = ctx.Input<Tensor>("X");
+    auto *dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto *dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    const T *x_data = x->data<T>();
+    const T *y_grad = dOut->data<T>();
+    T *x_grad = dX->mutable_data<T>(ctx.GetPlace());
+
+    float beta = ctx.Attr<float>("beta");
+    float threshold = ctx.Attr<float>("threshold");
+
+    auto xpu_context =
+        ctx.device_context<paddle::platform::XPUDeviceContext>().x_context();
+    int r = xpu::softplus_grad(
+        xpu_context, reinterpret_cast<const float *>(x_data),
+        reinterpret_cast<const float *>(
+            x_data),  // softplus_grad do not need y_data
+        reinterpret_cast<const float *>(y_grad),
+        reinterpret_cast<float *>(x_grad), dX->numel(), beta, threshold);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "softplus_grad");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -388,6 +434,8 @@ REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, XPUSigmoidFunctor,
                                XPUSigmoidGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(sqrt, XPUSqrtFunctor, XPUSqrtGradFunctor)
 REGISTER_ACTIVATION_XPU_KERNEL(square, XPUSquareFunctor, XPUSquareGradFunctor)
+REGISTER_ACTIVATION_XPU_KERNEL(softplus, XPUSoftPlusFunctor,
+                               XPUSoftPlusGradFunctor)
 
 REGISTER_OP_XPU_KERNEL(
     tanh, ops::XPUActivationKernel<ops::XPUTanhFunctor<float>>,

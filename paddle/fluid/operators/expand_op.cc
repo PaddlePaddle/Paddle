@@ -66,7 +66,7 @@ class ExpandOp : public framework::OperatorWithKernel {
       }
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
     if (out_shape[0] == x_dims[0]) {
       ctx->ShareLoD("X", "Out");
     }

@@ -35,7 +35,7 @@ inline std::vector<int> get_new_data(
   for (size_t i = 0; i < list_new_tensor.size(); ++i) {
     auto tensor = list_new_tensor[i];
     PADDLE_ENFORCE_EQ(
-        tensor->dims(), framework::make_ddim({1}),
+        tensor->dims(), phi::make_ddim({1}),
         platform::errors::InvalidArgument(
             "The tensor's shape in list of Op(crop_tensor) should be [1], "
             "but the value received is %d.",
@@ -83,7 +83,7 @@ static framework::DDim ValidateShape(const std::vector<int> shape,
     }
   }
 
-  return framework::make_ddim(output_shape);
+  return phi::make_ddim(output_shape);
 }
 
 static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {

@@ -20,7 +20,7 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/pten/api/include/tensor.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace imperative {
@@ -32,7 +32,7 @@ class GradientAccumulator {
     if (var && var->Var().IsInitialized()) {
       if (var->Var().IsType<framework::LoDTensor>()) {
         var->SetType(framework::proto::VarType::LOD_TENSOR);
-      } else if (var->Var().IsType<pten::SelectedRows>()) {
+      } else if (var->Var().IsType<phi::SelectedRows>()) {
         var->SetType(framework::proto::VarType::SELECTED_ROWS);
       } else {
         PADDLE_THROW(platform::errors::PermissionDenied(
@@ -178,6 +178,30 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
 
 template <typename VarType>
 void TensorAdd(const VarType& src, VarType* dst);
+
+inline void CheckVar(const std::shared_ptr<VariableWrapper>& pre,
+                     const std::shared_ptr<VariableWrapper>& post) {
+  if (pre->IsEmpty() && !post->IsEmpty()) {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "The tensor(%s) in before and after hook are not consistent",
+        pre->Name()));
+  }
+  if (!pre->IsEmpty() && !post->IsEmpty()) {
+    VLOG(4) << pre->DataType() << " " << post->DataType();
+    PADDLE_ENFORCE_EQ(
+        pre->DataType(), post->DataType(),
+        platform::errors::PermissionDenied(
+            "The dtype of tensor(%s) before(%s) and after(%s) hook are not "
+            "consistent",
+            pre->Name(), framework::DataTypeToString(pre->DataType()),
+            framework::DataTypeToString(post->DataType())));
+    PADDLE_ENFORCE_EQ(pre->Place(), post->Place(),
+                      platform::errors::PermissionDenied(
+                          "The place of tensor(%s) before(%s) and after(%s) "
+                          "hook are not consistent",
+                          pre->Name(), pre->Place(), post->Place()));
+  }
+}
 
 }  // namespace imperative
 }  // namespace paddle

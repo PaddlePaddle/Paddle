@@ -260,7 +260,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       auto var = var_name_item.second[i];
       auto& var_name = new_ins[var_name_item.first].at(i);
       const Tensor* tensor_in;
-      if (var->IsType<LoDTensor>() || var->IsType<pten::SelectedRows>()) {
+      if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
         tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       } else if (var->IsType<LoDTensorArray>()) {
         tensor_in =

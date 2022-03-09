@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace paddle {
 namespace operators {
@@ -53,12 +54,11 @@ static inline void GetNCDHW(const framework::DDim& dims,
 }
 
 template <typename DeviceContext, typename T, size_t D>
-static void RemovePaddingSlice(const framework::ExecutionContext& context,
+static void RemovePaddingSlice(const phi::GPUContext& context,
                                const Tensor* input, Tensor* out,
                                const std::vector<int>& starts,
                                const std::vector<int>& axes) {
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
+  auto& place = *context.eigen_device();
   auto in_dims = input->dims();
   auto new_out_dims = out->dims();
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -171,11 +171,10 @@ void ChooseAlgo(const std::vector<PerfType>& perf_results,
 
 using framework::ConvSearchCache;
 
-static void SetConvMathType(const framework::ExecutionContext& ctx,
-                            cudnnDataType_t dtype,
+static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
                             const platform::ConvolutionDescriptor& cdesc) {
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-  auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  auto& dev_ctx = ctx;
   if (dev_ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
         cdesc.desc(), CUDNN_TENSOR_OP_MATH));
@@ -231,8 +230,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic,
-                     const framework::ExecutionContext& ctx) {
+                     bool deterministic, const phi::GPUContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool has_got_workspace_size = true;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
@@ -284,15 +282,14 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     } else if (deterministic) {
       algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
     } else {
-      auto& dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
+      auto& dev_ctx = ctx;
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetForward());
 
-      auto x_dims = framework::vectorize(args.x->dims());
-      auto w_dims = framework::vectorize(args.w->dims());
+      auto x_dims = phi::vectorize(args.x->dims());
+      auto w_dims = phi::vectorize(args.w->dims());
 
       VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t:"
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
@@ -346,8 +343,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic,
-                     const framework::ExecutionContext& ctx) {
+                     bool deterministic, const phi::GPUContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
@@ -413,15 +409,14 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     } else if (deterministic) {
       return CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
     } else {
-      auto& dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
+      auto& dev_ctx = ctx;
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetBackwardData());
 
-      auto x_dims = framework::vectorize(args.x->dims());
-      auto w_dims = framework::vectorize(args.w->dims());
+      auto x_dims = phi::vectorize(args.x->dims());
+      auto w_dims = phi::vectorize(args.w->dims());
 
       VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t"
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
@@ -478,8 +473,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic,
-                     const framework::ExecutionContext& ctx) {
+                     bool deterministic, const phi::GPUContext& ctx) {
     platform::CUDAGraphCaptureModeGuard guard;
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
@@ -534,14 +528,13 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     } else if (deterministic) {
       return CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     } else {
-      auto& dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
+      auto& dev_ctx = ctx;
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
       AlgorithmsCache<algo_t>& algo_cache =
           *(framework::ConvSearchCache::Instance().GetBackwardFilter());
 
-      auto x_dims = framework::vectorize(args.x->dims());
-      auto w_dims = framework::vectorize(args.w->dims());
+      auto x_dims = phi::vectorize(args.x->dims());
+      auto w_dims = phi::vectorize(args.w->dims());
 
       VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t:"
                << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"

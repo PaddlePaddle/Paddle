@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/cum_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -82,7 +82,7 @@ class CumSumNPUKernel : public framework::OpKernel<T> {
       Tensor new_x(x->type());
       new_x.ShareDataWith(*x);
 
-      new_x.Resize(framework::make_ddim({x->numel()}));
+      new_x.Resize(phi::make_ddim({x->numel()}));
 
       CumsumImp(new_x, out, attr_input, ctx);
     } else {

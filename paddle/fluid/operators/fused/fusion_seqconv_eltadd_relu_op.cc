@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fusion_seqconv_eltadd_relu_op.h"
 #include <algorithm>  // for min, max
 #include <string>
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/fc.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {

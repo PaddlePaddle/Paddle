@@ -22,9 +22,9 @@
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace operators {
@@ -58,8 +58,8 @@ class OverflowKernel : public framework::OpKernel<T> {
     if (x->IsType<framework::LoDTensor>()) {
       auto* in = ctx.Input<framework::Tensor>("X");
       functor(*in, out);
-    } else if (x->IsType<pten::SelectedRows>()) {
-      auto& in = ctx.Input<pten::SelectedRows>("X")->value();
+    } else if (x->IsType<phi::SelectedRows>()) {
+      auto& in = ctx.Input<phi::SelectedRows>("X")->value();
       functor(in, out);
     } else {
       PADDLE_ENFORCE_EQ(

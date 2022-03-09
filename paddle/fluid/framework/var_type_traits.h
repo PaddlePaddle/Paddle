@@ -51,10 +51,10 @@
 #include <cncl.h>
 #endif
 
-namespace pten {
+namespace phi {
 class DenseTensor;
 class SelectedRows;
-}  // namespace pten
+}  // namespace phi
 
 // Users should add forward declarations here
 namespace paddle {
@@ -170,7 +170,7 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
-    Tensor, pten::SelectedRows, std::vector<Scope *>, LoDRankTable, Strings,
+    Tensor, phi::SelectedRows, std::vector<Scope *>, LoDRankTable, Strings,
     LoDTensorArray, platform::PlaceList, ReaderHolder, String, Scope *,
     operators::reader::LoDTensorBlockingQueueHolder, FetchList, FeedList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
@@ -213,7 +213,7 @@ struct VarTypeTrait {
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
-REG_PROTO_VAR_TYPE_TRAIT(pten::SelectedRows, proto::VarType::SELECTED_ROWS);
+REG_PROTO_VAR_TYPE_TRAIT(phi::SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
 REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensorArray, proto::VarType::LOD_TENSOR_ARRAY);

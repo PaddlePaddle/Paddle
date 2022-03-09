@@ -376,7 +376,7 @@ aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
   auto dtype =
       ConvertToNpuDtype(framework::TransToProtoVarType(tensor.dtype()));
   auto format = ConvertToNpuFormat(tensor.layout());
-  auto dims = framework::vectorize(tensor.dims());
+  auto dims = phi::vectorize(tensor.dims());
   int size = dims.size();
   // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
   // OP must be a scalar with shape[0]. At present, the shape
@@ -467,7 +467,7 @@ void NpuOpRunner::TypeAdapter(
     } else {
       tmp_inputs[i].Resize(inputs[i].dims());
       tmp_inputs[i].mutable_data(dev_ctx.GetPlace(),
-                                 framework::TransToPtenDataType(input_type[i]));
+                                 framework::TransToPhiDataType(input_type[i]));
 
       const auto &cast_runner = NpuOpRunner(
           "Cast", {inputs[i]}, {tmp_inputs[i]},
@@ -484,7 +484,7 @@ void NpuOpRunner::TypeAdapter(
     } else {
       tmp_outputs[i].Resize(outputs[i].dims());
       tmp_outputs[i].mutable_data(
-          dev_ctx.GetPlace(), framework::TransToPtenDataType(output_type[i]));
+          dev_ctx.GetPlace(), framework::TransToPhiDataType(output_type[i]));
     }
   }
 

@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/increment_op.h"
-
-#include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace framework {
@@ -38,18 +39,6 @@ class IncrementOp : public framework::OperatorWithKernel {
               const framework::VariableNameMap &outputs,
               const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("X")), 1UL,
-                      platform::errors::InvalidArgument(
-                          "The number of elements in Input(X) should be 1."
-                          "Now the number is %d.",
-                          framework::product(ctx->GetInputDim("X"))));
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "increment");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "increment");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -98,17 +87,9 @@ class IncrementGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(increment, IncrementInferShapeFunctor,
+                            PD_INFER_META(phi::IncrementInferMeta));
 REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker,
                   ops::IncrementGradOpMaker<paddle::framework::OpDesc>,
-                  ops::IncrementGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    increment, ops::IncrementKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::IncrementKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::IncrementKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(
-    increment, ops::IncrementKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::IncrementKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::IncrementKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::IncrementKernel<paddle::platform::CUDADeviceContext, int64_t>);
+                  ops::IncrementGradOpMaker<paddle::imperative::OpBase>,
+                  IncrementInferShapeFunctor);

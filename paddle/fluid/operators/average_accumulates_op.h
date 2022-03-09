@@ -16,7 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -78,7 +78,7 @@ class AverageAccumulatesKernel : public framework::OpKernel<T> {
 
     // Compute
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    pten::funcs::SetConstant<DeviceContext, T> constant_functor;
+    phi::funcs::SetConstant<DeviceContext, T> constant_functor;
     ++num_updates;
     ++num_accumulates;
     out_sum_1_tensor.device(place) = in_sum_1_tensor + param_tensor;

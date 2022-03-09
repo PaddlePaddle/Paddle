@@ -16,6 +16,10 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -98,33 +102,18 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_sum"; }
 };
 
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_sum, ReduceSumInferShapeFunctor,
+                            PD_INFER_META(phi::SumRawInferMeta));
+
 REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
+                  ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>,
+                  ReduceSumInferShapeFunctor);
 REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
                   ops::ReduceSumDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::ReduceSumGradNoNeedBufferVarInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, bool,
-                                  ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, double,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16, ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
-                      ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<float>, ops::SumFunctor>,
-    ops::ReduceKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::complex<double>,
-
-                      ops::SumFunctor>);
 
 template <typename T>
 using CPUReduceSumGradKernel =

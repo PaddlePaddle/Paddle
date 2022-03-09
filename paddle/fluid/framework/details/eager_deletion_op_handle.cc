@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/details/eager_deletion_op_handle.h"
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -128,7 +128,8 @@ void EagerDeletionOpHandle::RunImpl() {
     CallOnce();
   }
 
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(Name(),
+                                     platform::TracerEventType::UserDefined, 2);
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (size_t i = 0; i < var_infos_.size(); ++i) {
     auto *var_info = var_infos_[i];
@@ -143,8 +144,8 @@ void EagerDeletionOpHandle::RunImpl() {
 
     if (var->IsType<LoDTensor>()) {
       garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-    } else if (var->IsType<pten::SelectedRows>()) {
-      garbages.emplace_back(var->GetMutable<pten::SelectedRows>()
+    } else if (var->IsType<phi::SelectedRows>()) {
+      garbages.emplace_back(var->GetMutable<phi::SelectedRows>()
                                 ->mutable_value()
                                 ->MoveMemoryHolder());
     } else if (var->IsType<LoDTensorArray>()) {

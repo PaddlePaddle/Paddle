@@ -147,8 +147,8 @@ void DeleteUnusedTensors(const Scope &scope,
     VLOG(2) << "Erase variable " << var_name;
     if (var->IsType<LoDTensor>()) {
       garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-    } else if (var->IsType<pten::SelectedRows>()) {
-      garbages.emplace_back(var->GetMutable<pten::SelectedRows>()
+    } else if (var->IsType<phi::SelectedRows>()) {
+      garbages.emplace_back(var->GetMutable<phi::SelectedRows>()
                                 ->mutable_value()
                                 ->MoveMemoryHolder());
     } else if (var->IsType<LoDTensorArray>()) {

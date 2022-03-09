@@ -44,7 +44,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                                  framework::LoDTensor *input_tensor,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
-  framework::DDim dims = framework::make_ddim(input_data.shape);
+  framework::DDim dims = phi::make_ddim(input_data.shape);
   void *input_tensor_ptr;
   if (input_data.dtype == DistModelDataType::INT64) {
     input_tensor_ptr = input_tensor->mutable_data<int64_t>(dims, place);
@@ -52,6 +52,8 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     input_tensor_ptr = input_tensor->mutable_data<float>(dims, place);
   } else if (input_data.dtype == DistModelDataType::INT32) {
     input_tensor_ptr = input_tensor->mutable_data<int32_t>(dims, place);
+  } else if (input_data.dtype == DistModelDataType::FLOAT16) {
+    input_tensor_ptr = input_tensor->mutable_data<float16>(dims, place);
   } else {
     LOG(ERROR) << "unsupported feed type " << input_data.dtype;
     return false;
@@ -412,6 +414,8 @@ bool DistModel::PrepareFeedAndFetch() {
         feeds_to_dtype_.insert({var_name, DistModelDataType::INT32});
       } else if (real_var->GetDataType() == framework::proto::VarType::INT64) {
         feeds_to_dtype_.insert({var_name, DistModelDataType::INT64});
+      } else if (real_var->GetDataType() == framework::proto::VarType::FP16) {
+        feeds_to_dtype_.insert({var_name, DistModelDataType::FLOAT16});
       } else {
         LOG(ERROR) << "Don't support feed var dtype for: "
                    << real_var->GetDataType();
@@ -503,9 +507,13 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
     } else if (type == framework::proto::VarType::INT32) {
       rst = FetchResult<int32_t>(fetch, output);
       output->dtype = DistModelDataType::INT32;
+    } else if (type == framework::proto::VarType::FP16) {
+      rst = FetchResult<float16>(fetch, output);
+      output->dtype = DistModelDataType::FLOAT16;
     } else {
       LOG(ERROR) << "DistModel meets unknown fetch data type. DistModel only "
-                    "supports float32, int64 and int32 fetch type for now.";
+                    "supports float32, float16, int64 and int32 fetch type "
+                    "for now.";
     }
     if (!rst) {
       LOG(ERROR) << "DistModel fails to fetch result " << idx_to_fetches_[idx];
@@ -518,7 +526,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
 template <typename T>
 bool DistModel::FetchResult(const framework::LoDTensor &fetch,
                             DistModelTensor *output_data) {
-  auto shape = framework::vectorize(fetch.dims());
+  auto shape = phi::vectorize(fetch.dims());
   output_data->shape.assign(shape.begin(), shape.end());
   const T *data = fetch.data<T>();
   int64_t num_elems = fetch.numel();

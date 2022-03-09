@@ -56,7 +56,7 @@ class DecodeJpegOp : public framework::OperatorWithKernel {
           "The provided mode is not supported for JPEG files on GPU: ", mode));
     }
 
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
   }
 
  protected:

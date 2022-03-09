@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -45,7 +45,7 @@ class DiagKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
     T* out_data = out->mutable_data<T>(context.GetPlace());
 
-    pten::funcs::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, out, static_cast<T>(0));
 

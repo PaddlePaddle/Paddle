@@ -195,7 +195,7 @@ def yolo_loss(x,
     """
 
     if in_dygraph_mode() and gt_score is None:
-        loss = _C_ops.yolov3_loss(
+        loss, _, _ = _C_ops.yolov3_loss(
             x, gt_box, gt_label, 'anchors', anchors, 'anchor_mask', anchor_mask,
             'class_num', class_num, 'ignore_thresh', ignore_thresh,
             'downsample_ratio', downsample_ratio, 'use_label_smooth',
@@ -949,8 +949,8 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     if isinstance(output_size, int):
         output_size = (output_size, output_size)
     pooled_height, pooled_width = output_size
-    assert (len(x.shape) == 4,
-            "Input features with shape should be (N, C, H, W)")
+    assert len(x.shape) == 4, \
+            "Input features with shape should be (N, C, H, W)"
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
     if in_dygraph_mode():
         return _C_ops.psroi_pool(x, boxes, boxes_num, "output_channels",
