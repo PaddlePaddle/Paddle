@@ -41,5 +41,13 @@ struct ProdFunctor {
   }
 };
 
+//////// Max Functor ///////
+struct MaxFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->maximum(dim);
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi

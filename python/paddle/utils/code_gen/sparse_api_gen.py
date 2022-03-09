@@ -17,10 +17,10 @@ import yaml
 import argparse
 import re
 
-from api_base import BaseAPI
+from api_gen import ForwardAPI
 
 
-class SparseAPI(BaseAPI):
+class SparseAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
         super(SparseAPI, self).__init__(api_item_yaml)
 
@@ -29,11 +29,6 @@ class SparseAPI(BaseAPI):
 
     def get_api_func_name(self):
         return self.api
-
-    def get_return_type(self, out_type_list):
-        return out_type_list[0] if len(
-            out_type_list) == 1 else "std::tuple<" + ",".join(
-                out_type_list) + ">"
 
     def gene_api_declaration(self):
         return f"""
