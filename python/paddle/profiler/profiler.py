@@ -82,11 +82,9 @@ def make_scheduler(*,
     Examples:
         1. profiling range [2, 5]
         batch 0: closed, batch 1: ready, batch [2, 5] record
-        .. code-block:: python
         make_scheduler(closed=1, ready=1, record=4, repeat=1)
         2. profiling range [3,6], [9,12], [15,18]...
         batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat
-        .. code-block:: python
         make_scheduler(closed=1, ready=1, record=4, skip_first=1)
     """
 
@@ -138,15 +136,16 @@ def export_chrome_tracing(dir_name: str,
 
     Examples:
         .. code-block:: python
-        import paddle.profiler as profiler
-        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
-                                        profiler.ProfilerTarget.GPU],
-                            scheduler = (3, 10),
-                            on_trace_ready = profiler.export_chrome_tracing('./log')
-                            ) as p:
-            for iter in range(N):
-            train()
-            p.step()
+
+            import paddle.profiler as profiler
+            with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
+                                            profiler.ProfilerTarget.GPU],
+                                scheduler = (3, 10),
+                                on_trace_ready = profiler.export_chrome_tracing('./log')
+                                ) as p:
+                for iter in range(N):
+                    #train()
+                    p.step()
     """
     if not os.path.exists(dir_name):
         try:
@@ -181,15 +180,16 @@ def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
 
     Examples:
         .. code-block:: python
-        import paddle.profiler as profiler
-        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
-                                        profiler.ProfilerTarget.GPU],
-                            scheduler = (3, 10),
-                            on_trace_ready = profiler.export_protobuf('./log')
-                            ) as p:
-            for iter in range(N):
-            train()
-            p.step()
+
+            import paddle.profiler as profiler
+            with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
+                                            profiler.ProfilerTarget.GPU],
+                                scheduler = (3, 10),
+                                on_trace_ready = profiler.export_protobuf('./log')
+                                ) as p:
+                for iter in range(N):
+                    #train()
+                    p.step()
     """
     if not os.path.exists(dir_name):
         try:
@@ -238,36 +238,45 @@ class Profiler:
     Examples:
         1. profiling range [2, 5)
         .. code-block:: python
-        import paddle.profiler as profiler
-        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
-                                        profiler.ProfilerTarget.GPU],
-                            scheduler = (2, 5),
-                            on_trace_ready = profiler.export_chrome_tracing('./log')
-                            ) as p:
-            for iter in range(N):
-            train()
-            p.step()
+            :name: code-example1
+
+                import paddle.profiler as profiler
+                with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
+                                                profiler.ProfilerTarget.GPU],
+                                    scheduler = (2, 5),
+                                    on_trace_ready = profiler.export_chrome_tracing('./log')
+                                    ) as p:
+                    for iter in range(N):
+                        #train()
+                        p.step()
+
         2. profiling range [2,4], [7, 9], [11,13]
         .. code-block:: python
-        import paddle.profiler as profiler
-        with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
-                                        profiler.ProfilerTarget.GPU],
-                            scheduler = profiler.make_scheduler(closed=1, ready=1, record=3, repeat=3),
-                            on_trace_ready = profiler.export_chrome_tracing('./log')
-                            ) as p:
-            for iter in range(N):
-            train()
-            p.step()
+            :name: code-example2
+
+                import paddle.profiler as profiler
+                with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
+                                                profiler.ProfilerTarget.GPU],
+                                    scheduler = profiler.make_scheduler(closed=1, ready=1, record=3, repeat=3),
+                                    on_trace_ready = profiler.export_chrome_tracing('./log')
+                                    ) as p:
+                    for iter in range(N):
+                        #train()
+                        p.step()
+
         3. Use profiler without context manager, and use default parameters
         .. code-block:: python
-        import paddle.profiler as profiler
-        p = profiler.Profiler()
-        p.start()
-        for iter in range(N):
-            train()
-            p.step()
-        p.stop()
-        p.summary()
+        :name: code-example3
+
+            import paddle.profiler as profiler
+            p = profiler.Profiler()
+            p.start()
+            for iter in range(N):
+                #train()
+                p.step()
+            p.stop()
+            p.summary()
+
     """
 
     def __init__(
