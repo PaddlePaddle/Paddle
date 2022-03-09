@@ -283,15 +283,16 @@ int ProductRuleBook(const Context& dev_ctx,
   DistanceKernel<<<1, 1, 0, dev_ctx.stream()>>>(
       rulebook_ptr, last, rulebook_ptr + 3 * kernel_size * non_zero_num - 1);
   int rulebook_len = 0;
-  cudaMemcpyAsync(&rulebook_len,
-                  rulebook_ptr + 3 * kernel_size * non_zero_num - 1,
-                  sizeof(int),
+  phi::backends::gpu::GpuMemcpyAsync(
+      &rulebook_len,
+      rulebook_ptr + 3 * kernel_size * non_zero_num - 1,
+      sizeof(int),
 #ifdef PADDLE_WITH_HIP
-                  hipMemcpyDeviceToHost,
+      hipMemcpyDeviceToHost,
 #else
-                  cudaMemcpyDeviceToHost,
+      cudaMemcpyDeviceToHost,
 #endif
-                  dev_ctx.stream());
+      dev_ctx.stream());
   rulebook_len /= 3;
   dev_ctx.Wait();
 
@@ -326,15 +327,15 @@ int ProductRuleBook(const Context& dev_ctx,
                            offsets_ptr);
     std::vector<int> offsets(kernel_size, 0);
     // TODO(zhangkaihuo): used unified memcpy interface
-    cudaMemcpyAsync(offsets.data(),
-                    offsets_ptr,
-                    kernel_size * sizeof(int),
+    phi::backends::gpu::GpuMemcpyAsync(offsets.data(),
+                                       offsets_ptr,
+                                       kernel_size * sizeof(int),
 #ifdef PADDLE_WITH_HIP
-                    hipMemcpyDeviceToHost,
+                                       hipMemcpyDeviceToHost,
 #else
-                    cudaMemcpyDeviceToHost,
+                                       cudaMemcpyDeviceToHost,
 #endif
-                    dev_ctx.stream());
+                                       dev_ctx.stream());
     dev_ctx.Wait();
 
     thrust::pair<int*, int*> end;
@@ -364,15 +365,15 @@ int ProductRuleBook(const Context& dev_ctx,
         end.first,
         key_result.data<int>() + rulebook_len);
     int len = 0;
-    cudaMemcpyAsync(&len,
-                    key_result.data<int>() + rulebook_len,
-                    sizeof(int),
+    phi::backends::gpu::GpuMemcpyAsync(&len,
+                                       key_result.data<int>() + rulebook_len,
+                                       sizeof(int),
 #ifdef PADDLE_WITH_HIP
-                    hipMemcpyDeviceToHost,
+                                       hipMemcpyDeviceToHost,
 #else
-                    cudaMemcpyDeviceToHost,
+                                       cudaMemcpyDeviceToHost,
 #endif
-                    dev_ctx.stream());
+                                       dev_ctx.stream());
     dev_ctx.Wait();
     // set the diff value = -1, and update counter
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, len, 1);
@@ -392,15 +393,15 @@ int ProductRuleBook(const Context& dev_ctx,
                                -1);
     DistanceKernel<<<1, 1, 0, dev_ctx.stream()>>>(
         rulebook_ptr, last, key_result.data<int>() + rulebook_len);
-    cudaMemcpyAsync(&rulebook_len,
-                    key_result.data<int>() + rulebook_len,
-                    sizeof(int),
+    phi::backends::gpu::GpuMemcpyAsync(&rulebook_len,
+                                       key_result.data<int>() + rulebook_len,
+                                       sizeof(int),
 #ifdef PADDLE_WITH_HIP
-                    hipMemcpyDeviceToHost,
+                                       hipMemcpyDeviceToHost,
 #else
-                    cudaMemcpyDeviceToHost,
+                                       cudaMemcpyDeviceToHost,
 #endif
-                    dev_ctx.stream());
+                                       dev_ctx.stream());
     dev_ctx.Wait();
     rulebook_len /= 3;
   }
