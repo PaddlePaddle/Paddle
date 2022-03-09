@@ -353,6 +353,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "0.0 and 0.001, But received [%s].",
                                 ln_epsilon));
         });
+    AddAttr<int>("ring_id", "ring id for tensor model parallel").SetDefault(-1);
 
     AddComment(R"DOC(
   Add fused attention op whose logic is as follows:

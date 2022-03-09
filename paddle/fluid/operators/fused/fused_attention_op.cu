@@ -27,10 +27,38 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+
+template <typename T>
+static void AllReduce(framework::Tensor &tensor,  // NOLINT
+                      const int ring_id,
+                      const platform::CUDADeviceContext &ctx) {
+  if (ring_id == -1) return;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  auto dtype =
+      platform::ToNCCLDataType(framework::TransToProtoVarType(tensor.dtype()));
+  int64_t numel = tensor.numel();
+  const void *sendbuff = tensor.data<T>();
+  auto place = ctx.GetPlace();
+  void *recvbuff = tensor.mutable_data<T>(place);
+  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+  auto stream = ctx.stream();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+      sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
+      "parallel op."));
+#endif
+}
 
 template <typename T>
 class FusedAttentionOpKernel : public framework::OpKernel<T> {
@@ -169,7 +197,7 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // (transA, transB, compute_bias) = (false, false, false)
     auto out_linear_compute =
         AttnMatMul<T>(ctx.cuda_device_context(), false, false, bsz_seq,
-                      output_size, input_size, false);
+                      input_size, output_size, false);
     DropoutParam dropout_param2(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param2,
@@ -208,6 +236,10 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // out_linear_out: [batch_size, seq_len, embed_dim]
     out_linear_compute.ComputeForward(out_linear_weight, fmha_out, nullptr,
                                       out_linear_out, nullptr);
+
+    int ring_id = ctx.Attr<int>("ring_id");
+    AllReduce<T>(*out_linear_out, ring_id, ctx.cuda_device_context());
+
     if (pre_layer_norm) {
       // output = (residual + dropout(input + bias))
       fused_dropout_layernorm_helper.ResidualDropoutBias(
@@ -394,7 +426,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                                epsilon, bsz_seq, dim_embed);
     auto qkv_compute =
         AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
-                      input_size, output_size, compute_qkv_bias);
+                      output_size, input_size, compute_qkv_bias);
     AttnDropoutParam attn_dropout_param(
         is_test_1, dropout_implementation_1, attn_dropout_prob,
         is_upscale_in_train_1, is_fix_seed_1, seed_val_1, seed_1);
