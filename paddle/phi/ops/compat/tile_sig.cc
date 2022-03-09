@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature TileOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("RepeatTimes")) {
     return KernelSignature("tile", {"X"}, {"RepeatTimes"}, {"Out"});
-  } else if (ctx.HasInput("repeat_times_tensor")) {
+  } else if (ctx.InputSize("repeat_times_tensor") > 0) {
     return KernelSignature("tile", {"X"}, {"repeat_times_tensor"}, {"Out"});
   } else {
     return KernelSignature("tile", {"X"}, {"repeat_times"}, {"Out"});
@@ -32,7 +32,7 @@ KernelSignature TileGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                            {"X", GradVarName("Out")},
                            {"RepeatTimes"},
                            {GradVarName("X")});
-  } else if (ctx.HasInput("repeat_times_tensor")) {
+  } else if (ctx.InputSize("repeat_times_tensor") > 0) {
     return KernelSignature("tile_grad",
                            {"X", GradVarName("Out")},
                            {"repeat_times_tensor"},
