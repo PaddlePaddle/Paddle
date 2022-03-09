@@ -230,7 +230,7 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 }  // namespace paddle
 
 USE_OP_ITSELF(split);
-USE_OP(relu);
+USE_OP_ITSELF(relu);
 #ifdef PADDLE_WITH_MKLDNN
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
 #endif
