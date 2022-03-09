@@ -29,11 +29,12 @@ kernel_library(full_kernel DEPS ${COMMON_KERNEL_DEPS} empty_kernel)
 # In this case, you need to manually generate them here.
 set(MANUAL_BUILD_KERNELS math_kernel softmax_kernel softmax_grad_kernel triangular_solve_grad_kernel maxout_kernel maxout_grad_kernel put_along_axis_kernel put_along_axis_grad_kernel take_along_axis_kernel take_along_axis_grad_kernel)
 set(MANUAL_BUILD_KERNELS ${MANUAL_BUILD_KERNELS} adam_kernel adamw_kernel)
+
 kernel_library(math_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel)
 kernel_library(softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(triangular_solve_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_reduce)
-kernel_library(adam_kernel DEPS ${COMMON_KERNEL_DEPS} selected_rows_functor threadpool jit_kernel_helper flags)
+kernel_library(adam_kernel DEPS flags ${COMMON_KERNEL_DEPS} selected_rows_functor threadpool jit_kernel_helper)
 kernel_library(adamw_kernel DEPS ${COMMON_KERNEL_DEPS} adam_kernel)
 kernel_library(maxout_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
 kernel_library(maxout_grad_kernel DEPS ${COMMON_KERNEL_DEPS} maxouting)
