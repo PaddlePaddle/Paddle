@@ -63,11 +63,20 @@ void CopyToInferMeta(const MetaTensor& x,
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
+void CumsumInferMeta(const MetaTensor& x,
+                     int axis,
+                     bool flatten,
+                     bool exclusive,
+                     bool reverse,
+                     MetaTensor* out);
+
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
 
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
                            MetaTensor* out);
+
+void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
@@ -85,23 +94,23 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
 
+void SumRawInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     bool reduce_all,
+                     DataType dtype,
+                     MetaTensor* out);
+
 void ReduceInferMetaBase(const MetaTensor& x,
                          const std::vector<int64_t>& axis,
                          bool keep_dim,
                          bool reduce_all,
-                         DataType dtype,
                          MetaTensor* out);
 
-void MeanRawInferMeta(const MetaTensor& x,
-                      const std::vector<int64_t>& axis,
-                      bool keep_dim,
-                      bool reduce_all,
-                      MetaTensor* out);
-
-void MeanInferMeta(const MetaTensor& x,
-                   const std::vector<int64_t>& axis,
-                   bool keep_dim,
-                   MetaTensor* out);
+void ReduceInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     MetaTensor* out);
 
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,
@@ -148,8 +157,15 @@ void PixelShuffleInferMeta(const MetaTensor& x,
                            const std::string& data_format,
                            MetaTensor* out);
 
+void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
+
 void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
                         MetaTensor* out);
+
+void EighInferMeta(const MetaTensor& x,
+                   const std::string& uplo,
+                   MetaTensor* out_w,
+                   MetaTensor* out_v);
 
 }  // namespace phi

@@ -17,10 +17,10 @@ import yaml
 import argparse
 import re
 
-from api_base import BaseAPI
+from api_gen import ForwardAPI
 
 
-class SparseAPI(BaseAPI):
+class SparseAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
         super(SparseAPI, self).__init__(api_item_yaml)
 
@@ -29,11 +29,6 @@ class SparseAPI(BaseAPI):
 
     def get_api_func_name(self):
         return self.api
-
-    def get_return_type(self, out_type_list):
-        return out_type_list[0] if len(
-            out_type_list) == 1 else "std::tuple<" + ",".join(
-                out_type_list) + ">"
 
     def gene_api_declaration(self):
         return f"""
@@ -65,12 +60,12 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-  {self.outputs['return_type']} out{inplace_assign};
-  auto* kernel_out = {set_out_func}(&out, {self.get_kernel_tensor_out_type(self.outputs['names'][0])});"""
+  {self.outputs['return_type']} api_output{inplace_assign};
+  auto* kernel_out = {set_out_func}(&api_output, {self.get_kernel_tensor_out_type(self.outputs['names'][0])});"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-  {self.outputs['return_type']} out;"""
+  {self.outputs['return_type']} api_output;"""
 
             for i in range(len(output_type_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
@@ -78,10 +73,10 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
                 if inplace_flag and self.inplace_map is not None and self.outputs[
                         'names'][i] in self.inplace_map:
                     output_create = output_create + f"""
-  std::get<{i}>(out) = {self.inplace_map[self.outputs['names'][i]]};"""
+  std::get<{i}>(api_output) = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
-  auto* kernel_out_{i} = {set_out_func}(&std::get<{i}>(out), {self.get_kernel_tensor_out_type(self.outputs['names'][i])});"""
+  auto* kernel_out_{i} = {set_out_func}(&std::get<{i}>(api_output), {self.get_kernel_tensor_out_type(self.outputs['names'][i])});"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -160,7 +155,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 {kernel_context_code}
   phi_kernel(&kernel_context);
 
-  return out;"""
+  return api_output;"""
 
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()

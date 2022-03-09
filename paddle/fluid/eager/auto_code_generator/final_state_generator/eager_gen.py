@@ -25,10 +25,10 @@ core_ops_args_type_info = {}
 
 
 yaml_types_mapping = {
-    'int' : 'int', 'int32_t' : 'int32_t', 'int64_t' : 'int64_t',  'size_t' : 'size_t', \
+    'int' : 'int', 'int32' : 'int32_t', 'int64' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'Backend' : 'paddle::experimental::Backend', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
-    'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
+    'int64[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
     'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
@@ -671,7 +671,7 @@ def GenerateNodeCreationCodes(
         else:
             # Tuple api_result
             if IsPlainTensorType(rtype):
-                outputs_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);"
+                output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);"
             else:
                 assert IsVectorTensorType(rtype)
                 output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);\n"
@@ -1000,6 +1000,7 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
+#include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
 """
     file_contents += node_definition_str
@@ -1042,6 +1043,7 @@ def GenerateForwardHFile(filepath, forward_function_declaration_str):
 #include "paddle/phi/api/all.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/eager/to_static/run_program_op_func.h"
 
 """
     file_contents += GenerateCoreOpInfoDeclaration()
