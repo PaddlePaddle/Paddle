@@ -81,46 +81,66 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
   CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
 }
 
-template <typename T, typename AccT, int VecSize>
-__device__ __forceinline__ void ThreadReduce(const T* input, int size,
-                                             const int offset, AccT* mean,
-                                             AccT* var) {
+template <typename T, typename AccT, int VecSize, int Num>
+__device__ __forceinline__ void ThreadReduce(const T* x, const T* y, int size,
+                                             const int offset, AccT* out_mean,
+                                             AccT* out_var) {
+  // const T* x = arrs[0];
+  // const T* y;
+  // if(Num == 2) y = arrs[1];
   using VecT = kps::details::VectorType<T, VecSize>;
   int tid = threadIdx.x;
   if (offset > 0) {
-    input -= offset;
+    x -= offset;
+    if (Num == 2) y -= offset;
     size += offset;
     if (tid >= offset) {
-      AccT temp = input[tid];
-      *mean += temp;
-      *var += temp * temp;
+      // if(Num == 1){
+      //   *out_mean += x[tid];
+      //   *out_var += x[tid] * x[tid];
+      // }else if(Num==2){
+      *out_mean += y[tid];
+      *out_var += y[tid] * x[tid];
+      // }
     }
     size -= blockDim.x;
-    input += blockDim.x;
+    x += blockDim.x;
+    if (Num == 2) y += blockDim.x;
   }
   int remain = size % (VecSize * blockDim.x);
 
-  T ins[VecSize];
-  VecT* ins_vec = reinterpret_cast<VecT*>(&ins);
+  T ins_x[VecSize];
+  T ins_y[VecSize];
+  VecT* ins_vec_x = reinterpret_cast<VecT*>(&ins_x);
+  VecT* ins_vec_y = reinterpret_cast<VecT*>(&ins_y);
 
   // vector part
   for (; VecSize * tid < (size - remain); tid += blockDim.x) {
-    *ins_vec = reinterpret_cast<const VecT*>(input)[tid];
+    *ins_vec_x = reinterpret_cast<const VecT*>(x)[tid];
+    if (Num == 2) *ins_vec_y = reinterpret_cast<const VecT*>(y)[tid];
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
-      AccT temp = ins[i];
-      *mean += temp;
-      *var += temp * temp;
+      // if(Num == 1){
+      //   *out_mean += ins_x[i];
+      //   *out_var += ins_x[i] * ins_x[i];
+      // }else if(Num==2){
+      *out_mean += ins_y[i];
+      *out_var += ins_y[i] * ins_x[i];
+      // }
     }
   }
 
   // scalar part
   tid = size - remain + threadIdx.x;
   for (; tid < size; tid += blockDim.x) {
-    AccT temp = input[tid];
-    *mean += temp;
-    *var += temp * temp;
+    // if(Num == 1){
+    //   *out_mean += x[tid];
+    //   *out_var += x[tid] * x[tid];
+    // }else{
+    *out_mean += y[tid];
+    *out_var += y[tid] * x[tid];
+    // }
   }
 }
 
@@ -148,7 +168,10 @@ __global__ void VectorizedGetMeanAndVarNCHW(const T* x, T* mean, T* var,
   AccT x_var = static_cast<AccT>(0);
   const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
   x += i * size;
-  ThreadReduce<T, AccT, VecSize>(x, size, input_offset, &x_mean, &x_var);
+  // phi::Array<const T*, 1> ins;
+  // ins[0] = x;
+  ThreadReduce<T, AccT, VecSize, 1>(x, x, size, input_offset, &x_mean, &x_var);
+
   x_mean = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
       x_mean, kps::AddFunctor<AccT>());
   x_var = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
@@ -388,52 +411,6 @@ __global__ void GroupNormBackward(const T* x, const T* d_y, const T* scale,
 }
 
 template <typename T, typename AccT, int VecSize>
-__device__ __forceinline__ void DThreadReduce(const T* x, const T* dy, int size,
-                                              const int offset, AccT* ds_sum,
-                                              AccT* db_sum) {
-  using VecT = kps::details::VectorType<T, VecSize>;
-  int tid = threadIdx.x;
-
-  if (offset > 0) {
-    x -= offset;
-    dy -= offset;
-    size += offset;
-    if (tid >= offset) {
-      *ds_sum += dy[tid] * x[tid];
-      *db_sum += dy[tid];
-    }
-    size -= blockDim.x;
-    x += blockDim.x;
-    dy += blockDim.x;
-  }
-  int remain = size % (VecSize * blockDim.x);
-
-  T ins[VecSize];
-  T dy_ins[VecSize];
-  VecT* ins_vec = reinterpret_cast<VecT*>(&ins);
-  VecT* dy_vec = reinterpret_cast<VecT*>(&dy_ins);
-
-  // vector part
-  for (; VecSize * tid < (size - remain); tid += blockDim.x) {
-    *ins_vec = reinterpret_cast<const VecT*>(x)[tid];
-    *dy_vec = reinterpret_cast<const VecT*>(dy)[tid];
-
-#pragma unroll
-    for (int i = 0; i < VecSize; ++i) {
-      *ds_sum += dy[i] * ins[i];
-      *db_sum += dy[i];
-    }
-  }
-
-  // scalar part
-  tid = size - remain + threadIdx.x;
-  for (; tid < size; tid += blockDim.x) {
-    *ds_sum += dy[tid] * x[tid];
-    *db_sum += dy[tid];
-  }
-}
-
-template <typename T, typename AccT, int VecSize>
 __global__ void VectorizedGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
                                             T* ds, T* db) {
   int i = blockIdx.x;
@@ -441,8 +418,13 @@ __global__ void VectorizedGetDsDbCUDAKernel(int imsize, const T* x, const T* dy,
   AccT db_sum = static_cast<AccT>(0);
   const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
   x += i * imsize;
-  DThreadReduce<T, AccT, VecSize>(x, dy, imsize, input_offset, &ds_sum,
-                                  &db_sum);
+
+  // phi::Array<const T*, 2> ins;
+  // ins[0] = x;
+  // ins[1] = dy;
+  ThreadReduce<T, AccT, VecSize, 2>(x, dy, imsize, input_offset, &db_sum,
+                                    &ds_sum);
+
   ds_sum = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
       ds_sum, kps::AddFunctor<AccT>());
   db_sum = kps::details::BlockXReduce<AccT, kps::AddFunctor<AccT>>(
@@ -591,8 +573,6 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     Tensor ds, db;
     ds.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
     db.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
-    set_zero(dev_ctx, &ds, static_cast<T>(0));
-    set_zero(dev_ctx, &db, static_cast<T>(0));
     T* ds_data = ds.data<T>();
     T* db_data = db.data<T>();
 
