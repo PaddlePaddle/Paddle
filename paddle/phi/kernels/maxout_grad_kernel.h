@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,13 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
-// reduce_max
-REGISTER_OP_CUDA_KERNEL(
-    reduce_max,
-    ops::ReduceCudaKernel<float, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<double, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int64_t, kps::MaxFunctor, kps::IdentityFunctor>);
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void MaxOutGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& out,
+                      const DenseTensor& out_grad,
+                      int groups,
+                      int axis,
+                      DenseTensor* x_grad);
+
+}  // namespace phi
