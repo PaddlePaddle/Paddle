@@ -14,6 +14,13 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
+
 DECLARE_bool(use_fast_math);
 
 namespace phi {
@@ -92,10 +99,8 @@ static __global__ void FP16FastGeluBwdCUDAKernel(const __half* x,
   }
 }
 
-static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(const Context& dev_ctx,
-                                                        const __half* x,
-                                                        __half* y,
-                                                        size_t n) {
+static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(
+    const GPUContext& dev_ctx, const __half* x, __half* y, size_t n) {
   auto is_aligned = [](const void* p, size_t alignment) {
     return reinterpret_cast<uintptr_t>(p) % alignment == 0;
   };
@@ -128,11 +133,12 @@ static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(const Context& dev_ctx,
   return false;
 }
 
-static bool TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(const Context& dev_ctx,
-                                                        const __half* x,
-                                                        const __half* y_g,
-                                                        __half* x_g,
-                                                        size_t n) {
+static bool TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(
+    const GPUContext& dev_ctx,
+    const __half* x,
+    const __half* y_g,
+    __half* x_g,
+    size_t n) {
   auto is_aligned = [](const void* p, size_t alignment) {
     return reinterpret_cast<uintptr_t>(p) % alignment == 0;
   };

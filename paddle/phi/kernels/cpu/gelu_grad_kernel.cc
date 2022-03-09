@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/phi/kernels/gelu_grad_kernel.h"
 #include <algorithm>
 #include <cmath>
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/gelu_kernel.h"
 
 namespace phi {
@@ -129,15 +128,21 @@ void GeluGradKernel(const Context& dev_ctx,
                     bool approximate,
                     DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  auto eigen_x = phi::EigenVector<T>::Flatten(*x);
-  auto eigen_out_grad = phi::EigenVector<T>::Flatten(*out_grad);
-  auto eigen_x_grad = phi::EigenVector<T>::Flatten(x_grad);
+  auto eigen_x = EigenVector<T>::Flatten(x);
+  auto eigen_out_grad = EigenVector<T>::Flatten(out_grad);
+  auto eigen_x_grad = EigenVector<T>::Flatten(*x_grad);
   auto& dev = *dev_ctx.eigen_device();
 
   GeluGradFunctor<T> functor;
   functor(dev, eigen_x, eigen_out_grad, eigen_x_grad, approximate);
 }
 
-PD_REGISTER_KERNEL(gelu_grad, CPU, ALL_LAYOUT, phi::GeluGradKernel, bool) {}
-
 }  // namespace phi
+
+PD_REGISTER_KERNEL(gelu_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::GeluGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

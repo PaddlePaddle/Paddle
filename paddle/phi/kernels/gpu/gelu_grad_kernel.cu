@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gelu_grad_kernel.h"
 #include "paddle/phi/kernels/gelu_kernel.h"
 #include "paddle/phi/kernels/gpu/elementwise_op_broadcast.cu.h"
+#include "paddle/phi/kernels/gpu/gelu_kernel.h"
 
 DECLARE_bool(use_fast_math);
 
@@ -26,7 +26,7 @@ namespace phi {
 
 template <typename T>
 struct GeluWithApproximateGradFunctor {
-  using MPType = typename details::MPTypeTrait<T>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
     MPType x = static_cast<MPType>(arg_x);
     MPType dout = static_cast<MPType>(arg_dout);
@@ -47,7 +47,7 @@ struct GeluWithApproximateGradFunctor {
 
 template <typename T>
 struct GeluWithoutApproximateGradFunctor {
-  using MPType = typename details::MPTypeTrait<T>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x, T arg_dout) {
     MPType x = static_cast<MPType>(arg_x);
     MPType dout = static_cast<MPType>(arg_dout);
@@ -65,15 +65,14 @@ void GeluGradKernel(const Context& dev_ctx,
                     bool approximate,
                     DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-  std::vector<const DenseTensor*> ins = {x, out_grad};
+  std::vector<const DenseTensor*> ins = {&x, &out_grad};
   std::vector<DenseTensor*> outs = {x_grad};
   if (approximate) {
 #ifdef __NVCC__
-    if (std::is_same<T, platform::float16>::value) {
-      size_t n = x->numel();
-      const auto* x_ptr = reinterpret_cast<const __half*>(x->data<T>());
-      const auto* y_g_ptr =
-          reinterpret_cast<const __half*>(out_grad->data<T>());
+    if (std::is_same<T, dtype::float16>::value) {
+      size_t n = x.numel();
+      const auto* x_ptr = reinterpret_cast<const __half*>(x.data<T>());
+      const auto* y_g_ptr = reinterpret_cast<const __half*>(out_grad.data<T>());
       auto* x_g_ptr = reinterpret_cast<__half*>(x_grad->data<T>());
       if (TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(
               dev_ctx, x_ptr, y_g_ptr, x_g_ptr, n)) {
@@ -91,4 +90,10 @@ void GeluGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(gelu_grad, GPU, ALL_LAYOUT, phi::GeluGradKernel, bool) {}
+PD_REGISTER_KERNEL(gelu_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GeluGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

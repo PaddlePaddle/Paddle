@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/phi/kernels/gelu_kernel.h"
 #include <algorithm>
 #include <cmath>
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
 
@@ -89,13 +88,20 @@ void GeluKernel(const Context& dev_ctx,
                 bool approximate,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  auto eigen_out = phi::EigenVector<T>::Flatten(*out);
-  auto eigen_x = phi::EigenVector<T>::Flatten(x);
+  auto eigen_out = EigenVector<T>::Flatten(*out);
+  auto eigen_x = EigenVector<T>::Flatten(x);
   auto& dev = *dev_ctx.eigen_device();
 
   GeluFunctor<T> functor;
   functor(dev, eigen_x, eigen_out, approximate);
 }
 
-PD_REGISTER_KERNEL(gelu, CPU, ALL_LAYOUT, phi::GeluKernel, bool) {}
 }  // namespace phi
+
+PD_REGISTER_KERNEL(gelu,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::GeluKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

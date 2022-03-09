@@ -14,10 +14,9 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
-#include <unordered_map>
-
-#include "paddle/fluid/operators/gelu_op.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace operators {
@@ -155,14 +154,7 @@ class GeluGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
 REGISTER_OPERATOR(gelu, ops::GeluOp, ops::GeluOpMaker,
                   ops::GeluGradOpMaker<paddle::framework::OpDesc>,
                   ops::GeluGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(gelu_grad, ops::GeluGradOp);
-REGISTER_OP_CPU_KERNEL(
-    gelu, ops::GeluKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GeluKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    gelu_grad, ops::GeluGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GeluGradKernel<paddle::platform::CPUDeviceContext, double>);

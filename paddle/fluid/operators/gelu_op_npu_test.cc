@@ -31,8 +31,7 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-USE_OP(gelu);
-USE_OP_DEVICE_KERNEL(gelu, NPU);
+USE_OP_ITSELF(gelu);
 
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {

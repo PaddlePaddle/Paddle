@@ -15,6 +15,8 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
 
@@ -24,7 +26,7 @@ template <ElementwiseType ET,
           typename Functor,
           int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
-    const KPDevice &ctx,
+    const phi::GPUContext &ctx,
     const std::vector<const phi::DenseTensor *> &ins,
     std::vector<phi::DenseTensor *> *outs,
     int axis,

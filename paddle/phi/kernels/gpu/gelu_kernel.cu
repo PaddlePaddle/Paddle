@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gelu_kernel.h"
 #include "paddle/phi/kernels/gpu/elementwise_op_broadcast.cu.h"
@@ -26,7 +26,7 @@ namespace phi {
 
 template <typename T>
 struct GeluWithApproximateFunctor {
-  using MPType = typename details::MPTypeTrait<T>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x) {
     // this function is tanh approximation of gelu
     MPType x = static_cast<MPType>(arg_x);
@@ -42,7 +42,7 @@ struct GeluWithApproximateFunctor {
 
 template <typename T>
 struct GeluWithoutApproximateFunctor {
-  using MPType = typename details::MPTypeTrait<T>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T arg_x) {
     // actual gelu with approximation = false
     MPType x = static_cast<MPType>(arg_x);
@@ -56,13 +56,13 @@ void GeluKernel(const Context& dev_ctx,
                 bool approximate,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  std::vector<const DenseTensor*> ins = {x};
+  std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   if (approximate) {
 #ifdef __NVCC__
-    if (std::is_same<T, platform::float16>::value) {
-      size_t n = in->numel();
-      const auto* in_ptr = reinterpret_cast<const __half*>(in->data<T>());
+    if (std::is_same<T, dtype::float16>::value) {
+      size_t n = x.numel();
+      const auto* in_ptr = reinterpret_cast<const __half*>(x.data<T>());
       auto* out_ptr = reinterpret_cast<__half*>(out->data<T>());
       if (TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(
               dev_ctx, in_ptr, out_ptr, n)) {
@@ -70,18 +70,20 @@ void GeluKernel(const Context& dev_ctx,
       }
     }
 #endif
-    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                   T,
-                                                   T>(
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         dev_ctx, ins, &outs, 0, GeluWithApproximateFunctor<T>());
   } else {
-    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                   T,
-                                                   T>(
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         dev_ctx, ins, &outs, 0, GeluWithoutApproximateFunctor<T>());
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(gelu, GPU, ALL_LAYOUT, phi::GeluKernel, bool) {}
+PD_REGISTER_KERNEL(gelu,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GeluKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
