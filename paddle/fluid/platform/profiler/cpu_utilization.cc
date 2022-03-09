@@ -154,7 +154,6 @@ float CpuUtilization::GetCpuCurProcessUtilization() {
   if (end - start != 0) {
     cpu_process_utilization = busy_time / (end - start);
   }
-  LOG(INFO) << "Process Utilization = " << cpu_process_utilization << std::endl;
 #elif defined(__linux__)
   float busy_time =
       (process_tms_end_.tms_utime - process_tms_start_.tms_utime) +
