@@ -670,27 +670,18 @@ __global__ void KeBilinearInterpBwShareMemory(
   }
 }
 
-template <typename T>
-__device__ __forceinline__ static T CalculateLinearInterpIndex(
-    T ratio, int out_img_id, bool align_corners, const T align_type_value) {
-  if (align_corners) {
-    return ratio * out_img_id;
-  } else {
-    T src_idx = ratio * (out_img_id + align_type_value) - align_type_value;
-    return (src_idx < static_cast<T>(0.f)) ? static_cast<T>(0.f) : src_idx;
-  }
-}
-
 __device__ __forceinline__ int idx(const size_t nc, const int height,
                                    const int width, const int h, const int w) {
   return (nc * height + h) * width + w;
 }
 
 template <typename T>
-__global__ void KeBilinearInterpNCHWBw(
-    T* in, const int in_h, const int in_w, const int out_h, const int out_w,
-    const int n, const int num_channels, float ratio_h, float ratio_w,
-    bool align_corners, const T* __restrict__ out, const T align_type_value) {
+__global__ void KeBilinearInterpNCHWBw(T* in, const int in_h, const int in_w,
+                                       const int out_h, const int out_w,
+                                       const int n, const int num_channels,
+                                       float ratio_h, float ratio_w,
+                                       const T* __restrict__ out,
+                                       const T align_type_value) {
   int index = threadIdx.x + blockDim.x * blockIdx.x;
   int stride = blockDim.x * gridDim.x;
   int num_out = n * num_channels * out_h * out_w;
@@ -703,19 +694,17 @@ __global__ void KeBilinearInterpNCHWBw(
     int h2 = index_tmp % out_h;
     int nc = index_tmp / out_h;
 
-    T src_y = CalculateLinearInterpIndex<T>(ratio_h, h2, align_corners,
-                                            align_type_value);
-    int h1 = src_y;
-    int y_id = (h1 < in_h - 1) ? 1 : 0;
-    T h1lambda = src_y - h1;
-    T h0lambda = static_cast<T>(1.f) - h1lambda;
+    int h1, y_id;
+    T h1lambda, h0lambda;
+    T src_y = ratio_h * (h2 + align_type_value) - align_type_value;
 
-    T src_x = CalculateLinearInterpIndex<T>(ratio_w, w2, align_corners,
-                                            align_type_value);
-    int w1 = src_x;
-    int x_id = (w1 < in_w - 1) ? 1 : 0;
-    T w1lambda = src_x - w1;
-    T w0lambda = static_cast<T>(1.f) - w1lambda;
+    PreCalculatorForLinearInterpInputIndex(&h1, &y_id, &h1lambda, &h0lambda,
+                                           src_y, in_h);
+    int w1, x_id;
+    T w1lambda, w0lambda;
+    T src_x = ratio_w * (w2 + align_type_value) - align_type_value;
+    PreCalculatorForLinearInterpInputIndex(&w1, &x_id, &w1lambda, &w0lambda,
+                                           src_x, in_w);
 
     T d2val = out[index];
 
@@ -1936,6 +1925,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
           input_grad_data, in_h, in_w, output_grad_data, out_h, out_w, n, c,
           ratio_h, ratio_w, align_type_value, is_nchw);
     } else if (!optimize_flag & is_nchw) {
+      //
       const int num_kernels = n * c * out_h * out_w;
       const int num_threads =
           std::min(ctx.cuda_device_context().GetMaxThreadsPerBlock(), 1024);
@@ -1943,7 +1933,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
           T><<<platform::DivUp(num_kernels, num_threads), num_threads, 0,
                ctx.cuda_device_context().stream()>>>(
           input_grad_data, in_h, in_w, out_h, out_w, n, c, ratio_h, ratio_w,
-          align_corners, output_grad_data, align_type_value);
+          output_grad_data, align_type_value);
     } else {
       int64_t cw = c * out_w;
       auto interp_divmods = FastDivModForInterpolate(c, out_chw, cw);
