@@ -156,6 +156,24 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void CumsumInferMeta(const MetaTensor& x,
+                     int axis,
+                     bool flatten,
+                     bool exclusive,
+                     bool reverse,
+                     MetaTensor* out) {
+  auto x_dims = x.dims();
+  if (flatten) {
+    out->set_dims(phi::make_ddim({phi::product(x_dims)}));
+    out->set_dtype(x.dtype());
+  } else {
+    out->set_dims(x_dims);
+    out->set_dtype(x.dtype());
+  }
+
+  out->share_lod(x);
+}
+
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
       product(x.dims()),
@@ -987,6 +1005,11 @@ void DiagInferMeta(const MetaTensor& x,
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   out->set_dims({1});
+}
+
+void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(DataType::BOOL);
 }
 
 void PixelShuffleInferMeta(const MetaTensor& x,

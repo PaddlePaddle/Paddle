@@ -29,13 +29,8 @@ void ReduceWrapper(const GPUContext &dev_ctx,
                    DenseTensor *dst) {
   std::vector<int> reduce_dims =
       funcs::GetReduceDim(dst->dims(), src->dims(), axis);
-  funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      dev_ctx,
-      *src,
-      dst,
-      kps::IdentityFunctor<T>(),
-      reduce_dims,
-      dev_ctx.stream());
+  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      dev_ctx, *src, dst, kps::IdentityFunctor<T>(), reduce_dims);
 }
 
 template <ElementwiseType ET, typename T, typename Functor>
@@ -172,9 +167,8 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims);
     }
   }
   // dy
@@ -187,9 +181,8 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, dout, dy, kps::IdentityFunctor<T>(), reduce_dims);
     }
   }
 }
@@ -285,9 +278,8 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims);
     }
   }
   // dy
@@ -306,9 +298,8 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
-          ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
+          ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims);
     }
   }
 }
