@@ -649,12 +649,21 @@ void Conv3dKernel(const Context& dev_ctx,
   DenseTensor unique_key = phi::Empty<int, Context>(dev_ctx);
   DenseTensor unique_value = phi::Empty<int, Context>(dev_ctx);
 
+  std::vector<int> subm_paddings(paddings), subm_strides(strides);
+  if (subm) {
+    auto kernel_dims = kernel.dims();
+    for (int i = 0; i < paddings.size(); i++) {
+      subm_paddings[i] = kernel_dims[i] / 2;
+      subm_strides[i] = 1;
+    }
+  }
+
   int n = ProductRuleBook<T, Context>(dev_ctx,
                                       x,
                                       kernel,
-                                      paddings,
+                                      subm_paddings,
                                       dilations,
-                                      strides,
+                                      subm_strides,
                                       out_dims,
                                       subm,
                                       rulebook,
