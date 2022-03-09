@@ -1123,6 +1123,38 @@ void TransposeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void EighInferMeta(const MetaTensor& x,
+                   const std::string& uplo,
+                   MetaTensor* out_w,
+                   MetaTensor* out_v) {
+  auto input_dim = x.dims();
+  auto rank = input_dim.size();
+
+  PADDLE_ENFORCE_GE(rank,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input(X) should have at least 2 dimensions."
+                        "But received a %d dimension tensor.",
+                        rank));
+  PADDLE_ENFORCE_EQ(
+      input_dim[rank - 2],
+      input_dim[rank - 1],
+      phi::errors::InvalidArgument(
+          "Eigh op is designed for square matrix, consequently"
+          "inner-most 2 dimensions of Input(X) should be symmetric."
+          "But received X's shape[-2] = %d and shape[-1] = %d.",
+          input_dim[rank - 2],
+          input_dim[rank - 1]));
+
+  std::vector<int64_t> values_dim;
+
+  for (auto i = 0; i < rank - 1; i++) {
+    values_dim.emplace_back(input_dim[i]);
+  }
+  out_w->set_dims(phi::make_ddim(values_dim));
+  out_v->set_dims(input_dim);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
