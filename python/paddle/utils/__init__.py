@@ -27,7 +27,6 @@ from . import download  # noqa: F401
 from . import image_util  # noqa: F401
 from . import cpp_extension  # noqa: F401
 from . import dlpack
-from . import perf_analysis
 
 __all__ = [  #noqa
     'deprecated', 'run_check', 'require_version', 'try_import'
