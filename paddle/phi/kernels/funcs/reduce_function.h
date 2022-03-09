@@ -631,7 +631,7 @@ struct ReduceConfig {
   void LimitGridDim(const paddle::platform::Place& place) {
     auto* ctx = static_cast<paddle::platform::CUDADeviceContext*>(
         paddle::platform::DeviceContextPool::Instance().Get(place));
-    std::array<int, 3>  max_grid_dim = ctx->GetCUDAMaxGridDimSize();
+    std::array<int, 3> max_grid_dim = ctx->GetCUDAMaxGridDimSize();
     grid.x = grid.x < max_grid_dim[0] ? grid.x : max_grid_dim[0];
     grid.y = grid.y < max_grid_dim[1] ? grid.y : max_grid_dim[1];
     grid.z = grid.z < max_grid_dim[2] ? grid.z : max_grid_dim[2];

@@ -48,14 +48,11 @@ namespace phi {
 
 namespace funcs {
 
-namespace {
 template <typename T>
-void LimitGridDim(const GPUContext& ctx, T *grid_dim) {
+void LimitGridDim(const GPUContext &ctx, T *grid_dim) {
   auto max_grid_dim = ctx.GetCUDAMaxGridDimSize()[0];
-  if (*grid_dim > max_grid_dim)
-    *grid_dim = max_grid_dim;
+  if (*grid_dim > max_grid_dim) *grid_dim = max_grid_dim;
 }
-};
 
 using DDim = phi::DDim;
 
@@ -988,8 +985,8 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
     dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
     int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
     auto gplace = phi::GPUPlace();
-    auto* ctx = static_cast<GPUContext*>(
-          paddle::platform::DeviceContextPool::Instance().Get(gplace));
+    auto *ctx = static_cast<GPUContext *>(
+        paddle::platform::DeviceContextPool::Instance().Get(gplace));
     LimitGridDim(*ctx, &grid_size);
     FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
         x, y, out, dout, h, w, is_xsize_larger, dx_op, dy_op, dx, dy);
@@ -1013,8 +1010,8 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
   int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
   int grid_size = n;
   auto gplace = phi::GPUPlace();
-  auto* ctx = static_cast<GPUContext*>(
-        paddle::platform::DeviceContextPool::Instance().Get(gplace));
+  auto *ctx = static_cast<GPUContext *>(
+      paddle::platform::DeviceContextPool::Instance().Get(gplace));
   LimitGridDim(*ctx, &grid_size);
   ElemwiseGradBroadcast2CUDAKernel<<<grid_size, block_size, 0, stream>>>(
       x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
