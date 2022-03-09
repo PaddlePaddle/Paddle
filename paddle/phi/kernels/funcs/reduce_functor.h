@@ -49,5 +49,13 @@ struct MaxFunctor {
   }
 };
 
+//////// Min Functor ///////
+struct MinFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->minimum(dim);
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi
