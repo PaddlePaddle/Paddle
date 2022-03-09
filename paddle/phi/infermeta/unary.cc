@@ -46,9 +46,9 @@ void ArgsortInferMeta(const MetaTensor& input,
           "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
 
   output->share_dims(input);
-  output->set_dtype(input.dtype());
+  output->set_dtype(DataType::INT64);
   indices->share_dims(input);
-  indices->set_dtype(input.dtype());
+  indices->set_dtype(DataType::INT64);
   output->share_lod(input);
   indices->share_lod(input);
 }
