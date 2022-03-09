@@ -68,6 +68,8 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
     library_type = LibraryType::kMKLDNN;
   } else if (kernel_key.backend() == phi::Backend::GPUDNN) {
     library_type = LibraryType::kCUDNN;
+  } else if (kernel_key.backend() == phi::Backend::KPS) {
+    library_type = LibraryType::kKP;
   } else {
     // do nothing
   }
@@ -82,6 +84,8 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
     backend = phi::Backend::MKLDNN;
   } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
     backend = phi::Backend::GPUDNN;
+  } else if (kernel_type.library_type_ == LibraryType::kKP) {
+    backend = phi::Backend::KPS;
   } else {
     // do
   }
@@ -117,6 +121,15 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
   if (platform::is_mlu_place(expected_kernel_key.place_)) {
     VLOG(3) << "phi missing MLU kernel: " << op.Type()
             << "phipected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
+                          kernel_key.dtype());
+  }
+#endif
+#ifdef PADDLE_WITH_IPU
+  if (platform::is_ipu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "pten missing IPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
                           kernel_key.dtype());
@@ -227,27 +240,6 @@ static void SetAllocationForUninitializedDenseTensor(
       std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
 
   dense_tensor->ResetHolder(shared_allocation);
-}
-
-void SetAllocationForOutputTenosr(phi::TensorBase* tensor,
-                                  const platform::Place& place) {
-  if (phi::DenseTensor::classof(tensor)) {
-    auto* dense_tensor = static_cast<phi::DenseTensor*>(tensor);
-    if (!dense_tensor->IsInitialized() || !(dense_tensor->place() == place)) {
-      SetAllocationForUninitializedDenseTensor(dense_tensor, place);
-    }
-  } else if (phi::SelectedRows::classof(tensor)) {
-    auto* selected_rows = static_cast<phi::SelectedRows*>(tensor);
-    if (!selected_rows->value().IsInitialized() ||
-        !(selected_rows->place() == place)) {
-      SetAllocationForUninitializedDenseTensor(selected_rows->mutable_value(),
-                                               place);
-    }
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported tensor type is received when setting allocation for "
-        "output tensor."));
-  }
 }
 
 }  // namespace framework

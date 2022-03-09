@@ -26,6 +26,8 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import paddle
 
+paddle.enable_static()
+
 
 class TestBatchNorm(unittest.TestCase):
     def test_name(self):
@@ -291,5 +293,4 @@ class TestBatchNormUseGlobalStatsCase3(TestBatchNormUseGlobalStats):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

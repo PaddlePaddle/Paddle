@@ -54,7 +54,7 @@ USE_OP(slice_grad);
 USE_OP(lookup_table_grad);
 USE_OP(sqrt);
 USE_OP(elementwise_max);
-USE_OP(elementwise_div);
+USE_OP_ITSELF(elementwise_div);
 USE_OP(sgd);
 USE_OP(squared_l2_norm);
 USE_OP(memcpy_h2d);

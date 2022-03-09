@@ -26,6 +26,10 @@ struct PhiKernelDesc {
   Place kernelType;                // kernel place
 };
 
+std::string getPhiTargetPrefix(TargetType target);
+std::string getPhiPrecisionSuffix(PrecisionType precision);
+std::string getPhiLayoutSuffix(LayoutType layout);
+
 std::vector<PhiKernelDesc> getCandidateKernels(
     std::string name, const std::vector<Place>& valid_palces);
 

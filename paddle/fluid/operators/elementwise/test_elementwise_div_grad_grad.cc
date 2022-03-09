@@ -28,7 +28,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-USE_OP(elementwise_div);
+USE_OP_ITSELF(elementwise_div);
 
 namespace paddle {
 namespace operators {
