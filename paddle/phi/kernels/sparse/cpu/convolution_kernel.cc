@@ -83,8 +83,6 @@ void Conv3dKernel(const Context& dev_ctx,
       phi::Empty(dev_ctx, std::move(in_features_meta));
   phi::DenseTensor out_features =
       phi::Empty(dev_ctx, std::move(out_features_meta));
-  dev_ctx.Alloc(&in_features, x.dtype(), sizeof(T) * in_features.numel());
-  dev_ctx.Alloc(&out_features, x.dtype(), sizeof(T) * out_features.numel());
   T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();
 
@@ -130,9 +128,6 @@ void Conv3dKernel(const Context& dev_ctx,
   }
 
   // 4. scatter
-  dev_ctx.Alloc(out->mutable_non_zero_elements(),
-                out->mutable_non_zero_elements()->dtype(),
-                sizeof(T) * in_features.numel());
   T* out_values_ptr = out->mutable_non_zero_elements()->data<T>();
   memset(out_values_ptr, 0, sizeof(T) * out->nnz() * out_channels);
   Scatter<T>(out_features_ptr,

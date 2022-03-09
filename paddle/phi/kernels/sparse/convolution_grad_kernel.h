@@ -47,8 +47,10 @@ std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
                                     const std::vector<int>& strides,
                                     const int groups,
                                     const bool subm) {
-  DenseTensor x_grad = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor kernel_grad = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor x_grad =
+      phi::Empty<Context>(dev_ctx, DenseTensorMeta(x.dtype(), {1}, x.layout()));
+  DenseTensor kernel_grad = phi::Empty<Context>(
+      dev_ctx, DenseTensorMeta(kernel.dtype(), {1}, kernel.layout()));
   // TODO(zhangkaihuo): call InferMeta func here
   Conv3dGradKernel<T, Context>(dev_ctx,
                                x,

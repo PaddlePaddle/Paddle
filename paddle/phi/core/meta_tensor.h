@@ -60,12 +60,13 @@ class MetaTensor {
 
   virtual void share_lod(const MetaTensor& meta_tensor);
   virtual void share_meta(const MetaTensor& meta_tensor);
+  virtual void share_dims(const MetaTensor& meta_tensor);
 
  private:
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;
-
+  TensorBase* get_tensor() const;
   TensorBase* tensor_;
 };
 
