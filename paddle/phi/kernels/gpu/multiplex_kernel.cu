@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,21 +22,21 @@ namespace phi {
 
 template <typename T, typename Context>
 void MultiplexKernel(const Context& ctx,
-                     const std::vector<DenseTensor>& ins,
+                     const std::vector<const DenseTensor*>& ins,
                      const DenseTensor& ids,
                      DenseTensor* out) {
   ctx.template Alloc<T>(out);
   for (size_t i = 0; i < ins.size(); ++i) {
     PADDLE_ENFORCE_GT(
-        ins[i].numel(),
+        ins[i]->numel(),
         0,
         errors::OutOfRange(
             "indexing will be out of bounds with size 0 for the %d-th input.",
             i));
   }
 
-  auto rows = ins[0].dims()[0];
-  auto cols = ins[0].numel() / rows;
+  auto rows = ins[0]->dims()[0];
+  auto cols = ins[0]->numel() / rows;
   DenseTensor index_t_cpu;
   paddle::framework::TensorCopySync(ids, phi::CPUPlace(), &index_t_cpu);
   auto* index = index_t_cpu.data<int32_t>();
@@ -52,7 +52,7 @@ void MultiplexKernel(const Context& ctx,
     paddle::memory::Copy(ctx.GetPlace(),
                          out->data<T>() + i * cols,
                          ctx.GetPlace(),
-                         ins[k].data<T>() + i * cols,
+                         ins[k]->data<T>() + i * cols,
                          cols * sizeof(T),
                          stream);
   }
