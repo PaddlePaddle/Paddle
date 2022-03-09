@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/roi_align_op.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
