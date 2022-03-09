@@ -216,7 +216,7 @@ def _get_supported_targets() -> Iterable[ProfilerTarget]:
     r"""
     Get the current supported profiler target in the system.
     """
-    if paddle.device.is_compiled_with_cuda():
+    if _Profiler.is_cupti_supported():
         return [ProfilerTarget.CPU, ProfilerTarget.GPU]
     return [ProfilerTarget.CPU]
 
