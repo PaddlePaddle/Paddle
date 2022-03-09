@@ -55,8 +55,8 @@ __global__ void filter_copy_fuse_kernel(
     size_t* x2_lods_data, const int64_t* x2_data, const int64_t* x3_data,
     int64_t filter_tag_size, T* out_data, int64_t* map_data,
     size_t* map_lods_data, size_t* out_lods_data, size_t* out_idx_data,
-    const T* x1_data, int x1_embed_size, int x1_lods_filled, int x2_lods_filled,
-    float* loss_weight_data, float fill_value) {
+    const T* x1_data, int x1_embed_size, float* loss_weight_data,
+    float fill_value) {
   // N is instance num
   // one threads for ins_per_thread instances
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -91,30 +91,27 @@ __global__ void filter_copy_fuse_kernel(
 
   if (N < ins_end) ins_end = N;
 
-  /*
-    if (!x1_lods_filled) {
-      for (int p = ins_start; p < ins_end; p++) {
-        x1_lods_data[p] = p;
-      }
-      if (idx == 0) {
-        x1_lods_data[N] = N;
-      }
+  if (!x1_lods_filled) {
+    for (int p = ins_start; p < ins_end; p++) {
+      x1_lods_data[p] = p;
     }
-
-    if (!x2_lods_filled) {
-      for (int p = ins_start; p < ins_end; p++) {
-        x2_lods_data[p] = p;
-      }
-      if (idx == 0) {
-        x2_lods_data[N] = N;
-      }
+    if (idx == 0) {
+      x1_lods_data[N] = N;
     }
+  }
 
-    if (!x1_lods_filled || !x2_lods_filled) {
-      b.sync();
+  if (!x2_lods_filled) {
+    for (int p = ins_start; p < ins_end; p++) {
+      x2_lods_data[p] = p;
     }
+    if (idx == 0) {
+      x2_lods_data[N] = N;
+    }
+  }
 
-  */
+  if (!x1_lods_filled || !x2_lods_filled) {
+    b.sync();
+  }
 
   int flag_data[5];
   int prefix_sum_data[5];
@@ -390,13 +387,13 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     const Tensor* x3 = context.Input<Tensor>("Filter_tag");
     const int64_t* x3_data = x3->data<int64_t>();
 
-    int x2_lods_filled = 1;
+    // int x2_lods_filled = 1;
 
     Vector<size_t> x2_lods;
     // Vector, in GPU
     if (x2->lod().size() != 0) {  // lod_level = 1
       x2_lods = x2->lod()[0];
-      x2_lods_filled = 1;
+      // x2_lods_filled = 1;
 
     } else {  // lod_level = 0
       const size_t x2_lods_size = x2->dims()[0];
@@ -408,13 +405,13 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       }
     }
 
+    const size_t x2_lods_size = x2_lods.size() - 1;
     paddle::framework::MixVector<size_t> mixv_x2_lods(&x2_lods);
 
     size_t* x2_lods_data = mixv_x2_lods.CUDAMutableData(gpu_place);
-    const size_t x2_lods_size = x2_lods.size() - 1;
 
     // Vector, in GPU
-    int x1_lods_filled = 1;
+    // int x1_lods_filled = 1;
     Vector<size_t> x1_lods;
 
     if (!is_x1_lod) {
@@ -428,9 +425,8 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       // x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
       // new: lod_level=0 => lod() return {}
       if (x1->lod().size() != 0) {  // lod_level = 1
-        x1_lods_filled = 1;
+        // x1_lods_filled = 1;
         x1_lods = x1->lod()[0];
-
       } else {  // lod_level = 0
         // x1_lods.resize(x1->dims()[0] + 1);
         // move to cuda
@@ -454,10 +450,11 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     LoDTensor* map = context.Output<LoDTensor>("IndexMap");
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
-    int out_first = x1->dims()[0];
-    if (x1_lods_filled) {
-      out_first = x1_lods.back();
-    }
+    out_first = x1_lods.back();
+    // int out_first = x1->dims()[0];
+    // if (x1_lods_filled) {
+    //  out_first = x1_lods.back();
+    // }
 
     out->Resize(phi::make_ddim({(int64_t)out_first, (int64_t)x1_embed_size}));
     map->Resize(phi::make_ddim({(int64_t)x2_lods_size, 3}));
@@ -483,7 +480,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     paddle::framework::MixVector<size_t> mixv_out_idx(&out_idx);
 
     size_t* out_idx_data = mixv_out_idx.CUDAMutableData(gpu_place);
-
     size_t* out_lods_data = mixv_out_lods.CUDAMutableData(gpu_place);
     size_t* map_lods_data = mixv_map_lods.CUDAMutableData(gpu_place);
 
@@ -492,8 +488,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     filter_copy_fuse_kernel<<<grid_dim, block_dim, 0, current_stream>>>(
         x2_lods_size, ins_per_thread, x1_lods_data, x2_lods_data, x2_data,
         x3_data, x3->numel(), out_data, map_data, map_lods_data, out_lods_data,
-        out_idx_data, x1_data, x1_embed_size, x1_lods_filled, x2_lods_filled,
-        loss_weight_data, fill_value);
+        out_idx_data, x1_data, x1_embed_size, loss_weight_data, fill_value);
 
     platform::GpuStreamSync(current_stream);
 
@@ -532,7 +527,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     } else {
       Vector<size_t> map_lods(2, 0);
       paddle::framework::MixVector<size_t> mixv_map_lods(&map_lods);
-
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
 
       map_data_ptr[0] = 0;
