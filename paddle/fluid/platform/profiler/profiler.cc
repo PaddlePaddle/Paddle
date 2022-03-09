@@ -49,7 +49,7 @@ bool Profiler::IsCuptiSupported() {
 #ifdef PADDLE_WITH_CUPTI
   supported = true;
 #endif
-  return supported
+  return supported;
 }
 
 Profiler::Profiler(const ProfilerOptions& options) {
