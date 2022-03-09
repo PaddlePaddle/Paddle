@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
-#include "paddle/fluid/operators/tril_triu_op.h"
+#include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
@@ -404,10 +404,10 @@ void LU_Unpack(const DeviceContext& dev_ctx, const framework::Tensor* LU,
   const auto W = udims[udims.size() - 1];
   auto L_dataptr = L->mutable_data<T>(dev_ctx.GetPlace());
   platform::ForRange<DeviceContext> x_for_range(dev_ctx, LU->numel());
-  TrilTriuCompute<T> tril_computer(LU->data<T>(), -1, true, H, W, L_dataptr);
+  phi::funcs::TrilTriuCompute<T> tril_computer(LU->data<T>(), -1, true, H, W, L_dataptr);
   x_for_range(tril_computer);
 
-  TrilTriuCompute<T> triu_computer(LU->data<T>(), 0, false, H, W,
+  phi::funcs::TrilTriuCompute<T> triu_computer(LU->data<T>(), 0, false, H, W,
                                    U->mutable_data<T>(dev_ctx.GetPlace()));
   x_for_range(triu_computer);
 
@@ -532,13 +532,13 @@ class LUGradKernel : public framework::OpKernel<T> {
     auto phil_rank = LmHdims.size();
     auto phiu_rank = UmHdims.size();
     platform::ForRange<DeviceContext> l_for_range(dev_ctx, phi_L.numel());
-    TrilTriuCompute<T> tril_computer(phi_L.data<T>(), -1, true,
+    phi::funcs::TrilTriuCompute<T> tril_computer(phi_L.data<T>(), -1, true,
                                      LmHdims[phil_rank - 2],
                                      LmHdims[phil_rank - 1], phi_L.data<T>());
     l_for_range(tril_computer);
 
     platform::ForRange<DeviceContext> u_for_range(dev_ctx, phi_U.numel());
-    TrilTriuCompute<T> triu_computer(phi_U.data<T>(), 0, false,
+    phi::funcs::TrilTriuCompute<T> triu_computer(phi_U.data<T>(), 0, false,
                                      UmHdims[phiu_rank - 2],
                                      UmHdims[phiu_rank - 1], phi_U.data<T>());
     u_for_range(triu_computer);
@@ -591,7 +591,7 @@ class LUGradKernel : public framework::OpKernel<T> {
         const auto W = phidims[phidims.size() - 1];
         platform::ForRange<DeviceContext> x_for_range(dev_ctx,
                                                       phi_complement.numel());
-        TrilTriuCompute<T> tril_computer(phi_complement.data<T>(), -1, true, H,
+        phi::funcs::TrilTriuCompute<T> tril_computer(phi_complement.data<T>(), -1, true, H,
                                          W, phi_complement_l.data<T>());
         x_for_range(tril_computer);
 
@@ -664,7 +664,7 @@ class LUGradKernel : public framework::OpKernel<T> {
       const auto W = phidims[phidims.size() - 1];
       platform::ForRange<DeviceContext> x_for_range(dev_ctx,
                                                     phi_complement.numel());
-      TrilTriuCompute<T> triu_computer(phi_complement.data<T>(), 0, false, H, W,
+      phi::funcs::TrilTriuCompute<T> triu_computer(phi_complement.data<T>(), 0, false, H, W,
                                        phi_complement_u.data<T>());
       x_for_range(triu_computer);
 

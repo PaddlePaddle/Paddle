@@ -19,10 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/solve_op.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
-#include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 
 namespace paddle {
 namespace operators {
