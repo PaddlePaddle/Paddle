@@ -139,7 +139,7 @@ void phiOpCvtPass::diapatchStage() {
         case TargetType::CPU: {
           auto context_value =
               builder
-                  .create<infrt::phi::CreateContextOp>(
+                  .create<infrt::phi::CreateCPUContextOp>(
                       kernel_op.getLoc(),
                       phi::ContextType::get(kernel_op.getContext(),
                                             TargetType::CPU))

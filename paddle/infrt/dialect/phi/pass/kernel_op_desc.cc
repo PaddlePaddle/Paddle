@@ -15,6 +15,7 @@
 #include "paddle/infrt/dialect/phi/pass/kernel_op_desc.h"
 #include <glog/logging.h>
 #include "paddle/infrt/dialect/phi/data_type.h"
+#include "paddle/phi/kernels/declarations.h"
 
 namespace infrt {
 
