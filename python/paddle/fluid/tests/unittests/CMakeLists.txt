@@ -23,6 +23,7 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_pipeline)
 list(APPEND DIST_TEST_OPS test_ir_pass_pipeline)
 list(APPEND DIST_TEST_OPS test_static_model_parallel)
+list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
@@ -1150,6 +1151,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
         set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
         set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT 120)
         set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
+        set_tests_properties(test_static_model_parallel_fused_feedforward PROPERTIES TIMEOUT 120)
         set_tests_properties(test_collective_split_embedding
             test_collective_split_embedding_none_divisible
             test_collective_split_row_linear
