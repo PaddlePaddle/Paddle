@@ -35,6 +35,7 @@ class BackwardAPI(BaseAPI):
             forward_config)
         api = result.group('api')
         _, outputs, _ = self.parse_output(self.api, result.group('outputs'))
+        outputs = [item.split('@')[0] for item in outputs]
         fw_inputs, fw_attrs, _, = self.parse_input_and_attr(
             api, result.group('args'))
 
