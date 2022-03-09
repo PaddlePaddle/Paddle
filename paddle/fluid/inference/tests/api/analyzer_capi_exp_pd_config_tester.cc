@@ -82,14 +82,15 @@ TEST(PD_Config, interface) {
 #endif
 
   PD_ConfigEnableONNXRuntime(config);
-  bool onnxruntime_enabled = PD_ConfigONNXRuntimeEnabled();
+  bool onnxruntime_enabled = PD_ConfigONNXRuntimeEnabled(config);
 #ifdef PADDLE_WITH_ONNXRUNTIME
   EXPECT_TRUE(onnxruntime_enabled);
 #else
   EXPECT_FALSE(onnxruntime_enabled);
 #endif
   PD_ConfigDisableONNXRuntime(config);
-  EXPECT_FALSE(PD_ConfigONNXRuntimeEnabled());
+  bool onnxruntime_disabled = PD_ConfigONNXRuntimeEnabled(config);
+  EXPECT_FALSE(onnxruntime_disabled);
   PD_ConfigEnableORTOptimization(config);
 
   PD_ConfigEnableMemoryOptim(config, true);
