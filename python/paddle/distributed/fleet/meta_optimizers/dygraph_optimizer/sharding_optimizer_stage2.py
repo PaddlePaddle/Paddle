@@ -40,8 +40,6 @@ align = {
     Type.fp32.value: 4,
 }
 
-__all__ = ["ShardingOptimizerStage2"]
-
 
 class ShardingOptimizerStage2(Optimizer):
     """
@@ -136,7 +134,7 @@ class ShardingOptimizerStage2(Optimizer):
         # Update optimizer parameters and adjust parameter storage and use according to rank.
         self._update_opt_status()
 
-    @paddle.no_grad()
+    @paddle.autograd.no_grad()
     def _sync_params_and_buffers(self):
         """
         Sync all model states for all ranks
@@ -392,7 +390,7 @@ class ShardingOptimizerStage2(Optimizer):
         self._dtype_rank_params.clear()
         self._param2rank.clear()
 
-    @fluid.dygraph.no_grad
+    @paddle.autograd.no_grad()
     def _broadcast_params(self):
         """Broadcast the parameters of the current rank to each rank"""
 
