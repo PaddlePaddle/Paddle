@@ -1,4 +1,4 @@
-def PD_FeedOp : PD_Op<"feed"> {
+def PD_FeedOp : PD_Op<"feed", [NoSideEffect]> {
   let summary = "Feed Op";
 
   let description = [{
