@@ -74,7 +74,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
       kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
   T* d_kernel_ptr = kernel_grad->data<T>();
   phi::funcs::SetConstant<Context, T> set_zero;
-  set_zero(dev_ctx, kernel_grad, 0);
+  set_zero(dev_ctx, kernel_grad, static_cast<T>(0.0f));
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len * in_channels, 1);
@@ -211,7 +211,7 @@ PD_REGISTER_KERNEL(sparse_conv3d_grad,
                    ALL_LAYOUT,
                    phi::sparse::Conv3dGradKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
