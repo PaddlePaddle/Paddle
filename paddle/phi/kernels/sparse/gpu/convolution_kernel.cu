@@ -238,7 +238,6 @@ int ProductRuleBook(const Context& dev_ctx,
   const int rulebook_rows = 3;
   const int rulebook_cols = kernel_size * non_zero_num;
   rulebook->ResizeAndAllocate({rulebook_rows, rulebook_cols});
-  dev_ctx.Alloc(rulebook, rulebook->dtype(), sizeof(int) * rulebook->numel());
   int* rulebook_ptr = rulebook->data<int>();
 
   const auto x_dims = x.dims();
@@ -287,7 +286,11 @@ int ProductRuleBook(const Context& dev_ctx,
   cudaMemcpyAsync(&rulebook_len,
                   rulebook_ptr + 3 * kernel_size * non_zero_num - 1,
                   sizeof(int),
+#ifdef PADDLE_WITH_HIP
+                  hipMemcpyDeviceToHost,
+#else
                   cudaMemcpyDeviceToHost,
+#endif
                   dev_ctx.stream());
   rulebook_len /= 3;
   dev_ctx.Wait();
@@ -322,10 +325,17 @@ int ProductRuleBook(const Context& dev_ctx,
                            counter_ptr + kernel_size,
                            offsets_ptr);
     std::vector<int> offsets(kernel_size, 0);
-    cudaMemcpy(offsets.data(),
-               offsets_ptr,
-               kernel_size * sizeof(int),
-               cudaMemcpyDeviceToHost);
+    // TODO(zhangkaihuo): used unified memcpy interface
+    cudaMemcpyAsync(offsets.data(),
+                    offsets_ptr,
+                    kernel_size * sizeof(int),
+#ifdef PADDLE_WITH_HIP
+                    hipMemcpyDeviceToHost,
+#else
+                    cudaMemcpyDeviceToHost,
+#endif
+                    dev_ctx.stream());
+    dev_ctx.Wait();
 
     thrust::pair<int*, int*> end;
     // Because set_diff does not support duplicate data, set_diff is performed
@@ -357,7 +367,11 @@ int ProductRuleBook(const Context& dev_ctx,
     cudaMemcpyAsync(&len,
                     key_result.data<int>() + rulebook_len,
                     sizeof(int),
+#ifdef PADDLE_WITH_HIP
+                    hipMemcpyDeviceToHost,
+#else
                     cudaMemcpyDeviceToHost,
+#endif
                     dev_ctx.stream());
     dev_ctx.Wait();
     // set the diff value = -1, and update counter
@@ -381,7 +395,11 @@ int ProductRuleBook(const Context& dev_ctx,
     cudaMemcpyAsync(&rulebook_len,
                     key_result.data<int>() + rulebook_len,
                     sizeof(int),
+#ifdef PADDLE_WITH_HIP
+                    hipMemcpyDeviceToHost,
+#else
                     cudaMemcpyDeviceToHost,
+#endif
                     dev_ctx.stream());
     dev_ctx.Wait();
     rulebook_len /= 3;
@@ -425,14 +443,8 @@ int ProductRuleBook(const Context& dev_ctx,
   out_index->ResizeAndAllocate({rulebook_len});
   unique_value->ResizeAndAllocate({rulebook_len});
   unique_key->ResizeAndAllocate({rulebook_len});
-  dev_ctx.Alloc(
-      out_index, out_index->dtype(), sizeof(int) * out_index->numel());
   int* out_index_ptr = out_index->data<int>();
-  dev_ctx.Alloc(
-      unique_value, unique_value->dtype(), sizeof(int) * unique_value->numel());
   int* unique_value_ptr = unique_value->data<int>();
-  dev_ctx.Alloc(
-      unique_key, unique_key->dtype(), sizeof(int) * unique_key->numel());
   int* unique_key_ptr = unique_key->data<int>();
 
   int* new_end = SortedAndUniqueIndex(dev_ctx,
@@ -532,12 +544,10 @@ void Conv3dKernel(const Context& dev_ctx,
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
   DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(offsets_meta));
-  DenseTensor out_index = phi::Empty(
-      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
-  DenseTensor unique_key = phi::Empty(
-      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
-  DenseTensor unique_value = phi::Empty(
-      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
+  DenseTensorMeta index_meta(DataType::INT32, {1}, DataLayout::NCHW);
+  DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
+  DenseTensor unique_key = phi::Empty(dev_ctx, std::move(index_meta));
+  DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
   std::vector<int> subm_paddings(paddings), subm_strides(strides);
   if (subm) {

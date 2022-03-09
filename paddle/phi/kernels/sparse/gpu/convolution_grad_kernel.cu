@@ -70,9 +70,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
   T* in_features_ptr = in_features.data<T>();
   T* d_x_features_ptr = d_x_features.data<T>();
   T* out_grad_features_ptr = out_grad_features.data<T>();
-  kernel_grad->Resize(kernel_dims);
-  dev_ctx.Alloc(
-      kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
+  kernel_grad->ResizeAndAllocate(kernel_dims);
   T* d_kernel_ptr = kernel_grad->data<T>();
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, kernel_grad, static_cast<T>(0.0f));
@@ -207,18 +205,11 @@ void Conv3dGradKernel(const Context& dev_ctx,
   }
 
   // 4. scatter
-  x_grad->Resize(x.non_zero_elements().dims());
-  dev_ctx.Alloc(x_grad, x_grad->dtype(), sizeof(T) * x_grad->numel());
-
-  DenseTensor out_index = phi::Empty(
-      dev_ctx,
-      DenseTensorMeta(DataType::INT32, {rulebook_len}, DataLayout::NCHW));
-  DenseTensor unique_key = phi::Empty(
-      dev_ctx,
-      DenseTensorMeta(DataType::INT32, {rulebook_len}, DataLayout::NCHW));
-  DenseTensor unique_value = phi::Empty(
-      dev_ctx,
-      DenseTensorMeta(DataType::INT32, {rulebook_len}, DataLayout::NCHW));
+  x_grad->ResizeAndAllocate(x.non_zero_elements().dims());
+  DenseTensorMeta index_meta(DataType::INT32, {rulebook_len}, DataLayout::NCHW);
+  DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
+  DenseTensor unique_key = phi::Empty(dev_ctx, std::move(index_meta));
+  DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
   SortedAndUniqueIndex(dev_ctx,
                        rulebook_ptr + rulebook_len,
