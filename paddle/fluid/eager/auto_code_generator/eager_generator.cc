@@ -2097,6 +2097,9 @@ static std::string GenerateGradNodeHeaderContents(
       "bool create_graph = false) "
       "override;\n"
       "\n"
+      "  void ClearTensorWrappers() override { \n"
+      "    TensorWrappersSet.resize(0);"
+      "  }\n"
       "  std::string name() override { return \" GradNode%s \"; } \n "
       "\n"
       "  // SetX, SetY, ...\n"
@@ -2106,6 +2109,8 @@ static std::string GenerateGradNodeHeaderContents(
       " private:\n"
       "   // TensorWrappers\n"
       "%s\n"
+      "   // Vector or TensorWrappers\n"
+      "   std::vector<egr::TensorWrapper> TensorWrappersSet;\n"
       "   // Attribute Map\n"
       "%s\n"
       "};";
@@ -2182,10 +2187,11 @@ static std::string GenerateGradNodeHeaderContents(
             TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
-            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);";
+            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);\n"
+            "     TensorWrappersSet.emplace_back(%s);";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
-            tensor_wrapper_name, full_reserved_str);
+            tensor_wrapper_name, full_reserved_str, struct_tensor_wrapper_name);
       }
       std::string full_reserved_signature_str = "bool full_reserved";
       const char* SET_TENSOR_WRAPPER_TEMPLATE =

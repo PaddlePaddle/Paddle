@@ -235,6 +235,30 @@ std::vector<paddle::experimental::Tensor> GetResults(
   return results;
 }
 
+void GetNoGradVarsGradNodes(
+    const std::vector<paddle::experimental::Tensor>& no_grad_vars,
+    std::unordered_map<GradNodeBase*, AutogradMeta*>*
+        special_nodes_inputmeta_map) {
+  VLOG(1) << "Run in GetNoGradVarsGradNodes";
+  if (!no_grad_vars.empty()) {
+    VLOG(1) << "Run in GetNoGradVarsGradNodes, inputs are not empty";
+    size_t num_no_grad_vars = no_grad_vars.size();
+    for (size_t i = 0; i < num_no_grad_vars; i++) {
+      AutogradMeta* auto_grad_meta =
+          EagerUtils::unsafe_autograd_meta(no_grad_vars[i]);
+      auto special_target_node = auto_grad_meta->GetMutableGradNode().get();
+
+      PADDLE_ENFORCE_NOT_NULL(
+          special_target_node,
+          paddle::platform::errors::Fatal(
+              "There is no grad op for no_grad_vars:%d or it's"
+              "stop_gradient=True",
+              i));
+      (*special_nodes_inputmeta_map)[special_target_node] = auto_grad_meta;
+    }
+  }
+}
+
 std::vector<paddle::experimental::Tensor> RunBackward(
     const std::vector<paddle::experimental::Tensor>& tensors,  // output
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
@@ -248,6 +272,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   // *Cross-batch accumulation happens at forward pass
 
   /* --- Preprocess --- */
+
+  std::unordered_map<GradNodeBase*, AutogradMeta*> special_nodes_inputmeta_map;
+  // Get no_grad_vars's GradNodes and MetaInfo
+  GetNoGradVarsGradNodes(no_grad_vars, &special_nodes_inputmeta_map);
 
   // TODO(wuweilong): output tensor duplicate check
   // TODO(wuweilong): build no_grad_vars_grads according no_grad_vars
@@ -385,6 +413,22 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           node_input_buffer->Buffers()[rank_info.first][rank_info.second];
       // save the target result
       results_map[node] = target_result;
+    }
+
+    // no_grad_vars
+    if (special_nodes_inputmeta_map.find(node) !=
+        special_nodes_inputmeta_map.end()) {
+      VLOG(1) << "Try to change the input buffer by using rank_info";
+      auto rank_info = special_nodes_inputmeta_map[node]->OutRankInfo();
+      node_input_buffer->SetBufferSlotRankZeros(rank_info.first,
+                                                rank_info.second);
+    }
+
+    // retain_grad logic
+    if (!retain_graph) {
+      VLOG(1)
+          << "retain_graph is false, need to clear the TensorWrapper of nodes.";
+      node->ClearTensorWrappers();
     }
 
     // Run Pre Backward Node and get outputs

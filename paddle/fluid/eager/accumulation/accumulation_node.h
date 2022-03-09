@@ -38,6 +38,11 @@ class GradNodeAccumulation : public GradNodeBase {
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
       const bool create_graph = false) override;
 
+  void ClearTensorWrappers() override {
+    VLOG(1) << "Do nothing here now";
+    // egr::GradNodeBase::ClearTensorWrappers();
+  }
+
   std::string name() { return "GradNodeAccumulation"; }
 
   /**

@@ -49,6 +49,7 @@ class GradTestNode : public egr::GradNodeBase {
     std::vector<std::vector<paddle::experimental::Tensor>> res = {{et1}};
     return res;
   }
+  void ClearTensorWrappers() override { VLOG(1) << "Do nothing here now"; }
   float val_;
 };
 }  // namespace eager_test
