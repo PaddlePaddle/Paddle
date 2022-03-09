@@ -17,10 +17,8 @@
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
-// #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-
 #include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 namespace phi {
 
 template <typename Context, typename T, size_t D, typename Functor>

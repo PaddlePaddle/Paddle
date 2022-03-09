@@ -28,7 +28,6 @@
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 namespace phi {
 
-// TODO(chentianyu03): move this Functor into funcs direction
 template <typename DeviceContext,
           typename T,
           size_t D,
