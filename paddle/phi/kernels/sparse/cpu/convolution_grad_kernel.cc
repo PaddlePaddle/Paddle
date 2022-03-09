@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
@@ -163,5 +164,5 @@ PD_REGISTER_KERNEL(sparse_conv_grad,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  // kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
