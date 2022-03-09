@@ -30,6 +30,11 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dweight,
                                         MetaTensor* dbias);
 
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad);
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,

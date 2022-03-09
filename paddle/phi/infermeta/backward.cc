@@ -64,6 +64,16 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad) {
+  const auto& dtype = out_grad.dtype();
+  x_grad->set_dims(x.dims());
+  x_grad->share_lod(x);
+  x_grad->set_dtype(dtype);
+}
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
@@ -103,16 +113,6 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
       errors::InvalidArgument(
           "Input(Out) and its gradients should have the same shape."));
   dx->share_meta(dout);
-}
-
-void GatherNdGradInferMeta(const MetaTensor& x,
-                           const MetaTensor& index,
-                           const MetaTensor& out_grad,
-                           MetaTensor* x_grad) {
-  const auto& dtype = out_grad.dtype();
-  x_grad->set_dims(x.dims());
-  x_grad->share_lod(x);
-  x_grad->set_dtype(dtype);
 }
 
 void ScatterGradInferMeta(const MetaTensor& index,

@@ -89,6 +89,52 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void LerpInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   const MetaTensor& weight,
+                   MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto w_dims = weight.dims();
+  DDim out_dims;
+  out_dims = funcs::GetOutputDims(x_dims, y_dims);
+  if (w_dims.size() > 1 || w_dims[0] != 1) {
+    out_dims = funcs::GetOutputDims(out_dims, w_dims);
+  }
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       MetaTensor* out) {
+  auto s_dims = start.dims();
+  PADDLE_ENFORCE_EQ(
+      (s_dims.size() == 1) && (s_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
+                                   "but received input shape is [%s].",
+                                   s_dims));
+  auto e_dims = stop.dims();
+  PADDLE_ENFORCE_EQ(
+      (e_dims.size() == 1) && (e_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
+                                   "but received input shape is [%s].",
+                                   e_dims));
+  auto step_dims = number.dims();
+  PADDLE_ENFORCE_EQ(
+      (step_dims.size() == 1) && (step_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
+                                   "but received input shape is [%s].",
+                                   step_dims));
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(start.dtype());
+}
+
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,
@@ -190,52 +236,6 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   out->set_dims(ref_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
-}
-
-void LerpInferMeta(const MetaTensor& x,
-                   const MetaTensor& y,
-                   const MetaTensor& weight,
-                   MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  auto w_dims = weight.dims();
-  DDim out_dims;
-  out_dims = funcs::GetOutputDims(x_dims, y_dims);
-  if (w_dims.size() > 1 || w_dims[0] != 1) {
-    out_dims = funcs::GetOutputDims(out_dims, w_dims);
-  }
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->share_lod(x);
-}
-
-void LinspaceInferMeta(const MetaTensor& start,
-                       const MetaTensor& stop,
-                       const MetaTensor& number,
-                       MetaTensor* out) {
-  auto s_dims = start.dims();
-  PADDLE_ENFORCE_EQ(
-      (s_dims.size() == 1) && (s_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
-                                   "but received input shape is [%s].",
-                                   s_dims));
-  auto e_dims = stop.dims();
-  PADDLE_ENFORCE_EQ(
-      (e_dims.size() == 1) && (e_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
-                                   "but received input shape is [%s].",
-                                   e_dims));
-  auto step_dims = number.dims();
-  PADDLE_ENFORCE_EQ(
-      (step_dims.size() == 1) && (step_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
-                                   "but received input shape is [%s].",
-                                   step_dims));
-  out->set_dims(phi::make_ddim({-1}));
-  out->set_dtype(start.dtype());
 }
 
 }  // namespace phi

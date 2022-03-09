@@ -20,6 +20,29 @@ namespace phi {
 
 std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors);
 
+void AdadeltaInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& avg_squared_grad,
+                       const MetaTensor& avg_squared_update,
+                       float rho,
+                       float epsilon,
+                       MetaTensor* param_out,
+                       MetaTensor* avg_squared_grad_out,
+                       MetaTensor* avg_squared_update_out);
+
+void AdamaxInferMeta(const MetaTensor& param,
+                     const MetaTensor& grad,
+                     const MetaTensor& learning_rate,
+                     const MetaTensor& moment,
+                     const MetaTensor& inf_norm,
+                     const MetaTensor& beta1_pow,
+                     float beta1,
+                     float beta2,
+                     float epsilon,
+                     MetaTensor* param_out,
+                     MetaTensor* moment_out,
+                     MetaTensor* inf_norm_out);
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -51,28 +74,5 @@ void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
                     MetaTensor* out);
-
-void AdamaxInferMeta(const MetaTensor& param,
-                     const MetaTensor& grad,
-                     const MetaTensor& learning_rate,
-                     const MetaTensor& moment,
-                     const MetaTensor& inf_norm,
-                     const MetaTensor& beta1_pow,
-                     float beta1,
-                     float beta2,
-                     float epsilon,
-                     MetaTensor* param_out,
-                     MetaTensor* moment_out,
-                     MetaTensor* inf_norm_out);
-
-void AdadeltaInferMeta(const MetaTensor& param,
-                       const MetaTensor& grad,
-                       const MetaTensor& avg_squared_grad,
-                       const MetaTensor& avg_squared_update,
-                       float rho,
-                       float epsilon,
-                       MetaTensor* param_out,
-                       MetaTensor* avg_squared_grad_out,
-                       MetaTensor* avg_squared_update_out);
 
 }  // namespace phi
