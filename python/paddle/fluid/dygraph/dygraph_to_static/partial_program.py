@@ -449,6 +449,7 @@ class PartialProgramLayer:
     def _create_scope_vec(self):
         # Hold forward variables
         tmp_scope_vec = None
+        inner_scope = core.Scope()
         if not core._in_eager_mode():
             tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                          "program_out_scope",
@@ -459,8 +460,9 @@ class PartialProgramLayer:
             #                                 "program_out_scope",
             #                                 core.VarDesc.VarType.STEP_SCOPES, True)
 
-            inner_scope = core.Scope()
             tmp_scope_vec.value().set_scope(inner_scope)
+        else:
+            tmp_scope_vec = [inner_scope]
         return tmp_scope_vec
 
     def _restore_out(self, out_vars):
@@ -598,12 +600,12 @@ def _create_fake_var():
                          core.VarDesc.VarType.RAW, False)
         ]
     else:
-        return []
+        # return []
         # TODO(jiabin): Support this later
-        # return [
-        #     core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
-        #                 core.VarDesc.VarType.RAW, False)
-        # ]
+        return [
+            core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
+                              core.VarDesc.VarType.RAW, False)
+        ]
 
 
 def partial_program_from(concrete_program):
