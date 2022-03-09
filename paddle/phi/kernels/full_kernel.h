@@ -38,6 +38,18 @@ void FullLikeKernel(const Context& dev_ctx,
                     DenseTensor* out);
 
 template <typename T, typename Context>
+void Full(const Context& dev_ctx,
+          const ScalarArray& shape,
+          const Scalar& val,
+          DenseTensor* out) {
+  FullKernel<T, Context>(dev_ctx,
+                         shape,
+                         val,
+                         paddle::experimental::CppTypeToDataType<T>::Type(),
+                         out);
+}
+
+template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
                  const ScalarArray& shape,
                  const Scalar& val) {
