@@ -89,4 +89,153 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void ScatterInferMeta(const MetaTensor& x,
+                      const MetaTensor& index,
+                      const MetaTensor& updates,
+                      bool overwrite,
+                      MetaTensor* out) {
+  const auto& updates_dims = updates.dims();
+  const auto& ref_dims = x.dims();
+  const auto& index_dims = index.dims();
+  PADDLE_ENFORCE_EQ(
+      index_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "The size of Input(Ids)'s shape should be equal to 1, but "
+          "received the rank of Input(Ids) is %d.",
+          index_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      ref_dims.size(),
+      updates_dims.size(),
+      phi::errors::InvalidArgument(
+          "Input(X) and Input(Updates) should have the same shape size, "
+          "but received the size of Input(x)'s shape is %d, the size of "
+          "Input(Updates)'s shape is %d.",
+          ref_dims.size(),
+          updates_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      updates_dims[0],
+      index_dims[0],
+      phi::errors::InvalidArgument(
+          "Input(Updates) and Input(Ids) should have same batch-size, but"
+          " received Input(Updates)'s batch-size is %d, Input(Ids)'s "
+          "batch-size is %d.",
+          updates_dims[0],
+          index_dims[0]));
+  out->set_dims(ref_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void ScatterNdAddInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& updates,
+                           MetaTensor* out) {
+  const auto& ref_dims = x.dims();
+  auto ref_dims_size = ref_dims.size();
+  const auto& index_dims = index.dims();
+  auto index_dims_size = index_dims.size();
+  const auto& updates_dims = updates.dims();
+  auto updates_dims_size = updates_dims.size();
+
+  PADDLE_ENFORCE_LE(
+      index_dims[index_dims_size - 1],
+      ref_dims_size,
+      phi::errors::InvalidArgument(
+          "The last dimension of Input(Index)'s shape should be no greater "
+          "than the rank of Input(X), but received the last dimension of "
+          "Input(Index)'s shape is %d, the rank of Input(X) is %d.",
+          index_dims[index_dims_size - 1],
+          ref_dims_size));
+  PADDLE_ENFORCE_GE(index_dims_size,
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(Index) should be greater than 1, "
+                        "but received the rank of Input(Index) is %d.",
+                        index_dims_size));
+
+  // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
+  std::vector<int64_t> r_updates_dims;
+  for (int64_t i = 0; i < index_dims_size - 1; ++i) {
+    r_updates_dims.emplace_back(index_dims[i]);
+  }
+  for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
+    r_updates_dims.emplace_back(ref_dims[i]);
+  }
+
+  PADDLE_ENFORCE_EQ(
+      r_updates_dims.size(),
+      updates_dims_size,
+      phi::errors::InvalidArgument(
+          "Updates has wrong shape. The shape of Updates and Input(Updates) "
+          "should be same, but received the shape of Updates is %d, "
+          "the shape of Input(Updates) is %d.",
+          r_updates_dims.size(),
+          updates_dims_size));
+
+  for (int64_t i = 0; i < updates_dims_size; ++i) {
+    PADDLE_ENFORCE_EQ(
+        r_updates_dims[i],
+        updates_dims[i],
+        phi::errors::InvalidArgument(
+            "Updates has wrong shape. The dimensions of Updates and "
+            "Input(Updates) should match, but received Updates's"
+            "%d-th dimension is %d, Input(Updates)'s %d-th "
+            "dimension is %d.",
+            i,
+            r_updates_dims[i],
+            i,
+            updates_dims[i]));
+  }
+  out->set_dims(ref_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void LerpInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   const MetaTensor& weight,
+                   MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto w_dims = weight.dims();
+  DDim out_dims;
+  out_dims = funcs::GetOutputDims(x_dims, y_dims);
+  if (w_dims.size() > 1 || w_dims[0] != 1) {
+    out_dims = funcs::GetOutputDims(out_dims, w_dims);
+  }
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       MetaTensor* out) {
+  auto s_dims = start.dims();
+  PADDLE_ENFORCE_EQ(
+      (s_dims.size() == 1) && (s_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
+                                   "but received input shape is [%s].",
+                                   s_dims));
+  auto e_dims = stop.dims();
+  PADDLE_ENFORCE_EQ(
+      (e_dims.size() == 1) && (e_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
+                                   "but received input shape is [%s].",
+                                   e_dims));
+  auto step_dims = number.dims();
+  PADDLE_ENFORCE_EQ(
+      (step_dims.size() == 1) && (step_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
+                                   "but received input shape is [%s].",
+                                   step_dims));
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(start.dtype());
+}
+
 }  // namespace phi

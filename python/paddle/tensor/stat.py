@@ -321,6 +321,9 @@ def median(x, axis=None, keepdim=False, name=None):
             paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]),
             dtype=dtype)
+    out_tensor = out_tensor + paddle.sum(
+        paddle.cast(
+            paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True)
     if not keepdim or is_flatten:
         if not is_flatten:
             newshape = x.shape[:axis] + x.shape[axis + 1:]
