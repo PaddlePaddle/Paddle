@@ -75,10 +75,4 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        MetaTensor* avg_squared_grad_out,
                        MetaTensor* avg_squared_update_out);
 
-void GraphSendRecvInferMeta(const MetaTensor& x,
-                            const MetaTensor& src_index,
-                            const MetaTensor& dst_index,
-                            const std::string& pool_type,
-                            MetaTensor* out,
-                            MetaTensor* dst_count);
 }  // namespace phi

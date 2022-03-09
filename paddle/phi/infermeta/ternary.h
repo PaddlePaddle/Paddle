@@ -58,4 +58,10 @@ void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& weight,
                    MetaTensor* out);
 
+void GraphSendRecvInferMeta(const MetaTensor& x,
+                            const MetaTensor& src_index,
+                            const MetaTensor& dst_index,
+                            const std::string& pool_type,
+                            MetaTensor* out,
+                            MetaTensor* dst_count);
 }  // namespace phi
