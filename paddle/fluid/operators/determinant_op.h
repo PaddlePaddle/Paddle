@@ -19,11 +19,11 @@
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
 namespace paddle {
 namespace operators {
@@ -226,7 +226,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     inverse_A.Resize(input->dims());
     inverse_A.mutable_data<T>(context.GetPlace());
 
-    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
+    phi::funcs::MatrixInverseFunctor<DeviceContext, T> mat_inv;
     mat_inv(dev_ctx, *input, &inverse_A);
 
     VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
@@ -381,7 +381,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     inverse_A.Resize(input->dims());
     inverse_A.mutable_data<T>(context.GetPlace());
 
-    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
+    phi::funcs::MatrixInverseFunctor<DeviceContext, T> mat_inv;
     mat_inv(dev_ctx, *input, &inverse_A);
 
     VLOG(3) << "inverse(A) dims: " << inverse_A.dims();

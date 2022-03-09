@@ -30,6 +30,7 @@
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
 #include "paddle/phi/kernels/math_kernel.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
 
 namespace phi {
 
@@ -320,6 +321,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                          bool use_default_tol,
                          bool hermitian,
                          DenseTensor* out) {
+  std::cout << "atol_tensor: " << atol_tensor << "\n";
   auto* x_data = x.data<T>();
   dev_ctx.template Alloc<int64_t>(out);
 
@@ -376,13 +378,12 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&max_eigenvalue_tensor);
   max_eigenvalue_tensor.Resize(detail::RemoveLastDim(eigenvalue_tensor.dims()));
 
-  funcs::TensorReduceImpl<T, T, kps::MaxFunctor, kps::IdentityFunctor<T>>(
-      dev_ctx,
-      eigenvalue_tensor,
-      &max_eigenvalue_tensor,
-      kps::IdentityFunctor<T>(),
-      std::vector<int>{-1},
-      dev_ctx.stream());
+  phi::MaxKernel<T, Context>(dev_ctx,
+                             eigenvalue_tensor,
+                             std::vector<int64_t>{-1},
+                             false,
+                             &max_eigenvalue_tensor);
+
   DenseTensor temp_rtol_tensor;
   paddle::framework::TensorFromVector<T>(
       std::vector<T>{rtol_T}, dev_ctx, &temp_rtol_tensor);
@@ -402,6 +403,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
       &tol_tensor);
 
   tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
+
   DenseTensor compare_result;
   compare_result.Resize(detail::NewAxisDim(dim_out, k));
   dev_ctx.template Alloc<int64_t>(&compare_result);
@@ -415,21 +417,11 @@ void MatrixRankTolKernel(const Context& dev_ctx,
       funcs::GreaterThanFunctor<T, int64_t>(),
       &compare_result);
 
-  //   DenseTensor result;
-  //   result.Resize(dim_out);
-  //   dev_ctx.template Alloc<T>(&result);
-  DenseTensor result = phi::Sum<T>(dev_ctx,
-                                   compare_result,
-                                   std::vector<int64_t>{-1},
-                                   compare_result.type(),
-                                   false);
-  //   funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-  //       dev_ctx,
-  //       compare_result,
-  //       &result,
-  //       kps::IdentityFunctor<T>(),
-  //       std::vector<int>{-1},
-  //       dev_ctx.stream());
+  DenseTensor result = phi::Sum<int64_t>(dev_ctx,
+                                         compare_result,
+                                         std::vector<int64_t>{-1},
+                                         compare_result.type(),
+                                         false);
 
   out->ShareDataWith(result);
 }
