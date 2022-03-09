@@ -78,7 +78,7 @@ KernelSignature MaxPool2dWithIndexGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "max_pool2d_with_index_grad",
-      {"X", "Out", "Mask", GradVarName("Out")},
+      {"X", "Mask", GradVarName("Out")},
       {"ksize", "strides", "paddings", "global_pooling", "adaptive"},
       {GradVarName("X")});
 }
@@ -128,7 +128,7 @@ KernelSignature MaxPool3dWithIndexGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "max_pool3d_with_index_grad",
-      {"X", "Out", "Mask", GradVarName("Out")},
+      {"X", "Mask", GradVarName("Out")},
       {"ksize", "strides", "paddings", "global_pooling", "adaptive"},
       {GradVarName("X")});
 }

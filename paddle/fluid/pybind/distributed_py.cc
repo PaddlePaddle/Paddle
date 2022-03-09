@@ -35,6 +35,10 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #endif
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
+#endif
+
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
@@ -197,6 +201,14 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroupNCCL,
              std::shared_ptr<distributed::ProcessGroupNCCL>>(
       *m, "ProcessGroupNCCL", ProcessGroup)
+      .def(py::init<const std::shared_ptr<distributed::Store> &, int, int>(),
+           py::call_guard<py::gil_scoped_release>());
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<distributed::ProcessGroupHCCL,
+             std::shared_ptr<distributed::ProcessGroupHCCL>>(
+      *m, "ProcessGroupHCCL", ProcessGroup)
       .def(py::init<const std::shared_ptr<distributed::Store> &, int, int>(),
            py::call_guard<py::gil_scoped_release>());
 #endif

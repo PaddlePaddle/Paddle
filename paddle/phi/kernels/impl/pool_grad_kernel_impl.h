@@ -16,10 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/pool_grad_kernel.h"
 
-#include <string>
-#include <vector>
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_kernel.h"
@@ -147,7 +144,6 @@ void PoolGradRawKernel(const Context& ctx,
 template <typename Context, typename T1, typename T2 = int>
 void MaxPoolWithIndexGradRawKernel(const Context& ctx,
                                    const DenseTensor& x,
-                                   const DenseTensor& out,
                                    const DenseTensor& mask,
                                    const DenseTensor& dout,
                                    const std::vector<int>& kernel_size,
@@ -258,7 +254,6 @@ void Pool2dDoubleGradKernel(const Context& ctx,
 template <typename T, typename Context>
 void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   const DenseTensor& x,
-                                  const DenseTensor& out,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
                                   const std::vector<int>& kernel_size,
@@ -269,7 +264,6 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,
-                                            out,
                                             mask,
                                             dout,
                                             kernel_size,
@@ -315,7 +309,6 @@ void Pool3dGradKernel(const Context& ctx,
 template <typename T, typename Context>
 void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   const DenseTensor& x,
-                                  const DenseTensor& out,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
                                   const std::vector<int>& kernel_size,
@@ -326,7 +319,6 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,
-                                            out,
                                             mask,
                                             dout,
                                             kernel_size,

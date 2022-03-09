@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -85,7 +87,6 @@ void Pool2dDoubleGradGPUDNNKernel(const Context& ctx,
 template <typename T, typename Context>
 void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   const DenseTensor& x,
-                                  const DenseTensor& out,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
                                   const std::vector<int>& kernel_size,
@@ -132,7 +133,6 @@ void Pool3dGradGPUDNNKernel(const Context& ctx,
 template <typename T, typename Context>
 void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   const DenseTensor& x,
-                                  const DenseTensor& out,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
                                   const std::vector<int>& kernel_size,

@@ -17,14 +17,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/pool_kernel.h"
 
 #include <algorithm>
-#include <string>
-#include <vector>
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
 
@@ -117,13 +114,8 @@ void PoolRawKernel(const Context& ctx,
             adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)
           auto stream = ctx.stream();
-          funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::DivideFunctor<T>>(
-              ctx,
-              x,
-              out,
-              kps::DivideFunctor<T>(reduce_num),
-              reduce_dim,
-              stream);
+          funcs::ReduceKernel<T, T, kps::AddFunctor, kps::DivideFunctor<T>>(
+              ctx, x, out, kps::DivideFunctor<T>(reduce_num), reduce_dim);
 #else  // for cpu
           funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
           funcs::AvgPool<T> pool_process;

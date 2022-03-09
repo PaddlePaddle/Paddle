@@ -116,7 +116,6 @@ void GatherNdGradInferMeta(const MetaTensor& x,
 }
 
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
-                                   const MetaTensor& out,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
                                    const std::vector<int>& kernel_size,
