@@ -36,7 +36,6 @@ class RecordEvent(ContextDecorator):
     event_type(TracerEventType): Type of the record event, can be used for statistics.
 
     Examples:
-        .. code-block:: python
         import paddle.profiler as profiler
         with profiler.RecordEvent(name='op1', event_type=TracerEventType=TracerEventType.UserDefined):
             op1()
