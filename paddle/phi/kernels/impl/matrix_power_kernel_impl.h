@@ -78,7 +78,7 @@ void MatrixPowerFunction(const DenseTensor* X,
 
   if (new_n == 2) {
     // Out = newX * newX
-    Out->mutable_data<T>(ctx.GetPlace());
+    ctx.template Alloc<T>(Out);
     blas.MatMul(new_x,
                 no_trans_desc,
                 new_x,
