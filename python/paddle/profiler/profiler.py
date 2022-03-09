@@ -143,7 +143,7 @@ def export_chrome_tracing(dir_name: str,
                                 scheduler = (3, 10),
                                 on_trace_ready = profiler.export_chrome_tracing('./log')
                                 ) as p:
-                for iter in range(N):
+                for iter in range(10):
                     #train()
                     p.step()
     """
@@ -187,7 +187,7 @@ def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
                                 scheduler = (3, 10),
                                 on_trace_ready = profiler.export_protobuf('./log')
                                 ) as p:
-                for iter in range(N):
+                for iter in range(10):
                     #train()
                     p.step()
     """
@@ -216,7 +216,7 @@ def _get_supported_targets() -> Iterable[ProfilerTarget]:
     r"""
     Get the current supported profiler target in the system.
     """
-    if paddle.device.is_compiled_with_cuda():
+    if _Profiler.is_cupti_supported():
         return [ProfilerTarget.CPU, ProfilerTarget.GPU]
     return [ProfilerTarget.CPU]
 
@@ -246,7 +246,7 @@ class Profiler:
                                     scheduler = (2, 5),
                                     on_trace_ready = profiler.export_chrome_tracing('./log')
                                     ) as p:
-                    for iter in range(N):
+                    for iter in range(10):
                         #train()
                         p.step()
 
@@ -260,7 +260,7 @@ class Profiler:
                                     scheduler = profiler.make_scheduler(closed=1, ready=1, record=3, repeat=3),
                                     on_trace_ready = profiler.export_chrome_tracing('./log')
                                     ) as p:
-                    for iter in range(N):
+                    for iter in range(10):
                         #train()
                         p.step()
 
@@ -271,7 +271,7 @@ class Profiler:
             import paddle.profiler as profiler
             p = profiler.Profiler()
             p.start()
-            for iter in range(N):
+            for iter in range(10):
                 #train()
                 p.step()
             p.stop()
