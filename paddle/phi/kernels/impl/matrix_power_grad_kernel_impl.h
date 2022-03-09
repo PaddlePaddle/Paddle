@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
 namespace phi {
 
@@ -83,7 +83,7 @@ void MatrixPowerGradFunction(const DenseTensor* X,
     paddle::framework::TensorCopy(*X, ctx.GetPlace(), ctx, &new_x);
   } else {
     // newX = X^{-1}, n = -n
-    paddle::operators::math::MatrixInverseFunctor<Context, T> mat_inv;
+    phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
     mat_inv(ctx, *X, &new_x);
     new_n = -n;
   }
