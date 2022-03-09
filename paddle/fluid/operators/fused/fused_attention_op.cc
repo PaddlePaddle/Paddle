@@ -27,6 +27,11 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionOp");
+    if (ctx->HasInput("CacheKV")) {
+      OP_INOUT_CHECK(ctx->HasOutput("CacheKVOut"), "Output", "CacheKVOut",
+                     "FusedAttentionOp");
+    }
+
     OP_INOUT_CHECK(ctx->HasInput("QKVW"), "Input", "QKVW", "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasInput("OutLinearW"), "Input", "OutLinearW",
                    "FusedAttentionOp");
@@ -105,12 +110,12 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                           "input qkv_weight = [%s]",
                           x_dim, y_dim));
 
-    PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2], y_dim[3],
-                      platform::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 4"
-                          "(3, num_head, dim_head, dim_embed),"
-                          "and must satisfy the limitations: "
-                          "(num_head * dim_head == dim_embed)"));
+    // PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2], y_dim[3],
+    //                  platform::errors::InvalidArgument(
+    //                      "The dimensions of qkv_weight must be 4"
+    //                      "(3, num_head, dim_head, dim_embed),"
+    //                      "and must satisfy the limitations: "
+    //                      "(num_head * dim_head == dim_embed)"));
 
     if (ctx->Attrs().Get<bool>("pre_layer_norm") == true) {
       ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
@@ -132,20 +137,42 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // [3, batch_size, num_head, seq_len, head_size]
     ctx->SetOutputDim("TransposeOut2",
                       {y_dim[0], x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
-    // [batch, num_head, seq_len, seq_len]
-    ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+
+    // cache_seq_len + seq_len if cache else seq_len
+    auto out_seq_len = x_dim[1];
+    if (ctx->HasInput("CacheKV")) {
+      // [2, batch_size, num_head, cache_seq_len, head_size]
+      auto c_dim = ctx->GetInputDim("CacheKV");
+      PADDLE_ENFORCE_EQ(c_dim.size(), 5);
+
+      PADDLE_ENFORCE_EQ(c_dim[0], 2);         // 2
+      PADDLE_ENFORCE_EQ(c_dim[1], x_dim[0]);  // batch_size
+      PADDLE_ENFORCE_EQ(c_dim[2], y_dim[1]);  // num_head
+      PADDLE_ENFORCE_GE(c_dim[3], 0);         // cache_seq_len
+      PADDLE_ENFORCE_EQ(c_dim[4], y_dim[2]);  // head_size
+
+      out_seq_len += c_dim[3];
+      // [3, batch_size, num_head, cache_seq_len + seq_len, head_size]
+      ctx->SetOutputDim("CacheKVOut",
+                        {c_dim[0], c_dim[1], c_dim[2], out_seq_len, c_dim[4]});
+    }
+
+    // [batch, num_head, seq_len, out_seq_len]
+    ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
 
     if (ctx->HasInput("SrcMask")) {
-      ctx->SetOutputDim("SrcMaskOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+      ctx->SetOutputDim("SrcMaskOut",
+                        {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     }
     // the same as QKOut's shape.
     ctx->SetOutputDim("AttnDropoutOut",
-                      {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+                      {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     if (ctx->Attrs().Get<bool>("attn_dropout_is_test") == false) {
       ctx->SetOutputDim("AttnDropoutMaskOut",
-                        {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+                        {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     }
-    ctx->SetOutputDim("SoftmaxOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+    ctx->SetOutputDim("SoftmaxOut",
+                      {x_dim[0], y_dim[1], x_dim[1], out_seq_len});
     // [batch_size, num_heads, seq_len, head_dim]
     ctx->SetOutputDim("QKTVOut", {x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
     // [batch_size, seq_len, number of heads*head size]
@@ -172,6 +199,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The input tensor.");
+    AddInput("CacheKV", "Cache KV").AsDispensable();
     AddInput("LnScale",
              "(optional) Scale is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
@@ -218,6 +246,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
               "Result of residual + dropout(src + bias).")
         .AsIntermediate();
     AddOutput("Y", "Result after attention.");
+    AddOutput("CacheKVOut", "Result of CacheKV").AsDispensable();
 
     AddAttr<bool>("pre_layer_norm",
                   "if true, the attention op uses pre_layer_norm architecure, "

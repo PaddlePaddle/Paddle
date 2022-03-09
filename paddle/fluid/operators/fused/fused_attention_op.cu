@@ -56,6 +56,8 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
 
     auto *src_mask = ctx.Input<Tensor>("SrcMask");
     auto *transpose_out_2 = ctx.Output<Tensor>("TransposeOut2");
+    auto *cache_kv = ctx.Input<Tensor>("CacheKV");
+    auto *cache_kv_out = ctx.Output<Tensor>("CacheKVOut");
     auto *qk_out = ctx.Output<Tensor>("QKOut");
     auto *qktv_out = ctx.Output<Tensor>("QKTVOut");
     auto *softmax_out = ctx.Output<Tensor>("SoftmaxOut");
@@ -105,6 +107,10 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // get data ptr for FMHA.
     auto *transpose_out_2_data =
         transpose_out_2->mutable_data<T>(ctx.GetPlace());
+    auto *cache_kv_out_data =
+        (cache_kv_out == nullptr)
+            ? nullptr
+            : cache_kv_out->mutable_data<T>(ctx.GetPlace());
     auto *qk_out_data = qk_out->mutable_data<T>(ctx.GetPlace());
     auto *qktv_out_data = qktv_out->mutable_data<T>(ctx.GetPlace());
     auto *src_mask_out_data =
@@ -186,15 +192,15 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                  qkv_bias_out);
     }
     if (qkv_bias == nullptr) {
-      fmha_ref_compute.ComputeForward(*qkv_out, src_mask, transpose_out_2,
-                                      qk_out, src_mask_out, softmax_out,
-                                      attn_dropout_mask_out, attn_dropout_out,
-                                      qktv_out, fmha_out);
+      fmha_ref_compute.ComputeForward(
+          *qkv_out, cache_kv, src_mask, transpose_out_2, cache_kv_out, qk_out,
+          src_mask_out, softmax_out, attn_dropout_mask_out, attn_dropout_out,
+          qktv_out, fmha_out);
     } else {
-      fmha_ref_compute.ComputeForward(*qkv_bias_out, src_mask, transpose_out_2,
-                                      qk_out, src_mask_out, softmax_out,
-                                      attn_dropout_mask_out, attn_dropout_out,
-                                      qktv_out, fmha_out);
+      fmha_ref_compute.ComputeForward(
+          *qkv_bias_out, cache_kv, src_mask, transpose_out_2, cache_kv_out,
+          qk_out, src_mask_out, softmax_out, attn_dropout_mask_out,
+          attn_dropout_out, qktv_out, fmha_out);
     }
 
     // fmha_out: [batch_size, seq_len, num_head, head_dim]
@@ -388,7 +394,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
                                                epsilon, bsz_seq, dim_embed);
     auto qkv_compute =
         AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
-                      output_size, input_size, compute_qkv_bias);
+                      input_size, output_size, compute_qkv_bias);
     AttnDropoutParam attn_dropout_param(
         is_test_1, dropout_implementation_1, attn_dropout_prob,
         is_upscale_in_train_1, is_fix_seed_1, seed_val_1, seed_1);
