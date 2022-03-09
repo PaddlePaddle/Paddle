@@ -9,10 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/expand_as_v2_op.h"
 #include <memory>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
+#define MAX_RANK_SUPPORTED 6
 
 namespace paddle {
 namespace operators {
@@ -121,37 +123,9 @@ REGISTER_OPERATOR(expand_as_v2, ops::ExpandAsV2Op, ops::ExpandAsV2OpMaker,
                   ops::ExpandAsV2GradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(expand_as_v2_grad, ops::ExpandAsV2GradOp,
                   ops::ExpandAsV2GradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    expand_as_v2,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandAsV2Kernel<paddle::platform::CPUDeviceContext, bool>);
-REGISTER_OP_CPU_KERNEL(
-    expand_as_v2_grad,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CPUDeviceContext, double>);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    expand_as_v2,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, double>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandAsV2Kernel<paddle::platform::CUDADeviceContext, bool>);
-REGISTER_OP_CUDA_KERNEL(
-    expand_as_v2_grad,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ExpandAsV2GradKernel<paddle::platform::CUDADeviceContext, double>);
-#endif
 
-REGISTER_OP_VERSION(expand_as_v2)
-    .AddCheckpoint(
-        R"ROC(fix expand_as_v2 and add new input [Y])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewInput(
-            "Y", "Expand X according to the shape of Y"));
+// REGISTER_OP_VERSION(expand_as_v2)
+//     .AddCheckpoint(
+//         R"ROC(fix expand_as_v2 and add new input [Y])ROC",
+//         paddle::framework::compatible::OpVersionDesc().NewInput(
+//             "Y", "Expand X according to the shape of Y"));
