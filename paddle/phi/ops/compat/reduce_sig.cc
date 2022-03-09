@@ -74,6 +74,23 @@ KernelSignature ReduceMaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("unregistered", {}, {}, {});
 }
 
+KernelSignature ReduceMinOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInput("X")) {
+    bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
+    // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
+    // InferShape, so we must return the "min_raw" KernelSignature.
+    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
+    // the
+    // "min_raw" KernelSignature
+    if (ctx.IsForInferShape() || reduce_all) {
+      return KernelSignature(
+          "min_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+    }
+    return KernelSignature("min", {"X"}, {"dim", "keep_dim"}, {"Out"});
+  }
+  return KernelSignature("unregistered", {}, {}, {});
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
@@ -84,3 +101,4 @@ PD_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_prod, phi::ReduceProdOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_max, phi::ReduceMaxOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(reduce_min, phi::ReduceMinOpArgumentMapping);
