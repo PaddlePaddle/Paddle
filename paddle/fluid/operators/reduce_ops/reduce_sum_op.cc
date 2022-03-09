@@ -102,8 +102,8 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_sum"; }
 };
 
-DELCARE_INFER_SHAPE_FUNCTOR(reduce_sum, ReduceSumInferShapeFunctor,
-                            PT_INFER_META(phi::ReduceInferMetaBase));
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_sum, ReduceSumInferShapeFunctor,
+                            PD_INFER_META(phi::SumRawInferMeta));
 
 REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,

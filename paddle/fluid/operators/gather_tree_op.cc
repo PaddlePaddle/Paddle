@@ -61,8 +61,8 @@ selected ids.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(gather_tree, GatherTreeInferShapeFunctor,
-                            PT_INFER_META(phi::GatherTreeMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(gather_tree, GatherTreeInferShapeFunctor,
+                            PD_INFER_META(phi::GatherTreeMeta));
 
 REGISTER_OPERATOR(gather_tree, ops::GatherTreeOp, ops::GatherTreeOpMaker,
                   GatherTreeInferShapeFunctor);

@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_embedding_fc_lstm_op.h"
 #include <string>
-#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
@@ -243,12 +243,12 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   auto& act_cell_str = ctx.Attr<std::string>("cell_activation");               \
   auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");          \
   if (platform::MayIUse(platform::avx)) {                                      \
-    math::VecActivations<T, platform::avx> act_functor;                        \
+    phi::funcs::VecActivations<T, platform::avx> act_functor;                  \
     act_gate = act_functor(act_gate_str);                                      \
     act_cell = act_functor(act_cell_str);                                      \
     act_cand = act_functor(act_cand_str);                                      \
   } else {                                                                     \
-    math::VecActivations<T, platform::isa_any> act_functor;                    \
+    phi::funcs::VecActivations<T, platform::isa_any> act_functor;              \
     act_gate = act_functor(act_gate_str);                                      \
     act_cell = act_functor(act_cell_str);                                      \
     act_cand = act_functor(act_cand_str);                                      \

@@ -195,7 +195,7 @@ def yolo_loss(x,
     """
 
     if in_dygraph_mode() and gt_score is None:
-        loss = _C_ops.yolov3_loss(
+        loss, _, _ = _C_ops.yolov3_loss(
             x, gt_box, gt_label, 'anchors', anchors, 'anchor_mask', anchor_mask,
             'class_num', class_num, 'ignore_thresh', ignore_thresh,
             'downsample_ratio', downsample_ratio, 'use_label_smooth',
