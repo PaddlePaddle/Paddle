@@ -2261,7 +2261,7 @@ set +x
 
         card_test "$single_card_tests" 1 # run cases 1 job each time with single IPU
         collect_failed_tests
-        
+
         ut_actual_total_endTime_s=`date +%s`
         echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [[ "$EXIT_CODE" != "0" ]]; then
