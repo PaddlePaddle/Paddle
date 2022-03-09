@@ -54,6 +54,8 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
       return TRT_DT::kFLOAT;
     case FluidDT::VarType_Type_INT32:
       return TRT_DT::kINT32;
+    case FluidDT::VarType_Type_FP16:
+      return TRT_DT::kHALF;
     default:
       return TRT_DT::kINT32;
   }

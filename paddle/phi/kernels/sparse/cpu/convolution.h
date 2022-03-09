@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -44,9 +45,6 @@ void ProductRuleBook(const Context& dev_ctx,
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
   const int* indices_ptr = non_zero_indices.data<int>();
-  dev_ctx.Alloc(counter_per_kernel,
-                counter_per_kernel->dtype(),
-                sizeof(int) * counter_per_kernel->numel());
   int* counter_ptr = counter_per_kernel->data<int>();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   memset(counter_ptr, 0, kernel_size * sizeof(int));
@@ -106,7 +104,9 @@ void ProductRuleBook(const Context& dev_ctx,
 
   f_calc_rulebook(nullptr);
   // alloc the rulebook
-  rulebook->ResizeAndAllocate({3, rulebook_len});
+  DenseTensorMeta rulebook_meta(
+      DataType::INT32, {3, rulebook_len}, DataLayout::NCHW);
+  rulebook->set_meta(rulebook_meta);
   dev_ctx.Alloc(rulebook, rulebook->dtype(), rulebook->numel() * sizeof(int));
   int* rulebook_ptr = rulebook->data<int>();
   f_calc_rulebook(rulebook_ptr);
@@ -135,8 +135,6 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
       x.dtype(), {out_non_zero_num, out_channels}, x.layout());
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
-  dev_ctx.Alloc(
-      &out_indices, out_indices.dtype(), out_indices.numel() * sizeof(int));
   int* out_indices_ptr = out_indices.data<int>();
   int i = 0;
   for (auto it = out_indexs.begin(); it != out_indexs.end(); it++, i++) {
