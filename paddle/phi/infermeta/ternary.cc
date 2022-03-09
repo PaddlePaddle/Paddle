@@ -192,23 +192,6 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void LerpInferMeta(const MetaTensor& x,
-                   const MetaTensor& y,
-                   const MetaTensor& weight,
-                   MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  auto w_dims = weight.dims();
-  DDim out_dims;
-  out_dims = funcs::GetOutputDims(x_dims, y_dims);
-  if (w_dims.size() > 1 || w_dims[0] != 1) {
-    out_dims = funcs::GetOutputDims(out_dims, w_dims);
-  }
-  out->set_dims(out_dims);
-  out->set_dtype(x.dtype());
-  out->share_lod(x);
-}
-
 void ViterbiDecodeInferMeta(const MetaTensor& input,
                             const MetaTensor& transition,
                             const MetaTensor& length,
@@ -254,6 +237,23 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
   }
   scores->set_dims(length_dims);
   scores->set_dtype(length.dtype());
+}
+
+void LerpInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   const MetaTensor& weight,
+                   MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto w_dims = weight.dims();
+  DDim out_dims;
+  out_dims = funcs::GetOutputDims(x_dims, y_dims);
+  if (w_dims.size() > 1 || w_dims[0] != 1) {
+    out_dims = funcs::GetOutputDims(out_dims, w_dims);
+  }
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
 }
 
 }  // namespace phi
