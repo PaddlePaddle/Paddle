@@ -30,8 +30,8 @@ class TrilTriuXPUKernel : public framework::OpKernel<T> {
 
     const int diagonal = context.Attr<int>("diagonal");
     const bool lower = context.Attr<bool>("lower");
-    auto xshape = phi::vectorize<int>(x->dims()) auto& dev_ctx =
-        context.template device_context<DeviceContext>();
+    auto xshape = phi::vectorize<int>(x->dims());
+    auto& dev_ctx = context.template device_context<DeviceContext>();
     int r = 0;
     if (lower) {
       r = xpu::tril(dev_ctx.x_context(), x_data, out_data, xshape, diagonal);
