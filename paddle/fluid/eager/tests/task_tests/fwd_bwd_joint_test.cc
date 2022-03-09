@@ -33,6 +33,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+#endif
 
 namespace egr {
 
