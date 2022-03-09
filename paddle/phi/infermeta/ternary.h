@@ -58,6 +58,11 @@ void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& weight,
                    MetaTensor* out);
 
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       MetaTensor* out);
+
 void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
