@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/string_tensor.h"
-#include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/fluid/memory/malloc.h"
 
 namespace phi {
 
@@ -115,10 +114,12 @@ void StringTensor::init_holder() {
   if (paddle::platform::is_cpu_place(place)) {
     std::memset(ptr, 0, bytes_size);
   } else if (paddle::platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_HIP
     hipMemset(ptr, 0, bytes_size);
 #else
     cudaMemset(ptr, 0, bytes_size);
+#endif
 #endif
   }
 }
