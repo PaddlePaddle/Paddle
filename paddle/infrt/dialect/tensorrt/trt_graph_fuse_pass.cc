@@ -84,8 +84,7 @@ void mergeTwoAdjacentGraphOp(mlir::OpBuilder &builder,  // NOLINT
   // create the new graph op
   builder.setInsertionPoint(first);
   auto loc = first.getLoc();
-  auto graph_op =
-      builder.create<mlir::pd::GraphOp>(loc, return_types, inputs);
+  auto graph_op = builder.create<mlir::pd::GraphOp>(loc, return_types, inputs);
   mlir::Block *block = new mlir::Block;
   auto copy_range = second.getBody()->without_terminator();
   block->getOperations().splice(block->begin(),
@@ -150,7 +149,8 @@ void TRTGraphFusePass::runOnFunction() {
   do {
     changed = false;
     for (auto &op : body) {
-      mlir::pd::GraphOp graph_op = ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(&op);
+      mlir::pd::GraphOp graph_op =
+          ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(&op);
       if (nullptr == graph_op) continue;
 
       for (auto user_op : op.getUsers()) {

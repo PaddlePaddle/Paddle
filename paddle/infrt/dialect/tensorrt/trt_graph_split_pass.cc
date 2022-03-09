@@ -24,7 +24,8 @@ void TRTGraphSplitPass::runOnFunction() {
   std::vector<mlir::pd::GraphOp> worklist;
   mlir::Block& block = getFunction().front();
   for (auto& op : block) {
-    mlir::pd::GraphOp graph_op = ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(&op);
+    mlir::pd::GraphOp graph_op =
+        ::llvm::dyn_cast_or_null<mlir::pd::GraphOp>(&op);
     if (nullptr != graph_op &&
         graph_op.getBody()->getOperations().size() <= min_subgraph_size_) {
       worklist.push_back(graph_op);
