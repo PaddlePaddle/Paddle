@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.  Licensed under
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.  Licensed under
 the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -30,14 +30,8 @@ class TrilTriuXPUKernel : public framework::OpKernel<T> {
 
     const int diagonal = context.Attr<int>("diagonal");
     const bool lower = context.Attr<bool>("lower");
-
-    const auto& dims = x->dims();
-
-    std::vector<int> xshape;
-    for (int i = 0; i < dims.size(); i++) {
-      xshape.push_back(dims[i]);
-    }
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto xshape = phi::vectorize<int>(x->dims()) auto& dev_ctx =
+        context.template device_context<DeviceContext>();
     int r = 0;
     if (lower) {
       r = xpu::tril(dev_ctx.x_context(), x_data, out_data, xshape, diagonal);
