@@ -960,6 +960,7 @@ function generate_upstream_develop_api_spec() {
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
     
+
     git checkout $cur_branch
     generate_api_spec "$1" "DEV"
     git branch -D develop_base_pr
