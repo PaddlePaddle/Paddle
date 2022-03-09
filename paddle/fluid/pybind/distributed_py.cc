@@ -42,6 +42,18 @@ namespace pybind {
 
 using Tensor = paddle::experimental::Tensor;
 
+std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
+    py::handle py_tensors,
+    const std::vector<std::vector<size_t>> &group_indices,
+    const std::vector<bool> &is_sparse_gradient,
+    std::shared_ptr<distributed::ProcessGroup> process_group,
+    const std::vector<size_t> &group_size_limits, bool find_unused_parameters) {
+  auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
+  return std::make_shared<distributed::EagerReducer>(
+      params, group_indices, is_sparse_gradient, process_group,
+      group_size_limits, find_unused_parameters);
+}
+
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
       .value("SUM", distributed::ReduceOp::SUM)
@@ -157,6 +169,17 @@ void BindDistributed(py::module *m) {
          py::arg("group_size_limits") = std::vector<size_t>{25 * 1024 * 1024},
          py::arg("tensor_indices") = std::vector<int64_t>{},
          py::call_guard<py::gil_scoped_release>());
+
+  py::class_<distributed::EagerReducer,
+             std::shared_ptr<distributed::EagerReducer>>(*m, "EagerReducer",
+                                                         R"DOC()DOC")
+      .def(py::init(&CreateEagerReducer))
+      .def("prepare_for_backward",
+           [](distributed::EagerReducer &self, py::handle py_tensors) {
+             auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
+             self.PrepareForBackward(params);
+           },
+           py::arg("tensors"), py::call_guard<py::gil_scoped_release>());
 }
 
 }  // end namespace pybind
