@@ -97,7 +97,7 @@ class __reduce_meanMaker__ : public ops::ReduceOpMaker {
 };
 
 DECLARE_INFER_SHAPE_FUNCTOR(reduce_mean, ReduceMeanInferShapeFunctor,
-                            PD_INFER_META(phi::MeanRawInferMeta));
+                            PD_INFER_META(phi::ReduceInferMetaBase));
 
 REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
