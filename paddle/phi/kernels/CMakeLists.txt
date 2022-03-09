@@ -32,7 +32,7 @@ kernel_library(math_kernel DEPS ${COMMON_KERNEL_DEPS} cast_kernel copy_kernel)
 kernel_library(softmax_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(softmax_grad_kernel DEPS ${COMMON_KERNEL_DEPS} softmax)
 kernel_library(triangular_solve_grad_kernel DEPS ${COMMON_KERNEL_DEPS} matrix_reduce)
-kernel_library(adam_kernel DEPS ${COMMON_KERNEL_DEPS} selected_rows_functor threadpool jit_kernel_helper gflags glog)
+kernel_library(adam_kernel DEPS ${COMMON_KERNEL_DEPS} selected_rows_functor threadpool jit_kernel_helper flags)
 kernel_library(adamw_kernel DEPS ${COMMON_KERNEL_DEPS} adam_kernel)
 
 # 4. auto parse and build kernel targets by cmake

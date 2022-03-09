@@ -84,6 +84,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     "input and output must be half precision) and recurrent neural networks "
     "(RNNs).");
 
+PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
+                             "number of threads for inner op");
+
 /**
  * CUDA related FLAG
  * Name: FLAGS_selected_gpus

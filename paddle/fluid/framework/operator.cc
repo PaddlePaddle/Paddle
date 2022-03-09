@@ -58,8 +58,6 @@ class DenseTensor;
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
-PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
-                             "number of threads for inner op");
 DECLARE_bool(run_kp_kernel);
 
 namespace paddle {

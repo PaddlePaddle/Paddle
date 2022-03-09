@@ -11,6 +11,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 
 namespace paddle {
