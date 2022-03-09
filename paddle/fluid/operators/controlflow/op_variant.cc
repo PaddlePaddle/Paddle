@@ -81,14 +81,16 @@ const void *OpVariant::RawPointer() const {
 
 void AppendOpVariantByOpName(const std::vector<framework::OpDesc *> &op_descs,
                              const std::string &candidate_op_name,
-                             std::vector<OpVariant> *result_ops) {
+                             std::vector<OpVariant> *result_ops,
+                             std::function<bool(const OpVariant &)> filter) {
+  // only when filter return true, the op desc will be appended to the vector.
   PADDLE_ENFORCE_NOT_NULL(
       result_ops,
       platform::errors::Unavailable("result_ops should not be a null_ptr."));
   for (auto *op_desc : op_descs) {
     PADDLE_ENFORCE_NOT_NULL(op_desc, platform::errors::Unavailable(
                                          "op_desc should not be a null_ptr."));
-    if (op_desc->Type() == candidate_op_name) {
+    if (op_desc->Type() == candidate_op_name && filter(op_desc)) {
       result_ops->emplace_back(op_desc);
     }
   }

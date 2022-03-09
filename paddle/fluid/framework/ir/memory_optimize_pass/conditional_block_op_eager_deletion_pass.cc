@@ -22,6 +22,20 @@ namespace framework {
 namespace ir {
 using OpVariant = operators::OpVariant;
 class ConditionalOpEagerDeletionPass : public Pass {
+  // TODO(@xiongkun): remove conditional_block when ifop is finised.
+  static bool IsConditionalOp(details::ComputationOpHandle *compute_op) {
+    if (compute_op->Name() == "conditional_block") return true;
+    if (compute_op->Name() == "if")
+      return !(compute_op->GetOp()->Attr<bool>("is_grad"));
+    return false;
+  }
+  static bool IsConditionalGradOp(details::ComputationOpHandle *compute_op) {
+    if (compute_op->Name() == "conditional_block_grad") return true;
+    if (compute_op->Name() == "if")
+      return compute_op->GetOp()->Attr<bool>("is_grad");
+    return false;
+  }
+
  protected:
   void ApplyImpl(Graph *graph) const override {
     auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
@@ -34,10 +48,10 @@ class ConditionalOpEagerDeletionPass : public Pass {
       auto compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
       if (compute_op == nullptr) continue;
 
-      if (compute_op->Name() == "conditional_block") {
+      if (IsConditionalOp(compute_op)) {
         target_ops[compute_op->GetScopeIdx()].first.emplace_back(
             compute_op->GetOp());
-      } else if (compute_op->Name() == "conditional_block_grad") {
+      } else if (IsConditionalGradOp(compute_op)) {
         target_ops[compute_op->GetScopeIdx()].second.emplace_back(
             compute_op->GetOp());
       }
@@ -57,11 +71,21 @@ class ConditionalOpEagerDeletionPass : public Pass {
 
       auto all_ops = graph->OriginProgram().Block(0).AllOps();
       if (ifelse_ops.empty()) {
+        auto filter_if = [](const OpVariant &x) {
+          return x.Type() == "if" && !x.Attr<bool>("is_grad");
+        };
         operators::AppendOpVariantByOpName(
             all_ops, std::string("conditional_block"), &ifelse_ops);
+        operators::AppendOpVariantByOpName(all_ops, std::string("if"),
+                                           &ifelse_ops, filter_if);
       } else if (ifelse_grad_ops.empty()) {
+        auto filter_ifgrad = [](const OpVariant &x) {
+          return x.Type() == "if" && x.Attr<bool>("is_grad");
+        };
         operators::AppendOpVariantByOpName(
             all_ops, std::string("conditional_block_grad"), &ifelse_grad_ops);
+        operators::AppendOpVariantByOpName(all_ops, std::string("if"),
+                                           &ifelse_grad_ops, filter_ifgrad);
       } else {
         PADDLE_THROW("One of ifelse_ops or ifelse_grad_ops should be empty.");
       }

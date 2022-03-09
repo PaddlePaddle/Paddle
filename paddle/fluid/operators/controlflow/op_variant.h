@@ -77,7 +77,9 @@ class OpVariant {
 
 void AppendOpVariantByOpName(const std::vector<framework::OpDesc *> &op_descs,
                              const std::string &candidate_op_name,
-                             std::vector<OpVariant> *result_ops);
+                             std::vector<OpVariant> *result_ops,
+                             std::function<bool(const OpVariant &)> filter =
+                                 [](const OpVariant &) { return true; });
 
 }  // namespace operators
 }  // namespace paddle
