@@ -20,6 +20,7 @@
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -71,7 +72,7 @@ PADDLE_API Tensor scale_kernel_context(const Tensor& x,
 
   auto dense_out = std::make_shared<phi::DenseTensor>(
       phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPtenPlace(kernel_backend)),
+          phi::TransToPhiPlace(kernel_backend)),
       phi::DenseTensorMeta());
   phi::MetaTensor meta_out(dense_out.get());
   phi::UnchangedInferMeta(*dense_x, &meta_out);
@@ -238,7 +239,7 @@ Tensor scale_switch_case(const Tensor& x,
 
   auto dense_out = std::make_shared<phi::DenseTensor>(
       phi::make_intrusive<paddle::experimental::SharedStorage>(
-          phi::TransToPtenPlace(kernel_backend)),
+          phi::TransToPhiPlace(kernel_backend)),
       phi::DenseTensorMeta());
   phi::MetaTensor meta_out(dense_out.get());
   phi::UnchangedInferMeta(*dense_x, &meta_out);

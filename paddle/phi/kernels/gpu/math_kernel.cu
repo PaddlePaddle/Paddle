@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/math_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/gpu/elementwise.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
 #ifdef __NVCC__
@@ -155,6 +155,7 @@ PD_REGISTER_KERNEL(sum_raw,
                    float,
                    double,
                    float16,
+                   bfloat16,
                    int16_t,
                    int,
                    int64_t,

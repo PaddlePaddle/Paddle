@@ -305,6 +305,7 @@ class TestYolov3LossDygraph(unittest.TestCase):
             use_label_smooth=True,
             scale_x_y=1.)
         assert loss is not None
+        assert loss.shape == [2]
         paddle.enable_static()
 
 
