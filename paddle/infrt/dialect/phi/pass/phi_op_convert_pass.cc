@@ -25,12 +25,16 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/infrt/common/string.h"
 #include "paddle/infrt/dialect/infrt/infrt_dialect.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
+#include "paddle/infrt/dialect/phi/ir/phi_kernels.h"
 #include "paddle/infrt/dialect/phi/pass/kernel_op_desc.h"
 #include "paddle/infrt/dialect/phi/pass/proto_arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/ops/compat/signatures.h"
+
 namespace infrt {
 // Implementation of the phiOpCvtPass.
 void PhiOpConvertPass::runOnFunction() {
@@ -202,4 +206,26 @@ void PhiOpConvertPass::dispatchStage() {
     kernel_op.erase();
   }
 }
+
+PhiOpConvertPass::PhiOpConvertPass() {
+  if (!valid_places_options_.hasValue()) {
+    valid_places_.emplace_back(
+        TargetType::CPU, PrecisionType::FLOAT32, LayoutType::NCHW);
+    return;
+  }
+
+  LOG(FATAL) << "To be done for specifying places in command line";
+}
+
+void PhiOpConvertPass::getDependentDialects(
+    mlir::DialectRegistry &registry) const {
+  registry.insert<InfrtDialect>();
+  registry.insert<phi::PHIDialect>();
+  registry.insert<phi::PHIDenseTensorDialect>();
+  registry.insert<phi::PHICPUKernelDialect>();
+  registry.insert<phi::PHIGPUKernelDialect>();
+}
+
 }  // namespace infrt
+
+mlir::PassRegistration<infrt::PhiOpConvertPass> phi_op_convert;

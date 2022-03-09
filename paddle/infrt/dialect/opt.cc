@@ -26,14 +26,6 @@ int main(int argc, char **argv) {
   infrt::registerCinnDialects(registry);
   mlir::registerCanonicalizerPass();
 
-  mlir::registerPass([]() -> std::unique_ptr<mlir::Pass> {
-    std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
-                                               infrt::PrecisionType::FLOAT32,
-                                               infrt::LayoutType::NCHW}};
-    auto p = std::make_unique<infrt::PhiOpConvertPass>(valid_places);
-    return p;
-  });
-
   return mlir::failed(
       mlir::MlirOptMain(argc, argv, "infrt mlir pass driver", registry));
 }

@@ -19,7 +19,6 @@
 #include <cstring>
 
 namespace infrt {
-namespace infrt {
 
 std::string StringFormat(const std::string &fmt_str, ...) {
   /* Reserve two times as much as the length of the fmt_str */
@@ -124,5 +123,4 @@ std::string TransValidVarName(std::string name) {
   return name;
 }
 
-}  // namespace infrt
 }  // namespace infrt

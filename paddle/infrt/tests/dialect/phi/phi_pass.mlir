@@ -1,4 +1,4 @@
-// RUN: infrtopt -phi-op-convert %s
+// RUN: infrtopt -phi-op-convert -infrt-op-fuse %s
 
 // CHECK-LABEL: @ops
 func @ops() {

@@ -47,7 +47,7 @@ class PhiOpConvertPass
   ::llvm::StringRef getName() const override { return "phi-op-convert"; }
   void runOnFunction() override;
 
-  PhiOpConvertPass() = default;
+  PhiOpConvertPass();
 
   explicit PhiOpConvertPass(const std::vector<Place>& valid_places)
       : valid_places_(valid_places) {}
@@ -58,6 +58,8 @@ class PhiOpConvertPass
 
   llvm::StringRef getArgument() const override { return "phi-op-convert"; }
 
+  void getDependentDialects(mlir::DialectRegistry& registry) const override;
+
  private:
   void convertStage();
   void dispatchStage();
@@ -66,7 +68,7 @@ class PhiOpConvertPass
   Option<std::string> valid_places_options_{
       *this,
       "valid-targets",
-      llvm::cl::desc("Set the valid target, [CPU/GPU]")};
+      llvm::cl::desc("Set the valid target, [CPU-FP32-NCHW]")};
 
   std::vector<Place> valid_places_;
 };
