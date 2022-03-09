@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
 #include <cooperative_groups.h>
+#endif
+
 #include <thrust/copy.h>
 #include <thrust/device_vector.h>
 #include <cstring>
@@ -30,10 +33,9 @@
 
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
-// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
-// #include <cooperative_groups.h>
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
 namespace cg = cooperative_groups;
-// #endif
+#endif
 
 namespace paddle {
 namespace operators {
@@ -48,7 +50,7 @@ using Vector = framework::Vector<T>;
 #define WARP_SIZE 32
 #define MAX_WARP_NUM 32
 
-// #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
 
 template <typename T>
 __global__ void filter_copy_fuse_kernel(
@@ -74,7 +76,7 @@ __global__ void filter_copy_fuse_kernel(
   int remain_thread_num = thread_num % WARP_SIZE;   // 16
 
   int warp_thread_num = -1;
-  if (gid < total_warp_num) {  //
+  if (gid < total_warp_num) {
     warp_thread_num = WARP_SIZE;
   } else {
     warp_thread_num = remain_thread_num;
@@ -350,13 +352,13 @@ __global__ void copy_grad_kernel(const size_t N, const int ins_per_thread,
   }
 }
 
-// #endif
+#endif
 
 template <typename T>
 class FilterByInstagGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // #if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
+#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
 
     auto gpu_place = context.GetPlace();
 
@@ -451,7 +453,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     LoDTensor* map = context.Output<LoDTensor>("IndexMap");
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
-    out_first = x1_lods.back();
+    int out_first = x1_lods.back();
     // int out_first = x1->dims()[0];
     // if (x1_lods_filled) {
     //  out_first = x1_lods.back();
@@ -572,7 +574,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       loss_weight_data_ptr[0] = 0;
     }
 
-    // #endif
+#endif
   }
 };
 
@@ -580,7 +582,7 @@ template <typename T>
 class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // #if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
+#if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000)
 
     auto gpu_place = context.GetPlace();
     gpuStream_t current_stream = context.cuda_device_context().stream();
@@ -628,7 +630,7 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
       cudaStreamSynchronize(current_stream);
     }
 
-    // #endif
+#endif
   }
 };
 
