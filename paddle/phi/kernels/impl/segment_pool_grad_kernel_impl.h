@@ -35,11 +35,11 @@ void SegmentPoolGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
-  auto index_type = paddle::framework::TransToProtoVarType(segment_ids.type());
-  if (index_type == paddle::framework::proto::VarType::INT32) {
+  auto index_type = segment_ids.type();
+  if (index_type == DataType::INT32) {
     phi::funcs::SegmentPoolGradFunctor<Context, T, int> pool;
     pool(dev_ctx, x, out, out_grad, segment_ids, x_grad, summed_ids, pooltype);
-  } else if (index_type == paddle::framework::proto::VarType::INT64) {
+  } else if (index_type == DataType::INT64) {
     phi::funcs::SegmentPoolGradFunctor<Context, T, int64_t> pool;
     pool(dev_ctx, x, out, out_grad, segment_ids, x_grad, summed_ids, pooltype);
   } else {

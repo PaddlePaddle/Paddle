@@ -16,12 +16,6 @@
 
 namespace phi {
 
-KernelSignature SegmentPoolOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "segment_pool", {"X", "SegmentIds"}, {"pooltype"}, {"Out", "SummedIds"});
-}
-
 KernelSignature SegmentPoolGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
@@ -35,6 +29,5 @@ KernelSignature SegmentPoolGradOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(segment_pool, phi::SegmentPoolOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(segment_pool_grad,
                            phi::SegmentPoolGradOpArgumentMapping);

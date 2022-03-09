@@ -22,8 +22,6 @@
 
 namespace phi {
 
-using Tensor = DenseTensor;
-
 template <typename Context, typename T, typename IndexT>
 void SegmentKernelLaunchHelper(const Context& dev_ctx,
                                const DenseTensor& x,
@@ -72,7 +70,6 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     length.Resize(phi::make_ddim({1}));
     IndexT* length_data = dev_ctx.template HostAlloc<IndexT>(&length);
 
-    // IndexT* length_data = length.data<IndexT>();
     const IndexT* segment_ids_ptr = segment_ids.data<IndexT>();
 
 #ifdef PADDLE_WITH_HIP
@@ -128,11 +125,11 @@ void SegmentPoolKernel(const Context& dev_ctx,
                        const std::string& pooltype,
                        DenseTensor* out,
                        DenseTensor* summed_ids) {
-  auto index_type = paddle::framework::TransToProtoVarType(segment_ids.dtype());
-  if (index_type == paddle::framework::proto::VarType::INT32) {
+  auto index_type = segment_ids.dtype();
+  if (index_type == DataType::INT32) {
     SegmentKernelLaunchHelper<Context, T, int>(
         dev_ctx, x, segment_ids, pooltype, out, summed_ids);
-  } else if (index_type == paddle::framework::proto::VarType::INT64) {
+  } else if (index_type == DataType::INT64) {
     SegmentKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx, x, segment_ids, pooltype, out, summed_ids);
   } else {
