@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import itertools
+import numpy as np
 import re
 
-from .linalg import matmul, transpose
+from .linalg import dot, matmul, transpose
 from .manipulation import squeeze, unsqueeze, reshape
 from .math import multiply
 from .math import sum as paddle_sum
@@ -291,7 +292,8 @@ def build_global_shape(g_view, g_labels, op_shapes):
 
     g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]
 
-    g_masks = [[s > 1 for s in view_shape] for view_shape in view_shapes]
+    g_masks = [[s > 1 or s == -1 for s in view_shape]
+               for view_shape in view_shapes]
 
     return g_shape, g_masks
 
@@ -370,15 +372,6 @@ def diagonalize(labels, operand):
     return new_labels, new_op
 
 
-def prod(iter, default=1):
-    if len(iter):
-        res = 1
-        for s in iter:
-            res *= s
-        return res
-    return default
-
-
 def plan_reduce(plan, op, reduce_dims, keepdim):
     '''
     Add reduce to the plan
@@ -408,102 +401,106 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
 
     op1_view, op2_view = [g_view[op] for op in (op1, op2)]
 
-    # Note, I may index into -1
-    I1_dims = [op1_view[ax] for ax in I if op1_view[ax] >= 0]
-    I2_dims = [op2_view[ax] for ax in I if op2_view[ax] >= 0]
-    J1_dims = [op1_view[ax] for ax in J1]
-    J2_dims = [op2_view[ax] for ax in J2]
-    K1_dims = [op1_view[ax] for ax in K]
-    K2_dims = [op2_view[ax] for ax in K]
+    I1 = [idx for idx in I if op1_view[idx] >= 0]
+    I2 = [idx for idx in I if op2_view[idx] >= 0]
+    op1_view = np.array(op1_view)
+    op1_dims = op1_view[I1 + J1 + K]
+
+    op2_view = np.array(op2_view)
+    op2_dims = op2_view[I2 + J2 + K]
 
     op1_mask, op2_mask = [g_supports[op] for op in (op1, op2)]
-    op1_vshape = [s if m else 1 for s, m in zip(g_shape, op1_mask)]
-    op2_vshape = [s if m else 1 for s, m in zip(g_shape, op2_mask)]
+    op1_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op1_mask)])
+    op2_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op2_mask)])
+    vshape = np.maximum(op1_vshape, op2_vshape)
 
-    I1_shape, J1_shape, K1_shape = [[op1_vshape[ax] for ax in axes]
-                                    for axes in (I, J1, K)]
-    I2_shape, J2_shape, K2_shape = [[op2_vshape[ax] for ax in axes]
-                                    for axes in (I, J2, K)]
+    i1, i2, j1, j2, k = map(len, (I1, I2, J1, J2, K))
 
-    K1_size, J1_size, J2_size = prod(K1_shape), prod(J1_shape), prod(J2_shape)
-
-    perm1 = I1_dims + J1_dims + K1_dims
-    perm2 = I2_dims + J2_dims + K2_dims
-
-    if any(i != dim for i, dim in enumerate(perm1)):
+    if any(op1_dims != np.arange(len(op1_dims))):
         # print(f'perm1: {perm1}')
-        step = transpose, [var1], var1, perm1
+        step = transpose, [var1], var1, list(op1_dims)
         plan.add_step(step)
 
-    if any(i != dim for i, dim in enumerate(perm2)):
+    if any(op2_dims != np.arange(len(op2_dims))):
         # print(f'perm2: {perm2}')
-        step = transpose, [var2], var2, perm2
+        step = transpose, [var2], var2, list(op2_dims)
         plan.add_step(step)
 
-    # In case of no K... dimensions, do a broadcast
-    if not K:
-        # unsqueeze operands include J1...J2... dimensions
-        if J2:
-            fill_start = len(I2_dims) + len(J1)
-            fill_end = fill_start + len(J2)
-            fill = list(range(fill_start, fill_end))
-            step = unsqueeze, [var1], var1, fill
-            plan.add_step(step)
-        if J1:
-            fill_start = len(I2_dims)
-            fill_end = fill_start + len(J1)
-            fill = list(range(fill_start, fill_end))
-            step = unsqueeze, [var2], var2, fill
-            plan.add_step(step)
-        # make broadcast
-        step = multiply, [var1, var2], var2
-        plan.add_step(step)
-    # K... are there, let's reason about I... and J...
-    # In case I... and J... are empty, do the vector-vector version of matmul
-    elif not I and not J1 and not J2:
-        # merge K dimensions
-        if len(K) > 1:
-            for var in var1, var2:
-                step = reshape, [var], var, [K1_size]
-                plan.add_step(step)
-        # Build vector-vector matmul
-        step = matmul, [var1, var2], var2
-        plan.add_step(step)
-    # General case, there are K... and some I... and J..., the actual operation will be 
-    # matrix-vector or matrix-matrix multiplies, depending on the operands' shapes.
-    else:
+    # Check if conditions hold for turnning the operation into a matmul
+    if j1 + j2 > 0 and k > 0 and -1 not in np.concatenate(
+        (op1_vshape, op2_vshape)):
+        op1_shape = list(op1_vshape[I]) + [np.prod(op1_vshape[J1])
+                                           ] + [np.prod(op1_vshape[K])]
+        op2_shape = list(op2_vshape[I]) + [np.prod(op2_vshape[J2])
+                                           ] + [np.prod(op2_vshape[K])]
+
         # Merge J dims and K dims by reshaping
-        merged_shape1 = I1_shape + [J1_size] + [K1_size]
-        merged_shape2 = I2_shape + [J2_size] + [K1_size]
-
-        step = reshape, [var1], var1, merged_shape1
+        step = reshape, [var1], var1, op1_shape
         plan.add_step(step)
-        step = reshape, [var2], var2, merged_shape2
+        step = reshape, [var2], var2, op2_shape
         plan.add_step(step)
 
         # Matmul
         step = matmul, [var1, var2], var2, False, True
         plan.add_step(step)
 
-    # The result shape is in I..., J1, J2. Let's reshape back to known dimensions
-    # Note, this is static deduction, not by reading the tensor shape at runtime
-    result_shape = [1] * len(I)
-    for i, ax in enumerate(I):
-        result_shape[i] = max(op1_vshape[ax], op2_vshape[ax])
-    if J1:
-        result_shape += J1_shape
-    if J2:
-        result_shape += J2_shape
-
-    # Need a scalar dimension somehow
-    if result_shape:
-        step = reshape, [var2], var2, result_shape
+        # Reshape back
+        shape = list(vshape[I + J1 + J2])
+        step = reshape, [var2], var2, shape
         plan.add_step(step)
+
+    elif j1 == j2 == k == 1:
+        # Can still do matmul even unknown shapes are present
+        step = matmul, [var1, var2], var2, False, True
+        plan.add_step(step)
+
+    # In the rest cases we opt for ops other than matmul 
+    else:
+        # unsqueeze operands include J1...J2... dimensions
+        if j2:
+            fill = list(range(i1 + j1, i1 + j1 + j2))
+            step = unsqueeze, [var1], var1, fill
+            plan.add_step(step)
+        if j1:
+            fill = list(range(i2, i2 + j1))
+            step = unsqueeze, [var2], var2, fill
+            plan.add_step(step)
+        # In case of no dimensions to contract, do an elementwise multiply
+        if k == 0:
+            # make broadcast
+            step = multiply, [var1, var2], var2
+            plan.add_step(step)
+        # In case no dimensions to join, turn into a dot
+        elif j1 + j2 == 0:
+            if k == 1:
+                step = unsqueeze, [var1], var1, [-2]
+                plan.add_step(step)
+                step = unsqueeze, [var2], var2, [-1]
+                plan.add_step(step)
+                step = matmul, [var1, var2], var2
+                plan.add_step(step)
+                step = squeeze, [var2], var2, [-1, -2]
+                plan.add_step(step)
+            elif not-1 in np.concatenate((op1_vshape[K], op2_vshape[K])):
+                assert all(op1_vshape[K] == op2_vshape[K])
+                for var in var1, var2:
+                    step = reshape, [var], var, list(op1_vshape[
+                        I]) + [1] + [np.prod(op1_vshape[K])]
+                    plan.add_step(step)
+                step = matmul, [var1, var2], var2, False, True
+                plan.add_step(step)
+                step = squeeze, [var2], var2, [-1, -2]
+                plan.add_step(step)
+        else:
+            step = multiply, [var1, var2], var2
+            plan.add_step(step)
+            reduce_dims = list(range(-k, 0))
+            plan_reduce(plan, op2, reduce_dims, keepdim=False)
 
     # Wrap up, updating auxiliary data
     # Updating g_mask for I and J axes
-    for i, ax in enumerate(I + J1 + J2):
-        op2_mask[ax] = (result_shape[i] > 1)
+    for ax in I + J1 + J2:
+        op2_mask[ax] = vshape[ax] > 1 or vshape[ax] == -1
 
     for ax in K:
         op2_mask[ax] = False
@@ -513,6 +510,8 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     dim = 0
     for ax in I + J1 + J2:
         op2_view[ax], dim = dim, dim + 1
+
+    g_view[op2] = list(op2_view)
 
 
 def plan_summation(plan, g_view, op1, op2, g_supports, g_shape, g_count,
@@ -737,7 +736,6 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     return plan
 
 
-@dygraph_only
 def einsum(equation, *operands):
     r"""
     einsum(equation, *operands)

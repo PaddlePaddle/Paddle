@@ -396,6 +396,42 @@ class TestNumpyTests(unittest.TestCase):
         self.check_output('a...b,b...c,c...a', a, a, a)
         self.check_output('...ab,...ba,...ab,...ab', a, a, a, a)
 
+    def test_static_graph(self):
+        paddle.enable_static()
+        fluid = paddle.fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.place = fluid.CUDAPlace(0)
+        else:
+            self.place = fluid.CPUPlace()
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            a = paddle.static.data(
+                name='a', shape=[3, None, None, None], dtype='float')
+            b = paddle.static.data(
+                name='b', shape=[2, None, None, None], dtype='float')
+            c = paddle.static.data(
+                name='c', shape=[None, None, 2, None], dtype='float')
+            d = paddle.static.data(
+                name='d', shape=[None, None, 5], dtype='float')
+
+            outs = []
+            outs.append(paddle.einsum("ibnd,jbnd->bnij", a, b))
+            outs.append(paddle.einsum('...ik, ...j', c, d))
+        exe = fluid.Executor(self.place)
+        exe.run(startup)
+        a = np.arange(72).reshape(3, 2, 3, 4).astype('float')
+        b = np.arange(48).reshape(2, 2, 3, 4).astype('float')
+        c = np.arange(48).reshape(2, 3, 2, 4).astype('float')
+        d = np.arange(30).reshape(2, 3, 5).astype('float')
+        feeds = {'a': a, 'b': b, 'c': c, 'd': d}
+        actual = exe.run(main, feed=feeds, fetch_list=[outs])
+        expect = []
+        expect.append(np.einsum("ibnd,jbnd->bnij", a, b))
+        expect.append(np.einsum('...ik, ...j', c, d))
+        for a, e in zip(actual, expect):
+            self.check_output_equal(a, e)
+
 
 if __name__ == "__main__":
     unittest.main()
