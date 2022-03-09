@@ -87,8 +87,8 @@ class PoissonGradOpMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-DELCARE_INFER_SHAPE_FUNCTOR(poisson, PoissonInferShapeFunctor,
-                            PT_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(poisson, PoissonInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(poisson, ops::PoissonOp, ops::PoissonOpMaker,
                   ops::PoissonOpInferVarType,

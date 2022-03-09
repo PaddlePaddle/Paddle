@@ -232,16 +232,8 @@ class CompatMetaTensor : public phi::MetaTensor {
     }
   }
 
-  void share_meta(const MetaTensor& meta_tensor) override {
+  void share_dims(const MetaTensor& meta_tensor) override {
     set_dims(meta_tensor.dims());
-    set_dtype(meta_tensor.dtype());
-    // VarDesc doesn't contains layout, so we cannot share layout
-    // set_layout(meta_tensor.layout());
-
-    // special case 1: share lod of LoDTensor
-    share_lod(meta_tensor);
-
-    // special case 2: share height and rows of SelectedRows in runtime
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
       if (var->IsType<phi::SelectedRows>()) {
@@ -252,6 +244,16 @@ class CompatMetaTensor : public phi::MetaTensor {
         selected_rows->set_height(input_selected_rows.height());
       }
     }
+  }
+
+  void share_meta(const MetaTensor& meta_tensor) override {
+    set_dtype(meta_tensor.dtype());
+    // VarDesc doesn't contains layout, so we cannot share layout
+    // set_layout(meta_tensor.layout());
+
+    // special case 1: share lod of LoDTensor
+    share_lod(meta_tensor);
+    share_dims(meta_tensor);
   }
 
  private:
@@ -381,6 +383,10 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             std::type_index(typeid(std::vector<int32_t>))) {
           infer_meta_context.EmplaceBackAttr(std::move(
               phi::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int64_t>))) {
+          infer_meta_context.EmplaceBackAttr(std::move(
+              phi::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
         } else if (std::type_index(attr.type()) ==
                    std::type_index(typeid(int))) {
           infer_meta_context.EmplaceBackAttr(

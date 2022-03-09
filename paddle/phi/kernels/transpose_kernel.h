@@ -15,7 +15,10 @@
 #pragma once
 
 #include <vector>
+
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
 
@@ -24,5 +27,27 @@ void TransposeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Transpose(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const std::vector<int>& axis) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  TransposeInferMeta(x, axis, &meta_out);
+  TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
+DenseTensor TransposeLast2Dim(const Context& dev_ctx, const DenseTensor& x) {
+  size_t rank = x.dims().size();
+  std::vector<int> axis(rank);
+  for (size_t i = 0; i < rank; ++i) {
+    axis[i] = i;
+  }
+  std::swap(axis[rank - 1], axis[rank - 2]);
+  return Transpose<T, Context>(dev_ctx, x, axis);
+}
 
 }  // namespace phi
