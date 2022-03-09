@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,13 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
-// reduce_max
-REGISTER_OP_CUDA_KERNEL(
-    reduce_max,
-    ops::ReduceCudaKernel<float, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<double, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int, kps::MaxFunctor, kps::IdentityFunctor>,
-    ops::ReduceCudaKernel<int64_t, kps::MaxFunctor, kps::IdentityFunctor>);
+#include "paddle/phi/kernels/eigh_grad_kernel.h"
+#include "paddle/phi/kernels/impl/eigh_grad_kernel_impl.h"
+
+#include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_REGISTER_KERNEL(eigh_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::EighGradKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

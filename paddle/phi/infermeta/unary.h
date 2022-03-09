@@ -94,23 +94,23 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
 
+void SumRawInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     bool reduce_all,
+                     DataType dtype,
+                     MetaTensor* out);
+
 void ReduceInferMetaBase(const MetaTensor& x,
                          const std::vector<int64_t>& axis,
                          bool keep_dim,
                          bool reduce_all,
-                         DataType dtype,
                          MetaTensor* out);
 
-void MeanRawInferMeta(const MetaTensor& x,
-                      const std::vector<int64_t>& axis,
-                      bool keep_dim,
-                      bool reduce_all,
-                      MetaTensor* out);
-
-void MeanInferMeta(const MetaTensor& x,
-                   const std::vector<int64_t>& axis,
-                   bool keep_dim,
-                   MetaTensor* out);
+void ReduceInferMeta(const MetaTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keep_dim,
+                     MetaTensor* out);
 
 void SumInferMeta(const MetaTensor& x,
                   const std::vector<int64_t>& axis,
@@ -162,5 +162,10 @@ void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
 void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
                         MetaTensor* out);
+
+void EighInferMeta(const MetaTensor& x,
+                   const std::string& uplo,
+                   MetaTensor* out_w,
+                   MetaTensor* out_v);
 
 }  // namespace phi
