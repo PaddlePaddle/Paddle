@@ -53,7 +53,6 @@ DefineActGradDepXOpArgMap(ThresholdedRelu, "thresholded_relu", {"threshold"});
 
 DefineActGradDepOutOpArgMap(Relu, "relu", {});
 DefineActGradDepOutOpArgMap(Tanh, "tanh", {});
-DefineActGradDepOutOpArgMap(Relu6, "relu6", {"threshold"});
 
 KernelSignature ReluDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -78,10 +77,6 @@ KernelSignature LeakyReluDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "leaky_relu_double_grad", {"X", "DDX"}, {"alpha"}, {"DDOut"});
-}
-
-KernelSignature Relu6OpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("relu6", {"X"}, {"threshold"}, {"Out"});
 }
 
 KernelSignature LeakyReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
@@ -113,8 +108,6 @@ PD_REGISTER_ARG_MAPPING_FN(tanh_grad_grad,
                            phi::TanhDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(tanh_triple_grad,
                            phi::TanhTripleGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(relu6, phi::Relu6OpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(relu6_grad, phi::Relu6GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(brelu_grad, phi::BReluGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(leaky_relu, phi::LeakyReluOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(leaky_relu_grad,

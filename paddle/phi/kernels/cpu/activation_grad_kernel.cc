@@ -105,18 +105,16 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, funcs::AtanhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepOut(Relu, funcs::ReluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepOut(Tanh, funcs::TanhGradFunctor);
 
-DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepOut(Relu6,
-                                                 funcs::Relu6GradFunctor,
-                                                 threshold)
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(LeakyRelu,
+                                               funcs::LeakyReluGradFunctor,
+                                               alpha);
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(
+    ThresholdedRelu, funcs::ThresholdedReluGradFunctor, threshold);
 
-    DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(LeakyRelu,
-                                                   funcs::LeakyReluGradFunctor,
-                                                   alpha)
-        DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(
-            ThresholdedRelu, funcs::ThresholdedReluGradFunctor, threshold)
-
-            DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DepX(
-                BRelu, funcs::BReluGradFunctor, t_min, t_max)
+DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DepX(BRelu,
+                                               funcs::BReluGradFunctor,
+                                               t_min,
+                                               t_max);
 
 }  // namespace phi
 
@@ -143,7 +141,6 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(acosh_grad, AcoshGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(atanh_grad, AtanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_grad, TanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(brelu_grad, BReluGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(thresholded_relu_grad,
                                    ThresholdedReluGradKernel)

@@ -46,12 +46,6 @@ void BReluKernel(const Context& dev_ctx,
                  DenseTensor* out);
 
 template <typename T, typename Context>
-void Relu6Kernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 float threshold,
-                 DenseTensor* out);
-
-template <typename T, typename Context>
 void LeakyReluKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      float alpha,

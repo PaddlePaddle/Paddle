@@ -580,6 +580,42 @@ struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaRelu6Functor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // relu6(x) = min(max(0, x), 6)
+  __device__ __forceinline__ T operator()(const T x) const {
+    T t = static_cast<T>(threshold);
+    return x <= zero ? zero : (x < t ? x : t);
+  }
+};
+
+template <typename T>
+struct CudaRelu6GradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // dx = (out > 0 && out < t) ? dout : 0
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    T t = static_cast<T>(threshold);
+    return (out > zero && out < t) ? dout : zero;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
 struct CudaTanhShrinkFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
 
@@ -1061,7 +1097,6 @@ USE_PHI_FUNCTOR(CudaAcosh)
 USE_PHI_FUNCTOR(CudaAtanh)
 USE_PHI_FUNCTOR(CudaTanh)
 USE_PHI_FUNCTOR(CudaBRelu)
-USE_PHI_FUNCTOR(CudaRelu6)
 USE_PHI_FUNCTOR(CudaLeakyRelu)
 USE_PHI_FUNCTOR(ThresholdedRelu)
 
@@ -1341,6 +1376,7 @@ REGISTER_OP_CUDA_KERNEL(
   __macro(stanh, STanh, CudaSTanhFunctor, CudaSTanhGradFunctor);              \
   __macro(softplus, Softplus, CudaSoftplusFunctor, CudaSoftplusGradFunctor);  \
   __macro(softsign, Softsign, CudaSoftsignFunctor, CudaSoftsignGradFunctor);  \
+  __macro(relu6, Relu6, CudaRelu6Functor, CudaRelu6GradFunctor);              \
   __macro(tanh_shrink, TanhShrink, CudaTanhShrinkFunctor,                     \
           CudaTanhShrinkGradFunctor);                                         \
   __macro(hard_shrink, HardShrink, CudaHardShrinkFunctor,                     \

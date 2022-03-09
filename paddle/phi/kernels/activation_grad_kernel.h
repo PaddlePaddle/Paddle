@@ -59,13 +59,6 @@ void TanhTripleGradKernel(const Context& dev_ctx,
                           DenseTensor* d_ddx);
 
 template <typename T, typename Context>
-void Relu6GradKernel(const Context& dev_ctx,
-                     const DenseTensor& out,
-                     const DenseTensor& dout,
-                     float threshold,
-                     DenseTensor* dx);
-
-template <typename T, typename Context>
 void BReluGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& dout,

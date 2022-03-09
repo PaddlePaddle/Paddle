@@ -156,20 +156,17 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asinh, CudaAsinhGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acosh, CudaAcoshGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, CudaAtanhGradFunctor);
 
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepOut(Relu6,
-                                                 CudaRelu6GradFunctor,
-                                                 threshold)
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(LeakyRelu,
+                                               CudaLeakyReluGradFunctor,
+                                               alpha);
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(ThresholdedRelu,
+                                               CudaThresholdedReluGradFunctor,
+                                               threshold);
 
-    DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(LeakyRelu,
-                                                   CudaLeakyReluGradFunctor,
-                                                   alpha)
-        DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(
-            ThresholdedRelu, CudaThresholdedReluGradFunctor, threshold)
-
-            DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DepX(BRelu,
-                                                           CudaBReluGradFunctor,
-                                                           t_min,
-                                                           t_max)
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DepX(BRelu,
+                                               CudaBReluGradFunctor,
+                                               t_min,
+                                               t_max);
 
 }  // namespace phi
 
@@ -232,7 +229,6 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_grad, TanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_double_grad, TanhDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_triple_grad, TanhTripleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(brelu_grad, BReluGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_double_grad,
                                    LeakyReluDoubleGradKernel)
