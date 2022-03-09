@@ -232,9 +232,6 @@ int ProductRuleBook(const Context& dev_ctx,
   const int* indices_ptr = non_zero_indices.data<int>();
   DenseTensor in_indexs = phi::Empty<Context>(
       dev_ctx, DenseTensorMeta(DataType::INT32, {x.nnz()}, DataLayout::NCHW));
-  dev_ctx.Alloc(counter_per_kernel,
-                counter_per_kernel->dtype(),
-                sizeof(int) * counter_per_kernel->numel());
   int* counter_ptr = counter_per_kernel->data<int>();
   int* offsets_ptr = offsets_per_kernel->data<int>();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
