@@ -467,10 +467,11 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
             SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """
    void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{     
      {} = egr::TensorWrapper({}, full_reserved, {});
+     TensorWrappersSet.emplace_back({});
    }}
 """
             set_tensor_wrapper_methods_str += SET_PLAIN_TENSOR_WRAPPER_TEMPLATE.format(
-                tname, tname, tensor_wrapper_name, tname, no_need_buffer)
+                tname, tname, tensor_wrapper_name, tname, no_need_buffer, tensor_wrapper_name)
 
             PLAIN_TENSOR_MEMBER_TEMPLATE = """
    egr::TensorWrapper {};
@@ -484,10 +485,11 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
      for(const auto& eager_tensor : {}) {{
         {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved, {}) );
      }};
+     TensorWrappersSet.emplace_back({});
    }}
 """
             set_tensor_wrapper_methods_str += SET_VECTOR_TENSOR_WRAPPER_TEMPLATE.format(
-                tname, tname, tname, tensor_wrapper_name, no_need_buffer)
+                tname, tname, tname, tensor_wrapper_name, no_need_buffer, tensor_wrapper_name)
 
             VECTOR_TENSOR_MEMBER_TEMPLATE = """
    std::vector<egr::TensorWrapper> {};
@@ -535,6 +537,11 @@ class {} : public egr::GradNodeBase {{
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads, const bool create_graph = false) override;
   std::string name() override {{ return \" {} \"; }}
+  
+  void ClearTensorWrappers() override {{
+      TensorWrappersSet.resize(0);
+  }}
+  
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
   // SetAttributes
@@ -542,6 +549,9 @@ class {} : public egr::GradNodeBase {{
  private:
   // TensorWrappers
   {}
+
+  // Vector of TensorWrappers
+  std::vector<egr::TensorWrapper> TensorWrappersSet;
 
   // Attributes
   {}
