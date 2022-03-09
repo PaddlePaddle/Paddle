@@ -154,4 +154,5 @@ void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
                         MetaTensor* out);
 
+void ErfInferMeta(const MetaTensor& x, MetaTensor* out);
 }  // namespace phi

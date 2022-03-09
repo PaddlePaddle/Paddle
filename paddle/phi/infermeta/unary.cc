@@ -1088,6 +1088,12 @@ void TransposeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void ErfInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
