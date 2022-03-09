@@ -87,13 +87,12 @@ void BroadcastTensorsGradKernel(const Context& ctx,
           *input_tensor, ctx.GetPlace(), ctx, output_tensor);
     } else {
       // reduce_sum implementation on CUDA
-      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           ctx,
           *input_tensor,
           output_tensor,
           kps::IdentityFunctor<T>(),
-          reduce_dims_vec,
-          ctx.stream());
+          reduce_dims_vec);
     }
   }
 }

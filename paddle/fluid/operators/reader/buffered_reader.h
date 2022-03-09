@@ -29,6 +29,11 @@
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/device/npu/npu_resource_pool.h"
 #endif
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#include "paddle/fluid/platform/device/mlu/mlu_resource_pool.h"
+#endif
+
 namespace paddle {
 namespace operators {
 namespace reader {
@@ -70,6 +75,7 @@ class BufferedReader : public framework::DecoratedReader {
   std::vector<TensorVec> cpu_buffer_;
   std::vector<TensorVec> cuda_buffer_;
   std::vector<TensorVec> npu_buffer_;
+  std::vector<TensorVec> mlu_buffer_;
   size_t prev_pos_{-1UL};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuStream_t compute_stream_;
@@ -81,6 +87,12 @@ class BufferedReader : public framework::DecoratedReader {
   aclrtStream compute_stream_;
   std::shared_ptr<platform::NpuStreamObject> stream_;
   std::vector<std::shared_ptr<platform::NpuEventObject>> events_;
+#endif
+
+#ifdef PADDLE_WITH_MLU
+  mluStream compute_stream_;
+  std::shared_ptr<platform::MluStreamObject> stream_;
+  std::vector<std::shared_ptr<platform::MluEventObject>> events_;
 #endif
 };
 
