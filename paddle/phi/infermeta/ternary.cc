@@ -238,4 +238,51 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void ViterbiDecodeInferMeta(const MetaTensor& input,
+                            const MetaTensor& transition,
+                            const MetaTensor& length,
+                            bool include_bos_eos_tag,
+                            MetaTensor* scores,
+                            MetaTensor* path,
+                            MetaConfig config) {
+  auto in_dims = input.dims();
+  PADDLE_ENFORCE_EQ(in_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input in ViterbiDecode  must be 3. But "
+                        "received Input's rank is %d.",
+                        in_dims.size()));
+  auto length_dims = length.dims();
+  PADDLE_ENFORCE_EQ(length_dims.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The rank of Length in ViterbiDecode must be 1. But "
+                        "received Length's rank is %d.",
+                        length_dims.size()));
+  auto transition_dims = transition.dims();
+  PADDLE_ENFORCE_EQ(
+      transition_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Transition in ViterbiDecode must be 2. But "
+          "received Transition's rank is %d.",
+          transition_dims.size()));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        in_dims[0],
+        length_dims[0],
+        phi::errors::InvalidArgument(
+            "The batch size of Input and Length should be equal."));
+    PADDLE_ENFORCE_EQ(in_dims[2],
+                      transition_dims[0],
+                      phi::errors::InvalidArgument(
+                          "The number of tags of Input (%d) and Transition "
+                          "(%d) should be equal.",
+                          transition_dims[0],
+                          in_dims[2]));
+  }
+  scores->set_dims(length_dims);
+  scores->set_dtype(length.dtype());
+}
+
 }  // namespace phi
