@@ -269,6 +269,8 @@ class Profiler:
             which means profiling range [start_batch, end_batch).
         on_trace_ready (Callable, optional): Callable object, serves as callback function, and takes the Profiler object as parameter, which provides a way for users to do post-processing.
             This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``. The default value is :ref:`export_chrome_tracing <api_paddle_profiler_export_chrome_tracing>` (./profiler_log/).
+        timer_only (bool): If it is True, the cost of Dataloader and every step of the program will be count without profiling. Otherwise, the program will
+            be timed and profiled.
 
     Examples:
         1. profiling range [2, 5).
