@@ -873,11 +873,6 @@ def _build_table(statistic_data,
                 sorted_items = sorted(
                     items.items(), key=lambda x: x[1].min_gpu_time)
 
-            total_cpu_time = 0
-            total_gpu_time = 0
-            for name, item in sorted_items:
-                total_cpu_time += item.cpu_time
-                total_gpu_time += item.gpu_time
             for name, item in sorted_items:
                 row_values = [
                     name, item.call, '{} / {} / {} / {} / {}'.format(
@@ -889,7 +884,7 @@ def _build_table(statistic_data,
                             item.max_cpu_time, unit=time_unit),
                         format_time(
                             item.min_cpu_time, unit=time_unit),
-                        format_ratio(float(item.cpu_time) / total_cpu_time)),
+                        format_ratio(float(item.cpu_time) / total_time)),
                     '{} / {} / {} / {} / {}'.format(
                         format_time(
                             item.gpu_time, unit=time_unit),
@@ -899,7 +894,7 @@ def _build_table(statistic_data,
                             item.max_gpu_time, unit=time_unit),
                         format_time(
                             item.min_gpu_time, unit=time_unit),
-                        format_ratio(float(item.gpu_time) / total_gpu_time))
+                        format_ratio(float(item.gpu_time) / total_time))
                 ]
                 append(row_format.format(*row_values))
                 if op_detail:
@@ -917,8 +912,7 @@ def _build_table(statistic_data,
                                 format_time(
                                     innerop_node.min_cpu_time, unit=time_unit),
                                 format_ratio(
-                                    float(innerop_node.cpu_time) /
-                                    total_cpu_time)),
+                                    float(innerop_node.cpu_time) / total_time)),
                             '{} / {} / {} / {} / {}'.format(
                                 format_time(
                                     innerop_node.gpu_time, unit=time_unit),
@@ -929,8 +923,7 @@ def _build_table(statistic_data,
                                 format_time(
                                     innerop_node.min_gpu_time, unit=time_unit),
                                 format_ratio(
-                                    float(innerop_node.gpu_time) /
-                                    total_gpu_time))
+                                    float(innerop_node.gpu_time) / total_time))
                         ]
                         append(row_format.format(*row_values))
                         for device_node_name, devicenode in innerop_node.devices.items(
@@ -957,7 +950,7 @@ def _build_table(statistic_data,
                                         unit=time_unit),
                                     format_ratio(
                                         float(devicenode.gpu_time) /
-                                        total_gpu_time))
+                                        total_time))
                             ]
                             append(row_format.format(*row_values))
                     for device_node_name, device_node in item.devices.items():
@@ -979,8 +972,7 @@ def _build_table(statistic_data,
                                 format_time(
                                     devicenode.min_gpu_time, unit=time_unit),
                                 format_ratio(
-                                    float(devicenode.gpu_time) /
-                                    total_gpu_time))
+                                    float(devicenode.gpu_time) / total_time))
                         ]
                         append(row_format.format(*row_values))
         append(header_sep)
