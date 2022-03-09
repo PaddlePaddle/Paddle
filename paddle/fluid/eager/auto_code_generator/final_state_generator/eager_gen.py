@@ -1168,7 +1168,7 @@ if __name__ == "__main__":
         # Node Definition Generation
         definition_declaration_pair = GenerateForwardDefinition(
             fwd_api_name, bwd_api_name, forward_inputs_position_map,
-            forward_outputs_position_map, forward_attrs_list,
+            forward_outputs_position_map, orig_forward_attrs_list,
             backward_fwd_input_map, backward_grad_input_map,
             backward_grad_output_map, backward_attrs_list, optional_inputs,
             intermediate_outputs)
@@ -1180,7 +1180,7 @@ if __name__ == "__main__":
         # For python-level API dispatch
         CollectCoreOpsInformation(fwd_api_name, forward_inputs_position_map,
                                   forward_outputs_position_map,
-                                  forward_attrs_list)
+                                  orig_forward_attrs_list)
 
     # Generate Files
     nodes_h_path = args.nodes_h_path
