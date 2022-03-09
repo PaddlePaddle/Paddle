@@ -81,6 +81,17 @@ TEST(PD_Config, interface) {
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
 #endif
 
+  PD_ConfigEnableONNXRuntime(config);
+  bool onnxruntime_enabled = PD_ConfigONNXRuntimeEnabled();
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  EXPECT_TRUE(onnxruntime_enabled);
+#else
+  EXPECT_FALSE(onnxruntime_enabled);
+#endif
+  PD_ConfigDisableONNXRuntime(config);
+  EXPECT_FALSE(PD_ConfigONNXRuntimeEnabled());
+  PD_ConfigEnableORTOptimization(config);
+
   PD_ConfigEnableMemoryOptim(config, true);
   bool memory_enabled = PD_ConfigMemoryOptimEnabled(config);
   EXPECT_TRUE(memory_enabled);
