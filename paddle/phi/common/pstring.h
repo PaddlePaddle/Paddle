@@ -141,7 +141,6 @@ class pstring {
   HOSTDEVICE friend pstring operator+(const pstring& a, const pstring& b);
   HOSTDEVICE friend std::ostream& operator<<(std::ostream& o,
                                              const pstring& str);
-  HOSTDEVICE friend std::hash<pstring>;
 };
 
 // Non-member function overloads
