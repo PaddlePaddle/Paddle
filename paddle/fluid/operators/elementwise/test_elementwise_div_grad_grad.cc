@@ -31,9 +31,9 @@
 
 USE_OP_ITSELF(elementwise_div);
 
-PD_DECLARE_KERNEL(div_double_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(divide_double_grad, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(dic_double_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(divide_double_grad, GPU, ALL_LAYOUT);
 #endif
 
 namespace paddle {
