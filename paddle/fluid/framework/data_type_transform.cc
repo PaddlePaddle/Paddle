@@ -56,6 +56,28 @@ struct CastDataType {
             CastDataTypeFunctor<InType, OutType>());
       context->Wait();
 #endif
+#if defined(PADDLE_WITH_ASCEND_CL)
+    } else if (platform::is_npu_place(in_.place())) {
+      Tensor in_cpu;
+      paddle::framework::TensorCopySync(in_, platform::CPUPlace(),
+                                          &in_cpu);
+      Tensor out_cpu;
+      paddle::framework::TensorCopySync(*out_, platform::CPUPlace(),
+                                          &out_cpu);
+      
+      auto* in_begin_cpu = in_cpu.data<InType>();
+      auto* in_end_cpu = in_begin_cpu + in_cpu.numel();
+      auto* out_begin_cpu = out_cpu.data<OutType>();
+
+      platform::Transform<platform::CPUDeviceContext> trans;
+      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+      trans(*context, in_begin_cpu, in_end_cpu, out_begin_cpu,
+            CastDataTypeFunctor<InType, OutType>());
+      context->Wait();
+
+      paddle::framework::TensorCopySync(out_cpu, platform::NPUPlace(),
+                                          out_);
+#endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Place type is not supported when casting data type."));

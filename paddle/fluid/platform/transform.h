@@ -190,5 +190,43 @@ struct Transform<phi::GPUContext> {
 };
 #endif
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+template <>
+struct Transform<platform::NPUDeviceContext> {
+  template <typename InputIter, typename OutputIter, typename UnaryOperation>
+  void operator()(const platform::NPUDeviceContext& context, InputIter first,
+                  InputIter last, OutputIter result, UnaryOperation op) {
+    std::transform(first, last, result, op);
+  }
+
+  template <typename InputIter1, typename InputIter2, typename OutputIter,
+            typename BinaryOperation>
+  void operator()(const platform::NPUDeviceContext& context, InputIter1 first1,
+                  InputIter1 last1, InputIter2 first2, OutputIter result,
+                  BinaryOperation op) {
+    std::transform(first1, last1, first2, result, op);
+  }
+};
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL) && false
+template <>
+struct Transform<phi::NPUContext> {
+  template <typename InputIter, typename OutputIter, typename UnaryOperation>
+  void operator()(const phi::NPUContext& context, InputIter first,
+                  InputIter last, OutputIter result, UnaryOperation op) {
+    std::transform(first, last, result, op);
+  }
+
+  template <typename InputIter1, typename InputIter2, typename OutputIter,
+            typename BinaryOperation>
+  void operator()(const phi::NPUContext& context, InputIter1 first1,
+                  InputIter1 last1, InputIter2 first2, OutputIter result,
+                  BinaryOperation op) {
+    std::transform(first1, last1, first2, result, op);
+  }
+};
+#endif
+
 }  // namespace platform
 }  // namespace paddle

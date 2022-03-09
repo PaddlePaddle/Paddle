@@ -997,7 +997,7 @@ REGISTER_OP_NPU_KERNEL(
 REGISTER_OP_NPU_KERNEL(
     square_grad,
     ops::SquareGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::SquareNPUKernel<paddle::platform::NPUDeviceContext,
+    ops::SquareGradNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(

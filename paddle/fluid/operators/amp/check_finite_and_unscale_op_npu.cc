@@ -24,6 +24,32 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+static void CastToFP16(const framework::ExecutionContext& ctx,
+                       const aclrtStream& stream, const Tensor& in,
+                       Tensor* out) {
+  out->mutable_data<paddle::platform::float16>(ctx.GetPlace());
+
+  NpuOpRunner runner;
+  runner.SetType("Cast")
+      .AddInput(in)
+      .AddOutput(*out)
+      .AddAttr("dst_type", ACL_FLOAT16)
+      .Run(stream);
+}
+
+static void CastToFP32(const framework::ExecutionContext& ctx,
+                       const aclrtStream& stream, const Tensor& in,
+                       Tensor* out) {
+  out->mutable_data<float>(ctx.GetPlace());
+
+  NpuOpRunner runner;
+  runner.SetType("Cast")
+      .AddInput(in)
+      .AddOutput(*out)
+      .AddAttr("dst_type", ACL_FLOAT)
+      .Run(stream);
+}
+
 // NOTE(zhiqiu): The CheckFiniteAndUnscaleNPUKernel is different from CUDA.
 // On NPU, we do not really check the data of input tensors,
 // but use NPUGetFloatStatus to check whether the nan/inf occurs on device,
@@ -48,14 +74,14 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
 
     // step1: inverse scale
     Tensor const_tensor;
-    const_tensor.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&const_tensor, static_cast<T>(1.0));
+    const_tensor.mutable_data<float>({1}, ctx.GetPlace());
+    FillNpuTensorWithConstant<float>(&const_tensor, static_cast<T>(1.0));
 
     // Inverse(1.0/scale)
     Tensor* tmp_inverse_out = const_cast<Tensor*>(scale);
     Tensor inverse_out(scale->type());
     inverse_out.Resize(scale->dims());
-    inverse_out.mutable_data<T>(ctx.GetPlace());
+    inverse_out.mutable_data<float>(ctx.GetPlace());
     const auto& runner_inverse =
         NpuOpRunner("Div", {const_tensor, *scale}, {inverse_out}, {});
     runner_inverse.Run(stream);
@@ -93,9 +119,32 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(ctx.GetPlace());
+
+      Tensor x_fp32(experimental::DataType::FLOAT32);
+      x_fp32.Resize(x->dims());
+      if (framework::TransToProtoVarType(x->dtype()) == framework::proto::VarType::FP16) {
+        CastToFP32(ctx, stream, *x, &x_fp32);
+      }
+      else {
+        x_fp32.ShareDataWith(*x);
+      }
+
+      Tensor out_fp32(experimental::DataType::FLOAT32);
+      out_fp32.Resize(out->dims());
+      if (framework::TransToProtoVarType(x->dtype()) == framework::proto::VarType::FP16) {
+        out_fp32.mutable_data<float>(ctx.GetPlace());
+      }
+      else {
+        out_fp32.ShareDataWith(*out);
+      }
+
       const auto& runner_mul =
-          NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
+          NpuOpRunner("Mul", {x_fp32, *tmp_inverse_out}, {out_fp32}, {});
       runner_mul.Run(stream);
+
+      if (framework::TransToProtoVarType(x->dtype()) == framework::proto::VarType::FP16) {
+        CastToFP16(ctx, stream, out_fp32, out);
+      }
     }
   }
 };
