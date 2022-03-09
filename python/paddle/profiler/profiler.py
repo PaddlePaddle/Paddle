@@ -25,7 +25,7 @@ from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
 
 from .utils import RecordEvent, wrap_optimizers
 from .profiler_statistic import StatisticData, _build_table, SortedKeys
-
+from .timer import benchmark
 
 class ProfilerState(Enum):
     r"""
@@ -323,7 +323,8 @@ class Profiler:
             *,
             targets: Optional[Iterable[ProfilerTarget]]=None,
             scheduler: Union[Callable[[int], ProfilerState], tuple, None]=None,
-            on_trace_ready: Optional[Callable[..., Any]]=None):
+            on_trace_ready: Optional[Callable[..., Any]]=None,
+            timer_only: Optional[bool]=False):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
@@ -371,6 +372,7 @@ class Profiler:
         self.current_state = self.scheduler(self.step_num)
         self.record_event = None
         self.profiler_result = None
+        self.timer_only = timer_only
 
     def __enter__(self):
         self.start()
@@ -400,6 +402,10 @@ class Profiler:
                     prof.step()
                 prof.stop()
         '''
+        # Timing only without profiling
+        benchmark().begin()
+        if self.timer_only:
+            return
         # CLOSED -> self.current_state
         if self.current_state == ProfilerState.READY:
             self.profiler.prepare()
@@ -435,6 +441,9 @@ class Profiler:
                     prof.step()
                 prof.stop()
         '''
+        benchmark().end()
+        if self.timer_only:
+            return
         # self.current_state -> CLOSED
         # In this situation, RECORD state is regarded as RECORD_AND_RETURN
         if self.record_event:
@@ -451,7 +460,7 @@ class Profiler:
             if self.on_trace_ready:
                 self.on_trace_ready(self)
 
-    def step(self):
+    def step(self, num_samples=None):
         r"""
         Signals the profiler that the next profiling step has started.
         Get the new ProfilerState and trigger corresponding action.
@@ -473,6 +482,9 @@ class Profiler:
                     prof.step()
                 prof.stop()
         """
+        benchmark().step(num_samples)
+        if self.timer_only:
+            return
         if self.record_event:
             self.record_event.end()
             self.record_event = None
@@ -484,6 +496,9 @@ class Profiler:
             name="ProfileStep#{}".format(self.step_num),
             event_type=TracerEventType.ProfileStep)
         self.record_event.begin()
+
+    def step_info(self):
+        return benchmark().step_info()
 
     def _trigger_action(self):
         if self.previous_state == ProfilerState.CLOSED:
