@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void ExpandAsKernel(const Context& ctx,
                     const DenseTensor& x,
-                    const DenseTensor& y,
+                    paddle::optional<const DenseTensor&> y,
                     const std::vector<int>& target_shape,
                     DenseTensor* out);
 

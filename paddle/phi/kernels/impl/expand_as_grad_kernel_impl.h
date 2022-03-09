@@ -27,6 +27,7 @@ void ExpandAsBackward(const Context& ctx,
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
   ctx.template Alloc<T>(in_grad);
+  in_grad->data<T>();
   auto x_grad = EigenVector<T>::Flatten(*in_grad);
   Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
   for (size_t i = 0; i < reshape_size; ++i) {

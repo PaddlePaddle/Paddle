@@ -29,8 +29,7 @@ void ExpandAs(const Context& context,
               const DenseTensor& x,
               const std::vector<int>& target_shape,
               DenseTensor* out) {
-  auto* in0 = &x;
-  auto in_dims = in0->dims();
+  auto in_dims = x.dims();
   auto vec_in_dims = phi::vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
@@ -84,7 +83,8 @@ void ExpandAs(const Context& context,
 
   out->Resize(out_dims);
   context.template Alloc<T>(out);
-  auto x0 = EigenTensor<T, Rank>::From(*in0, new_in_dims);
+  out->data<T>();
+  auto x0 = EigenTensor<T, Rank>::From(x, new_in_dims);
   auto y = EigenTensor<T, Rank>::From(*out, out_dims);
   auto& place = *context.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
@@ -94,7 +94,7 @@ void ExpandAs(const Context& context,
 template <typename T, typename Context>
 void ExpandAsKernel(const Context& ctx,
                     const DenseTensor& x,
-                    const DenseTensor& y,
+                    paddle::optional<const DenseTensor&> y,
                     const std::vector<int>& target_shape,
                     DenseTensor* out) {
   auto rank = x.dims().size();
