@@ -69,6 +69,9 @@ def start_local_trainers(cluster,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "MASTER_ADDR": "127.0.0.1",
+            "MASTER_PORT": "6170",
+            "NCCL_DEBUG": "INFO",
             "PADDLE_DISTRI_BACKEND":
             "gloo",  # make init_parallel_env get 'gloo' argument.
         }

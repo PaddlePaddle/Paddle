@@ -79,15 +79,19 @@ class ReduceOp:
 
 class Task(object):
     """
-    The abstract representation of task.
+    The abstract representation of a task. It is only used for static mode
+    to emulate the c++ task structure of ProcessGroup for dynamic mode.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, tensor, group, use_calc_stream=True):
+        self.tensor = tensor
+        self.group = group
+        self.use_calc_stream = use_calc_stream
 
     def wait(self):
-        temp = fill_constant([1], dtype="int32", value="1")
-        paddle.distributed.wait(temp, use_calc_stream=False)
+        assert not in_dygraph_mode(), "Python Task only works in static mode."
+        # temp = fill_constant([1], dtype="int32", value="1")
+        wait(self.tensor, self.group, self.use_calc_stream)
 
 
 class Group():
@@ -96,16 +100,18 @@ class Group():
     """
 
     def __init__(self, rank, rank_num, id=0, ranks=[], pg=None, name=None):
-        self.rank = rank
+        self.rank = rank  # group rank
         self.nranks = rank_num
         self.id = id
         self.ranks = ranks
-        assert len(ranks) == rank_num
+        assert len(ranks) == rank_num, (
+            "Number of ranks ({}--len:{}) must be "
+            "equal to rank_num ({}).".format(ranks, len(ranks), rank_num))
         self.pg = pg
         self.name = name
 
     def is_member(self):
-        return len(self.ranks) > 1 and self.rank >= 0
+        return self.nranks > 1 and self.rank >= 0
 
     def get_group_rank(self, rank):
         if self.is_member() and rank in self.ranks:
@@ -121,7 +127,7 @@ class Group():
         debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
             self.rank, self.nranks, self.id)
         debug_str += ", ".join(map(str, self.ranks))
-        debug_str += ". name: {}".format(self.name)
+        debug_str += "; name: {}.".format(self.name)
         return debug_str
 
 
@@ -143,9 +149,8 @@ _group_map = {}
 # Dict[name, Group]
 _group_map_by_name = {}
 
-# Name of the default global group for init_process_group
+# Name of the default group for init_process_group
 _default_group_name = "_default_pg"
-_group_name_id = 1
 
 _valid_backend_list = ['nccl', 'gloo', 'hccl']
 _default_store = None  # the default tcp store
@@ -161,15 +166,22 @@ def _get_group_map():
     return _group_map
 
 
+def _get_global_group():
+    return _get_group_map()[0]
+
+
 def _get_group_map_by_name():
     global _group_map_by_name
-    if not _group_map_by_name:
-        raise RuntimeError("Call paddle.distributed.init_process_group first "
+    if _default_group_name not in _group_map_by_name:
+        raise RuntimeError("Call paddle.distributed.init_parallel_env first "
                            "to initialize the distributed environment.")
     return _group_map_by_name
 
 
 def _get_default_group():
+    assert _default_group_name in _group_map_by_name, (
+        "Call paddle.distributed.init_parallel_env first "
+        "to initialize the distributed environment.")
     return _get_group_map_by_name()[_default_group_name]
 
 
@@ -177,29 +189,33 @@ def _new_ring_id():
     return len(_get_group_map()) + max(_get_global_env().nrings, 9)
 
 
-def get_group(name=None):
+def _new_group_name_id():
+    return len(_get_group_map_by_name()) + max(_get_global_env().nrings, 9)
+
+
+def get_group(id=0):
     """
-    Get a group by its name.
+
+    Get group instance by group id.
 
     Args:
-        name (str, optional): the name of the group to get. If None is given,
-            return the default global group created 
-            by paddle.distributed.init_process_group. Default: None.
+        id (int): the group id. Default value is 0.
 
     Returns:
-        Group: the group named `name`.
+        Group: the group instance.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle
-            paddle.distributed.init_process_group(0, 1)
-            group = get_group()
+            ...
+            gid = paddle.distributed.new_group([2,4,6])
+            paddle.distributed.get_group(gid.id)
 
     """
 
-    return _get_default_group() if name is None else _get_group_map()[name]
+    gm = _get_group_map()
+    return gm[id] if id in gm else None
 
 
 def _new_process_group_impl(backend, store, rank, world_size, group_name,
@@ -207,11 +223,12 @@ def _new_process_group_impl(backend, store, rank, world_size, group_name,
     if backend == "gloo":
         gloo_store = core.GlooStore(store)
 
-    pg = None
     if backend == "gloo":
         pg = core.ProcessGroupGloo(gloo_store, rank, world_size)
     elif backend == "nccl":
         pg = core.ProcessGroupNCCL(store, rank, world_size)
+    elif backend == "hccl":
+        pg = core.ProcessGroupHCCL(store, rank, world_size)
 
     return pg
 
@@ -243,11 +260,11 @@ def init_parallel_env(rank=None,
         .. code-block:: python
 
             import paddle
-            paddle.distributed.init_process_group(0, 1)
+            paddle.distributed.init_parallel_env(0, 1)
 
     """
 
-    global _group_name
+    global _group_map_by_name
     global _default_group_name
     if _default_group_name in _group_map_by_name:
         raise RuntimeError(
@@ -261,30 +278,35 @@ def init_parallel_env(rank=None,
     if not isinstance(timeout, timedelta):
         raise ValueError("timeout must be of the type datetime.timedelta.")
 
-    if not rank or not world_size:
-        assert not rank and not world_size, ("rank and world_size should be "
-                                             "set or unset at the same time.")
+    if rank is None or world_size is None:
+        assert rank is None and world_size is None, (
+            "rank and world_size should be set or unset at the same time.")
         trainer_id = os.getenv("PADDLE_TRAINER_ID", None)
         trainer_num = os.getenv("PADDLE_TRAINERS_NUM", None)
-        if not trainer_id or not trainer_num:
-            warnings.warn(
-                "If rank and world_size are not set, please start "
-                "your training with paddle.distributed.launch module.")
-        return
+        if trainer_id is None or trainer_num is None:
+            warnings.warn("If rank and world_size are not set, please start "
+                          "your training with paddle.distributed.run module.")
+            return
+        rank = int(trainer_id)
+        world_size = int(trainer_num)
 
     if rank < 0 or world_size <= rank or world_size < 2:
         raise ValueError(
             "rank must be non-negative and world_size must be the "
-            "maximum rank plus one. And at least two processes are required "
+            "maximum rank plus one. At least two processes are required "
             "to create a process group.")
 
     master_addr = os.getenv("MASTER_ADDR", None)
     master_port = os.getenv("MASTER_PORT", None)
     if not master_addr or not master_port:
-        raise ValueError(
-            "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
-            "must be specified. You can use 'export MASTER_ADDR=127.0.0.1' "
-            "and 'export MASTER_ADDR=54612' to specify them.")
+        endpoints = os.getenv("PADDLE_MASTER", None)
+        if not endpoints:
+            raise ValueError(
+                "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
+                "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
+                "and 'export MASTER_ADDR=54612'. Or you can start your training"
+                "script with paddle.distributed.run module.")
+        master_addr, master_port = endpoints.split(":")
 
     master_port = int(master_port)
 
@@ -295,8 +317,9 @@ def init_parallel_env(rank=None,
 
     pg = _new_process_group_impl(backend, _default_store, rank, world_size,
                                  _default_group_name, pg_options)
-    ranks = [i for i in range(world_size)]
-    group = Group(rank, pg, ranks, _default_group_name)
+    ranks = list(range(world_size))
+    group = Group(
+        rank, world_size, id=0, ranks=ranks, pg=pg, name=_default_group_name)
 
     paddle.fluid.dygraph.parallel_helper._set_parallel_ctx(True)
     _group_map_by_name[_default_group_name] = group
@@ -325,25 +348,24 @@ def new_group(ranks=None,
         .. code-block:: python
 
             import paddle
-            paddle.distributed.init_process_group(0, 1)
+            paddle.distributed.init_parallel_env(0, 1)
             paddle.distributed.new_group([0, 1])
 
     """
     global _default_group_name
-    global _group_name_id
     if group_name is None:
-        group_name = _default_group_name + str(_group_name_id)
-        _group_name_id += 1
+        group_name = _default_group_name + str(_new_group_name_id())
     if group_name == _default_group_name:
         raise ValueError("group_name must be specified and it cannot be '{}' "
                          "which is used for the default process group created "
-                         "by init_process_group.".format(_default_group_name))
+                         "by init_parallel_env.".format(_default_group_name))
     global_group = _get_default_group()
     global_rank = default_group.rank
+    global_ranks = default_group.ranks
     if ranks is None:
         ranks = global_ranks
     assert len(ranks) <= len(global_ranks), (
-        "size of new group must be less than or "
+        "Size of new group must be less than or "
         "equal to that of the default global group.")
     size = len(ranks)
     assert size > 1, "A group must have at least two memebers."
@@ -355,22 +377,29 @@ def new_group(ranks=None,
     else:
         rank = -1
         pg = None
-    group = Group(global_rank, pg, ranks, group_name)
+    group = Group(
+        rank,
+        size,
+        id=_new_group_name_id(),
+        ranks=ranks,
+        pg=pg,
+        name=group_name)
     _group_map_by_name[group_name] = group
 
     return group
 
 
-def barrier(group=None):
+def barrier(group=None, async_op=False):
     """
 
     Barrier among all participators in the group.
 
     Args:
         group (Group): The group instance return by new_group or None for global default group.
+        async_op (bool): Whether this op should be async or not. Default: False.
 
     Returns:
-        None.
+        Async work handle if async_op is True or None otherwise.
 
     Examples:
         .. code-block:: python
@@ -379,25 +408,34 @@ def barrier(group=None):
 
             paddle.distributed.init_process_group(0, 1)
             paddle.distributed.barrier()
+
     """
     if group is not None and not group.is_member():
         return
 
+    group = _get_default_group() if group is None else group
     if in_dygraph_mode():
-        group = _get_default_group() if group is None else group
-        return group.process_group.barrier()
+        if async_op:
+            task = group.process_group.barrier()
+        else:
+            task = None
+            task.wait()
+        return task
 
+    op_type = "barrier"
     temp = fill_constant([1], dtype="int32", value="1")
-    op_type = 'barrier'
-
     helper = LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
         inputs={'X': [temp]},
         outputs={'Out': [temp]},
-        attrs={'group_name': group.get_name()})
-    warnings.warn("In static graph mode, you should also call "
-                  "paddle.distributed.wait to barrier the cpu processes.")
+        attrs={'ring_id': ring_id})
+    if async_op:
+        task = Task(temp, group, use_calc_stream=True)
+    else:
+        wait(temp, group, use_calc_stream=True)
+        task = None
+    return task
 
 
 def wait(tensor, group=None, use_calc_stream=True):

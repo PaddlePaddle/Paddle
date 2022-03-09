@@ -203,6 +203,8 @@ class HybridCommunicateGroup(object):
 
         assert len(parallel_group) > 0
         assert parallel_comm_group is not None
+        with open("/tmp/test_%d" % self.global_rank, 'w') as f:
+            f.writelines(parallel_group)
 
         return parallel_group, parallel_comm_group
 
@@ -347,8 +349,10 @@ class _CommunicateGroup(object):
 
     def set_comm_group(self, group_name, group_rank, group_size, ring_id,
                        group_ranks):
-        group = paddle.distributed.collective.Group(group_rank, group_size,
-                                                    ring_id, group_ranks)
+        group = paddle.distributed.collective.Group(
+            group_rank, group_size, ring_id, group_ranks, None, group_name)
+        print("group_name:", group_name)
+        print(str(group))
         self.groups[group_name] = group
 
     def get_group(self, group_name):

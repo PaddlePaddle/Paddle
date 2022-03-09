@@ -357,9 +357,10 @@ def sync_params_buffers(model,
                         is_model_parallel=False):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, core.VarBase):
-            raise TypeError("The data type of '%s' must be Varbase" %
-                            param.name)
+        if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+            raise TypeError(
+                "The data type of '%s' must be Varbase or eager.Tensor" %
+                param.name)
 
         # is_distributed param not need to sync when in mp mode
         if isinstance(param, ParamBase):
@@ -382,7 +383,7 @@ def sync_params_buffers(model,
 
     for coalesced_var, _, _ in coalesced_vars:
         paddle.distributed.broadcast(
-            coalesced_var, src=src_rank, group=comm_group, use_calc_stream=True)
+            coalesced_var, src=src_rank, group=comm_group, async_op=False)
 
     for coalesced_var, origin_vars, var_shapes in coalesced_vars:
         var_len = [np.prod(v_shape) for v_shape in var_shapes]
@@ -617,9 +618,10 @@ class DataParallel(layers.Layer):
                 if param is None or param in params_set:
                     continue
                 params_set.add(param)
-                if not isinstance(param, core.VarBase):
-                    raise TypeError("The data type of '%s' must be Varbase" %
-                                    param.name)
+                if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+                    raise TypeError(
+                        "The data type of '%s' must be Varbase or Tensor" %
+                        param.name)
                 if param.trainable:
                     layers_param.append((sublayer, param))
 
@@ -646,9 +648,14 @@ class DataParallel(layers.Layer):
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
 
-        self.group_indices = core.assign_group_by_size(
-            trainable_parameters, is_sparse_gradient,
-            [self.last_comm_buffer_size, self.comm_buffer_size])
+        if isinstance(trainable_parameters[0], core.VarBase):
+            self.group_indices = core.assign_group_by_size(
+                trainable_parameters, is_sparse_gradient,
+                [self.last_comm_buffer_size, self.comm_buffer_size])
+        elif isinstance(trainable_parameters[0], core.eager.Tensor):
+            self.group_indices = core.eager_assign_group_by_size(
+                trainable_parameters, is_sparse_gradient,
+                [self.last_comm_buffer_size, self.comm_buffer_size])
 
         self._reducer = core.Reducer(
             trainable_parameters,
