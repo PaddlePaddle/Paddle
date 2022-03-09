@@ -116,7 +116,6 @@ void ArgsortKernel(const Context& dev_ctx,
     DenseTensor tmp_out;
     tmp_out.Resize(trans_dims);
     T* t_out = dev_ctx.template Alloc<T>(&tmp_out);
-    dev_ctx.template Alloc<T>(output);
 
     DenseTensor tmp_indices;
     tmp_indices.Resize(trans_dims);

@@ -275,7 +275,6 @@ void ArgsortKernel(const Context& dev_ctx,
     DenseTensor tmp_out;
     tmp_out.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&tmp_out);
-    T* out_data = dev_ctx.template Alloc<T>(output);
 
     DenseTensor tmp_indices;
     // temp indices for sorting
