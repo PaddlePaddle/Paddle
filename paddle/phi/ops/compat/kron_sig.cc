@@ -17,12 +17,13 @@
 namespace phi {
 
 KernelSignature KronOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("kron", {"X", "Y"}, {"Out"});
+  return KernelSignature("kron", {"X", "Y"}, {}, {"Out"});
 }
 
 KernelSignature KronGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("kron_grad",
                          {"X", "Y", GradVarName("Out")},
+                         {},
                          {GradVarName("X"), GradVarName("Y")});
 }
 

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/impl/kron_kernel_impl.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 namespace phi {
 
@@ -165,12 +166,14 @@ struct KronGradOpFunctor {
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
     if (dx) {
-      TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
+      paddle::operators::
+          TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+              dev_ctx, dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
     }
     if (dy) {
-      TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          dev_ctx, dout_y, dy, kps::IdentityFunctor<T>(), {1}, stream);
+      paddle::operators::
+          TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+              dev_ctx, dout_y, dy, kps::IdentityFunctor<T>(), {1}, stream);
     }
 #else
     auto* place = dev_ctx.eigen_device();
