@@ -15,8 +15,9 @@
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_inplace_pass.h"
 
 #include <gtest/gtest.h>
-#include <boost/logic/tribool.hpp>
 #include <unordered_set>
+
+#include <boost/logic/tribool.hpp>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
