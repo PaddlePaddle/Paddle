@@ -22,6 +22,7 @@
 #endif
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+// #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
 namespace phi {

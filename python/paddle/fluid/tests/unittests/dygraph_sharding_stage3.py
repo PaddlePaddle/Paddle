@@ -83,7 +83,7 @@ def train_mlp(model,
               accumulate_grad=False,
               batch_size=100,
               opt_group=False,
-              recompute=False,
+              sync_comm=False,
               test_minimize=False):
     group = paddle.distributed.new_group([0, 1])
     if opt_group:
@@ -104,7 +104,7 @@ def train_mlp(model,
             model, optimizer, group=group, buffer_max_size=2**21)
     elif sharding_stage == 3:
         model = ShardingStage3(
-            model, optimizer=optimizer, group=group, sync_comm=recompute)
+            model, optimizer=optimizer, group=group, sync_comm=sync_comm)
 
     # check optimizer.minimize() error
     if test_minimize:
@@ -225,7 +225,7 @@ def test_stage2_stage3():
             rtol=1e-4,
             atol=1e-3)
 
-    # fp16 recompute
+    # fp16 sync_comm
     stage3_params = train_mlp(
         mlp7, sharding_stage=3, use_pure_fp16=True, opt_group=False)
     stage3_params_re = train_mlp(
@@ -233,7 +233,7 @@ def test_stage2_stage3():
         sharding_stage=3,
         use_pure_fp16=True,
         opt_group=False,
-        recompute=True)
+        sync_comm=True)
     for i in range(len(stage3_params)):
         np.testing.assert_allclose(
             stage3_params[i].numpy(), stage3_params_re[i].numpy(), rtol=1e-6)
