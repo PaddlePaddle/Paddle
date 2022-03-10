@@ -259,4 +259,277 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T>
+struct MulGradDX {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y; }
+};
+
+template <typename T>
+struct MulGradDX<phi::dtype::complex<T>> {
+  HOSTDEVICE phi::dtype::complex<T> operator()(
+      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> y,
+      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> dout) const {
+    phi::dtype::complex<T> y_conj(y.real, -y.imag);
+    return dout * y_conj;
+  }
+};
+
+/*
+******************************
+    Multiply Grad
+******************************
+*/
+
+template <typename T>
+struct MulGradDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
+};
+
+template <typename T>
+struct MulGradDY<phi::dtype::complex<T>> {
+  HOSTDEVICE phi::dtype::complex<T> operator()(
+      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> y,
+      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> dout) const {
+    phi::dtype::complex<T> x_conj(x.real, -x.imag);
+    return dout * x_conj;
+  }
+};
+
+template <typename T, typename Context>
+void MultiplyDoubleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              paddle::optional<const DenseTensor&> ddx,
+                              paddle::optional<const DenseTensor&> ddy,
+                              int axis,
+                              DenseTensor* dx,
+                              DenseTensor* dy,
+                              DenseTensor* ddout) {
+  if (ddout) dev_ctx.template Alloc<T>(ddout);
+
+  DenseTensor ddx_safe, ddy_safe;
+  funcs::GetDoubleGradSafeTensor<Context, T>(
+      dev_ctx, x, ddx.get_ptr(), &ddx_safe);
+  funcs::GetDoubleGradSafeTensor<Context, T>(
+      dev_ctx, y, ddy.get_ptr(), &ddy_safe);
+
+  // dx = dout * ddy
+  // dy = dout * ddx
+  // ddout = ddx * y + x * ddy
+  // change computation sequence to save memory, so ddout can inplace ddx and
+  // dx can be used as 'tmp' tensor
+  // (1) dx = x * ddy
+  // (2) dy = dout * ddx
+  // (3) ddout = ddx * y
+  // (4) ddout = ddout + dx
+  // (5) dx = dout * ddy
+  if (ddout) {
+    auto& place = *dev_ctx.eigen_device();
+    // size(ddout) > size(ddx), ddout can't use memory of ddx using inplace
+    if (ddout->numel() > ddx.get_ptr()->numel()) {
+      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+          dev_ctx,
+          ddx_safe,
+          ddy_safe,
+          dout,
+          dout,
+          axis,
+          dx,
+          dy,
+          MulGradDX<T>(),
+          MulGradDY<T>());
+
+      DenseTensor ddout_tmp;
+      ddout_tmp.Resize(ddout->dims());
+      dev_ctx.template Alloc<T>(&ddout_tmp);
+
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, y, ddx_safe, ddout, axis);
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, ddy_safe, x, &ddout_tmp, axis);
+
+      auto ddout_t = phi::EigenVector<T>::Flatten(*ddout);
+      auto ddout_tmp_t = phi::EigenVector<T>::Flatten(ddout_tmp);
+      ddout_t.device(place) = ddout_t + ddout_tmp_t;
+    } else {
+      // use dx to save memory, other than alloc tmp tensor
+      DenseTensor* ddout_tmp = dx;
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, x, ddy_safe, ddout_tmp, axis);
+      // NOTE: in the following ElemwiseGradCompute, for the
+      // first output tensor is nullptr, the branch to calculate first
+      // output tensor will not be activated, DivGradDx function will not
+      // be called and can be ignored, the first branch has little effect
+      // on running speed.
+      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+          dev_ctx,
+          ddx_safe,
+          ddy_safe,
+          dout,
+          dout,
+          axis,
+          nullptr,
+          dy,
+          MulGradDX<T>(),
+          MulGradDY<T>());
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, ddx_safe, y, ddout, axis);
+
+      auto ddout_t = phi::EigenVector<T>::Flatten(*ddout);
+      auto ddout_tmp_t = phi::EigenVector<T>::Flatten(*ddout_tmp);
+      ddout_t.device(place) = ddout_t + ddout_tmp_t;
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, dout, ddy_safe, dx, axis);
+    }
+  }
+}
+
+template <typename T, typename Context>
+void MultiplyTripleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              paddle::optional<const DenseTensor&> ddx,
+                              paddle::optional<const DenseTensor&> ddy,
+                              const DenseTensor& d_dx,
+                              const DenseTensor& d_dy,
+                              paddle::optional<const DenseTensor&> d_ddout,
+                              int axis,
+                              DenseTensor* d_x,
+                              DenseTensor* d_y,
+                              DenseTensor* d_dout,
+                              DenseTensor* d_ddx,
+                              DenseTensor* d_ddy) {
+  if (d_x) {
+    d_x->Resize(x.dims());
+    dev_ctx.template Alloc<T>(d_x);
+  }
+  if (d_y) {
+    d_y->Resize(y.dims());
+    dev_ctx.template Alloc<T>(d_y);
+  }
+  if (d_dout) {
+    d_dout->Resize(dout.dims());
+    dev_ctx.template Alloc<T>(d_dout);
+  }
+  if (d_ddx) {
+    d_ddx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(d_ddx);
+  }
+  if (d_ddy) {
+    d_ddy->Resize(y.dims());
+    dev_ctx.template Alloc<T>(d_ddy);
+  }
+
+  auto& place = *dev_ctx.eigen_device();
+
+  DenseTensor ddx_safe, ddy_safe;
+  funcs::GetDoubleGradSafeTensor<Context, T>(
+      dev_ctx, x, ddx.get_ptr(), &ddx_safe);
+  funcs::GetDoubleGradSafeTensor<Context, T>(
+      dev_ctx, y, ddy.get_ptr(), &ddy_safe);
+
+  if (d_ddout.get_ptr()) {
+    if (d_x) {
+      // d_x = ddy * d_ddout
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, ddy_safe, *(d_ddout.get_ptr()), d_x, axis);
+    }
+    if (d_y) {
+      // d_y = ddx * d_ddout
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, ddx_safe, *(d_ddout.get_ptr()), d_y, axis);
+    }
+  }
+
+  if (d_dout) {
+    // get d_dout
+    // d_dout = ddy * d_dx + d_dy * ddx
+    DenseTensor d_dout_tmp;
+    d_dout_tmp.Resize(dout.dims());
+    dev_ctx.template Alloc<T>(&d_dout_tmp);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::MultiplyFunctor<T>,
+                                      funcs::InverseMultiplyFunctor<T>>(
+        dev_ctx, d_dy, ddx_safe, d_dout, axis);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::MultiplyFunctor<T>,
+                                      funcs::InverseMultiplyFunctor<T>>(
+        dev_ctx, ddy_safe, d_dx, &d_dout_tmp, axis);
+    auto d_dout_t = phi::EigenVector<T>::Flatten(*d_dout);
+    auto d_dout_tmp_t = phi::EigenVector<T>::Flatten(d_dout_tmp);
+    d_dout_t.device(place) = d_dout_t + d_dout_tmp_t;
+  }
+
+  if (d_ddx) {
+    // get d_ddx
+    // d_ddx = dout * d_dy + y * d_ddout
+    DenseTensor d_ddx_tmp;
+    d_ddx_tmp.Resize(ddx->dims());
+    dev_ctx.template Alloc<T>(&d_ddx_tmp);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::MultiplyFunctor<T>,
+                                      funcs::InverseMultiplyFunctor<T>>(
+        dev_ctx, dout, d_dy, d_ddx, axis);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::MultiplyFunctor<T>,
+                                      funcs::InverseMultiplyFunctor<T>>(
+        dev_ctx, y, *(d_ddout.get_ptr()), &d_ddx_tmp, axis);
+    auto d_ddx_t = phi::EigenVector<T>::Flatten(*d_ddx);
+    auto d_ddx_tmp_t = phi::EigenVector<T>::Flatten(d_ddx_tmp);
+    d_ddx_t.device(place) = d_ddx_t + d_ddx_tmp_t;
+  }
+
+  if (d_ddy) {
+    // get d_ddy
+    // d_ddy = dout * d_dx + x * d_ddout
+    DenseTensor d_ddy_tmp;
+    d_ddy_tmp.Resize(ddy->dims());
+    dev_ctx.template Alloc<T>(&d_ddy_tmp);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::MultiplyFunctor<T>,
+                                      funcs::InverseMultiplyFunctor<T>>(
+        dev_ctx, dout, d_dx, d_ddy, axis);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::MultiplyFunctor<T>,
+                                      funcs::InverseMultiplyFunctor<T>>(
+        dev_ctx, x, *(d_ddout.get_ptr()), &d_ddy_tmp, axis);
+    auto d_ddy_t = phi::EigenVector<T>::Flatten(*d_ddy);
+    auto d_ddy_tmp_t = phi::EigenVector<T>::Flatten(d_ddy_tmp);
+    d_ddy_t.device(place) = d_ddy_t + d_ddy_tmp_t;
+  }
+}
+
 }  // namespace phi
