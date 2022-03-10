@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int32_t num_classes,
+                  const Scalar& num_classes,
                   DenseTensor* out);
 
 template <typename T, typename Context>

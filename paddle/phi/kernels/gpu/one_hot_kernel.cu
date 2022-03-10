@@ -83,8 +83,9 @@ void OneHotRawKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int32_t num_classes,
+                  const Scalar& num_classes_s,
                   DenseTensor* out) {
+  int num_classes = num_classes_s.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
     out_dims[out_dims.size() - 1] = num_classes;

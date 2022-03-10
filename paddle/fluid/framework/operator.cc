@@ -2289,11 +2289,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
         pt_kernel_context->EmplaceBackAttr(data_type);
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
-        if (std::type_index(attr.type()) ==
+        if (std::type_index(attr_it->second.type()) ==
             std::type_index(typeid(std::vector<int64_t>))) {
           pt_kernel_context->EmplaceBackAttr(
               BOOST_GET_CONST(std::vector<int64_t>, attr_it->second));
-        } else if (std::type_index(attr.type()) ==
+        } else if (std::type_index(attr_it->second.type()) ==
                    std::type_index(typeid(std::vector<int>))) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr =

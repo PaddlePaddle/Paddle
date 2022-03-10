@@ -154,7 +154,7 @@ void OneHotRawInferMeta(const MetaTensor& x,
                         bool allow_out_of_range,
                         MetaTensor* out);
 
-void OneHotInferMeta(const MetaTensor& x, int32_t depth, MetaTensor* out);
+void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void DiagInferMeta(const MetaTensor& x,
                    int offset,

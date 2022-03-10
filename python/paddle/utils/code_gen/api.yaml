@@ -196,7 +196,7 @@
 
 
 - api : one_hot
-  args : (Tensor x, int num_classes)
+  args : (Tensor x, Scalar num_classes)
   output : Tensor
   infer_meta :
     func : OneHotInferMeta

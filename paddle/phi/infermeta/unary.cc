@@ -1023,13 +1023,16 @@ void OneHotRawInferMeta(const MetaTensor& x,
   // when we need include protobuf when we convert int dtype to phi::DataType
 }
 
-void OneHotInferMeta(const MetaTensor& x, int32_t depth, MetaTensor* out) {
+void OneHotInferMeta(const MetaTensor& x,
+                     const Scalar& depth_t,
+                     MetaTensor* out) {
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       1,
       phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
 
+  int depth = depth_t.to<int>();
   auto out_dims_vec = phi::vectorize(x_dims);
   out_dims_vec.push_back(depth);
   auto out_dims = phi::make_ddim(out_dims_vec);

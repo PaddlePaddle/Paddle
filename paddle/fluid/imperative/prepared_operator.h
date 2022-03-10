@@ -421,154 +421,151 @@ void BuildDygraphPhiKernelContext(
       } else {
         PADDLE_THROW(platform::errors::Unimplemented("only support int here"));
       }
-      else if (attr_defs[i].type_index ==
+    } else if (attr_defs[i].type_index ==
                std::type_index(typeid(std::vector<phi::Scalar>))) {
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+      auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+      if (std::type_index(attr.type()) ==
+          std::type_index(typeid(std::vector<int32_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<float>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<double>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<bool>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<bool>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` to vector<Scalar> when "
+            "construct KernelContext.",
+            attr_names[i]));
+      }
+    } else {
+      // TODO(chenweihang): support other attrs later
+
+      auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::string))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(phi::DataType))) {
+        auto data_type = framework::TransToPhiDataType(
+            static_cast<framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        kernel_ctx->EmplaceBackAttr(data_type);
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
         if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int32_t>))) {
-          const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
-          std::vector<phi::Scalar> scalar_list;
-          scalar_list.reserve(vec.size());
-          for (const auto& val : vec) {
-            scalar_list.emplace_back(val);
-          }
-          kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+            std::type_index(typeid(std::vector<int64_t>))) {
+          kernel_ctx->EmplaceBackAttr(
+              BOOST_GET_CONST(std::vector<int64_t>, attr));
         } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::vector<int64_t>))) {
-          const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
-          std::vector<phi::Scalar> scalar_list;
-          scalar_list.reserve(vec.size());
-          for (const auto& val : vec) {
-            scalar_list.emplace_back(val);
-          }
-          kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::vector<float>))) {
-          const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
-          std::vector<phi::Scalar> scalar_list;
-          scalar_list.reserve(vec.size());
-          for (const auto& val : vec) {
-            scalar_list.emplace_back(val);
-          }
-          kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::vector<double>))) {
-          const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
-          std::vector<phi::Scalar> scalar_list;
-          scalar_list.reserve(vec.size());
-          for (const auto& val : vec) {
-            scalar_list.emplace_back(val);
-          }
-          kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
-        } else if (std::type_index(attr.type()) ==
-                   std::type_index(typeid(std::vector<bool>))) {
-          const auto& vec = BOOST_GET_CONST(std::vector<bool>, attr);
-          std::vector<phi::Scalar> scalar_list;
-          scalar_list.reserve(vec.size());
-          for (const auto& val : vec) {
-            scalar_list.emplace_back(val);
-          }
-          kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported cast op attribute `%s` to vector<Scalar> when "
-              "construct KernelContext.",
-              attr_names[i]));
-        }
-      }
-      else {
-        // TODO(chenweihang): support other attrs later
-
-        auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
-        if (attr_defs[i].type_index == std::type_index(typeid(int))) {
-          kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
-        } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
-          kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
-        } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
-          kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
-        } else if (attr_defs[i].type_index ==
-                   std::type_index(typeid(int64_t))) {
-          kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
-        } else if (attr_defs[i].type_index ==
-                   std::type_index(typeid(std::string))) {
-          kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
-        } else if (attr_defs[i].type_index ==
-                   std::type_index(typeid(phi::DataType))) {
-          auto data_type = framework::TransToPhiDataType(
-              static_cast<framework::proto::VarType::Type>(
-                  BOOST_GET_CONST(int, attr)));
-          kernel_ctx->EmplaceBackAttr(data_type);
-        } else if (attr_defs[i].type_index ==
-                   std::type_index(typeid(std::vector<int64_t>))) {
-          if (std::type_index(attr.type()) ==
-              std::type_index(typeid(std::vector<int64_t>))) {
-            kernel_ctx->EmplaceBackAttr(
-                BOOST_GET_CONST(std::vector<int64_t>, attr));
-          } else if (std::type_index(attr.type()) ==
-                     std::type_index(typeid(std::vector<int>))) {
-            // Emplace Back Attr according to the type of Phi_Kernel args.
-            const auto& vector_int_attr =
-                BOOST_GET_CONST(std::vector<int>, attr);
-            const std::vector<int64_t> vector_int64_attr(
-                vector_int_attr.begin(), vector_int_attr.end());
-            kernel_ctx->EmplaceBackAttr(vector_int64_attr);
-          }
-        } else if (attr_defs[i].type_index ==
                    std::type_index(typeid(std::vector<int>))) {
-          kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
-        } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported cast op attribute `%s` when construct "
-              "KernelContext in dygraph.",
-              attr_names[i]));
+          // Emplace Back Attr according to the type of Phi_Kernel args.
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                       vector_int_attr.end());
+          kernel_ctx->EmplaceBackAttr(vector_int64_attr);
         }
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<int>))) {
+        kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` when construct "
+            "KernelContext in dygraph.",
+            attr_names[i]));
       }
     }
   }
+}
 
-  template <typename VarType>
-  void PreparePhiData(const phi::Kernel& pt_kernel,
-                      const framework::KernelSignature& pt_kernel_signature,
-                      const NameVarMap<VarType>& ins) {
-    auto& input_names = std::get<0>(pt_kernel_signature.args);
-    auto& input_defs = pt_kernel.args_def().input_defs();
+template <typename VarType>
+void PreparePhiData(const phi::Kernel& pt_kernel,
+                    const framework::KernelSignature& pt_kernel_signature,
+                    const NameVarMap<VarType>& ins) {
+  auto& input_names = std::get<0>(pt_kernel_signature.args);
+  auto& input_defs = pt_kernel.args_def().input_defs();
 
-    PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
-                      platform::errors::InvalidArgument(
-                          "the size of inputs_args names (%d) must be equal to "
-                          "the size of kernel input_defs (%d).",
-                          input_names.size(), input_defs.size()));
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
 
-    for (size_t i = 0; i < input_names.size(); ++i) {
-      auto& in_def = input_defs.at(i);
-      if (ins.find(input_names[i]) == ins.end()) {
-        continue;
-      }
-      auto& ins_vector = ins.at(input_names[i]);
+  for (size_t i = 0; i < input_names.size(); ++i) {
+    auto& in_def = input_defs.at(i);
+    if (ins.find(input_names[i]) == ins.end()) {
+      continue;
+    }
+    auto& ins_vector = ins.at(input_names[i]);
 
-      for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
-        auto var = ins_vector[offset];
-        const auto* tensor_in = GetTensorFromVar(var->Var());
-        if (tensor_in && tensor_in->IsInitialized()) {
-          if (in_def.backend == phi::Backend::ALL_BACKEND) {
-            continue;
-          }
-          auto expected_place = phi::TransToPhiPlace(in_def.backend);
-          if (platform::is_same_place(tensor_in->place(), expected_place)) {
-            continue;
-          }
-
-          VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
-                  << tensor_in->place() << " to " << expected_place;
-
-          framework::Tensor tmp_tensor;
-          framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
-
-          SetTensorToVariable(var->Var(), tmp_tensor, var->MutableVar());
+    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+      auto var = ins_vector[offset];
+      const auto* tensor_in = GetTensorFromVar(var->Var());
+      if (tensor_in && tensor_in->IsInitialized()) {
+        if (in_def.backend == phi::Backend::ALL_BACKEND) {
+          continue;
         }
+        auto expected_place = phi::TransToPhiPlace(in_def.backend);
+        if (platform::is_same_place(tensor_in->place(), expected_place)) {
+          continue;
+        }
+
+        VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
+                << tensor_in->place() << " to " << expected_place;
+
+        framework::Tensor tmp_tensor;
+        framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
+
+        SetTensorToVariable(var->Var(), tmp_tensor, var->MutableVar());
       }
     }
   }
+}
 
 }  // namespace imperative
 }  // namespace paddle
