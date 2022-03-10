@@ -297,8 +297,8 @@ void BufferedReader::ReadAsync(size_t i) {
 
       platform::SetMLUDeviceId(place_.device);
       PADDLE_ENFORCE_MLU_SUCCESS(
-          cnPlaceNotifier(events_[i].get(), compute_stream_));
-      PADDLE_ENFORCE_MLU_SUCCESS(cnWaitNotifier(events_[i].get()));
+          cnrtPlaceNotifier(events_[i].get(), compute_stream_));
+      PADDLE_ENFORCE_MLU_SUCCESS(cnrtWaitNotifier(events_[i].get()));
 
       platform::RecordEvent record_event("BufferedReader:MemoryCopy",
                                          platform::TracerEventType::UserDefined,
