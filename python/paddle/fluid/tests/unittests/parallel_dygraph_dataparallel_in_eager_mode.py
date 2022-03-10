@@ -65,15 +65,12 @@ class TestDistTraning(unittest.TestCase):
         dev_id = ParallelEnv().dev_id
         np.random.seed(2022 + dev_id)
 
-        w_1 = paddle.ParamAttr(initializer=NumpyArrayInitializer(
-            np.random.normal(
-                0, 0.02, size=(50, 30))))
-        w_2 = paddle.ParamAttr(initializer=NumpyArrayInitializer(
-            np.random.normal(
-                0, 0.02, size=(30, 10))))
-        w_3 = paddle.ParamAttr(initializer=NumpyArrayInitializer(
-            np.random.normal(
-                0, 0.02, size=(10, 10))))
+        w_1 = paddle.ParamAttr(
+            initializer=NumpyArrayInitializer(np.random.rand(50, 30)))
+        w_2 = paddle.ParamAttr(
+            initializer=NumpyArrayInitializer(np.random.rand(30, 10)))
+        w_3 = paddle.ParamAttr(
+            initializer=NumpyArrayInitializer(np.random.rand(10, 10)))
 
         attr_list = [w_1, w_2, w_3]
         inp = np.random.rand(10, 50)

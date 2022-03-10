@@ -17,7 +17,6 @@
 #include <map>
 #include <vector>
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
-#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
@@ -25,7 +24,6 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -75,7 +73,7 @@ class EagerReducer {
       const std::vector<Tensor> tensors,
       const std::vector<std::vector<size_t>> &group_indices,
       const std::vector<bool> &is_sparse_gradient,
-      std::shared_ptr<distributed::ProcessGroupNCCL> process_group,
+      std::shared_ptr<distributed::ProcessGroup> process_group,
       const std::vector<size_t> &group_size_limits,
       bool find_unused_parameters);
 
@@ -96,7 +94,7 @@ class EagerReducer {
   std::vector<Tensor> tensors_;
   std::vector<std::vector<size_t>> group_indices_;
   std::vector<bool> is_sparse_gradient_;
-  std::shared_ptr<distributed::ProcessGroupNCCL> process_group_;
+  std::shared_ptr<distributed::ProcessGroup> process_group_;
   std::vector<size_t> group_size_limits_;
   bool find_unused_vars_each_step_;
 

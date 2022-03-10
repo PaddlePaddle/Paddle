@@ -131,7 +131,7 @@ EagerReducer::EagerReducer(
     const std::vector<Tensor> tensors,
     const std::vector<std::vector<size_t>> &group_indices,
     const std::vector<bool> &is_sparse_gradient,
-    std::shared_ptr<distributed::ProcessGroupNCCL> process_group,
+    std::shared_ptr<distributed::ProcessGroup> process_group,
     const std::vector<size_t> &group_size_limits, bool find_unused_parameters)
     : tensors_(tensors),
       group_indices_(group_indices),
@@ -376,9 +376,7 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
 
   // allreduce
   std::vector<Tensor> reduce_tensors = {group->tensor_};
-  auto task = process_group_->AllReduce(reduce_tensors, opts);
-  auto nccl_task = dynamic_cast<ProcessGroupNCCL::NCCLTask *>(task.get());
-  nccl_task->Synchronize();
+  process_group_->AllReduce(reduce_tensors, opts)->Synchronize();
 
   // split tensors
   if (group->dense_tensors_.size() == 1) {

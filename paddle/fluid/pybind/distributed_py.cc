@@ -55,7 +55,7 @@ std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
     py::handle py_tensors,
     const std::vector<std::vector<size_t>> &group_indices,
     const std::vector<bool> &is_sparse_gradient,
-    std::shared_ptr<distributed::ProcessGroupNCCL> process_group,
+    std::shared_ptr<distributed::ProcessGroup> process_group,
     const std::vector<size_t> &group_size_limits, bool find_unused_parameters) {
   auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
   return std::make_shared<distributed::EagerReducer>(
