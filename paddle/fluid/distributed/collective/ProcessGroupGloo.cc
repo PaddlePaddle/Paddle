@@ -35,57 +35,56 @@ namespace paddle {
 namespace distributed {
 
 #ifdef _WIN32
-#define GENERATE_FUNC(type, func, ...)       \
-  switch (type) {                            \
-    case experimental::DataType::FLOAT32:    \
-      func<float>(__VA_ARGS__);              \
-      break;                                 \
-    case experimental::DataType::FLOAT64:    \
-      func<double>(__VA_ARGS__);             \
-      break;                                 \
-    case experimental::DataType::FLOAT16:    \
-      func<gloo::float16>(__VA_ARGS__);      \
-      break;                                 \
-    case experimental::DataType::INT32:      \
-      func<int32_t>(__VA_ARGS__);            \
-      break;                                 \
-    case experimental::DataType::INT64:      \
-      func<int64_t>(__VA_ARGS__);            \
-      break;                                 \
-    default:                                 \
-      VLOG(0) << "Error: Unknown DataType."; \
-      exit(-1);                              \
+#define GENERATE_FUNC(type, func, ...)                                   \
+  switch (type) {                                                        \
+    case experimental::DataType::FLOAT32:                                \
+      func<float>(__VA_ARGS__);                                          \
+      break;                                                             \
+    case experimental::DataType::FLOAT64:                                \
+      func<double>(__VA_ARGS__);                                         \
+      break;                                                             \
+    case experimental::DataType::FLOAT16:                                \
+      func<gloo::float16>(__VA_ARGS__);                                  \
+      break;                                                             \
+    case experimental::DataType::INT32:                                  \
+      func<int32_t>(__VA_ARGS__);                                        \
+      break;                                                             \
+    case experimental::DataType::INT64:                                  \
+      func<int64_t>(__VA_ARGS__);                                        \
+      break;                                                             \
+    default:                                                             \
+      PADDLE_THROW(platform::errors::Fatal("Unknown data type to use")); \
   }
 
 #define HOST_NAME_MAX 256
 
 #else
-#define GENERATE_FUNC(type, func, args...)   \
-  switch (type) {                            \
-    case experimental::DataType::FLOAT32:    \
-      func<float>(args);                     \
-      break;                                 \
-    case experimental::DataType::FLOAT64:    \
-      func<double>(args);                    \
-      break;                                 \
-    case experimental::DataType::FLOAT16:    \
-      func<gloo::float16>(args);             \
-      break;                                 \
-    case experimental::DataType::INT32:      \
-      func<int32_t>(args);                   \
-      break;                                 \
-    case experimental::DataType::INT64:      \
-      func<int64_t>(args);                   \
-      break;                                 \
-    default:                                 \
-      VLOG(0) << "Error: Unknown DataType."; \
-      exit(-1);                              \
+#define GENERATE_FUNC(type, func, args...)                               \
+  switch (type) {                                                        \
+    case experimental::DataType::FLOAT32:                                \
+      func<float>(args);                                                 \
+      break;                                                             \
+    case experimental::DataType::FLOAT64:                                \
+      func<double>(args);                                                \
+      break;                                                             \
+    case experimental::DataType::FLOAT16:                                \
+      func<gloo::float16>(args);                                         \
+      break;                                                             \
+    case experimental::DataType::INT32:                                  \
+      func<int32_t>(args);                                               \
+      break;                                                             \
+    case experimental::DataType::INT64:                                  \
+      func<int64_t>(args);                                               \
+      break;                                                             \
+    default:                                                             \
+      PADDLE_THROW(platform::errors::Fatal("Unknown data type to use")); \
   }
 #endif
 
 typedef void (*reduce_func)(void*, const void*, const void*, size_t);
 
-template <typename T>
+template <typename T,
+          typename std::enable_if<!std::is_integral<T>::value, int>::type = 0>
 reduce_func get_function(const ReduceOp& r) {
   switch (r) {
     case ReduceOp::SUM:
@@ -97,12 +96,11 @@ reduce_func get_function(const ReduceOp& r) {
     case ReduceOp::MAX:
       return reduce_func(&::gloo::max<T>);
     case ReduceOp::AVG:
-      VLOG(0) << "Error: Unsupported ReduceOp::AVG.";
-      exit(-1);
+      PADDLE_THROW(
+          platform::errors::Fatal("Unsupported op type: ReduceOp::AVG."));
   }
-
-  VLOG(0) << "Error: Unknown ReduceOp.";
-  exit(-1);
+  PADDLE_THROW(
+      platform::errors::Fatal("Unsupported op type for get_function."));
 }
 
 bool CheckTensorsInCPUPlace(const std::vector<Tensor>& tensors) {
@@ -112,38 +110,39 @@ bool CheckTensorsInCPUPlace(const std::vector<Tensor>& tensors) {
 }
 
 template <typename T>
-T* get_data(const Tensor& tensor) {
-  auto raw_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-  return static_cast<T*>(raw_tensor->data());
+T* get_data_pointer(const Tensor& tensor) {
+  auto dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+  return static_cast<T*>(dense_tensor->data());
 }
 
 template <typename T>
-std::vector<T*> get_multi_data(const std::vector<Tensor>& tensors) {
+std::vector<T*> get_data_pointers(const std::vector<Tensor>& tensors) {
   std::vector<T*> ret(tensors.size());
   for (size_t i = 0; i < tensors.size(); i++) {
-    ret[i] = get_data<T>(tensors[i]);
+    ret[i] = get_data_pointer<T>(tensors[i]);
   }
   return ret;
 }
 
 template <typename T, typename P>
 void set_output(P& opts, const Tensor& tensor) {  // NOLINT
-  opts.setOutput(get_data<T>(tensor), tensor.numel());
+  opts.setOutput(get_data_pointer<T>(tensor), tensor.numel());
 }
 
 template <typename T, typename P>
 void set_input(P& opts, const Tensor& tensor) {  // NOLINT
-  opts.setInput(get_data<T>(tensor), tensor.numel());
+  opts.setInput(get_data_pointer<T>(tensor), tensor.numel());
 }
 
 template <typename T, typename P>
 void set_outputs(P& opts, const std::vector<Tensor>& tensors) {  // NOLINT
-  opts.setOutputs(get_multi_data<T>(tensors), tensors[0].numel());
+  opts.setOutputs(get_data_pointers<T>(tensors), tensors[0].numel());
 }
 
 template <typename T, typename P>
 void set_inputs(P& opts, const std::vector<Tensor>& tensors) {  // NOLINT
-  opts.setInputs(get_multi_data<T>(tensors), tensors[0].numel());
+  opts.setInputs(get_data_pointers<T>(tensors), tensors[0].numel());
 }
 
 template <typename T, typename P>
@@ -162,22 +161,15 @@ void set_inputs_for_scatter(P& opts,                             // NOLINT
   opts.setInputs(ret, tensors[0].numel() / nranks);
 }
 
-ProcessGroupGloo::GlooTask::GlooTask(int rank,
-                                     const std::vector<Tensor>& inputs,
-                                     CommType comm_type)
-    : ProcessGroup::Task(rank, inputs, comm_type) {
-  PADDLE_ENFORCE_EQ(CheckTensorsInCPUPlace(inputs), true,
-                    platform::errors::Fatal(
-                        "Only CPU place is supported for ProcessGroupGloo."));
-}
+ProcessGroupGloo::GlooTask::GlooTask(int rank, CommType comm_type)
+    : ProcessGroup::Task(rank, comm_type) {}
 
-ProcessGroupGloo::ProcessGroupGloo(const std::shared_ptr<GlooStore>& store,
+ProcessGroupGloo::ProcessGroupGloo(const std::shared_ptr<Store>& store,
                                    int rank, int world_size,
                                    const std::shared_ptr<GlooOptions> options)
-    : ProcessGroup(rank, world_size), _tag(0), _store(store) {
+    : ProcessGroup(rank, world_size), _tag(0), _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);
-  auto prefix_store =
-      ::gloo::rendezvous::PrefixStore(std::to_string(0), *_store);
+  auto prefix_store = ::gloo::rendezvous::PrefixStore("gloo", *_store);
   _context->connectFullMesh(prefix_store, options->device);
 }
 
@@ -186,21 +178,26 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
   BroadcastGlooTask(const std::shared_ptr<gloo::Context>& context,
                     const std::vector<Tensor>& inputs, int rank, int root,
                     uint32_t tag)
-      : ProcessGroupGloo::GlooTask(rank, inputs, CommType::BROADCAST),
-        _context(context),
-        _root(root),
-        _inputs(inputs),
-        _tag(tag) {}
+      : ProcessGroupGloo::GlooTask(rank, CommType::BROADCAST),
+        PADDLE_ENFORCE_EQ(
+            CheckTensorsInCPUPlace(inputs), true,
+            platform::errors::Fatal(
+                "Only CPU place is supported for ProcessGroupGloo."));
+  _context(context), _root(root), _inputs(inputs), _tag(tag) {}
 
-  void Run() override { _do_broadcast(_inputs[0]); }
+  void Run() override {
+    for (auto& t : inputs) {
+      _do_broadcast(t);
+    }
+  }
 
  private:
   std::shared_ptr<gloo::Context> _context;
   const int _root;
-  std::vector<Tensor> _inputs{};
+  std::vector<Tensor> _inputs;
   const uint32_t _tag;
 
-  void _do_broadcast(const Tensor& tensor) {
+  void _do_broadcast(Tensor& tensor) {  // NOLINT
     gloo::BroadcastOptions opts(_context);
     const auto& dtype = tensor.type();
     GENERATE_FUNC(dtype, set_output, opts, tensor);
@@ -212,11 +209,11 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
     std::vector<Tensor>& inputs, const BroadcastOptions& opts) {
-  auto root = opts.source_rank;
+  auto root = opts.source_root;
   std::unique_ptr<BroadcastGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
-  task = std::make_unique<BroadcastGlooTask>(context, inputs, rank_, root, tag);
+  task = std::make_shared<BroadcastGlooTask>(context, inputs, rank_, root, tag);
   task->Run();
   return task;
 }
@@ -226,7 +223,7 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
   AllreduceGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
                     std::vector<Tensor>& inputs, ReduceOp reduce_op,  // NOLINT
                     uint32_t tag)
-      : ProcessGroupGloo::GlooTask(rank, inputs, CommType::ALLREDUCE),
+      : ProcessGroupGloo::GlooTask(rank, CommType::ALLREDUCE),
         _context(context),
         _inputs(inputs),
         _reduce_op(reduce_op),
@@ -278,8 +275,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
 class BarrierGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   BarrierGlooTask(int rank, const std::shared_ptr<gloo::Context>& context)
-      : ProcessGroupGloo::GlooTask(rank, std::vector<Tensor>{},
-                                   CommType::BARRIER),
+      : ProcessGroupGloo::GlooTask(rank, CommType::BARRIER),
         _context(context) {}
 
   void Run() override { _do_barrier(); }
@@ -305,10 +301,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Barrier(
 class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   AllgatherGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
-                    std::vector<Tensor>& inputs,   // NOLINT
-                    std::vector<Tensor>& outputs,  // NOLINT
+                    std::vector<Tensor>& inputs,                // NOLINT
+                    std::vector<std::vector<Tensor>>& outputs,  // NOLINT
                     uint32_t tag)
-      : ProcessGroupGloo::GlooTask(rank, inputs, CommType::ALLGATHER),
+      : ProcessGroupGloo::GlooTask(rank, CommType::ALLGATHER),
         _context(context),
         _inputs(inputs),
         _outputs(outputs),
@@ -319,17 +315,19 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
  private:
   std::shared_ptr<gloo::Context> _context;
   std::vector<Tensor> _inputs;
-  std::vector<Tensor> _outputs;
+  std::vector<std::vector<Tensor>> _outputs;
   uint32_t _tag;
 
-  void _do_allgather(std::vector<Tensor>& in,     // NOLINT
-                     std::vector<Tensor>& out) {  // NOLINT
+  void _do_allgather(std::vector<Tensor>& in,                  // NOLINT
+                     std::vector<std::vector<Tensor>>& out) {  // NOLINT
     const auto& dtype = in[0].type();
-    gloo::AllgatherOptions opts(_context);
-    GENERATE_FUNC(dtype, set_input, opts, in[0]);
-    GENERATE_FUNC(dtype, set_output, opts, out[0]);
-    opts.setTag(_tag);
-    gloo::allgather(opts);
+    for (size_t i = 0; i < in.size(); i++) {
+      gloo::AllgatherOptions opts(_context);
+      GENERATE_FUNC(dtype, set_input, opts, in[i]);
+      GENERATE_FUNC(dtype, set_outputs, opts, out[i]);
+      opts.setTag(_tag);
+      gloo::allgather(opts);
+    }
   }
 };
 
@@ -349,7 +347,7 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
   ReduceGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
                  std::vector<Tensor>& in, ReduceOp reduce_op,  // NOLINT
                  int dst, uint32_t tag)
-      : ProcessGroupGloo::GlooTask(rank, in, CommType::REDUCE),
+      : ProcessGroupGloo::GlooTask(rank, CommType::REDUCE),
         _context(context),
         _inputs(in),
         _reduce_op(reduce_op),
@@ -380,13 +378,15 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
 
   void _do_reduce(std::vector<Tensor>& tensors, int dst) {  // NOLINT
     const auto& dtype = tensors[0].type();
-    gloo::ReduceOptions opts(_context);
-    GENERATE_FUNC(dtype, set_input, opts, tensors[0]);
-    GENERATE_FUNC(dtype, set_output, opts, tensors[0]);
-    opts.setReduceFunction(_get_function(dtype, _reduce_op));
-    opts.setTag(_tag);
-    opts.setRoot(dst);
-    gloo::reduce(opts);
+    for (auto& t : tensors) {
+      gloo::ReduceOptions opts(_context);
+      GENERATE_FUNC(dtype, set_input, opts, t);
+      GENERATE_FUNC(dtype, set_output, opts, t);
+      opts.setReduceFunction(_get_function(dtype, _reduce_op));
+      opts.setTag(_tag);
+      opts.setRoot(dst);
+      gloo::reduce(opts);
+    }
   }
 };
 
@@ -404,10 +404,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
 class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
  public:
   ScatterGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
-                  std::vector<Tensor>& inputs,   // NOLINT
-                  std::vector<Tensor>& outputs,  // NOLINT
+                  std::vector<std::vector<Tensor>>& inputs,  // NOLINT
+                  std::vector<Tensor>& outputs,              // NOLINT
                   int src, int size, uint32_t tag)
-      : ProcessGroupGloo::GlooTask(rank, inputs, CommType::SCATTER),
+      : ProcessGroupGloo::GlooTask(rank, CommType::SCATTER),
         _context(context),
         _inputs(inputs),
         _outputs(outputs),
@@ -419,7 +419,7 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
 
  private:
   std::shared_ptr<gloo::Context> _context;
-  std::vector<Tensor> _inputs;
+  std::vector<std::vector<Tensor>> _inputs;
   std::vector<Tensor> _outputs;
   int _src;
   int _size;
@@ -428,14 +428,16 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
   void _do_scatter(std::vector<Tensor>& in, std::vector<Tensor>& out,  // NOLINT
                    int src) {
     const auto& dtype = in[0].type();
-    gloo::ScatterOptions opts(_context);
-    if (rank_ == src) {
-      GENERATE_FUNC(dtype, set_inputs_for_scatter, opts, in, _size);
+    for (size_t i = 0; i < in.size(); i++) {
+      gloo::ScatterOptions opts(_context);
+      if (rank_ == src) {
+        GENERATE_FUNC(dtype, set_inputs, opts, in[i]);
+      }
+      GENERATE_FUNC(dtype, set_output, opts, out[i]);
+      opts.setRoot(src);
+      opts.setTag(_tag);
+      gloo::scatter(opts);
     }
-    GENERATE_FUNC(dtype, set_output, opts, out[0]);
-    opts.setRoot(src);
-    opts.setTag(_tag);
-    gloo::scatter(opts);
   }
 };
 

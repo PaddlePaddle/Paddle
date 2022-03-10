@@ -20,18 +20,18 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/store/tcp_utils.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
 
-constexpr auto kWaitTimeout = std::chrono::milliseconds(0);
-
 namespace paddle {
 namespace distributed {
 
 using Tensor = paddle::experimental::Tensor;
+constexpr auto kProcessGroupNoTimeout = std::chrono::milliseconds::zero();
 
 enum class CommType : std::uint8_t {
   BROADCAST = 0,
@@ -49,30 +49,24 @@ enum class CommType : std::uint8_t {
   UNKNOWN = 100,
 };
 
-struct ProcessGroupStrategy {
-  int nranks_{1};
-  int local_rank_{0};
-  std::vector<std::string> trainer_endpoints_{};
-  std::string current_endpoint_{""};
-  int nrings_{1};
-};
+std::string commTypeToString(CommType commType);
 
 class ProcessGroup {
  public:
   class Task {
    public:
-    Task(int rank, const std::vector<Tensor>& inputTensors,
-         CommType opType = CommType::UNKNOWN);
+    explicit Task(int rank, CommType opType = CommType::UNKNOWN);
 
     virtual ~Task();
     virtual bool IsCompleted();
-    virtual bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
+    virtual bool Wait(
+        std::chrono::milliseconds timeout = kProcessGroupNoTimeout);
     virtual void Synchronize();
 
    protected:
     const int rank_;
     CommType comm_type_;
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     bool is_completed_ = false;
   };
 
@@ -88,61 +82,61 @@ class ProcessGroup {
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<Tensor>& /* tensors */,
       const AllreduceOptions& = AllreduceOptions()) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::Fatal(
         "ProcessGroup%s does not support allreduce", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<Tensor>& /* tensors */,
       const BroadcastOptions& = BroadcastOptions()) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::Fatal(
         "ProcessGroup%s does not support broadcast", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::Fatal(
         "ProcessGroup%s does not support barrier", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
       std::vector<Tensor>& tensors /* tensors */, int dst_rank) {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support send", GetBackendName()));
+    PADDLE_THROW(platform::errors::Fatal("ProcessGroup%s does not support send",
+                                         GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv(
       std::vector<Tensor>& tensors /* tensors */, int src_rank) {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::Fatal(
         "ProcessGroup%s does not support receive", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<Tensor>& in_tensors /* tensors */,     // NOLINT
-      std::vector<Tensor>& out_tensors /* tensors */) {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
+      std::vector<Tensor>& in_tensors /* tensors */,    // NOLINT
+      std::vector<std::vector<Tensor>>& out_tensors) {  // NOLINT
+    PADDLE_THROW(platform::errors::Fatal(
         "ProcessGroup%s does not support AllGather", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<Tensor>& in /* tensors */,     // NOLINT
       std::vector<Tensor>& out /* tensors */) {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::Fatal(
         "ProcessGroup%s does not support AllToAll", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<Tensor>& tensors /* tensors */,  // NOLINT
       const ReduceOptions& opts) {                 // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::Fatal(
         "ProcessGroup%s does not support Reduce", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<Tensor>& in_tensors /* tensors */,   // NOLINT
-      std::vector<Tensor>& out_tensors /* tensors */,  // NOLINT
-      const ScatterOptions&) {                         // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
+      std::vector<std::vector<Tensor>>& in_tensors /* tensors */,  // NOLINT
+      std::vector<Tensor>& out_tensors /* tensors */,              // NOLINT
+      const ScatterOptions&) {                                     // NOLINT
+    PADDLE_THROW(platform::errors::Fatal(
         "ProcessGroup%s does not support Scatter", GetBackendName()));
   }
 

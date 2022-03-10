@@ -19,6 +19,7 @@
 #include "paddle/fluid/distributed/store/tcp_store.h"
 #include "paddle/fluid/distributed/store/tcp_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace distributed {
@@ -136,10 +137,6 @@ void MasterDaemon::run() {
     }
 
     for (size_t i = 1; i < fds.size(); i++) {
-      VLOG(0) << "fds.size:" << fds.size();
-      VLOG(0) << "fds.size-i:" << i;
-      VLOG(0) << "fds[i].revents:" << fds[i].revents;
-
       try {
         if (fds[i].revents == 0) {
           continue;
@@ -166,8 +163,8 @@ void MasterDaemon::run() {
             _do_stop(fds[i].fd);
             break;
           default:
-            VLOG(0) << "Unknow command: " << static_cast<int>(command);
-            exit(-1);
+            PADDLE_THROW(platform::errors::InvalidArgument(
+                "Unknow TCPStore command %d.", static_cast<int>(command)));
         }
       } catch (...) {
         fds.erase(fds.begin() + i);

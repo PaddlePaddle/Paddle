@@ -26,8 +26,9 @@
 namespace paddle {
 namespace distributed {
 
-enum class ReplyType { WAITING, STOP_WAIT };
-enum class Command { ADD, GET, SET, WAIT, STOP };
+enum class ReplyType : uint8_t { WAITING, STOP_WAIT };
+
+enum class Command : uint8_t { ADD, GET, SET, WAIT, STOP };
 
 namespace detail {
 

@@ -24,7 +24,6 @@
 #endif
 
 #include "paddle/fluid/distributed/store/store.h"
-#include "paddle/fluid/distributed/store/tcp_store.h"
 
 constexpr const char* GLOO_BACKEND_NAME = "GLOO";
 
@@ -52,14 +51,12 @@ class ProcessGroupGloo : public ProcessGroup {
 
   class GlooStore : public ::gloo::rendezvous::Store {
    public:
-    explicit GlooStore(
-        const std::shared_ptr<paddle::distributed::TCPStore>& store)
+    explicit GlooStore(const std::shared_ptr<paddle::distributed::Store>& store)
         : _store(store) {}
 
     ~GlooStore() = default;
 
     std::vector<char> get(const std::string& key) override {
-      VLOG(3) << "GlooStore::get";
       auto value = _store->get(key);
       return std::vector<char>(value.begin(), value.end());
     }
@@ -72,22 +69,21 @@ class ProcessGroupGloo : public ProcessGroup {
     }
 
     void set(const std::string& key, const std::vector<char>& value) override {
-      VLOG(3) << "GlooStore::set";
       std::vector<uint8_t> tmp(value.begin(), value.end());
       _store->set(key, tmp);
     }
 
+    void wait(const std::vector<std::string>& keys) override {
+      _store->wait(keys, kDefaultTimeout);
+    }
+
     void wait(const std::vector<std::string>& keys,
               const std::chrono::milliseconds& timeout) override {
-      VLOG(3) << "GlooStore::wait";
-      for (auto& key : keys) {
-        _store->wait(key);
-      }
-      // wait(keys);
+      _store->wait(keys, timeout);
     }
 
    protected:
-    std::shared_ptr<paddle::distributed::TCPStore> _store;
+    std::shared_ptr<distributed::Store> _store;
   };
 
   class GlooOptions {
@@ -97,12 +93,12 @@ class ProcessGroupGloo : public ProcessGroup {
     static std::shared_ptr<GlooOptions> create() {
       return std::make_shared<GlooOptions>();
     }
-    std::shared_ptr<::gloo::transport::Device> device;
+    std::vector<std::shared_ptr<::gloo::transport::Device>> devices;
   };
 
-  explicit ProcessGroupGloo(const std::shared_ptr<GlooStore>& store, int rank,
-                            int world_size,
-                            std::shared_ptr<GlooOptions> options);
+  explicit ProcessGroupGloo(
+      const std::shared_ptr<Store>& store, int rank, int world_size,
+      std::shared_ptr<GlooOptions> options = GlooOptions::create());
 
   ~ProcessGroupGloo() = default;
 
@@ -119,14 +115,16 @@ class ProcessGroupGloo : public ProcessGroup {
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<Tensor>& in_tensors,
-      std::vector<Tensor>& out_tensors) override;
+      std::vector<std::vector<Tensor>>& out_tensors) override;
 
   std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<Tensor>& tensors, const ReduceOptions& opts) override;
+      std::vector<Tensor>& tensors,
+      const ReduceOptions& opts = ReduceOptions()) override;
 
-  std::shared_ptr<ProcessGroup::Task> Scatter(std::vector<Tensor>& in_tensors,
-                                              std::vector<Tensor>& out_tensors,
-                                              const ScatterOptions&) override;
+  std::shared_ptr<ProcessGroup::Task> Scatter(
+      std::vector<std::vector<Tensor>>& in_tensors,
+      std::vector<Tensor>& out_tensors,
+      const ScatterOptions& opts = ScatterOptions()) override;
 
   std::shared_ptr<::gloo::Context> get_context() { return _context; }
   uint64_t next_tag() { return _tag++; }
@@ -145,7 +143,7 @@ class ProcessGroupGloo : public ProcessGroup {
  protected:
   uint32_t _tag;
   std::shared_ptr<gloo::rendezvous::Context> _context;
-  std::shared_ptr<GlooStore> _store;
+  std::shared_ptr<Store> _store;
 };
 
 }  // namespace distributed
