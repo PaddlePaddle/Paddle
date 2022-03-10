@@ -32,18 +32,11 @@ from paddle.fluid.initializer import NumpyArrayInitializer
 
 
 def init_process_group(strategy=None):
-    # this will remove
-    if strategy is None:
-        strategy = core.ProcessGroupStrategy()
-        strategy.nranks = ParallelEnv().nranks
-        strategy.local_rank = ParallelEnv().local_rank
-        strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
-        strategy.current_endpoint = ParallelEnv().current_endpoint
-    if strategy.nranks < 2:
-        return
-
-    group = core.ProcessGroupNCCL(strategy, strategy.local_rank,
-                                  strategy.nranks)
+    nranks = ParallelEnv().nranks
+    rank = ParallelEnv().local_rank
+    is_master = True if rank == 0 else False
+    store = paddle.fluid.core.TCPStore("127.0.0.1", 6172, is_master, nranks)
+    group = core.ProcessGroupNCCL(store, rank, nranks)
     return group
 
 
@@ -86,7 +79,7 @@ class TestDistTraning(unittest.TestCase):
         inp = np.random.rand(10, 50)
 
         # original reducer
-        params_a = self.model_train(attr_list, inp, process_group=None)
+        params_a = self.model_train(attr_list, inp)
 
         # refactored reducer in eager mode
         with _test_eager_guard():
@@ -99,7 +92,7 @@ class TestDistTraning(unittest.TestCase):
 
     def model_train(self, attr_list, inp, process_group=None):
         model = LinearModel(attr_list)
-        model = paddle.DataParallel(model)
+        model = paddle.DataParallel(model, process_group=process_group)
         optimizer = SGD(learning_rate=0.0003, parameters=model.parameters())
 
         x = paddle.to_tensor(inp, dtype="float32")

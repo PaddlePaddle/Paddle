@@ -17,6 +17,7 @@
 #include <map>
 #include <vector>
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
@@ -39,7 +40,7 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
     const std::vector<size_t> &group_size_limits,
     const std::vector<int64_t> &tensor_indices = {});
 
-class Group {
+class EagerGroup {
  public:
   Tensor tensor_;
 
@@ -59,7 +60,7 @@ class Group {
   // external message of group
   phi::DataType dtype_;
 
-  friend std::ostream &operator<<(std::ostream &, const Group &);
+  friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };
 
 struct TensorLocator {
@@ -74,32 +75,32 @@ class EagerReducer {
       const std::vector<Tensor> tensors,
       const std::vector<std::vector<size_t>> &group_indices,
       const std::vector<bool> &is_sparse_gradient,
-      std::shared_ptr<distributed::ProcessGroup> process_group,
+      std::shared_ptr<distributed::ProcessGroupNCCL> process_group,
       const std::vector<size_t> &group_size_limits,
       bool find_unused_parameters);
 
   virtual ~EagerReducer() {}
 
-  std::shared_ptr<egr::GradNodeBase> GetGradNodeFromTensor(Tensor &tensor);
+  std::shared_ptr<egr::GradNodeBase> GetGradNodeFromTensor(Tensor *tensor);
 
   void InitializeGroups(const std::vector<std::vector<size_t>> &group_indices);
   void InitializeDenseGroups(const std::vector<size_t> &tensor_indices_,
-                             Group *p_group);
+                             EagerGroup *p_group);
   void PrepareForBackward(const std::vector<Tensor> &outputs);
   void AddDistHook(size_t var_index);
   void MarkVarReady(const size_t var_index, const bool is_used_var);
   void MarkGroupReady(const size_t group_index);
-  void FusedAllReduceSchedule(Group &group, const int curr_group_index);
+  void FusedAllReduceSchedule(EagerGroup *group, const int curr_group_index);
 
  private:
   std::vector<Tensor> tensors_;
   std::vector<std::vector<size_t>> group_indices_;
   std::vector<bool> is_sparse_gradient_;
-  std::shared_ptr<distributed::ProcessGroup> process_group_;
+  std::shared_ptr<distributed::ProcessGroupNCCL> process_group_;
   std::vector<size_t> group_size_limits_;
   bool find_unused_vars_each_step_;
 
-  std::vector<Group> groups_;
+  std::vector<EagerGroup> groups_;
   std::vector<TensorLocator> variable_locators_;
   PlaceType place_;
   size_t next_group_ = 0;

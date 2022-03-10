@@ -131,7 +131,7 @@ EagerReducer::EagerReducer(
     const std::vector<Tensor> tensors,
     const std::vector<std::vector<size_t>> &group_indices,
     const std::vector<bool> &is_sparse_gradient,
-    std::shared_ptr<distributed::ProcessGroup> process_group,
+    std::shared_ptr<distributed::ProcessGroupNCCL> process_group,
     const std::vector<size_t> &group_size_limits, bool find_unused_parameters)
     : tensors_(tensors),
       group_indices_(group_indices),
@@ -153,7 +153,7 @@ EagerReducer::EagerReducer(
       this->AddDistHook(global_var_index);
     };
 
-    const auto &grad_node = GetGradNodeFromTensor(tensor);
+    const auto &grad_node = GetGradNodeFromTensor(&tensor);
 
     PADDLE_ENFORCE(
         grad_node.get() != nullptr,
@@ -171,8 +171,8 @@ EagerReducer::EagerReducer(
 }
 
 std::shared_ptr<egr::GradNodeBase> EagerReducer::GetGradNodeFromTensor(
-    Tensor &tensor) {
-  auto *autograd_meta = tensor.get_autograd_meta();
+    Tensor *tensor) {
+  auto *autograd_meta = tensor->get_autograd_meta();
   const auto &grad_node =
       static_cast<egr::AutogradMeta *>(autograd_meta)->GetMutableGradNode();
   return grad_node;
@@ -197,7 +197,7 @@ void EagerReducer::InitializeGroups(
         platform::errors::PreconditionNotMet(
             "The number of group[%d]'s elements is 0.", group_index));
 
-    Group group;
+    EagerGroup group;
 
     // It's just for check the sparse or dense
     auto first_var = tensors_[tensor_indices_.front()];
@@ -226,7 +226,7 @@ void EagerReducer::InitializeGroups(
 }
 
 void EagerReducer::InitializeDenseGroups(
-    const std::vector<size_t> &tensor_indices_, Group *p_group) {
+    const std::vector<size_t> &tensor_indices_, EagerGroup *p_group) {
   VLOG(3) << "InitializeDenseGroups.";
   int64_t all_length = 0;
   for (size_t index = 0; index < tensor_indices_.size(); ++index) {
@@ -261,7 +261,7 @@ void EagerReducer::PrepareForBackward(const std::vector<Tensor> &outputs) {
   VLOG(3) << "after forward, then reset count for backward.";
   grad_need_hooks_ = true;
   next_group_ = 0;
-  std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
+  std::for_each(groups_.begin(), groups_.end(), [](EagerGroup &group) {
     group.pending_ = group.tensor_indices_.size();
   });
 
@@ -283,7 +283,7 @@ void EagerReducer::AddDistHook(size_t var_index) {
   }
 
   auto &tensor = tensors_[var_index];
-  const auto &grad_node = GetGradNodeFromTensor(tensor);
+  const auto &grad_node = GetGradNodeFromTensor(&tensor);
 
   VLOG(3) << "Var[" << var_index << "] [" << (*grad_node).name()
           << "] arrived and triggered disthook";
@@ -331,7 +331,7 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     UNUSED auto &group = groups_[next_group_];
-    FusedAllReduceSchedule(group, next_group_);
+    FusedAllReduceSchedule(&group, next_group_);
   }
 
   auto &group = groups_[group_index];
@@ -347,7 +347,7 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
   }
 }
 
-void EagerReducer::FusedAllReduceSchedule(Group &group,
+void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
                                           const int curr_group_index) {
   // The overall timeline: concat > div_nranks > allreduce > split
   // dev_context is used to select different stream
@@ -357,43 +357,45 @@ void EagerReducer::FusedAllReduceSchedule(Group &group,
   VLOG(3) << "group [" << curr_group_index << "] start fused_allreduce.";
 
   // concat tensors
-  if (group.dense_tensors_.size() == 1) {
-    group.tensor_ = group.dense_tensors_[0];
+  if (group->dense_tensors_.size() == 1) {
+    group->tensor_ = group->dense_tensors_[0];
   } else {
     std::vector<Tensor> concat_tensors_;
-    for (size_t index = 0; index < group.dense_tensors_.size(); ++index) {
-      auto &tensor = group.dense_tensors_[index];
+    for (size_t index = 0; index < group->dense_tensors_.size(); ++index) {
+      auto &tensor = group->dense_tensors_[index];
       concat_tensors_.push_back(paddle::experimental::reshape(
-          tensor, ScalarArray({group.length_[index]})));
+          tensor, ScalarArray({group->length_[index]})));
     }
-    group.tensor_ = paddle::experimental::concat(concat_tensors_, Scalar(0));
+    group->tensor_ = paddle::experimental::concat(concat_tensors_, Scalar(0));
     concat_tensors_.clear();
   }
 
   // div nranks
   double scaling = 1.0 / nranks_;
-  paddle::experimental::scale_(group.tensor_, scaling, 0.0, false);
+  paddle::experimental::scale_(group->tensor_, scaling, 0.0, false);
 
   // allreduce
-  std::vector<Tensor> reduce_tensors = {group.tensor_};
-  process_group_->AllReduce(reduce_tensors, opts)->Synchronize();
+  std::vector<Tensor> reduce_tensors = {group->tensor_};
+  auto task = process_group_->AllReduce(reduce_tensors, opts);
+  auto nccl_task = dynamic_cast<ProcessGroupNCCL::NCCLTask *>(task.get());
+  nccl_task->Synchronize();
 
   // split tensors
-  if (group.dense_tensors_.size() == 1) {
-    group.dense_tensors_[0] = group.tensor_;
+  if (group->dense_tensors_.size() == 1) {
+    group->dense_tensors_[0] = group->tensor_;
   } else {
     std::vector<Tensor> split_tensors_ = paddle::experimental::split(
-        group.tensor_, ScalarArray(group.length_), Scalar(0));
-    for (size_t index = 0; index < group.dense_tensors_.size(); ++index) {
+        group->tensor_, ScalarArray(group->length_), Scalar(0));
+    for (size_t index = 0; index < group->dense_tensors_.size(); ++index) {
       auto &tensor = split_tensors_[index];
-      group.dense_tensors_[index].impl().reset();
-      group.dense_tensors_[index].set_impl(std::move(tensor.impl()));
+      group->dense_tensors_[index].impl().reset();
+      group->dense_tensors_[index].set_impl(std::move(tensor.impl()));
     }
     split_tensors_.clear();
   }
 }
 
-std::ostream &operator<<(std::ostream &out, const Group &group) {
+std::ostream &operator<<(std::ostream &out, const EagerGroup &group) {
   const auto &tensors_ = group.tensor_indices_;
   out << "numel: " << group.all_length_ << " ;var number: " << tensors_.size()
       << "\n";

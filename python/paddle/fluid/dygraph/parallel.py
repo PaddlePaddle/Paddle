@@ -269,8 +269,7 @@ Env = ParallelEnv
 
 
 def _build_default_parallel_strategy():
-    strategy = core.ProcessGroupStrategy() if _in_eager_mode(
-    ) else ParallelStrategy()
+    strategy = ParallelStrategy()
     strategy.nranks = ParallelEnv().nranks
     strategy.local_rank = ParallelEnv().local_rank
     strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
@@ -605,9 +604,9 @@ class DataParallel(layers.Layer):
             "constructing the DataParallel."
 
             if self.process_group is None and _in_eager_mode():
-                self.process_group = core.ProcessGroupNCCL(
-                    self._strategy, self._strategy.local_rank,
-                    self._strategy.nranks)
+                raise RuntimeError(
+                    "Process group should be built in DataParallel of eager mode."
+                )
 
             # sync buffer and params
             # TODO(liuyuhui) Currently not support xpu. xpu is 
