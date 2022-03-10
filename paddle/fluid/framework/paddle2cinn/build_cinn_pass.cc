@@ -401,16 +401,6 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     return result;
   };
 
-  auto cluster_debug_info = [](const GraphNodeSet& cluster) {
-    std::string res = "(";
-    for (auto* node : cluster) {
-      res.append(node->Name());
-      res.append(", ");
-    }
-    res.append(")");
-    return res;
-  };
-
   subgraph->Set<std::vector<std::string>>(
       kInternalVars, collect_names_fn(cluster_internals, {}).release());
   subgraph->Set<std::vector<std::string>>(
