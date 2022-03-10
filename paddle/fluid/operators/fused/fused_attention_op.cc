@@ -145,12 +145,34 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
       // [2, batch_size, num_head, cache_seq_len, head_size]
       auto c_dim = ctx->GetInputDim("CacheKV");
 
-      PADDLE_ENFORCE_EQ(c_dim.size(), 5);
-      PADDLE_ENFORCE_EQ(c_dim[0], 2);         // 2
-      PADDLE_ENFORCE_EQ(c_dim[1], x_dim[0]);  // batch_size
-      PADDLE_ENFORCE_EQ(c_dim[2], y_dim[1]);  // num_head
-      PADDLE_ENFORCE_GE(c_dim[3], 0);         // cache_seq_len
-      PADDLE_ENFORCE_EQ(c_dim[4], y_dim[2]);  // head_size
+      PADDLE_ENFORCE_EQ(
+          c_dim.size(), 5,
+          paddle::platform::errors::InvalidArgument(
+              "The CacheKV must be 5 dims, but got %d", c_dim.size()));
+      PADDLE_ENFORCE_EQ(c_dim[0], 2,
+                        paddle::platform::errors::InvalidArgument(
+                            "The first dim of CacheKV must be 2, but got %d",
+                            c_dim[0]));  // 2
+      PADDLE_ENFORCE_EQ(c_dim[1], x_dim[0],
+                        paddle::platform::errors::InvalidArgument(
+                            "The second dim of CacheKV must be equal with "
+                            "batch size %d, but got %d",
+                            x_dim[0], c_dim[1]));  // batch_size
+      PADDLE_ENFORCE_EQ(c_dim[2], y_dim[1],
+                        paddle::platform::errors::InvalidArgument(
+                            "The third dim of CacheKV must be equal with num "
+                            "head %d, but got %d",
+                            y_dim[1], c_dim[2]));  // num_head
+      PADDLE_ENFORCE_GE(
+          c_dim[3], 0,
+          paddle::platform::errors::InvalidArgument(
+              "The forth dim of CacheKV must be greater than 0, but got %d",
+              c_dim[3]));  // cache_seq_len
+      PADDLE_ENFORCE_EQ(c_dim[4], y_dim[2],
+                        paddle::platform::errors::InvalidArgument(
+                            "The fifth dim of CacheKV must be equal with head "
+                            "size %d, but got %d",
+                            y_dim[2], c_dim[4]));  // head_size
 
       out_seq_len += c_dim[3];
       // [3, batch_size, num_head, cache_seq_len + seq_len, head_size]
