@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/dropout_op.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -177,14 +177,3 @@ REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
                   ops::DropoutGradOpMaker<paddle::framework::OpDesc>,
                   ops::DropoutGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::bfloat16>);
-REGISTER_OP_CPU_KERNEL(
-    dropout_grad,
-    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::DropoutGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::bfloat16>);
