@@ -40,15 +40,21 @@ const std::unordered_set<std::string> standard_kernel_suffixs({
 const std::unordered_set<std::string> deprecated_op_names({"diag",
                                                            "flatten",
                                                            "flatten_grad",
+                                                           "isinf",
+                                                           "isnan",
+                                                           "isfinite",
                                                            "matmul",
                                                            "matmul_grad",
                                                            "matmul_grad_grad",
                                                            "mean",
+                                                           "max",
                                                            "reshape",
                                                            "reshape_grad",
                                                            "expand",
                                                            "expand_grad",
-                                                           "sum"});
+                                                           "sum",
+                                                           "top_k",
+                                                           "top_k_grad"});
 
 class DefaultKernelSignatureMap {
  public:
