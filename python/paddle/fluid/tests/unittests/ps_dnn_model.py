@@ -331,4 +331,3 @@ class StaticModel():
         fetch_dict = {'cost': avg_cost, 'auc': auc}
         self._cost = avg_cost
         return fetch_dict
-        
