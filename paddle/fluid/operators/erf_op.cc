@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -108,7 +107,7 @@ class ErfGradOpMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(erf, ErfInferShapeFunctor,
-                            PD_INFER_META(phi::ErfInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(erf, ops::ErfOp, ops::ErfOpMaker,
                   ops::ErfGradOpMaker<paddle::framework::OpDesc>,
                   ops::ErfGradOpMaker<paddle::imperative::OpBase>,
