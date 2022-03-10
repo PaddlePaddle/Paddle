@@ -18,6 +18,58 @@ limitations under the License. */
 
 namespace phi {
 
+void AccuracyInferMeta(const MetaTensor& out,
+                       const MetaTensor& indice,
+                       const MetaTensor& label,
+                       MetaTensor* accuracy,
+                       MetaTensor* correct,
+                       MetaTensor* total,
+                       MetaConfig config) {
+  auto inference_dim = out.dims();
+  auto label_dim = label.dims();
+  // Assume indices has same shape as inference, because
+  // it's the output of topk.
+  PADDLE_ENFORCE_EQ(
+      label_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: label's dimensions of AccuracyOp must be 2. "
+          "But received label's dimensions = %d, label's shape = [%s]",
+          label_dim.size(),
+          label_dim));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(label_dim[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: label's second dimension of "
+                          "AccuracyOp must be 1. But received label's "
+                          "second dimension is = %d, label's shape = [%s]",
+                          label_dim[1],
+                          label_dim));
+    PADDLE_ENFORCE_EQ(
+        inference_dim[0],
+        label_dim[0],
+        phi::errors::InvalidArgument(
+            "ShapeError: the output's num_rows of AccuracyOp must be"
+            " the same as label's num_rows. But received output's "
+            "shape = [%s], label's shape = [%s], output's num_rows = %d, "
+            "label's "
+            "num_rows = %d",
+            inference_dim,
+            label_dim,
+            inference_dim[0],
+            label_dim[0]));
+  }
+
+  accuracy->set_dims({1});
+  accuracy->set_dtype(out.dtype());
+  correct->set_dims({1});
+  correct->set_dtype(out.dtype());
+  total->set_dims({1});
+  total->set_dtype(out.dtype());
+  accuracy->share_lod(out);
+}
+
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
                     const MetaTensor& y,
