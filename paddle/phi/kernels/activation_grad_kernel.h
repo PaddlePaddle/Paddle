@@ -81,11 +81,11 @@ void LeakyReluDoubleGradKernel(const Context& dev_ctx,
                                DenseTensor* ddout);
 
 template <typename T, typename Context>
-void ThresholdedGradKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& dout,
-                           float threshold,
-                           DenseTensor* dx);
+void ThresholdedReluGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& dout,
+                               float threshold,
+                               DenseTensor* dx);
 
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Cos);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Tan);
