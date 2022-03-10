@@ -110,7 +110,8 @@ class FlDNNLayer(nn.Layer):
         self.slot_num = sparse_number
         self.dense_feature_dim = dense_feature_dim
 
-        layer_sizes_a = [self.slot_num * self.sparse_feature_dim, 5, 7]  # for test
+        layer_sizes_a = [self.slot_num * self.sparse_feature_dim, 5,
+                         7]  # for test
         layer_sizes_b = [self.dense_feature_dim, 6, 7]
         layer_sizes_top = [7, 2]
 
@@ -183,9 +184,10 @@ class FlDNNLayer(nn.Layer):
             y = self._mlp_layers_a[1](y)
 
             y = self._mlp_layers_a[2](y)
-        with paddle.fluid.device_guard(self.PART_A_JOINT_OP_DEVICE_FlAG):  # joint point
+        with paddle.fluid.device_guard(
+                self.PART_A_JOINT_OP_DEVICE_FlAG):  # joint point
             bottom_a = self._mlp_layers_a[3](y)
-        
+
         return bottom_a
 
     def bottom_b_layer(self, dense_inputs):
@@ -199,8 +201,10 @@ class FlDNNLayer(nn.Layer):
         return bottom_b
 
     def interactive_layer(self, bottom_a, bottom_b):
-        with paddle.fluid.device_guard(self.PART_B_JOINT_OP_DEVICE_FlAG):  # joint point
-            interactive = paddle.fluid.layers.elementwise_add(bottom_a, bottom_b)
+        with paddle.fluid.device_guard(
+                self.PART_B_JOINT_OP_DEVICE_FlAG):  # joint point
+            interactive = paddle.fluid.layers.elementwise_add(bottom_a,
+                                                              bottom_b)
         return interactive
 
     def top_layer(self, interactive, label_input):
@@ -212,9 +216,9 @@ class FlDNNLayer(nn.Layer):
                 self.batch_stat_pos, self.batch_stat_neg, self.stat_pos,
                 self.stat_neg
             ] = paddle.static.auc(input=predict_2d,
-                                label=label_input,
-                                num_thresholds=2**12,
-                                slide_steps=20)
+                                  label=label_input,
+                                  num_thresholds=2**12,
+                                  slide_steps=20)
 
             cost = paddle.nn.functional.cross_entropy(
                 input=y_top, label=label_input)
@@ -225,7 +229,7 @@ class FlDNNLayer(nn.Layer):
     def forward(self, sparse_inputs, dense_inputs, label_input):
         bottom_a = self.bottom_a_layer(sparse_inputs)
 
-        bottom_b = self.bottom_b_layer(dense_inputs)   
+        bottom_b = self.bottom_b_layer(dense_inputs)
 
         interactive = self.interactive_layer(bottom_a, bottom_b)
 
@@ -314,7 +318,7 @@ class StaticModel():
         fetch_dict = {'cost': avg_cost, 'auc': auc}
         return fetch_dict
 
-    def fl_net(self, input, is_infer=False):        
+    def fl_net(self, input, is_infer=False):
         self.label_input = input[0]
         self.sparse_inputs = input[1:self.sparse_inputs_slots]
         self.dense_input = input[-1]
@@ -327,7 +331,8 @@ class StaticModel():
             self.sparse_number,
             sync_mode=self.sync_mode)
 
-        auc, avg_cost = fl_dnn_model.forward(self.sparse_inputs, self.dense_input, self.label_input)
+        auc, avg_cost = fl_dnn_model.forward(self.sparse_inputs,
+                                             self.dense_input, self.label_input)
         fetch_dict = {'cost': avg_cost, 'auc': auc}
         self._cost = avg_cost
         return fetch_dict
