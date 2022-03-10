@@ -172,7 +172,9 @@ TEST(CustomKernel, custom_kernel_dot) {
               fake_dot_kernels.end());
 
   // register
-  phi::RegisterCustomKernels(phi::CustomKernelMap::Instance());
+  phi::CustomKernelMap::Instance().RegisterCustomKernels();
+
+  EXPECT_EQ(0, static_cast<int>(custom_fake_dot_kernels.size()));
 
   EXPECT_TRUE(fake_dot_kernels.find(
                   phi::KernelKey(backend, layout, phi::DataType::FLOAT32)) !=
