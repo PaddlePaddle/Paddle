@@ -321,7 +321,11 @@ int ProductRuleBook(const Context& dev_ctx,
         dev_ctx,
         DenseTensorMeta(DataType::INT32, {rulebook_len}, DataLayout::NCHW));
 
+#ifdef PADDLE_WITH_HIP
+    thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
     thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                            counter_ptr,
                            counter_ptr + kernel_size,
                            offsets_ptr);
@@ -349,7 +353,11 @@ int ProductRuleBook(const Context& dev_ctx,
       int* key_result_start = (i == 0 ? key_result.data<int>() : end.first);
       int* val_result_start = i == 0 ? val_result.data<int>() : end.second;
       end =
+#ifdef PADDLE_WITH_HIP
+          thrust::set_difference_by_key(thrust::hip::par.on(dev_ctx.stream()),
+#else
           thrust::set_difference_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                                         A_key_ptr + start,
                                         A_key_ptr + stop,
                                         B_key_ptr,
@@ -386,8 +394,12 @@ int ProductRuleBook(const Context& dev_ctx,
                                                         kernel_size,
                                                         rulebook_ptr,
                                                         counter_ptr);
-    // remove -1
+// remove -1
+#ifdef PADDLE_WITH_HIP
+    int* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
+#else
     int* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                                rulebook_ptr,
                                rulebook_ptr + 3 * rulebook_len,
                                -1);
