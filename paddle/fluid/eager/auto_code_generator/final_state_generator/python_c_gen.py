@@ -137,7 +137,7 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
         fwd_api_name, pythonc_event_str, fwd_api_name, get_eager_tensor_str,
-        parse_attributes_str, fwd_api_name, dygraph_function_call_str)
+        parse_attributes_str, fwd_function_name, dygraph_function_call_str)
 
     python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}}\n"
 
