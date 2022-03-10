@@ -35,6 +35,7 @@ class TestFlPs(unittest.TestCase):
         pass
 
     def test_fl_cpu_async(self):
+        os.environ['WITH_DISTRIBUTE'] = 'ON'
         # 0. get role
         import paddle.distributed.fleet.base.role_maker as role_maker
         role_maker = role_maker.PaddleCloudRoleMaker()
