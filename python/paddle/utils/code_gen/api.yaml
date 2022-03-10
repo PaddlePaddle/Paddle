@@ -395,13 +395,13 @@
   kernel :
     func : not_equal
 
-- api : equal_all
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : CompareAllInferMeta
-  kernel :
-    func : equal_all
+# - api : equal_all
+#   args : (Tensor x, Tensor y)
+#   output : Tensor
+#   infer_meta :
+#     func : CompareAllInferMeta
+#   kernel :
+#     func : equal_all
 
 
 - api : huber_loss

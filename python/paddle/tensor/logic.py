@@ -61,9 +61,6 @@ def equal_all(x, y, name=None):
           print(result2) # result2 = [False ]
     """
     if paddle.in_dynamic_mode():
-        if _in_eager_mode():
-            return _C_ops.final_state_equal_all(x, y)
-
         return _C_ops.equal_all(x, y)
 
     helper = LayerHelper("equal_all", **locals())
