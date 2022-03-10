@@ -16,11 +16,11 @@
 
 #include <algorithm>
 #include <vector>
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -127,19 +127,19 @@ void PsroiPoolGradKernel(const Context& ctx,
     int rois_batch_size;
     if (rois_num.get_ptr()) {
       rois_batch_size = rois_num->numel();
-      std::vector<int> rois_num_t_list(rois_batch_size);
+      std::vector<int> rois_num_list(rois_batch_size);
       paddle::memory::Copy(CPUPlace(),
-                           rois_num_t_list.data(),
+                           rois_num_list.data(),
                            ctx.GetPlace(),
                            rois_num->data<int>(),
                            sizeof(int) * rois_batch_size,
                            0);
       int start = 0;
       for (int n = 0; n < rois_batch_size; ++n) {
-        for (int i = start; i < start + rois_num_t_list[n]; ++i) {
+        for (int i = start; i < start + rois_num_list[n]; ++i) {
           rois_batch_id_data[i] = n;
         }
-        start += rois_num_t_list[n];
+        start += rois_num_list[n];
       }
     } else {
       auto rois_lod = rois.lod().back();
@@ -152,8 +152,11 @@ void PsroiPoolGradKernel(const Context& ctx,
     }
 
     DenseTensor rois_batch_id_list_gpu;
-    paddle::framework::TensorCopy(
-        rois_batch_id_list, ctx.GetPlace(), ctx, &rois_batch_id_list_gpu);
+    Copy(ctx,
+         rois_batch_id_list,
+         ctx.GetPlace(),
+         false,
+         &rois_batch_id_list_gpu);
 
     ctx.template Alloc<T>(dx);
     funcs::SetConstant<Context, T> set_zero;

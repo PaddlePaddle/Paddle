@@ -16,10 +16,10 @@
 
 #include <algorithm>
 #include <vector>
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 
 namespace phi {
 
@@ -200,8 +200,7 @@ void PsroiPoolKernel(const Context& ctx,
     }
   }
   DenseTensor rois_batch_id_list_gpu;
-  paddle::framework::TensorCopy(
-      rois_batch_id_list, ctx.GetPlace(), ctx, &rois_batch_id_list_gpu);
+  Copy(ctx, rois_batch_id_list, ctx.GetPlace(), false, &rois_batch_id_list_gpu);
 
   int output_size = out->numel();
   int blocks = NumBlocks(output_size);
