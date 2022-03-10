@@ -150,13 +150,15 @@ class Linear(Layer):
                  out_features,
                  weight_attr=None,
                  bias_attr=None,
-                 name=None):
+                 name=None,
+                 weight_transpose=False):
         super(Linear, self).__init__()
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self.weight = self.create_parameter(
-            shape=[in_features, out_features],
+            shape=[out_features, in_features]
+            if weight_transpose else [in_features, out_features],
             attr=self._weight_attr,
             dtype=self._dtype,
             is_bias=False)
@@ -165,11 +167,16 @@ class Linear(Layer):
             attr=self._bias_attr,
             dtype=self._dtype,
             is_bias=True)
+        self.weight_transpose = weight_transpose
         self.name = name
 
     def forward(self, input):
         out = F.linear(
-            x=input, weight=self.weight, bias=self.bias, name=self.name)
+            x=input,
+            weight=self.weight,
+            bias=self.bias,
+            name=self.name,
+            weight_transpose=self.weight_transpose)
         return out
 
     def extra_repr(self):

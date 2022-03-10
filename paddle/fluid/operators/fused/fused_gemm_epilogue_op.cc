@@ -208,6 +208,9 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
+    auto trans_x = ctx->Attrs().Get<bool>("trans_x");
+    auto trans_y = ctx->Attrs().Get<bool>("trans_y");
+
     PADDLE_ENFORCE_GE(
         dout_dims.size(), 2,
         platform::errors::InvalidArgument(
@@ -242,14 +245,14 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
 
     PADDLE_ENFORCE_EQ(
-        dout_mat_dims[1], y_dims[1],
+        dout_mat_dims[1], trans_y ? y_dims[0] : y_dims[1],
         platform::errors::InvalidArgument(
             "The last dimension of DOut should be equal with Y's last"
             "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
             dout_mat_dims[1], y_dims[1]));
 
     PADDLE_ENFORCE_EQ(
-        dout_mat_dims[0], x_mat_dims[0],
+        dout_mat_dims[0], trans_x ? x_mat_dims[1] : x_mat_dims[0],
         platform::errors::InvalidArgument(
             "The first dimension of DOut should be equal with X's first"
             "dimension. But received DOut[0] = [%d], Y[0] = [%d].",
@@ -323,6 +326,8 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("DBias",
               "The output grad tensor to bias of Out = (Act(X) * Y) + bias.")
         .AsDispensable();
+    AddAttr<bool>("trans_x", "").SetDefault(false);
+    AddAttr<bool>("trans_y", "").SetDefault(false);
 
     AddAttr<std::string>(
         "activation_grad",

@@ -1470,7 +1470,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     return cos_sim
 
 
-def linear(x, weight, bias=None, name=None):
+def linear(x, weight, bias=None, name=None, weight_transpose=False):
     r"""
 
     Fully-connected linear transformation operator. For each input :math:`X` ,
@@ -1523,7 +1523,7 @@ def linear(x, weight, bias=None, name=None):
     """
     if in_dynamic_mode():
         pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
-                                    False)
+                                    weight_transpose)
 
         if bias is None:
             return pre_bias
@@ -1538,7 +1538,7 @@ def linear(x, weight, bias=None, name=None):
         check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
 
         inputs = {'X': [x], 'Y': [weight]}
-        attrs = {'trans_x': False, 'trans_y': False}
+        attrs = {'trans_x': False, 'trans_y': weight_transpose}
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
