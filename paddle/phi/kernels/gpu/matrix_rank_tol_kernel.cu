@@ -321,7 +321,6 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                          bool use_default_tol,
                          bool hermitian,
                          DenseTensor* out) {
-  std::cout << "atol_tensor: " << atol_tensor << "\n";
   auto* x_data = x.data<T>();
   dev_ctx.template Alloc<int64_t>(out);
 

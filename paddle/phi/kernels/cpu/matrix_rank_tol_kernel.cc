@@ -90,7 +90,6 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                          DenseTensor* out) {
   auto* x_data = x.data<T>();
   dev_ctx.template Alloc<int64_t>(out);
-
   auto dim_x = x.dims();
   auto dim_out = out->dims();
   int rows = dim_x[dim_x.size() - 2];
@@ -163,14 +162,13 @@ void MatrixRankTolKernel(const Context& dev_ctx,
         axis,
         funcs::LessThanFunctor<T, int64_t>(),
         &compare_result);
-
-    DenseTensor result = phi::Sum<int64_t>(dev_ctx,
-                                           compare_result,
-                                           std::vector<int64_t>{-1},
-                                           compare_result.dtype(),
-                                           false);
-    out->ShareDataWith(result);
   }
+  DenseTensor result = phi::Sum<int64_t>(dev_ctx,
+                                         compare_result,
+                                         std::vector<int64_t>{-1},
+                                         compare_result.dtype(),
+                                         false);
+  out->ShareDataWith(result);
 }
 }  // namespace phi
 

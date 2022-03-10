@@ -33,7 +33,6 @@ void MatrixRankKernel(const Context& dev_ctx,
     paddle::framework::TensorFromVector(
         std::vector<T>{tol}, dev_ctx, &atol_tensor);
   }
-  std::cout << ">>>>MatrixRankTolKernel>>>>>>";
   MatrixRankTolKernel<T, Context>(
       dev_ctx, x, atol_tensor, use_default_tol, hermitian, out);
 }
