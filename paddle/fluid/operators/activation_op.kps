@@ -1553,8 +1553,6 @@ FOR_EACH_ACTIVATION_CUDA_OP(REGISTER_ACTIVATION_CUDA_KERNEL)
 
 REGISTER_ACTIVATION_XPU_KERNEL(leaky_relu, LeakyRelu, CudaLeakyReluFunctor,
                                CudaLeakyReluGradFunctor);
-REGISTER_ACTIVATION_XPU_KERNEL(relu, Relu, CudaReluFunctor,
-                               CudaReluGradFunctor);
 REGISTER_ACTIVATION_XPU_KERNEL(sigmoid, Sigmoid, CudaSigmoidFunctor,
                                CudaSigmoidGradFunctor);
 REGISTER_ACTIVATION_XPU_KERNEL(exp, Exp, CudaExpFunctor, CudaExpGradFunctor);
