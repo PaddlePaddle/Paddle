@@ -18,16 +18,13 @@ import threading
 class ADRunnerState(threading.local):
     def __init__(self) -> None:
         super().__init__()
-        self.graph = None
-        self.vars = []
-        self.var_lookup = {}
         self.dot_lookup = {}
         self.bar_lookup = {}
         self.runners = {
-            'graph': MakeGraph(),
+            'primitive': MakePrimitive(),
             'jvp': JVP(),
             'transpose': Transpose(),
-            'lower2prog': LowerToProgram()
+            'edit': EditProgram(),
         }
         self.runner = None
 
@@ -51,21 +48,21 @@ class Runner(object):
         raise f'This `process_op` method is missing in {type(self)}.'
 
 
-class LowerToProgram(Runner):
-    pass
-
-
-class MakeGraph(Runner):
-    def run_op(self, op, *args, **kwargs):
-        var, node = op(*args, **kwargs)
-        current_graph().add_node(node, var)
+class MakePrimitive(Runner):
+    def run_op(self, op):
+        primitivemaker = primitivemakers[op.type()]
+        primitive_fn = primitivemaker(op.inputs, op.attrs)
+        switch_runner('edit')
+        primitive_fn(op.inputs)
+        switch_runner('primitive')
+        return
 
 
 class JVP(Runner):
     def run_op(self, op, *args, **kwargs):
         jvpmaker = jvpmakers[op]
         jvp_fn = jvpmaker(*args, **kwargs)
-        switch_runner('graph')
+        switch_runner('edit')
         out_dot = jvp_fn(*map(var2dot, args))
         switch_runner('jvp')
         return out_dot
@@ -75,8 +72,15 @@ class Transpose(Runner):
     def run_op(self, op, *args, **kwargs):
         transposemaker = transposemakers[op]
         transpose_fn = transposemaker(*args, **kwargs)
-        switch_runner('graph')
+        switch_runner('edit')
         out_bar = make_var(is_tangent=True)
         in_bars = transpose_fn(out_bar)
         switch_runner('transpose')
         return out_bar, in_bars
+
+
+class Edit(Runner):
+    def run_op(self, op, *args, **kwargs):
+        outs = makeoutvar(op)
+        create_op_desc(op.op_type, {*args}, {*outs}, { ** kwargs})
+        return [out.name for out in outs]

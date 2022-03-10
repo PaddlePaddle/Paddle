@@ -16,6 +16,7 @@ from typing import Any
 from .runner import get_current_runner
 
 
+# primitives
 class Primitive(object):
     """ Primitive OP.
   
@@ -50,3 +51,75 @@ SQRT = Primitive('sqrt_p')
 TANH = Primitive('tanh_p')
 MATMUL = Primitive('matmul_p')
 FILL = Primitive('fill_constant_p')
+
+# jvp and transpose rules on primitives
+jvpmakers = {}
+transposemakers = {}
+
+
+def add_jvpmaker(x, y):
+    return lambda tx, ty: ADD(tx, ty)
+
+
+def sub_jvpmaker(x, y):
+    return lambda tx, ty: SUB(tx, ty)
+
+
+def mul_jvpmaker(x, y):
+    return lambda tx, ty: ADD(MUL(x, ty), MUL(tx, y))
+
+
+jvpmakers[ADD] = add_jvpmaker
+jvpmakers[SUB] = sub_jvpmaker
+jvpmakers[MUL] = mul_jvpmaker
+
+
+def add_transposemaker(x, y):
+    assert x.is_tangent and y.is_tangent
+    return lambda t: t, lambda t: t
+
+
+def sub_transposemaker(x, y):
+    assert x.is_tangent and y.is_tangent
+    return lambda t: t, lambda t: NEG(t)
+
+
+def mul_transposemaker(x, y):
+    assert x.is_tangent ^ y.is_tangent
+    if x.is_tangent:
+        return lambda t: (MUL(t, y), None)
+    else:
+        return lambda t: (None, MUL(x, t))
+
+
+transposemakers[ADD] = add_transposemaker
+transposemakers[SUB] = sub_transposemaker
+transposemakers[MUL] = mul_transposemaker
+
+
+# Changes on original operator and variable 
+# TODO(add convert2primitive method to class Operator)
+class Operator(object):
+    def convert2primitive(self) -> None:
+        runner = get_current_runner()
+        runner.run_op(self)
+
+
+# TODO(add is_tangent content to class Variable)
+class Variable(object):
+    def __init__(self, is_tangent=False):
+        self.is_tangent = is_tangent
+
+
+# rules to transform original operator to primitives
+primitivemakers = {}
+
+
+def add_maker(x, y):
+    if x.shape == y.shape:
+        return lambda _x, _y: ADD(_x, _y)
+    else:
+        return lambda _x, _y: ADD(_x, BCAST(_y, x.shape))
+
+
+primitivemakers['elementwise_add'] = add_maker
