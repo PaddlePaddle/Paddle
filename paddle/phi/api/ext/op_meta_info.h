@@ -86,19 +86,26 @@ class PADDLE_API CustomOpKernelContext {
   CustomOpKernelContext() = default;
 
   void EmplaceBackInput(Tensor&& input);
-  void EmplaceBackInputs(std::vector<Tensor>&& inputs);
+  void EmplaceBackInputs(const std::vector<Tensor>& inputs);
   void EmplaceBackOutput(Tensor&& output);
-  void EmplaceBackOutputs(std::vector<Tensor>&& outputs);
+  void EmplaceBackOutputs(const std::vector<Tensor>& outputs);
   void EmplaceBackAttr(paddle::any attr);
-
+  void EmplaceBackAttr(std::vector<paddle::any> attrs) { attrs_ = attrs; }
   const std::pair<size_t, size_t>& InputRangeAt(size_t idx) const;
   const std::pair<size_t, size_t>& OutputRangeAt(size_t idx) const;
 
   const Tensor& InputAt(size_t idx) const;
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
-
+  std::vector<paddle::any> Attrs() const { return attrs_; }
+  const std::vector<std::pair<size_t, size_t>>& InputRange() {
+    return input_range_;
+  }
+  const std::vector<std::pair<size_t, size_t>>& OutputRange() {
+    return output_range_;
+  }
   Tensor* MutableOutputAt(size_t idx);
   std::vector<Tensor*> MutableOutputBetweeen(size_t start, size_t end);
+  std::vector<Tensor> OutputsBetweeen(size_t start, size_t end);
   std::vector<Tensor>* AllMutableOutput();
 
   template <typename AttrType>
@@ -552,7 +559,6 @@ class PADDLE_API OpMetaInfo {
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
   std::vector<std::string> attrs_;
-
   // 2. func info
   KernelFunc kernel_fn_{nullptr};
   InferShapeFunc infer_shape_fn_{nullptr};

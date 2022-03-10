@@ -25,6 +25,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_meta_info_helper.h"
@@ -953,7 +954,7 @@ void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
   auto& op_meta_info_map = get_op_meta_info_map();
-
+  egr::Controller::Instance().MergeOpMetaInfoMap(op_meta_info_map.GetMap());
   RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
 }
 

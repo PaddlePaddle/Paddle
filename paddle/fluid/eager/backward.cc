@@ -215,9 +215,8 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
         if ((!grad_output_tensor.defined() ||
              !grad_output_tensor.initialized())) {
-          VLOG(6)
-              << "We get grad_output_tensor with slot: " << i << ", rank: " << j
-              << " as uninitialized or undefined in both tensor and variable";
+          VLOG(6) << "We get grad_output_tensor with slot: " << i
+                  << ", rank: " << j << " as uninitialized or undefined tensor";
         }
         VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
                 << ", rank: " << j

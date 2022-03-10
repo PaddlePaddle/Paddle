@@ -159,6 +159,8 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -181,6 +183,7 @@ PyTypeObject *g_cudapinnedplace_pytype = nullptr;
 PyTypeObject *g_mluplace_pytype = nullptr;
 PyTypeObject *g_framework_tensor_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
+PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -746,6 +749,57 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
+
+  py::class_<paddle::CustomOpKernelContext> custom_op_kernel_ctx(
+      m, "CustomOpKernelContext", R"DOC()DOC");
+  g_custom_op_kernel_ctx_pytype =
+      reinterpret_cast<PyTypeObject *>(custom_op_kernel_ctx.ptr());
+  custom_op_kernel_ctx.def(py::init<>())
+      .def("add_inputs",
+           [](paddle::CustomOpKernelContext &self, const py::handle &input) {
+             PyObject *obj = input.ptr();
+             if (PyList_Check(obj) || PyTuple_Check(obj)) {
+               self.EmplaceBackInputs(
+                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
+             } else {
+               self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
+             }
+           })
+      .def("add_outputs",
+           [](paddle::CustomOpKernelContext &self, py::handle &outputs) {
+             PyObject *obj = outputs.ptr();
+             if (PyList_Check(obj) || PyTuple_Check(obj)) {
+               self.EmplaceBackOutputs(
+                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
+             } else {
+               self.EmplaceBackOutput(std::move(CastPyArg2Tensor(obj, 1)));
+             }
+           })
+      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
+                           bool attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
+                           int attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
+                           float attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
+                           int64_t attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attrs",
+           [](paddle::CustomOpKernelContext &self, const std::string &attr) {
+             self.EmplaceBackAttr(attr);
+           })
+      .def("add_attrs",
+           [](paddle::CustomOpKernelContext &self,
+              const std::vector<int> &attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attrs",
+           [](paddle::CustomOpKernelContext &self,
+              const std::vector<float> &attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attrs",
+           [](paddle::CustomOpKernelContext &self,
+              const std::vector<int64_t> &attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
+                           const std::vector<std::string> &attr) {
+        self.EmplaceBackAttr(attr);
+      });
 
   py::class_<framework::Tensor> framework_tensor(m, "Tensor",
                                                  py::buffer_protocol());
