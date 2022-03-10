@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -1011,6 +1012,82 @@ void DiagInferMeta(const MetaTensor& x,
         "The input tensor X's dimensions of DiagV2Op should be either 1 or "
         "2, but received %d.",
         x_dims.size()));
+  }
+}
+
+void ArgMinMaxInferMeta(const MetaTensor& x,
+                        int64_t axis,
+                        bool keepdims,
+                        bool flatten,
+                        int dtype,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  const auto& x_dims = x.dims();
+
+  PADDLE_ENFORCE_GE(
+      axis,
+      -x_dims.size(),
+      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
+                                   " -Rank(X)(%d).",
+                                   axis,
+                                   -x_dims.size()));
+  PADDLE_ENFORCE_LT(axis,
+                    x_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "'axis'(%d) must be less than Rank(X)(%d) of Input(X).",
+                        axis,
+                        x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      (dtype < 0 || dtype == 2 || dtype == 3),
+      true,
+      phi::errors::InvalidArgument(
+          "The attribute of dtype in argmin/argmax must be [%s] or [%s], but "
+          "received [%s]",
+          paddle::framework::DataTypeToString(
+              paddle::framework::proto::VarType::INT32),
+          paddle::framework::DataTypeToString(
+              paddle::framework::proto::VarType::INT64),
+          paddle::framework::DataTypeToString(
+              static_cast<paddle::framework::proto::VarType::Type>(dtype))));
+
+  auto x_rank = x_dims.size();
+  if (axis < 0) axis += x_rank;
+  if (config.is_runtime) {
+    if (dtype == paddle::framework::proto::VarType::INT32) {
+      int64_t all_element_num = 0;
+      if (flatten) {
+        all_element_num = phi::product(x_dims);
+
+      } else {
+        all_element_num = x_dims[axis];
+      }
+      PADDLE_ENFORCE_LE(
+          all_element_num,
+          INT_MAX,
+          phi::errors::InvalidArgument(
+              "The element num of the argmin/argmax input at axis is "
+              "%d, is larger than int32 maximum value:%d, you must "
+              "set the dtype of argmin/argmax to 'int64'.",
+              all_element_num,
+              INT_MAX));
+    }
+  }
+  std::vector<int64_t> vec;
+  if (flatten) {
+    vec.emplace_back(static_cast<int64_t>(1));
+  } else {
+    for (int64_t i = 0; i < axis; i++) vec.emplace_back(x_dims[i]);
+    if (keepdims) {
+      vec.emplace_back(static_cast<int64_t>(1));
+    }
+    for (int64_t i = axis + 1; i < x_rank; i++) vec.emplace_back(x_dims[i]);
+  }
+  out->set_dims(phi::make_ddim(vec));
+  if (dtype == 2) {
+    out->set_dtype(DataType::INT32);
+  } else if (dtype == 3) {
+    out->set_dtype(DataType::INT64);
   }
 }
 
