@@ -20,6 +20,7 @@
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/infermeta/nullary.h"
 
 namespace phi {
 
@@ -157,8 +158,8 @@ struct TruncatedNormal {
 };
 
 template <typename T, typename Context>
-void TruncatedGaussianRandomKernel(const Context& ctx,
-                                   const ScalarArray& shape,
+void TruncatedGaussianRandomKernel(const Context& dev_ctx,
+                                   const std::vector<int>& shape,
                                    float mean,
                                    float std,
                                    int seed,

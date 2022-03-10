@@ -12,21 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined _WIN32 || defined __APPLE__
-#else
-#define _LINUX
-#endif
-
 #include "paddle/phi/core/custom_kernel.h"
 
 namespace phi {
 
-void RegisterCustomKernels(const CustomKernelMap& custom_kernel_map) {
-  auto& kernel_info_map = custom_kernel_map.GetMap();
-  VLOG(3) << "Size of custom_kernel_map: " << kernel_info_map.size();
+void CustomKernelMap::RegisterCustomKernel(const std::string& name,
+                                           const KernelKey& key,
+                                           const Kernel& kernel) {
+  PADDLE_ENFORCE_EQ(kernels_[name].find(key),
+                    kernels_[name].end(),
+                    phi::errors::AlreadyExists(
+                        "The custom kernel [%s:%s] has been already existed in "
+                        "CustomKernelMap, please check if any duplicate kernel "
+                        "info in your lib(s) before load again.",
+                        name,
+                        key));
+  kernels_[name][key] = kernel;
+}
+
+void CustomKernelMap::RegisterCustomKernels() {
+  VLOG(3) << "Size of custom_kernel_map: " << kernels_.size();
 
   auto& kernels = KernelFactory::Instance().kernels();
-  for (auto& pair : kernel_info_map) {
+  for (auto& pair : kernels_) {
     PADDLE_ENFORCE_NE(
         kernels.find(pair.first),
         kernels.end(),
@@ -38,8 +46,8 @@ void RegisterCustomKernels(const CustomKernelMap& custom_kernel_map) {
       PADDLE_ENFORCE_EQ(
           kernels[pair.first].find(info_pair.first),
           kernels[pair.first].end(),
-          phi::errors::InvalidArgument(
-              "The operator <%s>'s kernel: %s has been already existed "
+          phi::errors::AlreadyExists(
+              "The kernel [%s:%s] has been already existed "
               "in Paddle, please contribute PR if it is necessary "
               "to optimize the kernel code. Custom kernel does NOT support "
               "to replace existing kernel in Paddle.",
@@ -48,43 +56,14 @@ void RegisterCustomKernels(const CustomKernelMap& custom_kernel_map) {
 
       kernels[pair.first][info_pair.first] = info_pair.second;
 
-      VLOG(3) << "Successed in registering operator <" << pair.first
-              << ">'s kernel: " << info_pair.first
-              << " to Paddle. It will be used like native ones.";
+      VLOG(3) << "Successed in registering kernel [" << pair.first << ":"
+              << info_pair.first
+              << "] to Paddle. It will be used like native ones.";
     }
+    kernels_[pair.first].clear();
   }
+  LOG(INFO) << "Successed in loading custom kernels.";
+  kernels_.clear();
 }
 
-void LoadCustomKernelLib(const std::string& dso_lib_path, void* dso_handle) {
-#ifdef _LINUX
-  typedef phi::CustomKernelMap& get_custom_kernel_map_t();
-  auto* func = reinterpret_cast<get_custom_kernel_map_t*>(
-      dlsym(dso_handle, "PD_GetCustomKernelMap"));
-
-  if (func == nullptr) {
-    LOG(WARNING) << "Skipped lib [" << dso_lib_path << "]: fail to find "
-                 << "PD_GetCustomKernelMap symbol in this lib.";
-    return;
-  }
-  auto& custom_kernel_map = func();
-  phi::RegisterCustomKernels(custom_kernel_map);
-  LOG(INFO) << "Successed in loading custom kernels in lib: " << dso_lib_path;
-#else
-  VLOG(3) << "Unsupported: Custom kernel is only implemented on Linux.";
-#endif
-  return;
-}
 }  // namespace phi
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// C-API to get global CustomKernelMap.
-phi::CustomKernelMap& PD_GetCustomKernelMap() {
-  return phi::CustomKernelMap::Instance();
-}
-
-#ifdef __cplusplus
-}  // end extern "C"
-#endif

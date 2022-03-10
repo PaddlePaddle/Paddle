@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
 namespace phi {
@@ -60,20 +61,14 @@ void Conv3dGradKernel(const Context& dev_ctx,
   phi::DenseTensor out_grad_features =
       phi::Empty(dev_ctx, std::move(out_grad_features_meta));
 
-  dev_ctx.Alloc(
-      &in_features, in_features.dtype(), sizeof(T) * in_features.numel());
   T* in_features_ptr = in_features.data<T>();
-  dev_ctx.Alloc(
-      &d_x_features, d_x_features.dtype(), sizeof(T) * d_x_features.numel());
   T* d_x_features_ptr = d_x_features.data<T>();
-  dev_ctx.Alloc(&out_grad_features,
-                out_grad_features.dtype(),
-                sizeof(T) * out_grad_features.numel());
   T* out_grad_features_ptr = out_grad_features.data<T>();
   kernel_grad->Resize(kernel_dims);
   dev_ctx.Alloc(
       kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
   T* d_kernel_ptr = kernel_grad->data<T>();
+  memset(d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel());
 
   Gather<T>(x.non_zero_elements().data<T>(),
             rulebook_ptr + rulebook_len,
@@ -155,12 +150,11 @@ void Conv3dGradKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_conv_grad,
+PD_REGISTER_KERNEL(sparse_conv3d_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::Conv3dGradKernel,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

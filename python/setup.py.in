@@ -280,6 +280,7 @@ packages=['paddle',
           'paddle.incubate.nn',
           'paddle.incubate.passes',
           'paddle.distribution',
+          'paddle.distributed.sharding',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.elastic',
@@ -372,6 +373,7 @@ packages=['paddle',
           'paddle.device',
           'paddle.device.cuda',
           'paddle.version',
+          'paddle.profiler'
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
