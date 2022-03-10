@@ -280,12 +280,10 @@ class FlPsProgramBuilder(PsProgramBuilder):
 
         _main_file = ps_log_root_dir + '5_fl_worker_main_program.prototxt'
         debug_program(_main_file, self.cloned_main)
-        
-        split_trainer_ops_pass = new_pass("split_fl_ops_pass",
-                                            self.attrs)
-        split_trainer_ops_pass.apply([self.cloned_main], [None],
-                                        self.pass_ctx)
-                                        
+
+        split_trainer_ops_pass = new_pass("split_fl_ops_pass", self.attrs)
+        split_trainer_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
+
         part_a_program = self.pass_ctx._attrs['part_a_main_program']
         part_b_program = self.pass_ctx._attrs['part_b_main_program']
 
@@ -294,7 +292,7 @@ class FlPsProgramBuilder(PsProgramBuilder):
 
         _main_file = ps_log_root_dir + '7_fl_B_main_program.prototxt'
         debug_program(_main_file, part_b_program)
-        
+
         return
 
     def _build_pserver_programs(self):

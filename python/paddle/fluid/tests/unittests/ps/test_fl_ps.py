@@ -55,13 +55,12 @@ class TestFlPs(unittest.TestCase):
         loss = model._cost
         # 3. add optimizer
         user_defined_strategy = get_user_defined_strategy(config)
-        learning_rate = config.get(
-            "hyper_parameters.optimizer.learning_rate")
+        learning_rate = config.get("hyper_parameters.optimizer.learning_rate")
         inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
         from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
         ps_optimizer = ParameterServerOptimizer(inner_optimizer)
         ps_optimizer._set_basic_info(loss, role_maker, inner_optimizer,
-                                         user_defined_strategy)
+                                     user_defined_strategy)
         ps_optimizer.minimize_impl(loss)
 
 

@@ -1476,6 +1476,7 @@ def get_vars_name_in_block(block):
     vars_name_list = [var_name for var_name in vars_list]
     return vars_name_list
 
+
 # reserve static_var
 def delete_trainer_useless_var(program, static_var):
     static_var = list(set(static_var))
@@ -1520,16 +1521,19 @@ def create_backward_block(program, origin_program, bp_ops_list,
     return heter_block
 
 
-def is_backward_op(op):  
+def is_backward_op(op):
     return op_role_attr_name in op.attr_names and (
         int(op.attr(op_role_attr_name)) & int(op_role.Backward))
 
+
 def is_forward_op(op):
     return op_role_attr_name in op.attr_names and (
-            int(op.attr(op_role_attr_name)) == int(op_role.Forward))
+        int(op.attr(op_role_attr_name)) == int(op_role.Forward))
+
 
 def is_push_sparse_op(op):
     return op.type == 'distributed_push_sparse'
+
 
 def get_distributed_push_sparse_op_list(block):
     push_sparse_op_list = []
@@ -1539,6 +1543,7 @@ def get_distributed_push_sparse_op_list(block):
             push_sparse_op_list.append(op)
     return push_sparse_op_list
 
+
 def get_bp_op_list(block):
     bp_op_list = []
     for op_idx in range(block.desc.op_size()):
@@ -1546,6 +1551,7 @@ def get_bp_op_list(block):
         if is_backward_op(op):
             bp_op_list.append(op)
     return bp_op_list
+
 
 def delete_same_ops(block, ops):
     for op in ops:
@@ -1558,6 +1564,7 @@ def delete_same_ops(block, ops):
         except Exception as e:
             print(e)
 
+
 def check_program(program):
     block_idx = 0
     for block in program.blocks:
@@ -1566,9 +1573,12 @@ def check_program(program):
             output_var_names = op.desc.output_arg_names()
             for var_name in (input_var_names + output_var_names):
                 if not block._find_var_recursive(str(var_name)):
-                    raise ValueError('var: {} needed by op is not found in block: {}'.format(str(var_name), block_idx))
+                    raise ValueError(
+                        'var: {} needed by op is not found in block: {}'.format(
+                            str(var_name), block_idx))
         block_idx += 1
     print('program checked valid')
+
 
 def debug_program(file, program):
     with open(file, 'w+') as f:
