@@ -545,19 +545,28 @@ class {} : public egr::GradNodeBase {{
   std::string name() override {{ return \" {} \"; }}
   
   virtual void ClearTensorWrappers() override {{
-      TensorWrappersSet.resize(0);
+      for (auto tw : TensorWrappersSet) {{
+          tw.clear();
+      }}
+      is_clear_tensor_wrappers = true;
   }}
   
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
   // SetAttributes
   {}
+
+  bool IsClearTensorWrapper() override {{
+      return is_clear_tensor_wrappers;
+  }}
  private:
   // TensorWrappers
   {}
 
   // Vector of TensorWrappers
   std::vector<egr::TensorWrapper> TensorWrappersSet;
+
+  bool is_clear_tensor_wrappers = false;
 
   // Attributes
   {}
