@@ -87,12 +87,16 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
                                              AccT* out_mean, AccT* out_var) {
   const T* x = arrs[0];
   const T* y;
-  if (Num == 2) y = arrs[1];
+  if (Num == 2) {
+    y = arrs[1];
+  }
   using VecT = kps::details::VectorType<T, VecSize>;
   int tid = threadIdx.x;
   if (offset > 0) {
     x -= offset;
-    if (Num == 2) y -= offset;
+    if (Num == 2) {
+      y -= offset;
+    }
     size += offset;
     if (tid >= offset) {
       if (Num == 1) {
@@ -105,7 +109,9 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
     }
     size -= blockDim.x;
     x += blockDim.x;
-    if (Num == 2) y += blockDim.x;
+    if (Num == 2) {
+      y += blockDim.x;
+    }
   }
   int remain = size % (VecSize * blockDim.x);
 
@@ -117,7 +123,9 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
   // vector part
   for (; VecSize * tid < (size - remain); tid += blockDim.x) {
     *ins_vec_x = reinterpret_cast<const VecT*>(x)[tid];
-    if (Num == 2) *ins_vec_y = reinterpret_cast<const VecT*>(y)[tid];
+    if (Num == 2) {
+      *ins_vec_y = reinterpret_cast<const VecT*>(y)[tid];
+    }
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
@@ -137,7 +145,7 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
     if (Num == 1) {
       *out_mean += x[tid];
       *out_var += x[tid] * x[tid];
-    } else {
+    } else if (Num == 2) {
       *out_mean += y[tid];
       *out_var += y[tid] * x[tid];
     }
@@ -481,7 +489,7 @@ __global__ void GetScaleBiasGradientCUDAKernel(int N, int C, int group,
   }
 }
 
-template <typename T>
+template <typename T, int BlockDim>
 __global__ void GetBackwardParamsCUDAKernel(int imsize, int groups,
                                             int group_size, T epsilon,
                                             const T* mean, const T* var,
@@ -499,10 +507,11 @@ __global__ void GetBackwardParamsCUDAKernel(int imsize, int groups,
     const T scale_v = scale == nullptr ? T(1) : static_cast<T>(scale[c]);
     sum1 += ds[index] * scale_v;
     sum2 += db[index] * scale_v;
-    p1[index] = scale[c] * var_inv;
+    const T scale_c = scale == nullptr ? T(0) : static_cast<T>(scale[c]);
+    p1[index] = scale_c * var_inv;
   }
 
-  typedef cub::BlockReduce<T, 1024> BlockReduce;
+  typedef cub::BlockReduce<T, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage ds_storage;
   __shared__ typename BlockReduce::TempStorage db_storage;
   sum1 = BlockReduce(ds_storage).Reduce(sum1, cub::Sum());
@@ -612,8 +621,10 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
 
 #ifdef __HIPCC__
     int block_size = std::max(std::min(256, imsize), 64);
+    const int block_dims = 256;
 #else
     int block_size = std::min(1024, imsize);
+    const int block_dims = 1024;
 #endif
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
@@ -649,6 +660,11 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
       }
 
       if (d_x_data != nullptr) {
+        // p1 * dy + p2 * x + p3,
+        // p1, p2, p3 represent the reverse calculation of temporary variables
+        // p1 = scale * var_inv
+        // p2 = (db * scale * mean - ds * scale) * pow(var_inv, 3) * (1/n)
+        // p3 = -p2 * mean[ng] - db * scale * var_inv * (1/n);
         Tensor p1, p2, p3;
         p1.mutable_data<T>({x_dims[0] * C}, ctx.GetPlace());
         p2.mutable_data<T>({x_dims[0], groups}, ctx.GetPlace());
@@ -657,8 +673,8 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
         T* p2_data = p2.data<T>();
         T* p3_data = p3.data<T>();
 
-        GetBackwardParamsCUDAKernel<
-            T><<<dim3(x_dims[0], groups), 1024, 0, dev_ctx.stream()>>>(
+        GetBackwardParamsCUDAKernel<T, block_dims><<<
+            dim3(x_dims[0], groups), block_dims, 0, dev_ctx.stream()>>>(
             imsize, groups, group_size, epsilon, mean_data, var_data,
             scale_data, ds_data, db_data, p1_data, p2_data, p3_data);
         GetDxGradientCUDAKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
