@@ -9,12 +9,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/expand_as_v2_op.h"
 #include <memory>
 #include <vector>
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-
-#define MAX_RANK_SUPPORTED 6
 
 namespace paddle {
 namespace operators {
