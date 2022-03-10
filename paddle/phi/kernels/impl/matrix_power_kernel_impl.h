@@ -44,7 +44,7 @@ void MatrixPowerFunction(const DenseTensor* X,
   const int x_ndim = x_dims.size();
   T* out_data = ctx.template Alloc<T>(Out);
 
-  paddle::platform::ForRange<Context> for_range(ctx, X->numel());
+  phi::funcs::ForRange<Context> for_range(ctx, X->numel());
 
   if (n == 0) {
     // Out = Identity Matrix
