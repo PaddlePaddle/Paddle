@@ -86,6 +86,8 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         for merged_name, send in send_ctx.items():
             if send.is_sparse() and ps_mode != DistributedMode.GEO:
                 continue
+            if send.program_id() != id(attrs['loss'].block.program):
+                continue
             logger.info('merged_name, send: {}, {}'.format(merged_name, send))
             is_sparse = 1 if send.is_sparse() else 0
             is_sparse = 2 if send.is_distributed() else is_sparse

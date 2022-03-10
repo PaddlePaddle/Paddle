@@ -383,6 +383,7 @@ class DnnTrainer(object):
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
             ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
                                          user_defined_strategy)
+            ps_optimizer._set_origin_programs([loss])
             ps_optimizer._init_ps_pass_context(loss, startup_program)
             _main = ps_optimizer.pass_ctx._attrs['cloned_main']
 

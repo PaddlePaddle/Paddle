@@ -91,9 +91,6 @@ class MetaOptimizerBase(Optimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
-        from paddle.distributed.passes import PassBase
-        from paddle.distributed.ps.utils.public import logger
-        logger.info('meta_optimizer {}'.format(PassBase._REGISTERED_PASSES))
         optimize_ops, params_grads = self.minimize_impl(
             loss, startup_program, parameter_list, no_grad_set)
         return optimize_ops, params_grads
