@@ -62,7 +62,7 @@ std::shared_ptr<void> GetIpcBasePtr(std::string handle) {
             << "\t" << ptr;
   });
   std::weak_ptr<void> wp = sp;
-  ipc_handle_to_baseptr_.emplace(iter, {handle, wp});
+  ipc_handle_to_baseptr_.insert(iter, {handle, wp});
 
   return sp;
 }
