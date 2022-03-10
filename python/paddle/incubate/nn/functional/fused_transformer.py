@@ -278,7 +278,7 @@ def fused_multi_head_attention(x,
         qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
-        cache_kv (Tensor, optional): For generation model, cache structure
+        cache_kv (Tensor, optional): For generation model, cache structure. The shape is `[2, bsz, num_head, seq_len, head_dim]`. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
  	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
             with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the
