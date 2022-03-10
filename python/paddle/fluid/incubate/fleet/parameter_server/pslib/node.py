@@ -86,7 +86,7 @@ class DownpourServer(Server):
                     'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
                     'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
                     'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
-                    'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate']
+                    'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'sparse_path_num', 'sparse_dim_per_path']
 
         for key in strategy:
             if key not in support_sparse_key_list:
@@ -116,12 +116,13 @@ class DownpourServer(Server):
             table.shard_num = strategy.get('sparse_shard_num', 1000)
             # DownpourFeatureValueAccessor: for ctr task, has cvm, embedding and sgd info
             # DownpourCtrAccessor         : for ctr task, has cvm, slot, embedding and sgd info
+            # DownpourCtrMatrixAccessor   : for ctr task, has cvm, slot, embedding and sgd info, plus path info.
             # DownpourSparseValueAccessor : for general task, has embedding and sgd info
             # DownpourCtrDoubleAccessor   : for ctr task, which show clk are in double
             # DownpourUnitAccessor        : for ctr task, has cvm, slot, embedding and sgd info
 
             support_accessor_class = [
-                'DownpourFeatureValueAccessor', 'DownpourCtrAccessor',
+                'DownpourFeatureValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrMatrixAccessor',
                 'DownpourSparseValueAccessor', 'DownpourCtrDoubleAccessor',
                 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'
             ]
@@ -137,8 +138,10 @@ class DownpourServer(Server):
 
             table.accessor.accessor_class = accessor_class
 
+                
             if accessor_class == 'DownpourFeatureValueAccessor' \
                     or accessor_class == 'DownpourCtrAccessor' \
+                    or accessor_class == 'DownpourCtrMatrixAccessor' \
                     or accessor_class == 'DownpourCtrDoubleAccessor':
                 table.accessor.sparse_sgd_param.learning_rate = strategy.get(
                     'sparse_learning_rate', 0.05)
@@ -260,6 +263,12 @@ class DownpourServer(Server):
                                           strategy, "embed_")
                 self.add_sparse_optimizer(table.accessor.embedx_sgd_param,
                                           strategy, "embedx_")
+
+            if accessor_class == 'DownpourCtrMatrixAccessor':
+                table.accessor.downpour_accessor_param.path_num = strategy.get(
+                    'sparse_path_num', 1)
+                table.accessor.downpour_accessor_param.dim_per_path = strategy.get(
+                    'sparse_dim_per_path', 1)
 
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
                         sparse_table_names):

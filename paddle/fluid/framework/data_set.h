@@ -148,6 +148,10 @@ class Dataset {
   // set fleet send sleep seconds
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
 
+  // Init Matrix Path
+  virtual void InitMatrixPath(const std::string path) = 0;
+  // Matrix Path Generate
+  virtual void MatrixPathGenerate(const uint16_t sample_slot, const std::vector<uint16_t> path_slots, const uint16_t path_num) = 0;
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg) = 0;
@@ -225,6 +229,10 @@ class DatasetImpl : public Dataset {
                                        bool discard_remaining_ins = false);
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
+  // Init Matrix Path
+  virtual void InitMatrixPath(const std::string path);
+  // Matrix Path Generate
+  virtual void MatrixPathGenerate(const uint16_t sample_slot, const std::vector<uint16_t> path_slots, const uint16_t path_num);
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,

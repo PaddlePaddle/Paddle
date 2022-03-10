@@ -853,6 +853,16 @@ void DownpourWorker::TrainFiles() {
 #endif
       }
     }
+    //Variable* var_id = thread_scope_->FindVar("top_path_id.tmp_0");
+    //LoDTensor* tensor_id = var_id->GetMutable<LoDTensor>();
+    //size_t len_id = tensor_id->numel();
+    //int64_t* ids_id = tensor_id->data<int64_t>();
+    ////float* ids_id = tensor_id->data<float>();
+    //for (auto id_idx = 0u; id_idx < len_id; ++id_idx) {
+    //  std::cout << "ids:" << ids_id[id_idx] << std::endl;
+    //}
+    //std::cout << "------------------------"<< std::endl;
+
 
     // check inf and nan
     for (std::string& var_name : check_nan_var_names_) {
