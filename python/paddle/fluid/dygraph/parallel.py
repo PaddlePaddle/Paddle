@@ -402,7 +402,7 @@ def sync_eager_params(model, comm_group=None, src_rank=0):
         if not isinstance(param, core.eager.Tensor):
             raise TypeError("The data type of '%s' must be '%s'" %
                             (param.name, core.eager.Tensor))
-        comm_group.broadcast(param, src_rank)
+        comm_group.broadcast(param, src_rank).synchronize()
 
 
 class DataParallel(layers.Layer):

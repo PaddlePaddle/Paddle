@@ -95,7 +95,7 @@ class TestDistTraning(unittest.TestCase):
 
         for i in range(len(params_a)):
             np.testing.assert_allclose(
-                params_a[i].numpy(), params_b[i].numpy(), rtol=1e-6, atol=1e-6)
+                params_a[i].numpy(), params_b[i].numpy(), rtol=1e-5)
 
     def model_train(self, attr_list, inp, process_group=None):
         model = LinearModel(attr_list)
