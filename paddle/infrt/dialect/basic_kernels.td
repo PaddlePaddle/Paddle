@@ -59,6 +59,7 @@ def ReturnOp : INFRT_Op<"return", [Terminator]> {
 
   let builders = [OpBuilder<(ins),
                   [{ build($_builder, $_state, llvm::None); }]>];
+  let assemblyFormat = "`(` $operands `:` type($operands) `)`  attr-dict";
 }
 
 class AddOp<string suffix, Type type> : INFRT_Op<"add." # suffix, [NoSideEffect]> {

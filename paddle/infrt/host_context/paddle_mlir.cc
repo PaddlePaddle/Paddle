@@ -14,6 +14,7 @@
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
 #include "paddle/infrt/dialect/pd_ops_info.h"
+#include "paddle/infrt/dialect/basic_kernels.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
@@ -198,8 +199,9 @@ void MLIRModelGenImpl::UpdateModelOutputs(
 
         llvm::SmallVector<mlir::Type, 4> resultTypes;
         llvm::SmallVector<mlir::NamedAttribute, 4> attrs;
+
         mlir::OperationState state(loc,
-                                   mlir::ReturnOp::getOperationName(),
+                                   ::infrt::dialect::ReturnOp::getOperationName(),
                                    operands,
                                    resultTypes,
                                    attrs);
@@ -322,7 +324,7 @@ llvm::SmallVector<mlir::NamedAttribute, 4> MLIRModelGenImpl::GetOpAttributes(
     switch (type) {
       ATTR_IMPL_CASE(FLOAT, f, getF32FloatAttr);
       ATTR_IMPL_CASE(BOOLEAN, b, getBoolAttr);
-      ATTR_IMPL_CASE(INT, i, getI32IntegerAttr);
+      ATTR_IMPL_CASE(INT, i, getSI32IntegerAttr);
       ATTR_IMPL_CASE(LONG, l, getI64IntegerAttr);
       ATTR_IMPL_CASE(STRING, s, getStringAttr);
 
