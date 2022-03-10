@@ -17,8 +17,8 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -49,8 +49,8 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
                    "fused_feedforward");
 
     auto dim_x = context->GetInputDim("X");
-    auto mat_dim_x =
-        math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0, false);
+    auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
+        RowMatrixFromVector(dim_x), 0, false);
     // verify for the pre layer_norm, the feature size must be larger than 1
     PADDLE_ENFORCE_GT(
         mat_dim_x.width_, static_cast<size_t>(1),
@@ -72,7 +72,7 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
       context->SetOutputDim("Dropout2Mask", dim_x);
     }
     framework::DDim mean_dim =
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
+        phi::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
     bool pre_layer_norm = context->Attrs().Get<bool>("pre_layer_norm");
     if (pre_layer_norm) {
       OP_INOUT_CHECK(context->HasOutput("Ln1Mean"), "Output", "Ln1Mean",
@@ -195,6 +195,8 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<int>("dropout1_seed", "Dropout1 random seed.").SetDefault(0);
     AddAttr<int>("dropout2_seed", "Dropout2 random seed.").SetDefault(0);
+    AddAttr<int>("ring_id", "ring id for tensor model parallel.")
+        .SetDefault(-1);
     AddComment(R"DOC(
         the function of fused_feedforward operator is the same as the following pseudo code:
         residual = src;

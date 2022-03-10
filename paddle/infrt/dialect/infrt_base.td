@@ -2,9 +2,10 @@
 #define INFRT_BASE
 
 include "mlir/IR/OpBase.td"
+include "paddle/infrt/dialect/infrt/infrt_ops_base.td"
 
 def INFRT_Dialect : Dialect {
-  let name = "infrt";
+  let name = "Infrt";
 
   let description = [{
     The INFRT host dialect.
@@ -18,9 +19,6 @@ def StringType :
     Type<CPred<"$_self.isa<::infrt::dt::StringType>()">, "!infrt.string type">,
     BuildableType<"$_builder.getType<::infrt::dt::StringType>()">;
 
-def TensorType :
-    Type<CPred<"$_self.isa<::infrt::dt::TensorType>()">, "!infrt.tensor type">;
-
 def TensorMapType :
     Type<CPred<"$_self.isa<::infrt::dt::TensorMapType>()">, "!infrt.tensor_map type">,
     BuildableType<"$_builder.getType<::infrt::dt::TensorMapType>()">;
@@ -29,6 +27,12 @@ def BufferType : OpaqueType<"b", "buffer", "buffer">;
 
 class INFRT_createI32Attr<string value> : NativeCodeCall<
     "infrt::createI32Attr($_builder, $_loc, " # value # ")">;
+
+class INFRT_createSI32Attr<string value> : NativeCodeCall<
+    "infrt::createSI32Attr($_builder, $_loc, " # value # ")">;
+
+class INFRT_createF32Attr<string value> : NativeCodeCall<
+    "infrt::createF32Attr($_builder, $_loc, " # value # ")">;
 
 def INFRT_cvtValueToValueRange : NativeCodeCall<
     "infrt::cvtValueToValueRange($0)">;

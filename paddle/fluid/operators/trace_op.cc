@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/pten/core/infermeta_utils.h"
-#include "paddle/pten/infermeta/unary.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -107,8 +107,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(TraceGradNoNeedBufferVarsInferer, "Input");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DELCARE_INFER_SHAPE_FUNCTOR(trace, TraceInferShapeFunctor,
-                            PT_INFER_META(pten::TraceInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(trace, TraceInferShapeFunctor,
+                            PD_INFER_META(phi::TraceInferMeta));
 REGISTER_OPERATOR(trace, ops::TraceOp, ops::TraceOpMaker,
                   ops::TraceGradOpMaker<paddle::framework::OpDesc>,
                   ops::TraceGradOpMaker<paddle::imperative::OpBase>,

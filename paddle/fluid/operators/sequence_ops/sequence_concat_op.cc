@@ -62,27 +62,27 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
     std::vector<int64_t> out_dims;
     for (auto &x_dim : x_dims) {
       if (out_dims.empty()) {
-        out_dims = framework::vectorize(x_dim);
+        out_dims = phi::vectorize(x_dim);
       }
       batch_size += x_dim[0];
       if (feature_size == 0) {
-        feature_size = framework::product(x_dim) / x_dim[0];
+        feature_size = phi::product(x_dim) / x_dim[0];
       } else {
         PADDLE_ENFORCE_EQ(
-            feature_size, framework::product(x_dim) / x_dim[0],
+            feature_size, phi::product(x_dim) / x_dim[0],
             platform::errors::InvalidArgument(
                 "Each input of SequenceConcatOp inputs must have same feature "
                 "size, But "
                 "the feature size we received is %d, the feature size of 1st "
                 "input is %d",
-                feature_size, framework::product(x_dim) / x_dim[0]));
+                feature_size, phi::product(x_dim) / x_dim[0]));
       }
     }
     if (batch_size < 0) {
       batch_size = -1;  // Normalize batch size for compile time.
     }
     out_dims[0] = batch_size;
-    context->SetOutputDim("Out", framework::make_ddim(out_dims));
+    context->SetOutputDim("Out", phi::make_ddim(out_dims));
     if (!context->IsRuntime()) {  // Runtime LoD infershape will be computed
       // in Kernel.
       context->ShareLoD("X", "Out");

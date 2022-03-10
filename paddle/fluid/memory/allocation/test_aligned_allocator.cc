@@ -32,12 +32,12 @@ struct StubAllocator : public Allocator {
   size_t AllocNum() const { return alloc_num_; }
 
  protected:
-  pten::Allocation *AllocateImpl(size_t size) override {
+  phi::Allocation *AllocateImpl(size_t size) override {
     ++alloc_num_;
     return new Allocation(new uint8_t[size], size, platform::CPUPlace());
   }
 
-  void FreeImpl(pten::Allocation *allocation) override {
+  void FreeImpl(phi::Allocation *allocation) override {
     delete[] static_cast<uint8_t *>(allocation->ptr());
     delete allocation;
     --alloc_num_;

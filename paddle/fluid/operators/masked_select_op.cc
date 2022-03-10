@@ -27,7 +27,7 @@ class MaskedSelectOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Out", "MaskedSelect");
 
     // output will only be a 1-D Tensor
-    ctx->SetOutputDim("Y", framework::make_ddim({-1}));
+    ctx->SetOutputDim("Y", phi::make_ddim({-1}));
     ctx->ShareLoD("X", /*->*/ "Y");
   }
 

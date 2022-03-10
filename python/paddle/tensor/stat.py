@@ -15,10 +15,9 @@
 # TODO: define statistical functions of a tensor  
 
 import numpy as np
-from ..fluid.framework import Variable
+from ..static import Variable
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import core, in_dygraph_mode
-from ..fluid import layers
+from ..framework import core
 from .search import where
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
@@ -88,7 +87,7 @@ def mean(x, axis=None, keepdim=False, name=None):
     if axis is None or len(axis) == 0:
         axis = [0]
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
                                   'reduce_all', reduce_all)
 
@@ -150,7 +149,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
-    if not in_dygraph_mode():
+    if not paddle.in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
 
     u = mean(x, axis, True, name)
@@ -209,7 +208,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.std(x, axis=1)
             # [1.       2.081666]
     """
-    if not in_dygraph_mode():
+    if not paddle.in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
 
     out = var(**locals())
@@ -237,7 +236,7 @@ def numel(x, name=None):
 
 
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.size(x)
 
     if not isinstance(x, Variable):
@@ -322,6 +321,9 @@ def median(x, axis=None, keepdim=False, name=None):
             paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]),
             dtype=dtype)
+    out_tensor = out_tensor + paddle.sum(
+        paddle.cast(
+            paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True)
     if not keepdim or is_flatten:
         if not is_flatten:
             newshape = x.shape[:axis] + x.shape[axis + 1:]

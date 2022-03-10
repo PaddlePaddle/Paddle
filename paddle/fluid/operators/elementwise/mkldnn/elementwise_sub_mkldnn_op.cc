@@ -41,7 +41,7 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    auto tz = framework::vectorize<int64_t>(dout->dims());
+    auto tz = phi::vectorize<int64_t>(dout->dims());
     memory::data_type dout_type = framework::ToMKLDNNDataType(
         framework::TransToProtoVarType(dout->dtype()));
     platform::ReorderMKLDNNHandler handler(
@@ -57,8 +57,9 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
           handler.AcquireDstMemory(dx, dout->format(), ctx.GetPlace());
       auto reorder_p =
           handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-      platform::RecordEvent record_reorder("int_reorder",
-                                           platform::EventRole::kUniqueOp);
+      platform::RecordEvent record_reorder(
+          "int_reorder", platform::TracerEventType::UserDefined, 2,
+          platform::EventRole::kUniqueOp);
 
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
@@ -78,8 +79,9 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         reorder_attr.set_output_scales(0, scales);
         auto reorder_p = std::make_shared<dnnl::reorder>(
             *(reorder_src_memory_p), *(reorder_dst_memory_p), reorder_attr);
-        platform::RecordEvent record_reorder("int_reorder",
-                                             platform::EventRole::kUniqueOp);
+        platform::RecordEvent record_reorder(
+            "int_reorder", platform::TracerEventType::UserDefined, 2,
+            platform::EventRole::kUniqueOp);
         reorder_p->execute(astream, *reorder_src_memory_p,
                            *reorder_dst_memory_p);
         astream.wait();
@@ -110,7 +112,7 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         dy->set_layout(DataLayout::kMKLDNN);
         dy->set_format(
             platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
-                paddle::framework::vectorize<int64_t>(dy->dims()))));
+                phi::vectorize<int64_t>(dy->dims()))));
       }
     }
   }

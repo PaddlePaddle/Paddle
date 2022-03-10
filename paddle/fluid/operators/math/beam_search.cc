@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {}  // namespace framework
@@ -63,7 +63,7 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
         std::begin(selected_items), std::end(selected_items), 0,
         [](size_t a, std::vector<Item> &b) { return a + b.size(); });
     // the output tensor shape should be [num_instances, 1]
-    auto dims = framework::make_ddim(
+    auto dims = phi::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     auto *selected_ids_data =
         selected_ids->mutable_data<int64_t>(dims, platform::CPUPlace());

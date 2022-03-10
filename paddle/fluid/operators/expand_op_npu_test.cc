@@ -24,9 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
@@ -49,9 +48,9 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   paddle::framework::TensorFromVector(std::vector<int>({1, 10, 1}), ctx,
                                       expand_times_t);
 
-  in_t->Resize(f::make_ddim({3, 1, 7}));
-  expand_times_t->Resize(f::make_ddim({3}));
-  out_t->Resize(f::make_ddim({3, 10, 7}));
+  in_t->Resize(phi::make_ddim({3, 1, 7}));
+  expand_times_t->Resize(phi::make_ddim({3}));
+  out_t->Resize(phi::make_ddim({3, 10, 7}));
   out_t->mutable_data<T>(place);
 
   f::AttributeMap attrs = {{}};

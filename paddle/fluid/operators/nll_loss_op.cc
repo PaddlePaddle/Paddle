@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/nll_loss_op.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -37,8 +37,8 @@ class NLLLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dims.size() == 2 || x_dims.size() == 4, true,
                       platform::errors::InvalidArgument(
                           "The tensor rank of Input(X) must be 2 or 4."));
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(label_dims);
+    bool contain_unknown_dim = phi::contain_unknown_dim(x_dims) ||
+                               phi::contain_unknown_dim(label_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
     if (check) {
       PADDLE_ENFORCE_EQ(
@@ -175,8 +175,8 @@ class NLLLossGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
-                               framework::contain_unknown_dim(dout_dims);
+    bool contain_unknown_dim =
+        phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(dout_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
 
     if (check) {
@@ -264,10 +264,3 @@ REGISTER_OPERATOR(nll_loss, ops::NLLLossOp, ops::NLLLossOpMaker,
                   ops::NLLLossGradMaker<paddle::framework::OpDesc>,
                   ops::NLLLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nll_loss_grad, ops::NLLLossGradOp);
-REGISTER_OP_CPU_KERNEL(
-    nll_loss, ops::NLLLossOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::NLLLossOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    nll_loss_grad,
-    ops::NLLLossGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::NLLLossGradOpKernel<paddle::platform::CPUDeviceContext, double>);

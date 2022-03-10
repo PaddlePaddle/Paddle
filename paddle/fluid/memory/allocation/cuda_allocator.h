@@ -28,8 +28,8 @@ class CUDAAllocator : public Allocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void FreeImpl(pten::Allocation* allocation) override;
-  pten::Allocation* AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation* allocation) override;
+  phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
   platform::CUDAPlace place_;

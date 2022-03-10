@@ -382,6 +382,7 @@ class RecomputePass(PassBase):
         new_dist_attr = OperatorDistributedAttribute()
         new_dist_attr.is_recompute = True
         new_dist_attr.impl_idx = old_dist_attr.impl_idx
+        new_dist_attr.impl_type = old_dist_attr.impl_type
         new_dist_attr.process_mesh = old_dist_attr.process_mesh
         for input in old_dist_attr.inputs_dist_attrs.keys():
             if input in var_name_dict.keys():

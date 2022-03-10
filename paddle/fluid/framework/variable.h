@@ -72,7 +72,7 @@ class Variable {
  private:
   // This method hides type T, so it doesn't appear as a template parameter of
   // Variable.
-  pten::DenseTensor::InplaceVersion* InplaceVersionCounter();
+  phi::DenseTensor::InplaceVersion* InplaceVersionCounter();
 
  public:
   void SetInplaceVersionToZero();
@@ -114,8 +114,8 @@ class Variable {
   std::shared_ptr<Placeholder> holder_;
 };
 
-inline pten::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
-  pten::DenseTensor::InplaceVersion* version_counter_ptr(nullptr);
+inline phi::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
+  phi::DenseTensor::InplaceVersion* version_counter_ptr(nullptr);
   if (IsType<framework::LoDTensor>()) {
     version_counter_ptr =
         &GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
@@ -123,8 +123,8 @@ inline pten::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
     version_counter_ptr =
         &GetMutable<framework::Tensor>()->InplaceVersionCounter();
 
-  } else if (IsType<pten::SelectedRows>()) {
-    version_counter_ptr = &GetMutable<pten::SelectedRows>()
+  } else if (IsType<phi::SelectedRows>()) {
+    version_counter_ptr = &GetMutable<phi::SelectedRows>()
                                ->mutable_value()
                                ->InplaceVersionCounter();
   } else {

@@ -22,7 +22,6 @@
 #include "Python.h"
 #include "boost/optional.hpp"
 #include "gflags/gflags.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -30,6 +29,7 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/ddim.h"
 #include "pybind11/stl.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -58,7 +58,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
 
   if (UNLIKELY(rank == 0)) {
     if (desc_shape.size() != 0) {  // Tensor rank = 0 but desc does not match
-      return framework::vectorize<int64_t>(tensor_shape);
+      return phi::vectorize<int64_t>(tensor_shape);
     } else {
       return paddle::none;
     }
@@ -76,12 +76,12 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
     tensor_shape[0] = split_size;
     if (desc_shape[0] >= 0) {  // need check dim 0
       if (tensor_shape[0] != desc_shape[0]) {
-        return framework::vectorize<int64_t>(tensor_shape);
+        return phi::vectorize<int64_t>(tensor_shape);
       }
 
       if (remainder > 0) {
         tensor_shape[0] = remainder;
-        return framework::vectorize<int64_t>(tensor_shape);
+        return phi::vectorize<int64_t>(tensor_shape);
       }
     }
   }
@@ -92,7 +92,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
         platform::errors::InvalidArgument(
             "Tensor shape at dim %d must not be less than 0", idx));
     if (desc_shape[idx] >= 0 && tensor_shape[idx] != desc_shape[idx]) {
-      return framework::vectorize<int64_t>(tensor_shape);
+      return phi::vectorize<int64_t>(tensor_shape);
     }
   }
 
@@ -137,7 +137,7 @@ class MultiDeviceFeedReader {
         pin_memory_(pin_memory) {
     std::vector<framework::DDim> dims;
     for (auto &shape : shapes) {
-      dims.push_back(framework::make_ddim(shape));
+      dims.push_back(phi::make_ddim(shape));
     }
 
     auto first_reader = std::make_shared<reader::PyReader>(

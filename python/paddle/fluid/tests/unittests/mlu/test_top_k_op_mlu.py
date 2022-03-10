@@ -22,6 +22,8 @@ from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 
+paddle.enable_static()
+
 
 class TestTopkOp(OpTest):
     def setUp(self):
@@ -69,5 +71,4 @@ class TestTopkFP16Op(TestTopkOp):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

@@ -14,17 +14,45 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+
+template <typename T>
+static void AllReduce(framework::Tensor& tensor,  // NOLINT
+                      const int ring_id,
+                      const platform::CUDADeviceContext& ctx) {
+  if (ring_id == -1) return;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  auto dtype =
+      platform::ToNCCLDataType(framework::TransToProtoVarType(tensor.dtype()));
+  int64_t numel = tensor.numel();
+  const void* sendbuff = tensor.data<T>();
+  auto place = ctx.GetPlace();
+  void* recvbuff = tensor.mutable_data<T>(place);
+  auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+  auto stream = ctx.stream();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+      sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
+      "parallel op."));
+#endif
+}
 
 template <typename DeviceContext, typename T>
 class FusedFeedForwardKernel : public framework::OpKernel<T> {
@@ -32,11 +60,11 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
   void MatMul(const platform::CUDADeviceContext& ctx,
               const framework::Tensor& a, const framework::Tensor& b,
               framework::Tensor* c) const {
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     auto a_2d = FoldInitDims(a);
     auto b_2d = FoldInitDims(b);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a_2d.dims(), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b_2d.dims(), 0, false);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, false);
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, false);
     T alpha = static_cast<T>(1.0);
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, alpha, c, T(0));
   }
@@ -56,7 +84,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
            framework::Tensor* dropout1_out, framework::Tensor* dropout2_out,
            const int bsz_seq, const int d_model, const int dim_feedforward,
            const std::string& act_method, const bool pre_layer_norm,
-           const float epsilon1, const float epsilon2,
+           const float epsilon1, const float epsilon2, const int ring_id,
            const DropoutParam& dropout_param1,
            const DropoutParam& dropout_param2,
            const platform::CUDADeviceContext& ctx) const {
@@ -95,6 +123,10 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     framework::Tensor linear2_out;
     linear2_out.mutable_data<T>({bsz_seq, d_model}, place);
     MatMul(ctx, *dropout1_out, linear2_weight, &linear2_out);
+
+    // tensor model parallel
+    AllReduce<T>(linear2_out, ring_id, ctx);
+
     if (!pre_layer_norm) {
       fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
           ctx, linear2_out.data<T>(), x.data<T>(), linear2_bias_ptr,
@@ -150,6 +182,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
 
     const float epsilon1 = context.Attr<float>("ln1_epsilon");
     const float epsilon2 = context.Attr<float>("ln2_epsilon");
+    const int ring_id = context.Attr<int>("ring_id");
 
     DropoutParam dropout_param1(context, 1);
     DropoutParam dropout_param2(context, 2);
@@ -173,8 +206,8 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
     dropout2_out->mutable_data<T>(place);
 
     auto x_dim = x->dims();
-    auto mat_dim_x =
-        math::CreateMatrixDescriptor(RowMatrixFromVector(x_dim), 0, false);
+    auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
+        RowMatrixFromVector(x_dim), 0, false);
 
     auto dim = linear1_weight->dims();
     int d_model = dim[0];
@@ -186,7 +219,7 @@ class FusedFeedForwardKernel : public framework::OpKernel<T> {
         dropout2_mask, ln1_mean, ln1_variance, ln2_mean, ln2_variance,
         linear1_out, ln1_out, dropout1_out, dropout2_out, bsz_seq, d_model,
         dim_feedforward, act_method, pre_layer_norm, epsilon1, epsilon2,
-        dropout_param1, dropout_param2, context.cuda_device_context());
+        ring_id, dropout_param1, dropout_param2, context.cuda_device_context());
   }
 };
 
@@ -197,12 +230,13 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                   const framework::Tensor& d_out, const framework::Tensor& a,
                   const framework::Tensor& b, framework::Tensor* d_a,
                   framework::Tensor* d_b) const {
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     auto a_2d = FoldInitDims(a);
     auto b_2d = FoldInitDims(b);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a_2d.dims(), 0, true);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b_2d.dims(), 0, true);
-    auto mat_dim_dout = math::CreateMatrixDescriptor(d_out.dims(), 0, false);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a_2d.dims(), 0, true);
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b_2d.dims(), 0, true);
+    auto mat_dim_dout =
+        phi::funcs::CreateMatrixDescriptor(d_out.dims(), 0, false);
     T alpha = static_cast<T>(1.0);
     blas.MatMul(d_out, mat_dim_dout, b, mat_dim_b, alpha, d_a, T(0));
     blas.MatMul(a, mat_dim_a, d_out, mat_dim_dout, alpha, d_b, T(0));
@@ -230,7 +264,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
       const int dim_feedforward, const DropoutParam& dropout_param1,
       const DropoutParam& dropout_param2, const std::string& act_method,
       const bool pre_layer_norm, const float epsilon1, const float epsilon2,
-      const platform::CUDADeviceContext& ctx) const {
+      const int ring_id, const platform::CUDADeviceContext& ctx) const {
     FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
         bsz_seq, d_model, epsilon1);
     FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
@@ -294,13 +328,16 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
       d_ln1_out.mutable_data<T>({bsz_seq, d_model}, place);
       MatMulGrad(ctx, d_linear1_out, *ln1_out, linear1_weight, &d_ln1_out,
                  d_linear1_weight);
-
+      // tensor model parallel
+      AllReduce<T>(d_ln1_out, ring_id, ctx);
       pre_layernorm_helper.LayerNormGrad(
           ctx, d_ln1_out.data<T>(), x.data<T>(), ln1_gamma_ptr,
           ln1_mean->data<U>(), ln1_variance->data<U>(), d_x->data<T>(),
           d_ln1_gamma_ptr, d_ln1_beta_ptr);
     } else {
       MatMulGrad(ctx, d_linear1_out, x, linear1_weight, d_x, d_linear1_weight);
+      // tensor model parallel
+      AllReduce<T>(*d_x, ring_id, ctx);
     }
     std::vector<const Tensor*> ins(2);
     std::vector<Tensor*> outs(1);
@@ -375,6 +412,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
 
     const float epsilon1 = context.Attr<float>("ln1_epsilon");
     const float epsilon2 = context.Attr<float>("ln2_epsilon");
+    const int ring_id = context.Attr<int>("ring_id");
     const std::string act_method = context.Attr<std::string>("act_method");
     DropoutParam dropout_param1(context, 1);
     DropoutParam dropout_param2(context, 2);
@@ -403,8 +441,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     d_linear2_weight->mutable_data<T>(place);
 
     auto x_dim = x.dims();
-    auto mat_dim_x =
-        math::CreateMatrixDescriptor(RowMatrixFromVector(x_dim), 0, false);
+    auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
+        RowMatrixFromVector(x_dim), 0, false);
 
     auto linear1_weight_dim = linear1_weight.dims();
     int d_model = linear1_weight_dim[0];
@@ -418,7 +456,8 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
             d_linear1_bias, d_linear2_weight, d_linear2_bias, d_ln1_scale,
             d_ln1_bias, d_ln2_scale, d_ln2_bias, bsz_seq, d_model,
             dim_feedforward, dropout_param1, dropout_param2, act_method,
-            pre_layer_norm, epsilon1, epsilon2, context.cuda_device_context());
+            pre_layer_norm, epsilon1, epsilon2, ring_id,
+            context.cuda_device_context());
   }
 };
 }  // namespace operators

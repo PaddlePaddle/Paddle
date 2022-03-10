@@ -419,8 +419,8 @@ void MergeLoDTensor(LoDTensor *target,
               "actual layout is %s.",
               DataLayoutToString(new_layout), DataLayoutToString(t->layout())));
       PADDLE_ENFORCE_EQ(
-          framework::product(new_dim) / new_dim[0],
-          framework::product(t->dims()) / t->dims()[0],
+          phi::product(new_dim) / new_dim[0],
+          phi::product(t->dims()) / t->dims()[0],
           platform::errors::InvalidArgument(
               "LoDTensor dimension does not match, all dimensions except the "
               "first dimension need to be equal,"
@@ -447,7 +447,7 @@ void MergeLoDTensor(LoDTensor *target,
   target->set_layout(new_layout);
   target->set_lod(new_lod);
   target->mutable_data(dst_place,
-                       paddle::framework::TransToPtenDataType(new_type));
+                       paddle::framework::TransToPhiDataType(new_type));
 
   int begin = 0;
   for (auto *src : lod_tensors) {

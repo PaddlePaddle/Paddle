@@ -1,4 +1,5 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,8 +51,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/parallel_executor.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
-#include "paddle/fluid/framework/pten_utils.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
@@ -77,13 +78,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_python.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
-#include "paddle/pten/core/compat/convert_utils.h"
-#include "paddle/pten/core/lod_utils.h"
-#ifndef PADDLE_ON_INFERENCE
+#include "paddle/fluid/pybind/distributed_py.h"
 #include "paddle/fluid/pybind/eager.h"
-#endif
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
@@ -91,6 +95,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
+#include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/data_set_py.h"
@@ -101,7 +106,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
-#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
@@ -171,6 +175,7 @@ namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_place_pytype = nullptr;
+PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_cudaplace_pytype = nullptr;
 PyTypeObject *g_cpuplace_pytype = nullptr;
 PyTypeObject *g_xpuplace_pytype = nullptr;
@@ -459,10 +464,10 @@ static void inline CreateVariableIfNotExit(
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
         auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
-        tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
+        tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
-            framework::TransToPtenDataType(var_desc.GetDataType()));
+            framework::TransToPhiDataType(var_desc.GetDataType()));
       }
     }
   } else {
@@ -527,9 +532,8 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
-#ifndef PADDLE_ON_INFERENCE
+  BindImperative(&m);
   BindEager(&m);
-#endif
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -656,8 +660,8 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("broadcast_shape", [](const std::vector<int64_t> &x_dim,
                               const std::vector<int64_t> &y_dim) {
-    return vectorize(operators::details::BroadcastTwoDims(
-        make_ddim(x_dim), make_ddim(y_dim), -1));
+    return phi::vectorize(operators::details::BroadcastTwoDims(
+        phi::make_ddim(x_dim), phi::make_ddim(y_dim), -1));
   });
 
   m.def(
@@ -669,60 +673,60 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
 
-  m.def(
-      "_get_all_register_op_kernels",
-      [](const std::string &lib) {
-        std::unordered_map<std::string, std::vector<std::string>>
-            all_kernels_info;
-        if (lib == "fluid" || lib == "all") {
-          auto &all_kernels =
-              paddle::framework::OperatorWithKernel::AllOpKernels();
+  m.def("_get_all_register_op_kernels",
+        [](const std::string &lib) {
+          std::unordered_map<std::string, std::vector<std::string>>
+              all_kernels_info;
+          if (lib == "fluid" || lib == "all") {
+            auto &all_kernels =
+                paddle::framework::OperatorWithKernel::AllOpKernels();
 
-          for (auto &kernel_pair : all_kernels) {
-            auto op_type = kernel_pair.first;
-            std::vector<std::string> kernel_types;
-            for (auto &info_pair : kernel_pair.second) {
-              paddle::framework::OpKernelType kernel_type = info_pair.first;
-              kernel_types.emplace_back(
-                  paddle::framework::KernelTypeToString(kernel_type));
-            }
-            all_kernels_info.emplace(op_type, kernel_types);
-          }
-        }
-        if (lib == "pten" || lib == "all") {
-          auto pten_kernels = pten::KernelFactory::Instance().kernels();
-          for (auto &kernel_pair : pten_kernels) {
-            auto op_type = pten::TransToFluidOpName(kernel_pair.first);
-            std::vector<std::string> kernel_types;
-            for (auto &info_pair : kernel_pair.second) {
-              framework::OpKernelType kernel_type =
-                  framework::TransPtenKernelKeyToOpKernelType(info_pair.first);
-              auto kernel_type_str = framework::KernelTypeToString(kernel_type);
-              if (all_kernels_info.count(op_type)) {
-                if (std::find(all_kernels_info[op_type].begin(),
-                              all_kernels_info[op_type].end(),
-                              kernel_type_str) ==
-                    all_kernels_info[op_type].end()) {
-                  all_kernels_info[op_type].emplace_back(kernel_type_str);
-                }
-              } else {
-                kernel_types.emplace_back(kernel_type_str);
+            for (auto &kernel_pair : all_kernels) {
+              auto op_type = kernel_pair.first;
+              std::vector<std::string> kernel_types;
+              for (auto &info_pair : kernel_pair.second) {
+                paddle::framework::OpKernelType kernel_type = info_pair.first;
+                kernel_types.emplace_back(
+                    paddle::framework::KernelTypeToString(kernel_type));
               }
-            }
-            if (!kernel_types.empty()) {
               all_kernels_info.emplace(op_type, kernel_types);
             }
           }
-        }
+          if (lib == "phi" || lib == "all") {
+            auto phi_kernels = phi::KernelFactory::Instance().kernels();
+            for (auto &kernel_pair : phi_kernels) {
+              auto op_type = phi::TransToFluidOpName(kernel_pair.first);
+              std::vector<std::string> kernel_types;
+              for (auto &info_pair : kernel_pair.second) {
+                framework::OpKernelType kernel_type =
+                    framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
+                auto kernel_type_str =
+                    framework::KernelTypeToString(kernel_type);
+                if (all_kernels_info.count(op_type)) {
+                  if (std::find(all_kernels_info[op_type].begin(),
+                                all_kernels_info[op_type].end(),
+                                kernel_type_str) ==
+                      all_kernels_info[op_type].end()) {
+                    all_kernels_info[op_type].emplace_back(kernel_type_str);
+                  }
+                } else {
+                  kernel_types.emplace_back(kernel_type_str);
+                }
+              }
+              if (!kernel_types.empty()) {
+                all_kernels_info.emplace(op_type, kernel_types);
+              }
+            }
+          }
 
-        return all_kernels_info;
-      },
-      py::arg("lib") = "all",
-      R"DOC(
+          return all_kernels_info;
+        },
+        py::arg("lib") = "all",
+        R"DOC(
            Return the registered kernels in paddle.
 
            Args:
-               lib[string]: the libarary, could be 'pten', 'fluid' and 'all'.
+               lib[string]: the libarary, could be 'phi', 'fluid' and 'all'.
            )DOC");
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
@@ -743,8 +747,6 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
-  BindImperative(&m);
-
   py::class_<framework::Tensor> framework_tensor(m, "Tensor",
                                                  py::buffer_protocol());
   g_framework_tensor_pytype =
@@ -762,7 +764,7 @@ PYBIND11_MODULE(core_noavx, m) {
            [](const framework::Tensor &self) { return vectorize(self.dims()); })
       .def("_set_dims",
            [](framework::Tensor &self, const std::vector<int64_t> &dim) {
-             self.Resize(make_ddim(dim));
+             self.Resize(phi::make_ddim(dim));
            })
       .def("_set_layout",
            [](framework::Tensor &self, const std::string &layout) {
@@ -821,39 +823,39 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::XPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::CUDAPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::MLUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_clear", &framework::Tensor::clear)
       .def("_mutable_data",
            [](framework::Tensor &self, paddle::platform::NPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
-             return reinterpret_cast<uintptr_t>(self.mutable_data(
-                 place, framework::TransToPtenDataType(type)));
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
            })
       .def("_copy_from", &TensorCopyFrom<paddle::platform::CPUPlace>,
            py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
@@ -1105,7 +1107,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("recursive_sequence_lengths",
            [](framework::Tensor &self) -> std::vector<std::vector<size_t>> {
              // output the length-based lod info
-             LoD lod = pten::ConvertToLengthBasedLoD(self.lod());
+             LoD lod = phi::ConvertToLengthBasedLoD(self.lod());
              std::vector<std::vector<size_t>> new_lod;
              new_lod.reserve(lod.size());
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
@@ -1221,34 +1223,34 @@ PYBIND11_MODULE(core_noavx, m) {
             tensor.ResetHolderWithType(
                 shared_reader_holder,
                 static_cast<paddle::experimental::DataType>(t[2].cast<int>()));
-            tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
+            tensor.Resize(phi::make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
 
             return tensor;
           }));
 #endif
 
-  py::class_<pten::SelectedRows>(m, "SelectedRows")
+  py::class_<phi::SelectedRows>(m, "SelectedRows")
       .def("__init__",
-           [](pten::SelectedRows &instance) {
-             new (&instance) pten::SelectedRows();
+           [](phi::SelectedRows &instance) {
+             new (&instance) phi::SelectedRows();
            })
       .def("__init__",
-           [](pten::SelectedRows &instance, const std::vector<int64_t> rows,
+           [](phi::SelectedRows &instance, const std::vector<int64_t> rows,
               const int64_t &height) {
-             new (&instance) pten::SelectedRows(rows, height);
+             new (&instance) phi::SelectedRows(rows, height);
            })
       .def("get_tensor",
-           [](pten::SelectedRows &self) { return self.mutable_value(); },
+           [](phi::SelectedRows &self) { return self.mutable_value(); },
            py::return_value_policy::reference)
       .def("numel",
-           [](pten::SelectedRows &self) -> int64_t {
+           [](phi::SelectedRows &self) -> int64_t {
              return self.value().numel();
            })
-      .def("set_height", &pten::SelectedRows::set_height)
-      .def("height", &pten::SelectedRows::height)
+      .def("set_height", &phi::SelectedRows::set_height)
+      .def("height", &phi::SelectedRows::height)
       .def("set_rows",
-           [](pten::SelectedRows &self, std::vector<int64_t> rows) {
+           [](phi::SelectedRows &self, std::vector<int64_t> rows) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
              self.set_rows(rows);
 #else
@@ -1257,8 +1259,8 @@ PYBIND11_MODULE(core_noavx, m) {
 #endif
            })
       .def("sync_index",
-           [](pten::SelectedRows &instance) { instance.SyncIndex(); })
-      .def("rows", [](pten::SelectedRows &self) {
+           [](phi::SelectedRows &instance) { instance.SyncIndex(); })
+      .def("rows", [](phi::SelectedRows &self) {
         auto rows = self.rows();
         std::vector<int64_t> new_rows;
         new_rows.reserve(rows.size());
@@ -1307,8 +1309,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
       .def("get_selected_rows",
-           [](Variable &self) -> pten::SelectedRows * {
-             return self.GetMutable<pten::SelectedRows>();
+           [](Variable &self) -> phi::SelectedRows * {
+             return self.GetMutable<phi::SelectedRows>();
            },
            py::return_value_policy::reference)
       .def("get_lod_tensor_array",
@@ -1351,7 +1353,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindReader(&m);
 
-  py::class_<Scope>(m, "_Scope", R"DOC(
+  py::class_<Scope> _Scope(m, "_Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.
 
     Variables in a parent scope can be retrieved from local scope.
@@ -1371,7 +1373,9 @@ All parameter, weight, gradient are variables in Paddle.
           param_array = np.full((height, row_numel), 5.0).astype("float32")
           param.set(param_array, place)
 
-        )DOC")
+        )DOC");
+  g_framework_scope_pytype = reinterpret_cast<PyTypeObject *>(_Scope.ptr());
+  _Scope
       .def("_remove_from_pool",
            [](Scope &self) { ScopePool::Instance().Remove(&self); })
       .def("var",
@@ -1671,7 +1675,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_device_type", []() {
     std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    device_types = platform::DeviceManager::GetAllDeviceTypes();
+    device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed"
@@ -1685,7 +1689,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_custom_device_type", []() {
     std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+    device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_all_custom_device_type because you have installed"
@@ -1699,7 +1703,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_available_device", [] {
     std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    devices = platform::DeviceManager::GetAllDeviceList();
+    devices = phi::DeviceManager::GetAllDeviceList();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_available_device because you have installed"
@@ -1713,7 +1717,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_available_custom_device", [] {
     std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    devices = platform::DeviceManager::GetAllCustomDeviceList();
+    devices = phi::DeviceManager::GetAllCustomDeviceList();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
@@ -1750,10 +1754,10 @@ All parameter, weight, gradient are variables in Paddle.
                std::exit(-1);
              }
 
-             if (LIKELY(platform::DeviceManager::HasDeviceType(device_type) &&
-                        platform::DeviceManager::IsCustom(device_type))) {
+             if (LIKELY(phi::DeviceManager::HasDeviceType(device_type) &&
+                        phi::DeviceManager::IsCustom(device_type))) {
                int dev_count = static_cast<int>(
-                   platform::DeviceManager::GetDeviceCount(device_type));
+                   phi::DeviceManager::GetDeviceCount(device_type));
                if (UNLIKELY(dev_id >= dev_count)) {
                  if (dev_count == 0) {
                    LOG(ERROR) << "Cannot use " << device_type
@@ -1946,30 +1950,29 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
-  py::enum_<pten::backends::xpu::XPUVersion>(m, "XPUVersion", py::arithmetic())
-      .value("XPU1", pten::backends::xpu::XPUVersion::XPU1)
-      .value("XPU2", pten::backends::xpu::XPUVersion::XPU2)
+  py::enum_<phi::backends::xpu::XPUVersion>(m, "XPUVersion", py::arithmetic())
+      .value("XPU1", phi::backends::xpu::XPUVersion::XPU1)
+      .value("XPU2", phi::backends::xpu::XPUVersion::XPU2)
       .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
-  m.def(
-      "get_xpu_device_op_support_types",
-      [](const std::string &op_name, pten::backends::xpu::XPUVersion version) {
-        return platform::get_xpu_op_support_type(op_name, version);
-      });
-  m.def("get_xpu_device_op_list", [](pten::backends::xpu::XPUVersion version) {
+  m.def("get_xpu_device_op_support_types",
+        [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
+          return platform::get_xpu_op_support_type(op_name, version);
+        });
+  m.def("get_xpu_device_op_list", [](phi::backends::xpu::XPUVersion version) {
     return platform::get_xpu_op_list(version);
   });
   m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
     return platform::get_xpu_version(place.device) >
-           pten::backends::xpu::XPUVersion::XPU1;
+           phi::backends::xpu::XPUVersion::XPU1;
   });
   m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
     // XPUs with Compute Capability > xpu2 support float16 and bfloat16
     return platform::get_xpu_version(place.device) >
-           pten::backends::xpu::XPUVersion::XPU1;
+           phi::backends::xpu::XPUVersion::XPU1;
   });
 #endif
 
@@ -2622,6 +2625,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindProcessMeshDesc(&m);
   BindFleetExecutor(&m);
+  BindTCPStore(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -2915,6 +2919,88 @@ All parameter, weight, gradient are variables in Paddle.
   });
 
   m.def("size_of_dtype", framework::SizeOfType);
+  py::class_<paddle::platform::ProfilerResult>(m, "_ProfilerResult")
+      .def(py::init<>())
+      .def("get_data", &paddle::platform::ProfilerResult::GetData,
+           py::return_value_policy::automatic_reference)
+      .def("save", &paddle::platform::ProfilerResult::Save)
+      .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo);
+
+  py::class_<paddle::platform::DevicePythonNode>(m, "DevicePythonNode")
+      .def(py::init<>())
+      .def_readwrite("name", &paddle::platform::DevicePythonNode::name)
+      .def_readwrite("type", &paddle::platform::DevicePythonNode::type)
+      .def_readwrite("start_ns", &paddle::platform::DevicePythonNode::start_ns)
+      .def_readwrite("end_ns", &paddle::platform::DevicePythonNode::end_ns)
+      .def_readwrite("device_id",
+                     &paddle::platform::DevicePythonNode::device_id)
+      .def_readwrite("context_id",
+                     &paddle::platform::DevicePythonNode::context_id)
+      .def_readwrite("stream_id",
+                     &paddle::platform::DevicePythonNode::stream_id);
+
+  py::class_<paddle::platform::HostPythonNode>(m, "HostPythonNode")
+      .def(py::init<>())
+      .def_readwrite("name", &paddle::platform::HostPythonNode::name)
+      .def_readwrite("type", &paddle::platform::HostPythonNode::type)
+      .def_readwrite("start_ns", &paddle::platform::HostPythonNode::start_ns)
+      .def_readwrite("end_ns", &paddle::platform::HostPythonNode::end_ns)
+      .def_readwrite("process_id",
+                     &paddle::platform::HostPythonNode::process_id)
+      .def_readwrite("thread_id", &paddle::platform::HostPythonNode::thread_id)
+      .def_readwrite("children_node",
+                     &paddle::platform::HostPythonNode::children_node_ptrs)
+      .def_readwrite("runtime_node",
+                     &paddle::platform::HostPythonNode::runtime_node_ptrs)
+      .def_readwrite("device_node",
+                     &paddle::platform::HostPythonNode::device_node_ptrs);
+
+  py::class_<paddle::platform::Profiler>(m, "_Profiler")
+      .def("create", &paddle::platform::Profiler::Create,
+           py::return_value_policy::take_ownership)
+      .def("prepare",
+           [](paddle::platform::Profiler *profiler) {
+             platform::EnableHostEventRecorder();
+             profiler->Prepare();
+           })
+      .def("start", &paddle::platform::Profiler::Start)
+      .def("stop",
+           [](paddle::platform::Profiler *profiler) {
+             platform::DisableHostEventRecorder();
+             return profiler->Stop();
+           },
+           py::return_value_policy::automatic_reference);
+
+  py::class_<paddle::platform::ProfilerOptions>(m, "ProfilerOptions")
+      .def(py::init<>())
+      .def_readwrite("trace_switch",
+                     &paddle::platform::ProfilerOptions::trace_switch);
+
+  py::class_<platform::RecordEvent>(m, "_RecordEvent")
+      .def(py::init([](std::string name, platform::TracerEventType type) {
+        return std::make_unique<platform::RecordEvent>(
+            name, type, 1, paddle::platform::EventRole::kOrdinary);
+      }))
+      .def("end", [](platform::RecordEvent *event) { event->End(); });
+
+  py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
+      .value("Operator", paddle::platform::TracerEventType::Operator)
+      .value("Dataloader", paddle::platform::TracerEventType::Dataloader)
+      .value("ProfileStep", paddle::platform::TracerEventType::ProfileStep)
+      .value("CudaRuntime", paddle::platform::TracerEventType::CudaRuntime)
+      .value("Kernel", paddle::platform::TracerEventType::Kernel)
+      .value("Memcpy", paddle::platform::TracerEventType::Memcpy)
+      .value("Memset", paddle::platform::TracerEventType::Memset)
+      .value("UserDefined", paddle::platform::TracerEventType::UserDefined)
+      .value("OperatorInner", paddle::platform::TracerEventType::OperatorInner)
+      .value("Forward", paddle::platform::TracerEventType::Forward)
+      .value("Backward", paddle::platform::TracerEventType::Backward)
+      .value("Optimization", paddle::platform::TracerEventType::Optimization)
+      .value("Communication", paddle::platform::TracerEventType::Communication)
+      .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
+      .value("PythonUserDefined",
+             paddle::platform::TracerEventType::PythonUserDefined);
+  m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
@@ -3444,6 +3530,31 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy.fuse_elewise_add_act_ops = True
                      )DOC")
       .def_property(
+          "fuse_gemm_epilogue",
+          [](const BuildStrategy &self) { return self.fuse_gemm_epilogue_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_gemm_epilogue_ = b;
+          },
+          R"DOC((bool, optional): fuse_gemm_epilogue indicate whether
+                to fuse matmul_op, elemenewist_add_op and activation_op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_gemm_epilogue = True
+                     )DOC")
+      .def_property(
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {
@@ -3784,86 +3895,144 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_IPU
   py::class_<platform::ipu::IpuBackend,
-             std::shared_ptr<platform::ipu::IpuBackend>>(m, "IpuBackend")
-      .def(py::init(&platform::ipu::IpuBackend::GetNewInstance))
-      .def("clear", &platform::ipu::IpuBackend::Clear)
+             std::unique_ptr<platform::ipu::IpuBackend, py::nodelete>>(
+      m, "IpuBackend")
+      // manage IpuBackend in C++
+      .def("get_instance",
+           []() {
+             return std::unique_ptr<platform::ipu::IpuBackend, py::nodelete>(
+                 platform::ipu::IpuBackend::GetInstance());
+           },
+           py::return_value_policy::reference)
+      .def("detach", &platform::ipu::IpuBackend::Detach)
+      .def("reset", &platform::ipu::IpuBackend::Reset)
       .def("set_scope", &platform::ipu::IpuBackend::SetScope)
-      .def("set_ipu_strategy", &platform::ipu::IpuBackend::SetIpuStrategy);
+      .def("set_ipu_strategy", &platform::ipu::IpuBackend::SetIpuStrategy)
+      .def("save_model_proto", &platform::ipu::IpuBackend::SaveModelProto);
 
-  py::class_<platform::ipu::IpuStrategy> ipu_strategy(m, "IpuStrategy");
-  ipu_strategy.def(py::init())
-      .def_property(
-          "num_ipus",
-          [](const platform::ipu::IpuStrategy &self) { return self.num_ipus; },
-          [](platform::ipu::IpuStrategy &self, int num_ipus) {
-            self.num_ipus = num_ipus;
-          })
-      .def_property(
-          "accumulationFactor",
-          [](const platform::ipu::IpuStrategy &self) {
-            return self.popart_options_.accumulationFactor;
-          },
-          [](platform::ipu::IpuStrategy &self, int accumulationFactor) {
-            self.popart_options_.accumulationFactor = accumulationFactor;
-          })
-      .def_property("batches_per_step",
-                    [](const platform::ipu::IpuStrategy &self) {
-                      return self.batches_per_step;
-                    },
-                    [](platform::ipu::IpuStrategy &self, int batches_per_step) {
-                      self.batches_per_step = batches_per_step;
-                    })
-      .def_property("is_training",
-                    [](const platform::ipu::IpuStrategy &self) {
-                      return self.is_training;
-                    },
-                    [](platform::ipu::IpuStrategy &self, bool is_training) {
-                      self.is_training = is_training;
-                    })
-      .def_property(
-          "enable_pipelining",
-          [](const platform::ipu::IpuStrategy &self) {
-            return self.popart_options_.enablePipelining;
-          },
-          [](platform::ipu::IpuStrategy &self, bool enable_pipelining) {
-            self.popart_options_.enablePipelining = enable_pipelining;
-          })
-      .def_property(
-          "enable_manual_shard",
-          [](const platform::ipu::IpuStrategy &self) {
-            return self.popart_options_.virtualGraphMode ==
-                   platform::ipu::VirtualGraphMode::Manual;
-          },
-          [](platform::ipu::IpuStrategy &self, bool enable_ipu_shard) {
-            if (enable_ipu_shard) {
-              self.popart_options_.virtualGraphMode =
-                  platform::ipu::VirtualGraphMode::Manual;
-            } else {
-              self.popart_options_.virtualGraphMode =
-                  platform::ipu::VirtualGraphMode::Off;
-            }
-          })
-      .def_property("need_avg_shard",
-                    [](const platform::ipu::IpuStrategy &self) {
-                      return self.need_avg_shard;
-                    },
-                    [](platform::ipu::IpuStrategy &self, bool need_avg_shard) {
-                      self.need_avg_shard = need_avg_shard;
-                    })
-      .def_property("batch_size",
-                    [](const platform::ipu::IpuStrategy &self) {
-                      return self.batch_size;
-                    },
-                    [](platform::ipu::IpuStrategy &self, int batch_size) {
-                      self.batch_size = batch_size;
-                    })
-      .def_property("enable_fp16",
-                    [](const platform::ipu::IpuStrategy &self) {
-                      return self.enable_fp16;
-                    },
-                    [](platform::ipu::IpuStrategy &self, bool enable_fp16) {
-                      self.enable_fp16 = enable_fp16;
-                    });
+  py::class_<platform::ipu::IpuStrategy>(m, "IpuStrategy")
+      .def(py::init())
+      .def("set_options",
+           [](platform::ipu::IpuStrategy &self, const py::dict &opt) {
+             for (auto element : opt) {
+               auto option_name = element.first.cast<std::string>();
+               VLOG(10) << "Set option: " << option_name;
+               if (py::isinstance<py::bool_>(element.second)) {
+                 self.AddBoolOption(option_name, element.second.cast<bool>());
+               } else if (py::isinstance<py::float_>(element.second)) {
+                 self.AddDoubleOption(option_name,
+                                      element.second.cast<double>());
+               } else if (py::isinstance<py::int_>(element.second)) {
+                 self.AddUint64Option(option_name,
+                                      element.second.cast<std::uint64_t>());
+               } else if (py::isinstance<py::str>(element.second)) {
+                 self.AddStringOption(option_name,
+                                      element.second.cast<std::string>());
+               } else if (py::isinstance<py::set>(element.second) ||
+                          py::isinstance<py::list>(element.second)) {
+                 for (auto option : element.second.cast<py::list>()) {
+                   std::string option_val;
+                   if (py::isinstance<py::str>(option)) {
+                     option_val = option.cast<std::string>();
+                   } else if (py::isinstance<py::int_>(option)) {
+                     option_val = std::to_string(option.cast<std::uint64_t>());
+                   } else {
+                     PADDLE_THROW(platform::errors::Unimplemented(
+                         "Failed to convert type: %s when set IpuStrategy "
+                         "option: %s",
+                         option.get_type(), option_name));
+                   }
+                   self.InsertStringOption(option_name, option_val);
+                 }
+               } else if (py::isinstance<py::dict>(element.second)) {
+                 if (option_name.rfind("location_", 0) == 0) {
+                   for (auto option : element.second.cast<py::dict>()) {
+                     self.SetTensorLocation(
+                         option_name, option.first.cast<std::string>(),
+                         option.second.cast<std::uint64_t>());
+                   }
+                 } else if (option_name == "custom_op") {
+                   std::string paddle_op;
+                   std::string popart_op;
+                   std::string domain;
+                   int version = -1;
+                   for (auto option : element.second.cast<py::dict>()) {
+                     std::string option_key = option.first.cast<std::string>();
+                     if (option_key == "paddle_op") {
+                       paddle_op = option.second.cast<std::string>();
+                     } else if (option_key == "popart_op") {
+                       popart_op = option.second.cast<std::string>();
+                     } else if (option_key == "domain") {
+                       domain = option.second.cast<std::string>();
+                     } else if (option_key == "version") {
+                       version = option.second.cast<int>();
+                     } else {
+                       PADDLE_THROW(platform::errors::InvalidArgument(
+                           "Invalid argument, key must be one of paddle_op, "
+                           "popart_op, domain or version, but revecived %s",
+                           option_key));
+                     }
+                   }
+                   self.AddCustomOp(paddle_op, popart_op, domain, version);
+                 } else {
+                   for (auto option : element.second.cast<py::dict>()) {
+                     std::string option_key = option.first.cast<std::string>();
+                     std::string option_val;
+                     if (py::isinstance<py::str>(option.second)) {
+                       option_val = option.second.cast<std::string>();
+                     } else if (py::isinstance<py::int_>(option.second)) {
+                       option_val =
+                           std::to_string(option.second.cast<std::uint64_t>());
+                     } else {
+                       PADDLE_THROW(platform::errors::Unimplemented(
+                           "Failed to convert value type: %s when set "
+                           "IpuStrategy option: %s",
+                           option.second.get_type(), option_key));
+                     }
+                     self.InsertStringPairOption(option_name, option_key,
+                                                 option_val);
+                   }
+                 }
+               } else {
+                 PADDLE_THROW(platform::errors::InvalidArgument(
+                     "Invalid IpuStrategy option value type: %s, please check "
+                     "input value for option: %s",
+                     element.second.get_type(), option_name));
+               }
+             }
+           })
+      .def("get_option",
+           [](platform::ipu::IpuStrategy &self, const std::string &name) {
+             py::dict res;
+             auto option_type = self.GetOptionType(name);
+             res["name"] = name;
+             res["type"] = option_type;
+             if (option_type == "vector") {
+               auto value = self.GetVectorOption(name);
+               res["value"] = value;
+             } else if (option_type == "map") {
+               auto value = self.GetMapOption(name);
+               res["value"] = value;
+             } else {
+               auto value_s = self.GetOption(name);
+               res["value_s"] = value_s;
+               if (option_type == "bool") {
+                 res["value"] = static_cast<bool>(std::stoi(value_s));
+               } else if (option_type == "uint64") {
+                 res["value"] = std::stoul(value_s);
+               } else if (option_type == "double") {
+                 res["value"] = std::stod(value_s);
+               } else if (option_type == "string") {
+                 res["value"] = value_s;
+               }
+             }
+             return res;
+           })
+      .def("get_all_option_names",
+           &platform::ipu::IpuStrategy::GetAllOptionNames)
+      .def("enable_pattern", &platform::ipu::IpuStrategy::EnablePattern)
+      .def("disable_pattern", &platform::ipu::IpuStrategy::DisablePattern)
+      .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);
 #endif
 
   BindFleetWrapper(&m);
@@ -3894,6 +4063,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindCompatible(&m);
   BindDataset(&m);
   BindGenerator(&m);
+#ifndef PADDLE_ON_INFERENCE
+  BindDistributed(&m);
+#endif
 #ifdef PADDLE_WITH_ASCEND
   BindAscendWrapper(&m);
   BindAscendGraph(&m);

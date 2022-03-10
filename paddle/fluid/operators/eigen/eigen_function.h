@@ -18,71 +18,70 @@ limitations under the License. */
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include "paddle/pten/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename EigenDevice, typename T, int Rank>
-using EigenBroadcast = pten::funcs::EigenBroadcast<EigenDevice, T, Rank>;
+using EigenBroadcast = phi::funcs::EigenBroadcast<EigenDevice, T, Rank>;
 
 template <typename EigenDevice, typename T, int Rank>
-using EigenBroadcastGrad =
-    pten::funcs::EigenBroadcastGrad<EigenDevice, T, Rank>;
+using EigenBroadcastGrad = phi::funcs::EigenBroadcastGrad<EigenDevice, T, Rank>;
 
 template <typename EigenDevice, typename T, int Rank>
-using EigenConstant = pten::funcs::EigenConstant<EigenDevice, T, Rank>;
+using EigenConstant = phi::funcs::EigenConstant<EigenDevice, T, Rank>;
 
 template <typename EigenDevice, typename T>
-using EigenSign = pten::funcs::EigenSign<EigenDevice, T>;
+using EigenSign = phi::funcs::EigenSign<EigenDevice, T>;
 
 template <typename EigenDevice, typename T, int Rank>
-using EigenReverse = pten::funcs::EigenReverse<EigenDevice, T, Rank>;
+using EigenReverse = phi::funcs::EigenReverse<EigenDevice, T, Rank>;
 
 template <typename EigenDevice, typename T>
-using EigenAdd = pten::funcs::EigenAdd<EigenDevice, T>;
+using EigenAdd = phi::funcs::EigenAdd<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenSub = pten::funcs::EigenSub<EigenDevice, T>;
+using EigenSub = phi::funcs::EigenSub<EigenDevice, T>;
 
 template <typename EigenDevice, typename T, int Rank>
-using EigenSlice = pten::funcs::EigenSlice<EigenDevice, T, Rank>;
+using EigenSlice = phi::funcs::EigenSlice<EigenDevice, T, Rank>;
 
 template <typename EigenDevice, typename T, int Rank>
-using EigenPad = pten::funcs::EigenPad<EigenDevice, T, Rank>;
+using EigenPad = phi::funcs::EigenPad<EigenDevice, T, Rank>;
 
 template <typename EigenDevice, typename T>
-using EigenScale = pten::funcs::EigenScale<EigenDevice, T>;
+using EigenScale = phi::funcs::EigenScale<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenErf = pten::funcs::EigenErf<EigenDevice, T>;
+using EigenErf = phi::funcs::EigenErf<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenErfGrad = pten::funcs::EigenErfGrad<EigenDevice, T>;
+using EigenErfGrad = phi::funcs::EigenErfGrad<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenRankLoss = pten::funcs::EigenRankLoss<EigenDevice, T>;
+using EigenRankLoss = phi::funcs::EigenRankLoss<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenRankLossGrad = pten::funcs::EigenRankLossGrad<EigenDevice, T>;
+using EigenRankLossGrad = phi::funcs::EigenRankLossGrad<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenLogLoss = pten::funcs::EigenLogLoss<EigenDevice, T>;
+using EigenLogLoss = phi::funcs::EigenLogLoss<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenLogLossGrad = pten::funcs::EigenLogLossGrad<EigenDevice, T>;
+using EigenLogLossGrad = phi::funcs::EigenLogLossGrad<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenHingeLoss = pten::funcs::EigenHingeLoss<EigenDevice, T>;
+using EigenHingeLoss = phi::funcs::EigenHingeLoss<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenHingeLossGrad = pten::funcs::EigenHingeLossGrad<EigenDevice, T>;
+using EigenHingeLossGrad = phi::funcs::EigenHingeLossGrad<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenL1Norm = pten::funcs::EigenL1Norm<EigenDevice, T>;
+using EigenL1Norm = phi::funcs::EigenL1Norm<EigenDevice, T>;
 
 template <typename EigenDevice, typename T>
-using EigenL1NormGrad = pten::funcs::EigenL1NormGrad<EigenDevice, T>;
+using EigenL1NormGrad = phi::funcs::EigenL1NormGrad<EigenDevice, T>;
 
 }  // namespace operators
 }  // namespace paddle

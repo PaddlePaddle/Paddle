@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-paddle::experimental::DataType TransToPtenDataType(
+paddle::experimental::DataType TransToPhiDataType(
     const paddle::framework::proto::VarType::Type& dtype) {
   // Set the order of case branches according to the frequency with
   // the data type is used
@@ -176,7 +176,7 @@ std::string DataType2String(DataType dtype) {
       return "complex128";
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Unknow pten::DataType, the int value = %d.",
+          "Unknow phi::DataType, the int value = %d.",
           static_cast<int>(dtype)));
       return "";
   }

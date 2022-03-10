@@ -185,7 +185,7 @@ class UnpoolOp : public framework::OperatorWithKernel {
         output_shape.push_back(output_size[i]);
       }
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
   }
 };
 
@@ -234,7 +234,7 @@ class Unpool3dOp : public framework::OperatorWithKernel {
         output_shape.push_back(output_size[i]);
       }
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
   }
 };
 

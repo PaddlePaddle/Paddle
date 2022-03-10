@@ -92,7 +92,7 @@ bool CheckVarId(int proto_id) {
 
 TEST(var_type_traits, check_proto_type_id) {
   ASSERT_TRUE(CheckVarId<LoDTensor>(proto::VarType::LOD_TENSOR));
-  ASSERT_TRUE(CheckVarId<pten::SelectedRows>(proto::VarType::SELECTED_ROWS));
+  ASSERT_TRUE(CheckVarId<phi::SelectedRows>(proto::VarType::SELECTED_ROWS));
   ASSERT_TRUE(CheckVarId<std::vector<Scope *>>(proto::VarType::STEP_SCOPES));
   ASSERT_TRUE(CheckVarId<LoDRankTable>(proto::VarType::LOD_RANK_TABLE));
   ASSERT_TRUE(CheckVarId<LoDTensorArray>(proto::VarType::LOD_TENSOR_ARRAY));

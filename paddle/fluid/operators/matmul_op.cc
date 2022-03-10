@@ -14,7 +14,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -25,7 +25,8 @@ namespace operators {
 /**
  * Printing shape information into a string is easy to use.
  */
-inline static std::string DumpMatrixShape(const math::MatDescriptor &desc) {
+inline static std::string DumpMatrixShape(
+    const phi::funcs::MatDescriptor &desc) {
   std::stringstream buffer;
   buffer << "[" << desc.batch_size_ << ", " << desc.height_ << ", "
          << desc.width_ << "]";
@@ -40,7 +41,7 @@ static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return framework::make_ddim({1, x_dim[0]});
+  return phi::make_ddim({1, x_dim[0]});
 }
 
 /**
@@ -51,7 +52,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return framework::make_ddim({y_dim[0], 1});
+  return phi::make_ddim({y_dim[0], 1});
 }
 
 template <typename DeviceContext, typename T>
@@ -65,10 +66,10 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(
         RowMatrixFromVector(x.dims()), 0, context.Attr<bool>("transpose_X"));
-    auto mat_dim_b = math::CreateMatrixDescriptor(
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
@@ -128,7 +129,7 @@ static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   output.mutable_data<T>(context.GetPlace());
   std::vector<int> axis = {1, 0, 2};
-  pten::funcs::Transpose<DeviceContext, T, 3> trans;
+  phi::funcs::Transpose<DeviceContext, T, 3> trans;
   trans(context, input, &output, axis);
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
 
@@ -142,7 +143,7 @@ static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
-    framework::Tensor *x, const math::MatDescriptor &descriptor) {
+    framework::Tensor *x, const phi::funcs::MatDescriptor &descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -176,8 +177,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
   auto y_dim = ColumnMatrixFromVector(y->dims());
-  auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, trans_x);
-  auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, trans_y);
+  auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
+  auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
     out->Resize({mat_dim_x.height_, mat_dim_y.width_});
   } else {
@@ -222,9 +223,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
@@ -404,9 +405,9 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
               const framework::Tensor &b, bool trans_b, bool flag,
               framework::Tensor *out) const {
     out->mutable_data<T>(context.GetPlace());
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
-    auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+    auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
@@ -584,12 +585,12 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     auto dim_x = GetDimForInput(*context, "X");
     auto dim_y = GetDimForInput(*context, "Y");
-    auto mat_dim_x =
-        math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0,
-                                     context->Attrs().Get<bool>("transpose_X"));
-    auto mat_dim_y =
-        math::CreateMatrixDescriptor(ColumnMatrixFromVector(dim_y), 0,
-                                     context->Attrs().Get<bool>("transpose_Y"));
+    auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
+        RowMatrixFromVector(dim_x), 0,
+        context->Attrs().Get<bool>("transpose_X"));
+    auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(
+        ColumnMatrixFromVector(dim_y), 0,
+        context->Attrs().Get<bool>("transpose_Y"));
 
     if (mat_dim_x.width_ == -1) {
       mat_dim_x.width_ = mat_dim_y.height_;
@@ -638,11 +639,11 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> dim_out;
     if (mat_dim_x.batch_size_ != 0) {
-      dim_out = framework::vectorize(dim_x);
+      dim_out = phi::vectorize(dim_x);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
       dim_out[dim_out.size() - 1] = dim_out_y;
     } else if (mat_dim_y.batch_size_ != 0) {
-      dim_out = framework::vectorize(dim_y);
+      dim_out = phi::vectorize(dim_y);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
       dim_out[dim_out.size() - 1] = dim_out_y;
     } else {
@@ -662,7 +663,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       dim_out = {1};
     }
 
-    framework::DDim ddim_out = framework::make_ddim(dim_out);
+    framework::DDim ddim_out = phi::make_ddim(dim_out);
 
 #ifdef PADDLE_WITH_MKLDNN
     //  if mkldnn matmul+transpose+reshape fuse activated
@@ -721,7 +722,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       if (it != reshape_out.end()) {
         int index = std::distance(reshape_out.begin(), it);
 
-        auto ddim_out_vec = framework::vectorize(ddim_out);
+        auto ddim_out_vec = phi::vectorize(ddim_out);
 
         int ddim_out_product =
             std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,

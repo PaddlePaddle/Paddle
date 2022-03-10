@@ -8,15 +8,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/dropout_op.h"
+
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
 namespace operators {
 
 #ifdef PADDLE_WITH_XPU
 
+using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class DropoutXPUKernel : public framework::OpKernel<T> {
   using XPUTyp = typename XPUTypeTrait<T>::Type;
@@ -106,7 +108,7 @@ class DropoutGradXPUKernel : public framework::OpKernel<T> {
     }
 
     auto version = platform::get_xpu_version(context.GetPlace().GetDeviceId());
-    if (version == pten::backends::xpu::XPUVersion::XPU1) {
+    if (version == phi::backends::xpu::XPUVersion::XPU1) {
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       XPUType* mask_new = RAII_GUARD.alloc_l3_or_gm<XPUType>(mask->numel());
       float scale =

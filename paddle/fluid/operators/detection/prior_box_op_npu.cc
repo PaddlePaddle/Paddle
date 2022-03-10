@@ -49,9 +49,9 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     Tensor out(input->type());
-    auto out_dims = framework::vectorize(boxes->dims());
+    auto out_dims = phi::vectorize(boxes->dims());
     out_dims.insert(out_dims.begin(), 2);
-    out.Resize(framework::make_ddim(out_dims));
+    out.Resize(phi::make_ddim(out_dims));
     out.mutable_data<T>(place);
 
     framework::NPUAttributeMap attr_input = {{"min_size", min_sizes},
@@ -72,7 +72,7 @@ class PriorBoxNPUKernel : public framework::OpKernel<T> {
         NpuOpRunner("PriorBox", {*input, *image}, {out}, attr_input);
     runner.Run(stream);
 
-    out.Resize(framework::make_ddim({out.numel()}));
+    out.Resize(phi::make_ddim({out.numel()}));
     Tensor out_boxes = out.Slice(0, boxes->numel());
     Tensor out_variances = out.Slice(boxes->numel(), out.numel());
 

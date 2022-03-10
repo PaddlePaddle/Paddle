@@ -14,9 +14,9 @@ limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/device_worker.h"
 
-namespace pten {
+namespace phi {
 class DenseTensor;
-}  // namespace pten
+}  // namespace phi
 
 namespace paddle {
 namespace framework {

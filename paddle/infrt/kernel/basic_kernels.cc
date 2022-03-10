@@ -63,24 +63,24 @@ static void PrintString(const std::string &str) {
 void RegisterBasicKernels(host_context::KernelRegistry *registry) {
   RegisterIntBasicKernels(registry);
   RegisterFloatBasicKernels(registry);
-  registry->AddKernel("infrt.get_string", INFRT_KERNEL(GetString));
-  registry->AddKernel("infrt.print_string", INFRT_KERNEL(PrintString));
+  registry->AddKernel("Infrt.get_string", INFRT_KERNEL(GetString));
+  registry->AddKernel("Infrt.print_string", INFRT_KERNEL(PrintString));
 }
 
 void RegisterIntBasicKernels(host_context::KernelRegistry *registry) {
-  registry->AddKernel("infrt.add.i32", INFRT_KERNEL(add<int32_t>));
-  registry->AddKernel("infrt.sub.i32", INFRT_KERNEL(sub<int32_t>));
-  registry->AddKernel("infrt.mul.i32", INFRT_KERNEL(mul<int32_t>));
-  registry->AddKernel("infrt.div.i32", INFRT_KERNEL(div<int32_t>));
-  registry->AddKernel("infrt.print.i32", INFRT_KERNEL(print<int32_t>));
+  registry->AddKernel("Infrt.add.i32", INFRT_KERNEL(add<int32_t>));
+  registry->AddKernel("Infrt.sub.i32", INFRT_KERNEL(sub<int32_t>));
+  registry->AddKernel("Infrt.mul.i32", INFRT_KERNEL(mul<int32_t>));
+  registry->AddKernel("Infrt.div.i32", INFRT_KERNEL(div<int32_t>));
+  registry->AddKernel("Infrt.print.i32", INFRT_KERNEL(print<int32_t>));
 }
 
 void RegisterFloatBasicKernels(host_context::KernelRegistry *registry) {
-  registry->AddKernel("infrt.add.f32", INFRT_KERNEL(add<float>));
-  registry->AddKernel("infrt.sub.f32", INFRT_KERNEL(sub<float>));
-  registry->AddKernel("infrt.mul.f32", INFRT_KERNEL(mul<float>));
-  registry->AddKernel("infrt.div.f32", INFRT_KERNEL(div<float>));
-  registry->AddKernel("infrt.print.f32", INFRT_KERNEL(print<float>));
+  registry->AddKernel("Infrt.add.f32", INFRT_KERNEL(add<float>));
+  registry->AddKernel("Infrt.sub.f32", INFRT_KERNEL(sub<float>));
+  registry->AddKernel("Infrt.mul.f32", INFRT_KERNEL(mul<float>));
+  registry->AddKernel("Infrt.div.f32", INFRT_KERNEL(div<float>));
+  registry->AddKernel("Infrt.print.f32", INFRT_KERNEL(print<float>));
 }
 
 }  // namespace kernel

@@ -141,7 +141,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
                           decrease_axis, out_dims_vector.data(), axes.size(),
                           true);
     }
-    framework::DDim out_dims(framework::make_ddim(out_dims_vector));
+    framework::DDim out_dims(phi::make_ddim(out_dims_vector));
     // generate new shape
     if (decrease_axis.size() > 0) {
       std::vector<int64_t> new_out_shape;
@@ -165,7 +165,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
         new_out_shape.push_back(1);
       }
 
-      out_dims = framework::make_ddim(new_out_shape);
+      out_dims = phi::make_ddim(new_out_shape);
     }
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("Input", /*->*/ "Out");

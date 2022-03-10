@@ -12,10 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/bce_loss_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,41 +28,6 @@ using framework::Tensor;
 class BCELossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BCELoss");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "BCELoss");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "BCELoss");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto labels_dims = ctx->GetInputDim("Label");
-
-    int rank = x_dims.size();
-    PADDLE_ENFORCE_EQ(rank, labels_dims.size(),
-                      platform::errors::InvalidArgument(
-                          "Input(X) and Input(Label) shall have the same rank."
-                          "But received: the rank of Input(X) is [%d], "
-                          "the rank of Input(Label) is [%d].",
-                          rank, labels_dims.size()));
-
-    bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(labels_dims) <= 0)) {
-      check = false;
-    }
-
-    if (check) {
-      PADDLE_ENFORCE_EQ(x_dims, labels_dims,
-                        platform::errors::InvalidArgument(
-                            "Input(X) and Input(Label) shall have the same "
-                            "shape. But received: the shape of Input(X) is "
-                            "[%s], the shape of Input(Label) is [%s].",
-                            x_dims, labels_dims));
-    }
-
-    ctx->ShareDim("X", "Out");
-    ctx->ShareLoD("X", "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -87,8 +55,8 @@ class BCELossGradOp : public framework::OperatorWithKernel {
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(labels_dims) <= 0)) {
+    if ((!ctx->IsRuntime()) &&
+        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
       check = false;
     }
 
@@ -170,16 +138,12 @@ DECLARE_INPLACE_OP_INFERER(BCELossGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(bce_loss, BCELossInferShapeFunctor,
+                            PD_INFER_META(phi::BCELossInferMeta));
+
 REGISTER_OPERATOR(bce_loss, ops::BCELossOp, ops::BCELossOpMaker,
                   ops::BCELossGradOpMaker<paddle::framework::OpDesc>,
                   ops::BCELossGradOpMaker<paddle::imperative::OpBase>,
-                  ops::BCELossInplaceInferer);
+                  ops::BCELossInplaceInferer, BCELossInferShapeFunctor);
 REGISTER_OPERATOR(bce_loss_grad, ops::BCELossGradOp,
                   ops::BCELossGradInplaceInferer);
-REGISTER_OP_CPU_KERNEL(
-    bce_loss, ops::BCELossOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BCELossOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    bce_loss_grad,
-    ops::BCELossGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BCELossGradOpKernel<paddle::platform::CPUDeviceContext, double>);

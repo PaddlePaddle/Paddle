@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
-#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 DECLARE_int64(cudnn_exhaustive_search_times);
 
@@ -77,17 +77,16 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     // update padding and dilation
     auto in_dims = transformed_input_channel.dims();
     auto filter_dims = filter->dims();
-    framework::DDim in_data_dims =
-        framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
 
     framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
-    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+        phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
 
     Tensor transformed_input;
     std::vector<int> padding_common(data_dim, 0);
@@ -107,8 +106,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
         input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
-      framework::DDim new_input_shape(
-          framework::make_ddim(new_input_shape_vec));
+      framework::DDim new_input_shape(phi::make_ddim(new_input_shape_vec));
       transformed_input.Resize(new_input_shape);
       auto& dev_ctx =
           ctx.template device_context<paddle::platform::CUDADeviceContext>();
@@ -120,13 +118,13 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, transformed_input_channel, pad_value,
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+              dev_ctx, input_pad, transformed_input_channel, pad_value,
               &transformed_input);
         } break;
         case 5: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, transformed_input_channel, pad_value,
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+              dev_ctx, input_pad, transformed_input_channel, pad_value,
               &transformed_input);
         } break;
         default:
@@ -172,11 +170,11 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     std::vector<int> bias_dim = {
         1, static_cast<int>(transformed_output.dims()[1]), 1, 1};
     miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_input.dims()));
+        layout, phi::vectorize<int>(transformed_input.dims()));
     miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_output.dims()));
-    miopenTensorDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
-        layout, framework::vectorize<int>(filter->dims()));
+        layout, phi::vectorize<int>(transformed_output.dims()));
+    miopenTensorDescriptor_t cudnn_filter_desc =
+        filter_desc.descriptor<T>(layout, phi::vectorize<int>(filter->dims()));
     miopenTensorDescriptor_t cudnn_bias_desc =
         bias_desc.descriptor<T>(layout, bias_dim);
     miopenActivationDescriptor_t cudnn_act_desc =
@@ -186,8 +184,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     auto handle = dev_ctx.cudnn_handle();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
-    auto x_dims = framework::vectorize(transformed_input.dims());
-    auto f_dims = framework::vectorize(filter->dims());
+    auto x_dims = phi::vectorize(transformed_input.dims());
+    auto f_dims = phi::vectorize(filter->dims());
 
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -240,11 +238,11 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         cudnn_conv_desc, groups));
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_input.dims()));
+        layout, phi::vectorize<int>(transformed_input.dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize<int>(transformed_output.dims()));
-    cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
-        layout, framework::vectorize<int>(filter->dims()));
+        layout, phi::vectorize<int>(transformed_output.dims()));
+    cudnnFilterDescriptor_t cudnn_filter_desc =
+        filter_desc.descriptor<T>(layout, phi::vectorize<int>(filter->dims()));
     // Now only support NCHW
     std::vector<int> bias_dim = {
         1, static_cast<int>(transformed_output.dims()[1]), 1, 1};
@@ -277,8 +275,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     }
 #endif  // CUDA_VERSION >= 11000 && CUDNN_VERSION >= 8000
 
-    auto x_dims = framework::vectorize(transformed_input.dims());
-    auto f_dims = framework::vectorize(filter->dims());
+    auto x_dims = phi::vectorize(transformed_input.dims());
+    auto f_dims = phi::vectorize(filter->dims());
     if (!exhaustive_search) {
 #if CUDNN_VERSION >= 8000
       int perf_count;
@@ -418,7 +416,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Input with batch size greater than 1 is unsupported. The recieved "
             "batch size is %d, Input's shape is [%s].",
-            x_dims[0], framework::make_ddim(x_dims)));
+            x_dims[0], phi::make_ddim(x_dims)));
       }
     }
   }

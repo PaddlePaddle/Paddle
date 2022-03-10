@@ -20,7 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/detection/bbox_util.cu.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -76,7 +77,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   Tensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    pten::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    phi::funcs::SetConstant<platform::CUDADeviceContext, T> set_zero;
     proposals_filter.mutable_data<T>({1, 4}, ctx.GetPlace());
     scores_filter.mutable_data<T>({1, 1}, ctx.GetPlace());
     set_zero(ctx, &proposals_filter, static_cast<T>(0));
@@ -85,8 +86,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   }
   proposals_filter.mutable_data<T>({keep_num, 4}, ctx.GetPlace());
   scores_filter.mutable_data<T>({keep_num, 1}, ctx.GetPlace());
-  GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);
-  GPUGather<T>(ctx, scores_sort, keep_index, &scores_filter);
+  phi::funcs::GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);
+  phi::funcs::GPUGather<T>(ctx, scores_sort, keep_index, &scores_filter);
 
   if (nms_thresh <= 0) {
     return std::make_pair(proposals_filter, scores_filter);
@@ -102,8 +103,8 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
   Tensor scores_nms, proposals_nms;
   proposals_nms.mutable_data<T>({keep_nms.numel(), 4}, ctx.GetPlace());
   scores_nms.mutable_data<T>({keep_nms.numel(), 1}, ctx.GetPlace());
-  GPUGather<T>(ctx, proposals_filter, keep_nms, &proposals_nms);
-  GPUGather<T>(ctx, scores_filter, keep_nms, &scores_nms);
+  phi::funcs::GPUGather<T>(ctx, proposals_filter, keep_nms, &proposals_nms);
+  phi::funcs::GPUGather<T>(ctx, scores_filter, keep_nms, &scores_nms);
 
   return std::make_pair(proposals_nms, scores_nms);
 }
@@ -154,7 +155,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     scores_swap.mutable_data<T>({num, h_score, w_score, c_score},
                                 dev_ctx.GetPlace());
 
-    pten::funcs::Transpose<DeviceContext, T, 4> trans;
+    phi::funcs::Transpose<DeviceContext, T, 4> trans;
     std::vector<int> axis = {0, 2, 3, 1};
     trans(dev_ctx, *bbox_deltas, &bbox_deltas_swap, axis);
     trans(dev_ctx, *scores, &scores_swap, axis);

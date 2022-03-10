@@ -22,6 +22,7 @@
 
 #include "paddle/infrt/common/object.h"
 #include "paddle/infrt/common/shared.h"
+#include "paddle/infrt/dialect/infrt/common_type.h"
 #include "paddle/infrt/host_context/function.h"
 #include "paddle/infrt/support/variant.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"
@@ -29,26 +30,29 @@
 #include "paddle/infrt/tensor/tensor_map.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
 
-#ifdef INFRT_WITH_PTEN
-#include "paddle/infrt/backends/host/pten_allocator.h"
-#include "paddle/infrt/backends/host/pten_context.h"
-#include "paddle/pten/backends/all_context.h"
-#include "paddle/pten/common/backend.h"
-#include "paddle/pten/common/data_type.h"
-#include "paddle/pten/common/layout.h"
-#include "paddle/pten/common/scalar.h"
-#include "paddle/pten/common/scalar_array.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/meta_tensor.h"
+#ifdef INFRT_WITH_PHI
+#include "paddle/infrt/backends/host/phi_allocator.h"
+#include "paddle/infrt/backends/host/phi_context.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/meta_tensor.h"
 #endif
 
 namespace infrt {
 namespace host_context {
 
+struct None {};
+
 struct MlirFunctionExecutable;
 
 using ValueVariantType =
-    Variant<int16_t,
+    Variant<None,
+            int16_t,
             int32_t,
             int64_t,
             float,
@@ -61,17 +65,19 @@ using ValueVariantType =
             tensor::DenseHostTensor,
             MlirFunctionExecutable*,
             tensor::TensorMap,
-#ifdef INFRT_WITH_PTEN
-            ::pten::MetaTensor,
-            ::pten::DenseTensor,
-            backends::CpuPtenAllocator,
-            backends::CpuPtenContext,
-            ::pten::CPUContext,
-            std::vector<pten::DenseTensor>,
-            paddle::experimental::ScalarBase<pten::DenseTensor>,
-            paddle::experimental::ScalarArrayBase<pten::DenseTensor>,
-            std::vector<pten::MetaTensor>,
-            pten::MetaConfig,
+            ::infrt::PrecisionType,
+            ::infrt::LayoutType,
+            ::infrt::TargetType,
+#ifdef INFRT_WITH_PHI
+            ::phi::MetaTensor,
+            ::phi::DenseTensor,
+            backends::CpuPhiContext,
+            ::phi::CPUContext,
+            std::vector<const phi::DenseTensor*>,
+            paddle::experimental::ScalarBase<phi::DenseTensor>,
+            paddle::experimental::ScalarArrayBase<phi::DenseTensor>,
+            std::vector<phi::MetaTensor*>,
+            phi::MetaConfig,
             paddle::experimental::Backend,
             paddle::experimental::DataLayout,
             paddle::experimental::DataType,
@@ -98,6 +104,9 @@ class Value : public common::Object {
   explicit Value(float x) : data(x) {}
   explicit Value(double x) : data(x) {}
   explicit Value(bool x) : data(x) {}
+  explicit Value(::infrt::TargetType x) : data(x) {}
+  explicit Value(::infrt::LayoutType x) : data(x) {}
+  explicit Value(::infrt::PrecisionType x) : data(x) {}
   explicit Value(std::string x) : data(x) {}
   explicit Value(tensor::TensorMap&& x) : data(x) {}
   explicit Value(std::vector<int16_t>&& x) : data(x) {}
@@ -108,23 +117,24 @@ class Value : public common::Object {
   explicit Value(tensor::TensorShape&& x) : data(std::move(x)) {}
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
-#ifdef INFRT_WITH_PTEN
-  explicit Value(backends::CpuPtenContext&& x) : data(std::move(x)) {}
-  explicit Value(::pten::CPUContext&& x) : data(std::move(x)) {}
-  explicit Value(::pten::DenseTensor&& x) : data(std::move(x)) {}
-  explicit Value(::pten::MetaTensor&& x) : data(std::move(x)) {}
-  explicit Value(backends::CpuPtenAllocator&& x) : data(std::move(x)) {}
+#ifdef INFRT_WITH_PHI
+  explicit Value(::phi::CPUContext&& x) : data(std::move(x)) {}
+  explicit Value(backends::CpuPhiContext&& x) : data(std::move(x)) {}
+  explicit Value(::phi::DenseTensor&& x) : data(std::move(x)) {}
+  explicit Value(::phi::MetaTensor&& x) : data(std::move(x)) {}
 #endif
 
   template <typename T>
   const T& get() const {
-    CHECK(data.template is<T>());
+    CHECK(data.template is<T>()) << "typeid: " << data.index()
+                                 << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
 
   template <typename T>
   T& get() {
-    CHECK(data.template is<T>());
+    CHECK(data.template is<T>()) << "typeid: " << data.index()
+                                 << " != " << ValueVariantType::IndexOf<T>;
     return data.get<T>();
   }
 
@@ -153,6 +163,8 @@ class Value : public common::Object {
 
   const char* type_info() const override;
 
+  ValueVariantType::IndexT index() const { return data.index(); }
+
   friend void CopyTo(const Value& from, Value* to);
 
  private:
@@ -172,10 +184,6 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(float val);
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
-  explicit ValueRef(::pten::MetaTensor&& val);
-  explicit ValueRef(backends::CpuPtenContext&& x);
-  explicit ValueRef(::pten::CPUContext&& x);
-  explicit ValueRef(::pten::DenseTensor&& x);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;

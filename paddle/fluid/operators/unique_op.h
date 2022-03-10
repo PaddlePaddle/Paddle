@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/transpose_op.h"
-#include "paddle/pten/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -72,7 +72,7 @@ struct UniqueOpFunctor {
 
     if (count_ != nullptr) {
       // Resize the count tensor dims to allocate the memory
-      count_->Resize(framework::make_ddim({static_cast<int64_t>(uniq.size())}));
+      count_->Resize(phi::make_ddim({static_cast<int64_t>(uniq.size())}));
       IndexT* count_data = count_->mutable_data<IndexT>(platform::CPUPlace());
       // init count_data to 0
       memset(count_data, 0, uniq.size() * sizeof(IndexT));
@@ -103,7 +103,7 @@ struct UniqueOpFunctor {
       }
     }
 
-    out_->Resize(framework::make_ddim({static_cast<int64_t>(uniq.size())}));
+    out_->Resize(phi::make_ddim({static_cast<int64_t>(uniq.size())}));
     auto out_data = out_->mutable_data<InT>(platform::CPUPlace());
     std::memcpy(out_data, uniq.data(), uniq.size() * sizeof(InT));
   }
@@ -138,13 +138,13 @@ static void UniqueFlattendTensor(const framework::ExecutionContext& context,
                                  bool return_inverse, bool return_counts) {
   const InT* in_data = in.data<InT>();
   std::set<InT> unique(in_data, in_data + in.numel());
-  out->Resize(framework::make_ddim({static_cast<int64_t>(unique.size())}));
+  out->Resize(phi::make_ddim({static_cast<int64_t>(unique.size())}));
   auto out_data = out->mutable_data<InT>(context.GetPlace());
   std::copy(unique.begin(), unique.end(), out_data);
 
   if (return_index) {
     auto* indices = context.Output<framework::Tensor>("Indices");
-    indices->Resize(framework::make_ddim({out->numel()}));
+    indices->Resize(phi::make_ddim({out->numel()}));
     auto indices_data = indices->mutable_data<IndexT>(context.GetPlace());
     std::unordered_map<InT, IndexT> indices_map;
     indices_map.reserve(out->numel());
@@ -159,7 +159,7 @@ static void UniqueFlattendTensor(const framework::ExecutionContext& context,
 
   if (return_inverse) {
     auto* inverse = context.Output<framework::Tensor>("Index");
-    inverse->Resize(framework::make_ddim({in.numel()}));
+    inverse->Resize(phi::make_ddim({in.numel()}));
     auto inverse_data = inverse->mutable_data<IndexT>(context.GetPlace());
     std::unordered_map<InT, IndexT> inverse_map;
     inverse_map.reserve(out->numel());
@@ -173,7 +173,7 @@ static void UniqueFlattendTensor(const framework::ExecutionContext& context,
 
   if (return_counts) {
     auto* count = context.Output<framework::Tensor>("Counts");
-    count->Resize(framework::make_ddim({out->numel()}));
+    count->Resize(phi::make_ddim({out->numel()}));
     auto count_data = count->mutable_data<IndexT>(context.GetPlace());
     std::unordered_map<InT, IndexT> counts_map;
     counts_map.reserve(out->numel());
@@ -233,19 +233,18 @@ static void UniqueDim(const framework::ExecutionContext& context,
   std::iota(permute.begin(), permute.end(), 0);
   permute[axis] = 0;
   permute[0] = axis;
-  std::vector<int64_t> in_trans_dims_vec(framework::vectorize(in.dims()));
+  std::vector<int64_t> in_trans_dims_vec(phi::vectorize(in.dims()));
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   framework::Tensor in_trans;
-  framework::DDim in_trans_dims = framework::make_ddim(in_trans_dims_vec);
+  framework::DDim in_trans_dims = phi::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   in_trans.mutable_data<InT>(context.GetPlace());
   auto& dev_ctx = context.template device_context<DeviceContext>();
   TransCompute<DeviceContext, InT>(in.dims().size(), dev_ctx, in, &in_trans,
                                    permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
-  framework::DDim in_trans_flat_dims =
-      framework::flatten_to_2d(in_trans_dims, 1);
+  framework::DDim in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
   // sort indices
@@ -294,10 +293,10 @@ static void UniqueDim(const framework::ExecutionContext& context,
   framework::Tensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
-  out_trans.Resize(framework::make_ddim(out_trans_dims_vec));
+  out_trans.Resize(phi::make_ddim(out_trans_dims_vec));
   out_trans.mutable_data<InT>(context.GetPlace());
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-  out->Resize(framework::make_ddim(out_trans_dims_vec));
+  out->Resize(phi::make_ddim(out_trans_dims_vec));
   out->mutable_data<InT>(context.GetPlace());
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
   TransCompute<DeviceContext, InT>(out_trans.dims().size(), dev_ctx, out_trans,
