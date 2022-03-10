@@ -61,6 +61,8 @@ class TestPretrainedModel(unittest.TestCase):
         arches = [
             'mobilenet_v1',
             'mobilenet_v2',
+            'mobilenet_v3_small',
+            'mobilenet_v3_large',
             'squeezenet1_0',
             'shufflenet_v2_x0_25',
         ]

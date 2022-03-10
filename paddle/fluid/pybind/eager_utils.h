@@ -20,6 +20,10 @@ limitations under the License. */
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 namespace paddle {
+namespace framework {
+class Scope;
+}
+
 namespace pybind {
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
@@ -141,6 +145,9 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
 paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
+std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable);
 
 }  // namespace pybind
 }  // namespace paddle

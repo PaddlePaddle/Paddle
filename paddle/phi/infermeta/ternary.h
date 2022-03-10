@@ -53,9 +53,22 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& updates,
                            MetaTensor* out);
 
+void ViterbiDecodeInferMeta(const MetaTensor& input,
+                            const MetaTensor& transition,
+                            const MetaTensor& length,
+                            bool include_bos_eos_tag,
+                            MetaTensor* scores,
+                            MetaTensor* path,
+                            MetaConfig config = MetaConfig());
+
 void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    const MetaTensor& weight,
                    MetaTensor* out);
+
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       MetaTensor* out);
 
 }  // namespace phi
