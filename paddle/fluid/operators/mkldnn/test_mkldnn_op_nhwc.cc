@@ -27,9 +27,9 @@
 
 USE_OP(pool2d);
 USE_OP_DEVICE_KERNEL(pool2d, MKLDNN);
-USE_OP(relu);
+USE_OP_ITSELF(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
-USE_OP(transpose);
+USE_OP_ITSELF(transpose);
 USE_OP_DEVICE_KERNEL(transpose, MKLDNN);
 
 namespace paddle {

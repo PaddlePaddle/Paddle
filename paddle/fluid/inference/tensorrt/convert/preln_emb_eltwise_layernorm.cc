@@ -51,21 +51,11 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     auto pos_emb_name = op_desc.Input("PosEmbedding").front();
     auto sent_emb_name = op_desc.Input("SentEmbedding").front();
 
-    std::vector<std::string> id_names;
     std::vector<std::string> emb_names;
-
-    id_names =
-        std::vector<std::string>{word_id_name, pos_id_name, sent_id_name};
     emb_names =
         std::vector<std::string>{word_emb_name, pos_emb_name, sent_emb_name};
 
-    int input_num = id_names.size();
-
-    // Declare inputs
-    std::vector<nvinfer1::ITensor*> input_ids;
-    for (int i = 0; i < input_num; i++) {
-      input_ids.push_back(engine_->GetITensor(id_names[i]));
-    }
+    int input_num = emb_names.size();
 
     // input_embs[0]: word_embedding
     // input_embs[1]: pos_embedding
@@ -126,7 +116,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
         {"bert_embeddings_position_embeddings", input_embs[1],
          nvinfer1::PluginFieldType::kFLOAT32,
          static_cast<int32_t>(emb_sizes[1])},
-        {"output_int8", &output_int8, nvinfer1::PluginFieldType::kINT32, 1},
+        {"output_fp16", &output_int8, nvinfer1::PluginFieldType::kINT32, 1},
     };
 
     nvinfer1::PluginFieldCollection* plugin_ptr =
@@ -156,7 +146,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     shuffle_layer->setReshapeDimensions(shape_dim);
     shuffle_layer->setName(
         ("PrelnEmbeltwise_Shuffle_reshape (Output: max_seqlen " +
-         op_desc.Output("Out")[0] + ")")
+         op_desc.Output("Out_0")[0] + ")")
             .c_str());
     engine_->SetTensorDynamicRange(shuffle_layer->getOutput(0), 1.0f);
     plugin_inputs.emplace_back(
@@ -170,7 +160,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     auto plugin_layer = engine_->network()->addPluginV2(
         plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
     plugin_layer->setName(("CustomPrelnEmbLayerNormPluginDynamic_V3(Output: " +
-                           op_desc.Output("Out")[0] + ")")
+                           op_desc.Output("Out_0")[0] + ")")
                               .c_str());
     free(plugin_ptr);
     float out_0_scale =

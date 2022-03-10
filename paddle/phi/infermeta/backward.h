@@ -17,12 +17,47 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
+
+void BilinearTensorProductGradInferMeta(const MetaTensor& x,
+                                        const MetaTensor& y,
+                                        const MetaTensor& weight,
+                                        const MetaTensor& dout,
+                                        MetaTensor* dx,
+                                        MetaTensor* dy,
+                                        MetaTensor* dweight,
+                                        MetaTensor* dbias);
 
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
                                 MetaTensor* dy);
+
+void GeneralTernaryGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 const MetaTensor& z,
+                                 MetaTensor* dx,
+                                 MetaTensor* dy,
+                                 MetaTensor* dz);
+
+void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
+                                const MetaTensor& dout,
+                                int axis,
+                                MetaTensor* dx);
+
+void ScatterGradInferMeta(const MetaTensor& index,
+                          const MetaTensor& updates,
+                          const MetaTensor& out_grad,
+                          bool overwrite,
+                          MetaTensor* x_grad,
+                          MetaTensor* updates_grad);
+
+void ScatterNdAddGradInferMeta(const MetaTensor& index,
+                               const MetaTensor& updates,
+                               const MetaTensor& out_grad,
+                               MetaTensor* x_grad,
+                               MetaTensor* updates_grad);
 
 }  // namespace phi

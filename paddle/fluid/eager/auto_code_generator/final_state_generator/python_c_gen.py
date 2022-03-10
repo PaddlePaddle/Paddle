@@ -14,34 +14,28 @@
 
 import os
 import argparse
-from eager_gen import ReadFwdFile, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+from eager_gen import yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+
+skipped_fwd_api_names = set(["scale"])
 
 atype_to_parsing_function = {
     "bool": "CastPyArg2Boolean",
     "int": "CastPyArg2Int",
     "long": "CastPyArg2Long",
+    "int64_t": "CastPyArg2Long",
     "float": "CastPyArg2Float",
     "string": "CastPyArg2String",
-    "bool[]": "CastPyArg2Booleans",
-    "int[]": "CastPyArg2Ints",
-    "long[]": "CastPyArg2Longs",
-    "float[]": "CastPyArg2Floats",
-    "double[]": "CastPyArg2Float64s",
-    "string[]": "CastPyArg2Strings"
-}
-
-atype_to_cxx_type = {
-    "bool": "bool",
-    "int": "int",
-    "long": "long",
-    "float": "float",
-    "string": "std::string",
-    "bool[]": "std::vector<bool>",
-    "int[]": "std::vector<int>",
-    "long[]": "std::vector<long>",
-    "float[]": "std::vector<float>",
-    "double[]": "std::vector<double>",
-    "string[]": "std::vector<std::string>"
+    "std::vector<bool>": "CastPyArg2Booleans",
+    "std::vector<int>": "CastPyArg2Ints",
+    "std::vector<long>": "CastPyArg2Longs",
+    "std::vector<int64_t>": "CastPyArg2Longs",
+    "std::vector<float>": "CastPyArg2Floats",
+    "std::vector<double>": "CastPyArg2Float64s",
+    "std::vector<std::string>": "CastPyArg2Strings",
+    "paddle::experimental::Scalar": "CastPyArg2Scalar",
+    "paddle::experimental::ScalarArray": "CastPyArg2ScalarArray",
+    "paddle::experimental::Backend": "CastPyArg2Backend",
+    "paddle::experimental::DataType": "CastPyArg2DataType",
 }
 
 
@@ -55,25 +49,21 @@ def ParseArguments():
     return args
 
 
-def GetCxxType(atype):
-    if atype not in atype_to_cxx_type.keys():
-        assert False
-
-    return atype_to_cxx_type[atype]
-
-
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
+        print(f"Unable to find {atype} in atype_to_parsing_function.")
         assert False
 
     return atype_to_parsing_function[atype]
 
 
 def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
-                            forward_attrs_list, forward_outputs_position_map):
+                            forward_attrs_list, forward_outputs_position_map,
+                            optional_inputs, is_forward_only):
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
     # forward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
+    # optional_inputs = [name0, ...]
 
     # Get EagerTensor from args
     # Get dygraph function call args
@@ -82,18 +72,24 @@ def GeneratePythonCFunction(fwd_api_name, forward_inputs_position_map,
     dygraph_function_call_list = ["" for i in range(num_args)]
     get_eager_tensor_str = ""
     for name, (ttype, pos) in forward_inputs_position_map.items():
-        get_eager_tensor_str += f"    auto& {name} = GetTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
+        is_optional = (name in optional_inputs)
+        if IsVectorTensorType(ttype):
+            get_eager_tensor_str += f"    auto {name} = GetTensorListFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
+        else:
+            if is_optional:
+                get_eager_tensor_str += f"    auto {name} = GetOptionalTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
+            else:
+                get_eager_tensor_str += f"    auto {name} = GetTensorFromArgs(\"{fwd_api_name}\", \"{name}\", args, {pos}, false);\n"
         dygraph_function_call_list[pos] = f"{name}"
 
     parse_attributes_str = ""
     # Get Attributes
     for name, atype, _, pos in forward_attrs_list:
         parsing_function = FindParsingFunctionFromAttributeType(atype)
-        cxx_type = GetCxxType(atype)
         key = f"{name}"
 
         parse_attributes_str += f"    PyObject* {name}_obj = PyTuple_GET_ITEM(args, {pos});\n"
-        parse_attributes_str += f"    {cxx_type} {name} = {parsing_function}({name}_obj, \"{fwd_api_name}\", {pos});\n"
+        parse_attributes_str += f"    {atype} {name} = {parsing_function}({name}_obj, \"{fwd_api_name}\", {pos});\n"
 
         dygraph_function_call_list[pos] = f"{name}"
     dygraph_function_call_str = ",".join(dygraph_function_call_list)
@@ -130,11 +126,16 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 }}
 
 """
+    if is_forward_only:
+        fwd_function_name = fwd_api_name
+    else:
+        fwd_function_name = GetForwardFunctionName(fwd_api_name)
+
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
         fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,
-        GetForwardFunctionName(fwd_api_name), dygraph_function_call_str)
+        fwd_function_name, dygraph_function_call_str)
 
-    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}},\n"
+    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}}\n"
 
     return python_c_function_str, python_c_function_reg_str
 
@@ -188,7 +189,7 @@ static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
     """
 
     core_ops_infos_registry = """
-    {\"get_final_state_core_ops_args_info\",
+    ,{\"get_final_state_core_ops_args_info\",
     (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_info, METH_NOARGS,
     \"C++ interface function for eager_get_final_state_core_ops_args_info.\"},
     {\"get_final_state_core_ops_args_type_info\",
@@ -216,6 +217,11 @@ def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
 #pragma once
 
 #include  "pybind11/detail/common.h"
+#include  "paddle/phi/api/all.h"
+#include  "paddle/phi/common/backend.h"
+#include  "paddle/phi/common/data_type.h"
+#include  "paddle/phi/common/scalar.h"
+#include  "paddle/phi/common/scalar_array.h"
 #include  "paddle/fluid/pybind/op_function_common.h"
 #include  "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include  "paddle/fluid/pybind/exception.h"
@@ -254,18 +260,27 @@ if __name__ == "__main__":
     python_c_function_list = []
     python_c_function_reg_list = []
     for fwd_api in fwd_api_list:
+
         # We only generate Ops with grad
+        is_forward_only = False
         if 'backward' not in fwd_api.keys():
-            continue
+            is_forward_only = True
 
         assert 'api' in fwd_api.keys()
         assert 'args' in fwd_api.keys()
         assert 'output' in fwd_api.keys()
-        assert 'backward' in fwd_api.keys()
 
         fwd_api_name = fwd_api['api']
         fwd_args_str = fwd_api['args']
         fwd_returns_str = fwd_api['output']
+
+        if fwd_api_name in skipped_fwd_api_names:
+            continue
+
+        # Parse Dispensable Inputs
+        optional_inputs = []
+        if 'optional' in fwd_api.keys():
+            optional_inputs = ParseDispensable(fwd_api['optional'])
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         forward_inputs_list, forward_attrs_list, forward_returns_list = ParseYamlForward(
@@ -283,7 +298,7 @@ if __name__ == "__main__":
 
         python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
             fwd_api_name, forward_inputs_position_map, forward_attrs_list,
-            forward_outputs_position_map)
+            forward_outputs_position_map, optional_inputs, is_forward_only)
         python_c_function_list.append(python_c_function_str)
         python_c_function_reg_list.append(python_c_function_reg_str)
         print("Generated Python-C Function: ", python_c_function_str)

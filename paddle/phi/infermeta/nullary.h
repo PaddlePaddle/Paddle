@@ -35,4 +35,23 @@ void CreateInferMetaBase(const std::vector<int64_t>& shape,
 
 void CreateInferMeta(const ScalarArray& shape, DataType dtype, MetaTensor* out);
 
+void EyeInferMeta(int64_t num_rows,
+                  int64_t num_columns,
+                  DataType dtype,
+                  MetaTensor* out);
+
+void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
+                                      float mean,
+                                      float std,
+                                      int seed,
+                                      DataType dtype,
+                                      MetaTensor* out);
+
+void GaussianRandomInferMeta(const ScalarArray& shape,
+                             float mean,
+                             float std,
+                             int seed,
+                             DataType dtype,
+                             MetaTensor* out);
+
 }  // namespace phi

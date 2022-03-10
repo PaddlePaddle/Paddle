@@ -113,8 +113,6 @@ class BatchSampler(Sampler):
             assert not shuffle, "shuffle should be False when sampler is set"
             self.sampler = sampler
         else:
-            assert isinstance(dataset, Dataset), \
-                "dataset should be a paddle.io.Dataset"
             assert not isinstance(dataset, IterableDataset), \
                 "dataset should not be a paddle.io.IterableDataset"
             assert sampler is None, \

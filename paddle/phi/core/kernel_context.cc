@@ -69,7 +69,7 @@ void KernelContext::AssignInputRange(std::pair<int, int>&& range, size_t idx) {
   } else if (idx == input_range_.size()) {
     input_range_.emplace_back(range);
   } else {
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "Invalid idx when trying to set InputRange, "
         "index is `%d`, it is greater than the size(%d) of InputRange.",
         idx,
@@ -83,7 +83,7 @@ void KernelContext::AssignOutputRange(std::pair<int, int>&& range, size_t idx) {
   } else if (idx == output_range_.size()) {
     output_range_.emplace_back(range);
   } else {
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "Invalid idx when trying to set InputRange, "
         "index is `%d`, it is greater than the size(%d) of InputRange.",
         idx,

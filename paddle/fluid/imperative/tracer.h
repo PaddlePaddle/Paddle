@@ -28,6 +28,7 @@
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/compat/arg_map_context.h"
 
 namespace paddle {
 namespace imperative {
@@ -154,16 +155,21 @@ class Tracer {
     }
   }
 
+  phi::KernelSignature GetExpectedKernelSignature(
+      const std::string& type, const NameVarBaseMap& ins,
+      const NameVarBaseMap& outs, framework::AttributeMap attrs) const;
+
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
-  bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   GarbageCollectorMap gcs_;
+
+  static thread_local bool enable_program_desc_tracing_;
   static thread_local bool has_grad_;
   static thread_local AmpLevel amp_level_;
   static thread_local phi::DataType amp_dtype_;
