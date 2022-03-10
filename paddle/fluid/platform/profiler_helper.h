@@ -34,6 +34,10 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/enforce.h"
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -130,6 +134,13 @@ void SynchronizeAllDevice() {
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+  }
+#endif
+#ifdef PADDLE_WITH_MLU
+  int count = GetMLUDeviceCount();
+  for (int i = 0; i < count; i++) {
+    SetMLUDeviceId(i);
+    PADDLE_ENFORCE_MLU_SUCCESS(cnrtSyncDevice());
   }
 #endif
 }

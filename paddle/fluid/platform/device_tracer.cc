@@ -22,6 +22,10 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device_tracer.h"
 
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
+
 DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle {
@@ -282,11 +286,177 @@ void initCuptiCbidStr();
 
 #endif  // PADDLE_WITH_CUPTI
 
+#ifdef PADDLE_WITH_MLU
+
+namespace {
+// std::unordered_map<CUpti_CallbackId, std::string> runtime_cbid_str,
+//     driver_cbid_str;
+
+#define ALIGN_BUFFER(buffer, align)                                 \
+  (((uintptr_t)(buffer) & ((align)-1))                              \
+       ? ((buffer) + (align) - ((uintptr_t)(buffer) & ((align)-1))) \
+       : (buffer))
+
+#define CNPAPI_CALL(call)                                                  \
+  do {                                                                     \
+    cnpapiResult _status = call;                                           \
+    if (_status != CNPAPI_SUCCESS) {                                       \
+      const char *errstr;                                                  \
+      cnpapiGetResultString(_status, &errstr);                             \
+      fprintf(stderr, "%s:%d: error: function %s failed with error %s.\n", \
+              __FILE__, __LINE__, #call, errstr);                          \
+      exit(-1);                                                            \
+    }                                                                      \
+  } while (0)
+
+std::string MemcpyKind(cnpapiActivityMemcpyType kind) {
+  switch (kind) {
+    case CNPAPI_ACTIVITY_MEMCPY_TYPE_HTOD:
+      return "MEMCPY_HtoD";
+    case CNPAPI_ACTIVITY_MEMCPY_TYPE_DTOH:
+      return "MEMCPY_DtoH";
+    case CNPAPI_ACTIVITY_MEMCPY_TYPE_DTOD:
+      return "MEMCPY_DtoD";
+    case CNPAPI_ACTIVITY_MEMCPY_TYPE_HTOH:
+      return "MEMCPY_HtoH";
+    case CNPAPI_ACTIVITY_MEMCPY_TYPE_PTOP:
+      return "MEMCPY_PtoP";
+    default:
+      break;
+  }
+  return "MEMCPY";
+}
+
+// std::string DriverKind(CUpti_CallbackId cbid) {
+//   auto iter = driver_cbid_str.find(cbid);
+//   if (iter == driver_cbid_str.end())
+//     return "Driver API " + std::to_string(cbid);
+//   return iter->second;
+// }
+
+// std::string RuntimeKind(CUpti_CallbackId cbid) {
+//   auto iter = runtime_cbid_str.find(cbid);
+//   if (iter == runtime_cbid_str.end())
+//     return "Runtime API " + std::to_string(cbid);
+//   return iter->second;
+// }
+
+void EnableMLUActivity() {
+  CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_KERNEL));
+  CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_MEMCPY));
+  CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_MEMCPY_PTOP));
+  CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_MEMSET));
+  CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_CNDRV_API));
+  CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_CNRT_API));
+  CNPAPI_CALL(cnpapiActivityEnable(CNPAPI_ACTIVITY_TYPE_CNNL_API));
+}
+
+void DisableMLUActivity() {
+  CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_KERNEL));
+  CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_MEMCPY));
+  CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_MEMCPY_PTOP));
+  CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_MEMSET));
+  CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_CNDRV_API));
+  CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_CNRT_API));
+  CNPAPI_CALL(cnpapiActivityDisable(CNPAPI_ACTIVITY_TYPE_CNNL_API));
+}
+
+void bufferRequested(uint64_t **buffer, size_t *size, size_t *maxNumRecords) {
+  // Buffer size and alignment, 32K and 8 as in CNPAPI samples.
+  constexpr size_t kBufferSize = 32 * 1024;
+  constexpr int kBufferAlignSize = 8;
+  uint64_t *buf =
+      reinterpret_cast<uint64_t *>(malloc(kBufferSize + kBufferAlignSize));
+  *size = kBufferSize;
+  *buffer = ALIGN_BUFFER(buf, kBufferAlignSize);
+  *maxNumRecords = 0;
+}
+
+void bufferCompleted(uint64_t *buffer, size_t size, size_t validSize) {
+  cnpapiActivity *record = nullptr;
+  if (validSize > 0) {
+    do {
+      status = cnpapiActivityGetNextRecord(buffer, validSize, &record);
+      if (status == CNPAPI_SUCCESS) {
+        switch (record->type) {
+          case CNPAPI_ACTIVITY_TYPE_KERNEL:
+            auto *kernel = reinterpret_cast<cnpapiActivityKernel *>(record);
+            tracer->AddKernelRecords(kernel->name, kernel->start, kernel->end,
+                                     kernel->device_id, kernel->queue_id,
+                                     kernel->correlation_id);
+            break;
+          case CNPAPI_ACTIVITY_TYPE_MEMCPY:
+            auto *memcpy = reinterpret_cast<cnpapiActivityMemcpy *>(record);
+            tracer->AddMemRecords(
+                MemcpyKind(
+                    static_cast<cnpapiActivityMemcpyType>(memcpy->copy_type)),
+                memcpy->start, memcpy->end, memcpy->device_id, memcpy->queue_id,
+                memcpy->correlation_id, memcpy->bytes);
+            break;
+          case CNPAPI_ACTIVITY_TYPE_MEMCPY_PTOP:
+            auto *memcpy = reinterpret_cast<cnpapiActivityMemcpyPtoP *>(record);
+            tracer->AddMemRecords("MEMCPY_PtoP", memcpy->start, memcpy->end,
+                                  memcpy->device_id, memcpy->queue_id,
+                                  memcpy->correlation_id, memcpy->bytes);
+            break;
+          case CNPAPI_ACTIVITY_TYPE_MEMSET:
+            auto *memset = reinterpret_cast<cnpapiActivityMemset *>(record);
+            tracer->AddMemRecords("MEMSET", memset->start, memset->end,
+                                  memset->device_id, memset->queue_id,
+                                  memset->correlation_id, memset->bytes);
+            break;
+          case CNPAPI_ACTIVITY_TYPE_CNDRV_API:
+          case CNPAPI_ACTIVITY_TYPE_CNRT_API:
+          case CNPAPI_ACTIVITY_TYPE_CNNL_API:
+          // auto *api =
+          default:
+            break;
+        }
+      } else if (status == CNPAPI_ERROR_MAX_LIMIT_REACHED) {
+        break;
+      } else {
+        CNPAPI_CALL(status);
+      }
+
+      case CUPTI_ACTIVITY_KIND_DRIVER: {
+        auto *api = reinterpret_cast<const CUpti_ActivityAPI *>(record);
+        if (api->start != 0 && api->end != 0) {
+          // -1 device id represents ActiveKind api call
+          tracer->AddActiveKindRecords(
+              DriverKind(api->cbid), api->start, api->end, -1,
+              GetThreadIdFromSystemThreadId(api->threadId), api->correlationId);
+        }
+        break;
+      }
+      case CUPTI_ACTIVITY_KIND_RUNTIME: {
+        auto *api = reinterpret_cast<const CUpti_ActivityAPI *>(record);
+        if (api->start != 0 && api->end != 0) {
+          // -1 device id represents ActiveKind api call
+          tracer->AddActiveKindRecords(
+              RuntimeKind(api->cbid), api->start, api->end, -1,
+              GetThreadIdFromSystemThreadId(api->threadId), api->correlationId);
+        }
+        break;
+      }
+    } while (1);
+  }
+  free(buffer);
+}
+
+// void initCuptiCbidStr();
+
+}  // namespace
+
+#endif  // PADDLE_WITH_MLU
+
 class DeviceTracerImpl : public DeviceTracer {
  public:
   DeviceTracerImpl() : enabled_(false) {
 #ifdef PADDLE_WITH_CUPTI
     initCuptiCbidStr();
+#endif
+#ifdef PADDLE_WITH_MLU
+// InitMLUDeviceTracer();
 #endif
   }
 
@@ -491,6 +661,12 @@ class DeviceTracerImpl : public DeviceTracer {
           1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API, cbid));
     CUPTI_CALL(dynload::cuptiGetTimestamp(&start_ns_));
 #endif  // PADDLE_WITH_CUPTI
+
+#ifdef PADDLE_WITH_MLU
+    EnableMLUActivity();
+    CNPAPI_CALL(
+        cnpapiActivityRegisterCallbacks(bufferRequested, bufferCompleted));
+#endif  // PADDLE_WITH_MLU
     enabled_ = true;
   }
 
@@ -498,6 +674,9 @@ class DeviceTracerImpl : public DeviceTracer {
 #ifdef PADDLE_WITH_CUPTI
     CUPTI_CALL(
         dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
+#endif
+#ifdef PADDLE_WITH_MLU
+    CNPAPI_CALL(cnpapiActivityFlushAll());
 #endif
     std::lock_guard<std::mutex> l(trace_mu_);
     kernel_records_.clear();
@@ -648,6 +827,8 @@ class DeviceTracerImpl : public DeviceTracer {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
         } else if (platform::is_npu_place(r.place)) {
           event->set_place(proto::MemEvent::NPUPlace);
+        } else if (platform::is_mlu_place(r.place)) {
+          event->set_place(proto::MemEvent::MLUPlace);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "The current place is not supported."));
@@ -669,12 +850,20 @@ class DeviceTracerImpl : public DeviceTracer {
     CUPTI_CALL(
         dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
 #endif  // PADDLE_WITH_CUPTI
+
+#ifdef PADDLE_WITH_MLU
+    CNPAPI_CALL(cnpapiActivityFlushAll());
+#endif
     std::lock_guard<std::mutex> l(trace_mu_);
 #ifdef PADDLE_WITH_CUPTI
     DisableActivity();
     CUPTI_CALL(dynload::cuptiUnsubscribe(subscriber_));
     CUPTI_CALL(dynload::cuptiGetTimestamp(&end_ns_));
 #endif  // PADDLE_WITH_CUPTI
+
+#ifdef PADDLE_WITH_MLU
+    DisableMLUActivity();
+#endif  // PADDLE_WITH_MLU
     enabled_ = false;
   }
 

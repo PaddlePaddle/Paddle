@@ -17,6 +17,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MLU
 #include <cn_api.h>
 #include <cnnl.h>
+#include <cnpapi.h>
 #include <cnrt.h>
 #ifdef PADDLE_WITH_CNCL
 #include <cncl.h>

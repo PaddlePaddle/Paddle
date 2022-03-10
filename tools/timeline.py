@@ -160,6 +160,12 @@ class Timeline(object):
                         self._devices[(k, event.device_id, "GPUKernel")] = pid
                         self._chrome_trace.emit_pid("%s:gpu:%d" %
                                                     (k, event.device_id), pid)
+                elif event.type == profiler_pb2.Event.MLUKernel:
+                    if (k, event.device_id, "MLUKernel") not in self._devices:
+                        pid = self._allocate_pid()
+                        self._devices[(k, event.device_id, "MLUKernel")] = pid
+                        self._chrome_trace.emit_pid("%s:mlu:%d" %
+                                                    (k, event.device_id), pid)
             if not hasattr(profile_pb, "mem_events"):
                 continue
             for mevent in profile_pb.mem_events:
@@ -193,6 +199,13 @@ class Timeline(object):
                         self._chrome_trace.emit_pid(
                             "memory usage on %s:npu:%d" % (k, mevent.device_id),
                             pid)
+                elif mevent.place == profiler_pb2.MemEvent.MLUPlace:
+                    if (k, mevent.device_id, "MLU") not in self._mem_devices:
+                        pid = self._allocate_pid()
+                        self._mem_devices[(k, mevent.device_id, "MLU")] = pid
+                        self._chrome_trace.emit_pid(
+                            "memory usage on %s:mlu:%d" % (k, mevent.device_id),
+                            pid)
                 if (k, 0, "CPU") not in self._mem_devices:
                     pid = self._allocate_pid()
                     self._mem_devices[(k, 0, "CPU")] = pid
@@ -213,6 +226,11 @@ class Timeline(object):
                     self._mem_devices[(k, 0, "NPU")] = pid
                     self._chrome_trace.emit_pid("memory usage on %s:npu:%d" %
                                                 (k, 0), pid)
+                if (k, 0, "MLU") not in self._mem_devices:
+                    pid = self._allocate_pid()
+                    self._mem_devices[(k, 0, "MLU")] = pid
+                    self._chrome_trace.emit_pid("memory usage on %s:mlu:%d" %
+                                                (k, 0), pid)
 
     def _allocate_events(self):
         for k, profile_pb in six.iteritems(self._profile_dict):
@@ -221,6 +239,8 @@ class Timeline(object):
                     type = "CPU"
                 elif event.type == profiler_pb2.Event.GPUKernel:
                     type = "GPUKernel"
+                elif event.type == profiler_pb2.Event.MLUKernel:
+                    type = "MLUKernel"
                 pid = self._devices[(k, event.device_id, type)]
                 args = {'name': event.name}
                 if event.memcopy.bytes > 0:
@@ -240,7 +260,8 @@ class Timeline(object):
             profiler_pb2.MemEvent.CPUPlace: "CPU",
             profiler_pb2.MemEvent.CUDAPlace: "GPU",
             profiler_pb2.MemEvent.CUDAPinnedPlace: "CUDAPinnedPlace",
-            profiler_pb2.MemEvent.NPUPlace: "NPU"
+            profiler_pb2.MemEvent.NPUPlace: "NPU",
+            profiler_pb2.MemEvent.MLUPlace: "MLU"
         }
         for k, profile_pb in six.iteritems(self._profile_dict):
             mem_list = []

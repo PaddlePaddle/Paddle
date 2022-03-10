@@ -190,7 +190,11 @@ cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_pri
 
 add_subdirectory(profiler)
 
-cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
+if(WITH_MLU)
+set(DEVICE_TRACER_MLU_DEPS mlu_info)
+endif()
+
+cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS} ${DEVICE_TRACER_MLU_DEPS})
 if(WITH_GPU)
   nv_library(profiler SRCS profiler.cc profiler.cu DEPS os_info device_tracer gpu_info enforce dynload_cuda)
   nv_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info gpu_info place)
