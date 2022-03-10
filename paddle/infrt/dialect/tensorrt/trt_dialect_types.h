@@ -23,6 +23,8 @@ class EngineType
     : public mlir::Type::TypeBase<EngineType, mlir::Type, mlir::TypeStorage> {
  public:
   using Base::Base;
+  static EngineType get();
+  static EngineType get(mlir::MLIRContext *context);
 };
 
 }  // namespace trt
