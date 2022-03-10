@@ -84,6 +84,7 @@ class ShardingStage3(nn.Layer):
         self._offload = offload
         self._sync_comm = sync_comm
         # segmentation size
+        assert segment_size >= 0, "segment_size must be GE than 0."
         self._segment_size = segment_size
 
         global DEV
@@ -158,7 +159,7 @@ class ShardingStage3(nn.Layer):
         self._redefine_opt_step()
         self._redefine_opt_clear()
 
-    @paddle.no_grad()
+    @paddle.autograd.no_grad()
     def _sync_params_and_buffers(self):
         """
         Sync all model states for all ranks
@@ -408,7 +409,7 @@ class ShardingStage3(nn.Layer):
         # register post forward hooks
         sub_layer.register_forward_post_hook(_forward_post_hook)
 
-    @paddle.no_grad()
+    @paddle.autograd.no_grad()
     def _sync_buffers(self):
         """
         Sync all the param buffers from all ranks (exp: batch norm statistics).
@@ -521,7 +522,7 @@ class ShardingStage3(nn.Layer):
             param._register_backward_hook(allreduce_function)
 
     def _get_allreduce_fn(self, param):
-        @paddle.no_grad()
+        @paddle.autograd.no_grad()
         def reduce(*_):
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
@@ -840,7 +841,7 @@ def _allgather_buffer(trainable_params,
     return task_flow
 
 
-@paddle.no_grad()
+@paddle.autograd.no_grad()
 def _create_params_grad(trainable_params, param2buffer_size, task_flow):
     for param in trainable_params:
         if param.name in task_flow.full_grad.keys():

@@ -332,6 +332,7 @@ void BuildDygraphPhiKernelContext(
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
+    VLOG(1) << "############## attr_name: " << i << " : " << attr_names[i];
     if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
       if (attrs.find(attr_names[i]) !=
           attrs.end()) {  // shape is in the attribute
@@ -409,6 +410,60 @@ void BuildDygraphPhiKernelContext(
             experimental::MakePhiScalarFromVar(ins_vector[0]->Var())));
       }
 
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(std::vector<phi::Scalar>))) {
+      auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+      if (std::type_index(attr.type()) ==
+          std::type_index(typeid(std::vector<int32_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<float>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<double>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<bool>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<bool>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` to vector<Scalar> when "
+            "construct KernelContext.",
+            attr_names[i]));
+      }
     } else {
       // TODO(chenweihang): support other attrs later
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
@@ -432,7 +487,11 @@ void BuildDygraphPhiKernelContext(
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
         if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int>))) {
+            std::type_index(typeid(std::vector<int64_t>))) {
+          kernel_ctx->EmplaceBackAttr(
+              BOOST_GET_CONST(std::vector<int64_t>, attr));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int>))) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),

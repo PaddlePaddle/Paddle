@@ -196,47 +196,6 @@ struct MinGradXYFunctor {
   }
 };
 
-template <typename T>
-struct MulGradFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const { return a * b; }
-};
-template <typename T>
-struct MulGradFunctor<Complex<T>> {
-  inline HOSTDEVICE Complex<T> operator()(const Complex<T> a,
-                                          const Complex<T> b) const {
-    Complex<T> b_conj(b.real, -b.imag);
-    return a * b_conj;
-  }
-};
-
-template <typename InT, typename OutT>
-struct MulGradXYFunctor {
-  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT a, const InT b,
-                                                   const InT c) {
-    phi::Array<OutT, 2> outs;
-    // dx = dout * y
-    outs[0] = a * b;
-    // dy = dout * x
-    outs[1] = a * c;
-    return outs;
-  }
-};
-
-template <typename InT, typename OutT>
-struct MulGradXYFunctor<Complex<InT>, Complex<OutT>> {
-  inline HOSTDEVICE phi::Array<Complex<OutT>, 2> operator()(
-      const Complex<InT> a, const Complex<InT> b, const Complex<InT> c) {
-    phi::Array<Complex<OutT>, 2> outs;
-    // dx = dout * y
-    Complex<InT> b_conj(b.real, -b.imag);
-    outs[0] = a * b_conj;
-    // dy = dout * x
-    Complex<InT> c_conj(c.real, -c.imag);
-    outs[1] = a * c_conj;
-    return outs;
-  }
-};
-
 // Ternary compare
 template <typename T>
 struct MaxGradXFunctor {

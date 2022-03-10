@@ -29,13 +29,8 @@ void ReduceWrapper(const GPUContext &dev_ctx,
                    DenseTensor *dst) {
   std::vector<int> reduce_dims =
       funcs::GetReduceDim(dst->dims(), src->dims(), axis);
-  funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      dev_ctx,
-      *src,
-      dst,
-      kps::IdentityFunctor<T>(),
-      reduce_dims,
-      dev_ctx.stream());
+  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+      dev_ctx, *src, dst, kps::IdentityFunctor<T>(), reduce_dims);
 }
 
 template <ElementwiseType ET, typename T, typename Functor>
@@ -172,9 +167,8 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims);
     }
   }
   // dy
@@ -187,9 +181,8 @@ void DefaultElementwiseAddGrad(const GPUContext &ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dy, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, dout, dy, kps::IdentityFunctor<T>(), reduce_dims);
     }
   }
 }
@@ -285,9 +278,8 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, dout, dx, kps::IdentityFunctor<T>(), reduce_dims);
     }
   }
   // dy
@@ -306,9 +298,8 @@ void default_elementwise_sub_grad(const GPUContext &ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      gpuStream_t stream = ctx.stream();
-      funcs::TensorReduceImpl<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
-          ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims, stream);
+      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
+          ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims);
     }
   }
 }
@@ -369,4 +360,41 @@ void ElementwiseDivGrad(const GPUContext &dev_ctx,
   }
 }
 
+/*
+******************************
+    Mul Grad
+******************************
+*/
+
+template <typename T>
+void ElementwiseMulGrad(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        const DenseTensor &dout,
+                        DenseTensor *dx,
+                        DenseTensor *dy,
+                        int axis) {
+  const auto place = dev_ctx.GetPlace();
+
+  if (dx != nullptr && dy != nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &y, &x};
+    GetGradXAndYOut<ElementwiseType::kTernary, T>(
+        dev_ctx,
+        place,
+        axis,
+        ins,
+        dout,
+        dx,
+        dy,
+        funcs::MultiplyGradXYFunctor<T, T>());
+  } else if (dx != nullptr && dy == nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &y};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+        dev_ctx, place, axis, ins, dout, dx, funcs::MultiplyGradFunctor<T>());
+  } else if (dx == nullptr && dy != nullptr) {
+    std::vector<const DenseTensor *> ins = {&dout, &x};
+    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+        dev_ctx, place, axis, ins, dout, dy, funcs::MultiplyGradFunctor<T>());
+  }
+}
 }  // namespace phi
