@@ -444,7 +444,24 @@ void FleetWrapper::PushDenseVarsAsync(
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    int count = tensor->numel();
     float* g = tensor->mutable_data<float>(place);
+    // TODO(zhaocaibei123): how to get batch_size in op?
+    if (scale_datanorm >= 0) {
+      if (t.find(".batch_size@GRAD") != std::string::npos ||
+          t.find(".batch_sum@GRAD") != std::string::npos) {
+        Eigen::Map<Eigen::MatrixXf> mat(g, 1, count);
+        float scale = 1.0 / batch_size;
+        mat *= scale;
+      } else if (t.find(".batch_square_sum@GRAD") != std::string::npos) {
+        VLOG(3) << "epsilon: " << scale_datanorm;
+        for (int i = 0; i < count; ++i) {
+          g[i] = (g[i] - batch_size * scale_datanorm) / batch_size +
+                 batch_size * scale_datanorm;
+        }
+      }
+    }
+
     paddle::distributed::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
     VLOG(3) << "FleetWrapper::PushDenseVarsAsync Var " << t << " talbe_id "

@@ -396,7 +396,7 @@ class CommonAccessor(Accessor):
                     initializer = self.get_initializer_attr(param.name,
                                                             startup_program)
                 elif formal_name == "SummaryDecayRate":
-                    initializer = "fill_constant&0.99999"
+                    initializer = "fill_constant&0.999999"
                 else:
                     initializer = "fill_constant&0"
                 initializers.append(initializer)

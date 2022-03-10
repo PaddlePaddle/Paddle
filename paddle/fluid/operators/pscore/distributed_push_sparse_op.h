@@ -32,7 +32,6 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto padding_idx = context.Attr<int64_t>("padding_idx");
     auto table_id = context.Attr<int>("table_id");
     auto emb_dim = context.Attr<int>("size");
-    VLOG(1) << "push_sparse.h::emb_dim: " << emb_dim;
 
     auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
     auto shows = context.Input<framework::LoDTensor>("Shows");
