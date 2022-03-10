@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/selected_rows.h"
 
 namespace phi {
