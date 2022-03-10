@@ -146,6 +146,10 @@ void AddFeedOpAndVar(const GraphNodeSet& feed_vars, const GraphNodeSet& cluster,
                      const GraphNodeMap& old_op2new_op,
                      const GraphNodeMap& old_var2new_var, Graph* graph) {
   for (auto* old_var : feed_vars) {
+    PADDLE_ENFORCE_NOT_NULL(old_var->Var(),
+                            platform::errors::PreconditionNotMet(
+                                "The var desc of the node in subgraph feed "
+                                "input shouldn't be null."));
     // create feed op
     OpDesc desc;
     desc.SetType("feed");
@@ -178,6 +182,10 @@ void AddParamVar(const GraphNodeSet& param_vars, const GraphNodeSet& cluster,
                  const GraphNodeMap& old_op2new_op,
                  const GraphNodeMap& old_var2new_var, Graph* graph) {
   for (auto* old_var : param_vars) {
+    PADDLE_ENFORCE_NOT_NULL(old_var->Var(),
+                            platform::errors::PreconditionNotMet(
+                                "The var desc of the node in subgraph paramater"
+                                " shouldn't be null."));
     auto* var = old_var2new_var.at(old_var);
     VLOG(4) << "Add Param Var Node: " << var->Name();
 
@@ -195,6 +203,10 @@ void AddOutputVar(const GraphNodeSet& output_vars, const GraphNodeSet& cluster,
                   const GraphNodeMap& old_op2new_op,
                   const GraphNodeMap& old_var2new_var, Graph* graph) {
   for (auto* old_var : output_vars) {
+    PADDLE_ENFORCE_NOT_NULL(old_var->Var(),
+                            platform::errors::PreconditionNotMet(
+                                "The var desc of the node in subgraph output "
+                                "shouldn't be null."));
     // create fetch op
     OpDesc desc;
     desc.SetType("fetch");
@@ -220,8 +232,11 @@ std::unordered_set<std::string> ExtractNoNeedBufferFeeds(
   // 1. Find op with NoNeedBufferVarsInferer defined and collect its input nodes
   std::unordered_map<Node*, GraphNodeSet> op_node2no_need_buffer_nodes;
   for (auto* op_node : cluster) {
-    auto& inferer =
-        OpInfoMap::Instance().Get(op_node->Name()).NoNeedBufferVarsInferer();
+    const auto* op = OpInfoMap::Instance().GetNullable(op_node->Name());
+    if (!op) {
+      continue;
+    }
+    auto& inferer = op->NoNeedBufferVarsInferer();
     if (!inferer) {
       continue;
     }
@@ -300,10 +315,10 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
 
   GraphNodeMap old_var2new_var;
   for (auto* var : cluster_internals) {
-    PADDLE_ENFORCE_NOT_NULL(var->Var(),
-                            platform::errors::PreconditionNotMet(
-                                "The var desc of the node in cluster_internals "
-                                "shouldn't be null."));
+    if (!var->Var()) {
+      // skip control var
+      continue;
+    }
     auto* sub_node = subgraph->CreateVarNode(var->Var());
     old_var2new_var[var] = sub_node;
   }
@@ -327,6 +342,10 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
   // out-graph.
   for (auto* op : cluster) {
     for (auto* var : op->inputs) {
+      if (!var->Var()) {
+        // skip control var
+        continue;
+      }
       // one output var maybe an input of the cluster
       if (cluster_internals.count(var) ||
           (cluster_outputs.count(var) && old_var2new_var.count(var))) {
@@ -346,6 +365,10 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
       }
     }
     for (auto* var : op->outputs) {
+      if (!var->Var()) {
+        // skip control var
+        continue;
+      }
       if (cluster_internals.count(var)) {
         IR_NODE_LINK_TO(old_op2new_op.at(op), old_var2new_var.at(var));
       } else if (cluster_outputs.count(var) && var->Var() != nullptr) {
@@ -377,6 +400,30 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     }
     return result;
   };
+
+  auto cluster_debug_info = [](const GraphNodeSet& cluster) {
+    std::string res = "(";
+    for (auto* node : cluster) {
+      res.append(node->Name());
+      res.append(", ");
+    }
+    res.append(")");
+    return res;
+  };
+
+  static int idx = 0;
+
+  VLOG(4) << "Subgraph [" << idx
+          << "] Cluster Ops: " << cluster_debug_info(cluster);
+  VLOG(4) << "Subgraph [" << idx
+          << "] Cluster input vars: " << cluster_debug_info(cluster_inputs);
+  VLOG(4) << "Subgraph [" << idx
+          << "] Cluster output vars: " << cluster_debug_info(cluster_outputs);
+  VLOG(4) << "Subgraph [" << idx << "] Cluster internal vars: "
+          << cluster_debug_info(cluster_internals);
+
+  ++idx;
+
   subgraph->Set<std::vector<std::string>>(
       kInternalVars, collect_names_fn(cluster_internals, {}).release());
   subgraph->Set<std::vector<std::string>>(
