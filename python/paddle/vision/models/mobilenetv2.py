@@ -17,6 +17,7 @@ import paddle.nn as nn
 from paddle.utils.download import get_weights_path_from_url
 
 from .utils import _make_divisible
+from ..ops import ConvNormActivation
 
 __all__ = []
 
@@ -25,29 +26,6 @@ model_urls = {
     ('https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams',
      '0340af0a901346c8d46f4529882fb63d')
 }
-
-
-class ConvBNReLU(nn.Sequential):
-    def __init__(self,
-                 in_planes,
-                 out_planes,
-                 kernel_size=3,
-                 stride=1,
-                 groups=1,
-                 norm_layer=nn.BatchNorm2D):
-        padding = (kernel_size - 1) // 2
-
-        super(ConvBNReLU, self).__init__(
-            nn.Conv2D(
-                in_planes,
-                out_planes,
-                kernel_size,
-                stride,
-                padding,
-                groups=groups,
-                bias_attr=False),
-            norm_layer(out_planes),
-            nn.ReLU6())
 
 
 class InvertedResidual(nn.Layer):
@@ -67,15 +45,20 @@ class InvertedResidual(nn.Layer):
         layers = []
         if expand_ratio != 1:
             layers.append(
-                ConvBNReLU(
-                    inp, hidden_dim, kernel_size=1, norm_layer=norm_layer))
+                ConvNormActivation(
+                    inp,
+                    hidden_dim,
+                    kernel_size=1,
+                    norm_layer=norm_layer,
+                    activation_layer=nn.ReLU6))
         layers.extend([
-            ConvBNReLU(
+            ConvNormActivation(
                 hidden_dim,
                 hidden_dim,
                 stride=stride,
                 groups=hidden_dim,
-                norm_layer=norm_layer),
+                norm_layer=norm_layer,
+                activation_layer=nn.ReLU6),
             nn.Conv2D(
                 hidden_dim, oup, 1, 1, 0, bias_attr=False),
             norm_layer(oup),
@@ -130,8 +113,12 @@ class MobileNetV2(nn.Layer):
         self.last_channel = _make_divisible(last_channel * max(1.0, scale),
                                             round_nearest)
         features = [
-            ConvBNReLU(
-                3, input_channel, stride=2, norm_layer=norm_layer)
+            ConvNormActivation(
+                3,
+                input_channel,
+                stride=2,
+                norm_layer=norm_layer,
+                activation_layer=nn.ReLU6)
         ]
 
         for t, c, n, s in inverted_residual_setting:
@@ -148,11 +135,12 @@ class MobileNetV2(nn.Layer):
                 input_channel = output_channel
 
         features.append(
-            ConvBNReLU(
+            ConvNormActivation(
                 input_channel,
                 self.last_channel,
                 kernel_size=1,
-                norm_layer=norm_layer))
+                norm_layer=norm_layer,
+                activation_layer=nn.ReLU6))
 
         self.features = nn.Sequential(*features)
 
