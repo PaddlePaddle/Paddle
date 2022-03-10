@@ -1057,6 +1057,7 @@ void PadInferMeta(const MetaTensor& input,
     // output and input.
     out->share_lod(input);
   }
+  out->set_dtype(input.dtype());
 }
 
 void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
