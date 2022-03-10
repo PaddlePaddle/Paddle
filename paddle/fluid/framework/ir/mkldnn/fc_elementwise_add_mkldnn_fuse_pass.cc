@@ -44,19 +44,6 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
-      .End()
-      .AddAttr("activation_type")
-      .IsStringIn({"relu", ""})
-      .IsOptional()
-      .End()
-      .AddAttr("padding_weights")
-      .IsOptional()
-      .End()
-      .AddAttr("in_num_col_dims")
-      .IsOptional()
-      .End()
-      .AddAttr("use_mkldnn")
-      .IsOptional()
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -96,7 +83,6 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_input, fc_input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_weights, fc_weights, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_bias, fc_bias, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_output, fc_output, fc_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
@@ -162,7 +148,6 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsY(
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_input, fc_input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_weights, fc_weights, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_bias, fc_bias, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_output, fc_output, fc_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
@@ -230,13 +215,11 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseProjectionFC(
     GET_IR_NODE_FROM_SUBGRAPH(fc_x_op, fc_op, fc_x_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_x_input, fc_input, fc_x_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_x_weights, fc_weights, fc_x_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_x_bias, fc_bias, fc_x_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_x_output, fc_output, fc_x_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(fc_y_op, fc_op, fc_y_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_y_input, fc_input, fc_y_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_y_weights, fc_weights, fc_y_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_y_bias, fc_bias, fc_y_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_y_output, fc_output, fc_y_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,

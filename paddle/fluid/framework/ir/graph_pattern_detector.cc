@@ -1057,15 +1057,11 @@ PDNode *patterns::FCResidual::operator()() {
                          ->AsInput()
                          ->assert_is_op_input("fc", "W");
 
-  auto *bias_var = pattern->NewNode(fc_bias_repr())
-                         ->AsInput()
-                         ->assert_is_op_input("fc", "Bias");
-
   auto *output_var = pattern->NewNode(fc_output_repr())
                         ->AsOutput()
                         ->assert_is_op_output("fc", "Out");
 
-  fc_op->LinksFrom({input_var, weights_var, bias_var}).LinksTo({output_var});
+  fc_op->LinksFrom({input_var, weights_var}).LinksTo({output_var});
   return output_var;
 }
 

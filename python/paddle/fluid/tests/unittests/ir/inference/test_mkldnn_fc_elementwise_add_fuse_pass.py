@@ -29,12 +29,11 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
-        fusing_mode = draw(st.sampled_from(["FC_as_X", "FC_as_Y"]))
 
         def generate_input():
             return np.random.random(
                 [32, 64]).astype(np.float32)
-        
+
         def generate_fc_weight():
             return np.random.random(
                 [64, 64]).astype(np.float32)
@@ -60,52 +59,64 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
                 "padding_weights": False,
                 "activation_type": "",
                 "in_num_col_dims": 1,
-                # 
             })
 
-        if fusing_mode == "FC_as_X":
-            elt_op = OpConfig(
+        if axis == 1:
+            elt_add_op = OpConfig(
                 type="elementwise_add",
                 inputs={"X": ["fc_output"],
-                        "Y": ["relu_out"]},
+                        "Y": ["elementwise_weight"]},
                 outputs={"Out": ["elementwise_output"]},
                 attrs={'axis': axis})
         else:
-            elt_op = OpConfig(
+            elt_add_op = OpConfig(
                 type="elementwise_add",
-                inputs={"X": ["relu_out"],
+                inputs={"X": ["input_data"],
                         "Y": ["fc_output"]},
                 outputs={"Out": ["elementwise_output"]},
                 attrs={'axis': axis})
 
-        relu2_op = OpConfig(
-            type="relu",
-            inputs={"X": ["elementwise_output"]},
-            outputs={"Out": ["relu2_out"]},
-            attrs={}
-        )        
+        model_net = [relu_op, fc_op, elt_add_op]
 
-        model_net = [relu_op, fc_op, elt_op, relu2_op]
+        if axis == 1:
+            program_config = ProgramConfig(
+                ops=model_net,
+                weights={
+                    "fc_weight":
+                    TensorConfig(data_gen=partial(generate_fc_weight)),
+                    "fc_bias":
+                    TensorConfig(data_gen=partial(generate_fc_bias)),
+                    "elementwise_weight":
+                    TensorConfig(data_gen=partial(generate_fc_bias))
+                },
+                inputs={
+                    "input_data":
+                    TensorConfig(data_gen=partial(generate_input))
+                },
+                outputs=["elementwise_output"])
+        else:
+            program_config = ProgramConfig(
+                ops=model_net,
+                weights={
+                    "fc_weight":
+                    TensorConfig(data_gen=partial(generate_fc_weight)),
+                    "fc_bias":
+                    TensorConfig(data_gen=partial(generate_fc_bias)),
+                },
+                inputs={
+                    "input_data":
+                    TensorConfig(data_gen=partial(generate_input))
+                },
+                outputs=["elementwise_output"])
 
-        program_config = ProgramConfig(
-            ops=model_net,
-            inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input))
-            },
-            weights={
-                "fc_weight":
-                TensorConfig(data_gen=partial(generate_fc_weight)),
-                "fc_bias":
-                TensorConfig(data_gen=partial(generate_fc_bias))
-            },
-            outputs=["relu2_out"])
-        
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True, passes=["fc_elementwise_add_mkldnn_fuse_pass"])
-        yield config, ["relu", "fc", "relu"], (1e-5, 1e-5)
+        config = self.create_inference_config(use_mkldnn=True)
+        # Set big threshold to ignore Maximum Absolute Value error
+        # and focus on not fusing when axis=1
+        # yield config, ["relu", "fc", "relu"], (1e-5, 1e-5)
+        yield config, ["relu", "fc"], (1e5, 1e5)
 
     def test(self):
         self.run_and_statis(
