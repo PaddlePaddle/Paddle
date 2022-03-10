@@ -44,9 +44,9 @@ struct NonZeroFunctor {
   HOSTDEVICE NonZeroFunctor() {}
   HOSTDEVICE inline T operator()(const T in) {
     if (in) {
-      return static_cast<T>(1.0f);
+      return static_cast<T>(1);
     } else {
-      return static_cast<T>(0.0f);
+      return static_cast<T>(0);
     }
   }
 };
@@ -378,11 +378,12 @@ void SelectKernel(const KPDevice &dev_ctx,
   // out:       1 2 6 7
   // alloc for cpu
   using CT = int64_t;  // set Count_data Type
-  const int t_size = sizeof(int64_t);
+  const int t_size = sizeof(CT);
   const paddle::platform::CUDAPlace &cuda_place = dev_ctx.GetPlace();
   paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
 
-  auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, (rank + 1) * t_size);
+  auto cpu_buf_holder =
+      paddle::memory::Alloc(cpu_place, (rank + 1 + 190) * t_size);
   CT *cpu_buf = reinterpret_cast<CT *>(cpu_buf_holder->ptr());
 
   // 1.1 get stored data num of per block
@@ -394,12 +395,10 @@ void SelectKernel(const KPDevice &dev_ctx,
   const int need_grids = (numel + num_per_block - 1) / num_per_block;
   const int grid = std::min(need_grids, 8);
 #else
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, kVecSize);
-  const int grid = config.block_per_grid.x;
-  const int block = config.thread_per_block.x;  // block must less than 512
+  const int block = 256;
   const int num_per_block = kVecSize * block;
   const int need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int grid = std::min(need_grids, 256);
   auto stream = dev_ctx.stream();
 #endif
   const int64_t main_offset = Ceil(numel, num_per_block);
@@ -415,8 +414,6 @@ void SelectKernel(const KPDevice &dev_ctx,
   GetBlockCountKernel<MT, CT, kVecSize><<<grid, block, 0, stream>>>(
       cond_data, count_data, numel, main_offset);
   // 2.1 alloc cumsum data for CoutBlock prefix
-  // DenseTensor cumsum_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
-  // CT *cumsum_data = cumsum_mem.data<CT>();
   auto cumsum_mem =
       paddle::memory::Alloc(cuda_place, size_count_block * t_size);
   CT *cumsum_data = reinterpret_cast<CT *>(cumsum_mem->ptr());
@@ -446,6 +443,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   out->Resize(phi::make_ddim(out_dim));
   auto out_data = out->mutable_data<OutT>(cuda_place);
   // 3.2 get true data's index according to cond_data and cumsum_data
+  if (cpu_buf[0] <= 0) return;
   SelectKernel<MT,
                InT,
                CT,
