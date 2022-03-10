@@ -1,0 +1,110 @@
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <unistd.h>
+#include <condition_variable>  // NOLINT
+#include <fstream>
+#include <iomanip>
+#include <string>
+#include <thread>  // NOLINT
+#include <unordered_set>
+#include <vector>
+#include "google/protobuf/text_format.h"
+
+#include "gtest/gtest.h"
+#include "paddle/fluid/distributed/ps.pb.h"
+#include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
+#include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
+#include "paddle/fluid/distributed/ps/service/env.h"
+#include "paddle/fluid/distributed/ps/service/graph_brpc_client.h"
+#include "paddle/fluid/distributed/ps/service/graph_brpc_server.h"
+#include "paddle/fluid/distributed/ps/service/ps_client.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/graph_py_service.h"
+#include "paddle/fluid/distributed/ps/service/ps_service/service.h"
+#include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
+#include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+
+namespace framework = paddle::framework;
+namespace platform = paddle::platform;
+namespace operators = paddle::operators;
+namespace memory = paddle::memory;
+namespace distributed = paddle::distributed;
+
+std::vector<std::string> edges = {
+    std::string("37\t45\t0.34"),  std::string("37\t145\t0.31"),
+    std::string("37\t112\t0.21"), std::string("96\t48\t1.4"),
+    std::string("96\t247\t0.31"), std::string("96\t111\t1.21"),
+    std::string("59\t45\t0.34"),  std::string("59\t145\t0.31"),
+    std::string("59\t122\t0.21"), std::string("97\t48\t0.34"),
+    std::string("97\t247\t0.31"), std::string("97\t111\t0.21")};
+char edge_file_name[] = "edges.txt";
+
+std::vector<std::string> nodes = {
+    std::string("user\t37\ta 0.34\tb 13 14\tc hello\td abc"),
+    std::string("user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd"),
+    std::string("user\t59\ta 0.11\tb 11 14"),
+    std::string("user\t97\ta 0.11\tb 12 11"),
+    std::string("item\t45\ta 0.21"),
+    std::string("item\t145\ta 0.21"),
+    std::string("item\t112\ta 0.21"),
+    std::string("item\t48\ta 0.21"),
+    std::string("item\t247\ta 0.21"),
+    std::string("item\t111\ta 0.21"),
+    std::string("item\t46\ta 0.21"),
+    std::string("item\t146\ta 0.21"),
+    std::string("item\t122\ta 0.21"),
+    std::string("item\t49\ta 0.21"),
+    std::string("item\t248\ta 0.21"),
+    std::string("item\t113\ta 0.21")};
+char node_file_name[] = "nodes.txt";
+
+void prepare_file(char file_name[], std::vector<std::string> data) {
+  std::ofstream ofile;
+  ofile.open(file_name);
+  for (auto x : data) {
+    ofile << x << std::endl;
+  }
+
+  ofile.close();
+}
+
+void testGraphSample() {
+  ::paddle::distributed::GraphParameter table_proto;
+  table_proto.set_gpups_mode(true);
+  table_proto.set_gpups_mode_shard_num(127);
+  table_proto.set_gpu_num(2);
+  distributed::GraphTable graph_table;
+  graph_table.initialize(table_proto);
+  prepare_file(edge_file_name, edges);
+  graph_table.load(std::string(edge_file_name), std::string("e>"));
+  distributed::CompleteGraphSampler *sampler =
+      (distributed::CompleteGraphSampler *)graph_table.get_graph_sampler();
+  std::vector<GpuPsCommGraph> res = sampler->fetch_sample_res();
+  ASSERT_EQ(2, res.size());
+  // 48 96 112 122
+  for (int i = 0; i < (int)res[0].node_size; i++) {
+    std::cout << res[0].node_list[i].node_id << std::endl;
+  }
+  ASSERT_EQ(4, res[0].node_size);
+}
+
+TEST(testGraphSample, Run) { testGraphSample(); }
