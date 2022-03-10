@@ -890,7 +890,7 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
            R"DOC(
         Set the data of Tensor on place with given numpy array.
-
+        
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace|MLUPlace): The place where the
@@ -1064,7 +1064,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
            Args:
                 recursive_sequence_lengths (list[list[int]]): The recursive sequence lengths.
-
+           
            Returns:
                 None.
 
@@ -1094,7 +1094,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
            Returns:
                list[list[int]]: The lod of the Tensor.
-
+           
            Examples:
                .. code-block:: python
 
@@ -1117,7 +1117,7 @@ PYBIND11_MODULE(core_noavx, m) {
              return new_lod;
            },
            R"DOC(
-           Return the recursive sequence lengths corresponding to of the LodD
+           Return the recursive sequence lengths corresponding to of the LodD 
            of the Tensor.
 
            Returns:
@@ -1224,13 +1224,6 @@ PYBIND11_MODULE(core_noavx, m) {
                tensor: Shared Cuda IPC tensor.
                tuple: contrains data size, data type,
                       tensor dims, lod information, device index.
-
-           Examples:
-               .. code-block:: python
-
-                 import paddle
-                 tensor = paddle.ones([3,3])
-                 metainfo = tensor.value().get_tensor()._share_cuda()
 
        )DOC")
       .def("_share_cuda",
@@ -1575,7 +1568,6 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("get_float",
            [](const Variable &var) -> float { return var.Get<float>(); })
-      // get_tensor
       .def("get_tensor",
            [](Variable &self) -> LoDTensor * {
              return self.GetMutable<LoDTensor>();
@@ -1692,7 +1684,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("find_var", &Scope::FindVar, py::arg("name"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found.
+           its parent scope. Return None if not found. 
 
            Args:
                name (str): the variable name.
@@ -1704,7 +1696,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("erase", &Scope::EraseVars, py::arg("names"),
            R"DOC(
            Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found.
+           its parent scope. Return None if not found. 
 
            Args:
                name (str): the variable names to be erase.
@@ -1833,12 +1825,12 @@ All parameter, weight, gradient are variables in Paddle.
         R"DOC(
              Prune the backward part of a program, mostly called in
              program.clone(for_test=True).
-
+              
              Args:
                    program (ProgramDesc): The original program.
 
              Returns:
-                   tuple(ProgramDesc, map<int, int>): The first part is
+                   tuple(ProgramDesc, map<int, int>): The first part is 
                    the pruned program desc, and the second part is a map
                    which contains the id pair of pruned block and corresponding
                    origin block.
@@ -2964,7 +2956,7 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::arg("tensor"), R"DOC(
              Append a LoDensor to LoDTensorArray.
-
+              
              Args:
                    tensor (LoDTensor): The LoDTensor to be appended.
 
@@ -3464,9 +3456,9 @@ All parameter, weight, gradient are variables in Paddle.
                 Default 100.
 
                 .. note::
-                    1. If you fetch data when calling the 'run', the ParallelExecutor
-                    will clean up the temp variables at the end of the current iteration.
-                    2. In some NLP model, it may cause the GPU memory is insufficient,
+                    1. If you fetch data when calling the 'run', the ParallelExecutor 
+                    will clean up the temp variables at the end of the current iteration. 
+                    2. In some NLP model, it may cause the GPU memory is insufficient, 
                     in this case, you should reduce `num_iteration_per_drop_scope`.
 
                 Examples:
@@ -4007,7 +3999,7 @@ All parameter, weight, gradient are variables in Paddle.
                 synchronous batch normalization which synchronizes the mean
                 and variance through multi-devices in training phase.
                 Current implementation doesn't support FP16 training and CPU.
-                And only synchronous on one machine, not all machines.
+                And only synchronous on one machine, not all machines. 
                 Default is False.
 
                 Examples:
@@ -4045,9 +4037,9 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC((bool, optional): memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
-                Default None. None means framework would choose to use or not use
-                this strategy automatically. Currently, None means that it is
-                enabled when GC is disabled, and disabled when GC is enabled.
+                Default None. None means framework would choose to use or not use 
+                this strategy automatically. Currently, None means that it is 
+                enabled when GC is disabled, and disabled when GC is enabled. 
                 True means enabling and False means disabling. Default is None.
 
                 Examples:
@@ -4060,7 +4052,7 @@ All parameter, weight, gradient are variables in Paddle.
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.memory_optimize = True
-
+                
                 )DOC")
       .def_property(
           "is_distribution",

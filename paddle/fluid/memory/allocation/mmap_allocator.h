@@ -91,10 +91,6 @@ class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
 void AllocateMemoryMap(std::string filename, int flags, size_t size,
                        void **base_ptr_, int *fd_);
 
-// Temporarily commented out for convergence rate @ZHUI
-// std::shared_ptr<MemoryMapAllocation> AllocateMemoryMapAllocation(
-//     std::string filename, int flags, size_t size);
-
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename, int flags,
                                       size_t size);

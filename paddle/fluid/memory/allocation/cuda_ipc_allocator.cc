@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ std::shared_ptr<void> GetIpcBasePtr(std::string handle) {
             << "\t" << ptr;
   });
   std::weak_ptr<void> wp = sp;
-  ipc_handle_to_baseptr_.insert(iter, {handle, wp});
+  ipc_handle_to_baseptr_.emplace(iter, {handle, wp});
 
   return sp;
 }

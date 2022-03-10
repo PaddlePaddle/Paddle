@@ -96,22 +96,11 @@ void AllocateMemoryMap(std::string filename, int flags, size_t size,
   } else {
     PADDLE_ENFORCE_NE(::close(fd), -1,
                       platform::errors::Unavailable(
-                          false, "Error closing file <", filename, ">"));
+                          "Error closing memory maped file <", filename, ">"));
 
     *fd_ = -1;
   }
 }
-
-// Temporarily commented out for convergence rate @ZHUI
-// std::shared_ptr<MemoryMapAllocation> AllocateMemoryMapAllocation(
-//     std::string filename, int flags, size_t size) {
-//   int fd = -1;
-//   void *base_ptr = nullptr;
-//   AllocateMemoryMap(filename, flags, size, &base_ptr, &fd);
-//   return std::make_shared<MemoryMapAllocation>(base_ptr, size, filename,
-//   flags,
-//                                                fd);
-// }
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename, int flags,
@@ -138,34 +127,6 @@ void MemoryMapAllocation::close() {
     return;
   }
   closed_ = true;
-  // Temporarily commented out for convergence rate @ZHUI
-  // if (map_ptr_ == nullptr) {
-  //   return;
-  // }
-  // if (flags_ & MAPPED_KEEPFD) {
-  //   PADDLE_ENFORCE_NE(
-  //       ::close(fd_), -1,
-  //       platform::errors::Unavailable("could not close file descriptor ",
-  //       fd_,
-  //                                     " :", strerror(errno), " (", errno,
-  //                                     ")"));
-  // }
-
-  // PADDLE_ENFORCE_NE(
-  //     munmap(map_ptr_, map_size_), -1,
-  //     platform::errors::Unavailable("could not unmap the shared memory file:
-  //     ",
-  //                                   strerror(errno), " (", errno, ")"));
-
-  // if (!(flags_ & (MAPPED_FROMFD | MAPPED_UNLINK))) {
-  //   if (flags_ & MAPPED_SHAREDMEM) {
-  //     PADDLE_ENFORCE_NE(
-  //         shm_unlink(ipc_name_.c_str()), -1,
-  //         platform::errors::Unavailable(
-  //             "could not unlink the shared memory file ", ipc_name_, " : ",
-  //             strerror(errno), " (", errno, ")"));
-  //   }
-  // }
 }
 
 MemoryMapAllocation::~MemoryMapAllocation() { close(); }
@@ -274,7 +235,6 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
 
 std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
     const std::string &ipc_name, size_t size) {
-  // TODO(@ZHUI): support win32
   int flags = O_RDWR | O_CREAT;
   flags &= ~O_CREAT;
 
@@ -282,7 +242,6 @@ std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
   PADDLE_ENFORCE_NE(
       fd, -1, platform::errors::Unavailable("File descriptor %s open failed",
                                             ipc_name.c_str()));
-  // pass
   void *ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr, MAP_FAILED,
                     platform::errors::Unavailable(
