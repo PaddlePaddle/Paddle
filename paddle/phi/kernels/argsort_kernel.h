@@ -14,16 +14,16 @@
 
 #pragma once
 
-#include "mlir/IR/Types.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace infrt {
-namespace trt {
+namespace phi {
 
-class EngineType
-    : public mlir::Type::TypeBase<EngineType, mlir::Type, mlir::TypeStorage> {
- public:
-  using Base::Base;
-};
+template <typename T, typename Context>
+void ArgsortKernel(const Context& dev_ctx,
+                   const DenseTensor& input,
+                   int axis,
+                   bool descending,
+                   DenseTensor* output,
+                   DenseTensor* indices);
 
-}  // namespace trt
-}  // namespace infrt
+}  // namespace phi

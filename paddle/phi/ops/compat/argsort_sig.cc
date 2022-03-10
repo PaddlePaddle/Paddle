@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/allocator_kernels.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-namespace infrt {
-namespace kernel {
 namespace phi {
 
-backends::CpuPhiAllocator CreateCpuAllocator() { return {}; }
+KernelSignature ArgsortGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("argsort_grad",
+                         {"Indices", "X", GradVarName("Out")},
+                         {"axis", "descending"},
+                         {GradVarName("X")});
+}
 
 }  // namespace phi
-}  // namespace kernel
-}  // namespace infrt
+
+PD_REGISTER_ARG_MAPPING_FN(argsort_grad, phi::ArgsortGradOpArgumentMapping);
