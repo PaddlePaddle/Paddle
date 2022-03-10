@@ -174,6 +174,36 @@ boost::optional<double> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 template <>
+boost::optional<::infrt::TargetType> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<::infrt::TargetAttr>()) return boost::none;
+  if (attr.isa<::infrt::TargetAttr>()) {
+    return attr.cast<::infrt::TargetAttr>().getTarget();
+  }
+  return boost::none;
+}
+
+template <>
+boost::optional<::infrt::LayoutType> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<::infrt::LayoutAttr>()) return boost::none;
+  if (attr.isa<::infrt::LayoutAttr>()) {
+    return attr.cast<::infrt::LayoutAttr>().getLayout();
+  }
+  return boost::none;
+}
+
+template <>
+boost::optional<::infrt::PrecisionType> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<::infrt::PrecisionAttr>()) return boost::none;
+  if (attr.isa<::infrt::PrecisionAttr>()) {
+    return attr.cast<::infrt::PrecisionAttr>().getPrecision();
+  }
+  return boost::none;
+}
+
+template <>
 boost::optional<std::string> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
   if (!attr.isa<mlir::StringAttr>()) return boost::none;
@@ -291,6 +321,13 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
     } else if (auto v = EmitAttribute<std::string>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
     } else if (auto v = EmitAttribute<bool>(attr.getValue())) {
+      impl_->cur_op->AppendAttribute(new Value(*v));
+    } else if (auto v = EmitAttribute<::infrt::TargetType>(attr.getValue())) {
+      impl_->cur_op->AppendAttribute(new Value(*v));
+    } else if (auto v =
+                   EmitAttribute<::infrt::PrecisionType>(attr.getValue())) {
+      impl_->cur_op->AppendAttribute(new Value(*v));
+    } else if (auto v = EmitAttribute<::infrt::LayoutType>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(*v));
     } else if (auto v = EmitAttribute<std::vector<int16_t>>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(std::move(*v)));

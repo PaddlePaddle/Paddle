@@ -1,1 +1,1 @@
-cc_library(custom_operator_node SRCS custom_operator_node.cc DEPS phi phi_api grad_node_info custom_operator)
+cc_library(custom_operator_node SRCS custom_operator_node.cc DEPS phi_tensor phi_api grad_node_info custom_operator op_meta_info)

@@ -1,4 +1,5 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,15 +78,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_python.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
+#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
+#include "paddle/fluid/pybind/io.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
-#ifndef PADDLE_ON_INFERENCE
-#include "paddle/fluid/pybind/eager.h"
-#endif
-#include "paddle/fluid/pybind/io.h"
 #include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
@@ -175,6 +177,7 @@ namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_place_pytype = nullptr;
+PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_cudaplace_pytype = nullptr;
 PyTypeObject *g_cpuplace_pytype = nullptr;
 PyTypeObject *g_xpuplace_pytype = nullptr;
@@ -533,10 +536,7 @@ PYBIND11_MODULE(core_noavx, m) {
 #endif
 
   BindImperative(&m);
-
-#ifndef PADDLE_ON_INFERENCE
   BindEager(&m);
-#endif
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -1407,7 +1407,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindReader(&m);
 
-  py::class_<Scope>(m, "_Scope", R"DOC(
+  py::class_<Scope> _Scope(m, "_Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.
 
     Variables in a parent scope can be retrieved from local scope.
@@ -1427,7 +1427,9 @@ All parameter, weight, gradient are variables in Paddle.
           param_array = np.full((height, row_numel), 5.0).astype("float32")
           param.set(param_array, place)
 
-        )DOC")
+        )DOC");
+  g_framework_scope_pytype = reinterpret_cast<PyTypeObject *>(_Scope.ptr());
+  _Scope
       .def("_remove_from_pool",
            [](Scope &self) { ScopePool::Instance().Remove(&self); })
       .def("var",
@@ -1727,7 +1729,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_device_type", []() {
     std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    device_types = platform::DeviceManager::GetAllDeviceTypes();
+    device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed"
@@ -1741,7 +1743,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_custom_device_type", []() {
     std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+    device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_all_custom_device_type because you have installed"
@@ -1755,7 +1757,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_available_device", [] {
     std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    devices = platform::DeviceManager::GetAllDeviceList();
+    devices = phi::DeviceManager::GetAllDeviceList();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_available_device because you have installed"
@@ -1769,7 +1771,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_available_custom_device", [] {
     std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    devices = platform::DeviceManager::GetAllCustomDeviceList();
+    devices = phi::DeviceManager::GetAllCustomDeviceList();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
@@ -1806,10 +1808,10 @@ All parameter, weight, gradient are variables in Paddle.
                std::exit(-1);
              }
 
-             if (LIKELY(platform::DeviceManager::HasDeviceType(device_type) &&
-                        platform::DeviceManager::IsCustom(device_type))) {
+             if (LIKELY(phi::DeviceManager::HasDeviceType(device_type) &&
+                        phi::DeviceManager::IsCustom(device_type))) {
                int dev_count = static_cast<int>(
-                   platform::DeviceManager::GetDeviceCount(device_type));
+                   phi::DeviceManager::GetDeviceCount(device_type));
                if (UNLIKELY(dev_id >= dev_count)) {
                  if (dev_count == 0) {
                    LOG(ERROR) << "Cannot use " << device_type
@@ -2971,6 +2973,88 @@ All parameter, weight, gradient are variables in Paddle.
   });
 
   m.def("size_of_dtype", framework::SizeOfType);
+  py::class_<paddle::platform::ProfilerResult>(m, "_ProfilerResult")
+      .def(py::init<>())
+      .def("get_data", &paddle::platform::ProfilerResult::GetData,
+           py::return_value_policy::automatic_reference)
+      .def("save", &paddle::platform::ProfilerResult::Save)
+      .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo);
+
+  py::class_<paddle::platform::DevicePythonNode>(m, "DevicePythonNode")
+      .def(py::init<>())
+      .def_readwrite("name", &paddle::platform::DevicePythonNode::name)
+      .def_readwrite("type", &paddle::platform::DevicePythonNode::type)
+      .def_readwrite("start_ns", &paddle::platform::DevicePythonNode::start_ns)
+      .def_readwrite("end_ns", &paddle::platform::DevicePythonNode::end_ns)
+      .def_readwrite("device_id",
+                     &paddle::platform::DevicePythonNode::device_id)
+      .def_readwrite("context_id",
+                     &paddle::platform::DevicePythonNode::context_id)
+      .def_readwrite("stream_id",
+                     &paddle::platform::DevicePythonNode::stream_id);
+
+  py::class_<paddle::platform::HostPythonNode>(m, "HostPythonNode")
+      .def(py::init<>())
+      .def_readwrite("name", &paddle::platform::HostPythonNode::name)
+      .def_readwrite("type", &paddle::platform::HostPythonNode::type)
+      .def_readwrite("start_ns", &paddle::platform::HostPythonNode::start_ns)
+      .def_readwrite("end_ns", &paddle::platform::HostPythonNode::end_ns)
+      .def_readwrite("process_id",
+                     &paddle::platform::HostPythonNode::process_id)
+      .def_readwrite("thread_id", &paddle::platform::HostPythonNode::thread_id)
+      .def_readwrite("children_node",
+                     &paddle::platform::HostPythonNode::children_node_ptrs)
+      .def_readwrite("runtime_node",
+                     &paddle::platform::HostPythonNode::runtime_node_ptrs)
+      .def_readwrite("device_node",
+                     &paddle::platform::HostPythonNode::device_node_ptrs);
+
+  py::class_<paddle::platform::Profiler>(m, "_Profiler")
+      .def("create", &paddle::platform::Profiler::Create,
+           py::return_value_policy::take_ownership)
+      .def("prepare",
+           [](paddle::platform::Profiler *profiler) {
+             platform::EnableHostEventRecorder();
+             profiler->Prepare();
+           })
+      .def("start", &paddle::platform::Profiler::Start)
+      .def("stop",
+           [](paddle::platform::Profiler *profiler) {
+             platform::DisableHostEventRecorder();
+             return profiler->Stop();
+           },
+           py::return_value_policy::automatic_reference);
+
+  py::class_<paddle::platform::ProfilerOptions>(m, "ProfilerOptions")
+      .def(py::init<>())
+      .def_readwrite("trace_switch",
+                     &paddle::platform::ProfilerOptions::trace_switch);
+
+  py::class_<platform::RecordEvent>(m, "_RecordEvent")
+      .def(py::init([](std::string name, platform::TracerEventType type) {
+        return std::make_unique<platform::RecordEvent>(
+            name, type, 1, paddle::platform::EventRole::kOrdinary);
+      }))
+      .def("end", [](platform::RecordEvent *event) { event->End(); });
+
+  py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
+      .value("Operator", paddle::platform::TracerEventType::Operator)
+      .value("Dataloader", paddle::platform::TracerEventType::Dataloader)
+      .value("ProfileStep", paddle::platform::TracerEventType::ProfileStep)
+      .value("CudaRuntime", paddle::platform::TracerEventType::CudaRuntime)
+      .value("Kernel", paddle::platform::TracerEventType::Kernel)
+      .value("Memcpy", paddle::platform::TracerEventType::Memcpy)
+      .value("Memset", paddle::platform::TracerEventType::Memset)
+      .value("UserDefined", paddle::platform::TracerEventType::UserDefined)
+      .value("OperatorInner", paddle::platform::TracerEventType::OperatorInner)
+      .value("Forward", paddle::platform::TracerEventType::Forward)
+      .value("Backward", paddle::platform::TracerEventType::Backward)
+      .value("Optimization", paddle::platform::TracerEventType::Optimization)
+      .value("Communication", paddle::platform::TracerEventType::Communication)
+      .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
+      .value("PythonUserDefined",
+             paddle::platform::TracerEventType::PythonUserDefined);
+  m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
@@ -3500,6 +3584,31 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy.fuse_elewise_add_act_ops = True
                      )DOC")
       .def_property(
+          "fuse_gemm_epilogue",
+          [](const BuildStrategy &self) { return self.fuse_gemm_epilogue_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_gemm_epilogue_ = b;
+          },
+          R"DOC((bool, optional): fuse_gemm_epilogue indicate whether
+                to fuse matmul_op, elemenewist_add_op and activation_op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_gemm_epilogue = True
+                     )DOC")
+      .def_property(
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {
@@ -3973,6 +4082,8 @@ All parameter, weight, gradient are variables in Paddle.
              }
              return res;
            })
+      .def("get_all_option_names",
+           &platform::ipu::IpuStrategy::GetAllOptionNames)
       .def("enable_pattern", &platform::ipu::IpuStrategy::EnablePattern)
       .def("disable_pattern", &platform::ipu::IpuStrategy::DisablePattern)
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);

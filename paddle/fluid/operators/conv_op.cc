@@ -205,14 +205,14 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(input_data_type),
             paddle::framework::DataTypeToString(filter_data_type)));
   }
-#ifndef PADDLE_WITH_ASCEND_CL
-  if (input_data_type == framework::proto::VarType::FP16) {
-    PADDLE_ENFORCE_EQ(
-        library, framework::LibraryType::kCUDNN,
-        platform::errors::InvalidArgument(
-            "float16 can only be used when CUDNN or NPU is used"));
-  }
-#endif
+// #ifndef PADDLE_WITH_ASCEND_CL
+//   if (input_data_type == framework::proto::VarType::FP16) {
+//     PADDLE_ENFORCE_EQ(
+//         library, framework::LibraryType::kCUDNN,
+//         platform::errors::InvalidArgument(
+//             "float16 can only be used when CUDNN or NPU is used"));
+//   }
+// #endif
 #if PADDLE_WITH_CUDA
   if (input_data_type == framework::proto::VarType::BF16 &&
       library == framework::LibraryType::kCUDNN) {
@@ -868,42 +868,6 @@ REGISTER_OPERATOR(conv3d_grad, ops::ConvOpGrad,
                   ops::Conv3DDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::Conv3DDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv3d_grad_grad, ops::ConvOpDoubleGrad);
-
-// depthwise conv kernel
-// TODO(xingzhaolong): neon kernel for mobile
-REGISTER_OP_CPU_KERNEL(
-    depthwise_conv2d,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    depthwise_conv2d_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    conv2d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv2d_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv2d_grad_grad,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    conv3d, ops::GemmConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv3d_grad,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    conv3d_grad_grad,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GemmConvDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_VERSION(conv2d)
     .AddCheckpoint(

@@ -47,6 +47,9 @@ std::unordered_map<std::string, std::vector<std::string>>
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
+/* --- Black Ops list that's NO NEED to apply code generation --- */
+static std::unordered_set<std::string> black_ops_list = {"run_program"};
+
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
   std::replace(ret.begin(), ret.end(), '-', '_');  // replace all '-' to '_'
@@ -73,12 +76,6 @@ static bool IgnoreGradAttribute(const std::string& op_type,
 }
 
 static void PrepareAttrMapForOps() {
-  // Handle "run_program_op"
-  static framework::ProgramDesc fake_prog;
-  operators_with_attrs["run_program"] = {};
-  operators_with_attrs["run_program"]["global_block"] =
-      fake_prog.MutableBlock(0);
-
   // Handle "fused_elemwise_add_activation"
   std::vector<std::string> functor_list = {"a", "b"};
   operators_with_attrs["fused_elemwise_add_activation"] = {};
@@ -1154,11 +1151,13 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
-      const char* SET_HISTORY_TEMPLATE =
-          "    egr::EagerUtils::SetHistory(&%s, grad_node);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
-
+      // Intermediate Tensor does not require SetHistory
+      if (!output.intermediate()) {
+        const char* SET_HISTORY_TEMPLATE =
+            "    egr::EagerUtils::SetHistory(&%s, grad_node);\n";
+        grad_node_creation_str +=
+            paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
+      }
       const char* SET_GRAD_IN_META_TEMPLATE =
           "    grad_node->SetGradInMeta(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
@@ -1171,17 +1170,20 @@ static std::string GenerateGradNodeCreationContent(
       grad_node_creation_str += paddle::string::Sprintf(
           SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
-      const char* SET_HISTORY_TEMPLATE =
-          "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
-
+      // Intermediate Tensor does not require SetHistory
+      if (!output.intermediate()) {
+        const char* SET_HISTORY_TEMPLATE =
+            "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
+        grad_node_creation_str +=
+            paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
+      }
       const char* SET_GRAD_IN_META_TEMPLATE =
           "    grad_node->SetGradInMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
     }
 
+    // Intermediate Tensor does not require CheckAndRetainGrad
     if (!output.intermediate()) {
       VLOG(6) << "Generated Call RetainGradForTensor";
       const char* RETAIN_GRAD_TEMPLATE =
@@ -2344,6 +2346,9 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
 
     if (!CheckOpProto(op_proto)) continue;
     const std::string& op_type = op_proto->type();
+    if (black_ops_list.count(op_type)) {
+      continue;
+    }
 
     /* ----------------------------- */
     /* ---- Collect Information ---- */

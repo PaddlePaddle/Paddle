@@ -64,4 +64,64 @@ void SubtractDoubleGradKernel(const Context& dev_ctx,
                               int axis,
                               DenseTensor* ddout);
 
+template <typename T, typename Context>
+void DivideGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& out,
+                      const DenseTensor& dout,
+                      int axis,
+                      DenseTensor* dx,
+                      DenseTensor* dy);
+
+template <typename T, typename Context>
+void DivideDoubleGradKernel(const Context& dev_ctx,
+                            const DenseTensor& y,
+                            const DenseTensor& out,
+                            const DenseTensor& dx,
+                            paddle::optional<const DenseTensor&> ddx,
+                            paddle::optional<const DenseTensor&> ddy,
+                            int axis,
+                            DenseTensor* dy,
+                            DenseTensor* dout,
+                            DenseTensor* ddout);
+
+template <typename T, typename Context>
+void MultiplyGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& dout,
+                        int axis,
+                        DenseTensor* dx,
+                        DenseTensor* dy);
+
+template <typename T, typename Context>
+void MultiplyDoubleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              paddle::optional<const DenseTensor&> ddx,
+                              paddle::optional<const DenseTensor&> ddy,
+                              int axis,
+                              DenseTensor* dx,
+                              DenseTensor* dy,
+                              DenseTensor* ddout);
+
+template <typename T, typename Context>
+void MultiplyTripleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& y,
+                              const DenseTensor& dout,
+                              paddle::optional<const DenseTensor&> ddx,
+                              paddle::optional<const DenseTensor&> ddy,
+                              const DenseTensor& d_dx,
+                              const DenseTensor& d_dy,
+                              paddle::optional<const DenseTensor&> d_ddout,
+                              int axis,
+                              DenseTensor* d_x,
+                              DenseTensor* d_y,
+                              DenseTensor* d_dout,
+                              DenseTensor* d_ddx,
+                              DenseTensor* d_ddy);
+
 }  // namespace phi
