@@ -354,7 +354,7 @@ class TestDygraphDoubleGrad(TestCase):
             self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     @dygraph_guard
-    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
+    def func_example_with_gradient_accumulation_and_no_grad_vars(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -378,14 +378,22 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-        loss.backward()
+        if core._in_eager_mode():
+            pass
+        else:
+            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss.backward()
 
-        x_grad_actual = x.gradient()
-        x_grad_expected = (2.0 / float(numel) *
-                           (x_np + dx_expected *
-                            (x_np > 0) * 4 / float(numel))).astype('float32')
-        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+            x_grad_actual = x.gradient()
+            x_grad_expected = (2.0 / float(numel) * (
+                x_np + dx_expected *
+                (x_np > 0) * 4 / float(numel))).astype('float32')
+            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
+        with _test_eager_guard():
+            self.func_example_with_gradient_accumulation_and_no_grad_vars()
+        self.func_example_with_gradient_accumulation_and_no_grad_vars()
 
     @dygraph_guard
     def test_example_with_gradient_accumulation_and_not_create_graph(self):
@@ -426,7 +434,7 @@ class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
 
 
 class TestDygraphDoubleGradVisitedUniq(TestCase):
-    def test_compare(self):
+    def func_compare(self):
         value = np.random.uniform(-0.5, 0.5, 100).reshape(10, 2,
                                                           5).astype("float32")
 
@@ -470,6 +478,11 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
             grad_2 = a.gradient()
 
         self.assertTrue(np.array_equal(grad_1, grad_2))
+
+    def test_compare(self):
+        with _test_eager_guard():
+            self.func_compare()
+        self.func_compare()
 
 
 class TestRaiseNoDoubleGradOp(TestCase):

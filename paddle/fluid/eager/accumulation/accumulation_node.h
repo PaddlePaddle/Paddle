@@ -43,6 +43,11 @@ class GradNodeAccumulation : public GradNodeBase {
     // egr::GradNodeBase::ClearTensorWrappers();
   }
 
+  bool IsClearTensorWrapper() override {
+    VLOG(1) << "Do nothing here now";
+    return false;
+  }
+
   std::string name() { return "GradNodeAccumulation"; }
 
   /**

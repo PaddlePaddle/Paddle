@@ -259,6 +259,17 @@ void GetNoGradVarsGradNodes(
   }
 }
 
+void CheckGradNodeInput(GradNodeBase* node) {
+  PADDLE_ENFORCE_NE(
+      node->IsClearTensorWrapper(), true,
+      paddle::platform::errors::Fatal(
+          "The TensorWrappers of %s do not exist. This may be because:\n"
+          "You calculate backward twice for the same subgraph without "
+          "setting retain_graph=True. Please set retain_graph=True in the "
+          "first backward/grad call.\n",
+          node->name()));
+}
+
 std::vector<paddle::experimental::Tensor> RunBackward(
     const std::vector<paddle::experimental::Tensor>& tensors,  // output
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
@@ -415,6 +426,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       results_map[node] = target_result;
     }
 
+    if (node->IsClearTensorWrapper()) continue;
+
     // no_grad_vars
     if (special_nodes_inputmeta_map.find(node) !=
         special_nodes_inputmeta_map.end()) {
@@ -424,6 +437,14 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                                                 rank_info.second);
     }
 
+    VLOG(1) << "Running GradNode:" << node->name();
+    // check input
+    CheckGradNodeInput(node);
+
+    // Run Pre Backward Node and get outputs
+    std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
+        (*node)(node_input_buffer->Buffers(), create_graph);
+
     // retain_grad logic
     if (!retain_graph) {
       VLOG(1)
@@ -431,9 +452,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       node->ClearTensorWrappers();
     }
 
-    // Run Pre Backward Node and get outputs
-    std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
-        (*node)(node_input_buffer->Buffers(), create_graph);
     // TODO(jiabin): Should we erase it or find a more efficient way.
     node_input_buffers_dict.erase(node);
 

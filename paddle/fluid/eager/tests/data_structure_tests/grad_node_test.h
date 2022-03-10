@@ -50,6 +50,10 @@ class GradTestNode : public egr::GradNodeBase {
     return res;
   }
   void ClearTensorWrappers() override { VLOG(1) << "Do nothing here now"; }
+  bool IsClearTensorWrapper() override {
+    VLOG(1) << "Do nothing here now";
+    return false;
+  }
   float val_;
 };
 }  // namespace eager_test

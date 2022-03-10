@@ -99,6 +99,8 @@ class GradNodeBase {
       const bool create_graph = false) = 0;
 
   virtual void ClearTensorWrappers() = 0;
+
+  virtual bool IsClearTensorWrapper() = 0;
   /**
    * AddEdges is designed to set input tensors' backward Node as current
    * node's Edges.

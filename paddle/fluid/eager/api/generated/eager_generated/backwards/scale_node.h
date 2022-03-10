@@ -44,6 +44,11 @@ class GradNodeScale : public GradNodeBase {
 
   void ClearTensorWrappers() override { VLOG(1) << "Do nothing here now"; }
 
+  bool IsClearTensorWrapper() override {
+    VLOG(1) << "Do nothing here now";
+    return false;
+  }
+
   void SetTensorWrappers_X(
       const std::vector<paddle::experimental::Tensor>& tensors);
 

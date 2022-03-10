@@ -411,6 +411,12 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     // return {x_grad, details::DereferenceTensors(params_grad_ptr)};
   }
 
+  void ClearTensorWrappers() override { VLOG(1) << "Do nothing here now"; }
+  bool IsClearTensorWrapper() override {
+    VLOG(1) << "Do nothing here now";
+    return false;
+  }
+
   // SetAttrMap
   void SetAttrMap(const paddle::framework::AttributeMap &attrs) {
     attrs_ = attrs;
@@ -431,8 +437,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   void SetFwdOutNames(std::vector<std::string> out_names) {
     fwd_out_names_ = out_names;
   }
-
-  void ClearTensorWrappers() override { VLOG(1) << "Do nothing here now"; }
 
  protected:
   void ConstructGradTensors(
