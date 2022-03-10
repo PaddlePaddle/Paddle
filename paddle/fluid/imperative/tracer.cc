@@ -18,12 +18,14 @@
 #include <utility>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
+#include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/common/place.h"
 
 DECLARE_bool(use_mkldnn);
 DECLARE_string(tracer_mkldnn_ops_on);
@@ -385,6 +387,37 @@ bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
                                  const NameTensorMap& outs,
                                  bool trace_backward) {
   return false;
+}
+
+phi::KernelSignature Tracer::GetExpectedKernelSignature(
+    const std::string& type, const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs, framework::AttributeMap attrs) const {
+  auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
+  framework::RuntimeContext ctx({}, {});
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
+  const auto& op_info = op->Info();
+  auto* attr_checker = op_info.Checker();
+  if (attr_checker) {
+    attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+  }
+  static paddle::framework::AttributeMap empty_attrs_map = {};
+  const paddle::framework::AttributeMap& default_attrs =
+      attr_checker == nullptr ? empty_attrs_map
+                              : attr_checker->GetDefaultAttrMap();
+  auto dygraph_exe_ctx =
+      imperative::DygraphExecutionContext<imperative::VarBase>(
+          *op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs,
+          default_attrs);
+  auto* opbase_with_kernel =
+      dynamic_cast<framework::OperatorWithKernel*>(op.get());
+  PADDLE_ENFORCE_NE(opbase_with_kernel, nullptr,
+                    platform::errors::InvalidArgument(
+                        "This op type:`%s` is not a OperatorWithKernel, only "
+                        "OperatorWithKernel can get KernelSignature",
+                        type));
+  return phi::KernelSignature(
+      std::move(opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx)));
 }
 
 }  // namespace imperative

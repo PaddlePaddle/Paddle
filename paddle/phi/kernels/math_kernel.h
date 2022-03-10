@@ -156,7 +156,7 @@ DenseTensor Mean(const Context& dev_ctx,
                  bool keep_dim) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  ReduceInferMetaBase(x, axis, keep_dim, false, x.dtype(), &meta_out);
+  SumRawInferMeta(x, axis, keep_dim, false, x.dtype(), &meta_out);
   MeanKernel<T, Context>(dev_ctx, x, axis, keep_dim, &dense_out);
   return dense_out;
 }

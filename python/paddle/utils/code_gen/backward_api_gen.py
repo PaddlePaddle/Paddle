@@ -35,6 +35,7 @@ class BackwardAPI(BaseAPI):
             forward_config)
         api = result.group('api')
         _, outputs, _ = self.parse_output(self.api, result.group('outputs'))
+        outputs = [item.split('@')[0] for item in outputs]
         fw_inputs, fw_attrs, _, = self.parse_input_and_attr(
             api, result.group('args'))
 
@@ -86,33 +87,33 @@ class BackwardAPI(BaseAPI):
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out{inplace_assign};
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
+{code_indent}  {self.outputs['return_type']} api_output{inplace_assign};
+{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out({len(output_type_list)});"""
+{code_indent}  {self.outputs['return_type']} api_output({len(output_type_list)});"""
 
             for i, out_type_item in enumerate(output_type_list):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
                 output_names.append(f'kernel_out_{i}')
                 if out_type_item == 'Tensor':
-                    get_out_code = f'&out[{i}][0]'
+                    get_out_code = f'&api_output[{i}][0]'
                     if inplace_flag and self.inplace_map is not None and self.outputs[
                             'names'][i] in self.inplace_map:
                         output_create = output_create + f"""
-{code_indent}  out[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
+{code_indent}  api_output[{i}].emplace_back({self.inplace_map[self.outputs['names'][i]]});"""
 
                     else:
                         output_create = output_create + f"""
-{code_indent}  out[{i}].emplace_back();"""
+{code_indent}  api_output[{i}].emplace_back();"""
 
                 else:
-                    get_out_code = f'&out[{i}]'
+                    get_out_code = f'&api_output[{i}]'
                     if inplace_flag and self.inplace_map is not None and self.outputs[
                             'names'][i] in self.inplace_map:
                         output_create = output_create + f"""
-{code_indent}  out[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
+{code_indent}  api_output[{i}] = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, {get_out_code});"""
