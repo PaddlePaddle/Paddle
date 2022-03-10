@@ -510,8 +510,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(log_softmax, ops::LogSoftmaxCUDNNKernel<float>,
                         ops::LogSoftmaxCUDNNKernel<plat::float16>,
                         ops::LogSoftmaxCUDNNKernel<plat::bfloat16>);
-REGISTER_OP_CUDA_KERNEL(log_softmax_grad, CUDNN, plat::CUDAPlace,
-                        ops::LogSoftmaxGradCUDNNKernel<float>,
+REGISTER_OP_CUDA_KERNEL(log_softmax_grad, ops::LogSoftmaxGradCUDNNKernel<float>,
                         ops::LogSoftmaxGradCUDNNKernel<plat::float16>,
                         ops::LogSoftmaxGradCUDNNKernel<plat::bfloat16>);
 #else
