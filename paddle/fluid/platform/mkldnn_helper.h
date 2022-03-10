@@ -563,7 +563,7 @@ inline void RegisterModelLayout(
     std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
     const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
-    auto check_attrib = [&](std::unique_ptr<framework::OperatorBase>& op,
+    auto check_attrib = [](std::unique_ptr<framework::OperatorBase>& op,
                             const std::string& attrib_name) -> bool {
       if (op->HasAttr(attrib_name)) {
         auto data_format = op->Attr<std::string>(attrib_name);

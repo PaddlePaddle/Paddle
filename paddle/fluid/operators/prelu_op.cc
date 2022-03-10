@@ -17,6 +17,27 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+framework::OpKernelType innerGetKernelTypeForVar(
+    const Tensor &tensor,
+    const framework::OpKernelType &expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  auto isOneDNNKernelChosen =
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN);
+  auto isNotOneDNNTensor = (tensor.layout() != framework::DataLayout::kMKLDNN);
+  auto isModelNHWC =
+      (paddle::platform::MKLDNNDeviceContext::tls()
+           .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC);
+  // All inputs (including alpha) need shape rotating
+  if (isOneDNNKernelChosen && isNotOneDNNTensor && isModelNHWC) {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(),
+                                   framework::DataLayout::kNHWC);
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
+}
+
 class PReluOp : public framework::OperatorWithKernel {
  public:
   PReluOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -132,19 +153,7 @@ class PReluOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
-    // All inputs (including alpha) need shape rotating
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
-        paddle::platform::MKLDNNDeviceContext::tls()
-                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(),
-                                     framework::DataLayout::kNHWC);
-    }
-#endif
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
 };
 
@@ -234,19 +243,7 @@ class PReluGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
-    // All inputs (including alpha) need shape rotating
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
-        paddle::platform::MKLDNNDeviceContext::tls()
-                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(),
-                                     framework::DataLayout::kNHWC);
-    }
-#endif
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
 };
 
