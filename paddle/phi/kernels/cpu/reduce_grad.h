@@ -70,14 +70,14 @@ void ComputeFromInput(const Context& dev_ctx,
   if (!input1) input1 = &input2;
   Functor functor;
 
-  LaunchReduceGradKernel<Context, T, Functor>(dev_ctx,
-                                              input0,
-                                              input1,
-                                              &input2,
-                                              output,
-                                              functor,
-                                              const_dims,
-                                              reduce_all);
+  funcs::LaunchReduceGradKernel<Context, T, Functor>(dev_ctx,
+                                                     input0,
+                                                     input1,
+                                                     &input2,
+                                                     output,
+                                                     functor,
+                                                     const_dims,
+                                                     reduce_all);
 }
 
 template <typename Context,

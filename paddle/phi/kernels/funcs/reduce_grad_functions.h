@@ -21,6 +21,9 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 namespace phi {
 
+namespace funcs {
+
+// This ReduceGradFunctor is only the CPU implement.
 template <typename Context, typename T, size_t D, typename Functor>
 void ReduceGradFunctor(const Context& dev_ctx,
                        const DenseTensor& input0,
@@ -108,6 +111,7 @@ void HandleLargeDimGrad(const Context& dev_ctx,
   trans(dev_ctx, dx_tmp, dx, origin_axis);
 }
 
+// Only for CPU
 template <typename Context, typename T, typename Functor>
 void LaunchReduceGradKernel(const Context& dev_ctx,
                             const DenseTensor* input0,
@@ -167,5 +171,7 @@ void LaunchReduceGradKernel(const Context& dev_ctx,
     }
   }
 }
+
+}  // namespace funcs
 
 }  // namespace phi
