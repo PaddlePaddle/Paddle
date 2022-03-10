@@ -33,7 +33,7 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace memory = paddle::memory;
 
-USE_OP(dropout);
+USE_OP_ITSELF(dropout);
 USE_OP_ITSELF(layer_norm);
 
 template <typename T>

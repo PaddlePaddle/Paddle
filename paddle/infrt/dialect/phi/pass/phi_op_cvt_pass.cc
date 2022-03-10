@@ -125,10 +125,8 @@ void phiOpCvtPass::diapatchStage() {
 
     kernel_name = getPhiTargetPrefix(phi_kernel_desc.kernelType.target) +
                   kernel_name +
-                  getPhiLayoutSuffix(phi_kernel_desc.kernelType.layout) +
-                  getPhiPrecisionSuffix(phi_kernel_desc.kernelType.precision);
-
-    // mlir::OperationName operation_name = kernel_op.getOperation()->getName();
+                  getPhiPrecisionSuffix(phi_kernel_desc.kernelType.precision) +
+                  getPhiLayoutSuffix(phi_kernel_desc.kernelType.layout);
 
     mlir::OperationName operation_name(kernel_name, kernel_op.getContext());
     mlir::OperationState operation_state(kernel_op.getLoc(), operation_name);

@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import paddle
-
 import paddle.nn as nn
-import paddle.nn.functional as F
-
 from paddle.utils.download import get_weights_path_from_url
+
+from .utils import _make_divisible
 
 __all__ = []
 
@@ -27,16 +25,6 @@ model_urls = {
     ('https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams',
      '0340af0a901346c8d46f4529882fb63d')
 }
-
-
-def _make_divisible(v, divisor, min_value=None):
-    if min_value is None:
-        min_value = divisor
-    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
-
-    if new_v < 0.9 * v:
-        new_v += divisor
-    return new_v
 
 
 class ConvBNReLU(nn.Sequential):
