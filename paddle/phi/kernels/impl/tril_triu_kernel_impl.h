@@ -16,7 +16,7 @@
 
 #include "paddle/phi/kernels/tril_triu_kernel.h"
 
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 
 namespace phi {
@@ -33,8 +33,7 @@ void TrilTriuKernel(const Context& ctx,
   const auto& dims = x.dims();
   const auto H = dims[dims.size() - 2];
   const auto W = dims[dims.size() - 1];
-  paddle::platform::ForRange<Context> for_range(ctx,
-                                                static_cast<size_t>(x.numel()));
+  phi::funcs::ForRange<Context> for_range(ctx, static_cast<size_t>(x.numel()));
 
   phi::funcs::TrilTriuCompute<T> tril_triu_computer(
       x_data, diagonal, lower, H, W, out_data);

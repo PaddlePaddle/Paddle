@@ -22,7 +22,7 @@
 
 namespace phi {
 
-static inline std::tuple<bool, bool> _parse_qr_mode(const std::string& mode) {
+static inline std::tuple<bool, bool> ParseQrMode(const std::string& mode) {
   bool compute_q;
   bool reduced;
   if (mode == "reduced") {
@@ -51,7 +51,7 @@ void QrKernel(const Context& ctx,
               DenseTensor* r) {
   bool compute_q;
   bool reduced_mode;
-  std::tie(compute_q, reduced_mode) = _parse_qr_mode(mode);
+  std::tie(compute_q, reduced_mode) = ParseQrMode(mode);
   auto numel = x.numel();
   PADDLE_ENFORCE_GT(
       numel, 0, errors::PreconditionNotMet("The input of QR is empty."));
