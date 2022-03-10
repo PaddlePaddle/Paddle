@@ -37,7 +37,7 @@ class TestActivationOPBase(XPUOpTest):
 
     def set_case(self):
         self.op_type = 'exp'
-        x = np.random.uniform(-1, 1, [11, 16]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         out = np.exp(x)
         self.attrs = {'use_xpu': True}
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
