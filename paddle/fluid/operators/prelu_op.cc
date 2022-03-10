@@ -18,8 +18,7 @@ namespace paddle {
 namespace operators {
 
 framework::OpKernelType innerGetKernelTypeForVar(
-    const Tensor &tensor,
-    const framework::OpKernelType &expected_kernel_type) const {
+    const Tensor &tensor, const framework::OpKernelType &expected_kernel_type) {
 #ifdef PADDLE_WITH_MKLDNN
   auto isOneDNNKernelChosen =
       (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN);
