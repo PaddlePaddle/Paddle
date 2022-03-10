@@ -81,7 +81,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
         attrs['launch_barrier_flag'] = int(
             os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
-
+        attrs['is_fl_ps_mode'] = self.user_defined_strategy.is_fl_ps_mode
+        
         build_var_distributed(attrs)
 
         # server 
@@ -237,3 +238,4 @@ class ParameterServerOptimizer(MetaOptimizerBase):
     def _disable_strategy(self, dist_strategy):
         dist_strategy.a_sync = False
         dist_strategy.a_sync_configs["k_steps"] = -1
+        
