@@ -23,17 +23,14 @@ import struct
 import paddle.fluid.layers as layers
 import paddle.static.amp as amp
 from paddle.fluid import core
+from paddle_bfloat import bfloat16
 
 paddle.enable_static()
 
 
 def convert_uint16_to_float(in_list):
-    if in_list.dtype == np.uint16:
-        in_list = np.asarray(in_list)
-        out = np.vectorize(
-            lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
-            otypes=[np.float32])(in_list.flat)
-        return np.reshape(out, in_list.shape)
+    if in_list.dtype == bfloat16:
+        return np.asarray(in_list).astype(np.float32)
     else:
         return in_list
 
@@ -93,14 +90,14 @@ class TestModelCastBF16(unittest.TestCase):
         n = np.ones([size, size], dtype='float32') * 3.2
         nn = np.ones([size, size], dtype='float32') * -2.7
 
-        n_bf16 = amp.bf16.convert_float_to_uint16(n)
-        nn_bf16 = amp.bf16.convert_float_to_uint16(nn)
+        n_bf16 = n.astype(bfloat16)
+        nn_bf16 = nn.astype(bfloat16)
 
         with self.static_graph():
             t_bf16 = layers.data(
-                name='t_bf16', shape=[size, size], dtype=np.uint16)
+                name='t_bf16', shape=[size, size], dtype=bfloat16)
             tt_bf16 = layers.data(
-                name='tt_bf16', shape=[size, size], dtype=np.uint16)
+                name='tt_bf16', shape=[size, size], dtype=bfloat16)
             t = layers.data(name='t', shape=[size, size], dtype='float32')
             tt = layers.data(name='tt', shape=[size, size], dtype='float32')
 

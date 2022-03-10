@@ -1249,7 +1249,7 @@ def _memcpy(input, place=None, output=None):
 
     if isinstance(input, (Variable, core.VarBase)):
         check_dtype(input.dtype, 'input', [
-            'float16', 'uint16', 'float32', 'float64', 'int32', 'int64',
+            'float16', 'bfloat16', 'float32', 'float64', 'int32', 'int64',
             'uint8', 'bool'
         ], 'memcpy', '(When the type of input in memcpy is Variable.)')
     if output is None:

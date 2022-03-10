@@ -84,9 +84,9 @@ class TestSaveLoadBF16(unittest.TestCase):
                 #TODO investigate initializing model with "float32" instead of "uint16" as it was before
                 # slice_op PR(datatypes in model graph are different than datatypes during runtime because of that)
                 init_hidden_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='uint16')
+                    (num_layers, batch_size, hidden_size), dtype='bfloat16')
                 init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='uint16')
+                    (num_layers, batch_size, hidden_size), dtype='bfloat16')
 
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
                 out = exe.run(fluid.default_main_program(),

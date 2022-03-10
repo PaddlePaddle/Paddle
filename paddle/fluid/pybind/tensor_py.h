@@ -48,7 +48,7 @@ namespace detail {
 // import numpy as np
 // print np.dtype(np.float16).num  # 23
 constexpr int NPY_FLOAT16_ = 23;
-constexpr int NPY_UINT16_ = 4;
+constexpr int NPY_BFLOAT16_ = 256;
 constexpr int NPY_COMPLEX64 = 14;
 constexpr int NPY_COMPLEX128 = 15;
 
@@ -75,14 +75,14 @@ struct npy_format_descriptor<paddle::platform::float16> {
 template <>
 struct npy_format_descriptor<paddle::platform::bfloat16> {
   static py::dtype dtype() {
-    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_UINT16_);
+    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_BFLOAT16_);
     return reinterpret_borrow<py::dtype>(ptr);
   }
   static std::string format() {
     // Note: "H" represents UINT16.
     // Details at:
     // https://docs.python.org/3/library/struct.html#format-characters.
-    return "H";
+    return "E";
   }
   static constexpr auto name = _("bfloat16");
 };
@@ -189,7 +189,7 @@ inline std::string TensorDTypeToPyDTypeStr(
       return "e";                                                           \
     } else if (std::is_same<T, platform::bfloat16>::value) {                \
       /* NumPy character code of uint16 due to no support for bfloat16 */   \
-      return "H";                                                           \
+      return "E";                                                           \
     } else if (std::is_same<T, platform::complex<float>>::value) {          \
       return "F";                                                           \
     } else if (std::is_same<T, platform::complex<double>>::value) {         \
@@ -470,9 +470,7 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
                  array)) {
     SetTensorFromPyArrayT<paddle::platform::complex<double>, P>(
         self, array, place, zero_copy);
-  } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
-    // since there is still no support for bfloat16 in NumPy,
-    // uint16 is used for casting bfloat16
+  } else if (py::isinstance<py::array_t<paddle::platform::bfloat16>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::bfloat16, P>(self, array, place,
                                                          zero_copy);
   } else if (py::isinstance<py::array_t<bool>>(array)) {

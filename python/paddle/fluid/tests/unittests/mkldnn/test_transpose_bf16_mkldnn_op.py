@@ -41,7 +41,7 @@ class TestTransposeOp(OpTest):
         }
 
         self.outputs = {
-            'XShape': np.random.random(self.shape).astype(np.uint16),
+            'XShape': np.random.random(self.shape).astype('bfloat16'),
             'Out': self.inputs['X'].transpose(self.axis)
         }
 

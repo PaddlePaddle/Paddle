@@ -92,7 +92,7 @@ def mean(x, axis=None, keepdim=False, name=None):
                                   'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x/input',
-                             ['uint16', 'float16', 'float32', 'float64'],
+                             ['bfloat16', 'float16', 'float32', 'float64'],
                              'mean/reduce_mean')
     check_type(axis, 'axis/dim', (int, list, tuple), 'mean/reduce_mean')
     if isinstance(axis, (list, tuple)):

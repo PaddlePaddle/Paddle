@@ -49,6 +49,18 @@ from paddle.fluid.tests.unittests.white_list import (
     no_check_set_white_list,
     op_threshold_white_list,
     no_grad_set_white_list, )
+from paddle_bfloat import bfloat16
+
+np_allclose_orig = np.allclose
+
+
+def np_allclose_wrapper(a, b, **args):
+    a = a.astype(np.float32) if a.dtype == bfloat16 else a
+    b = b.astype(np.float32) if b.dtype == bfloat16 else b
+    return np_allclose_orig(a, b, **args)
+
+
+np.allclose = np_allclose_wrapper
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -166,12 +178,9 @@ def get_numeric_gradient(place,
             numpy_tensor = numpy_tensor.flatten()
             return numpy_tensor[i]
         elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
-            numpy_tensor = np.array(tensor).astype(np.uint16)
+            numpy_tensor = np.array(tensor).astype(bfloat16)
             numpy_tensor = numpy_tensor.flatten()
-            return struct.unpack('<f',
-                                 struct.pack('<I',
-                                             np.uint32(numpy_tensor[i])
-                                             << np.uint32(16)))[0]
+            return numpy_tensor[i].astype(np.float32)
         elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
@@ -189,10 +198,10 @@ def get_numeric_gradient(place,
             numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
         elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
-            numpy_tensor = np.array(tensor).astype(np.uint16)
+            numpy_tensor = np.array(tensor).astype(bfloat16)
             shape = numpy_tensor.shape
             numpy_tensor = numpy_tensor.flatten()
-            numpy_tensor[i] = np.uint16(copy_bits_from_float_to_uint16(e))
+            numpy_tensor[i] = e.astype(bfloat16)
             numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
         elif tensor_to_check_dtype == np.float32:
@@ -261,10 +270,7 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
     if data_format == "NHWC":
         float_list = np.transpose(float_list, [0, 3, 1, 2])
 
-    new_output = []
-    for x in np.nditer(float_list):
-        new_output.append(np.uint16(copy_bits_from_float_to_uint16(x)))
-    new_output = np.reshape(new_output, float_list.shape).view(np.uint16)
+    new_output = float_list.astype(bfloat16)
 
     if data_format == "NHWC":
         new_output = np.transpose(new_output, [0, 2, 3, 1])
@@ -272,11 +278,7 @@ def convert_float_to_uint16(float_list, data_format="NCHW"):
 
 
 def convert_uint16_to_float(in_list):
-    in_list = np.asarray(in_list)
-    out = np.vectorize(
-        lambda x: struct.unpack('<f', struct.pack('<I', np.uint32(x) << np.uint32(16)))[0],
-        otypes=[np.float32])(in_list.flat)
-    return np.reshape(out, in_list.shape)
+    return np.asarray(in_list).astype(np.float32)
 
 
 class OpTest(unittest.TestCase):
@@ -376,9 +378,9 @@ class OpTest(unittest.TestCase):
     def is_bfloat16_op(self):
         # self.dtype is the dtype of inputs, and is set in infer_dtype_from_inputs_outputs.
         # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
-        return self.dtype == np.uint16 or (
+        return self.dtype == bfloat16 or (
             hasattr(self, 'output_dtype') and
-            self.output_dtype == np.uint16) or (
+            self.output_dtype == bfloat16) or (
                 hasattr(self, 'mkldnn_data_type') and
                 getattr(self, 'mkldnn_data_type') == "bfloat16") or (
                     hasattr(self, 'attrs') and
@@ -429,7 +431,7 @@ class OpTest(unittest.TestCase):
         infer_dtype(inputs, input_dtype_set)
         dtype_list = [
             np.dtype(np.float64), np.dtype(np.float32), np.dtype(np.float16),
-            np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.uint16),
+            np.dtype(np.int64), np.dtype(np.int32), np.dtype(bfloat16),
             np.dtype(np.int16), np.dtype(np.int8), np.dtype(np.uint8),
             np.dtype(np.bool)
         ]
@@ -1268,15 +1270,16 @@ class OpTest(unittest.TestCase):
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
 
                 # np.uint16 represents bfloat16
-                if actual_t.dtype == np.uint16 and expect_t.dtype in [
+                if actual_t.dtype == bfloat16 and expect_t.dtype in [
                         np.float32, np.float64
                 ]:
                     actual_t = convert_uint16_to_float(actual_t)
                     rtol = 1.e-2
+                    atol = 0.03
                 else:
                     rtol = 1.e-5
 
-                if expect_t.dtype == np.uint16 and actual_t.dtype == np.uint16:
+                if expect_t.dtype == bfloat16 and actual_t.dtype == bfloat16:
                     expect_t = convert_uint16_to_float(expect_t)
                     actual_t = convert_uint16_to_float(actual_t)
                     atol = max(atol, 0.03)
@@ -1298,10 +1301,10 @@ class OpTest(unittest.TestCase):
                     str(actual_t) + " in class " + self.__class__.__name__)
                 if check_dygraph:
                     if self.is_bfloat16_op():
-                        if imperative_actual_t.dtype == np.uint16:
+                        if imperative_actual_t.dtype == bfloat16:
                             imperative_actual_t = convert_uint16_to_float(
                                 imperative_actual_t)
-                        if expect_t.dtype == np.uint16:
+                        if expect_t.dtype == bfloat16:
                             expect_t = convert_uint16_to_float(expect_t)
                     if six.moves.reduce(
                             lambda x, y: x * y, imperative_actual_t.shape,
@@ -1323,10 +1326,10 @@ class OpTest(unittest.TestCase):
                 if check_eager:
                     with _test_eager_guard():
                         if self.is_bfloat16_op():
-                            if eager_imperative_actual_t.dtype == np.uint16:
+                            if eager_imperative_actual_t.dtype == bfloat16:
                                 eager_imperative_actual_t = convert_uint16_to_float(
                                     eager_imperative_actual_t)
-                            if expect_t.dtype == np.uint16:
+                            if expect_t.dtype == bfloat16:
                                 expect_t = convert_uint16_to_float(expect_t)
                         if six.moves.reduce(lambda x, y: x * y,
                                             eager_imperative_actual_t.shape,
@@ -1660,7 +1663,7 @@ class OpTest(unittest.TestCase):
         # loop over list of grads and convert bf16 to fp32
         fp32_analytic_grads = []
         for grad in analytic_grads:
-            if grad.dtype == np.uint16:
+            if grad.dtype == bfloat16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = 0.04 if max_relative_error < 0.04 else max_relative_error
             fp32_analytic_grads.append(grad)
@@ -1668,7 +1671,7 @@ class OpTest(unittest.TestCase):
 
         fp32_numeric_grads = []
         for grad in numeric_grads:
-            if grad.dtype == np.uint16:
+            if grad.dtype == bfloat16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = 0.04 if max_relative_error < 0.04 else max_relative_error
             fp32_numeric_grads.append(grad)
@@ -1684,7 +1687,7 @@ class OpTest(unittest.TestCase):
                 no_grad_set)
             fp32_grads = []
             for grad in dygraph_grad:
-                if grad.dtype == np.uint16:
+                if grad.dtype == bfloat16:
                     grad = convert_uint16_to_float(grad)
                     max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
                 fp32_grads.append(grad)
@@ -1700,7 +1703,7 @@ class OpTest(unittest.TestCase):
                     user_defined_grad_outputs, no_grad_set)
                 fp32_grads = []
                 for grad in eager_dygraph_grad:
-                    if grad.dtype == np.uint16:
+                    if grad.dtype == bfloat16:
                         grad = convert_uint16_to_float(grad)
                         max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
                     fp32_grads.append(grad)
@@ -1750,7 +1753,7 @@ class OpTest(unittest.TestCase):
                 outputs=outputs,
                 attrs=attrs_outputs if hasattr(self, "attrs") else None)
 
-            if self.dtype == np.uint16:
+            if self.dtype == bfloat16:
                 cast_inputs = self._find_var_in_dygraph(outputs,
                                                         output_names[0])
                 cast_outputs = block.create_var(
@@ -1892,7 +1895,7 @@ class OpTest(unittest.TestCase):
         feed_dict = self.feed_var(inputs, place)
 
         if user_defined_grad_outputs is None:
-            if self.dtype == np.uint16:
+            if self.dtype == bfloat16:
                 cast_inputs = list(map(block.var, output_names))
                 cast_outputs = block.create_var(
                     dtype="float32", shape=cast_inputs[0].shape)

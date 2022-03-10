@@ -85,7 +85,7 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                 if name == 'x_bf16' or name == 'y_bf16':
                     block.create_var(
                         name=name,
-                        dtype='uint16',
+                        dtype="bfloat16",
                         shape=ground_truth[name].shape)
                 else:
                     block.create_var(

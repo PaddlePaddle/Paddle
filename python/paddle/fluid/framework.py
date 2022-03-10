@@ -27,6 +27,7 @@ import copy
 from types import MethodType, FunctionType
 
 import numpy as np
+from paddle_bfloat import bfloat16
 import subprocess
 import multiprocessing
 import sys
@@ -977,6 +978,9 @@ def convert_np_dtype_to_dtype_(np_dtype):
         core.VarDesc.VarType: the data type in Paddle.
 
     """
+    if np_dtype == bfloat16:
+        return core.VarDesc.VarType.BF16
+
     dtype = np.dtype(np_dtype)
     if dtype == np.float32:
         return core.VarDesc.VarType.FP32
@@ -992,9 +996,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT64
     elif dtype == np.bool:
         return core.VarDesc.VarType.BOOL
-    elif dtype == np.uint16:
-        # since there is still no support for bfloat16 in NumPy,
-        # uint16 is used for casting bfloat16
+    elif dtype == bfloat16:
         return core.VarDesc.VarType.BF16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8

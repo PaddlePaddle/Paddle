@@ -41,7 +41,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
         self.use_mkldnn = True
-        self.dtype = np.uint16
+        self.dtype = "bfloat16"
         self.init_kernel_type()
         self.shape = self.get_x_shape()
         self.axis = self.get_axis()
