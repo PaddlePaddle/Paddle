@@ -167,6 +167,7 @@ def get_user_defined_strategy(config):
     elif sync_mode == "async":
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
+        strategy.is_fl_ps_mode = True if config.get("runner.is_fl_ps_mode") == 1 else False
     elif sync_mode == "geo":
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
@@ -382,7 +383,6 @@ class DnnTrainer(object):
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
             ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
                                          user_defined_strategy)
-            ps_optimizer._set_origin_programs([loss])
             ps_optimizer._init_ps_pass_context(loss, startup_program)
             _main = ps_optimizer.pass_ctx._attrs['cloned_main']
 

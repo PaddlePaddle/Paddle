@@ -36,7 +36,7 @@ class PsProgramBuilderFactory(object):
         elif attrs['is_heter_ps_mode']:
             return globals()['HeterAsyncPsProgramBuilder'](pass_ctx)
         elif 'is_fl_ps_mode' in attrs and attrs[
-                'is_fl_ps_mode'] == DistributedMode.FL:
+                'is_fl_ps_mode']:
             return globals()['FlPsProgramBuilder'](pass_ctx)
         elif attrs['ps_mode'] == DistributedMode.SYNC:
             return globals()['CpuSyncPsProgramBuilder'](pass_ctx)

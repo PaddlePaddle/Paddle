@@ -17,9 +17,11 @@ import paddle
 import paddle.compat as cpt
 from ..ps.utils.public import *
 from paddle.framework import core
-from .pass_base import PassBase, register_pass
+from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.transpiler.collective import SingleProcessMultiThread
+from _collections import deque, defaultdict
+from paddle.fluid.framework import Program, Parameter
 
 
 @register_pass("append_send_ops_pass")
@@ -74,8 +76,6 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        print("pass loss program id:", id(attrs['loss'].block.program))
-        print("pass main program id:", id(main_program))
         ps_mode = attrs['ps_mode']
         if ps_mode == DistributedMode.GEO:
             send_ctx = get_geo_trainer_send_context(attrs)  # geo 模式
@@ -85,8 +85,6 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         dummys = []
         for merged_name, send in send_ctx.items():
             if send.is_sparse() and ps_mode != DistributedMode.GEO:
-                continue
-            if send.program_id() != id(attrs['loss'].block.program):
                 continue
             logger.info('merged_name, send: {}, {}'.format(merged_name, send))
             is_sparse = 1 if send.is_sparse() else 0
@@ -500,7 +498,6 @@ class DeleteOptimizesPass(PassBase):
             persistable=True)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
-        print("delete_optimizer_pass")
         attrs = pass_ctx._attrs
         optimizer_ops = get_optimize_ops(main_program)
         lr_ops = get_lr_ops(main_program)
@@ -819,9 +816,8 @@ class SplitHeterWorkerOpsPass(PassBase):
             block_var_detail, current_device, False)
 
         # add send op
-        send_grad_var_list = add_heter_send_op(program, heter_program,
-                                               heter_block_bp,
-                                               block_var_detail[stage_id - 1])
+        send_grad_var_list = add_send_op(program, heter_block_bp,
+                                               block_var_detail[stage_id - 1]["backward"]["persistables"]) 
 
         # add step conter
         send_input_vars = []
@@ -895,7 +891,7 @@ class SplitTrainerOpsPass(PassBase):
                 first_op_idx = all_op.index(op)
                 break
         assert first_op_idx != -1
-        self._delete_same_ops(program.global_block(), ops_list)
+        delete_same_ops(program.global_block(), ops_list)
 
         entrance_var = []
         role_maker = attrs['role_maker']
@@ -924,17 +920,6 @@ class SplitTrainerOpsPass(PassBase):
                 })
 
         return entrance_var
-
-    def _delete_same_ops(self, block, ops):
-        for op in ops:
-            try:
-                for origin_op in block.ops:
-                    if str(origin_op) == str(op):
-                        idx = list(block.ops).index(origin_op)
-                        block._remove_op(idx)
-                        break
-            except Exception as e:
-                print(e)
 
     def _remove_var_pair_by_grad(self, var_name, attrs):
         for index, pair in enumerate(attrs['merged_variables_pairs']):
@@ -1005,7 +990,7 @@ class SplitTrainerOpsPass(PassBase):
         grad_to_block_id = []
 
         bp_ops_list = program_block_ops_list[0]["backward"]
-        self._delete_same_ops(program.global_block(), bp_ops_list)
+        delete_same_ops(program.global_block(), bp_ops_list)
         delete_trainer_useless_var(program, static_var)
         backward_block = create_backward_block(program, origin_program,
                                                bp_ops_list, block_var_detail)
@@ -1096,3 +1081,304 @@ class SetHeterPipelineOptPass(PassBase):
             "num_microbatches": num_microbatches,
             "heter_place": role_maker._heter_device(),
         }
+
+
+@register_pass("split_fl_ops_pass")
+class SplitFlOpsPass(PassBase):
+    def __init__(self):
+        super(SplitFlOpsPass, self).__init__()
+        self.PART_A_DEVICE_FlAG = 'gpu:0'
+        self.PART_A_JOINT_OP_DEVICE_FlAG = 'gpu:2'
+        self.PART_B_DEVICE_FlAG = 'gpu:1'
+        self.PART_B_JOINT_OP_DEVICE_FlAG = 'gpu:3'
+
+    def _check_self(self):
+        return True
+
+    def _check_conflict(self, other_pass):
+        return True
+
+    def _insert_encrypt_op(self):
+        pass
+
+    def _insert_decrypt_op(self):
+        pass
+    
+    def _clear_op_device_flag(self, program):
+        for block in program.blocks:
+            for op in block.ops:
+                device = op.attr(OP_DEVICE_KEY)
+                op._set_attr(OP_DEVICE_KEY, '') if device != '' else None
+
+    def _split_fl_program(self):
+        self.partA_ops = []
+        self.partB_ops = []
+        party_program_map = defaultdict(Program)
+        block = self.ori_main_program.block(0)
+        for op in block.ops:
+            device = op.attr(OP_DEVICE_KEY)
+            if device == self.PART_A_DEVICE_FlAG or device == '' or device == self.PART_A_JOINT_OP_DEVICE_FlAG:
+                program = party_program_map['a']
+                self.partA_ops.append(op)
+            elif device == self.PART_B_DEVICE_FlAG or device == self.PART_B_JOINT_OP_DEVICE_FlAG:
+                program = party_program_map['b']
+                self.partB_ops.append(op)
+            op_desc = op.desc
+            ap_op = program.global_block().desc.append_op()
+            ap_op.copy_from(op_desc)
+            ap_op._set_attr(OP_DEVICE_KEY, device)
+
+        for key in ['a', 'b']:
+            program = party_program_map[key]
+            program._sync_with_cpp()
+        
+        return party_program_map
+
+    def _insert_partA_communicate_op(self, block, idx):
+        comm_info = "forward_joint_{}_{}@fl_ps".format(1, 2)
+        block._insert_op(
+            idx,
+            type='send_and_recv',
+            inputs={'X': self.partA_to_partB_tensor},
+            outputs={'Out': []},
+            attrs={
+                'mode': 'forward',
+                'send_var_name': self.partA_to_partB_tensor_name,
+                'recv_var_name': [],
+                'message_name': comm_info,
+                'next_endpoints': ['127.0.0.1:99'],  # TODO: partB_endpoints
+                'previous_endpoints': [],
+                'trainer_id': 0,  # TODO
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            })
+        return
+
+    def _insert_partB_communicate_op(self, block, idx):
+        comm_info = ("backward_joint_{}_{}@fl_ps".format(2, 1))
+        block._insert_op(
+            idx,
+            type='send_and_recv',
+            inputs={'X': self.partB_to_partA_grad},
+            outputs={'Out': []},
+            attrs={
+                'mode': 'backward',
+                'send_var_name': self.partB_to_partA_grad_name,
+                'recv_var_name': [],
+                'message_name': comm_info,
+                'next_endpoints': ['127.0.0.1:98'],  # TODO: partA_endpoints
+                'previous_endpoints': [],
+                'trainer_id': 1,  # TODO
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            })
+        return 
+
+    def _create_var_for_block(self, vars, block):
+        for var in vars:
+            if block._find_var_recursive(str(var)):
+                continue
+            source_var = self.ori_main_block._var_recursive(str(var))
+            if isinstance(var, Parameter):
+                dest_var = block.create_parameter(
+                    name=source_var.name,
+                    shape=source_var.shape,
+                    dtype=source_var.dtype,
+                    type=source_var.type,
+                    lod_level=source_var.lod_level,
+                    stop_gradient=source_var.stop_gradient,
+                    trainable=source_var.trainable,
+                    optimize_attr=source_var.optimize_attr,
+                    regularizer=source_var.regularizer,
+                    error_clip=source_var.error_clip)
+            else:
+                dest_var = block._clone_variable(source_var, False)
+            dest_var.stop_gradient = source_var.stop_gradient
+            if hasattr(source_var, 'is_distributed'):
+                dest_var.is_distributed = source_var.is_distributed
+    
+    def _get_block_by_idx(self, op_list, program, block_idx):
+        if block_idx < len(program.blocks):
+            new_block = program.block(block_idx)
+        else:
+            new_block = program._create_block()
+        for _, op in enumerate(op_list):
+            ap_op = new_block.desc.append_op()
+            ap_op.copy_from(op.desc)
+            ap_op._set_attr(OP_DEVICE_KEY, op.attr(OP_DEVICE_KEY))
+            vars = op.desc.input_arg_names() + op.desc.output_arg_names()
+            self._create_var_for_block(vars, new_block)
+        new_block._sync_with_cpp()
+        return new_block
+
+    def _find_joint_forward_op(self, block, flag):
+        op_idx = 0
+        for op in block.ops:
+            if is_forward_op(op) and op.attr(OP_DEVICE_KEY) == flag:
+                return op_idx
+            else:
+                op_idx += 1
+        return op_idx
+
+    def _find_joint_backward_op(self, block, flag):
+        op_idx = 0
+        for op in block.ops:
+            if is_backward_op(op) and op.attr(OP_DEVICE_KEY) == flag:
+                return op_idx
+            else:
+                op_idx += 1
+        return op_idx
+
+    def _get_partB_to_partA_grad(self, block, flag):
+        op_idx = self._find_joint_backward_op(block, flag)
+        op = block.ops[op_idx]
+        vars1 = op.desc.input_arg_names()
+        op_idx = self._find_joint_forward_op(block, flag)
+        op = block.ops[op_idx]
+        vars2 = op.desc.output_arg_names()
+        self.partB_to_partA_grad_name = list(set(vars1) - set(vars2))
+        self.partB_to_partA_grad = []
+        for var_name in self.partB_to_partA_grad_name:
+            self.partB_to_partA_grad.append(self.ori_main_block.var(var_name))
+
+    def _find_dense_grad_vars(self, bp_op_list):
+        program = self.ori_main_program
+        bp_op_input, bp_op_output = find_ops_list_input_output(program, bp_op_list)
+        return (screen_persistables(
+            program, bp_op_input) + screen_persistables(program, bp_op_output))
+
+    def _get_partA_program(self, block):
+        self._get_partB_to_partA_grad(block, self.PART_A_JOINT_OP_DEVICE_FlAG)
+
+        # 1. create block 0
+        # 1.1 insert send op
+        op_idx = self._find_joint_forward_op(block, self.PART_A_JOINT_OP_DEVICE_FlAG)
+        op_list = []
+        for i in range(len(block.ops)):
+            op = block.ops[i]
+            op_list.append(op)
+            if i == op_idx:
+                out_name = op.desc.output_arg_names()[0]
+                self.partA_to_partB_tensor_name = op.desc.output_arg_names()
+                self.partA_to_partB_tensor = self.ori_main_block.var(out_name)
+                break
+        first_block = self._get_block_by_idx(op_list, self.partA_program, 0)
+        self._insert_partA_communicate_op(first_block, op_idx + 1)
+        logger.info('partA-first_block:{}'.format(first_block))
+        # TODO
+        # check
+
+        # 2. create block 1
+        bp_op_list = get_bp_op_list(block)
+        push_sparse_op_list = get_distributed_push_sparse_op_list(block)
+        logger.info('bp_op_list: {}'.format(bp_op_list))
+        second_block = self._get_block_by_idx(bp_op_list + push_sparse_op_list, self.partA_program, 1)
+        # 2.1. insert partA recv op 
+        block_input_flag = "backward_joint_{}_{}@fl_ps".format(2, 1)
+        grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
+        attrs = {
+            "message_to_block_id": [grad_to_block_id],
+            "optimize_blocks": [],
+            "endpoint": '127.0.0.1:98',  # TODO
+            "fanin": 0,  
+            "pserver_id": 0,  # TODO
+            "distributed_mode": self.ps_mode,
+            "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        }
+        second_block._insert_op(
+            index=0,
+            type='heter_listen_and_serv',
+            inputs={'X': []},
+            outputs={},
+            attrs=attrs)
+        # 2.2 insert push dense grad op
+        send_ops = find_send_op(self.ori_main_program)  # push dense
+        delete_same_ops(block, send_ops)
+        dense_grad_vars = self._find_dense_grad_vars(bp_op_list)
+        add_send_op(self.ori_main_program, second_block, dense_grad_vars)
+        logger.info('partA-second_block:{}'.format(second_block))
+        # TODO
+        # check
+
+    def _get_partB_program(self, block):
+        op_idx1 = self._find_joint_forward_op(block, self.PART_B_JOINT_OP_DEVICE_FlAG)  # elementwise_add op
+        op_idx2 = self._find_joint_backward_op(block, self.PART_B_JOINT_OP_DEVICE_FlAG)
+        op_cnt = 0
+        op_list1 = []
+        op_list2 = []
+        op_list3 = []
+        for op in block.ops:
+            if op_cnt < op_idx1:
+                op_list1.append(op)
+            elif op_cnt <= op_idx2:
+                op_list2.append(op)
+            else:
+                op_list3.append(op)
+            op_cnt += 1
+
+        # 1. create block 0    
+        first_block = self._get_block_by_idx(op_list1, self.partB_program, 0)
+
+        # 2. create block 1
+        second_block = self._get_block_by_idx(op_list2, self.partB_program, 1)
+        # 2.1 insert send op
+        self._insert_partB_communicate_op(second_block, len(op_list2))
+        # 2.2 insert remain ops
+        second_block = self._get_block_by_idx(op_list3, self.partB_program, 1)
+        # 2.3 insert push dense grad op
+        bp_op_list = get_bp_op_list(second_block)
+        dense_grad_vars = self._find_dense_grad_vars(bp_op_list)
+        add_send_op(self.ori_main_program, second_block, dense_grad_vars)
+        logger.info('test wangbin@@@')
+        
+        # 3. insert partB recv op
+        block_input_flag = "forward_joint_{}_{}@fl_ps".format(1, 2)
+        grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
+        attrs = {
+            "message_to_block_id": [grad_to_block_id],
+            "optimize_blocks": [],
+            "endpoint": '127.0.0.1:99',
+            "fanin": 1,
+            "pserver_id": 1,  # TODO
+            "distributed_mode": self.ps_mode,
+            "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        }
+        first_block._insert_op(
+            index=len(op_list1),
+            type="heter_listen_and_serv",
+            inputs={'X': []},
+            outputs={},
+            attrs=attrs)
+        
+        logger.info('partB-first_block:{}'.format(first_block))
+        logger.info('partB-second_block:{}'.format(second_block))
+
+    def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        attrs = pass_ctx._attrs
+        self.role_maker = attrs['role_maker']
+        self.ps_mode = attrs['ps_mode']
+        self.ori_main_program = main_program
+        self.ori_main_block = main_program.block(0)
+        
+        party_program_map = self._split_fl_program()
+
+        p = party_program_map['a']
+        _main_file = ps_log_root_dir + '6_fl_A_main_program.prototxt'
+        debug_program(_main_file, p)
+        self.partA_program = framework.Program()
+        self._get_partA_program(p.global_block())
+
+        p = party_program_map['b']
+        _main_file = ps_log_root_dir + '6_fl_B_main_program.prototxt'
+        debug_program(_main_file, p)
+        self.partB_program = framework.Program()
+        self._get_partB_program(p.global_block())
+
+        self._clear_op_device_flag(self.partA_program)
+        self._clear_op_device_flag(self.partB_program)
+
+        check_program(self.partA_program)
+        check_program(self.partB_program)
+
+        pass_ctx._attrs['part_a_main_program'] = self.partA_program
+        pass_ctx._attrs['part_b_main_program'] = self.partB_program

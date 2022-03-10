@@ -103,13 +103,10 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
                              format(self.ps_mode, "PsProgramBuilder"))
 
     def _build_trainer_programs(self):
-        print("build trainer program entry")
-        print("before ps program builder program:", self.cloned_main)
         add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
                                            self.attrs)
         add_lr_decay_table_pass.apply([], [], self.pass_ctx)
 
-        print("before distributed op pass")
         distributed_ops_pass = new_pass("distributed_ops_pass", self.attrs)
         distributed_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
@@ -129,7 +126,6 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
         self.attrs['origin_main_program'] = self.cloned_main
         self.attrs['origin_startup_program'] = self.cloned_startup
-        print("after ps program builder program:", self.cloned_main)
 
         if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(self.server_endpoints)
@@ -248,10 +244,62 @@ class FlPsProgramBuilder(PsProgramBuilder):
         super(FlPsProgramBuilder, self).__init__(pass_ctx)
 
     def _build_trainer_programs(self):
-        pass
+        print("start building fl-async-ps program")
+
+        _main_file = ps_log_root_dir + '0_fl_worker_main_program.prototxt'
+        debug_program(_main_file, self.cloned_main)
+
+        distributed_ops_pass = new_pass("distributed_ops_pass", self.attrs)
+        distributed_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
+
+        _main_file = ps_log_root_dir + '1_fl_worker_main_program.prototxt'
+        debug_program(_main_file, self.cloned_main)
+
+        delete_optimizer_pass = new_pass("delete_optimizer_pass", self.attrs)
+        delete_optimizer_pass.apply([self.cloned_main], [None], self.pass_ctx)
+
+        _main_file = ps_log_root_dir + '2_fl_worker_main_program.prototxt'
+        debug_program(_main_file, self.cloned_main)
+
+        append_send_ops_pass = new_pass("append_send_ops_pass", self.attrs)
+        append_send_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
+
+        _main_file = ps_log_root_dir + '3_fl_worker_main_program.prototxt'
+        debug_program(_main_file, self.cloned_main)
+
+        delete_extra_optimizer_pass = new_pass("delete_extra_optimizer_pass",
+                                               self.attrs)
+        delete_extra_optimizer_pass.apply([self.attrs['origin_main_program']],
+                                          [self.cloned_startup], self.pass_ctx)
+
+        _main_file = ps_log_root_dir + '4_fl_worker_main_program.prototxt'
+        debug_program(_main_file, self.cloned_main)
+
+        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
+        fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
+
+        _main_file = ps_log_root_dir + '5_fl_worker_main_program.prototxt'
+        debug_program(_main_file, self.cloned_main)
+        
+        split_trainer_ops_pass = new_pass("split_fl_ops_pass",
+                                            self.attrs)
+        split_trainer_ops_pass.apply([self.cloned_main], [None],
+                                        self.pass_ctx)
+                                        
+        part_a_program = self.pass_ctx._attrs['part_a_main_program']
+        part_b_program = self.pass_ctx._attrs['part_b_main_program']
+
+        _main_file = ps_log_root_dir + '7_fl_A_main_program.prototxt'
+        debug_program(_main_file, part_a_program)
+
+        _main_file = ps_log_root_dir + '7_fl_B_main_program.prototxt'
+        debug_program(_main_file, part_b_program)
+        
+        return
 
     def _build_pserver_programs(self):
         pass
 
     def _build_programs(self):
-        pass
+        self._build_trainer_programs()
+        self._build_pserver_programs()

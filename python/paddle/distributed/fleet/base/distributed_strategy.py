@@ -1144,6 +1144,18 @@ class DistributedStrategy(object):
 
         """
         return self.strategy.pipeline
+    
+    @property
+    def is_fl_ps_mode(self):
+        return self.strategy.is_fl_ps_mode
+
+    @is_fl_ps_mode.setter
+    @is_strict_auto
+    def is_fl_ps_mode(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.is_fl_ps_mode = flag
+        else:
+            print("WARNING: is_fl_ps_mode should have value of bool type")
 
     @pipeline.setter
     @is_strict_auto
