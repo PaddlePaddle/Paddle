@@ -142,6 +142,7 @@ register_unity_group(cc
     lod_rank_table_op.cc
     lod_reset_op.cc
     lod_tensor_to_array_op.cc
+    log_softmax_op.cc
     lookup_table_dequant_op.cc
     lrn_op.cc
     mkldnn/lrn_mkldnn_op.cc
