@@ -730,7 +730,7 @@ PYBIND11_MODULE(core_noavx, m) {
            )DOC");
 
   // NOTE(Aganlengzi): KernelFactory static instance is initialized BEFORE
-  // plugins are loaded for custom kernels, but de-initialized AFTER them are
+  // plugins are loaded for custom kernels, but de-initialized AFTER they are
   // unloaded. We need manually clear symbols(may contain plugins' symbols)
   // stored in this static instance to avoid illegal memory access.
   m.def("clear_kernel_factory",
