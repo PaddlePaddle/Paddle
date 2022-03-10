@@ -36,9 +36,25 @@ class RecordEvent(ContextDecorator):
     event_type(TracerEventType): Type of the record event, can be used for statistics.
 
     Examples:
+    .. code-block:: python
+
+        import paddle
         import paddle.profiler as profiler
-        with profiler.RecordEvent(name='op1', event_type=TracerEventType=TracerEventType.UserDefined):
-            op1()
+        # method1: using context manager
+        with profiler.RecordEvent("record_add"):
+            data1 = paddle.randn(shape=[3])
+            data2 = paddle.randn(shape=[3])
+            result = data1 + data2
+        # method2: call begin() and end()
+        record_event = profiler.RecordEvent("record_add")
+        record_event.begin()
+        data1 = paddle.randn(shape=[3])
+        data2 = paddle.randn(shape=[3])
+        result = data1 + data2
+        record_event.end()
+
+    Note:
+    RecordEvent will take effect only when profiler is on and at the state of RECORD.
     """
 
     def __init__(self,
@@ -56,6 +72,9 @@ class RecordEvent(ContextDecorator):
         self.end()
 
     def begin(self):
+        r"""
+        Record the time of begining.
+        """
         if self.event_type not in _AllowedEventTypeList:
             warn("Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
                   can be recorded.".format(*_AllowedEventTypeList))
@@ -66,6 +85,9 @@ class RecordEvent(ContextDecorator):
             self.event = _RecordEvent(self.name, self.event_type)
 
     def end(self):
+        r'''
+        Record the time of ending.
+        '''
         if self.event:
             self.event.end()
 

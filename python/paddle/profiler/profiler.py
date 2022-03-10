@@ -82,10 +82,16 @@ def make_scheduler(*,
     Examples:
         1. profiling range [2, 5]
         batch 0: closed, batch 1: ready, batch [2, 5] record
-        make_scheduler(closed=1, ready=1, record=4, repeat=1)
+        .. code-block:: python
+
+            make_scheduler(closed=1, ready=1, record=4, repeat=1)
+
+
         2. profiling range [3,6], [9,12], [15,18]...
         batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat
-        make_scheduler(closed=1, ready=1, record=4, skip_first=1)
+        .. code-block:: python
+
+            make_scheduler(closed=1, ready=1, record=4, skip_first=1)
     """
 
     def getScheduleState(step: int) -> ProfilerState:
@@ -475,10 +481,10 @@ class Profiler:
         Print the Summary table.
 
         Parameters:
-            sorted_by: how to rank the op table items.
-            detail: expand each operator detail information.
-            thread_sep: print op table each thread.
-            time_unit: can be chosen form ['s', 'ms', 'us', 'ns']
+            sorted_by(str): how to rank the op table items.
+            op_detail(bool): expand each operator detail information.
+            thread_sep(bool): print op table each thread.
+            time_unit(str): can be chosen form ['s', 'ms', 'us', 'ns']
         """
         if self.profiler_result:
             statistic_data = StatisticData(
