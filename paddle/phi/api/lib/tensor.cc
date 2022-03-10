@@ -337,5 +337,48 @@ void Tensor::set_autograd_meta(
   autograd_meta_ = std::move(autograd_meta);
 }
 
+void Tensor::bump_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+            ->InplaceVersionCounter();
+    VLOG(3) << "yoki: before bump inplace version: "
+            << inplace_version_counter.CurrentVersion();
+    inplace_version_counter.Bump();
+    VLOG(3) << "yoki: after bump inplace version: "
+            << inplace_version_counter.CurrentVersion();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "bump_inplace_version is only supported on DenseTensor now."));
+  }
+}
+
+void Tensor::set_inplace_version(uint32_t inplace_version) {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+            ->InplaceVersionCounter();
+    inplace_version_counter.SetInplaceVersion(inplace_version);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "set_inplace_version is only supported on DenseTensor now."));
+  }
+}
+
+uint32_t Tensor::current_inplace_version() {
+  if (is_dense_tensor()) {
+    auto &inplace_version_counter =
+        std::dynamic_pointer_cast<phi::DenseTensor>(impl_)
+            ->InplaceVersionCounter();
+    VLOG(3) << "yoki: print version: "
+            << inplace_version_counter.CurrentVersion();
+    return inplace_version_counter.CurrentVersion();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "current_inplace_version is only supported on DenseTensor now."));
+  }
+  return 0;
+}
+
 }  // namespace experimental
 }  // namespace paddle

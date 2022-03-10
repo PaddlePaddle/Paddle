@@ -212,6 +212,18 @@ std::vector<std::shared_ptr<EagerVariable>> EagerUtils::CreateVars(
   return res;
 }
 
+void EagerUtils::ModifyInplaceInput(
+    const std::shared_ptr<EagerVariable>& inplace_variable,
+    paddle::experimental::Tensor* inplace_tensor) {
+  PADDLE_ENFORCE_NOT_NULL(inplace_tensor,
+                          paddle::platform::errors::Fatal(
+                              "Inplace Tensor is null and cannot be copied. "
+                              "We are tring to Modify Inplace Input from its "
+                              "shared_ptr, this error may indicate the inplace "
+                              " input is nullptr"));
+  inplace_tensor->set_impl(inplace_variable->GetTensorBase());
+}
+
 std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerVariable>>& outs) {
   std::vector<paddle::experimental::Tensor> res;

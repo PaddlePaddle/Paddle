@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -144,6 +145,27 @@ class EagerUtils {
     iter.apply(std::forward<Args>(args)...);
   }
 
+  static void CheckInplace(const paddle::experimental::Tensor& target,
+                           const AutogradMeta* autograd_meta,
+                           bool require_any_grad) {
+    VLOG(3) << "yoki checkinplace require_any_grad: " << require_any_grad;
+    if (autograd_meta) {
+      VLOG(3) << "yoki checkinplace has autograd_meta";
+      VLOG(3) << "yoki checkinplace stop_gradient: "
+              << autograd_meta->StopGradient();
+    }
+    VLOG(3) << "yoki checkinplace IsLeafTensor: "
+            << egr::egr_utils_api::IsLeafTensor(target);
+    if (require_any_grad && autograd_meta) {
+      PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() &&
+                            egr::egr_utils_api::IsLeafTensor(target),
+                        false, paddle::platform::errors::InvalidArgument(
+                                   "Leaf Var (%s) that doesn't stop gradient "
+                                   "can't use inplace strategy.",
+                                   target.name()));
+    }
+  }
+
   // TensorWrapper Utils
   static paddle::experimental::Tensor RecoverTensorWrapper(
       TensorWrapper* tw, const std::shared_ptr<GradNodeBase>& grad_node);
@@ -171,6 +193,9 @@ class EagerUtils {
   static std::vector<std::shared_ptr<EagerVariable>> CreateVars(
       const size_t num);
   // Construct Tensor From var
+  static void ModifyInplaceInput(
+      const std::shared_ptr<EagerVariable>& inplace_variable,
+      paddle::experimental::Tensor* inplace_tensor);
   static std::vector<paddle::experimental::Tensor> GetOutputs(
       const std::vector<std::shared_ptr<EagerVariable>>& outs);
   static paddle::experimental::Tensor GetOutput(
