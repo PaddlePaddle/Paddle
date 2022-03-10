@@ -481,7 +481,7 @@ class Profiler:
         Print the Summary table.
 
         Parameters:
-            sorted_by(str): how to rank the op table items.
+            sorted_by(SortedKeys): how to rank the op table items.
             op_detail(bool): expand each operator detail information.
             thread_sep(bool): print op table each thread.
             time_unit(str): can be chosen form ['s', 'ms', 'us', 'ns']
