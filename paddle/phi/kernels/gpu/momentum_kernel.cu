@@ -17,12 +17,18 @@
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 #include "paddle/phi/kernels/momentum_kernel.h"
 
-PD_REGISTER_KERNEL(
-    momentum, GPU, ALL_LAYOUT, phi::MomentumDenseKernel, float, double) {}
+PD_REGISTER_KERNEL(momentum,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MomentumDenseKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(momentum_dense_param_sparse_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::MomentumSparseKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}

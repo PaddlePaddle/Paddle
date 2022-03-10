@@ -30,7 +30,7 @@ KernelSignature MomentumOpArgumentMapping(const ArgumentMappingContext& ctx) {
         {"ParamOut", "VelocityOut", "MasterParamOut"});
   } else if (ctx.IsSelectedRowsInput("Grad")) {
     return KernelSignature(
-        "momentum",
+        "momentum_dense_param_sparse_grad",
         {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"},
         {"mu",
          "use_nesterov",
@@ -40,6 +40,7 @@ KernelSignature MomentumOpArgumentMapping(const ArgumentMappingContext& ctx) {
          "rescale_grad"},
         {"ParamOut", "VelocityOut", "MasterParamOut"});
   }
+  LOG(ERROR) << "not found";
 
   return KernelSignature("unregistered", {}, {}, {});
 }

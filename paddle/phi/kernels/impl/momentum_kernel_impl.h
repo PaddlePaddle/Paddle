@@ -402,31 +402,30 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
   }
 };
 
-template <typename T, typename Context>
-void MomentumDenseKernel(const Context& ctx,
-                         const DenseTensor& param,
-                         const DenseTensor& grad,
-                         const DenseTensor& velocity,
-                         const DenseTensor& learning_rate,
-                         paddle::optional<const DenseTensor&> master_param_opt,
-                         float mu_t,
-                         bool use_nesterov,
-                         const std::string& regularization_method,
-                         float regularization_coeff_t,
-                         bool multi_precision,
-                         float rescale_grad_t,
-                         DenseTensor* param_out,
-                         DenseTensor* velocity_out,
-                         DenseTensor* master_param_out) {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
-
+template <typename T, typename MT, typename Context>
+void MomentumDenseImpl(const Context& ctx,
+                       const DenseTensor& param,
+                       const DenseTensor& grad,
+                       const DenseTensor& velocity,
+                       const DenseTensor& learning_rate,
+                       paddle::optional<const DenseTensor&> master_param_opt,
+                       float mu_t,
+                       bool use_nesterov,
+                       const std::string& regularization_method,
+                       float regularization_coeff_t,
+                       bool multi_precision,
+                       float rescale_grad_t,
+                       DenseTensor* param_out,
+                       DenseTensor* velocity_out,
+                       DenseTensor* master_param_out) {
   MT regularization_coeff = static_cast<MT>(regularization_coeff_t);
   RegularizationType regularization_flag{
       RegularizationType::kNONE};  // disable regularization
   if (regularization_method == "l2_decay") {
     regularization_flag = RegularizationType::kL2DECAY;
   }
-
+  LOG(ERROR) << regularization_method;
+  LOG(ERROR) << use_nesterov;
   MT mu = static_cast<MT>(mu_t);
   MT rescale_grad = static_cast<MT>(rescale_grad_t);
   auto master_param = master_param_opt.get_ptr();
@@ -461,13 +460,14 @@ void MomentumDenseKernel(const Context& ctx,
             param_out,
             velocity_out);
   } else if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
+    LOG(ERROR) << "gpu here";
     funcs::ForRange<Context> for_range(ctx, param.numel());
 #define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type) \
   DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(      \
       param.data<T>(),                                              \
       grad.data<T>(),                                               \
       velocity.data<MT>(),                                          \
-      learning_rate.data<MT>(),                                     \
+      learning_rate.data<MultiPrecisionType<T>>(),                  \
       master_in_data,                                               \
       mu,                                                           \
       rescale_grad,                                                 \
@@ -498,24 +498,22 @@ void MomentumDenseKernel(const Context& ctx,
   }
 }
 
-template <typename T, typename Context>
-void MomentumSparseKernel(const Context& ctx,
-                          const DenseTensor& param,
-                          const SelectedRows& grad,
-                          const DenseTensor& velocity,
-                          const DenseTensor& learning_rate,
-                          paddle::optional<const DenseTensor&> master_param_opt,
-                          float mu_t,
-                          bool use_nesterov,
-                          const std::string& regularization_method,
-                          float regularization_coeff_t,
-                          bool multi_precision,
-                          float rescale_grad_t,
-                          DenseTensor* param_out,
-                          DenseTensor* velocity_out,
-                          DenseTensor* master_param_out) {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
-
+template <typename T, typename MT, typename Context>
+void MomentumSparseImpl(const Context& ctx,
+                        const DenseTensor& param,
+                        const SelectedRows& grad,
+                        const DenseTensor& velocity,
+                        const DenseTensor& learning_rate,
+                        paddle::optional<const DenseTensor&> master_param_opt,
+                        float mu_t,
+                        bool use_nesterov,
+                        const std::string& regularization_method,
+                        float regularization_coeff_t,
+                        bool multi_precision,
+                        float rescale_grad_t,
+                        DenseTensor* param_out,
+                        DenseTensor* velocity_out,
+                        DenseTensor* master_param_out) {
   MT regularization_coeff = static_cast<MT>(regularization_coeff_t);
   RegularizationType regularization_flag{
       RegularizationType::kNONE};  // disable regularization
@@ -568,7 +566,7 @@ void MomentumSparseKernel(const Context& ctx,
         param.data<T>(),
         merged_grad->value().data<T>(),
         velocity.data<MT>(),
-        learning_rate.data<MT>(),
+        learning_rate.data<MultiPrecisionType<MT>>(),
         master_in_data,
         mu,
         rescale_grad,
@@ -587,7 +585,7 @@ void MomentumSparseKernel(const Context& ctx,
         param.data<T>(),
         merged_grad->value().data<T>(),
         velocity.data<MT>(),
-        learning_rate.data<MT>(),
+        learning_rate.data<MultiPrecisionType<MT>>(),
         master_in_data,
         mu,
         rescale_grad,
@@ -600,6 +598,110 @@ void MomentumSparseKernel(const Context& ctx,
         velocity_out->mutable_data<MT>(ctx.GetPlace()),
         master_out_data);
     for_range(functor);
+  }
+}
+
+template <typename T, typename Context>
+void MomentumDenseKernel(const Context& dev_ctx,
+                         const DenseTensor& param,
+                         const DenseTensor& grad,
+                         const DenseTensor& velocity,
+                         const DenseTensor& learning_rate,
+                         paddle::optional<const DenseTensor&> master_param,
+                         float mu,
+                         bool use_nesterov,
+                         const std::string& regularization_method,
+                         float regularization_coeff,
+                         bool multi_precision,
+                         float rescale_grad,
+                         DenseTensor* param_out,
+                         DenseTensor* velocity_out,
+                         DenseTensor* master_param_out) {
+  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  if (multi_precision) {
+    MomentumDenseImpl<T, MT>(dev_ctx,
+                             param,
+                             grad,
+                             velocity,
+                             learning_rate,
+                             master_param,
+                             mu,
+                             use_nesterov,
+                             regularization_method,
+                             regularization_coeff,
+                             multi_precision,
+                             rescale_grad,
+                             param_out,
+                             velocity_out,
+                             master_param_out);
+  } else {
+    MomentumDenseImpl<T, T>(dev_ctx,
+                            param,
+                            grad,
+                            velocity,
+                            learning_rate,
+                            master_param,
+                            mu,
+                            use_nesterov,
+                            regularization_method,
+                            regularization_coeff,
+                            multi_precision,
+                            rescale_grad,
+                            param_out,
+                            velocity_out,
+                            master_param_out);
+  }
+}
+
+template <typename T, typename Context>
+void MomentumSparseKernel(const Context& dev_ctx,
+                          const DenseTensor& param,
+                          const SelectedRows& grad,
+                          const DenseTensor& velocity,
+                          const DenseTensor& learning_rate,
+                          paddle::optional<const DenseTensor&> master_param,
+                          float mu,
+                          bool use_nesterov,
+                          const std::string& regularization_method,
+                          float regularization_coeff,
+                          bool multi_precision,
+                          float rescale_grad,
+                          DenseTensor* param_out,
+                          DenseTensor* velocity_out,
+                          DenseTensor* master_param_out) {
+  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  if (multi_precision) {
+    MomentumSparseImpl<T, MT>(dev_ctx,
+                              param,
+                              grad,
+                              velocity,
+                              learning_rate,
+                              master_param,
+                              mu,
+                              use_nesterov,
+                              regularization_method,
+                              regularization_coeff,
+                              multi_precision,
+                              rescale_grad,
+                              param_out,
+                              velocity_out,
+                              master_param_out);
+  } else {
+    MomentumSparseImpl<T, T>(dev_ctx,
+                             param,
+                             grad,
+                             velocity,
+                             learning_rate,
+                             master_param,
+                             mu,
+                             use_nesterov,
+                             regularization_method,
+                             regularization_coeff,
+                             multi_precision,
+                             rescale_grad,
+                             param_out,
+                             velocity_out,
+                             master_param_out);
   }
 }
 

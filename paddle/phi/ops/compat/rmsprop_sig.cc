@@ -22,13 +22,13 @@ KernelSignature RmspropOpArgumentMapping(const ArgumentMappingContext& ctx) {
         "rmsprop",
         {"Param", "MeanSquare", "Grad", "Moment", "LearningRate", "MeanGrad"},
         {"epsilon", "decay", "momentum", "centered"},
-        {"ParamOut", "MomentOut", "MeanSquare", "MeanGradOut"});
+        {"ParamOut", "MomentOut", "MeanSquareOut", "MeanGradOut"});
   } else if (ctx.IsSelectedRowsInput("Grad")) {
     return KernelSignature(
         "rmsprop_dense_param_sparse_grad",
         {"Param", "MeanSquare", "Grad", "Moment", "LearningRate", "MeanGrad"},
         {"epsilon", "decay", "momentum", "centered"},
-        {"ParamOut", "MomentOut", "MeanSquare", "MeanGradOut"});
+        {"ParamOut", "MomentOut", "MeanSquareOut", "MeanGradOut"});
   }
 
   return KernelSignature("unregistered", {}, {}, {});
