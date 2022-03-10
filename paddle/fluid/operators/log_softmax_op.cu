@@ -506,45 +506,34 @@ class LogSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    log_softmax, ops::LogSoftmaxKernel<plat::CUDADeviceContext, float>,
-    ops::LogSoftmaxKernel<plat::CUDADeviceContext, double>,
-    ops::LogSoftmaxKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::LogSoftmaxKernel<plat::CUDADeviceContext, plat::bfloat16>);
-REGISTER_OP_CUDA_KERNEL(
-    log_softmax_grad, ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, float>,
-    ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, double>,
-    ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, plat::bfloat16>);
 #ifdef PADDLE_WITH_HIP
-REGISTER_OP_KERNEL(log_softmax, CUDNN, plat::CUDAPlace,
-                   ops::LogSoftmaxCUDNNKernel<float>,
-                   ops::LogSoftmaxCUDNNKernel<plat::float16>,
-                   ops::LogSoftmaxCUDNNKernel<plat::bfloat16>);
-REGISTER_OP_KERNEL(log_softmax_grad, CUDNN, plat::CUDAPlace,
-                   ops::LogSoftmaxGradCUDNNKernel<float>,
-                   ops::LogSoftmaxGradCUDNNKernel<plat::float16>,
-                   ops::LogSoftmaxGradCUDNNKernel<plat::bfloat16>);
+REGISTER_OP_CUDA_KERNEL(log_softmax, ops::LogSoftmaxCUDNNKernel<float>,
+                        ops::LogSoftmaxCUDNNKernel<plat::float16>,
+                        ops::LogSoftmaxCUDNNKernel<plat::bfloat16>);
+REGISTER_OP_CUDA_KERNEL(log_softmax_grad, CUDNN, plat::CUDAPlace,
+                        ops::LogSoftmaxGradCUDNNKernel<float>,
+                        ops::LogSoftmaxGradCUDNNKernel<plat::float16>,
+                        ops::LogSoftmaxGradCUDNNKernel<plat::bfloat16>);
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
-REGISTER_OP_KERNEL(log_softmax, CUDNN, plat::CUDAPlace,
-                   ops::LogSoftmaxCUDNNKernel<float>,
-                   ops::LogSoftmaxCUDNNKernel<double>,
-                   ops::LogSoftmaxCUDNNKernel<plat::float16>,
-                   ops::LogSoftmaxCUDNNKernel<plat::bfloat16>);
-REGISTER_OP_KERNEL(log_softmax_grad, CUDNN, plat::CUDAPlace,
-                   ops::LogSoftmaxGradCUDNNKernel<float>,
-                   ops::LogSoftmaxGradCUDNNKernel<double>,
-                   ops::LogSoftmaxGradCUDNNKernel<plat::float16>,
-                   ops::LogSoftmaxGradCUDNNKernel<plat::bfloat16>);
+REGISTER_OP_CUDA_KERNEL(log_softmax, ops::LogSoftmaxCUDNNKernel<float>,
+                        ops::LogSoftmaxCUDNNKernel<double>,
+                        ops::LogSoftmaxCUDNNKernel<plat::float16>,
+                        ops::LogSoftmaxCUDNNKernel<plat::bfloat16>);
+REGISTER_OP_CUDA_KERNEL(log_softmax_grad, ops::LogSoftmaxGradCUDNNKernel<float>,
+                        ops::LogSoftmaxGradCUDNNKernel<double>,
+                        ops::LogSoftmaxGradCUDNNKernel<plat::float16>,
+                        ops::LogSoftmaxGradCUDNNKernel<plat::bfloat16>);
 #else
-REGISTER_OP_KERNEL(log_softmax, CUDNN, plat::CUDAPlace,
-                   ops::LogSoftmaxCUDNNKernel<float>,
-                   ops::LogSoftmaxCUDNNKernel<double>,
-                   ops::LogSoftmaxCUDNNKernel<plat::float16>);
-REGISTER_OP_KERNEL(log_softmax_grad, CUDNN, plat::CUDAPlace,
-                   ops::LogSoftmaxGradCUDNNKernel<float>,
-                   ops::LogSoftmaxGradCUDNNKernel<double>,
-                   ops::LogSoftmaxGradCUDNNKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    log_softmax, ops::LogSoftmaxCUDNNKernel<float>,
+    ops::LogSoftmaxCUDNNKernel<double>,
+    ops::LogSoftmaxCUDNNKernel<plat::float16>,
+    ops::LogSoftmaxKernel<plat::CUDADeviceContext, plat::bfloat16>);
+REGISTER_OP_CUDA_KERNEL(
+    log_softmax_grad, ops::LogSoftmaxGradCUDNNKernel<float>,
+    ops::LogSoftmaxGradCUDNNKernel<double>,
+    ops::LogSoftmaxGradCUDNNKernel<plat::float16>,
+    ops::LogSoftmaxGradKernel<plat::CUDADeviceContext, plat::bfloat16>);
 #endif
 #endif
