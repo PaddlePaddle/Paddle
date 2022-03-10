@@ -589,6 +589,25 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void SegmentPoolInferMeta(const MetaTensor& x,
+                          const MetaTensor& segment_ids,
+                          const std::string& pooltype,
+                          MetaTensor* out,
+                          MetaTensor* summed_ids,
+                          MetaConfig config) {
+  auto dims = x.dims();
+  dims[0] = -1;
+  out->set_dims(dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+
+  if (pooltype == "MEAN") {
+    summed_ids->set_dims({-1, 1});
+    summed_ids->set_dtype(x.dtype());
+    summed_ids->set_layout(x.layout());
+  }
+}
+
 void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             const MetaTensor& label,
                                             bool normalize,

@@ -105,6 +105,13 @@ void MatmulInferMeta(const MetaTensor& x,
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
+void SegmentPoolInferMeta(const MetaTensor& x,
+                          const MetaTensor& segment_ids,
+                          const std::string& pooltype,
+                          MetaTensor* out,
+                          MetaTensor* summed_ids,
+                          MetaConfig config = MetaConfig());
+
 void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             const MetaTensor& label,
                                             bool normalize,
