@@ -4,6 +4,7 @@ add_subdirectory(lapack)
 add_subdirectory(detail)
 
 math_library(math_function DEPS blas dense_tensor tensor)
+math_library(segment_pooling)
 math_library(sequence2batch)
 math_library(gru_compute DEPS activation_functions math_function)
 math_library(lstm_compute DEPS activation_functions)

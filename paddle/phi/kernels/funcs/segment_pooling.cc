@@ -12,45 +12,52 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/segment_pooling.h"
+#include "paddle/phi/kernels/funcs/segment_pooling.h"
 
 #include <string>
-#include "paddle/fluid/framework/eigen.h"
 
-namespace paddle {
-namespace operators {
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
-using Tensor = framework::Tensor;
+namespace phi {
+namespace funcs {
+
+using Tensor = DenseTensor;
 
 template <typename T, typename IndexT>
-class SegmentPoolFunctor<platform::CPUDeviceContext, T, IndexT> {
+class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& segments, framework::Tensor* output,
-                  framework::Tensor* index,
+  void operator()(const phi::CPUContext& dev_ctx,
+                  const DenseTensor& input,
+                  const DenseTensor& segments,
+                  DenseTensor* output,
+                  DenseTensor* index,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
     auto curent_id = segment_ids[0];
     int64_t last_idx = 0;
     int64_t w = input.numel() / input.dims()[0];
-    auto& place = *context.eigen_device();
+    auto& place = *dev_ctx.eigen_device();
     for (int64_t idx = 1; idx <= segments.numel(); ++idx) {
       if (idx < segments.numel()) {
         if (segment_ids[idx] == curent_id) continue;
-        PADDLE_ENFORCE_GE(segment_ids[idx], curent_id,
-                          platform::errors::InvalidArgument(
+        PADDLE_ENFORCE_GE(segment_ids[idx],
+                          curent_id,
+                          phi::errors::InvalidArgument(
                               "The segment ids should be sorted, but got "
                               "segment_ids[%d]:%d > segment_ids[%d]:%d.",
-                              idx - 1, curent_id, idx, segment_ids[idx]));
+                              idx - 1,
+                              curent_id,
+                              idx,
+                              segment_ids[idx]));
       }
 
       Tensor out_t = output->Slice(curent_id, curent_id + 1);
       Tensor in_t = input.Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
-      auto in_e = framework::EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));
-      auto out_e = framework::EigenVector<T>::Flatten(out_t);
+      auto in_e = EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));
+      auto out_e = EigenVector<T>::Flatten(out_t);
 
       auto reduce_dim = Eigen::array<int, 1>({{0}});
       if (pooltype == "MEAN") {
@@ -62,7 +69,7 @@ class SegmentPoolFunctor<platform::CPUDeviceContext, T, IndexT> {
       } else if (pooltype == "MIN") {
         out_e.device(place) = in_e.minimum(reduce_dim);
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Unsupported segment pooling type, only MEAN, SUM, MAX, MIN "
             "available, but got %s.",
             pooltype));
@@ -75,36 +82,41 @@ class SegmentPoolFunctor<platform::CPUDeviceContext, T, IndexT> {
 };
 
 template <typename T, typename IndexT>
-class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
+class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& output,
-                  const framework::Tensor& out_grad,
-                  const framework::Tensor& segments, framework::Tensor* in_grad,
-                  const framework::Tensor* index = nullptr,
+  void operator()(const phi::CPUContext& dev_ctx,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& out_grad,
+                  const DenseTensor& segments,
+                  DenseTensor* in_grad,
+                  paddle::optional<const DenseTensor&> index,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
-    auto& place = *context.eigen_device();
+    auto& place = *dev_ctx.eigen_device();
     auto curent_id = segment_ids[0];
     int64_t last_idx = 0;
     int64_t w = in_grad->numel() / in_grad->dims()[0];
     for (int64_t idx = 1; idx <= segments.numel(); ++idx) {
       if (idx < segments.numel()) {
         if (segment_ids[idx] == curent_id) continue;
-        PADDLE_ENFORCE_GE(segment_ids[idx], curent_id,
-                          platform::errors::InvalidArgument(
+        PADDLE_ENFORCE_GE(segment_ids[idx],
+                          curent_id,
+                          phi::errors::InvalidArgument(
                               "The segment ids should be sorted, but got "
                               "segment_ids[%d]:%d > segment_ids[%d]:%d.",
-                              idx - 1, curent_id, idx, segment_ids[idx]));
+                              idx - 1,
+                              curent_id,
+                              idx,
+                              segment_ids[idx]));
       }
 
       Tensor out_g_t = out_grad.Slice(curent_id, curent_id + 1);
       Tensor in_g_t = in_grad->Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
-      auto in_g_e = framework::EigenMatrix<T>::From(in_g_t, {h, w});
-      auto out_g_e = framework::EigenMatrix<T>::From(out_g_t, {1, w});
+      auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
+      auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
       Eigen::DSizes<int, 2> bcast(h, 1);
 
       if (pooltype == "MEAN") {
@@ -114,13 +126,13 @@ class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
       } else if (pooltype == "MAX" || pooltype == "MIN") {
         Tensor out_t = output.Slice(curent_id, curent_id + 1);
         Tensor in_t = input.Slice(last_idx, idx);
-        auto in_e = framework::EigenMatrix<T>::From(in_t, {h, w});
-        auto out_e = framework::EigenMatrix<T>::From(out_t, {1, w});
+        auto in_e = EigenMatrix<T>::From(in_t, {h, w});
+        auto out_e = EigenMatrix<T>::From(out_t, {1, w});
         in_g_e.device(place) =
             (in_e == out_e.broadcast(bcast)).template cast<T>() *
             out_g_e.broadcast(bcast);
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Unsupported segment pooling type, only MEAN, SUM, MAX, MIN "
             "available, but got %s.",
             pooltype));
@@ -132,7 +144,7 @@ class SegmentPoolGradFunctor<platform::CPUDeviceContext, T, IndexT> {
   }
 };
 
-using CPU = platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 template class SegmentPoolFunctor<CPU, float, int>;
 template class SegmentPoolFunctor<CPU, float, int64_t>;
 template class SegmentPoolFunctor<CPU, double, int>;
@@ -142,5 +154,5 @@ template class SegmentPoolGradFunctor<CPU, float, int64_t>;
 template class SegmentPoolGradFunctor<CPU, double, int>;
 template class SegmentPoolGradFunctor<CPU, double, int64_t>;
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
