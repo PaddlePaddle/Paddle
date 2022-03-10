@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import warnings
 
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode, default_main_program
@@ -261,7 +260,7 @@ def fused_multi_head_attention(x,
     	if pre_layer_norm:
     	    out = x + dropout(linear_bias + out)
         else:
-                out = layer_norm(x + dropout(linear_bias + out))
+            out = layer_norm(x + dropout(linear_bias + out))
 
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
@@ -279,6 +278,7 @@ def fused_multi_head_attention(x,
         qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
+        cache_kv (Tensor, optional): For generation model, cache structure
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
  	    some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
             with shape broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`. When the
@@ -306,9 +306,8 @@ def fused_multi_head_attention(x,
 
                                   - train: out = input * mask
                                   - inference: out = input * (1.0 - p)
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         ring_id (int, optional): For distributed forward in mp, only support NCCL and forward. Default is -1, means not using mp
-        cache_kv (Tensor, optional): For generation model, cache structure
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The output Tensor, the data type and shape is same as `x`.
@@ -375,7 +374,7 @@ def fused_multi_head_attention(x,
             seed is not None, 'attn_dropout_seed', seed
             if seed is not None else 0, 'dropout_seed', seed
             if seed is not None else 0, 'attn_dropout_implementation', mode,
-            'dropout_implementation', mode)
+            'dropout_implementation', mode, 'ring_id', ring_id)
         if cache_kv is not None:
             return final_out, cache_kv_out
         return final_out
@@ -490,5 +489,5 @@ def fused_multi_head_attention(x,
             attrs=attrs)
 
         if cache_kv:
-            return [final_out, cache_kv_out]
+            return final_out, cache_kv_out
         return final_out

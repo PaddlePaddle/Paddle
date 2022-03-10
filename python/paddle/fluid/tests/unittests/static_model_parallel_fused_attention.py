@@ -20,6 +20,7 @@ import paddle
 import paddle.fluid as fluid
 from test_dist_base import TestDistRunnerBase, runtime_main
 import paddle.distributed.fleet as fleet
+import paddle.incubate.nn.functional as incubate_f
 
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid.dygraph.layers import Layer
@@ -28,146 +29,6 @@ from paddle.fluid import core
 from paddle.nn.initializer import Constant
 
 paddle.enable_static()
-
-
-def fused_multi_head_attention(
-        x,
-        qkv_weight,
-        linear_weight,
-        cache_kv=None,
-        pre_layer_norm=False,
-        pre_ln_scale=None,
-        pre_ln_bias=None,
-        ln_scale=None,
-        ln_bias=None,
-        pre_ln_epsilon=1e-05,
-        qkv_bias=None,
-        linear_bias=None,
-        attn_mask=None,
-        dropout_rate=0.5,
-        attn_dropout_rate=0.5,
-        ln_epsilon=1e-05,
-        training=True,
-        mode='upscale_in_train',
-        ring_id=-1,
-        name=None, ):
-    seed = None
-    if mode not in ('downscale_in_infer', 'upscale_in_train'):
-        raise ValueError(
-            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
-    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
-
-    helper = LayerHelper('fused_multi_head_attention', **locals())
-    dtype = x.dtype
-    # check dtypes
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'fused_multihead_attention')
-    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
-                'fused_multi_head_attention')
-
-    # set inputs
-    inputs = dict()
-    inputs['X'] = [x]
-    if pre_ln_scale:
-        inputs['LnScale'] = [pre_ln_scale]
-    if pre_ln_bias:
-        inputs['LnBias'] = [pre_ln_bias]
-    inputs['QKVW'] = [qkv_weight]
-    if qkv_bias is not None:
-        inputs['QKVBias'] = [qkv_bias]
-    inputs['SrcMask'] = attn_mask
-    inputs['OutLinearW'] = [linear_weight]
-    if linear_bias is not None:
-        inputs['OutLinearBias'] = [linear_bias]
-    if ln_scale:
-        inputs['Ln2Scale'] = [ln_scale]
-    if ln_bias:
-        inputs['Ln2Bias'] = [ln_bias]
-    if cache_kv:
-        inputs['CacheKV'] = [cache_kv]
-
-    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
-        seed = helper.main_program.random_seed
-
-    # set attrs
-    attrs = {
-        'pre_layer_norm': pre_layer_norm,
-        'epsilon': pre_ln_epsilon,
-        'ln_epsilon': ln_epsilon,
-        'dropout_rate': dropout_rate,
-        'attn_dropout_rate': attn_dropout_rate,
-        'attn_dropout_is_test': not training,
-        'dropout_is_test': not training,
-        'attn_dropout_fix_seed': seed is not None,
-        'dropout_fix_seed': seed is not None,
-        'attn_dropout_seed': seed if seed is not None else 0,
-        'dropout_seed': seed if seed is not None else 0,
-        'attn_dropout_implementation': mode,
-        'dropout_implementation': mode,
-        'ring_id': ring_id
-    }
-
-    # set outputs
-    pre_ln_mean_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
-    pre_ln_variance_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
-    pre_ln_out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    qkv_out = helper.create_variable_for_type_inference(dtype=dtype)
-    qkv_bias_out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    transpose_out = helper.create_variable_for_type_inference(dtype=dtype)
-    qk_out = helper.create_variable_for_type_inference(dtype=dtype)
-    qktv_out = helper.create_variable_for_type_inference(dtype=dtype)
-    softmax_out = helper.create_variable_for_type_inference(dtype=dtype)
-    attn_dropout_mask_out = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
-    attn_dropout_out = helper.create_variable_for_type_inference(dtype=dtype)
-    attn_mask_out = helper.create_variable_for_type_inference(dtype=dtype)
-    fmha_out = helper.create_variable_for_type_inference(dtype=dtype)
-    out_linear_out = helper.create_variable_for_type_inference(dtype=dtype)
-    dropout_mask_out = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
-    ln_mean_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
-    ln_variance_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True)
-    bias_dropout_residual_out = helper.create_variable_for_type_inference(
-        dtype=dtype)
-    final_out = helper.create_variable_for_type_inference(dtype=dtype)
-    cache_kv_out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    helper.append_op(
-        type='fused_attention',
-        inputs=inputs,
-        outputs={
-            "LnMean": pre_ln_mean_out,
-            "LnVariance": pre_ln_variance_out,
-            "LnOut": pre_ln_out,
-            "QKVOut": qkv_out,
-            "QKVBiasOut": qkv_bias_out,
-            "TransposeOut2": transpose_out,
-            "QKOut": qk_out,
-            "QKTVOut": qktv_out,
-            "SoftmaxOut": softmax_out,
-            "AttnDropoutMaskOut": attn_dropout_mask_out,
-            "AttnDropoutOut": attn_dropout_out,
-            "SrcMaskOut": attn_mask_out,
-            "FMHAOut": fmha_out,
-            "OutLinearOut": out_linear_out,
-            "DropoutMaskOut": dropout_mask_out,
-            "Ln2Mean": ln_mean_out,
-            "Ln2Variance": ln_variance_out,
-            "BiasDropoutResidualOut": bias_dropout_residual_out,
-            'Y': final_out,
-            'CacheKVOut': cache_kv_out
-        },
-        attrs=attrs)
-
-    if cache_kv:
-        return final_out, cache_kv_out
-    return final_out
 
 
 def _set_var_distributed(var):
@@ -285,9 +146,7 @@ class ParallelFusedMultiHeadAttention(Layer):
         self.name = name
 
     def forward(self, query, key=None, value=None, attn_mask=None, cache=None):
-        assert cache == None, "Only support cache is None now."
-
-        out = fused_multi_head_attention(
+        out = incubate_f.fused_multi_head_attention(
             x=query,
             qkv_weight=self.qkv_weight,
             linear_weight=self.linear_weight,
