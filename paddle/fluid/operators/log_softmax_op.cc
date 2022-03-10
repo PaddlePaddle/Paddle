@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/log_softmax_op.h"
 #include <string>
 #include <unordered_map>
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
@@ -129,12 +128,3 @@ REGISTER_OPERATOR(log_softmax, ops::LogSoftmaxOp, ops::LogSoftmaxOpMaker,
                   ops::LogSoftmaxGradOpMaker<paddle::framework::OpDesc>,
                   ops::LogSoftmaxGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(log_softmax_grad, ops::LogSoftmaxGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    log_softmax,
-    ops::LogSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LogSoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    log_softmax_grad,
-    ops::LogSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LogSoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);

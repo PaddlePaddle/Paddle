@@ -1,26 +1,31 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace operators {
+#include <cmath>
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-template <typename T, int MajorType = Eigen::RowMajor,
+namespace phi {
+
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrixTemplate = EigenMatrix<T, MajorType, IndexType>;
 
 static inline int CanonicalAxis(const int axis, const int rank) {
   if (axis < 0) {
@@ -29,7 +34,7 @@ static inline int CanonicalAxis(const int axis, const int rank) {
   return axis;
 }
 
-static inline size_t SizeToAxis(const int axis, const framework::DDim dims) {
+static inline size_t SizeToAxis(const int axis, const phi::DDim dims) {
   size_t size = 1;
   for (int i = 0; i < axis; i++) {
     size *= dims[i];
@@ -37,7 +42,7 @@ static inline size_t SizeToAxis(const int axis, const framework::DDim dims) {
   return size;
 }
 
-static inline size_t SizeFromAxis(const int axis, const framework::DDim dims) {
+static inline size_t SizeFromAxis(const int axis, const phi::DDim dims) {
   size_t size = 1;
   for (int i = axis; i < dims.size(); i++) {
     size *= dims[i];
@@ -53,10 +58,12 @@ struct ValueClip {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct LogSoftmaxFunctor {
-  void operator()(const DeviceContext& context, const framework::Tensor* X,
-                  framework::Tensor* Y, const int axis) {
+  void operator()(const Context& context,
+                  const DenseTensor* X,
+                  DenseTensor* Y,
+                  const int axis) {
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
     constexpr int kAxisDim = 1;
@@ -64,10 +71,10 @@ struct LogSoftmaxFunctor {
     int axis_dim = X->dims()[axis];
     const int n = SizeToAxis(axis, X->dims());
     const int d = SizeFromAxis(axis, X->dims());
-    framework::DDim dim_2d{n, d};
+    phi::DDim dim_2d{n, d};
 
-    auto logits = EigenMatrix<T>::From(*X, dim_2d);
-    auto log_softmax = EigenMatrix<T>::From(*Y, dim_2d);
+    auto logits = EigenMatrixTemplate<T>::From(*X, dim_2d);
+    auto log_softmax = EigenMatrixTemplate<T>::From(*Y, dim_2d);
 
     const int batch_size = logits.dimension(kBatchDim);
     const int num_classes = logits.dimension(kClassDim);
@@ -119,40 +126,23 @@ struct LogSoftmaxFunctor {
   }
 };
 
-template <typename DeviceContext, typename T>
-class LogSoftmaxKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<framework::Tensor>("X");
-    auto* Out = context.Output<framework::Tensor>("Out");
-    const int rank = X->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
-
-    // allocate memory on device.
-    Out->mutable_data<T>(context.GetPlace());
-
-    if (X->numel() != 0) {
-      LogSoftmaxFunctor<DeviceContext, T>()(
-          context.template device_context<DeviceContext>(), X, Out, axis);
-    }
-  }
-};
-
-template <typename DeviceContext, typename T>
+template <typename Context, typename T>
 struct LogSoftmaxGradFunctor {
-  void operator()(const DeviceContext& context, const framework::Tensor* Y,
-                  const framework::Tensor* dY, framework::Tensor* dX,
+  void operator()(const Context& context,
+                  const DenseTensor* Y,
+                  const DenseTensor* dY,
+                  DenseTensor* dX,
                   const int axis) {
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
 
     const int n = SizeToAxis(axis, Y->dims());
     const int d = SizeFromAxis(axis, Y->dims());
-    framework::DDim dim_2d{n, d};
+    phi::DDim dim_2d{n, d};
 
-    auto y = EigenMatrix<T>::From(*Y, dim_2d);
-    auto dy = EigenMatrix<T>::From(*dY, dim_2d);
-    auto dx = EigenMatrix<T>::From(*dX, dim_2d);
+    auto y = EigenMatrixTemplate<T>::From(*Y, dim_2d);
+    auto dy = EigenMatrixTemplate<T>::From(*dY, dim_2d);
+    auto dx = EigenMatrixTemplate<T>::From(*dX, dim_2d);
 
     const int axis_dim = Y->dims()[axis];
     const int batch_size = y.dimension(kBatchDim);
@@ -171,27 +161,4 @@ struct LogSoftmaxGradFunctor {
   }
 };
 
-template <typename DeviceContext, typename T>
-class LogSoftmaxGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* Out = context.Input<framework::Tensor>("Out");
-    auto* dOut =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
-    const int rank = Out->dims().size();
-    const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
-
-    // allocate memory on device.
-    dX->mutable_data<T>(context.GetPlace());
-
-    if (Out->numel() != 0) {
-      LogSoftmaxGradFunctor<DeviceContext, T>()(
-          context.template device_context<DeviceContext>(), Out, dOut, dX,
-          axis);
-    }
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
