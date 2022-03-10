@@ -1,6 +1,6 @@
 set(eager_deps phi phi_api hook_utils tensor_utils utils global_utils backward phi_tensor tracer layer autograd_meta grad_node_info grad_tensor_holder accumulation_node)
 set(fluid_deps tracer layer proto_desc operator op_registry variable_helper memcpy)
-set(generated_deps dygraph_function dygraph_node)
+set(generated_deps final_dygraph_function final_dygraph_node dygraph_function dygraph_node)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     message("Performing Eager Dygraph Auto Code Generation")
