@@ -17,13 +17,6 @@
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    set_value, ops::SetValueKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SetValueKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::SetValueKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SetValueKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SetValueKernel<paddle::platform::CUDADeviceContext, bool>);
-
-REGISTER_OP_CUDA_KERNEL(
     set_value_grad,
     ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SetValueGradKernel<paddle::platform::CUDADeviceContext, int64_t>,

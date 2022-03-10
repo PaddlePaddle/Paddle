@@ -80,6 +80,14 @@ void CrossInferMeta(const MetaTensor& x,
                     MetaTensor* out);
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void SegmentPoolInferMeta(const MetaTensor& x,
+                          const MetaTensor& segment_ids,
+                          const std::string& pooltype,
+                          MetaTensor* out,
+                          MetaTensor* summed_ids,
+                          MetaConfig config = MetaConfig());
+
 void BCELossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       MetaTensor* out,
