@@ -19,12 +19,12 @@ limitations under the License. */
 
 namespace phi {
 
-#define DEFINE_CPU_ACTIVATION_KERNEL(name, functor_class)                   \
-  template <typename T, typename Context>                                   \
-  void name##Kernel(                                                        \
-      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {     \
-    functor_class<T> functor;                                               \
-    ActivationImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
+#define DEFINE_CPU_ACTIVATION_KERNEL(name, functor_class)                \
+  template <typename T, typename Context>                                \
+  void name##Kernel(                                                     \
+      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {  \
+    functor_class functor;                                               \
+    ActivationImpl<T, Context, functor_class>(dev_ctx, x, out, functor); \
   }
 
 #define DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(name, functor_class, attr)     \
@@ -54,19 +54,19 @@ namespace phi {
     ActivationImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
   }
 
-DEFINE_CPU_ACTIVATION_KERNEL(Sin, funcs::SinFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Cos, funcs::CosFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Tan, funcs::TanFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Asin, funcs::AsinFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Atan, funcs::AtanFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Acos, funcs::AcosFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Sinh, funcs::SinhFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Cosh, funcs::CoshFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Asinh, funcs::AsinhFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Acosh, funcs::AcoshFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Atanh, funcs::AtanhFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Relu, funcs::ReluCPUFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Tanh, funcs::TanhFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Sin, funcs::SinFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Cos, funcs::CosFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Tan, funcs::TanFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Asin, funcs::AsinFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Atan, funcs::AtanFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Acos, funcs::AcosFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Sinh, funcs::SinhFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Cosh, funcs::CoshFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Asinh, funcs::AsinhFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Acosh, funcs::AcoshFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Atanh, funcs::AtanhFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Relu, funcs::ReluCPUFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Tanh, funcs::TanhFunctor<T>)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, funcs::LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      funcs::ThresholdedReluFunctor,
