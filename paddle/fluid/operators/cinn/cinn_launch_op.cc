@@ -91,14 +91,6 @@ class CinnLaunchOp : public framework::OperatorWithKernel {
     //                "Input", string::format_string("%s|%s", kX,
     //                kNoNeedBufferX),
     //                "CinnLaunchOp");
-    const auto& outputs_argument = ctx->Outputs(kOutputs);
-    if (outputs_argument.empty()) {
-      VLOG(4) << "Outputs [" << kOutputs << "]'s argument is empty.";
-    } else {
-      for (const auto& argu : outputs_argument) {
-        VLOG(4) << "Outputs [" << kOutputs << "] has argument " << argu;
-      }
-    }
     OP_INOUT_CHECK(ctx->HasOutputs(kOutputs), "Output", kOutputs,
                    "CinnLaunchOp");
   }

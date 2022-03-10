@@ -411,19 +411,6 @@ std::unique_ptr<Graph> CreateNewSubGraph(const GraphNodeSet& cluster,
     return res;
   };
 
-  static int idx = 0;
-
-  VLOG(4) << "Subgraph [" << idx
-          << "] Cluster Ops: " << cluster_debug_info(cluster);
-  VLOG(4) << "Subgraph [" << idx
-          << "] Cluster input vars: " << cluster_debug_info(cluster_inputs);
-  VLOG(4) << "Subgraph [" << idx
-          << "] Cluster output vars: " << cluster_debug_info(cluster_outputs);
-  VLOG(4) << "Subgraph [" << idx << "] Cluster internal vars: "
-          << cluster_debug_info(cluster_internals);
-
-  ++idx;
-
   subgraph->Set<std::vector<std::string>>(
       kInternalVars, collect_names_fn(cluster_internals, {}).release());
   subgraph->Set<std::vector<std::string>>(

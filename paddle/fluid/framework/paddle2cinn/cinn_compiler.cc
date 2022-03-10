@@ -140,15 +140,6 @@ std::string CinnCompiler::AddGraph(std::unique_ptr<Graph> graph) {
   VLOG(4) << "-- Add a graph into CinnCompiler, which is:\n"
           << VizGraph(graph_key);
 
-  auto debug_graph = VizGraph(graph_key);
-  static int graph_id = 1;
-  std::string file_name =
-      "/Paddle/test/CINN/laplaca_with_cinn/laplace2d_sub_graph_" +
-      std::to_string(graph_id) + ".txt";
-  auto file = fopen(file_name.c_str(), "w+");
-  fprintf(file, debug_graph.c_str());
-  fclose(file);
-  ++graph_id;
   return graph_key;
 }
 
