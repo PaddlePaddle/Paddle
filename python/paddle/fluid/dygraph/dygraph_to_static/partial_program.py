@@ -148,6 +148,11 @@ class PartialProgramLayer:
 
         self._origin_main_program = self._verify_program(main_program)
         self._tmp_scope_vec = self._create_scope_vec()
+        # 量化单测里调用jit.save时，save接口会整体切换到静态图模式，在save下构建partial_program时，_create_fake_var调用core.eager.Tensor会段错误
+        # 1. 询问jiabin看构造eager.Tensor是否可以在静态图下进行
+        # 2. _create_fake_var内new Tnesor时主动切换回动态图
+        # 3. save接口内，构建partial_progarm时切回动态图
+        # 4. 将__init__中new eager.Tensor的相关调用移动到__call__中
         # A fake_var to handle empty input or output
         self.__fake_vars = _create_fake_var()
         # Set default mode to train
@@ -356,8 +361,10 @@ class PartialProgramLayer:
 
     def drop_scope_if_no_grad(self):
         tracer = framework._dygraph_tracer()
+        scope = self._tmp_scope_vec.value().get_scope() if isinstance(
+            self._tmp_scope_vec, (core.VarBase)) else self._tmp_scope_vec[0]
         if self.training and not tracer._has_grad:
-            self._tmp_scope_vec.value().get_scope().drop_kids()
+            scope.drop_kids()
 
     @property
     def program(self):
@@ -600,12 +607,12 @@ def _create_fake_var():
                          core.VarDesc.VarType.RAW, False)
         ]
     else:
-        # return []
         # TODO(jiabin): Support this later
-        return [
-            core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
-                              core.VarDesc.VarType.RAW, False)
-        ]
+        with paddle.fluid.dygraph.guard():
+            return [
+                core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
+                                  core.VarDesc.VarType.RAW, False)
+            ]
 
 
 def partial_program_from(concrete_program):
