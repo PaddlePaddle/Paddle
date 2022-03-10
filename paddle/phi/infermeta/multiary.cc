@@ -104,6 +104,8 @@ void NllLossRawInferMeta(const MetaTensor& input,
     }
   }
   total_weight->set_dims({1});
+  out->set_dtype(input.dtype());
+  total_weight->set_dtype(input.dtype());
 }
 
 void AucInferMeta(const MetaTensor& input,
