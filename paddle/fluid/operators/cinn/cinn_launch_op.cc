@@ -87,9 +87,18 @@ class CinnLaunchOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs(kX) || ctx->HasInputs(kNoNeedBufferX),
-                   "Input", string::format_string("%s|%s", kX, kNoNeedBufferX),
-                   "CinnLaunchOp");
+    // OP_INOUT_CHECK(ctx->HasInputs(kX) || ctx->HasInputs(kNoNeedBufferX),
+    //                "Input", string::format_string("%s|%s", kX,
+    //                kNoNeedBufferX),
+    //                "CinnLaunchOp");
+    const auto& outputs_argument = ctx->Outputs(kOutputs);
+    if (outputs_argument.empty()) {
+      VLOG(4) << "Outputs [" << kOutputs << "]'s argument is empty.";
+    } else {
+      for (const auto& argu : outputs_argument) {
+        VLOG(4) << "Outputs [" << kOutputs << "] has argument " << argu;
+      }
+    }
     OP_INOUT_CHECK(ctx->HasOutputs(kOutputs), "Output", kOutputs,
                    "CinnLaunchOp");
   }
