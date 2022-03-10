@@ -484,8 +484,8 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
    void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved) {{
      for(const auto& eager_tensor : {}) {{
         {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved, {}) );
+        TensorWrappersSet.emplace_back({}.back());
      }};
-     TensorWrappersSet.emplace_back({});
    }}
 """
             set_tensor_wrapper_methods_str += SET_VECTOR_TENSOR_WRAPPER_TEMPLATE.format(
@@ -538,7 +538,7 @@ class {} : public egr::GradNodeBase {{
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads, const bool create_graph = false) override;
   std::string name() override {{ return \" {} \"; }}
   
-  void ClearTensorWrappers() override {{
+  virtual void ClearTensorWrappers() override {{
       TensorWrappersSet.resize(0);
   }}
   
