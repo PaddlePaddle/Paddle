@@ -224,15 +224,15 @@ def fused_multi_head_attention(x,
                                pre_ln_epsilon=1e-05,
                                qkv_bias=None,
                                linear_bias=None,
+                               cache_kv=None,
                                attn_mask=None,
                                dropout_rate=0.5,
                                attn_dropout_rate=0.5,
                                ln_epsilon=1e-05,
                                training=True,
                                mode='upscale_in_train',
-                               name=None,
                                ring_id=-1,
-                               cache_kv=None):
+                               name=None):
     r"""
     Attention mapps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
@@ -365,18 +365,19 @@ def fused_multi_head_attention(x,
             3], "embed_dim must be divisible by num_heads."
 
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, cache_kv_out, final_out = _C_ops.fused_attention(
-            x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, attn_mask,
-            linear_weight, linear_bias, ln_scale, ln_bias, 'pre_layer_norm',
-            pre_layer_norm, 'epsilon', pre_ln_epsilon, 'dropout_rate',
-            dropout_rate, 'attn_dropout_rate', attn_dropout_rate, 'ln_epsilon',
-            ln_epsilon, 'attn_dropout_is_test', not training, 'dropout_is_test',
-            not training, 'attn_dropout_fix_seed', seed is not None,
-            'dropout_fix_seed', seed is not None, 'attn_dropout_seed', seed
+            x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, cache_kv,
+            attn_mask, linear_weight, linear_bias, ln_scale, ln_bias,
+            'pre_layer_norm', pre_layer_norm, 'epsilon', pre_ln_epsilon,
+            'dropout_rate', dropout_rate, 'attn_dropout_rate',
+            attn_dropout_rate, 'ln_epsilon', ln_epsilon, 'attn_dropout_is_test',
+            not training, 'dropout_is_test', not training,
+            'attn_dropout_fix_seed', seed is not None, 'dropout_fix_seed',
+            seed is not None, 'attn_dropout_seed', seed
             if seed is not None else 0, 'dropout_seed', seed
             if seed is not None else 0, 'attn_dropout_implementation', mode,
-            'dropout_implementation', mode, 'CacheKV', cache_kv)
-        if cache_kv:
-            return [final_out, cache_kv_out]
+            'dropout_implementation', mode)
+        if cache_kv is not None:
+            return final_out, cache_kv_out
         return final_out
     else:
         helper = LayerHelper('fused_multi_head_attention', **locals())

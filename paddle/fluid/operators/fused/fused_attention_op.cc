@@ -27,10 +27,6 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionOp");
-    if (ctx->HasInput("CacheKV")) {
-      OP_INOUT_CHECK(ctx->HasOutput("CacheKVOut"), "Output", "CacheKVOut",
-                     "FusedAttentionOp");
-    }
     OP_INOUT_CHECK(ctx->HasInput("QKVW"), "Input", "QKVW", "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasInput("OutLinearW"), "Input", "OutLinearW",
                    "FusedAttentionOp");
@@ -65,6 +61,10 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("QKTVOut"), "Output", "QKTVOut",
                    "FusedAttentionOp");
 
+    if (ctx->HasInput("CacheKV")) {
+      OP_INOUT_CHECK(ctx->HasOutput("CacheKVOut"), "Output", "CacheKVOut",
+                     "FusedAttentionOp");
+    }
     if (ctx->HasInput("SrcMask")) {
       OP_INOUT_CHECK(ctx->HasOutput("SrcMaskOut"), "Output", "SrcMaskOut",
                      "FusedAttentionOp");
@@ -200,8 +200,6 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The input tensor.");
-    AddInput("CacheKV", "(optional) The cached KV for generation inference.")
-        .AsDispensable();
     AddInput("LnScale",
              "(optional) Scale is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
@@ -212,6 +210,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("QKVW", "The qkv weight tensor.");
     AddInput("QKVBias", "The qkv bias tensor.").AsDispensable();
+    AddInput("CacheKV", "(optional) The cached KV for generation inference.")
+        .AsDispensable();
     AddInput("SrcMask", "(optional) The attention mask tensor in fmha.")
         .AsDispensable();
     AddInput("OutLinearW", "The out_linear weight tensor.");
