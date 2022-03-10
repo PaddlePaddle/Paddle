@@ -44,6 +44,19 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
       .End()
       .AddOutput("Out")
       .IsTensor()
+      .End()
+      .AddAttr("activation_type")
+      .IsStringIn({"relu", ""})
+      .IsOptional()
+      .End()
+      .AddAttr("padding_weights")
+      .IsOptional()
+      .End()
+      .AddAttr("in_num_col_dims")
+      .IsOptional()
+      .End()
+      .AddAttr("use_mkldnn")
+      .IsOptional()
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -83,18 +96,19 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_input, fc_input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_weights, fc_weights, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_bias, fc_bias, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_output, fc_output, fc_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
                               elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_identity, elementwise_add_y,
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_y, elementwise_add_y,
                               elementwise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
                               elementwise_add_pattern);
 
     if (FindFuseOption(*fc_op, *elementwise_add_op) != FUSE_MKLDNN) return;
 
-    if (!IsReachable(g, elementwise_add_identity, fc_output)) return;
+    if (!IsReachable(g, elementwise_add_y, fc_output)) return;
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
@@ -102,13 +116,13 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
       return;
     }
 
-    fc_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
+    fc_op->Op()->SetInput("ResidualData", {elementwise_add_y->Name()});
     fc_op->Op()->SetOutput("Out", {elementwise_add_out->Name()});
     fc_op->Op()->SetAttr("fuse_residual_connection", true);
 
     GraphSafeRemoveNodes(g, {fc_output, elementwise_add_op});
 
-    IR_NODE_LINK_TO(elementwise_add_identity, fc_op);
+    IR_NODE_LINK_TO(elementwise_add_y, fc_op);
     IR_NODE_LINK_TO(fc_op, elementwise_add_out);
 
     found_fc_as_x_count++;
@@ -148,6 +162,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsY(
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_input, fc_input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_weights, fc_weights, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_bias, fc_bias, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_output, fc_output, fc_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
@@ -215,11 +230,13 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseProjectionFC(
     GET_IR_NODE_FROM_SUBGRAPH(fc_x_op, fc_op, fc_x_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_x_input, fc_input, fc_x_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_x_weights, fc_weights, fc_x_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_x_bias, fc_bias, fc_x_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_x_output, fc_output, fc_x_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(fc_y_op, fc_op, fc_y_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_y_input, fc_input, fc_y_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_y_weights, fc_weights, fc_y_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_y_bias, fc_bias, fc_y_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_y_output, fc_output, fc_y_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,

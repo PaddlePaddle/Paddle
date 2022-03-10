@@ -1047,21 +1047,25 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
 }
 
 PDNode *patterns::FCResidual::operator()() {
-  auto fc_op = pattern->NewNode(fc_op_repr())->assert_is_op("fc");
+  auto *fc_op = pattern->NewNode(fc_op_repr())->assert_is_op("fc");
 
-  auto input_var = pattern->NewNode(fc_input_repr())
+  auto *input_var = pattern->NewNode(fc_input_repr())
                        ->AsInput()
                        ->assert_is_op_input("fc", "Input");
 
-  auto weights_var = pattern->NewNode(fc_weights_repr())
+  auto *weights_var = pattern->NewNode(fc_weights_repr())
                          ->AsInput()
                          ->assert_is_op_input("fc", "W");
 
-  auto output_var = pattern->NewNode(fc_output_repr())
+  auto *bias_var = pattern->NewNode(fc_bias_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("fc", "Bias");
+
+  auto *output_var = pattern->NewNode(fc_output_repr())
                         ->AsOutput()
                         ->assert_is_op_output("fc", "Out");
 
-  fc_op->LinksFrom({input_var, weights_var}).LinksTo({output_var});
+  fc_op->LinksFrom({input_var, weights_var, bias_var}).LinksTo({output_var});
   return output_var;
 }
 

@@ -96,22 +96,6 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsX_FCBiasAsY) {
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 2}, {"elementwise_add", 0}}));
 }
 
-TEST(FCElementwiseAddMKLDNNFusePass, FCNoBiasAsY) {
-  auto prog = test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"weights"});
-
-  test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  test::CreateOp(&prog, "fc", {{"Input", "b"}, {"W", "weights"}},
-                 {{"Out", "c"}});
-  Create_Op_elementwise_add(&prog, {{"X", "a"}, {"Y", "c"}}, {{"Out", "d"}});
-  test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
-
-  Graph graph(prog);
-
-  EXPECT_TRUE(test::RunPassAndAssert(&graph,
-                                     "fc_elementwise_add_mkldnn_fuse_pass", "a",
-                                     "e", nodes_removed, nodes_added));
-  EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 1}, {"elementwise_add", 0}}));
-}
 
 TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsX) {
   auto prog =
@@ -133,22 +117,6 @@ TEST(FCElementwiseAddMKLDNNFusePass, FCBiasAsX) {
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 1}, {"elementwise_add", 0}}));
 }
 
-TEST(FCElementwiseAddMKLDNNFusePass, FCNoBiasAsX) {
-  auto prog = test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"weights"});
-
-  test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
-  test::CreateOp(&prog, "fc", {{"Input", "b"}, {"W", "weights"}},
-                 {{"Out", "c"}});
-  Create_Op_elementwise_add(&prog, {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
-  test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
-
-  Graph graph(prog);
-
-  EXPECT_TRUE(test::RunPassAndAssert(&graph,
-                                     "fc_elementwise_add_mkldnn_fuse_pass", "a",
-                                     "e", nodes_removed, nodes_added));
-  EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 1}, {"elementwise_add", 0}}));
-}
 
 TEST(FCElementwiseAddMKLDNNFusePass, NoFusion_NotResidualConnection) {
   auto prog = test::BuildProgramDesc({"a", "b", "c", "d", "e", "f", "g"},
