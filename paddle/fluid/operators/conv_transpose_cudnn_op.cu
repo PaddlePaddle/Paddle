@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_helper.h"
 #endif
 #include "paddle/fluid/operators/conv_transpose_op.h"
-#include "paddle/fluid/operators/math/padding.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 namespace paddle {
 namespace operators {
@@ -108,7 +108,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
 
     std::vector<int> input_pad(input_transpose.dims().size() * 2, 0);
     Tensor transformed_input;
@@ -139,12 +139,14 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, input_transpose, pad_value, &transformed_input);
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+              dev_ctx, input_pad, input_transpose, pad_value,
+              &transformed_input);
         } break;
         case 5: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, input_transpose, pad_value, &transformed_input);
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+              dev_ctx, input_pad, input_transpose, pad_value,
+              &transformed_input);
         } break;
         default:
           PADDLE_THROW(platform::errors::InvalidArgument(
@@ -242,10 +244,14 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
     using search = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
     workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
-    algo = search::Find<T>(args, false, deterministic, workspace_size, ctx);
+    algo = search::Find<T>(
+        args, false, deterministic, workspace_size,
+        ctx.template device_context<platform::CUDADeviceContext>());
 #else
     using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-    algo = search::Find<T>(args, false, deterministic, ctx);
+    algo = search::Find<T>(
+        args, false, deterministic,
+        ctx.template device_context<platform::CUDADeviceContext>());
     workspace_size =
         std::max(workspace_size, search::GetWorkspaceSize(args, algo));
 #endif
@@ -375,7 +381,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
 
     std::vector<int> input_pad(input_transpose.dims().size() * 2, 0);
     Tensor transformed_output_grad;
@@ -407,13 +413,13 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, output_grad_transpose, pad_value,
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+              dev_ctx, input_pad, output_grad_transpose, pad_value,
               &transformed_output_grad);
         } break;
         case 5: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, output_grad_transpose, pad_value,
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+              dev_ctx, input_pad, output_grad_transpose, pad_value,
               &transformed_output_grad);
         } break;
         default:
@@ -499,11 +505,14 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       using search1 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search1::GetWorkspaceSize(args1));
-      data_algo =
-          search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
+      data_algo = search1::Find<T>(
+          args1, false, deterministic, workspace_size,
+          ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      data_algo = search1::Find<T>(args1, false, deterministic, ctx);
+      data_algo = search1::Find<T>(
+          args1, false, deterministic,
+          ctx.template device_context<platform::CUDADeviceContext>());
       workspace_size =
           std::max(workspace_size, search1::GetWorkspaceSize(args1, data_algo));
 #endif
@@ -521,11 +530,14 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search2::GetWorkspaceSize(args2));
-      filter_algo =
-          search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
+      filter_algo = search2::Find<T>(
+          args2, false, deterministic, workspace_size,
+          ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-      filter_algo = search2::Find<T>(args2, false, deterministic, ctx);
+      filter_algo = search2::Find<T>(
+          args2, false, deterministic,
+          ctx.template device_context<platform::CUDADeviceContext>());
       workspace_size = std::max(workspace_size,
                                 search2::GetWorkspaceSize(args2, filter_algo));
 #endif
@@ -735,7 +747,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
     Tensor transformed_X(X->type());
     Tensor transformed_ddX(X->type());
 
@@ -794,26 +806,28 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       T pad_value(0.0);
       switch (rank) {
         case 4: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+              dev_ctx, input_pad, transformed_X_channel, pad_value,
+              &transformed_X);
           if (dO) {
-            math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-                ctx, input_pad, transformed_dO_channel, pad_value,
+            phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+                dev_ctx, input_pad, transformed_dO_channel, pad_value,
                 &transformed_dO);
           }
 
           if (ddX) {
-            math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-                ctx, input_pad, transformed_ddX_channel, pad_value,
+            phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+                dev_ctx, input_pad, transformed_ddX_channel, pad_value,
                 &transformed_ddX);
           }
         } break;
         case 5: {
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
+          phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+              dev_ctx, input_pad, transformed_X_channel, pad_value,
+              &transformed_X);
           if (ddX) {
-            math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-                ctx, input_pad, transformed_ddX_channel, pad_value,
+            phi::funcs::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+                dev_ctx, input_pad, transformed_ddX_channel, pad_value,
                 &transformed_ddX);
           }
         } break;
@@ -940,11 +954,14 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
         using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
         workspace_size = search1::GetWorkspaceSize(args1);
-        bwd_algo1 =
-            search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
+        bwd_algo1 = search1::Find<T>(
+            args1, false, deterministic, workspace_size,
+            ctx.template device_context<platform::CUDADeviceContext>());
 #else
         using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-        bwd_algo1 = search1::Find<T>(args1, false, deterministic, ctx);
+        bwd_algo1 = search1::Find<T>(
+            args1, false, deterministic,
+            ctx.template device_context<platform::CUDADeviceContext>());
         workspace_size = search1::GetWorkspaceSize(args1, bwd_algo1);
 #endif
       }
@@ -961,11 +978,14 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
         using search2 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
         workspace_size =
             std::max(workspace_size, search2::GetWorkspaceSize(args2));
-        bwd_algo2 =
-            search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
+        bwd_algo2 = search2::Find<T>(
+            args2, false, deterministic, workspace_size,
+            ctx.template device_context<platform::CUDADeviceContext>());
 #else
         using search2 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-        bwd_algo2 = search2::Find<T>(args2, false, deterministic, ctx);
+        bwd_algo2 = search2::Find<T>(
+            args2, false, deterministic,
+            ctx.template device_context<platform::CUDADeviceContext>());
         workspace_size = std::max(workspace_size,
                                   search2::GetWorkspaceSize(args2, bwd_algo2));
 #endif
@@ -986,11 +1006,14 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       using search3 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search3::GetWorkspaceSize(args3));
-      filter_algo =
-          search3::Find<T>(args3, false, deterministic, workspace_size, ctx);
+      filter_algo = search3::Find<T>(
+          args3, false, deterministic, workspace_size,
+          ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-      filter_algo = search3::Find<T>(args3, false, deterministic, ctx);
+      filter_algo = search3::Find<T>(
+          args3, false, deterministic,
+          ctx.template device_context<platform::CUDADeviceContext>());
       workspace_size = std::max(workspace_size,
                                 search3::GetWorkspaceSize(args3, filter_algo));
 #endif
@@ -1009,11 +1032,14 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       using search4 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search4::GetWorkspaceSize(args4));
-      data_algo =
-          search4::Find<T>(args4, false, deterministic, workspace_size, ctx);
+      data_algo = search4::Find<T>(
+          args4, false, deterministic, workspace_size,
+          ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search4 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      data_algo = search4::Find<T>(args4, false, deterministic, ctx);
+      data_algo = search4::Find<T>(
+          args4, false, deterministic,
+          ctx.template device_context<platform::CUDADeviceContext>());
       workspace_size =
           std::max(workspace_size, search4::GetWorkspaceSize(args4, data_algo));
 #endif

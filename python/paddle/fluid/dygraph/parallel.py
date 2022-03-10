@@ -128,6 +128,9 @@ class ParallelEnv(object):
         elif core.is_compiled_with_npu():
             selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
             self._device_id = int(selected_npus[0])
+        elif core.is_compiled_with_mlu():
+            selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
+            self._device_id = int(selected_mlus[0])
 
         self._trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS",
                                             "").split(",")
