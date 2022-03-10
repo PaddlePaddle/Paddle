@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/infrt/backends/host/phi_allocator.h"
+#include "paddle/infrt/dialect/infrt/common_type.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -22,10 +23,12 @@ namespace infrt {
 namespace kernel {
 namespace phi {
 
-::phi::DenseTensor CreateDenseTensorCpuF32Nchw(
-    backends::CpuPhiAllocator* allocator,
+::phi::DenseTensor CreateDenseTensor(
+    const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
-    host_context::Attribute<std::vector<int64_t>> lod);
+    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::PrecisionType> precision);
 
 void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
                         host_context::Attribute<std::vector<float>> values);

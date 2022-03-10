@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/allocator_kernels.h"
+#pragma once
 
-namespace infrt {
-namespace kernel {
+#include "paddle/phi/core/dense_tensor.h"
+
 namespace phi {
 
-backends::CpuPhiAllocator CreateCpuAllocator() { return {}; }
+template <typename T, typename Context>
+void ViterbiDecodeKernel(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& transition,
+                         const DenseTensor& length,
+                         bool include_bos_eos_tag,
+                         DenseTensor* scores,
+                         DenseTensor* path);
 
 }  // namespace phi
-}  // namespace kernel
-}  // namespace infrt

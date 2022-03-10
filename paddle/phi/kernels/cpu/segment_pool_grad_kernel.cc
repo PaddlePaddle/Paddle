@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/segment_pool_grad_kernel.h"
+#include "paddle/phi/kernels/impl/segment_pool_grad_kernel_impl.h"
 
-#include "mlir/IR/Types.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace infrt {
-namespace trt {
-
-class EngineType
-    : public mlir::Type::TypeBase<EngineType, mlir::Type, mlir::TypeStorage> {
- public:
-  using Base::Base;
-};
-
-}  // namespace trt
-}  // namespace infrt
+PD_REGISTER_KERNEL(segment_pool_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SegmentPoolGradKernel,
+                   float,
+                   double) {}

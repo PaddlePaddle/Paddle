@@ -32,6 +32,12 @@ class MetaConfig;
 // Because functions in this file not only can infer shape, but also need
 // infer lod or other useful data.
 
+void ArgsortInferMeta(const MetaTensor& input,
+                      int axis,
+                      bool descending,
+                      MetaTensor* output,
+                      MetaTensor* indices);
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
 // meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
@@ -146,6 +152,14 @@ void DiagInferMeta(const MetaTensor& x,
                    int offset,
                    float padding_value,
                    MetaTensor* out);
+
+void ArgMinMaxInferMeta(const MetaTensor& x,
+                        int64_t axis,
+                        bool keepdims,
+                        bool flatten,
+                        int dtype,
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
 
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
 
