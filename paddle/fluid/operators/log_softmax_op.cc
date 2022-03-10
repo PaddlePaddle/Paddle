@@ -14,7 +14,11 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,10 +26,6 @@ namespace operators {
 class LogSoftmaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    return UnaryOpUnchangedInferShapeCheckAxis(ctx);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -122,9 +122,11 @@ class LogSoftmaxGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
+DECLARE_INFER_SHAPE_FUNCTOR(log_softmax, LogSoftmaxInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(log_softmax, ops::LogSoftmaxOp, ops::LogSoftmaxOpMaker,
                   ops::LogSoftmaxOpInferVarType,
                   ops::LogSoftmaxGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LogSoftmaxGradOpMaker<paddle::imperative::OpBase>);
+                  ops::LogSoftmaxGradOpMaker<paddle::imperative::OpBase>,
+                  LogSoftmaxInferShapeFunctor);
 REGISTER_OPERATOR(log_softmax_grad, ops::LogSoftmaxGradOp);

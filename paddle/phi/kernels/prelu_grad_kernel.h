@@ -20,9 +20,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LogSoftmaxGradKernel(const Context& dev_ctx,
-                          const DenseTensor& out,
-                          const DenseTensor& out_grad,
-                          int axis,
-                          DenseTensor* x_grad);
+void PReluGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& alpha,
+                     const DenseTensor& out_grad,
+                     const std::string& mode,
+                     const std::string& data_format,
+                     DenseTensor* x_grad,
+                     DenseTensor* alpha_grad);
 }  // namespace phi

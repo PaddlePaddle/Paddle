@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,9 +19,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LogSoftmaxGradKernel(const Context& dev_ctx,
-                          const DenseTensor& out,
-                          const DenseTensor& out_grad,
-                          int axis,
-                          DenseTensor* x_grad);
+void PReluKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const DenseTensor& alpha,
+                 const std::string& mode,
+                 const std::string& data_format,
+                 DenseTensor* out);
 }  // namespace phi

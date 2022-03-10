@@ -13,16 +13,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void LogSoftmaxGradKernel(const Context& dev_ctx,
-                          const DenseTensor& out,
-                          const DenseTensor& out_grad,
-                          int axis,
-                          DenseTensor* x_grad);
+KernelSignature PReluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("prelu_grad",
+                         {"X", "Alpha", GradVarName("Out")},
+                         {"mode", "data_format"},
+                         {GradVarName("X"), GradVarName("Alpha")});
+}
+
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(prelu_grad, phi::PReluGradOpArgumentMapping);

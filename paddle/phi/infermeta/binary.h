@@ -111,6 +111,12 @@ void LogLossInferMeta(const MetaTensor& input,
 
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
 
+void PReluInferMeta(const MetaTensor& x,
+                    const MetaTensor& alpha,
+                    const std::string& mode,
+                    const std::string& data_format,
+                    MetaTensor* out);
+
 void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
                                             const MetaTensor& label,
                                             bool normalize,
