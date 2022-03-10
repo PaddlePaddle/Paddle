@@ -26,11 +26,12 @@ KernelSignature RollGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                            {"X", GradVarName("Out")},
                            {"ShiftsTensor", "axis"},
                            {GradVarName("X")});
+  } else {
+    return KernelSignature("roll_grad",
+                           {"X", GradVarName("Out")},
+                           {"shifts", "axis"},
+                           {GradVarName("X")});
   }
-  return KernelSignature("roll_grad",
-                         {"X", GradVarName("Out")},
-                         {"shifts", "axis"},
-                         {GradVarName("X")});
 }
 
 }  // namespace phi
