@@ -739,6 +739,120 @@ void LaunchNormalSoftmaxBackward(const GPUContext& dev_ctx,
   }
 }
 
+std::vector<int> GetSoftmaxTensorDims(const phi::DDim& dims,
+                                      const int input_axis) {
+  int rank = dims.size();
+  int axis = phi::funcs::CanonicalAxis(input_axis, rank);
+  int dim = dims[axis];
+  int N = phi::funcs::SizeToAxis(axis, dims);
+  int D = phi::funcs::SizeOutAxis(axis, dims);
+  return {N, dim, D, 1};
+}
+
+template <typename T>
+void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
+                               const DenseTensor& x,
+                               const int input_axis,
+                               const bool log_mode,
+                               DenseTensor* out) {
+  auto* out_data = out->data<T>();
+
+  const int rank = x.dims().size();
+  std::vector<int> tensor_dims = GetSoftmaxTensorDims(x.dims(), input_axis);
+
+  auto handle = dev_ctx.cudnn_handle();
+  GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+
+  ScopedTensorDescriptor scoped_desc;
+#ifdef PADDLE_WITH_HIP
+  miopenTensorDescriptor_t desc =
+      scoped_desc.descriptor<T>(layout, tensor_dims);
+  auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
+                               : MIOPEN_SOFTMAX_MODE_CHANNEL;
+  auto algo = log_mode ? MIOPEN_SOFTMAX_LOG : MIOPEN_SOFTMAX_ACCURATE;
+  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::miopenSoftmaxForward_V2(
+      handle,
+      paddle::platform::CudnnDataType<T>::kOne(),
+      desc,
+      x.data<T>(),
+      paddle::platform::CudnnDataType<T>::kZero(),
+      desc,
+      out_data,
+      algo,
+      mode));
+#else
+  cudnnTensorDescriptor_t desc = scoped_desc.descriptor<T>(layout, tensor_dims);
+  auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
+                               : CUDNN_SOFTMAX_MODE_CHANNEL;
+  auto algo = log_mode ? CUDNN_SOFTMAX_LOG : CUDNN_SOFTMAX_ACCURATE;
+  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cudnnSoftmaxForward(
+      handle,
+      algo,
+      mode,
+      paddle::platform::CudnnDataType<T>::kOne(),
+      desc,
+      x.data<T>(),
+      paddle::platform::CudnnDataType<T>::kZero(),
+      desc,
+      out_data));
+#endif
+}
+
+template <typename T>
+void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
+                                const DenseTensor& out,
+                                const DenseTensor& dout,
+                                const int input_axis,
+                                const bool log_mode,
+                                DenseTensor* dx) {
+  auto* dx_data = dx->data<T>();
+
+  int rank = out.dims().size();
+  std::vector<int> tensor_dims = GetSoftmaxTensorDims(out.dims(), input_axis);
+
+  auto handle = dev_ctx.cudnn_handle();
+  GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+
+  ScopedTensorDescriptor scoped_desc;
+#ifdef PADDLE_WITH_HIP
+  miopenTensorDescriptor_t desc =
+      scoped_desc.descriptor<T>(layout, tensor_dims);
+  auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
+                               : MIOPEN_SOFTMAX_MODE_CHANNEL;
+  auto algo = log_mode ? MIOPEN_SOFTMAX_LOG : MIOPEN_SOFTMAX_ACCURATE;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      paddle::platform::dynload::miopenSoftmaxBackward_V2(
+          handle,
+          paddle::platform::CudnnDataType<T>::kOne(),
+          desc,
+          out.data<T>(),
+          desc,
+          dout.data<T>(),
+          paddle::platform::CudnnDataType<T>::kZero(),
+          desc,
+          dx_data,
+          algo,
+          mode));
+#else
+  cudnnTensorDescriptor_t desc = desc.descriptor<T>(layout, tensor_dims);
+  auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
+                               : CUDNN_SOFTMAX_MODE_CHANNEL;
+  auto algo = log_mode ? CUDNN_SOFTMAX_LOG : CUDNN_SOFTMAX_ACCURATE;
+  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cudnnSoftmaxBackward(
+      handle,
+      algo,
+      mode,
+      paddle::platform::CudnnDataType<T>::kOne(),
+      desc,
+      out.data<T>(),
+      desc,
+      dout.data<T>(),
+      paddle::platform::CudnnDataType<T>::kZero(),
+      desc,
+      dx_data));
+#endif
+}
+
 template <typename T, bool LogMode = false>
 void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                     const DenseTensor& x,
@@ -746,12 +860,10 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                     DenseTensor* out) {
   auto* out_data = out->data<T>();
 
-  auto dims = x.dims();
-  const int rank = dims.size();
-  const int axis = phi::funcs::CanonicalAxis(input_axis, rank);
-  const int dim = dims[axis];
-  const int N = phi::funcs::SizeToAxis(axis, dims);
-  const int D = phi::funcs::SizeOutAxis(axis, dims);
+  std::vector<int> tensor_dims = GetSoftmaxTensorDims(x.dims(), input_axis);
+  int N = tensor_dims[0];
+  int dim = tensor_dims[1];
+  int D = tensor_dims[2];
 
   constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
@@ -809,72 +921,7 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
     LaunchNormalSoftmaxForward<T, LogMode>(
         dev_ctx, out_data, x.data<T>(), N, dim, D);
   } else {
-    ScopedTensorDescriptor desc;
-    std::vector<int> tensor_dims = {N, dim, D, 1};
-    GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
-#ifdef PADDLE_WITH_HIP
-    miopenTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
-#else
-    cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
-#endif
-
-    auto handle = dev_ctx.cudnn_handle();
-
-#ifdef PADDLE_WITH_HIP
-    auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
-                                 : MIOPEN_SOFTMAX_MODE_CHANNEL;
-    if (LogMode) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::miopenSoftmaxForward_V2(
-              handle,
-              paddle::platform::CudnnDataType<T>::kOne(),
-              desc_,
-              x.data<T>(),
-              paddle::platform::CudnnDataType<T>::kZero(),
-              desc_,
-              out_data,
-              MIOPEN_SOFTMAX_LOG,
-              mode));
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::miopenSoftmaxForward_V2(
-              handle,
-              paddle::platform::CudnnDataType<T>::kOne(),
-              desc_,
-              x.data<T>(),
-              paddle::platform::CudnnDataType<T>::kZero(),
-              desc_,
-              out_data,
-              MIOPEN_SOFTMAX_ACCURATE,
-              mode));
-    }
-#else
-    auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
-                                 : CUDNN_SOFTMAX_MODE_CHANNEL;
-    if (LogMode) {
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cudnnSoftmaxForward(
-          handle,
-          CUDNN_SOFTMAX_LOG,
-          mode,
-          paddle::platform::CudnnDataType<T>::kOne(),
-          desc_,
-          x.data<T>(),
-          paddle::platform::CudnnDataType<T>::kZero(),
-          desc_,
-          out_data));
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cudnnSoftmaxForward(
-          handle,
-          CUDNN_SOFTMAX_ACCURATE,
-          mode,
-          paddle::platform::CudnnDataType<T>::kOne(),
-          desc_,
-          x.data<T>(),
-          paddle::platform::CudnnDataType<T>::kZero(),
-          desc_,
-          out_data));
-    }
-#endif
+    SoftmaxForwardCudnnKernel<T>(dev_ctx, x, input_axis, LogMode, out);
   }
 }
 
@@ -886,12 +933,10 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                      DenseTensor* dx) {
   auto* dx_data = dx->data<T>();
 
-  auto dims = out.dims();
-  const int rank = dims.size();
-  const int axis = phi::funcs::CanonicalAxis(input_axis, rank);
-  const int dim = dims[axis];
-  const int N = phi::funcs::SizeToAxis(axis, dims);
-  const int D = phi::funcs::SizeOutAxis(axis, dims);
+  std::vector<int> tensor_dims = GetSoftmaxTensorDims(out.dims(), input_axis);
+  int N = tensor_dims[0];
+  int dim = tensor_dims[1];
+  int D = tensor_dims[2];
 
   constexpr int max_dim = 512;
   constexpr int warps_per_block = 4;
@@ -949,82 +994,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
     LaunchNormalSoftmaxBackward<T, LogMode>(
         dev_ctx, dx_data, dout.data<T>(), out.data<T>(), N, dim, D);
   } else {
-    ScopedTensorDescriptor desc;
-    std::vector<int> tensor_dims = {N, dim, D, 1};
-    GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
-#ifdef PADDLE_WITH_HIP
-    miopenTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
-#else
-    cudnnTensorDescriptor_t desc_ = desc.descriptor<T>(layout, tensor_dims);
-#endif
-
-    auto handle = dev_ctx.cudnn_handle();
-
-#ifdef PADDLE_WITH_HIP
-    auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
-                                 : MIOPEN_SOFTMAX_MODE_CHANNEL;
-    if (LogMode) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::miopenSoftmaxBackward_V2(
-              handle,
-              paddle::platform::CudnnDataType<T>::kOne(),
-              desc_,
-              out.data<T>(),
-              desc_,
-              dout.data<T>(),
-              paddle::platform::CudnnDataType<T>::kZero(),
-              desc_,
-              dx_data,
-              MIOPEN_SOFTMAX_LOG,
-              mode));
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::miopenSoftmaxBackward_V2(
-              handle,
-              paddle::platform::CudnnDataType<T>::kOne(),
-              desc_,
-              out.data<T>(),
-              desc_,
-              dout.data<T>(),
-              paddle::platform::CudnnDataType<T>::kZero(),
-              desc_,
-              dx_data,
-              MIOPEN_SOFTMAX_ACCURATE,
-              mode));
-    }
-#else
-    auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
-                                 : CUDNN_SOFTMAX_MODE_CHANNEL;
-    if (LogMode) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnSoftmaxBackward(
-              handle,
-              CUDNN_SOFTMAX_LOG,
-              mode,
-              paddle::platform::CudnnDataType<T>::kOne(),
-              desc_,
-              out.data<T>(),
-              desc_,
-              dout.data<T>(),
-              paddle::platform::CudnnDataType<T>::kZero(),
-              desc_,
-              dx_data));
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnSoftmaxBackward(
-              handle,
-              CUDNN_SOFTMAX_ACCURATE,
-              mode,
-              paddle::platform::CudnnDataType<T>::kOne(),
-              desc_,
-              out.data<T>(),
-              desc_,
-              dout.data<T>(),
-              paddle::platform::CudnnDataType<T>::kZero(),
-              desc_,
-              dx_data));
-    }
-#endif
+    SoftmaxBackwardCudnnKernel<T>(dev_ctx, out, dout, input_axis, LogMode, dx);
   }
 }
 
