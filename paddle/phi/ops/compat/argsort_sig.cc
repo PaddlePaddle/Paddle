@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "mlir/IR/Types.h"
+namespace phi {
 
-namespace infrt {
-namespace trt {
+KernelSignature ArgsortGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("argsort_grad",
+                         {"Indices", "X", GradVarName("Out")},
+                         {"axis", "descending"},
+                         {GradVarName("X")});
+}
 
-class EngineType
-    : public mlir::Type::TypeBase<EngineType, mlir::Type, mlir::TypeStorage> {
- public:
-  using Base::Base;
-};
+}  // namespace phi
 
-}  // namespace trt
-}  // namespace infrt
+PD_REGISTER_ARG_MAPPING_FN(argsort_grad, phi::ArgsortGradOpArgumentMapping);

@@ -14,15 +14,18 @@
 
 #pragma once
 
-#include "paddle/infrt/backends/host/phi_allocator.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "mlir/IR/Types.h"
 
 namespace infrt {
-namespace kernel {
-namespace phi {
+namespace trt {
 
-backends::CpuPhiAllocator CreateCpuAllocator();
+class EngineType
+    : public mlir::Type::TypeBase<EngineType, mlir::Type, mlir::TypeStorage> {
+ public:
+  using Base::Base;
+  static EngineType get();
+  static EngineType get(mlir::MLIRContext *context);
+};
 
-}  // namespace phi
-}  // namespace kernel
+}  // namespace trt
 }  // namespace infrt
