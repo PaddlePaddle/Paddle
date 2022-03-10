@@ -186,4 +186,6 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
 
+void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
+
 }  // namespace phi

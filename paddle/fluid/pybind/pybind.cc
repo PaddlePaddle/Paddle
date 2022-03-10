@@ -1957,10 +1957,17 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
+#ifdef PADDLE_WITH_XPU_KP
+  m.def("get_xpu_device_op_support_types",
+        [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
+          return platform::get_xpu_kp_op_support_type(op_name, version);
+        });
+#else
   m.def("get_xpu_device_op_support_types",
         [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
           return platform::get_xpu_op_support_type(op_name, version);
         });
+#endif
   m.def("get_xpu_device_op_list", [](phi::backends::xpu::XPUVersion version) {
     return platform::get_xpu_op_list(version);
   });
