@@ -662,6 +662,12 @@ class InMemoryDataset(DatasetBase):
         self.dataset.wait_preload_done()
         self.dataset.destroy_preload_readers()
 
+    def init_matrix_path(self, path_afs):
+        self.dataset.init_matrix_path(path_afs)
+
+    def matrix_path_generate(self, sample_slot, path_slots, path_num):
+        self.dataset.matrix_path_generate(sample_slot, path_slots, path_num)
+
     def local_shuffle(self):
         """
         Local shuffle
