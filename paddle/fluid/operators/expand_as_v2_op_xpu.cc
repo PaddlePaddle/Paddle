@@ -14,6 +14,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+
+#define MAX_RANK_SUPPORTED 6
 
 namespace paddle {
 namespace operators {

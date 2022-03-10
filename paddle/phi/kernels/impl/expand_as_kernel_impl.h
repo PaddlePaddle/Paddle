@@ -83,7 +83,6 @@ void ExpandAs(const Context& context,
 
   out->Resize(out_dims);
   context.template Alloc<T>(out);
-  out->data<T>();
   auto x0 = EigenTensor<T, Rank>::From(x, new_in_dims);
   auto y = EigenTensor<T, Rank>::From(*out, out_dims);
   auto& place = *context.eigen_device();

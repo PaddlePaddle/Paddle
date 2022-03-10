@@ -124,8 +124,8 @@ REGISTER_OPERATOR(expand_as_v2, ops::ExpandAsV2Op, ops::ExpandAsV2OpMaker,
 REGISTER_OPERATOR(expand_as_v2_grad, ops::ExpandAsV2GradOp,
                   ops::ExpandAsV2GradNoNeedBufVarsInferer);
 
-// REGISTER_OP_VERSION(expand_as_v2)
-//     .AddCheckpoint(
-//         R"ROC(fix expand_as_v2 and add new input [Y])ROC",
-//         paddle::framework::compatible::OpVersionDesc().NewInput(
-//             "Y", "Expand X according to the shape of Y"));
+REGISTER_OP_VERSION(expand_as_v2)
+    .AddCheckpoint(
+        R"ROC(fix expand_as_v2 and add new input [Y])ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "Y", "Expand X according to the shape of Y"));
