@@ -1144,7 +1144,7 @@ class DistributedStrategy(object):
 
         """
         return self.strategy.pipeline
-    
+
     @property
     def is_fl_ps_mode(self):
         return self.strategy.is_fl_ps_mode

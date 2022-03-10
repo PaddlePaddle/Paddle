@@ -818,8 +818,9 @@ class SplitHeterWorkerOpsPass(PassBase):
             block_var_detail, current_device, False)
 
         # add send op
-        send_grad_var_list = add_send_op(program, heter_block_bp,
-                                               block_var_detail[stage_id - 1]["backward"]["persistables"]) 
+        send_grad_var_list = add_send_op(
+            program, heter_block_bp,
+            block_var_detail[stage_id - 1]["backward"]["persistables"])
 
         # add step conter
         send_input_vars = []
@@ -1105,7 +1106,7 @@ class SplitFlOpsPass(PassBase):
 
     def _insert_decrypt_op(self):
         pass
-    
+
     def _clear_op_device_flag(self, program):
         for block in program.blocks:
             for op in block.ops:
@@ -1133,7 +1134,7 @@ class SplitFlOpsPass(PassBase):
         for key in ['a', 'b']:
             program = party_program_map[key]
             program._sync_with_cpp()
-        
+
         return party_program_map
 
     def _insert_partA_communicate_op(self, block, idx):
@@ -1172,7 +1173,7 @@ class SplitFlOpsPass(PassBase):
                 'trainer_id': 1,  # TODO
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
-        return 
+        return
 
     def _create_var_for_block(self, vars, block):
         for var in vars:
@@ -1196,7 +1197,7 @@ class SplitFlOpsPass(PassBase):
             dest_var.stop_gradient = source_var.stop_gradient
             if hasattr(source_var, 'is_distributed'):
                 dest_var.is_distributed = source_var.is_distributed
-    
+
     def _get_block_by_idx(self, op_list, program, block_idx):
         if block_idx < len(program.blocks):
             new_block = program.block(block_idx)
@@ -1243,16 +1244,18 @@ class SplitFlOpsPass(PassBase):
 
     def _find_dense_grad_vars(self, bp_op_list):
         program = self.ori_main_program
-        bp_op_input, bp_op_output = find_ops_list_input_output(program, bp_op_list)
-        return (screen_persistables(
-            program, bp_op_input) + screen_persistables(program, bp_op_output))
+        bp_op_input, bp_op_output = find_ops_list_input_output(program,
+                                                               bp_op_list)
+        return (screen_persistables(program, bp_op_input) + screen_persistables(
+            program, bp_op_output))
 
     def _get_partA_program(self, block):
         self._get_partB_to_partA_grad(block, self.PART_A_JOINT_OP_DEVICE_FlAG)
 
         # 1. create block 0
         # 1.1 insert send op
-        op_idx = self._find_joint_forward_op(block, self.PART_A_JOINT_OP_DEVICE_FlAG)
+        op_idx = self._find_joint_forward_op(block,
+                                             self.PART_A_JOINT_OP_DEVICE_FlAG)
         op_list = []
         for i in range(len(block.ops)):
             op = block.ops[i]
@@ -1272,7 +1275,8 @@ class SplitFlOpsPass(PassBase):
         bp_op_list = get_bp_op_list(block)
         push_sparse_op_list = get_distributed_push_sparse_op_list(block)
         logger.info('bp_op_list: {}'.format(bp_op_list))
-        second_block = self._get_block_by_idx(bp_op_list + push_sparse_op_list, self.partA_program, 1)
+        second_block = self._get_block_by_idx(bp_op_list + push_sparse_op_list,
+                                              self.partA_program, 1)
         # 2.1. insert partA recv op 
         block_input_flag = "backward_joint_{}_{}@fl_ps".format(2, 1)
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
@@ -1280,7 +1284,7 @@ class SplitFlOpsPass(PassBase):
             "message_to_block_id": [grad_to_block_id],
             "optimize_blocks": [],
             "endpoint": '127.0.0.1:98',  # TODO
-            "fanin": 0,  
+            "fanin": 0,
             "pserver_id": 0,  # TODO
             "distributed_mode": self.ps_mode,
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
@@ -1302,8 +1306,10 @@ class SplitFlOpsPass(PassBase):
         # check
 
     def _get_partB_program(self, block):
-        op_idx1 = self._find_joint_forward_op(block, self.PART_B_JOINT_OP_DEVICE_FlAG)  # elementwise_add op
-        op_idx2 = self._find_joint_backward_op(block, self.PART_B_JOINT_OP_DEVICE_FlAG)
+        op_idx1 = self._find_joint_forward_op(
+            block, self.PART_B_JOINT_OP_DEVICE_FlAG)  # elementwise_add op
+        op_idx2 = self._find_joint_backward_op(block,
+                                               self.PART_B_JOINT_OP_DEVICE_FlAG)
         op_cnt = 0
         op_list1 = []
         op_list2 = []
@@ -1331,7 +1337,7 @@ class SplitFlOpsPass(PassBase):
         dense_grad_vars = self._find_dense_grad_vars(bp_op_list)
         add_send_op(self.ori_main_program, second_block, dense_grad_vars)
         logger.info('test wangbin@@@')
-        
+
         # 3. insert partB recv op
         block_input_flag = "forward_joint_{}_{}@fl_ps".format(1, 2)
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
@@ -1351,7 +1357,7 @@ class SplitFlOpsPass(PassBase):
             inputs={'X': []},
             outputs={},
             attrs=attrs)
-        
+
         logger.info('partB-first_block:{}'.format(first_block))
         logger.info('partB-second_block:{}'.format(second_block))
 
@@ -1361,7 +1367,7 @@ class SplitFlOpsPass(PassBase):
         self.ps_mode = attrs['ps_mode']
         self.ori_main_program = main_program
         self.ori_main_block = main_program.block(0)
-        
+
         party_program_map = self._split_fl_program()
 
         p = party_program_map['a']
