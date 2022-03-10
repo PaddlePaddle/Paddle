@@ -60,10 +60,10 @@ void SliceCompute(const Context& ctx,
     }
   }
 
-  CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, &starts, &ends);
-  slice_dims =
-      GetSliceDims<int64_t>(in_dims, axes, starts, ends, nullptr, nullptr);
-  out_dims = GetDecreasedDims<int64_t>(slice_dims, decrease_axis);
+  funcs::CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, &starts, &ends);
+  slice_dims = funcs::GetSliceDims<int64_t>(
+      in_dims, axes, starts, ends, nullptr, nullptr);
+  out_dims = funcs::GetDecreasedDims<int64_t>(slice_dims, decrease_axis);
 
   // 2.2 Get output
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();

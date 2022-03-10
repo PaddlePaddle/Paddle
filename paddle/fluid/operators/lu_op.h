@@ -41,9 +41,12 @@ void SetValueCompute(const framework::ExecutionContext& ctx,
   auto dtype = framework::TransToProtoVarType(in->dtype());
 
   auto in_dims = in->dims();
-  CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, starts, ends, &steps);
-  auto slice_dims = GetSliceDims(in_dims, axes, *starts, *ends, &steps);
-  auto decrease_slice_dims = GetDecreasedDims(slice_dims, decrease_axes);
+  phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, starts, ends,
+                                                &steps);
+  auto slice_dims =
+      phi::funcs::GetSliceDims(in_dims, axes, *starts, *ends, &steps);
+  auto decrease_slice_dims =
+      phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
@@ -281,10 +284,10 @@ void SliceCompute(const framework::ExecutionContext& ctx,
     }
   }
 
-  CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-  slice_dims =
-      GetSliceDims<int64_t>(in_dims, axes, starts, ends, nullptr, nullptr);
-  out_dims = GetDecreasedDims(slice_dims, decrease_axis);
+  phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
+  slice_dims = phi::funcs::GetSliceDims<int64_t>(in_dims, axes, starts, ends,
+                                                 nullptr, nullptr);
+  out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
   // 2.2 Get output
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();

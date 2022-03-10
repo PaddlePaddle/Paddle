@@ -19,6 +19,8 @@ limitations under the License. */
 
 namespace phi {
 
+namespace funcs {
+
 template <typename T = int64_t>
 inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
                                      const std::vector<T>& axes,
@@ -161,4 +163,5 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
   return decreased_dims;
 }
 
+}  // namespace funcs
 }  // namespace phi

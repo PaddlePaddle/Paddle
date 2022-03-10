@@ -25,10 +25,10 @@
 #include "paddle/fluid/operators/assign_value_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/fluid/operators/strided_slice_op.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -188,9 +188,11 @@ class SetValueKernel : public framework::OpKernel<T> {
     }
 
     auto in_dims = in->dims();
-    CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &steps);
-    auto slice_dims = GetSliceDims(in_dims, axes, starts, ends, &steps);
-    auto decrease_slice_dims = GetDecreasedDims(slice_dims, decrease_axes);
+    phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &steps);
+    auto slice_dims =
+        phi::funcs::GetSliceDims(in_dims, axes, starts, ends, &steps);
+    auto decrease_slice_dims =
+        phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
 
     auto slice_dims_for_assign = decrease_slice_dims;
     if (!none_axes.empty()) {

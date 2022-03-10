@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/slice_utils.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
