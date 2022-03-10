@@ -18,12 +18,15 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/optimizers/momentum_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
 template <typename MT, uint32_t kParamNum, bool kHasMasterParams>
 struct MergedMomentumMasterParams {
@@ -259,11 +262,11 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
 #undef PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL
     } else {
       for (size_t idx = 0; idx < n; idx++) {
-        RegularizationType regularization_flag =
+        phi::RegularizationType regularization_flag =
             regularization_methods.size() > 0 &&
                     regularization_methods[idx] == "l2_decay"
-                ? RegularizationType::kL2DECAY
-                : RegularizationType::kNONE;
+                ? phi::RegularizationType::kL2DECAY
+                : phi::RegularizationType::kNONE;
 
         MT regularization_coeff = static_cast<MT>(0.0);
         if (regularization_coeffs.size() != 0) {
@@ -276,7 +279,7 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
         MT *master_out_data =
             multi_precision ? master_params_out[idx]->data<MT>() : nullptr;
         if (platform::is_cpu_place(ctx.GetPlace())) {
-          CPUDenseMomentumFunctor<MT> functor;
+          phi::CPUDenseMomentumFunctor<MT> functor;
           functor(params[idx], grads[idx], velocitys[idx], lr_temp,
                   static_cast<MT>(mu), use_nesterov, regularization_flag,
                   regularization_coeff, params_out[idx], velocitys_out[idx]);
@@ -286,7 +289,7 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
               static_cast<const DeviceContext &>(ctx.device_context()),
               params[idx]->numel());
 #define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type)         \
-  DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(                \
+  phi::DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(           \
       params[idx]->data<T>(), grads[idx]->data<T>(),                          \
       velocitys[idx]->data<MT>(), lr_temp->data<MPType>(), master_in_data,    \
       static_cast<MT>(mu), static_cast<MT>(rescale_grad),                     \
@@ -294,26 +297,26 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
       velocitys_out[idx]->data<MT>(), master_out_data);                       \
   for_range(functor);
           if (use_nesterov) {
-            if (regularization_flag == RegularizationType::kL2DECAY) {
+            if (regularization_flag == phi::RegularizationType::kL2DECAY) {
               PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
-                  UseNesterov, RegularizationType::kL2DECAY);
+                  phi::UseNesterov, phi::RegularizationType::kL2DECAY);
               VLOG(10)
                   << "Launch MergedMomentum gpu kernel use_nesterov kL2DECAY.";
             } else {
-              PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(UseNesterov,
-                                                    RegularizationType::kNONE);
+              PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
+                  phi::UseNesterov, phi::RegularizationType::kNONE);
               VLOG(10)
                   << "Launch MergedMomentum gpu kernel use_nesterov kNONE.";
             }
           } else {
-            if (regularization_flag == RegularizationType::kL2DECAY) {
+            if (regularization_flag == phi::RegularizationType::kL2DECAY) {
               PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
-                  NoNesterov, RegularizationType::kL2DECAY);
+                  phi::NoNesterov, phi::RegularizationType::kL2DECAY);
               VLOG(10)
                   << "Launch MergedMomentum gpu kernel no_nesterov kL2DECAY.";
             } else {
-              PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(NoNesterov,
-                                                    RegularizationType::kNONE);
+              PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(
+                  phi::NoNesterov, phi::RegularizationType::kNONE);
               VLOG(10) << "Launch MergedMomentum gpu kernel no_nesterov kNONE.";
             }
           }
