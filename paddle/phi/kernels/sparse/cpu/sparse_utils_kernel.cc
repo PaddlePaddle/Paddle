@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/sparse/common_shape.h"
 
 namespace phi {
 namespace sparse {
