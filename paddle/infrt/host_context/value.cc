@@ -24,14 +24,6 @@ ValueRef::ValueRef(int64_t val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(float val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(double val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(bool val) : Shared<Value>(new Value(val)) {}
-ValueRef::ValueRef(backends::CpuPhiContext&& val)
-    : Shared<Value>(new Value(std::move(val))) {}
-ValueRef::ValueRef(::phi::CPUContext&& val)
-    : Shared<Value>(new Value(std::move(val))) {}
-ValueRef::ValueRef(::phi::DenseTensor&& val)
-    : Shared<Value>(new Value(std::move(val))) {}
-ValueRef::ValueRef(::phi::MetaTensor&& val)
-    : Shared<Value>(new Value(std::move(val))) {}
 
 const char* Value::type_info() const { return __type_info__; }
 

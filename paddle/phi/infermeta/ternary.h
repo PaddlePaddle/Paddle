@@ -61,6 +61,14 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& updates,
                            MetaTensor* out);
 
+void ViterbiDecodeInferMeta(const MetaTensor& input,
+                            const MetaTensor& transition,
+                            const MetaTensor& length,
+                            bool include_bos_eos_tag,
+                            MetaTensor* scores,
+                            MetaTensor* path,
+                            MetaConfig config = MetaConfig());
+
 void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    const MetaTensor& weight,
@@ -71,4 +79,10 @@ void LinspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& number,
                        MetaTensor* out);
 
+void GraphSendRecvInferMeta(const MetaTensor& x,
+                            const MetaTensor& src_index,
+                            const MetaTensor& dst_index,
+                            const std::string& pool_type,
+                            MetaTensor* out,
+                            MetaTensor* dst_count);
 }  // namespace phi
