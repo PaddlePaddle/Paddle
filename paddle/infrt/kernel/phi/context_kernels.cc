@@ -18,12 +18,11 @@ namespace infrt {
 namespace kernel {
 namespace phi {
 
-::phi::CPUContext CreateCpuContext(
-    infrt::backends::CpuPhiAllocator* allocator) {
-  ::phi::CPUContext context;
-  context.SetAllocator(allocator);
-  context.Init();
-  return context;
+::phi::CPUContext CreateCPUContext() {
+  ::phi::CPUContext ctx{};
+  ctx.Init();
+  ctx.SetAllocator(new backends::CpuPhiAllocator{});
+  return ctx;
 }
 
 }  // namespace phi
