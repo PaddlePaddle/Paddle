@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
 namespace paddle {
 namespace operators {
@@ -30,7 +30,7 @@ class InverseKernel : public framework::OpKernel<T> {
     output->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
+    phi::funcs::MatrixInverseFunctor<DeviceContext, T> mat_inv;
     mat_inv(dev_ctx, *input, output);
   }
 };
