@@ -92,7 +92,7 @@ class Benchmark(object):
             message += ' %s: %.5f s' % (info, batch_average)
         speed_average = self.current_event.speed_average()
         if speed_average:
-            message += ' speed: %.5f %s' % (speed_average,
+            message += ' speed: %.3f %s' % (speed_average,
                                             self.current_event.speed_mode)
         self.current_event.reset()
         return message
@@ -193,7 +193,7 @@ class TimerHook(Hook):
             return
         print('Perf Summary'.center(100, '='))
         if summary['reader_ratio'] != 0:
-            print('Reader_ratio: ' + '%5f' % (summary['reader_ratio']) + '%')
+            print('Reader_ratio: ' + '%.3f' % (summary['reader_ratio']) + '%')
         print('Time unit: s, Speed unit: %s' %
               (benchmark.current_event.speed_mode))
         print('|', ''.center(15), '|', 'avg'.center(15), '|', 'max'.center(15),
@@ -206,9 +206,9 @@ class TimerHook(Hook):
         self.print_stats('Speed', summary['speed_summary'])
 
     def print_stats(self, item, message_dict):
-        avg_str = '%5f' % (message_dict['avg'])
-        max_str = '%5f' % (message_dict['max'])
-        min_str = '%5f' % (message_dict['min'])
+        avg_str = '%.5f' % (message_dict['avg'])
+        max_str = '%.5f' % (message_dict['max'])
+        min_str = '%.5f' % (message_dict['min'])
         print('|',
               item.center(15), '|',
               avg_str.center(15), '|',
@@ -217,7 +217,8 @@ class TimerHook(Hook):
 
 class Event(object):
     """
-    A Event is used to record the cost of every step and total steps.
+    A Event is used to record the cost of every step and the cost of
+    the total steps except skipped steps.
     """
 
     def __init__(self):

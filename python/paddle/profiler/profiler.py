@@ -462,10 +462,14 @@ class Profiler:
             if self.on_trace_ready:
                 self.on_trace_ready(self)
 
-    def step(self, num_samples=None):
+    def step(self, num_samples: Optional[int]=None):
         r"""
         Signals the profiler that the next profiling step has started.
         Get the new ProfilerState and trigger corresponding action.
+
+        Parameters:
+            num_samples (int|None, optional): Specifies the batch size of every step of the model
+            that is used to compute throughput when timer_only is True. Default: None.
 
         Examples:
             .. code-block:: python
@@ -499,8 +503,8 @@ class Profiler:
             event_type=TracerEventType.ProfileStep)
         self.record_event.begin()
 
-    def step_info(self):
-        return benchmark().step_info()
+    def step_info(self, unit='samples'):
+        return benchmark().step_info(unit)
 
     def _trigger_action(self):
         if self.previous_state == ProfilerState.CLOSED:
