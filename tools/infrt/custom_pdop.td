@@ -33,7 +33,7 @@ def PD_ReturnOp : PD_Op<"return", [Terminator]> {
   let arguments = (ins Variadic<PD_Tensor>:$inputs);
 }
 
-def PD_GraphOp : PD_Op<"graph", [SingleBlockImplicitTerminator<"ReturnOp">]> {
+def PD_GraphOp : PD_Op<"graph", [SingleBlockImplicitTerminator<"::infrt::ReturnOp">]> {
   let summary = "paddle graph Op";
   let description = [{
     Describe a paddle graph or subgraph.
