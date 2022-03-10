@@ -46,7 +46,7 @@ USE_OP(matmul_grad);
 USE_OP(square);
 USE_OP(transpose2_grad);
 USE_OP(concat_grad);
-USE_OP(elementwise_mul_grad);
+USE_OP_ITSELF(elementwise_mul_grad);
 USE_OP(sigmoid_grad);
 USE_OP(tanh_grad);
 USE_OP(sum);

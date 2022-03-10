@@ -125,10 +125,8 @@ void phiOpCvtPass::diapatchStage() {
 
     kernel_name = getPhiTargetPrefix(phi_kernel_desc.kernelType.target) +
                   kernel_name +
-                  getPhiLayoutSuffix(phi_kernel_desc.kernelType.layout) +
-                  getPhiPrecisionSuffix(phi_kernel_desc.kernelType.precision);
-
-    // mlir::OperationName operation_name = kernel_op.getOperation()->getName();
+                  getPhiPrecisionSuffix(phi_kernel_desc.kernelType.precision) +
+                  getPhiLayoutSuffix(phi_kernel_desc.kernelType.layout);
 
     mlir::OperationName operation_name(kernel_name, kernel_op.getContext());
     mlir::OperationState operation_state(kernel_op.getLoc(), operation_name);
@@ -137,20 +135,12 @@ void phiOpCvtPass::diapatchStage() {
         phi_context.end()) {
       switch (phi_kernel_desc.kernelType.target) {
         case TargetType::CPU: {
-          auto alloctor_value =
-              builder
-                  .create<infrt::phi::CreateAllocatorOp_cpu>(
-                      kernel_op.getLoc(),
-                      phi::AllocatorType::get(kernel_op.getContext(),
-                                              TargetType::CPU))
-                  .output();
           auto context_value =
               builder
-                  .create<infrt::phi::CreateContextOp_cpu>(
+                  .create<infrt::phi::CreateCPUContextOp>(
                       kernel_op.getLoc(),
                       phi::ContextType::get(kernel_op.getContext(),
-                                            TargetType::CPU),
-                      alloctor_value)
+                                            TargetType::CPU))
                   .output();
           phi_context[TargetType::CPU] = context_value;
         } break;
