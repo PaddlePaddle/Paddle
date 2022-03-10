@@ -137,6 +137,7 @@ def export_chrome_tracing(dir_name: str,
     Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle.profiler as profiler
             with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
                                             profiler.ProfilerTarget.GPU],
@@ -181,6 +182,7 @@ def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
     Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle.profiler as profiler
             with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
                                             profiler.ProfilerTarget.GPU],
@@ -240,6 +242,7 @@ class Profiler:
         .. code-block:: python
             :name: code-example1
 
+                # required: gpu
                 import paddle.profiler as profiler
                 with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
                                                 profiler.ProfilerTarget.GPU],
@@ -254,6 +257,7 @@ class Profiler:
         .. code-block:: python
             :name: code-example2
 
+                # required: gpu
                 import paddle.profiler as profiler
                 with profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
                                                 profiler.ProfilerTarget.GPU],
@@ -268,6 +272,7 @@ class Profiler:
         .. code-block:: python
         :name: code-example3
 
+            # required: gpu
             import paddle.profiler as profiler
             p = profiler.Profiler()
             p.start()
