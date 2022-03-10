@@ -282,8 +282,11 @@ void AccuracyInferMeta(const MetaTensor& out,
   }
 
   accuracy->set_dims({1});
+  accuracy->set_dtype(x.dtype());
   correct->set_dims({1});
+  correct->set_dtype(x.dtype());
   total->set_dims({1});
+  total->set_dtype(x.dtype());
   accuracy->share_lod(out);
 }
 
