@@ -32,6 +32,12 @@ class MetaConfig;
 // Because functions in this file not only can infer shape, but also need
 // infer lod or other useful data.
 
+void ArgsortInferMeta(const MetaTensor& input,
+                      int axis,
+                      bool descending,
+                      MetaTensor* output,
+                      MetaTensor* indices);
+
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
@@ -168,5 +174,7 @@ void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& dilations,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
 }  // namespace phi

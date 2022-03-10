@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <set>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
@@ -24,6 +25,34 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
 namespace phi {
+
+void ArgsortInferMeta(const MetaTensor& input,
+                      int axis,
+                      bool descending,
+                      MetaTensor* output,
+                      MetaTensor* indices) {
+  auto in_dims = input.dims();
+  auto num_dims = in_dims.size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -num_dims,
+      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
+                                   " -num_dims(%d).",
+                                   axis,
+                                   -num_dims));
+  PADDLE_ENFORCE_LT(
+      axis,
+      num_dims,
+      phi::errors::InvalidArgument(
+          "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
+
+  output->share_dims(input);
+  output->set_dtype(input.dtype());
+  indices->share_dims(input);
+  indices->set_dtype(DataType::INT64);
+  output->share_lod(input);
+  indices->share_lod(input);
+}
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
@@ -1153,6 +1182,17 @@ void UnfoldInferMeta(const MetaTensor& x,
   int output_col_length = output_height * output_width;
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
+}
+
+void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
+  auto rank = condition.dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      1UL,
+      phi::errors::InvalidArgument(
+          "Input(Condition) should have number of dimension at least 1"));
+  out->set_dims(phi::make_ddim({-1, rank}));
+  out->set_dtype(DataType::INT64);
 }
 
 }  // namespace phi

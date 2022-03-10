@@ -135,20 +135,12 @@ void phiOpCvtPass::diapatchStage() {
         phi_context.end()) {
       switch (phi_kernel_desc.kernelType.target) {
         case TargetType::CPU: {
-          auto alloctor_value =
-              builder
-                  .create<infrt::phi::CreateAllocatorOp_cpu>(
-                      kernel_op.getLoc(),
-                      phi::AllocatorType::get(kernel_op.getContext(),
-                                              TargetType::CPU))
-                  .output();
           auto context_value =
               builder
-                  .create<infrt::phi::CreateContextOp_cpu>(
+                  .create<infrt::phi::CreateCPUContextOp>(
                       kernel_op.getLoc(),
                       phi::ContextType::get(kernel_op.getContext(),
-                                            TargetType::CPU),
-                      alloctor_value)
+                                            TargetType::CPU))
                   .output();
           phi_context[TargetType::CPU] = context_value;
         } break;
