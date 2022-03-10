@@ -2750,7 +2750,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     check_variable_and_dtype(pred, "pred", ['bool'], "fluid.layers.cond")
     check_type(name, "name", (str, type(None)), "fluid.layers.cond")
 
-    if int(os.environ.get("FLAGS_new_cond", True)):
+    if int(os.environ.get("FLAGS_new_cond", False)):
         return cond_v2(pred, true_fn, false_fn, name)
 
     helper = LayerHelper('cond', **locals())
