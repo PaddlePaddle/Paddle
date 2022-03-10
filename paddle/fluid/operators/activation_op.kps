@@ -1098,7 +1098,7 @@ USE_PHI_FUNCTOR(CudaAtanh)
 USE_PHI_FUNCTOR(CudaTanh)
 USE_PHI_FUNCTOR(CudaBRelu)
 USE_PHI_FUNCTOR(CudaLeakyRelu)
-USE_PHI_FUNCTOR(ThresholdedRelu)
+USE_PHI_FUNCTOR(CudaThresholdedRelu)
 
 }  // namespace operators
 }  // namespace paddle
