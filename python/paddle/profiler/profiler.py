@@ -84,14 +84,16 @@ def make_scheduler(*,
         batch 0: closed, batch 1: ready, batch [2, 5] record
         .. code-block:: python
 
-            make_scheduler(closed=1, ready=1, record=4, repeat=1)
+            import paddle.profiler as profiler
+            profiler.make_scheduler(closed=1, ready=1, record=4, repeat=1)
 
 
         2. profiling range [3,6], [9,12], [15,18]...
         batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat
         .. code-block:: python
 
-            make_scheduler(closed=1, ready=1, record=4, skip_first=1)
+            import paddle.profiler as profiler
+            profiler.make_scheduler(closed=1, ready=1, record=4, skip_first=1)
     """
 
     def getScheduleState(step: int) -> ProfilerState:
