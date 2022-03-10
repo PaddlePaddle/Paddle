@@ -26,6 +26,34 @@ limitations under the License. */
 
 namespace phi {
 
+void ArgsortInferMeta(const MetaTensor& input,
+                      int axis,
+                      bool descending,
+                      MetaTensor* output,
+                      MetaTensor* indices) {
+  auto in_dims = input.dims();
+  auto num_dims = in_dims.size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -num_dims,
+      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
+                                   " -num_dims(%d).",
+                                   axis,
+                                   -num_dims));
+  PADDLE_ENFORCE_LT(
+      axis,
+      num_dims,
+      phi::errors::InvalidArgument(
+          "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
+
+  output->share_dims(input);
+  output->set_dtype(input.dtype());
+  indices->share_dims(input);
+  indices->set_dtype(DataType::INT64);
+  output->share_lod(input);
+  indices->share_lod(input);
+}
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
