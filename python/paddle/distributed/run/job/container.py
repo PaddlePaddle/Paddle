@@ -91,7 +91,7 @@ class Container(object):
             return None
 
     def start(self, timeout=-1):
-        st = time.time()
+        end = time.time() + timeout
 
         if self._proc and self._proc.alive():
             return True
@@ -106,7 +106,7 @@ class Container(object):
             self._entrypoint, env=self._env, out=self._stdout, err=self._stderr)
         self._proc.start()
 
-        while timeout > 0 and time.time() - st < timeout:
+        while timeout > 0 and time.time() < end:
             if self._proc.alive():
                 time.sleep(0.1)
                 continue
@@ -147,18 +147,33 @@ class Container(object):
             self.errfile,
             self._env, )
 
-    def logs(self, fn=None, offset=-1):
+    def logs(self, fn=None, offset=0, whence=1, lines=1000):
         if not self._log_handler:
             self._log_handler = open(self._out)
-
-        if offset >= 0:
-            self._log_handler.seek(offset, 0)
 
         if fn is None:
             fn = sys.stdout
 
+        self._log_handler.seek(offset, whence)
+
         try:
+            idx = 0
             for line in self._log_handler:
                 fn.write(line)
+                idx += 1
+                if idx > lines:
+                    break
         finally:
             return self._log_handler.tell()
+
+    def tail(self, length=3000):
+        if not self._log_handler:
+            self._log_handler = open(self._out)
+
+        self._log_handler.seek(0, 2)
+        ed = self._log_handler.tell()
+
+        if ed > length:
+            self.logs(offset=ed - length, whence=0)
+        else:
+            self.logs(offset=0, whence=0)

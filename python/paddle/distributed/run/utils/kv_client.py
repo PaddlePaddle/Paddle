@@ -41,6 +41,8 @@ class KVClient(object):
             if r.status_code == 200:
                 ret = r.json()
                 return ret.get(key, '')
+            else:
+                return "error"
         except:
             return ""
 
@@ -74,7 +76,7 @@ class KVClient(object):
 
 
 if __name__ == '__main__':
-    cli = KVClient("http://localhost:8090")
+    cli = PKVClient("http://localhost:8090")
     data = {"/workers/1": "rank1", "/workers/2": "rank2"}
     for k, v in data.items():
         cli.put(k, v)

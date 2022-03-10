@@ -145,8 +145,23 @@ class Pod(PodSepc):
                 return False
         return True
 
-    def logs(self, idx=0):
-        self._containers[idx].logs()
+    def logs(self, idx=None):
+        if idx is None:
+            if self.failed_container():
+                self.failed_container().logs()
+            else:
+                self._containers[0].logs()
+        else:
+            self._containers[idx].logs()
+
+    def tail(self, idx=None):
+        if idx is None:
+            if self.failed_container():
+                self.failed_container().tail()
+            else:
+                self._containers[0].tail()
+        else:
+            self._containers[idx].tail()
 
     def watch(self,
               all_list=[Status.COMPLETED],
@@ -157,8 +172,8 @@ class Pod(PodSepc):
         watch return if any container status in any_list
         or all container status in all_list
         '''
-        st = time.time()
-        while timeout < 0 or st + timeout > time.time():
+        end = time.time() + timeout
+        while timeout < 0 or time.time() < end:
             for c in self._containers:
                 if c.status() in any_list:
                     return c.status()

@@ -20,17 +20,18 @@ import sys
 import six
 import threading
 import copy
+import random
 
 ETCD_PROTOCAL = 'etcd://'
 
 
 class Master(object):
     '''
-    Master is a distributed store desgin to exchange info among nodes
+    Master is a distributed store design to exchange info among nodes
     '''
 
     MAIN = "main"
-    STANBY = "stanby"
+    STANDBY = "standby"
     PATICIPANT = "participant"
 
     def __init__(self, ctx):
@@ -38,8 +39,6 @@ class Master(object):
         self.server = None
         self.initialized = False
         self.endpoint = None
-
-        self.gc = []
 
     def stop(self):
         raise NotImplementedError
@@ -65,17 +64,25 @@ class HTTPMaster(Master):
         if self.ctx.args.master:
             self.endpoint = self.ctx.args.master
             ip, port = self.endpoint.split(':')
-            if ip in ['127.0.0.1', self.ctx.node.ip
-                      ] and not self.ctx.node.is_server_ready(ip, int(port)):
-                self.server = KVServer(int(port))
-                self.role = Master.MAIN
+            if ip in ['127.0.0.1', self.ctx.node.ip]:
+                time.sleep(2 * random.random())
+                while not self.ctx.node.is_server_ready(ip, int(port)):
+                    try:
+                        self.server = KVServer(int(port))
+                        self.role = Master.MAIN
+                        break
+                    except Exception as e:
+                        self.ctx.logger.warning("start master failed {}".format(
+                            e))
+                        time.sleep(0.1)
+                        continue
         else:
             port = self.ctx.node.get_free_port()
             self.endpoint = "{}:{}".format(self.ctx.node.ip, port)
             self.server = KVServer(port)
             self.role = Master.MAIN
 
-            print("Copy the following commond to other nodes to run.")
+            print("Copy the following command to other nodes to run.")
             cmd = [
                 sys.executable.split('/')[-1], "-m", "paddle.distributed.run"
             ]
@@ -89,6 +96,8 @@ class HTTPMaster(Master):
                 self.ctx.logger.warning(
                     "--rank set in the command may not compatible in auto mode")
 
+        if '127.0.0.1' in self.endpoint:
+            self.endpoint = self.endpoint.replace('127.0.0.1', self.ctx.node.ip)
         self.client = KVClient(self.endpoint)
 
         self.initialized = True
@@ -114,18 +123,26 @@ class HTTPMaster(Master):
 
         self.lazy_init()
 
-        assert self.client.wait_server_ready(timeout=600), 'server is not ready'
+        while not self.ctx.status.is_done():
+            if self.client.wait_server_ready(timeout=5):
+                break
+            else:
+                self.ctx.logger.warning("master not ready")
+                time.sleep(0.1)
 
         # 'aaaaaa' make suer main pod (master server) as rank 0
         ky = 'aaaaaa' if rank < 0 and self.role == Master.MAIN else key
         k = "{}/{}/{}".format(prefix, ky, rank)
-        assert self.client.put(k, value), 'put value failed'
-        self.gc.append(k)
 
-        while True:
+        while not self.ctx.status.is_done():
+            if not self.client.put(k, value):
+                self.ctx.logger.warning("put value failed")
+                time.sleep(0.1)
+                continue
+
             rjson = self.client.get_prefix(prefix)
             self.ctx.logger.debug("sync peers {}".format(rjson))
-            if len(rjson) == size:
+            if rjson and len(rjson) == size:
                 if rank < 0:
                     keys = list(rjson.keys())
                     keys.sort()
@@ -140,10 +157,6 @@ class HTTPMaster(Master):
             else:
                 time.sleep(0.5)
         return [], 0
-
-    def clean(self):
-        for i in self.gc:
-            self.client.delete(i)
 
 
 class ETCDMaster(Master):
@@ -161,7 +174,7 @@ class ETCDMaster(Master):
 
     def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
         '''
-        sync_peers gather all value for key under scop prefix
+        sync_peers gather all value for key under scope prefix
         result always be sorted either by rank or alphabet of pod.name
         '''
         path = "{}/{}/{}".format(prefix, key, rank)
@@ -170,7 +183,7 @@ class ETCDMaster(Master):
 
         self.ctx.logger.debug("sync path {} value {}".format(path, value))
 
-        while True:
+        while not self.ctx.status.is_done():
             self.client.put(path, six.b(value))
 
             result = [i for i in self.client.get_prefix(prefix)]
@@ -245,8 +258,8 @@ class ETCDMaster(Master):
         return peer_alive
 
     def wait_peer_ready(self, replicas_min, replicas_max, timeout):
-        st = time.time()
-        while st + timeout > time.time():
+        end = time.time() + timeout
+        while not self.ctx.status.is_done() and time.time() < end:
             if len(self.fetch_peer_alive()) == replicas_max:
                 return (True, replicas_max)
             else:

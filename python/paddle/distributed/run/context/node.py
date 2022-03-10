@@ -21,7 +21,6 @@ from contextlib import closing
 
 class Node(object):
     def __init__(self):
-        # enable paddle detection is very expansive
         # self.device = Device.detect_device()
         self.device = Device.parse_device()
         self.ip = self.get_host_ip()
@@ -54,8 +53,8 @@ class Node(object):
     @classmethod
     def is_server_ready(self, ip, port):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            sock.settimeout(1)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            #sock.settimeout(0.01)
+            #sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             if hasattr(socket, 'SO_REUSEPORT'):
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
             result = sock.connect_ex((ip, int(port)))

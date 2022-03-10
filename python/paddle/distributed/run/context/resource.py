@@ -15,4 +15,4 @@
 
 class Resource(object):
     def __init__(self):
-        self.devices = [Device()]
+        self.devices = []

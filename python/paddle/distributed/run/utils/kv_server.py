@@ -93,18 +93,29 @@ class PKVServer():
         self._server = KVServer(port)
 
     def start(self):
-        self.server = Process(target=self._server.start)
-        self.server.daemon = True
-        self.server.start()
+        self.proc = Process(target=self._server.start)
+        self.proc.daemon = True
+        self.proc.start()
 
     def stop(self):
         self._server.stop()
-        self.server.join()
+        self.proc.join()
+
+    @property
+    def started(self):
+        return self._server.started
+
+    @property
+    def stopped(self):
+        return self._server.stopped
 
 
 if __name__ == '__main__':
-    kv = PKVServer(8090)
+    #kv = PKVServer(8090)
+    kv = KVServer(8090)
     kv.start()
     import time
+
     #print("serve at 8090 for 600 s")
+
     time.sleep(600)

@@ -25,6 +25,9 @@ import logging
 
 class Context(object):
     def __init__(self, enable_plugin=True):
+        os.environ.pop('http_proxy', None)
+        os.environ.pop('https_proxy', None)
+
         self.args = self.parse_args()
         self.envs = self.fetch_envs()
         self.logger = self.get_logger()
@@ -145,7 +148,7 @@ class Context(object):
             "--elastic_level",
             type=int,
             default=-1,
-            help="elastic level: -1 disable, 0 failed exit, peers hold, 1 interal restart"
+            help="elastic level: -1 disable, 0 failed exit, peers hold, 1 internal restart"
         )
 
         elastic_group.add_argument(
@@ -167,7 +170,16 @@ class Context(object):
 
     def fetch_envs(self):
         ge = os.environ.copy()
+
+        black_env_list = ['http_proxy', 'https_proxy']
+        for key in black_env_list:
+            ge.pop(key, None)
+
+        return ge
+        '''
+        # use black list instead white list
         return {k: ge[k] for k in ge if self._valide_env(k)}
+        '''
 
     def get_logger(self, level=logging.INFO):
         logger = logging.getLogger("PADDLERUN")

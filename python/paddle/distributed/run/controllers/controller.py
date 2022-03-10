@@ -50,7 +50,10 @@ class ControllerBase(object):
         self.build_job()
         self.build_pod()
 
-        assert len(self.pod.containers) > 0, "No container in the pod"
+        if len(self.pod.containers) < 1:
+            self.ctx.logger.error("No container in the pod {}".format(self.pod))
+            return
+
         self.ctx.logger.info("Run {}".format(self.pod))
         self.ctx.logger.debug(self.pod.containers[0])
 
@@ -65,8 +68,9 @@ class ControllerBase(object):
             self.ctx.logger.info("Pod {}".format(status))
         elif status == self.ctx.status.FAILED:
             self.ctx.logger.info("Pod {}".format(status))
-            self.ctx.logger.info("Container failed !!!\n{}".format(
+            self.ctx.logger.error("Container failed !!!\n{}".format(
                 self.pod.failed_container()))
+            self.pod.tail()
             self.pod.stop()
 
     def stop(self, sigint=None):
@@ -78,15 +82,21 @@ class ControllerBase(object):
         self.pod.join()
         self.master.stop()
 
-        self.ctx.logger.info("Done with code {}".format(self.pod.exit_code))
+        self.ctx.logger.info("Exit code {}".format(self.pod.exit_code))
         sys.exit(self.pod.exit_code)
 
     def signal_handler(self, sigint, frame):
-        self.ctx.logger.info("Termiating with signal {}".format(sigint))
+        self.ctx.logger.info("Terminating with signal {}".format(sigint))
+
+        if hasattr(self, 'sigint'):
+            time.sleep(5)
+            sys.exit(sigint)
+
         self.sigint = sigint
         self.ctx.status.done()
         self.stop(sigint)
         time.sleep(1)
+        self.ctx.logger.debug("Exit with signal {}".format(sigint))
         sys.exit(sigint)
 
 
@@ -96,9 +106,17 @@ class Controller(ControllerBase):
     '''
 
     def build_job(self):
+        '''
+        build job fill the job info.
+        '''
         self.ctx.logger.info(self.job)
 
-    def build_pod(self):
+    def build_pod(self) -> bool:
+        '''
+        build pod includes creating containers etc.
+
+        Return True if succeed
+        '''
         raise NotImplementedError
 
     def _get_entrypoint(self):

@@ -18,6 +18,8 @@ import sys, os
 import json
 import shutil
 
+import random
+
 from os import listdir
 from os.path import isfile, join
 
@@ -69,14 +71,19 @@ class Collective_Test(unittest.TestCase):
         proc = subprocess.Popen(cmd, env)
         return proc
 
+    '''
     def test_collective_1(self):
         args = "--id test1"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
 
+    '''
+
     def test_collective_2(self):
-        shutil.rmtree('./log')
+        if os.path.exists('./log'):
+            shutil.rmtree('./log')
+
         args = "--id test2 --devices 0,1,2"
         p = self.pdrun(args)
         p.wait()
@@ -86,8 +93,12 @@ class Collective_Test(unittest.TestCase):
         self.assertTrue(len(c) == 4)
 
     def test_collective_3(self):
-        shutil.rmtree('./log')
-        args = "--id test3 --devices 0,1 --master 127.0.0.1:8090 --np 2"
+        if os.path.exists('./log'):
+            shutil.rmtree('./log')
+
+        port = random.randrange(6000, 8000)
+        args = "--id test3 --devices 0,1 --master 127.0.0.1:{} --np 2".format(
+            port)
         p1 = self.pdrun(args)
         p2 = self.pdrun(args)
         p1.wait()
@@ -111,6 +122,7 @@ class PS_Test(unittest.TestCase):
         proc = subprocess.Popen(cmd, env)
         return proc
 
+    '''
     def test_ps_1(self):
         args = "--mode ps"
         p = self.pdrun(args)
@@ -118,7 +130,8 @@ class PS_Test(unittest.TestCase):
         self.assertTrue(p.poll() == 0)
 
     def test_ps_2(self):
-        shutil.rmtree('./log')
+        if os.path.exists('./log'):
+            shutil.rmtree('./log')
 
         args = "--id ps2 --server_num=2 --trainer_num=2"
         p = self.pdrun(args)
@@ -127,10 +140,15 @@ class PS_Test(unittest.TestCase):
 
         c = get_files('log', 'ps2')
         self.assertTrue(len(c) == 5)
+    '''
 
     def test_ps_3(self):
-        shutil.rmtree('./log')
-        args = "--id ps3 --master 127.0.0.1:8090 --np 2 --server_num=1 --trainer_num=1"
+        if os.path.exists('./log'):
+            shutil.rmtree('./log')
+
+        port = random.randrange(6000, 8000)
+        args = "--id ps3 --master 127.0.0.1:{} --np 2 --server_num=1 --trainer_num=1".format(
+            port)
         p1 = self.pdrun(args)
         p2 = self.pdrun(args)
         p1.wait()
@@ -142,7 +160,9 @@ class PS_Test(unittest.TestCase):
         self.assertTrue(len(c) == 6)
 
     def test_ps_4(self):
-        shutil.rmtree('./log')
+        if os.path.exists('./log'):
+            shutil.rmtree('./log')
+
         args = "--id ps4 --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903"
         p1 = self.pdrun(args)
         p1.wait()

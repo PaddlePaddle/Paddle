@@ -29,7 +29,7 @@ class Device(object):
         self.memory = memory
         self.labels = labels
 
-    def labels_string(self):
+    def __str__(self):
         return ",".join(self.labels)
 
     @classmethod
@@ -57,7 +57,6 @@ class Device(object):
 
     @classmethod
     def detect_device(self):
-        # enable paddle detection is very expansive
         import paddle.fluid as fluid
 
         dev = Device()

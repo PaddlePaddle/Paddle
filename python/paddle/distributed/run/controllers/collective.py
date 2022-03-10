@@ -68,7 +68,7 @@ class CollectiveController(Controller):
         global_size = sum([i['replicas'] for i in peer_list])
         rank_offset = sum([i['replicas'] for i in peer_list[:rank]])
         '''
-        The new desinged collective need nothing but a master endpoint
+        The new designed collective need nothing but a master endpoint
         '''
         collective_master = peer_list[0]['candidate']
 
@@ -114,7 +114,7 @@ class CollectiveElasticController(CollectiveController):
         '''
         watch self and peer status, return true to exit
         '''
-        while True:
+        while not self.ctx.status.is_done():
             # self status
             status = self.pod.watch(timeout=2)
             self.ctx.logger.debug("Pod status {}, Ctx status {}".format(
