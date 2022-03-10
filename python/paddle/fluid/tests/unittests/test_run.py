@@ -32,7 +32,6 @@ assert "PADDLE_GLOBAL_SIZE" in env
 assert "PADDLE_LOCAL_SIZE" in env
 assert "PADDLE_GLOBAL_RANK" in env
 assert "PADDLE_LOCAL_RANK" in env
-print(env)
 '''
 
 pspyfile = '''# train.py for unitest
@@ -44,7 +43,6 @@ assert "PADDLE_TRAINER_ENDPOINTS" in env
 #assert "PADDLE_TRAINER_ENDPOINTS" in env
 #assert "PADDLE_ROLE" in env
 #assert "PADDLE_RANK" in env
-print(env)
 '''
 
 
