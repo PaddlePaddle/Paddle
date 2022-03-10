@@ -19,12 +19,14 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/matrix_rank_op.h"
-#include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/math_kernel.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -80,6 +82,12 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
       atol_tensor = &temp_tensor;
     }
 
+    auto& orig_dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx_phi =
+        static_cast<const typename framework::ConvertToPhiContext<
+            platform::CUDADeviceContext>::TYPE&>(orig_dev_ctx);
+
     // Must Copy X once, because the gesvdj will destory the content when exit.
     Tensor x_tmp;
     paddle::framework::TensorCopy(*x, context.GetPlace(), &x_tmp);
@@ -107,22 +115,24 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
                     u_data, eigenvalue_data, info_ptr, 1);
     }
 
-    auto dito_T =
-        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
-                                                 T>(context);
-    std::vector<int> max_eigenvalue_shape =
-        phi::vectorize<int>(detail::RemoveLastDim(eigenvalue_tensor.dims()));
-    Tensor max_eigenvalue_tensor =
-        dito_T.ReduceMax(eigenvalue_tensor, max_eigenvalue_shape);
+    Tensor max_eigenvalue_tensor;
+    max_eigenvalue_tensor.mutable_data<T>(
+        detail::RemoveLastDim(eigenvalue_tensor.dims()), context.GetPlace());
+    phi::MaxKernel<T, phi::GPUContext>(dev_ctx_phi, eigenvalue_tensor,
+                                       std::vector<int64_t>{-1}, false,
+                                       &max_eigenvalue_tensor);
+
     Tensor temp_rtol_tensor;
     framework::TensorFromVector<T>(std::vector<T>{rtol_T},
                                    context.device_context(), &temp_rtol_tensor);
-    Tensor rtol_tensor = dito_T.Mul(temp_rtol_tensor, max_eigenvalue_tensor);
+    Tensor rtol_tensor =
+        phi::Multiply<T>(dev_ctx_phi, temp_rtol_tensor, max_eigenvalue_tensor);
+
     Tensor tol_tensor;
     tol_tensor.mutable_data<T>(dim_out, context.GetPlace());
-    ElementwiseComputeEx<GreaterElementFunctor<T>, platform::CUDADeviceContext,
-                         T, T>(context, atol_tensor, &rtol_tensor, -1,
-                               GreaterElementFunctor<T>(), &tol_tensor);
+    phi::funcs::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
+        dev_ctx_phi, *atol_tensor, rtol_tensor, -1, GreaterElementFunctor<T>(),
+        &tol_tensor);
 
     tol_tensor.Resize(detail::NewAxisDim(tol_tensor.dims(), 1));
 
@@ -130,15 +140,16 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
                                          context.GetPlace());
     int axis = -1;
-    ElementwiseComputeEx<phi::funcs::GreaterThanFunctor<T, int64_t>,
-                         platform::CUDADeviceContext, T, int64_t>(
-        context, &eigenvalue_tensor, &tol_tensor, axis,
+
+    phi::funcs::ElementwiseCompute<phi::funcs::GreaterThanFunctor<T, int64_t>,
+                                   T, int64_t>(
+        dev_ctx_phi, eigenvalue_tensor, tol_tensor, axis,
         phi::funcs::GreaterThanFunctor<T, int64_t>(), &compare_result);
-    auto dito_int =
-        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
-                                                 int64_t>(context);
+
     std::vector<int> result_shape = phi::vectorize<int>(dim_out);
-    Tensor result = dito_int.ReduceSum(compare_result, result_shape);
+    Tensor result =
+        phi::Sum<int64_t>(dev_ctx_phi, compare_result, std::vector<int64_t>{-1},
+                          compare_result.dtype(), false);
     out->ShareDataWith(result);
   }
 
