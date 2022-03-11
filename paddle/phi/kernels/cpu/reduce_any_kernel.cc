@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/reduce_bool.h"
+#include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 namespace phi {
@@ -28,7 +28,6 @@ void AnyRawKernel(const Context& dev_ctx,
                   bool keep_dim,
                   bool reduce_all,
                   DenseTensor* out) {
-  auto out_dtype = x.dtype();
   phi::BoolReduceKernel<CPUContext, T, phi::funcs::AnyFunctor>(
       dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
