@@ -63,6 +63,7 @@ mlir::OwningModuleRef LoadMlirFile(const std::string& file_name,
   mlir::DialectRegistry registry;
   registerCinnDialects(registry);
   context->appendDialectRegistry(registry);
+  context->loadAllAvailableDialects();
   mlir::ScopedDiagnosticHandler scope_handler(
       context, [](mlir::Diagnostic& diag) {
         if (diag.getSeverity() != mlir::DiagnosticSeverity::Error)
