@@ -232,6 +232,10 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
 }
 
 void SetDeviceId(int id) {
+  // cudaGetDevice is faster than cudaSetDevice
+  int prev_id = GetCurrentDeviceId();
+  if (prev_id == id) return;
+
   // TODO(qijun): find a better way to cache the cuda device count
   PADDLE_ENFORCE_LT(
       id,
