@@ -654,8 +654,9 @@ struct GPUContext::Impl {
   }
 
   void AddStreamCallback(const std::function<void()>& callback) const {
-    // NOTE(zhiqiu): better use threadpool here, otherwise it may launch too
-    // many threads.
+    // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
+    // launch too
+    // many threads and result in thread oversubscription.
     auto* func =
         new std::function<void()>([ this, callback = std::move(callback) ] {
           std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
@@ -663,7 +664,6 @@ struct GPUContext::Impl {
         });
 
 #ifdef PADDLE_WITH_HIP
-    VLOG(4) << "hipStreamAddCallback: " << stream_;
     PADDLE_ENFORCE_GPU_SUCCESS(
         hipStreamAddCallback(stream_, internal::StreamCallbackFunc, func, 0));
 #endif
