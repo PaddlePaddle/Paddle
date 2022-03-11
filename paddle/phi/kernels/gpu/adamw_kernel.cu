@@ -20,9 +20,9 @@
 
 #include "paddle/phi/kernels/adamw_kernel.h"
 
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/copy_kernel.h"
@@ -226,7 +226,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       DenseTensor* beta1_pow_out,
                       DenseTensor* beta2_pow_out,
                       DenseTensor* master_param_outs) {
-  using MPDType = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
@@ -381,7 +381,7 @@ void AdamwDenseParamSparseGradKernel(
     DenseTensor* beta1_pow_out,
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs) {
-  using MPDType = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
