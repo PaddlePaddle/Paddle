@@ -42,6 +42,7 @@ void AdamaxInferMeta(const MetaTensor& param,
                      MetaTensor* param_out,
                      MetaTensor* moment_out,
                      MetaTensor* inf_norm_out);
+
 void AdamInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,
                    const MetaTensor& learning_rate,
