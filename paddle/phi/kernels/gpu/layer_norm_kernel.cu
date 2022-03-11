@@ -68,9 +68,9 @@ void LayerNormKernel(const Context &dev_ctx,
 
   const auto x_dims = x.dims();
   auto *x_data = x.data<T>();
-  auto *y_data = y->mutable_data<T>(dev_ctx.GetPlace());
-  auto *mean_data = mean->mutable_data<U>(dev_ctx.GetPlace());
-  auto *var_data = var->mutable_data<U>(dev_ctx.GetPlace());
+  auto *y_data = dev_ctx.template Alloc<T>(y);
+  auto *mean_data = dev_ctx.template Alloc<U>(mean);
+  auto *var_data = dev_ctx.template Alloc<U>(var);
 
   auto *void_scale_data = (scale == nullptr ? nullptr : scale->data());
   auto *void_bias_data = (bias == nullptr ? nullptr : bias->data());

@@ -21,6 +21,7 @@
 #endif
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -65,9 +66,11 @@ void LayerNormGradKernel(const Context& dev_ctx,
   DenseTensor temp_norm;
   if (d_scale || d_x) {
     x_tmp.Resize(matrix_shape);
-    temp.mutable_data<T>(matrix_shape, dev_ctx.GetPlace());
+    temp.Resize(matrix_shape);
+    ctx.template Alloc<T>(&temp);
 
-    temp_norm.mutable_data<T>(matrix_shape, dev_ctx.GetPlace());
+    temp_norm.Resize(matrix_shape);
+    ctx.template Alloc<T>(&temp_norm);
     // get x_norm
     phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T, T>(
         dev_ctx,
@@ -86,11 +89,11 @@ void LayerNormGradKernel(const Context& dev_ctx,
   }
 
   if (d_bias) {
-    d_bias->mutable_data<T>(dev_ctx.GetPlace());
+    ctx.template Alloc<T>(d_bias);
     colwise_sum(dev_ctx, d_y, d_bias);
   }
   if (d_scale) {
-    d_scale->mutable_data<T>(dev_ctx.GetPlace());
+    ctx.template Alloc<T>(d_scale);
     phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
         dev_ctx, temp_norm, d_y, 0, funcs::MultiplyFunctor<T>(), &temp);
     colwise_sum(dev_ctx, temp, d_scale);
@@ -98,10 +101,11 @@ void LayerNormGradKernel(const Context& dev_ctx,
 
   if (d_x) {
     DDim vec_shape({left});
-    d_x->mutable_data<T>(dev_ctx.GetPlace());
+    ctx.template Alloc<T>(d_x);
     auto dx_dim = d_x->dims();
     DenseTensor temp_vec;
-    temp_vec.mutable_data<T>(vec_shape, dev_ctx.GetPlace());
+    temp_vec.Resize(vec_shape);
+    ctx.template Alloc<T>(&temp_vec);
 
     funcs::RowwiseMean2D<phi::CPUContext, T> row_mean(left, right, dev_ctx);
 
@@ -109,7 +113,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
       // dy_dx
       phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
           dev_ctx, d_y, *scale, /*axis*/ 1, funcs::MultiplyFunctor<T>(), &temp);
-      paddle::framework::TensorCopy(temp, dev_ctx.GetPlace(), dev_ctx, d_x);
+      copy(dev_ctx, temp, dev_ctx.GetPlace(), false, d_x);
 
       // dy_dmean_dx
       row_mean(dev_ctx, temp, &temp_vec);
@@ -131,7 +135,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
           &temp);
     } else {
       // dy_dx
-      paddle::framework::TensorCopy(d_y, dev_ctx.GetPlace(), dev_ctx, d_x);
+      copy(dev_ctx, d_y, dev_ctx.GetPlac(), false, d_x);
 
       // dy_dmean_dx
       row_mean(dev_ctx, d_y, &temp_vec);

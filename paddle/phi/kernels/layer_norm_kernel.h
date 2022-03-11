@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {

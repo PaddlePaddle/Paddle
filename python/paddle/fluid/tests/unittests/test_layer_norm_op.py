@@ -231,7 +231,6 @@ class TestLayerNormOp(unittest.TestCase):
                                         "bias_grad")
 
         places = [core.CPUPlace()]
-        places = []
         if core.is_compiled_with_cuda() and core.op_support_gpu(
                 "layer_norm") and self.use_cudnn:
             places.append(core.CUDAPlace(0))

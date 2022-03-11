@@ -43,7 +43,8 @@ class RowwiseMean2D<phi::GPUContext, T> {
   RowwiseMean2D(int left, int right, const DeviceContext& dev_ctx)
       : left_(left), right_(right) {
     DDim ones_dim({right_});
-    divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
+    divisor_.Resize(ones_dim);
+    dev_ctx.template Alloc<T>(&divisor);
     phi::funcs::set_constant(dev_ctx, &divisor_, 1.0 / right);
   }
   void operator()(const phi::GPUContext& context,
@@ -97,7 +98,8 @@ class ColwiseSum2D<phi::GPUContext, T> {
   ColwiseSum2D(int left, int right, const phi::GPUContext& dev_ctx)
       : left_(left), right_(right) {
     DDim ones_dim({left_});
-    divisor_.mutable_data<T>(ones_dim, dev_ctx.GetPlace());
+    divisor_.Resize(ones_dim);
+    dev_ctx.template Alloc<T>(&divisor_);
     phi::funcs::set_constant(dev_ctx, &divisor_, 1.0);
   }
 

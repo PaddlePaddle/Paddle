@@ -55,8 +55,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
   auto *mean_data = mean.data<U>();
   auto *var_data = variance.data<U>();
 
-  auto *d_x_data =
-      (d_x == nullptr ? nullptr : d_x->mutable_data<T>(dev_ctx.GetPlace()));
+  auto *d_x_data = (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));
 
   auto x_dtype = x.dtype();
 
@@ -73,31 +72,31 @@ void LayerNormGradKernel(const Context &dev_ctx,
     }
   }
 
-#define PADDLE_LAUNCH_LAYERNORM_BWD(ScaleBiasT, IsScaleBiasSameDTypeWithX)     \
-  do {                                                                         \
-    auto *scale_data =                                                         \
-        (scale == nullptr ? nullptr : scale->data<ScaleBiasT>());              \
-    auto *d_scale_data =                                                       \
-        (d_scale == nullptr ? nullptr : d_scale->mutable_data<ScaleBiasT>(     \
-                                            dev_ctx.GetPlace()));              \
-    auto *d_bias_data =                                                        \
-        (d_bias == nullptr ? nullptr : d_bias->mutable_data<ScaleBiasT>(       \
-                                           dev_ctx.GetPlace()));               \
-    auto *d_x_data =                                                           \
-        (d_x == nullptr ? nullptr : d_x->mutable_data<T>(dev_ctx.GetPlace())); \
-    paddle::operators::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(     \
-        x_data,                                                                \
-        d_y_data,                                                              \
-        scale_data,                                                            \
-        mean_data,                                                             \
-        var_data,                                                              \
-        d_x_data,                                                              \
-        d_scale_data,                                                          \
-        d_bias_data,                                                           \
-        epsilon,                                                               \
-        batch_size,                                                            \
-        feature_size,                                                          \
-        dev_ctx);                                                              \
+#define PADDLE_LAUNCH_LAYERNORM_BWD(ScaleBiasT, IsScaleBiasSameDTypeWithX)  \
+  do {                                                                      \
+    auto *scale_data =                                                      \
+        (scale == nullptr ? nullptr : scale->data<ScaleBiasT>());           \
+    auto *d_scale_data =                                                    \
+        (d_scale == nullptr ? nullptr                                       \
+                            : dev_ctx.template Alloc<ScaleBiasT>(d_scale)); \
+    auto *d_bias_data =                                                     \
+        (d_bias == nullptr ? nullptr                                        \
+                           : dev_ctx.template Alloc<ScaleBiasT>(d_bias));   \
+    auto *d_x_data =                                                        \
+        (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));        \
+    paddle::operators::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(  \
+        x_data,                                                             \
+        d_y_data,                                                           \
+        scale_data,                                                         \
+        mean_data,                                                          \
+        var_data,                                                           \
+        d_x_data,                                                           \
+        d_scale_data,                                                       \
+        d_bias_data,                                                        \
+        epsilon,                                                            \
+        batch_size,                                                         \
+        feature_size,                                                       \
+        dev_ctx);                                                           \
   } while (0)
 
   if (scale_bias_dtype == x_dtype) {
