@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"

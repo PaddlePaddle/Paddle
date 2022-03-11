@@ -53,8 +53,8 @@ class MultinomialOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-DELCARE_INFER_SHAPE_FUNCTOR(multinomial, MultinomialInferShapeFunctor,
-                            PT_INFER_META(phi::MultinomialInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(multinomial, MultinomialInferShapeFunctor,
+                            PD_INFER_META(phi::MultinomialInferMeta));
 REGISTER_OPERATOR(
     multinomial, ops::MultinomialOp, ops::MultinomialOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,

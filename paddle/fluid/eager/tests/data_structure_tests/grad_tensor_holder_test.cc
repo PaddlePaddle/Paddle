@@ -24,6 +24,8 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
+PD_DECLARE_KERNEL(full_like, CPU, ALL_LAYOUT);
+
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 

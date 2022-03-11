@@ -95,10 +95,9 @@ class Service:
 
 class GpuService(Service):
     def __init__(self):
-        super(GpuService).__init__(self)
+        super(GpuService, self).__init__()
 
     def _set(self, service_proto):
-        super(GpuService)._set(service_proto)
         service_proto.server_class = 'PsLocalServer'
         service_proto.client_class = 'PsLocalClient'
 

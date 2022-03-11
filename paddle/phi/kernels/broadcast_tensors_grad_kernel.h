@@ -21,7 +21,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void BroadcastTensorsGradKernel(const Context& ctx,
-                                const std::vector<DenseTensor>& dout,
+                                const std::vector<const DenseTensor*>& dout,
                                 std::vector<DenseTensor*> dx);
 
 }  // namespace phi

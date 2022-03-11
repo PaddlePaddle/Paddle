@@ -25,7 +25,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/fluid/framework/generator.h"
-// #include "paddle/phi/core/generator.h"
 
 namespace phi {
 
@@ -87,7 +86,7 @@ struct TruncatedNormalOffset {
 
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
-                                   const ScalarArray& shape,
+                                   const std::vector<int>& shape,
                                    float mean,
                                    float std,
                                    int seed,

@@ -88,8 +88,8 @@ __device__ inline void VectorizeLarsUpdate(
     T* param_out, MT* velocity_out, const MT mu, MT local_lr,
     const MT lars_weight_decay, const MT rescale_grad, const int tid,
     const int grid_stride, const int numel, MT* master_param_out = nullptr) {
-  using VecType = paddle::platform::AlignedVector<T, VecSize>;
-  using VecMType = paddle::platform::AlignedVector<MT, VecSize>;
+  using VecType = phi::AlignedVector<T, VecSize>;
+  using VecMType = phi::AlignedVector<MT, VecSize>;
   int main = numel >> (VecSize >> 1);
   int tail_offset = main * VecSize;
 
