@@ -47,9 +47,9 @@ void KLDivLossKernel(const Context& dev_ctx,
   const int n = input->dims()[0];
   dev_ctx.template Alloc<T>(loss);
 
-  auto input_t = paddle::framework::EigenVector<T>::Flatten(*input);
-  auto target_t = paddle::framework::EigenVector<T>::Flatten(*target);
-  auto loss_t = paddle::framework::EigenVector<T>::Flatten(*loss);
+  auto input_t = phi::EigenVector<T>::Flatten(*input);
+  auto target_t = phi::EigenVector<T>::Flatten(*target);
+  auto loss_t = phi::EigenVector<T>::Flatten(*loss);
   auto output = target_t.binaryExpr(input_t, KLDivLossForward<T>());
   if ("none" == reduction) {
     loss_t.device(place) = output;

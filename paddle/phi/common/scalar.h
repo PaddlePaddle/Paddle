@@ -107,7 +107,7 @@ class ScalarBase {
   // The Tensor must have one dim
   ScalarBase(const T& tensor) : dtype_(tensor.dtype()) {  // NOLINT
     is_from_tensor_ = true;
-    ThrowErrorIf(tensor.numel());
+    ThrowErrorIfNotScalar(tensor.numel());
     switch (dtype_) {
       case DataType::FLOAT32:
         data_.f32 = tensor.template data<float>()[0];
