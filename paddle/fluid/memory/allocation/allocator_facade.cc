@@ -34,6 +34,7 @@
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
@@ -359,7 +360,7 @@ class AllocatorFacadePrivate {
 
   gpuStream_t GetDefaultStream(const platform::CUDAPlace& place) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    return static_cast<platform::CUDADeviceContext*>(pool.Get(place))->stream();
+    return static_cast<phi::GPUContext*>(pool.Get(place))->stream();
   }
 
   void RecordStream(std::shared_ptr<phi::Allocation> allocation,
