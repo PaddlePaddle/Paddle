@@ -18,6 +18,7 @@
 #include <utility>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
+// #include "paddle/fluid/eager/amp_auto_cast.h"
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
@@ -206,6 +207,25 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
                               : attr_checker->GetDefaultAttrMap();
 
   NameVarMap<VarType> new_ins = ins;
+  // if (egr::Controller::Instance().InEagerMode()){
+  // if (amp_level_ == AmpLevel::O1) {
+  //   if (amp_dtype_ == phi::DataType::FLOAT16) {
+  //     VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
+  //     new_ins = egr::EagerAutoCastInputs<VarType>(type, ins);
+  //   } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+  //     VLOG(5) << "BFloat16 Auto Mixed Precision O1 run operator: " << type;
+  //     new_ins = egr::EagerAutoCastBF16Inputs<VarType>(type, ins);
+  //   }
+  // } else if (amp_level_ == AmpLevel::O2) {
+  //   if (amp_dtype_ == phi::DataType::FLOAT16) {
+  //     VLOG(5) << "Float16 Auto Mixed Precision O2 run operator: " << type;
+  //     new_ins = egr::EagerCastPureFp16Inputs<VarType>(type, ins);
+  //   } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
+  //     VLOG(5) << "BFloat16 Auto Mixed Precision O2 run operator: " << type;
+  //     new_ins = egr::EagerCastPureBf16Inputs<VarType>(type, ins);
+  //   }
+  // }
+  // } else {
   if (amp_level_ == AmpLevel::O1) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
       VLOG(5) << "Float16 Auto Mixed Precision O1 run operator: " << type;
@@ -223,6 +243,9 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
       new_ins = CastPureBf16Inputs<VarType>(type, ins);
     }
   }
+  // }
+
+  
 
   try {
     if (platform::is_gpu_place(place)) {

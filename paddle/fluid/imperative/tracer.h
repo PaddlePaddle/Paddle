@@ -23,7 +23,6 @@
 #include <vector>
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/garbage_collector.h"
-#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"

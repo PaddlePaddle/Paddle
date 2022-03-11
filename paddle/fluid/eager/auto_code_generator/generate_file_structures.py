@@ -109,12 +109,12 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir):
 
     with open(forwards_level_cmakelist_path, "w") as f:
         f.write(
-            "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})\n"
+            "cc_library(dygraph_function SRCS dygraph_forward_functions.cc DEPS ${eager_deps} dygraph_node ${fluid_deps} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})\n"
         )
         f.write("add_dependencies(dygraph_function eager_codegen)")
 
     with open(generated_level_cmakelist_path, "w") as f:
-        f.write("add_subdirectory(forwards)\nadd_subdirectory(nodes)")
+        f.write("add_subdirectory(nodes)\nadd_subdirectory(forwards)\n")
 
 
 if __name__ == "__main__":
