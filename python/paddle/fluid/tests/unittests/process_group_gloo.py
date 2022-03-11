@@ -104,15 +104,90 @@ class TestProcessGroupFp32(unittest.TestCase):
             broadcast_result = paddle.assign(tensor_x)
             if rank == 0:
                 task = pg.broadcast(tensor_x, 0)
-                task.synchronize()
-                assert task.is_completed()
                 assert np.array_equal(broadcast_result, tensor_x)
             else:
                 task = pg.broadcast(tensor_y, 0)
-                task.synchronize()
-                assert task.is_completed()
                 assert np.array_equal(broadcast_result, tensor_y)
             print("test broadcast api ok")
+
+            # test barrier
+            # rank 0
+            if pg.rank() == 0:
+                task = pg.barrier()
+                task.wait()
+            # rank 1
+            else:
+                task = pg.barrier()
+                task.wait()
+
+            print("test barrier api ok\n")
+
+            # test allgather
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            out_shape = list(self.shape)
+            out_shape[0] *= 2
+            out = np.random.random(out_shape).astype(self.dtype)
+            tensor_out = paddle.to_tensor(out)
+            if pg.rank() == 0:
+                task = pg.all_gather(tensor_x, tensor_out)
+                task.wait()
+                paddle.device.cuda.synchronize()
+            # rank 1
+            else:
+                task = pg.all_gather(tensor_y, tensor_out)
+                task.wait()
+            out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
+            out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
+                                 [out_shape[0]])
+            assert np.array_equal(tensor_x, out_1)
+            assert np.array_equal(tensor_y, out_2)
+            print("test allgather api ok\n")
+
+            # test Reduce
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            sum_result = tensor_x + tensor_y
+            if pg.rank() == 0:
+                task = pg.reduce(tensor_x, 0)
+                task.wait()
+            # rank 1
+            else:
+                task = pg.reduce(tensor_y, 0)
+                task.wait()
+            if pg.rank() == 0:
+                assert np.array_equal(tensor_x, sum_result)
+            print("test reduce sum api ok\n")
+
+            # test Scatter
+            # rank 0
+            in_shape = list(self.shape)
+            in_shape[0] *= 2
+            x = np.random.random(in_shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            if pg.rank() == 0:
+                task = pg.scatter(tensor_x, tensor_y, 0)
+                task.wait()
+            # rank 1
+            else:
+                task = pg.scatter(tensor_x, tensor_y, 0)
+                task.wait()
+            out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
+            out2 = paddle.slice(tensor_x, [0], [self.shape[0]],
+                                [self.shape[0] * 2])
+            if pg.rank() == 0:
+                assert np.array_equal(tensor_y, out1)
+            else:
+                assert np.array_equal(tensor_y, out2)
+            print("test scatter api ok\n")
 
 
 if __name__ == "__main__":

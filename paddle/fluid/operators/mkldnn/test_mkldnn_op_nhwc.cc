@@ -24,13 +24,16 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 USE_OP(pool2d);
 USE_OP_DEVICE_KERNEL(pool2d, MKLDNN);
-USE_OP(relu);
+USE_OP_ITSELF(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
 USE_OP_ITSELF(transpose);
 USE_OP_DEVICE_KERNEL(transpose, MKLDNN);
+
+PD_DECLARE_KERNEL(relu, CPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace operators {

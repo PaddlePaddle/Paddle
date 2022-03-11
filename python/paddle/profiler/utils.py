@@ -13,30 +13,11 @@
 # limitations under the License.
 
 from paddle.fluid.core import (_RecordEvent, TracerEventType,
-                               LoadProfilerResult)
+                               load_profiler_result)
 from typing import Any
 from warnings import warn
 import functools
-try:
-    # Available in Python >= 3.2
-    from contextlib import ContextDecorator
-except ImportError:
-
-    class ContextDecorator(object):
-        def __enter__(self):
-            raise NotImplementedError
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            raise NotImplementedError
-
-        def __call__(self, func):
-            @functools.wraps(func)
-            def wrapped(*args, **kwargs):
-                with self:
-                    return func(*args, **kwargs)
-
-            return wrapped
-
+from contextlib import ContextDecorator
 
 _AllowedEventTypeList = [
     TracerEventType.Dataloader, TracerEventType.ProfileStep,
@@ -107,36 +88,3 @@ def wrap_optimizers():
             classobject = getattr(optimizer, classname)
             if getattr(classobject, 'step', None) != None:
                 classobject.step = optimizer_warpper(classobject.step)
-
-
-def wrap_functional():
-    def functional_warpper(func):
-        @functools.wraps(func)
-        def warpper(*args, **kwargs):
-            with RecordEvent(
-                    func.__name__, event_type=TracerEventType.PythonOp):
-                return func(*args, **kwargs)
-
-        return warpper
-
-    import paddle.nn.functional as functional
-    for funcname in functional.__all__:
-        funcobject = getattr(functional, funcname)
-        setattr(functional, funcname, functional_warpper(funcobject))
-
-
-def wrap_paddle_manipulations():
-    def functional_warpper(func):
-        @functools.wraps(func)
-        def warpper(*args, **kwargs):
-            with RecordEvent(
-                    func.__name__, event_type=TracerEventType.PythonOp):
-                return func(*args, **kwargs)
-
-        return warpper
-
-    import paddle
-    for funcname in paddle.tensor.tensor_method_func:
-        if hasattr(paddle, funcname):
-            funcobject = getattr(paddle, funcname)
-            setattr(paddle, funcname, functional_warpper(funcobject))

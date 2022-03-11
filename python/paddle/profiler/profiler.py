@@ -22,8 +22,9 @@ from warnings import warn
 import paddle
 from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
                                TracerEventType)
+
 from .utils import RecordEvent, wrap_optimizers
-from .profiler_statistic import StatisticData, _build_table, SortedKeys
+from .profiler_statistic import SortedKeys
 
 
 class ProfilerState(Enum):
@@ -155,7 +156,7 @@ def export_chrome_tracing(dir_name: str,
                 "Can not create directory '{}' for saving profiling results.".
                 format(dir_name))
 
-    def handle_fn(prof: Profiler):
+    def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
             worker_name = "host_{}pid_{}".format(socket.gethostname(),
@@ -198,7 +199,7 @@ def export_protobuf(dir_name: str, worker_name: Optional[str]=None) -> Callable:
                 "Can not create directory '{}' for saving profiling results.".
                 format(dir_name))
 
-    def handle_fn(prof: Profiler):
+    def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
             worker_name = "host_{}pid_{}".format(socket.gethostname(),
@@ -291,7 +292,7 @@ class Profiler:
         if ProfilerTarget.GPU in self.targets:
             profileoption.trace_switch |= (1 << 1)
         wrap_optimizers()
-        self.profiler = _Profiler.Create(profileoption)
+        self.profiler = _Profiler.create(profileoption)
         if callable(scheduler):
             self.scheduler = scheduler
         elif isinstance(scheduler, (tuple, list)):
@@ -331,21 +332,29 @@ class Profiler:
         self.stop()
 
     def start(self):
+        r'''
+        Start profiler and enter the first profiler step(0).
+        State transformed from CLOSED to self.current_state and trigger corresponding action. 
+        '''
         # CLOSED -> self.current_state
         if self.current_state == ProfilerState.READY:
-            self.profiler.Prepare()
+            self.profiler.prepare()
         elif self.current_state == ProfilerState.RECORD:
-            self.profiler.Prepare()
-            self.profiler.Start()
+            self.profiler.prepare()
+            self.profiler.start()
         elif self.current_state == ProfilerState.RECORD_AND_RETURN:
-            self.profiler.Prepare()
-            self.profiler.Start()
+            self.profiler.prepare()
+            self.profiler.start()
         self.record_event = RecordEvent(
             name="ProfileStep#{}".format(self.step_num),
             event_type=TracerEventType.ProfileStep)
         self.record_event.begin()
 
     def stop(self):
+        r'''
+        Stop profiler and State transformed from self.current_state to CLOSED.
+        Trigger corresponding action and post-process profiler result using self.on_trace_ready if result exists.
+        '''
         # self.current_state -> CLOSED
         # In this situation, RECORD state is regarded as RECORD_AND_RETURN
         if self.record_event:
@@ -355,10 +364,10 @@ class Profiler:
             warn(
                 "Inproper Profiler state transform: READY->CLOSED, profiler will start and stop without saving data"
             )
-            self.profiler.Start()
-            self.profiler.Stop()
+            self.profiler.start()
+            self.profiler.stop()
         if self.current_state == ProfilerState.RECORD or self.current_state == ProfilerState.RECORD_AND_RETURN:
-            self.profiler_result = self.profiler.Stop()
+            self.profiler_result = self.profiler.stop()
             if self.on_trace_ready:
                 self.on_trace_ready(self)
 
@@ -382,57 +391,57 @@ class Profiler:
     def _trigger_action(self):
         if self.previous_state == ProfilerState.CLOSED:
             if self.current_state == ProfilerState.READY:  # CLOSED -> READY
-                self.profiler.Prepare()
+                self.profiler.prepare()
             if self.current_state == ProfilerState.RECORD:  # CLOSED -> RECORD
-                self.profiler.Prepare()
-                self.profiler.Start()
+                self.profiler.prepare()
+                self.profiler.start()
             if self.current_state == ProfilerState.RECORD_AND_RETURN:  # CLOSED -> RECORD_AND_RETURN
-                self.profiler.Prepare()
-                self.profiler.Start()
+                self.profiler.prepare()
+                self.profiler.start()
 
         elif self.previous_state == ProfilerState.READY:
             if self.current_state == ProfilerState.CLOSED:  # READY -> CLOSED
                 warn(
                     "Improper schedule: READY->CLOSED, profiler will start and stop without saving data"
                 )
-                self.profiler.Start()
-                self.profiler.Stop()
+                self.profiler.start()
+                self.profiler.stop()
             if self.current_state == ProfilerState.RECORD:  # READY -> RECORD
-                self.profiler.Start()
+                self.profiler.start()
             if self.current_state == ProfilerState.RECORD_AND_RETURN:  # READY -> RECORD_AND_RETURN
-                self.profiler.Start()
+                self.profiler.start()
 
         elif self.previous_state == ProfilerState.RECORD:
             if self.current_state == ProfilerState.CLOSED:  # RECORD -> CLOSED
                 warn(
                     "Improper schedule: RECORD->CLOSED, profiler will not saving data"
                 )
-                self.profiler.Stop()
+                self.profiler.stop()
 
             if self.current_state == ProfilerState.READY:  # RECORD -> READY
                 warn(
                     "Improper schedule: RECORD->READY, profiler will stop and re-prepare"
                 )
-                self.profiler.Stop()
-                self.profiler.Prepare()
+                self.profiler.stop()
+                self.profiler.prepare()
             if self.current_state == ProfilerState.RECORD_AND_RETURN:  # RECORD -> RECORD_AND_RETURN
                 pass
 
         else:
             assert self.previous_state == ProfilerState.RECORD_AND_RETURN
             if self.current_state == ProfilerState.CLOSED:  # RECORD_AND_RETURN -> CLOSED
-                self.profiler_result = self.profiler.Stop()
+                self.profiler_result = self.profiler.stop()
             if self.current_state == ProfilerState.READY:  # RECORD_AND_RETURN -> READY
-                self.profiler_result = self.profiler.Stop()
-                self.profiler.Prepare()
+                self.profiler_result = self.profiler.stop()
+                self.profiler.prepare()
             if self.current_state == ProfilerState.RECORD:  # RECORD_AND_RETURN -> RECORD
-                self.profiler_result = self.profiler.Stop()
-                self.profiler.Prepare()
-                self.profiler.Start()
+                self.profiler_result = self.profiler.stop()
+                self.profiler.prepare()
+                self.profiler.start()
             if self.current_state == ProfilerState.RECORD_AND_RETURN:  # RECORD_AND_RETURN -> RECORD_AND_RETURN
-                self.profiler_result = self.profiler.Stop()
-                self.profiler.Prepare()
-                self.profiler.Start()
+                self.profiler_result = self.profiler.stop()
+                self.profiler.prepare()
+                self.profiler.start()
             if self.on_trace_ready:
                 self.on_trace_ready(self)
 
@@ -444,7 +453,7 @@ class Profiler:
             self.profiler_result.save(path, format)
 
     def summary(self,
-                sorted_by=SortedKeys.OpTotal,
+                sorted_by=SortedKeys.CPUTotal,
                 op_detail=True,
                 thread_sep=False,
                 time_unit='ms'):
@@ -457,13 +466,4 @@ class Profiler:
             thread_sep: print op table each thread.
             time_unit: can be chosen form ['s', 'ms', 'us', 'ns']
         """
-        if self.profiler_result:
-            statistic_data = StatisticData(
-                self.profiler_result.get_data(),
-                self.profiler_result.get_extra_info())
-            print(_build_table(
-                statistic_data,
-                sorted_by=sorted_by,
-                op_detail=op_detail,
-                thread_sep=thread_sep,
-                time_unit=time_unit))
+        pass

@@ -25,6 +25,8 @@
 #endif
 
 #include <gloo/broadcast.h>
+#include <gloo/reduce.h>
+#include <gloo/scatter.h>
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -144,6 +146,22 @@ void set_inputs(P& opts, const std::vector<Tensor>& tensors) {  // NOLINT
   opts.setInputs(get_multi_data<T>(tensors), tensors[0].numel());
 }
 
+template <typename T, typename P>
+void set_inputs_for_scatter(P& opts,                             // NOLINT
+                            const std::vector<Tensor>& tensors,  // NOLINT
+                            int nranks) {
+  std::vector<T*> ret(nranks);
+  auto raw_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(tensors[0].impl());
+  T* raw_pointer = reinterpret_cast<T*>(raw_tensor->data());
+  size_t offset = 0;
+  for (int i = 0; i < nranks; i++) {
+    ret[i] = raw_pointer + offset;
+    offset += tensors[0].numel() / nranks;
+  }
+  opts.setInputs(ret, tensors[0].numel() / nranks);
+}
+
 ProcessGroupGloo::GlooTask::GlooTask(int rank,
                                      const std::vector<Tensor>& inputs,
                                      CommType comm_type)
@@ -253,6 +271,182 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
   auto context = get_context();
   task = std::make_shared<AllreduceGlooTask>(rank_, context, inputs,
                                              opts.reduce_op, tag);
+  task->Run();
+  return task;
+}
+
+class BarrierGlooTask : public ProcessGroupGloo::GlooTask {
+ public:
+  BarrierGlooTask(int rank, const std::shared_ptr<gloo::Context>& context)
+      : ProcessGroupGloo::GlooTask(rank, std::vector<Tensor>{},
+                                   CommType::BARRIER),
+        _context(context) {}
+
+  void Run() override { _do_barrier(); }
+
+ private:
+  std::shared_ptr<gloo::Context> _context;
+
+  void _do_barrier() {
+    gloo::BarrierOptions opts(_context);
+    gloo::barrier(opts);
+  }
+};
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Barrier(
+    const BarrierOptions& opts) {
+  std::shared_ptr<BarrierGlooTask> task;
+  auto context = get_context();
+  task = std::make_shared<BarrierGlooTask>(rank_, context);
+  task->Run();
+  return task;
+}
+
+class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
+ public:
+  AllgatherGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
+                    std::vector<Tensor>& inputs,   // NOLINT
+                    std::vector<Tensor>& outputs,  // NOLINT
+                    uint32_t tag)
+      : ProcessGroupGloo::GlooTask(rank, inputs, CommType::ALLGATHER),
+        _context(context),
+        _inputs(inputs),
+        _outputs(outputs),
+        _tag(tag) {}
+
+  void Run() override { _do_allgather(_inputs, _outputs); }
+
+ private:
+  std::shared_ptr<gloo::Context> _context;
+  std::vector<Tensor> _inputs;
+  std::vector<Tensor> _outputs;
+  uint32_t _tag;
+
+  void _do_allgather(std::vector<Tensor>& in,     // NOLINT
+                     std::vector<Tensor>& out) {  // NOLINT
+    const auto& dtype = in[0].type();
+    gloo::AllgatherOptions opts(_context);
+    GENERATE_FUNC(dtype, set_input, opts, in[0]);
+    GENERATE_FUNC(dtype, set_output, opts, out[0]);
+    opts.setTag(_tag);
+    gloo::allgather(opts);
+  }
+};
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
+    std::vector<Tensor>& in_tensors, std::vector<Tensor>& out_tensors) {
+  std::shared_ptr<AllgatherGlooTask> task;
+  auto tag = next_tag();
+  auto context = get_context();
+  task = std::make_shared<AllgatherGlooTask>(rank_, context, in_tensors,
+                                             out_tensors, tag);
+  task->Run();
+  return task;
+}
+
+class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
+ public:
+  ReduceGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
+                 std::vector<Tensor>& in, ReduceOp reduce_op,  // NOLINT
+                 int dst, uint32_t tag)
+      : ProcessGroupGloo::GlooTask(rank, in, CommType::REDUCE),
+        _context(context),
+        _inputs(in),
+        _reduce_op(reduce_op),
+        _dst(dst),
+        _tag(tag) {}
+
+  void Run() override { _do_reduce(_inputs, _dst); }
+
+ private:
+  std::shared_ptr<gloo::Context> _context;
+  std::vector<Tensor> _inputs;
+  const ReduceOp _reduce_op;
+  int _dst;
+  uint32_t _tag;
+
+  gloo::ReduceOptions::Func _get_function(const experimental::DataType type,
+                                          const ReduceOp op) {
+    gloo::ReduceOptions::Func fn;
+    GENERATE_FUNC(type, _get_function_impl, fn, op);
+    return fn;
+  }
+
+  template <typename T>
+  void _get_function_impl(gloo::ReduceOptions::Func& fn,  // NOLINT
+                          const ReduceOp op) {
+    fn = get_function<T>(op);
+  }
+
+  void _do_reduce(std::vector<Tensor>& tensors, int dst) {  // NOLINT
+    const auto& dtype = tensors[0].type();
+    gloo::ReduceOptions opts(_context);
+    GENERATE_FUNC(dtype, set_input, opts, tensors[0]);
+    GENERATE_FUNC(dtype, set_output, opts, tensors[0]);
+    opts.setReduceFunction(_get_function(dtype, _reduce_op));
+    opts.setTag(_tag);
+    opts.setRoot(dst);
+    gloo::reduce(opts);
+  }
+};
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
+    std::vector<Tensor>& tensors, const ReduceOptions& opts) {
+  std::shared_ptr<ReduceGlooTask> task;
+  auto tag = next_tag();
+  auto context = get_context();
+  task = std::make_shared<ReduceGlooTask>(rank_, context, tensors,
+                                          opts.reduce_op, opts.root_rank, tag);
+  task->Run();
+  return task;
+}
+
+class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
+ public:
+  ScatterGlooTask(int rank, const std::shared_ptr<gloo::Context>& context,
+                  std::vector<Tensor>& inputs,   // NOLINT
+                  std::vector<Tensor>& outputs,  // NOLINT
+                  int src, int size, uint32_t tag)
+      : ProcessGroupGloo::GlooTask(rank, inputs, CommType::SCATTER),
+        _context(context),
+        _inputs(inputs),
+        _outputs(outputs),
+        _src(src),
+        _size(size),
+        _tag(tag) {}
+
+  void Run() override { _do_scatter(_inputs, _outputs, _src); }
+
+ private:
+  std::shared_ptr<gloo::Context> _context;
+  std::vector<Tensor> _inputs;
+  std::vector<Tensor> _outputs;
+  int _src;
+  int _size;
+  uint32_t _tag;
+
+  void _do_scatter(std::vector<Tensor>& in, std::vector<Tensor>& out,  // NOLINT
+                   int src) {
+    const auto& dtype = in[0].type();
+    gloo::ScatterOptions opts(_context);
+    if (rank_ == src) {
+      GENERATE_FUNC(dtype, set_inputs_for_scatter, opts, in, _size);
+    }
+    GENERATE_FUNC(dtype, set_output, opts, out[0]);
+    opts.setRoot(src);
+    opts.setTag(_tag);
+    gloo::scatter(opts);
+  }
+};
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
+    std::vector<Tensor>& in_tensors, std::vector<Tensor>& out_tensors,
+    const ScatterOptions& opts) {
+  std::shared_ptr<ScatterGlooTask> task;
+  auto tag = next_tag();
+  auto context = get_context();
+  task = std::make_shared<ScatterGlooTask>(
+      rank_, context, in_tensors, out_tensors, opts.root_rank, size_, tag);
   task->Run();
   return task;
 }

@@ -32,10 +32,18 @@
 #include "gperftools/profiler.h"
 #endif
 
+#include "paddle/phi/core/kernel_registry.h"
+
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
 
 TEST(Benchmark, EagerScaleCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
@@ -59,6 +67,50 @@ TEST(Benchmark, EagerScaleCUDA) {
       ProfilerStart("eager_scale_cuda.out");
 #endif
       benchmark_eager_scale(tensor);
+
+#ifdef WITH_GPERFTOOLS
+      ProfilerStop();
+#endif
+      auto t_end = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(t_end - t_start).count();
+      std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+    }
+  }
+}
+
+TEST(Benchmark, EagerMatmulCUDA) {
+  paddle::platform::CUDAPlace place;
+  eager_test::InitEnv(place);
+
+  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+    paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
+    paddle::experimental::Tensor X = CreateTensorWithValue(
+        ddimX, paddle::platform::CUDAPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, 1.0, true);
+    RetainGradForTensor(X);
+
+    paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
+    paddle::experimental::Tensor Y = CreateTensorWithValue(
+        ddimY, paddle::platform::CUDAPlace(), phi::DataType::FLOAT32,
+        phi::DataLayout::NCHW, 2.0, true);
+    RetainGradForTensor(Y);
+
+    if (mode == "Accuracy") {
+      benchmark_eager_matmul(X, Y, true /* accuracy_check */);
+
+    } else if (mode == "WarmUp") {
+      benchmark_eager_matmul(X, Y);
+
+    } else if (mode == "Performance") {
+      auto t_start = std::chrono::high_resolution_clock::now();
+#ifdef WITH_GPERFTOOLS
+      ProfilerStart("eager_matmul_cuda.out");
+#endif
+      benchmark_eager_matmul(X, Y);
 
 #ifdef WITH_GPERFTOOLS
       ProfilerStop();
@@ -186,7 +238,7 @@ TEST(Benchmark, EagerIntermediateMLPCUDA) {
 USE_OP_ITSELF(scale);
 USE_OP_ITSELF(matmul_v2);
 USE_OP_ITSELF(reduce_sum);
-USE_OP(reduce_sum_grad);
+USE_OP_ITSELF(reduce_sum_grad);
 USE_OP_ITSELF(elementwise_add);
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

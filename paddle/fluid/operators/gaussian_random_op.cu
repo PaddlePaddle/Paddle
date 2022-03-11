@@ -19,9 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/distribution_helper.h"
 #include "paddle/fluid/operators/fill_constant_op.h"
-#include "paddle/fluid/operators/index_impl.cu.h"
+
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 DECLARE_bool(use_curand);
 
@@ -44,7 +45,8 @@ struct GaussianGenerator {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     using MT = typename details::MPTypeTrait<T>::Type;
-    thrust::normal_distribution<MT> dist(mean_, std_);
+    thrust::normal_distribution<MT> dist(static_cast<MT>(mean_),
+                                         static_cast<MT>(std_));
     unsigned int new_n = n + offset_;
     rng.discard(new_n);
     MT out = dist(rng);
@@ -79,10 +81,10 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
       int64_t gen_offset = size * seed_offset.second;
       auto func = GaussianGenerator<T>(mean, std, seed_offset.first,
                                        seed_offset.second);
-      IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
+      phi::IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
     } else {
       auto func = GaussianGenerator<T>(mean, std, seed);
-      IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
+      phi::IndexKernel<T, GaussianGenerator<T>>(dev_cxt, tensor, func);
     }
   }
 };

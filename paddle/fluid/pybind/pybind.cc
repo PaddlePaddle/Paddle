@@ -1,4 +1,5 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -174,6 +175,7 @@ namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_place_pytype = nullptr;
+PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_cudaplace_pytype = nullptr;
 PyTypeObject *g_cpuplace_pytype = nullptr;
 PyTypeObject *g_xpuplace_pytype = nullptr;
@@ -1351,7 +1353,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   BindReader(&m);
 
-  py::class_<Scope>(m, "_Scope", R"DOC(
+  py::class_<Scope> _Scope(m, "_Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.
 
     Variables in a parent scope can be retrieved from local scope.
@@ -1371,7 +1373,9 @@ All parameter, weight, gradient are variables in Paddle.
           param_array = np.full((height, row_numel), 5.0).astype("float32")
           param.set(param_array, place)
 
-        )DOC")
+        )DOC");
+  g_framework_scope_pytype = reinterpret_cast<PyTypeObject *>(_Scope.ptr());
+  _Scope
       .def("_remove_from_pool",
            [](Scope &self) { ScopePool::Instance().Remove(&self); })
       .def("var",
@@ -1671,7 +1675,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_device_type", []() {
     std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    device_types = platform::DeviceManager::GetAllDeviceTypes();
+    device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed"
@@ -1685,7 +1689,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_custom_device_type", []() {
     std::vector<std::string> device_types;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    device_types = platform::DeviceManager::GetAllCustomDeviceTypes();
+    device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_all_custom_device_type because you have installed"
@@ -1699,7 +1703,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_available_device", [] {
     std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    devices = platform::DeviceManager::GetAllDeviceList();
+    devices = phi::DeviceManager::GetAllDeviceList();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_available_device because you have installed"
@@ -1713,7 +1717,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_available_custom_device", [] {
     std::vector<std::string> devices;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    devices = platform::DeviceManager::GetAllCustomDeviceList();
+    devices = phi::DeviceManager::GetAllCustomDeviceList();
 #else
           LOG(WARNING) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
@@ -1750,10 +1754,10 @@ All parameter, weight, gradient are variables in Paddle.
                std::exit(-1);
              }
 
-             if (LIKELY(platform::DeviceManager::HasDeviceType(device_type) &&
-                        platform::DeviceManager::IsCustom(device_type))) {
+             if (LIKELY(phi::DeviceManager::HasDeviceType(device_type) &&
+                        phi::DeviceManager::IsCustom(device_type))) {
                int dev_count = static_cast<int>(
-                   platform::DeviceManager::GetDeviceCount(device_type));
+                   phi::DeviceManager::GetDeviceCount(device_type));
                if (UNLIKELY(dev_id >= dev_count)) {
                  if (dev_count == 0) {
                    LOG(ERROR) << "Cannot use " << device_type
@@ -1953,10 +1957,17 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
+#ifdef PADDLE_WITH_XPU_KP
+  m.def("get_xpu_device_op_support_types",
+        [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
+          return platform::get_xpu_kp_op_support_type(op_name, version);
+        });
+#else
   m.def("get_xpu_device_op_support_types",
         [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
           return platform::get_xpu_op_support_type(op_name, version);
         });
+#endif
   m.def("get_xpu_device_op_list", [](phi::backends::xpu::XPUVersion version) {
     return platform::get_xpu_op_list(version);
   });
@@ -2952,27 +2963,30 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::HostPythonNode::device_node_ptrs);
 
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
-      .def("Create", &paddle::platform::Profiler::Create)
-      .def("Prepare",
+      .def("create", &paddle::platform::Profiler::Create,
+           py::return_value_policy::take_ownership)
+      .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
              profiler->Prepare();
            })
-      .def("Start", &paddle::platform::Profiler::Start)
-      .def("Stop", &paddle::platform::Profiler::Stop,
+      .def("start", &paddle::platform::Profiler::Start)
+      .def("stop",
+           [](paddle::platform::Profiler *profiler) {
+             platform::DisableHostEventRecorder();
+             return profiler->Stop();
+           },
            py::return_value_policy::automatic_reference);
 
   py::class_<paddle::platform::ProfilerOptions>(m, "ProfilerOptions")
       .def(py::init<>())
-      .def_readwrite("trace_level",
-                     &paddle::platform::ProfilerOptions::trace_level)
       .def_readwrite("trace_switch",
                      &paddle::platform::ProfilerOptions::trace_switch);
 
   py::class_<platform::RecordEvent>(m, "_RecordEvent")
       .def(py::init([](std::string name, platform::TracerEventType type) {
-        return std::unique_ptr<platform::RecordEvent>(new platform::RecordEvent(
-            name, type, 1, paddle::platform::EventRole::kOrdinary));
+        return std::make_unique<platform::RecordEvent>(
+            name, type, 1, paddle::platform::EventRole::kOrdinary);
       }))
       .def("end", [](platform::RecordEvent *event) { event->End(); });
 
@@ -2993,7 +3007,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
       .value("PythonUserDefined",
              paddle::platform::TracerEventType::PythonUserDefined);
-  m.def("LoadProfilerResult", &paddle::platform::LoadProfilerResult);
+  m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
@@ -3521,6 +3535,31 @@ All parameter, weight, gradient are variables in Paddle.
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fuse_elewise_add_act_ops = True
+                     )DOC")
+      .def_property(
+          "fuse_gemm_epilogue",
+          [](const BuildStrategy &self) { return self.fuse_gemm_epilogue_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_gemm_epilogue_ = b;
+          },
+          R"DOC((bool, optional): fuse_gemm_epilogue indicate whether
+                to fuse matmul_op, elemenewist_add_op and activation_op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_gemm_epilogue = True
                      )DOC")
       .def_property(
           "fuse_bn_act_ops",

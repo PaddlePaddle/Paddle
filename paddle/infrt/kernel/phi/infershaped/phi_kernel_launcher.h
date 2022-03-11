@@ -24,26 +24,6 @@
 namespace infrt {
 namespace kernel {
 
-static void FakePhiInferShape(const ::phi::MetaTensor& a,
-                              const ::phi::MetaTensor& b,
-                              bool arg_0,
-                              bool arg_1,
-                              ::phi::MetaTensor* c) {
-  LOG(INFO) << "the ptr of c: " << c;
-  LOG(INFO) << "c->numel(): " << c->numel();
-}
-
-static void FakePhiKernel(const ::phi::CPUContext& /*Context*/,
-                          const ::phi::DenseTensor& a,
-                          const ::phi::DenseTensor& b,
-                          bool arg_0,
-                          bool arg_1,
-                          ::phi::DenseTensor* c) {
-  std::cout << "@FakePhiKernel@" << std::endl;
-  LOG(INFO) << "the ptr of c: " << c;
-  LOG(INFO) << "c->numel(): " << c->numel();
-}
-
 template <typename KernelFunc,
           KernelFunc kernel,
           typename InferShapedFunc,
