@@ -163,6 +163,12 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void PadInferMeta(const MetaTensor& input,
+                  const std::vector<int>& paddings,
+                  float pad_value,
+                  MetaTensor* out,
+                  MetaConfig config = MetaConfig());
+
 void DiagonalInferMeta(
     const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
 
@@ -181,5 +187,15 @@ void EighInferMeta(const MetaTensor& x,
                    const std::string& uplo,
                    MetaTensor* out_w,
                    MetaTensor* out_v);
+
+void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
+
+void ShardIndexInferMeta(const MetaTensor& in,
+                         int index_num,
+                         int nshards,
+                         int shard_id,
+                         int ignore_value,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
 
 }  // namespace phi
