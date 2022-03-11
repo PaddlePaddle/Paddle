@@ -20,8 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-// XKTODO (change name)
 void LgammaKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out);
-}  // pten
+}  // namespace phi

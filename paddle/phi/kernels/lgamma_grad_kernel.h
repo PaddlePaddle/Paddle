@@ -20,9 +20,8 @@
 namespace phi {
 
 template <typename T, typename Context>
-// XKTODO (change name)
 void LgammaGradKernel(const Context& dev_ctx,
                       const DenseTensor& d_out,
                       const DenseTensor& x,
                       DenseTensor* d_x);
-}  // pten
+}  // namespace phi

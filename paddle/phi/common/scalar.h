@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-void ThrowErrorIfNotScalar(int);
+void ThrowTensorConvertError(int);
 
 template <typename T>
 class ScalarBase {
@@ -107,7 +107,7 @@ class ScalarBase {
   // The Tensor must have one dim
   ScalarBase(const T& tensor) : dtype_(tensor.dtype()) {  // NOLINT
     is_from_tensor_ = true;
-    ThrowErrorIfNotScalar(tensor.numel());
+    ThrowTensorConvertError(tensor.numel());
     switch (dtype_) {
       case DataType::FLOAT32:
         data_.f32 = tensor.template data<float>()[0];
@@ -157,8 +157,6 @@ class ScalarBase {
 
   // NOTE(xiongkun): some op need to judge the dtype of the Scalar, we expose a
   // interface.
-  bool IsDtype(DataType d) const { return d == dtype_; }
-
   bool FromTensor() const { return is_from_tensor_; }
 
   void SetFromTensor(bool from_tensor) { is_from_tensor_ = from_tensor; }

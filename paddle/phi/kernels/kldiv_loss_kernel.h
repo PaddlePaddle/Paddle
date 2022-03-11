@@ -26,4 +26,4 @@ void KLDivLossKernel(const Context& dev_ctx,
                      const DenseTensor& label,
                      const std::string& reduction,
                      DenseTensor* out);
-}  // phi
+}  // namespace phi

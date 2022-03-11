@@ -22,7 +22,7 @@ namespace experimental {
 // NOTE(xiongkun): why we put definition here?
 // test_custom_op can't include enforce.h, because enforce.h includes gflags.
 // so we decouple the include dependence of enforce.h by link.
-void ThrowErrorIfNotScalar(int num) {
+void ThrowTensorConvertError(int num) {
   PADDLE_ENFORCE_EQ(num,
                     1,
                     phi::errors::InvalidArgument(

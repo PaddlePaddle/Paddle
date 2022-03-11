@@ -161,13 +161,13 @@ void IscloseKernel(const Context& dev_ctx,
                    bool equal_nan,
                    DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      atol.IsDtype(paddle::experimental::DataType::FLOAT64),
-      true,
+      atol.dtype(),
+      DataType::FLOAT64,
       phi::errors::InvalidArgument("Input(Atol) type must be double"));
 
   PADDLE_ENFORCE_EQ(
-      rtol.IsDtype(paddle::experimental::DataType::FLOAT64),
-      true,
+      rtol.dtype(),
+      DataType::FLOAT64,
       phi::errors::InvalidArgument("Input(Rtol) type must be double"));
 
   IscloseFunctor<Context, T>()(

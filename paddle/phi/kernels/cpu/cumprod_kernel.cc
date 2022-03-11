@@ -16,20 +16,18 @@
 
 #include <cstdint>
 #include <type_traits>
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
 
 namespace phi {
-using Tensor = DenseTensor;
 template <typename T, typename Context>
 void CumprodKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    int dim,
                    DenseTensor* out) {
-  const Tensor* x = &input;
+  const DenseTensor* x = &input;
   auto* x_data = x->data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
   DDim shape = x->dims();

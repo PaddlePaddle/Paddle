@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
 #include <string>
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
