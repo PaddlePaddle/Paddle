@@ -1,8 +1,7 @@
 // RUN: infrtexec -i %s | FileCheck %s
 
 func @load_tensor_map() {
-  %path = Infrt.get_string("@CMAKE_BINARY_DIR@/multi_fc_model")
-  %map = dt.load_params(%path)
+  %map = dt.load_params(){path="@CMAKE_BINARY_DIR@/multi_fc_model"}
   %size = dt.tensor_map_get_size(%map) -> i32
   Infrt.print.i32 %size
 

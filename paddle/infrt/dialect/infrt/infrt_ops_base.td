@@ -83,6 +83,12 @@ def DenseTensor : Infrt_Type<"DenseTensor"> {
   );
 }
 
+def DenseTensorMap :  Infrt_Type<"DenseTensorMap"> {
+  let summary = "infrt dense tensor map";
+  let description = [{dense_tensor map}];
+  let parameters = (ins);
+}
+
 // Type Constrait for concrete DenseTensor type.
 class DenseTensor<string target, string precision, string layout> :
     Type<CPred<"$_self == ::infrt::DenseTensorType::get($_self.getContext(), ::infrt::TargetType::"#target#",::infrt::PrecisionType::"#precision#",::infrt::LayoutType::"#layout#")">, 

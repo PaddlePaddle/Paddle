@@ -460,10 +460,14 @@ void BatchNormKernel(const Context &ctx,
       void *reserve_space_ptr = nullptr;
       void *workspace_ptr = nullptr;
       DenseTensor workspace_tensor;
+      DenseTensor reserve_space_tensor;
       // Create reserve space and workspace for batch norm.
       // Create tensor for each batchnorm op, it will be used in the
       // backward. Thus this tensor shouldn't be temp.
       // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+      if (reserve_space == nullptr) {
+        reserve_space = &reserve_space_tensor;
+      }
       PADDLE_ENFORCE_NOT_NULL(
           reserve_space,
           phi::errors::NotFound(
