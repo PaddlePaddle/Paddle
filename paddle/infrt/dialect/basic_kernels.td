@@ -111,25 +111,13 @@ def PrintI64Op : PrintOp<"i64", I64>;
 def PrintF32Op : PrintOp<"f32", F32>;
 def PrintF64Op : PrintOp<"f64", F64>;
 
-def GetStringOp : INFRT_Op<"get_string"> {
-  let summary = "Infrt.get_string";
-  let description = [{
-    Get a !infrt.string value from the given string attribute.
-  }];
-
-  let arguments = (ins StrAttr:$value);
-  let results = (outs StringType);
-  let assemblyFormat = "`(` $value `)` attr-dict";
-  let verifier = ?;
-}
-
 def PrintStringOp : INFRT_Op<"print_string"> {
   let summary = "Infrt.print_string";
   let description = [{
       An operation that prints a string.
   }];
 
-  let arguments = (ins StringType:$input);
+  let arguments = (ins StrAttr:$input);
   let results = (outs);
   let assemblyFormat = "`(` $input `)` attr-dict";
   let verifier = ?;
