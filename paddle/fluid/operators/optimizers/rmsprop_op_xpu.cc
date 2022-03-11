@@ -14,9 +14,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/optimizers/rmsprop_op.h"
 #include <gflags/gflags.h>
 #include <iostream>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
