@@ -32,10 +32,18 @@
 #include "gperftools/profiler.h"
 #endif
 
+#include "paddle/phi/core/kernel_registry.h"
+
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
 
 TEST(Benchmark, EagerScaleCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
