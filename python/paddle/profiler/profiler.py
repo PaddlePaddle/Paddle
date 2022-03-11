@@ -357,6 +357,21 @@ class Profiler:
         r'''
         Start profiler and enter the first profiler step(0).
         State transformed from CLOSED to self.current_state and trigger corresponding action. 
+
+        Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle.profiler as profiler
+            prof = profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
+                                            profiler.ProfilerTarget.GPU],
+                                scheduler = (1, 9),
+                                on_trace_ready = profiler.export_chrome_tracing('./log'))
+            prof.start()
+            for iter in range(10):
+                #train()
+                prof.step()
+            prof.stop()
         '''
         # CLOSED -> self.current_state
         if self.current_state == ProfilerState.READY:
@@ -376,6 +391,21 @@ class Profiler:
         r'''
         Stop profiler and State transformed from self.current_state to CLOSED.
         Trigger corresponding action and post-process profiler result using self.on_trace_ready if result exists.
+
+        Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle.profiler as profiler
+            prof = profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
+                                            profiler.ProfilerTarget.GPU],
+                                scheduler = (1, 7),
+                                on_trace_ready = profiler.export_chrome_tracing('./log'))
+            prof.start()
+            for iter in range(10):
+                #train()
+                prof.step()
+            prof.stop()
         '''
         # self.current_state -> CLOSED
         # In this situation, RECORD state is regarded as RECORD_AND_RETURN
@@ -397,6 +427,21 @@ class Profiler:
         r"""
         Signals the profiler that the next profiling step has started.
         Get the new ProfilerState and trigger corresponding action.
+
+        Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle.profiler as profiler
+            prof = profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
+                                            profiler.ProfilerTarget.GPU],
+                                scheduler = (3, 7),
+                                on_trace_ready = profiler.export_chrome_tracing('./log'))
+            prof.start()
+            for iter in range(10):
+                #train()
+                prof.step()
+            prof.stop()
         """
         if self.record_event:
             self.record_event.end()
@@ -470,6 +515,21 @@ class Profiler:
     def export(self, path="", format="json"):
         r"""
         Exports the tracing data in Chrome tracing data format.
+
+        Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle.profiler as profiler
+            prof = profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
+                                            profiler.ProfilerTarget.GPU],
+                                scheduler = (3, 7))
+            prof.start()
+            for iter in range(10):
+                #train()
+                prof.step()
+            prof.stop()
+            prof.export(path="./profiler_data.json", format="json")
         """
         if self.profiler_result:
             self.profiler_result.save(path, format)
@@ -487,6 +547,22 @@ class Profiler:
             op_detail(bool): expand each operator detail information.
             thread_sep(bool): print op table each thread.
             time_unit(str): can be chosen form ['s', 'ms', 'us', 'ns']
+        
+        Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle.profiler as profiler
+            prof = profiler.Profiler(targets=[profiler.ProfilerTarget.CPU,
+                                            profiler.ProfilerTarget.GPU],
+                                scheduler = (3, 7),
+                                on_trace_ready = profiler.export_chrome_tracing('./log'))
+            prof.start()
+            for iter in range(10):
+                #train()
+                prof.step()
+            prof.stop()
+            prof.summary(sorted_by=profiler.SortedKeys.CPUTotal, op_detail=True, thread_sep=False, time_unit='ms')
         """
         if self.profiler_result:
             statistic_data = StatisticData(

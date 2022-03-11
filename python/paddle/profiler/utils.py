@@ -74,6 +74,17 @@ class RecordEvent(ContextDecorator):
     def begin(self):
         r"""
         Record the time of begining.
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.profiler as profiler
+            record_event = profiler.RecordEvent("record_sub")
+            record_event.begin()
+            data1 = paddle.randn(shape=[3])
+            data2 = paddle.randn(shape=[3])
+            result = data1 - data2
+            record_event.end()
         """
         if self.event_type not in _AllowedEventTypeList:
             warn("Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
@@ -87,6 +98,17 @@ class RecordEvent(ContextDecorator):
     def end(self):
         r'''
         Record the time of ending.
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.profiler as profiler
+            record_event = profiler.RecordEvent("record_mul")
+            record_event.begin()
+            data1 = paddle.randn(shape=[3])
+            data2 = paddle.randn(shape=[3])
+            result = data1 * data2
+            record_event.end()
         '''
         if self.event:
             self.event.end()
