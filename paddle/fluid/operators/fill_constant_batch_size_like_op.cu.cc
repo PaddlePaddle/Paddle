@@ -19,6 +19,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fill_constant_batch_size_like,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CUDADeviceContext,
+                                           paddle::platform::float16>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CUDADeviceContext,
                                            float>,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CUDADeviceContext,
                                            double>,

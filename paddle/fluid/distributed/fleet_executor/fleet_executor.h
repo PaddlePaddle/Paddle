@@ -36,28 +36,25 @@ class FleetExecutor final {
  public:
   FleetExecutor() = delete;
   explicit FleetExecutor(const std::string& exe_desc_str);
+  explicit FleetExecutor(const FleetExecutorDesc& exe_desc);
   ~FleetExecutor();
   void Init(const std::string& carrier_id,
             const framework::ProgramDesc& program_desc, framework::Scope* scope,
-            const platform::Place& place,
+            const platform::Place& place, int64_t num_micro_batches,
             const std::vector<TaskNode*>& task_nodes,
-            const std::unordered_map<int64_t, int64_t>& task_id_to_rank);
+            const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
+            const std::vector<std::string>& inference_root_scope_vars = {});
   void Run(const std::string& carrier_id);
 
  private:
   DISABLE_COPY_AND_ASSIGN(FleetExecutor);
   void InitMessageBus();
-  void InitCarrier(Carrier* carrier);
-  void CopyParameters(int microbatch_id, const framework::ProgramDesc& program);
+  void InitCarrier(
+      Carrier* carrier, framework::Scope* scope, const platform::Place& place,
+      int64_t num_micro_batches, const framework::ProgramDesc& program_desc,
+      const std::vector<std::string>& inference_root_scope_vars = {});
   FleetExecutorDesc exe_desc_;
   std::shared_ptr<RuntimeGraph> runtime_graph_;
-  framework::Scope* root_scope_;
-  framework::Scope* minibatch_scope_;
-  platform::Place place_;
-  std::vector<framework::Scope*> microbatch_scopes_;
-  // The carriers under FleetExecutor will share message bus,
-  // using shared_ptr to manage lifetime and condition race.
-  std::shared_ptr<MessageBus> msg_bus_;
   std::unordered_set<std::string> carrier_ids_;
 };
 

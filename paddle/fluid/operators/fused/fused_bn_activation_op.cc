@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -104,8 +105,8 @@ void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
                         bias_dim, bias_dim.size()));
 
   bool check = true;
-  if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
-                              framework::product(bias_dim) <= 0)) {
+  if ((!ctx->IsRuntime()) &&
+      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
     check = false;
   }
 
@@ -139,16 +140,20 @@ framework::OpKernelType FusedBatchNormActOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP64) {
     bn_param_type = framework::proto::VarType::FP64;
   }
-  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Scale")->type(),
+  PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
+                                       ctx.Input<Tensor>("Scale")->dtype()),
                     platform::errors::PreconditionNotMet(
                         "Scale input should be of float type"));
-  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Bias")->type(),
+  PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
+                                       ctx.Input<Tensor>("Bias")->dtype()),
                     platform::errors::PreconditionNotMet(
                         "Bias input should be of float type"));
-  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Mean")->type(),
+  PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
+                                       ctx.Input<Tensor>("Mean")->dtype()),
                     platform::errors::PreconditionNotMet(
                         "Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Variance")->type(),
+  PADDLE_ENFORCE_EQ(bn_param_type, framework::TransToProtoVarType(
+                                       ctx.Input<Tensor>("Variance")->dtype()),
                     platform::errors::PreconditionNotMet(
                         "Variance input should be of float type"));
 

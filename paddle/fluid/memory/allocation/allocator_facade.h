@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/stream/stream.h"
+#include "paddle/phi/core/stream.h"
 
 namespace paddle {
 namespace memory {
@@ -42,13 +42,26 @@ using NPUPinnedAllocator = paddle::memory::allocation::NPUPinnedAllocator;
 class AllocatorFacadePrivate;
 class AllocatorFacade {
  public:
+  using Allocation = phi::Allocation;
   AllocatorFacade(const AllocatorFacade& o) = delete;
   const AllocatorFacade& operator=(const AllocatorFacade& o) = delete;
   ~AllocatorFacade();
 
   static AllocatorFacade& Instance();
 
+  AllocatorFacadePrivate* GetPrivate() const;
+
   const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
+
+  void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place,
+                                                 const gpuStream_t& stream);
+#endif
+
+  const std::shared_ptr<Allocator>& GetZeroAllocator(
+      const platform::Place& place);
 
   // Allocate a shared allocation.
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
@@ -60,15 +73,16 @@ class AllocatorFacade {
 
   std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                           size_t size,
-                                          const platform::Stream& stream);
+                                          const phi::Stream& stream);
+
+  AllocationPtr Alloc(const platform::Place& place, size_t size,
+                      const phi::Stream& stream);
 
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                    const platform::Stream& stream);
+                    const phi::Stream& stream);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  // TODO(zhiqiu): change gpuStream_t to platform::Stream if needed.
-  AllocationPtr Alloc(const platform::Place& place, size_t size,
-                      const gpuStream_t& stream);
+  // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
   uint64_t Release(const platform::CUDAPlace& place, const gpuStream_t& stream);
   void RecordStream(std::shared_ptr<Allocation> allocation,
                     const gpuStream_t& stream);
@@ -85,6 +99,10 @@ class AllocatorFacade {
  private:
   AllocatorFacade();
   AllocatorFacadePrivate* m_;
+#ifdef PADDLE_WITH_CUDA
+  std::unordered_map<CUDAGraphID, std::unique_ptr<AllocatorFacadePrivate>>
+      cuda_graph_map_;
+#endif
 };
 
 }  // namespace allocation

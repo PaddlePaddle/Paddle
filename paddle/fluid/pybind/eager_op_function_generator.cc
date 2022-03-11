@@ -17,6 +17,7 @@
 #include <iostream>
 #include <set>
 #include <string>
+#include <unordered_set>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -31,6 +32,9 @@
 #include "paddle/fluid/framework/fleet/ascend_wrapper.h"
 #endif
 #include "paddle/fluid/pybind/op_function_generator.h"
+
+// phi
+#include "paddle/phi/kernels/declarations.h"
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
@@ -70,16 +74,16 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-    auto& %s = GetEagerTensorFromArgs("%s", "%s", args, %d, %s);)";
+    auto& %s = GetTensorFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-    auto %s = GetEagerTensorListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_TEMPLATE = R"(
-    auto %s = GetEagerTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_VAR_PTR_LIST_TEMPLATE = R"(
-    auto %s = GetEagerTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
+    auto %s = GetTensorPtrListFromArgs("%s", "%s", args, %d, %s);)";
 
 const char* CAST_SIZE_T_TEMPLATE = R"(
     auto %s = GetUnsignedLongFromArgs("%s", "%s", args, %d, %s);)";
@@ -125,6 +129,12 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
 })";
 
 const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, METH_VARARGS | METH_KEYWORDS, "C++ interface function for %s in dygraph."},)";
+
+// These operators will skip automatical code generatrion and
+// need to be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE
+std::unordered_set<std::string> CUSTOM_HANDWRITE_OPS_SET = {"run_program"};
+const char* CUSTOM_HANDWRITE_OP_FUNC_FILE =
+  "#include \"paddle/fluid/pybind/custom_handwrite_op_funcs.h\"\n";
 
 // clang-format on
 static inline bool FindInsMap(const std::string& op_type,
@@ -313,6 +323,21 @@ static std::string GenerateCoreOpsInfoMap() {
       "  }\n"
       "}\n"
       "\n"
+      "static PyObject * eager_get_core_ops_args_type_info(PyObject *self) {\n"
+      "  PyThreadState *tstate = nullptr;\n"
+      "  try\n"
+      "  {\n"
+      "    return ToPyObject(core_ops_args_type_info);\n"
+      "  }\n"
+      "  catch(...) {\n"
+      "    if (tstate) {\n"
+      "      PyEval_RestoreThread(tstate);\n"
+      "    }\n"
+      "    ThrowExceptionToPython(std::current_exception());\n"
+      "    return nullptr;\n"
+      "  }\n"
+      "}\n"
+      "\n"
       "static PyObject * eager_get_core_ops_returns_info(PyObject *self) {\n"
       "  PyThreadState *tstate = nullptr;\n"
       "  try\n"
@@ -337,7 +362,7 @@ GenerateOpFunctions() {
 
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-
+  bool append_custom_head_file = false;
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
@@ -345,11 +370,16 @@ GenerateOpFunctions() {
       continue;
     }
     auto& op_type = op_proto->type();
-    // Skip ooerator which is not inherit form OperatorWithKernel, like while,
+    // Skip operators that will be handwriten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
+    if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
+      append_custom_head_file = true;
+      continue;
+    }
+    // Skip operator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    // if the pten lib contains op kernel, we still generate ops method
+    // if the phi lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
-        !pten::KernelFactory::Instance().HasCompatiblePtenKernel(op_type)) {
+        !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
     std::string func_name = "eager_api_" + op_type;
@@ -361,6 +391,9 @@ GenerateOpFunctions() {
 
     op_function_list.emplace_back(std::move(op_function_str));
     bind_function_list.emplace_back(std::move(bind_function_str));
+  }
+  if (append_custom_head_file) {
+    op_function_list.emplace_back(CUSTOM_HANDWRITE_OP_FUNC_FILE);
   }
   return std::make_tuple(op_function_list, bind_function_list);
 }
@@ -378,6 +411,7 @@ int main(int argc, char* argv[]) {
 
   std::vector<std::string> headers{
       "\"pybind11/detail/common.h\"",
+      "\"paddle/fluid/pybind/eager_final_state_op_function_impl.h\"",
       "\"paddle/fluid/pybind/op_function_common.h\"",
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"",
@@ -399,6 +433,10 @@ int main(int argc, char* argv[]) {
       "{\"get_core_ops_args_info\", "
       "(PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, "
       "\"C++ interface function for eager_get_core_ops_args_info.\"},\n"
+      "{\"get_core_ops_args_type_info\", "
+      "(PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info, "
+      "METH_NOARGS, "
+      "\"C++ interface function for eager_get_core_ops_args_type_info.\"},\n"
       "  {\"get_core_ops_returns_info\", "
       "(PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, "
       "METH_NOARGS, \"C++ interface function for "
@@ -419,6 +457,15 @@ int main(int argc, char* argv[]) {
       << "  InitOpsAttrTypeMap();\n"
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
+      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+         "core.eager.ops failed!\"));\n"
+      << "  }\n\n"
+      << "  if (PyModule_AddFunctions(m.ptr(), EagerFinalStateMethods) < 0) {\n"
+      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+         "core.eager.ops failed!\"));\n"
+      << "  }\n\n"
+      << "  if (PyModule_AddFunctions(m.ptr(), CustomEagerFinalStateMethods) < "
+         "0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"

@@ -14,7 +14,7 @@
 
 import paddle
 import numpy as np
-from paddle.fluid.layers import core
+from ..framework import core
 from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = []
@@ -223,12 +223,18 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
 def to_string(var, prefix='Tensor'):
     indent = len(prefix) + 1
 
+    dtype = convert_dtype(var.dtype)
+    if var.dtype == core.VarDesc.VarType.BF16:
+        dtype = 'bfloat16'
+
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
     tensor = var.value().get_tensor()
     if not tensor._is_initialized():
         return "Tensor(Not initialized)"
 
+    if var.dtype == core.VarDesc.VarType.BF16:
+        var = var.astype('float32')
     np_var = var.numpy()
 
     if len(var.shape) == 0:
@@ -250,14 +256,14 @@ def to_string(var, prefix='Tensor'):
     return _template.format(
         prefix=prefix,
         shape=var.shape,
-        dtype=convert_dtype(var.dtype),
+        dtype=dtype,
         place=var._place_str,
         stop_gradient=var.stop_gradient,
         indent=' ' * indent,
         data=data)
 
 
-def eager_tensor_to_string(tensor, prefix='Tensor'):
+def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"

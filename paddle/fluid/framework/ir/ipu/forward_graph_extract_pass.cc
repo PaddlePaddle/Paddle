@@ -64,6 +64,19 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
       }
     }
   }
+  // learning_rate var
+  for (auto* node : all_ops[OpRole::kOptimize]) {
+    if (node->Op()->Inputs().count("LearningRate") &&
+        !node->Op()->Inputs().at("LearningRate").empty()) {
+      auto lr_var_name = node->Op()->Inputs().at("LearningRate").front();
+      for (auto* in_var : node->inputs) {
+        if (in_var->Name() == lr_var_name) {
+          VLOG(10) << "found LearningRate var: " << in_var->Name();
+          forward_vars.insert(in_var);
+        }
+      }
+    }
+  }
   // control_vars &  backward_vars
   for (auto* node : graph->Nodes()) {
     if (!node->IsVar()) {

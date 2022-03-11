@@ -18,6 +18,7 @@
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/platform/flags.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk, false,
@@ -45,7 +46,10 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
       allow_free_idle_chunk_(allow_free_idle_chunk) {}
 
-Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t unaligned_size) {
+phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
+    size_t unaligned_size) {
+  platform::RecordEvent("AutoGrowthBestFitAllocator::Allocate",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   size_t size = AlignedSize(unaligned_size, alignment_);
   VLOG(10) << "Allocate " << unaligned_size << " bytes, aligned to " << size;
 
@@ -78,11 +82,13 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t unaligned_size) {
     size_t realloc_size = std::max(size, chunk_size_);
 
     try {
-      chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
+      chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
+          underlying_allocator_->Allocate(realloc_size)));
     } catch (BadAlloc &ex) {
       if (FLAGS_free_when_no_cache_hit) throw ex;
       FreeIdleChunks();
-      chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
+      chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
+          underlying_allocator_->Allocate(realloc_size)));
     }
 
     auto *chunk = &(*chunks_.rbegin());
@@ -104,7 +110,9 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t unaligned_size) {
   return new BlockAllocation(block_it);
 }
 
-void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
+void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
+  platform::RecordEvent("AutoGrowthBestFitAllocator::Free",
+                        platform::TracerEventType::UserDefined, 9 /*level*/);
   VLOG(10) << "Free " << allocation->size()
            << " bytes, ptr = " << allocation->ptr();
   std::lock_guard<SpinLock> guard(spinlock_);

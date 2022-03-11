@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -27,7 +28,7 @@ bool CUDAStream::Init(const Place& place, const Priority& priority,
                     platform::errors::InvalidArgument(
                         "Cuda stream must be created using cuda place."));
   place_ = place;
-  CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
+  CUDADeviceGuard guard(place_.device);
   if (priority == Priority::kHigh) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
@@ -53,7 +54,7 @@ bool CUDAStream::Init(const Place& place, const Priority& priority,
 }
 
 void CUDAStream::Destroy() {
-  CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
+  CUDADeviceGuard guard(place_.device);
   Wait();
   WaitCallback();
   if (stream_ && owned_stream_) {
@@ -116,11 +117,8 @@ CUDAStream* get_current_stream(int deviceId) {
 
   platform::Place device = CUDAPlace(deviceId);
 
-  auto stream = static_cast<platform::CUDADeviceContext*>(pool.Get(device))
-                    ->context()
-                    ->Stream()
-                    .get();
-  return stream;
+  return static_cast<platform::CUDADeviceContext*>(pool.Get(device))
+      ->GetCudaStream();
 #else
   PADDLE_THROW(platform::errors::Unavailable(
       "Paddle is not compiled with CUDA. Cannot visit cuda current stream."));
@@ -133,12 +131,12 @@ CUDAStream* set_current_stream(CUDAStream* stream) {
   auto& device = stream->GetPlace();
   auto& pool = platform::DeviceContextPool::Instance();
   return static_cast<platform::CUDADeviceContext*>(pool.Get(device))
-      ->context()
-      ->SetStream(stream);
+      ->SetCudaStream(stream);
 #else
   PADDLE_THROW(platform::errors::Unavailable(
-      "Paddle is not compiled with CUDA. Cannot visit cuda current stream."));
-  return nullptr;
+      "Paddle is not compiled with CUDA. Cannot visit cuda current"
+      "stream."));
+  return CUDAStream(nullptr);
 #endif
 }
 }  // namespace stream

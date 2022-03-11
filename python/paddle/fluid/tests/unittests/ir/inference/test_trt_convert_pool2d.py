@@ -52,7 +52,7 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
         for strides in [[1, 1], [1, 2], [2, 2]]:
-            for paddings in [[0, 2], [0, 3], [0, 1, 2, 3]]:
+            for paddings in [[0, 2], [0, 3]]:
                 for pooling_type in ['max', 'avg']:
                     for padding_algotithm in ['EXPLICIT', 'SAME', 'VAILD']:
                         for ksize in [[2, 3], [3, 3]]:
@@ -145,44 +145,18 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
 
     def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if len(program_config.ops[0].attrs['paddings']) == 4:
-                return True
-            return False
-
-        self.add_skip_case(teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-                           "4-dims paddings are not support for trt now.")
-
-        def teller2(program_config, predictor_config):
-            if program_config.ops[0].attrs['global_pooling'] == True:
+        def teller(program_config, predictor_config):
+            if program_config.ops[0].attrs['pooling_type'] == 'avg' and \
+               program_config.ops[0].attrs['global_pooling'] == False and \
+               program_config.ops[0].attrs['exclusive'] == True and \
+               program_config.ops[0].attrs['adaptive'] == False and \
+               program_config.ops[0].attrs['ceil_mode'] == True:
                 return True
             return False
 
         self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "It is not support that global_pooling is true for trt now.")
-
-        def teller3(program_config, predictor_config):
-            if self.dynamic_shape.min_input_shape == {} and program_config.ops[
-                    0].attrs['ceil_mode'] == True:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller3, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "It is not support that ceil_mode is true in static mode for trt now."
-        )
-
-        def teller4(program_config, predictor_config):
-            if self.dynamic_shape.min_input_shape != {} and (
-                    program_config.ops[0].attrs['strides'] == [1, 2] or
-                    program_config.ops[0].attrs['strides'] == [2, 2]):
-                return True
-            return False
-
-        self.add_skip_case(
-            teller4, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "It is not support that strides is not equal [1, 1] in dynamic mode for trt now."
+            teller, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "The results of some cases are Nan, but the results of TensorRT and GPU are the same."
         )
 
     def test(self):

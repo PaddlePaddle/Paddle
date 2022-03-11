@@ -74,7 +74,7 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     out_dim.push_back(static_cast<int64_t>(batch_size));
 
     Tensor* output = context.Output<Tensor>("Out");
-    output->Resize(framework::make_ddim(out_dim));
+    output->Resize(phi::make_ddim(out_dim));
     output->mutable_data<T>(context.GetPlace());
     framework::TensorFromVector(ids, context.device_context(), output);
   }

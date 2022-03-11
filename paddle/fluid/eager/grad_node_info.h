@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/include/core.h"
+#include "paddle/fluid/eager/hooks.h"
+#include "paddle/phi/api/all.h"
 
 namespace egr {
 /**
@@ -76,10 +76,10 @@ class GradSlotMeta {
 
 class GradNodeBase {
  public:
-  GradNodeBase() = default;
+  GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
   GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
-  virtual ~GradNodeBase() = default;
+  virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
 
   /**
    * operator() designed to contian the real backward execution logic, it should
@@ -89,13 +89,13 @@ class GradNodeBase {
    * Tensor which contains grads input of current operator
    *
    * Note: why we need backward inputs and outputs construct as vector of vector
-   * of egr::EagerTensor?
+   * of paddle::experimental::Tensor?
    * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
    * so, vector of vector
    * is better choice to fit this format.
    * **/
-  virtual std::vector<std::vector<egr::EagerTensor>> operator()(
-      const std::vector<std::vector<egr::EagerTensor>>& grads) = 0;
+  virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads) = 0;
 
   /**
    * AddEdges is designed to set input tensors' backward Node as current
@@ -106,7 +106,6 @@ class GradNodeBase {
    * This one is called slot by slot
    * **/
   void AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id);
-  void AddEdges(const std::vector<AutogradMeta*>& metas, size_t slot_id);
   void AddEdges(AutogradMeta* meta, size_t slot_id);
 
   /**
@@ -123,13 +122,11 @@ class GradNodeBase {
    * Set bwd ins and outs info with forward vars
    * **/
 
-  void SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
-                     size_t slot_rank);
-  void SetGradInMeta(const AutogradMeta& fwd_out, size_t slot_rank);
+  void SetGradInMeta(std::vector<AutogradMeta*>* fwd_out, size_t slot_rank);
+  void SetGradInMeta(AutogradMeta* fwd_out, size_t slot_rank);
 
-  void SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
-                      size_t slot_rank);
-  void SetGradOutMeta(const AutogradMeta& fwd_in, size_t slot_rank);
+  void SetGradOutMeta(std::vector<AutogradMeta*>* fwd_in, size_t slot_rank);
+  void SetGradOutMeta(AutogradMeta* fwd_in, size_t slot_rank);
 
   /**
    * Default setters for Grad in/out meta this should be used for same special
@@ -137,22 +134,31 @@ class GradNodeBase {
    * **/
   void SetDefaultGradInOutMeta();
   /**
-   * Register GradientHook or ReduceHook
+   * Register GradientHook
    * **/
-  void RegisterGradientHook(
-      size_t slot_id, size_t rank,
-      const std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook);
-  void RegisterReduceHook(const std::function<void(void)>& hook);
+  int64_t RegisterGradientHook(size_t slot_id, size_t rank,
+                               std::shared_ptr<egr::TensorHook>&& hook);
 
   /**
-   * Apply GradientHook or ReduceHook
-   * **/
-  inline bool GradientHooksRegistered() { return gradient_hooks_.size() != 0; }
-  inline bool ReduceHooksRegistered() { return reduce_hooks_.size() != 0; }
+  * Remove GradientHook
+  * **/
+  bool RemoveGradientHook(const int64_t& hook_id) {
+    auto remove_cnt = gradient_hooks_.erase(hook_id);
+    if (remove_cnt == 0) {
+      return false;
+    }
+    return true;
+  }
 
-  std::vector<std::vector<egr::EagerTensor>> ApplyGradientHooks(
-      const std::vector<std::vector<egr::EagerTensor>>& tensors);
-  void ApplyReduceHooks();
+  /**
+   * Apply GradientHook
+   * **/
+  inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
+
+  std::vector<std::vector<paddle::experimental::Tensor>> ApplyGradientHooks(
+      const std::vector<std::vector<paddle::experimental::Tensor>>& tensors);
+
+  virtual std::string name() { return "GradNodeBase"; }
 
  private:
   // TODO(jiabin): Use SmallVector instead after merge PR from develop
@@ -171,12 +177,14 @@ class GradNodeBase {
   // Gradient Hooks
   // Customer may register a list of hooks which will be called in order during
   // backward
-  // Each entry consists one pair of <out_rank, std::function>
-  std::vector<std::tuple<
-      /* slot id */ size_t, /* rank */ size_t,
-      /* hook */ std::function<egr::EagerTensor(const egr::EagerTensor&)>>>
+  // Each entry consists one pair of
+  // <hook_id, <out_rank, std::shared_ptr<TensorHook>>>
+  std::map<int64_t, std::tuple<
+                        /* slot id */ size_t, /* rank */ size_t,
+                        /* hook */ std::shared_ptr<TensorHook>>>
       gradient_hooks_;
-  std::vector<std::function<void(void)>> reduce_hooks_;
+
+  int64_t next_hook_id_{0};
 };
 
 class Edge {

@@ -334,6 +334,9 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
 
     if (end_patter_layernorms[k]->Op()->HasAttr("out_threshold")) {
       new_op_desc.SetAttr("enable_int8", true);
+      new_op_desc.SetAttr(
+          "out_threshold",
+          end_patter_layernorms[k]->Op()->GetAttr("out_threshold"));
     }
 
     auto* embedding_eltwise_layernorm = graph->CreateOpNode(&new_op_desc);

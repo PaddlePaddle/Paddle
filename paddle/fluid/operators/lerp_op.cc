@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/lerp_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,49 +23,6 @@ namespace operators {
 class LerpOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "lerp");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "lerp");
-    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "lerp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "lerp");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-    auto w_dims = ctx->GetInputDim("Weight");
-    framework::DDim out_dims;
-    out_dims = GetOutputDims(x_dims, y_dims);
-    if (w_dims.size() > 1 || w_dims[0] != 1) {
-      out_dims = GetOutputDims(out_dims, w_dims);
-    }
-
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
- private:
-  framework::DDim GetOutputDims(const framework::DDim& s_dims,
-                                const framework::DDim& l_dims) const {
-    if (s_dims.size() > l_dims.size()) {
-      return GetOutputDims(l_dims, s_dims);
-    }
-    std::vector<int64_t> shapes = framework::vectorize<int64_t>(l_dims);
-    for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
-      int64_t s = s_dims[i];
-      int64_t l = l_dims[j];
-      if (s != l) {
-        if (l == 1) {
-          shapes[j] = s;
-        } else if (s != 1) {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "The shape of tensor a %s:%d must match shape of tensor b "
-              "%s:%d.",
-              s_dims.to_str(), i, l_dims.to_str(), j));
-        }
-      }
-    }
-    return framework::make_ddim(shapes);
-  }
 };
 
 class LerpOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -125,22 +85,12 @@ DECLARE_INPLACE_OP_INFERER(LerpInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(lerp, LerpInferShapeFunctor,
+                            PD_INFER_META(phi::LerpInferMeta));
 REGISTER_OPERATOR(
     lerp, paddle::operators::LerpOp, paddle::operators::LerpOpMaker,
     paddle::operators::LerpOpGradMaker<paddle::framework::OpDesc>,
     paddle::operators::LerpOpGradMaker<paddle::imperative::OpBase>,
-    paddle::operators::LerpInplaceInferer);
+    paddle::operators::LerpInplaceInferer, LerpInferShapeFunctor);
 
 REGISTER_OPERATOR(lerp_grad, paddle::operators::LerpGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    lerp,
-    paddle::operators::LerpKernel<paddle::platform::CPUDeviceContext, float>,
-    paddle::operators::LerpKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    lerp_grad,
-    paddle::operators::LerpGradKernel<paddle::platform::CPUDeviceContext,
-                                      float>,
-    paddle::operators::LerpGradKernel<paddle::platform::CPUDeviceContext,
-                                      double>);

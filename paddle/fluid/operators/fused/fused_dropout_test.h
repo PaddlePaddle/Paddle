@@ -24,14 +24,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace memory = paddle::memory;
 
-USE_OP(dropout);
+USE_OP_ITSELF(dropout);
 USE_OP(layer_norm);
 
 template <typename T>

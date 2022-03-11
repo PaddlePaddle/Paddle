@@ -163,7 +163,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input = ctx.Input<Tensor>("X");
-    auto input_data_type = input->type();
+    auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -453,7 +453,7 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input = ctx.Input<Tensor>("X");
-    auto input_data_type = input->type();
+    auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

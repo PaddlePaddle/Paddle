@@ -18,11 +18,9 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/var_type.h"
 
-namespace paddle {
-namespace framework {
-class LoDTensor;
-}  // namespace framework
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace operators {

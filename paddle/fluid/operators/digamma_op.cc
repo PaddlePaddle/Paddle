@@ -89,12 +89,3 @@ REGISTER_OPERATOR(digamma, ops::DigammaOp, ops::DigammaOpMaker,
                   ops::DigammaGradOpMaker<paddle::framework::OpDesc>,
                   ops::DigammaGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(digamma_grad, ops::DigammaGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    digamma, ops::DigammaKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DigammaKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    digamma_grad,
-    ops::DigammaGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::DigammaGradKernel<paddle::platform::CPUDeviceContext, double>);

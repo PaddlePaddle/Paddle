@@ -27,6 +27,7 @@ class TensorShape {
  public:
   TensorShape() = default;
   explicit TensorShape(llvm::ArrayRef<int64_t> dims);
+  explicit TensorShape(std::initializer_list<int64_t> dims);
 
   int GetRank() const;
 
@@ -38,6 +39,10 @@ class TensorShape {
                                        const TensorShape& v);
   friend bool operator==(const TensorShape& a, const TensorShape& b) {
     return a.dims_ == b.dims_;
+  }
+
+  friend bool operator!=(const TensorShape& a, const TensorShape& b) {
+    return !(a == b);
   }
 
  private:

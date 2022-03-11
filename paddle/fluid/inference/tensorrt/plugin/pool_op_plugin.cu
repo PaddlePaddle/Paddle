@@ -35,6 +35,36 @@ nvinfer1::Dims PoolPlugin::getOutputDimensions(int index,
   return output_dims;
 }
 
+size_t PoolPlugin::getSerializationSize() const TRT_NOEXCEPT {
+  return getBaseSerializationSize() + SerializedSize(ceil_mode_) +
+         SerializedSize(pool_type_) + SerializedSize(adaptive_) +
+         SerializedSize(exclusive_) + SerializedSize(ksize_) +
+         SerializedSize(strides_) + SerializedSize(paddings_) +
+         SerializedSize(real_paddings_) + SerializedSize(input_shape_) +
+         SerializedSize(output_shape_);
+}
+
+// TRT will call this func when we need to serialize the configuration of
+// tensorrt.
+void PoolPlugin::serialize(void *buffer) const TRT_NOEXCEPT {
+  serializeBase(buffer);
+  SerializeValue(&buffer, ceil_mode_);
+  SerializeValue(&buffer, pool_type_);
+  SerializeValue(&buffer, adaptive_);
+  SerializeValue(&buffer, exclusive_);
+  SerializeValue(&buffer, ksize_);
+  SerializeValue(&buffer, strides_);
+  SerializeValue(&buffer, paddings_);
+  SerializeValue(&buffer, real_paddings_);
+  SerializeValue(&buffer, input_shape_);
+  SerializeValue(&buffer, output_shape_);
+}
+
+PoolPlugin *PoolPlugin::clone() const TRT_NOEXCEPT {
+  return new PoolPlugin(ceil_mode_, pool_type_, adaptive_, exclusive_, ksize_,
+                        strides_, paddings_, input_shape_, real_paddings_);
+}
+
 int PoolPlugin::enqueue(int batchSize, const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
                         void **outputs, void *workspace,
@@ -59,14 +89,15 @@ int PoolPlugin::enqueue(int batchSize, const void *const *inputs,
         paddle::operators::math::MaxPool<float>, float>
         pool2d_forward;
     pool2d_forward(idata, input_shape, output_shape, ksize_, strides_,
-                   paddings_, true, adaptive_, odatas[0], stream, pool_process);
+                   paddings_, true, false, odatas[0], stream, pool_process);
   } else if (pool_type_ == PoolType::avg) {
     paddle::operators::math::AvgPool<float> pool_process;
     paddle::operators::math::Pool2dDirectCUDAFunctor<
         paddle::operators::math::AvgPool<float>, float>
         pool2d_forward;
     pool2d_forward(idata, input_shape, output_shape, ksize_, strides_,
-                   paddings_, true, adaptive_, odatas[0], stream, pool_process);
+                   paddings_, exclusive_, adaptive_, odatas[0], stream,
+                   pool_process);
   }
 
   return cudaGetLastError() != cudaSuccess;
@@ -82,6 +113,7 @@ PoolPluginDynamic::PoolPluginDynamic(void const *serialData,
   DeserializeValue(&serialData, &serialLength, &pool_type);
   pool_type_ = std::string(pool_type);
   DeserializeValue(&serialData, &serialLength, &adaptive_);
+  DeserializeValue(&serialData, &serialLength, &exclusive_);
   DeserializeValue(&serialData, &serialLength, &ksize_);
   DeserializeValue(&serialData, &serialLength, &strides_);
   DeserializeValue(&serialData, &serialLength, &paddings_);
@@ -90,19 +122,25 @@ PoolPluginDynamic::PoolPluginDynamic(void const *serialData,
 
 size_t PoolPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
   return SerializedSize(ceil_mode_) + SerializedSize(pool_type_.c_str()) +
-         SerializedSize(adaptive_) + SerializedSize(ksize_) +
-         SerializedSize(strides_) + SerializedSize(paddings_) +
-         SerializedSize(is_global_);
+         SerializedSize(adaptive_) + SerializedSize(exclusive_) +
+         SerializedSize(ksize_) + SerializedSize(strides_) +
+         SerializedSize(paddings_) + SerializedSize(is_global_);
 }
 
 void PoolPluginDynamic::serialize(void *buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, ceil_mode_);
   SerializeValue(&buffer, pool_type_.c_str());
   SerializeValue(&buffer, adaptive_);
+  SerializeValue(&buffer, exclusive_);
   SerializeValue(&buffer, ksize_);
   SerializeValue(&buffer, strides_);
   SerializeValue(&buffer, paddings_);
   SerializeValue(&buffer, is_global_);
+}
+
+nvinfer1::IPluginV2DynamicExt *PoolPluginDynamic::clone() const TRT_NOEXCEPT {
+  return new PoolPluginDynamic(ceil_mode_, pool_type_, adaptive_, exclusive_,
+                               ksize_, strides_, paddings_, is_global_);
 }
 
 nvinfer1::DimsExprs PoolPluginDynamic::getOutputDimensions(
@@ -117,10 +155,13 @@ nvinfer1::DimsExprs PoolPluginDynamic::getOutputDimensions(
       platform::errors::InvalidArgument("The channel dimension should be "
                                         "static, but we found it's dynamic."));
   nvinfer1::DimsExprs output(inputs[0]);
-  if (is_global_) {
+  if (is_global_ && !adaptive_) {
     output.d[2] = expr_builder.constant(1);
     output.d[3] = expr_builder.constant(1);
     return output;
+  }
+  if (is_global_ && adaptive_) {
+    return inputs[0];
   }
   if (adaptive_) {
     output.d[2] = expr_builder.constant(ksize_[0]);
@@ -245,6 +286,10 @@ int PoolPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     output_shape[2] = data_dim[0];
     output_shape[3] = data_dim[1];
   }
+  if (adaptive_) {
+    output_shape[2] = h;
+    output_shape[3] = w;
+  }
 
   if (pool_type_ == "max") {
     paddle::operators::math::MaxPool<float> pool_process;
@@ -252,14 +297,14 @@ int PoolPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
         paddle::operators::math::MaxPool<float>, float>
         pool2d_forward;
     pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
-                   true, adaptive_, output, stream, pool_process);
+                   true, false, output, stream, pool_process);
   } else if (pool_type_ == "avg") {
     paddle::operators::math::AvgPool<float> pool_process;
     paddle::operators::math::Pool2dDirectCUDAFunctor<
         paddle::operators::math::AvgPool<float>, float>
         pool2d_forward;
     pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
-                   true, adaptive_, output, stream, pool_process);
+                   exclusive_, adaptive_, output, stream, pool_process);
   }
 
   return cudaGetLastError() != cudaSuccess;

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -51,24 +52,28 @@ class CUDAStream final {
                       const StreamFlag& flag = StreamFlag::kDefaultFlag) {
     Init(place, priority, flag);
   }
+  explicit CUDAStream(gpuStream_t stream, const Place& place)
+      : place_(place), stream_(stream) {
+    owned_stream_ = false;
+    callback_manager_.reset(new StreamCallbackManager<gpuStream_t>(stream_));
+  }
   virtual ~CUDAStream() { Destroy(); }
 
   bool Init(const Place& place, const Priority& priority = Priority::kNormal,
             const StreamFlag& flag = StreamFlag::kDefaultFlag);
 
-  template <typename Callback>
-  void AddCallback(Callback&& callback) const {
+  void AddCallback(std::function<void()> callback) const {
     callback_manager_->AddCallback(callback);
   }
 
-  template <typename Callback>
 #ifdef PADDLE_WITH_HIP
-  void RecordEvent(hipEvent_t ev, Callback callback) const {
+  void RecordEvent(hipEvent_t ev, const std::function<void()>& callback) const {
     callback();
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventRecord(ev, stream_));
   }
 #else
-  void RecordEvent(cudaEvent_t ev, Callback callback) const {
+  void RecordEvent(cudaEvent_t ev,
+                   const std::function<void()>& callback) const {
     callback();
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(ev, stream_));
   }
@@ -149,6 +154,7 @@ class CUDAStream final {
 };
 
 CUDAStream* get_current_stream(int deviceId);
+// NOTE: There is a problem with the interface and needs to be fixed
 CUDAStream* set_current_stream(CUDAStream* stream);
 
 }  // namespace stream

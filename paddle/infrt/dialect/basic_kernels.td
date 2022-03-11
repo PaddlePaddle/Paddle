@@ -27,7 +27,7 @@ def CallOp : INFRT_Op<"call"> {
   let results = (outs Variadic<AnyType>);
 
   let extraClassDeclaration = [{
-      StringRef getCallee() { return callee(); }
+      mlir::StringRef getCallee() { return callee(); }
       mlir::FunctionType getCalleeType();
     }];
 }
@@ -48,18 +48,17 @@ def ConstantF64Op : ConstantOp<"f64", F64, F64Attr>;
 def ReturnOp : INFRT_Op<"return", [Terminator]> {
   let summary = "host executor return operation";
   let description = [{
-      The "infrt.return" operation represents a return operation within a function.
+      The "Infrt.return" operation represents a return operation within a function.
 
         func @foo() : (i32, f8) {
-        infrt.return %0, %1 : i32, f8
+        Infrt.return %0, %1 : i32, f8
         }
     }];
 
   let arguments = (ins Variadic<AnyType>:$operands);
 
-  let builders = [OpBuilder<
-                  "OpBuilder &b, OperationState &result",
-                  [{ build(b, result, llvm::None); }]>];
+  let builders = [OpBuilder<(ins),
+                  [{ build($_builder, $_state, llvm::None); }]>];
 }
 
 class AddOp<string suffix, Type type> : INFRT_Op<"add." # suffix, [NoSideEffect]> {
@@ -107,30 +106,18 @@ class PrintOp<string suffix, Type type> : INFRT_Op<"print." # suffix> {
   let verifier = ?;
 }
 
-//def PrintI32Op : PrintOp<"i32", I32>;
-//def PrintI64Op : PrintOp<"i64", I64>;
+def PrintI32Op : PrintOp<"i32", I32>;
+def PrintI64Op : PrintOp<"i64", I64>;
 def PrintF32Op : PrintOp<"f32", F32>;
-//def PrintF64Op : PrintOp<"f64", F64>;
-
-def GetStringOp : INFRT_Op<"get_string"> {
-  let summary = "infrt.get_string";
-  let description = [{
-    Get a !infrt.string value from the given string attribute.
-  }];
-
-  let arguments = (ins StrAttr:$value);
-  let results = (outs StringType);
-  let assemblyFormat = "`(` $value `)` attr-dict";
-  let verifier = ?;
-}
+def PrintF64Op : PrintOp<"f64", F64>;
 
 def PrintStringOp : INFRT_Op<"print_string"> {
-  let summary = "infrt.print_string";
+  let summary = "Infrt.print_string";
   let description = [{
       An operation that prints a string.
   }];
 
-  let arguments = (ins StringType:$input);
+  let arguments = (ins StrAttr:$input);
   let results = (outs);
   let assemblyFormat = "`(` $input `)` attr-dict";
   let verifier = ?;

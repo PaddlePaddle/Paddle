@@ -56,6 +56,23 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
   }
 }
 
+inline ncclDataType_t ToNCCLDataType(experimental::DataType type) {
+  if (type == experimental::DataType::FLOAT32) {
+    return ncclFloat;
+  } else if (type == experimental::DataType::FLOAT64) {
+    return ncclDouble;
+  } else if (type == experimental::DataType::INT32) {
+    return ncclInt;
+  } else if (type == experimental::DataType::INT64) {
+    return ncclInt64;
+  } else if (type == experimental::DataType::FLOAT16) {
+    return ncclFloat16;
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This datatype in nccl is not supported."));
+  }
+}
+
 // NOTE(minqiyang): according to the ncclGroupEnd documentations:
 // https://docs.nvidia.com/deeplearning/sdk/nccl-api/ncclapidoc.html,
 // ncclGroupEnd will wait for all communicators to be initialized, which will
@@ -83,15 +100,26 @@ struct NCCLContext {
   std::unique_ptr<CUDADeviceContext> ctx_;
   ncclComm_t comm_;
 
-  explicit NCCLContext(int dev_id)
-      : ctx_(new CUDADeviceContext(CUDAPlace(dev_id))), comm_{nullptr} {}
+  explicit NCCLContext(int dev_id) : comm_{nullptr} {
+    ctx_.reset(new CUDADeviceContext(CUDAPlace(dev_id)));
+    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                           .GetAllocator(CUDAPlace(dev_id), ctx_->stream())
+                           .get());
+    ctx_->SetHostAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAllocator(paddle::platform::CPUPlace())
+            .get());
+    ctx_->SetZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(CUDAPlace(dev_id))
+            .get());
+    ctx_->PartialInitWithAllocator();
+  }
 
   gpuStream_t stream() const { return ctx_->stream(); }
   ncclComm_t comm() const { return comm_; }
 
-  int device_id() const {
-    return BOOST_GET_CONST(platform::CUDAPlace, ctx_->GetPlace()).device;
-  }
+  int device_id() const { return ctx_->GetPlace().device; }
 };
 
 struct NCCLContextMap {
@@ -106,7 +134,7 @@ struct NCCLContextMap {
                           "The NCCL place should not be empty."));
     order_.reserve(places.size());
     for (auto &p : places) {
-      int dev_id = BOOST_GET_CONST(CUDAPlace, p).device;
+      int dev_id = p.device;
       order_.emplace_back(dev_id);
       contexts_.emplace(dev_id, NCCLContext(dev_id));
     }
@@ -155,12 +183,10 @@ struct NCCLContextMap {
   CUDADeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
   CUDADeviceContext *DevCtx(platform::Place p) const {
-    return DevCtx(BOOST_GET_CONST(CUDAPlace, p).device);
+    return DevCtx(p.device);
   }
 
-  const NCCLContext &at(platform::Place p) const {
-    return this->at(BOOST_GET_CONST(CUDAPlace, p).device);
-  }
+  const NCCLContext &at(platform::Place p) const { return this->at(p.device); }
 
   const NCCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
 
@@ -259,7 +285,7 @@ class NCCLCommunicator {
     for (int ring_id = 0; ring_id < nrings; ++ring_id) {
       for (size_t p = 0; p < places.size(); ++p) {
         int rank = trainer_id * places.size() + p;
-        int dev_id = BOOST_GET_CONST(CUDAPlace, places[p]).device;
+        int dev_id = places[p].device;
         auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
         NCCLCommContext::Instance().AssignNCCLComm(ctx.comm_, nranks, rank,
                                                    dev_id, ring_id);

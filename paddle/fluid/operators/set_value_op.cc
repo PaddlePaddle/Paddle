@@ -28,7 +28,6 @@ class OpBase;
 }  // namespace imperative
 namespace platform {
 class CPUDeviceContext;
-struct CPUPlace;
 }  // namespace platform
 }  // namespace paddle
 
@@ -241,13 +240,6 @@ REGISTER_OPERATOR(set_value, ops::SetValue, ops::SetValueMaker,
                   ops::SetValueGradMaker<paddle::framework::OpDesc>,
                   ops::SetValueGradMaker<paddle::imperative::OpBase>,
                   ops::SetValueOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    set_value, ops::SetValueKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SetValueKernel<plat::CPUDeviceContext, int64_t>,
-    ops::SetValueKernel<plat::CPUDeviceContext, float>,
-    ops::SetValueKernel<plat::CPUDeviceContext, double>,
-    ops::SetValueKernel<plat::CPUDeviceContext, bool>);
 
 REGISTER_OPERATOR(set_value_grad, ops::SetValueGrad);
 

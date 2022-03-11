@@ -29,26 +29,27 @@
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
 #include "paddle/infrt/kernel/test_kernels.h"
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 TEST(MlirToRuntimeTranslate, basic) {
   mlir::MLIRContext context;
 
   auto source = R"ROC(
 func @main() -> () {
-  %v0 = infrt.constant.f32 1.0
-  %v1 = infrt.constant.f32 2.0
-  %v2 = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
-  %v3 = "infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
+  %v0 = Infrt.constant.f32 1.0
+  %v1 = Infrt.constant.f32 2.0
+  %v2 = "Infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v3 = "Infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
 
-  "infrt.print.f32"(%v1) : (f32) -> ()
+  "Infrt.print.f32"(%v1) : (f32) -> ()
 
-  infrt.return
+  Infrt.return
 }
 )ROC";
 
   auto module = dialect::LoadMlirSource(&context, source);
-  module->verify();
+  EXPECT_TRUE(mlir::succeeded(module->verify()));
 
   KernelRegistry registry;
   kernel::RegisterFloatBasicKernels(&registry);
@@ -62,19 +63,19 @@ TEST(TestMlir, basic) {
 
   auto source = R"ROC(
 func @main() -> () {
-  %v0 = infrt.constant.f32 1.0
-  %v1 = infrt.constant.f32 2.0
-  %v2 = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
-  %v3 = "infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
+  %v0 = Infrt.constant.f32 1.0
+  %v1 = Infrt.constant.f32 2.0
+  %v2 = "Infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v3 = "Infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
 
-  "infrt.print.f32"(%v1) : (f32) -> ()
+  "Infrt.print.f32"(%v1) : (f32) -> ()
 
-  infrt.return
+  Infrt.return
 }
 )ROC";
 
   auto module = dialect::LoadMlirSource(&context, source);
-  module->verify();
+  EXPECT_TRUE(mlir::succeeded(module->verify()));
 
   KernelRegistry registry;
   kernel::RegisterFloatBasicKernels(&registry);
@@ -87,18 +88,20 @@ TEST(TestMlir, shadow_copy_tensor_profile) {
   mlir::MLIRContext* context = infrt::Global::getMLIRContext();
 
   auto head = R"ROC(
-func @predict(%a: !infrt.tensor<X86, NCHW, F32>, %b: !infrt.tensor<X86, NCHW, F32>) -> (!infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F32>) {
+func @predict(%a: !infrt.dense_tensor<CPU, FP32, NCHW>, %b: !infrt.dense_tensor<CPU, FP32, NCHW>) -> (!infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>) {
 )ROC";
 
   auto tpl0 =
-      "%a{0} = dt.shallow_copy_tensor %a : !infrt.tensor<X86, NCHW, F32> -> "
-      "!infrt.tensor<X86, NCHW, F32>";
+      "%a{0} = dt.shallow_copy_tensor %a : !infrt.dense_tensor<CPU, FP32, "
+      "NCHW> -> "
+      "!infrt.dense_tensor<CPU, FP32, NCHW>";
   auto tpl1 =
-      "%b{0} = dt.shallow_copy_tensor %b : !infrt.tensor<X86, NCHW, F32> -> "
-      "!infrt.tensor<X86, NCHW, F32>";
+      "%b{0} = dt.shallow_copy_tensor %b : !infrt.dense_tensor<CPU, FP32, "
+      "NCHW> -> "
+      "!infrt.dense_tensor<CPU, FP32, NCHW>";
 
   auto end = R"ROC(
-infrt.return %a0, %b0: !infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F32>
+Infrt.return %a0, %b0: !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>
 }
   )ROC";
 
@@ -115,7 +118,7 @@ infrt.return %a0, %b0: !infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F
   // LOG(INFO) << "content: " << content << std::endl;
 
   auto module = dialect::LoadMlirSource(context, content);
-  module->verify();
+  EXPECT_TRUE(mlir::succeeded(module->verify()));
 
   host_context::KernelRegistry registry;
 
@@ -157,4 +160,5 @@ infrt.return %a0, %b0: !infrt.tensor<X86, NCHW, F32>, !infrt.tensor<X86, NCHW, F
   }
 }
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

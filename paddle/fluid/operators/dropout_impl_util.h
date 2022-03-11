@@ -20,18 +20,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-inline void GetSeedDataAndIncrement(const platform::CUDADeviceContext& dev_ctx,
+inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
                                     const framework::Tensor* seed,
                                     const bool is_fix_seed, const int seed_val,
                                     const int offset, uint64_t* seed_data,
                                     uint64_t* increment) {
-  int device_id =
-      BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()).GetDeviceId();
+  int device_id = dev_ctx.GetPlace().GetDeviceId();
   auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
 
   if (seed) {
     framework::Tensor seed_cpu_tensor;
-    TensorCopySync(*seed, platform::CPUPlace(), &seed_cpu_tensor);
+    paddle::framework::TensorCopySync(*seed, platform::CPUPlace(),
+                                      &seed_cpu_tensor);
     *seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
     *increment = offset;
   } else if (gen_cuda->GetIsInitPy() && (!is_fix_seed)) {

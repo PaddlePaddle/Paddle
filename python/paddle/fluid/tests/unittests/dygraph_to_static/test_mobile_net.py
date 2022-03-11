@@ -520,6 +520,7 @@ def predict_static(args, data):
     paddle.enable_static()
     exe = fluid.Executor(args.place)
     # load inference model
+
     [inference_program, feed_target_names,
      fetch_targets] = fluid.io.load_inference_model(
          args.model_save_dir,
