@@ -73,23 +73,30 @@ class InvertedResidual(nn.Layer):
 
 
 class MobileNetV2(nn.Layer):
+    """MobileNetV2 model from
+    `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
+
+    Args:
+        scale (float): scale of channels in each layer. Default: 1.0.
+        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+                            will not be defined. Default: 1000.
+        with_pool (bool): use pool before the last fc layer or not. Default: True.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.vision.models import MobileNetV2
+
+            model = MobileNetV2()
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+    """
+
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
-        """MobileNetV2 model from
-        `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
-
-        Args:
-            scale (float): scale of channels in each layer. Default: 1.0.
-            num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
-                                will not be defined. Default: 1000.
-            with_pool (bool): use pool before the last fc layer or not. Default: True.
-
-        Examples:
-            .. code-block:: python
-
-                from paddle.vision.models import MobileNetV2
-
-                model = MobileNetV2()
-        """
         super(MobileNetV2, self).__init__()
         self.num_classes = num_classes
         self.with_pool = with_pool
@@ -187,6 +194,7 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import mobilenet_v2
 
             # build model
@@ -197,6 +205,11 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
 
             # build mobilenet v2 with scale=0.5
             model = mobilenet_v2(scale=0.5)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     model = _mobilenet(
         'mobilenetv2_' + str(scale), pretrained, scale=scale, **kwargs)

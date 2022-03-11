@@ -94,9 +94,15 @@ class MobileNetV1(nn.Layer):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import MobileNetV1
 
             model = MobileNetV1()
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
@@ -257,6 +263,7 @@ def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import mobilenet_v1
 
             # build model
@@ -266,7 +273,12 @@ def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
             # model = mobilenet_v1(pretrained=True)
 
             # build mobilenet v1 with scale=0.5
-            model = mobilenet_v1(scale=0.5)
+            model_scale = mobilenet_v1(scale=0.5)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
     """
     model = _mobilenet(
         'mobilenetv1_' + str(scale), pretrained, scale=scale, **kwargs)
