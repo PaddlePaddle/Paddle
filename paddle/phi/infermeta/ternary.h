@@ -56,6 +56,15 @@ void ScatterInferMeta(const MetaTensor& x,
                       bool overwrite,
                       MetaTensor* out);
 
+void NllLossRawInferMeta(const MetaTensor& input,
+                         const MetaTensor& label,
+                         paddle::optional<const MetaTensor&> weight,
+                         int64_t ignore_index,
+                         const std::string& reduction,
+                         MetaTensor* out,
+                         MetaTensor* total_weight,
+                         MetaConfig config = MetaConfig());
+
 void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& updates,
