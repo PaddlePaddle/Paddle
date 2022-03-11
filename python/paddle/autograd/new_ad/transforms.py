@@ -19,11 +19,22 @@ from paddle.framwork import default_main_program
 
 # functional apis
 def jvp(func, xs, v=None, create_graph=True, batch=False):
-    pass
+    if v is None:
+        v = [paddle.ones_like(y) for x in xs]
+    ys = func(xs)
+    convert2primitive(ys, xs)
+    y_dots, _ = linearize(ys, xs, v)
+    return y_dots
 
 
 def vjp(func, xs, v=None, create_graph=True, batch=False):
-    pass
+    if v is None:
+        v = [paddle.ones_like(y) for y in ys]
+    ys = func(xs)
+    convert2primitive(ys, xs)
+    y_dots, x_dots = linearize(ys, xs)
+    _, x_bars = transpose(y_dots, x_dots, v)
+    return x_bars
 
 
 def hvp(func, xs, v=None, create_graph=True, batch=False):
@@ -45,9 +56,9 @@ class Hessian(object):
 
 
 # procedural apis
-def gradients(ys, xs, v):
-    if ys_bar is None:
-        ys_bar = [paddle.ones_like(y) for y in ys]
+def gradients(ys, xs, v=None):
+    if v is None:
+        v = [paddle.ones_like(y) for y in ys]
     convert2primitive(ys, xs)
     y_dots, x_dots = linearize(ys, xs)
     _, x_bars = transpose(y_dots, x_dots, v)
@@ -56,7 +67,11 @@ def gradients(ys, xs, v):
 
 class Optimizer(object):
     def minimize(self, ys):
-        pass
+        xs = all_parameters()
+        convert2primitive(ys, xs)
+        y_dots, x_dots = linearize(ys, xs)
+        _, x_bars = transpose(y_dots, x_dots, v)
+        xs = opt_update(lr, xs, x_bars)
 
 
 # interior transforms
@@ -87,10 +102,11 @@ def convert2primitive(ys, xs):
 
 
 def linearize(ys, xs, v=None):
+    block = default_main_program().current_block()
     op_path = subtrace(ys, xs)
 
     # create jvps for all nodes and update dot lookup table
-    switch_runner('jvp')
+    switch_runner('linearize')
 
     x_dots = [make_var(
         is_tangent=True, ref_var=x) for x in xs] if v is None else v
@@ -111,6 +127,7 @@ def linearize(ys, xs, v=None):
 
 
 def transpose(y_dots, x_dots, v=None):
+    block = default_main_program().current_block()
     op_path = subtrace(y_dots, x_dots)
     # transpose all nodes and update bar lookup table
     switch_runner('transpose')

@@ -26,7 +26,7 @@ class ADRunnerState(threading.local):
         self.bar_lookup = {}
         self.runners = {
             'primitive': MakePrimitive(),
-            'jvp': JVP(),
+            'linearize': Linearize(),
             'transpose': Transpose(),
             'edit': EditProgram(),
         }
@@ -69,7 +69,7 @@ class MakePrimitive(Runner):
         return
 
 
-class JVP(Runner):
+class Linearize(Runner):
     def run_op(self, op, *args, **kwargs):
         jvpmaker = jvpmakers[op]
         jvp_fn = jvpmaker(*args, **kwargs)
@@ -77,7 +77,7 @@ class JVP(Runner):
         nins = len(inspect.getargspec(primitive_fn).args)
         ins = [var.name for var in map(var2dot, args[0:nins])]
         out_dot = list(jvp_fn(ins))
-        switch_runner('jvp')
+        switch_runner('linearize')
         return out_dot
 
 
