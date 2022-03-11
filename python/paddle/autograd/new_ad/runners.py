@@ -71,12 +71,12 @@ class MakePrimitive(Runner):
 
 class Linearize(Runner):
     def run_op(self, op, *args, **kwargs):
-        jvpmaker = jvpmakers[op]
-        jvp_fn = jvpmaker(*args, **kwargs)
+        linearizemaker = linearizemakers[op]
+        linearize_fn = linearizemaker(*args, **kwargs)
         switch_runner('edit')
         nins = len(inspect.getargspec(primitive_fn).args)
         ins = [var.name for var in map(var2dot, args[0:nins])]
-        out_dot = list(jvp_fn(ins))
+        out_dot = list(linearize_fn(ins))
         switch_runner('linearize')
         return out_dot
 

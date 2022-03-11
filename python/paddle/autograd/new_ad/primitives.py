@@ -55,25 +55,25 @@ MATMUL = Primitive('matmul_p', 2, 1)
 FILL = Primitive('fill_constant_p', None, 1)
 
 # jvp and transpose rules on primitives
-jvpmakers = {}
+linearizemakers = {}
 transposemakers = {}
 
 
-def add_jvpmaker(x, y, z):
+def add_linearizemaker(x, y, z):
     return lambda tx, ty: ADD(tx, ty, make_var(True, z))
 
 
-def sub_jvpmaker(x, y, z):
+def sub_linearizemaker(x, y, z):
     return lambda tx, ty: SUB(tx, ty, make_var(True, z))
 
 
-def mul_jvpmaker(x, y, z):
+def mul_linearizemaker(x, y, z):
     return lambda tx, ty: ADD(MUL(x, ty, make_var(True, z)), MUL(tx, y, make_var(True, z)), make_var(True, z))
 
 
-jvpmakers[ADD] = add_jvpmaker
-jvpmakers[SUB] = sub_jvpmaker
-jvpmakers[MUL] = mul_jvpmaker
+linearizemakers[ADD] = add_linearizemaker
+linearizemakers[SUB] = sub_linearizemaker
+linearizemakers[MUL] = mul_linearizemaker
 
 
 def add_transposemaker(x, y):
@@ -103,11 +103,11 @@ primitivemakers = {}
 
 
 # TODO(lml): how to support concat
-def add_maker(x, y, z):
+def add_primitivemaker(x, y, z):
     if x.shape == y.shape:
         return lambda _x, _y: ADD(_x, _y, z.name())
     else:
         return lambda _x, _y: ADD(_x, BCAST(_y, make_var(), shape=x.shape))
 
 
-primitivemakers['elementwise_add'] = add_maker
+primitivemakers['elementwise_add'] = add_primitivemaker

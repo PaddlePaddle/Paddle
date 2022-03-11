@@ -24,6 +24,7 @@ def jvp(func, xs, v=None, create_graph=True, batch=False):
     ys = func(xs)
     convert2primitive(ys, xs)
     y_dots, _ = linearize(ys, xs, v)
+    clear_runner_state()
     return y_dots
 
 
@@ -34,6 +35,7 @@ def vjp(func, xs, v=None, create_graph=True, batch=False):
     convert2primitive(ys, xs)
     y_dots, x_dots = linearize(ys, xs)
     _, x_bars = transpose(y_dots, x_dots, v)
+    clear_runner_state()
     return x_bars
 
 
@@ -62,6 +64,7 @@ def gradients(ys, xs, v=None):
     convert2primitive(ys, xs)
     y_dots, x_dots = linearize(ys, xs)
     _, x_bars = transpose(y_dots, x_dots, v)
+    clear_runner_state()
     return x_bars
 
 
@@ -72,6 +75,7 @@ class Optimizer(object):
         y_dots, x_dots = linearize(ys, xs)
         _, x_bars = transpose(y_dots, x_dots, v)
         xs = opt_update(lr, xs, x_bars)
+        clear_runner_state()
 
 
 # interior transforms
