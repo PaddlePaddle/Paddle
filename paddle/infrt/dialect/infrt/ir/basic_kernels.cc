@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
 
 #include <llvm/ADT/STLExtras.h>
 #include <mlir/IR/Attributes.h>
@@ -29,23 +29,6 @@
 namespace infrt {
 namespace dialect {
 using namespace mlir;  // NOLINT
-
-static ParseResult parseCallOp(OpAsmParser &parser,       // NOLINT
-                               OperationState &result) {  // NOLINT
-  SymbolRefAttr callee_attr;
-  FunctionType callee_type;
-  SmallVector<OpAsmParser::OperandType, 4> operands;
-  auto callee_loc = parser.getNameLoc();
-  if (parser.parseAttribute(callee_attr, "callee", result.attributes) ||
-      parser.parseOperandList(operands, OpAsmParser::Delimiter::Paren) ||
-      parser.parseOptionalAttrDict(result.attributes) ||
-      parser.parseColonType(callee_type) ||
-      parser.addTypesToList(callee_type.getResults(), result.types) ||
-      parser.resolveOperands(
-          operands, callee_type.getInputs(), callee_loc, result.operands))
-    return failure();
-  return success();
-}
 
 static ParseResult parseConstantOp(Type attrType,
                                    OpAsmParser &parser,       // NOLINT
@@ -79,24 +62,6 @@ static ParseResult parseConstantI64Op(OpAsmParser &parser,       // NOLINT
       IntegerType::get(result.getContext(), 64), parser, result);
 }
 
-static ParseResult parseReturnOp(OpAsmParser &parser,       // NOLINT
-                                 OperationState &result) {  // NOLINT
-  SmallVector<OpAsmParser::OperandType, 2> opInfo;
-  SmallVector<Type, 2> types;
-  llvm::SMLoc loc = parser.getCurrentLocation();
-  return failure(parser.parseOperandList(opInfo) ||
-                 (!opInfo.empty() && parser.parseColonTypeList(types)) ||
-                 parser.resolveOperands(opInfo, types, loc, result.operands));
-}
-
-static void print(OpAsmPrinter &p, CallOp op) {  // NOLINT
-  p << op->getAttr("callee") << "(";
-  p.printOperands(op.getOperands());
-  p << ")";
-  p.printOptionalAttrDict(op->getAttrs(), {"callee"});
-  p << " : ";
-}
-
 static void printConstant(OpAsmPrinter &p, mlir::Operation *op) {  // NOLINT
   p << " ";
   p.printOptionalAttrDict(op->getAttrs(), /*elidedAttrs=*/{"value"});
@@ -127,37 +92,13 @@ static void print(OpAsmPrinter &p, ConstantI64Op op) {  // NOLINT
   printConstant(p, op);
 }
 
-static void print(OpAsmPrinter &p, ReturnOp op) {  // NOLINT
-  if (op.getNumOperands() > 0) {
-    p << ' ';
-    p.printOperands(op.getOperands());
-    p << " : ";
-    llvm::interleaveComma(op.getOperands(), p);
-  }
-}
-
-static LogicalResult verify(CallOp op) { return success(); }
-
 static LogicalResult verify(ConstantF32Op op) { return success(); }
 static LogicalResult verify(ConstantI32Op op) { return success(); }
 static LogicalResult verify(ConstantF64Op op) { return success(); }
 static LogicalResult verify(ConstantI64Op op) { return success(); }
 
-static LogicalResult verify(ReturnOp op) {
-  auto function = dyn_cast<FuncOp>(op->getParentOp());
-
-  if (!function) return success();
-
-  auto results = function.getType().getResults();
-  if (op.getNumOperands() != results.size())
-    return op.emitOpError("has ")
-           << op.getNumOperands()
-           << " operands, but enclosing function returns " << results.size();
-
-  return success();
-}
 }  // namespace dialect
 }  // namespace infrt
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/basic_kernels.cpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.cpp.inc"

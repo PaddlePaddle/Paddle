@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/test_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/test_kernels.h"
 
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/OpDefinition.h>
@@ -147,7 +147,7 @@ static mlir::LogicalResult verify(BenchmarkOp op) {
   // Verify that the target benchmark region has exactly one return value.
   auto &region = op.region();
   auto &last_op = region.front().back();
-  if (last_op.getName().getStringRef() != "Infrt.return") {
+  if (last_op.getName().getStringRef() != "infrt.return") {
     return op.emitOpError("missing return statement");
   }
   if (last_op.getNumOperands() != 1) {
@@ -161,4 +161,4 @@ static mlir::LogicalResult verify(BenchmarkOp op) {
 }  // namespace infrt
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/test_kernels.cpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/test_kernels.cpp.inc"
