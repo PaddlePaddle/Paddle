@@ -292,24 +292,23 @@ static std::vector<paddle::any> CastAttrsToTragetType(
     size_t end = attrs_names[i].find(": ");
     std::string type_name =
         attrs_names[i].substr(end + 2, attrs_names.size() - end - 2);
-    std::string actual_type = src[i].type().name();
     if (type_name == "int") {
-      if (actual_type == "b") {
+      if (src[i].type() == typeid(bool)) {
         res.emplace_back(static_cast<int>(paddle::any_cast<bool>(src[i])));
-      } else if (actual_type == "i") {
+      } else if (src[i].type() == typeid(int)) {
         res.emplace_back(src[i]);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Your No. %s attrs should only can be bool or int32, other type is "
-            "forbidden for now. Check your code first please",
-            i));
+            "forbidden for now but we got %s. Check your code first please",
+            i, src[i].type().name()));
       }
     } else if (type_name == "int64_t") {
-      if (actual_type == "bool") {
+      if (src[i].type() == typeid(bool)) {
         res.emplace_back(static_cast<int64_t>(paddle::any_cast<bool>(src[i])));
-      } else if (actual_type == "i") {
+      } else if (src[i].type() == typeid(int)) {
         res.emplace_back(static_cast<int64_t>(paddle::any_cast<int>(src[i])));
-      } else if (actual_type == "l") {
+      } else if (src[i].type() == typeid(int64_t)) {
         res.emplace_back(src[i]);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
