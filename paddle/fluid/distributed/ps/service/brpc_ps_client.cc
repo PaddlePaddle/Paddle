@@ -1254,11 +1254,11 @@ std::future<int32_t> BrpcPsClient::push_sparse(size_t table_id,
   CostTimer parse_timer("pserver_client_push_sparse_parse");
   int push_sparse_async_num = _push_sparse_task_queue_map[table_id]->Size();
   while (push_sparse_async_num > FLAGS_pserver_max_async_call_num) {
-    // LOG(INFO) << "push_sparse Waiting for async_call_num comsume, task_num:"
-    //    << push_sparse_async_num << ", max_task_limit:" <<
-    //    FLAGS_pserver_max_async_call_num;
+    //    LOG(INFO) << "push_sparse Waiting for async_call_num comsume,
+    //    task_num:"
+    //              << push_sparse_async_num
+    //              << ", max_task_limit:" << FLAGS_pserver_max_async_call_num;
     usleep(5000);  // 5ms
-    // push_sparse_async_num = _push_sparse_task_queue_map[table_id]->size();
     push_sparse_async_num = _push_sparse_task_queue_map[table_id]->Size();
   }
   auto put_timer = std::make_shared<CostTimer>("client_push_sparse_put");
@@ -1320,8 +1320,7 @@ void BrpcPsClient::push_sparse_task_consume() {
   ::ThreadPool async_push_sparse_shard_threads(
       FLAGS_pserver_sparse_merge_thread);
   while (_running) {
-    platform::Timer timeline;
-    timeline.Start();
+    auto async_start_time_ms = butil::gettimeofday_ms();
     // 所有sparseTable的pushTask 进行处理
     for (auto &push_sparse_task_itr : _push_sparse_task_queue_map) {
       auto table_id = push_sparse_task_itr.first;
@@ -1436,9 +1435,8 @@ void BrpcPsClient::push_sparse_task_consume() {
         std::vector<std::future<int>>().swap(merge_status);
       }
     }
-    timeline.Pause();
-    auto wait_ms =
-        FLAGS_pserver_async_push_sparse_interval_ms - (timeline.ElapsedMS());
+    auto wait_ms = FLAGS_pserver_async_push_sparse_interval_ms -
+                   (butil::gettimeofday_ms() - async_start_time_ms);
     if (wait_ms > 0) {
       usleep(wait_ms * 1000);
     }
@@ -1600,9 +1598,10 @@ std::future<int32_t> BrpcPsClient::push_dense(const Region *regions,
       std::make_shared<CostTimer>("pserver_client_push_dense_parse");
   int push_dense_async_num = _push_dense_task_queue_map[table_id]->Size();
   while (push_dense_async_num > FLAGS_pserver_max_async_call_num) {
-    LOG(INFO) << "push_dense Waiting for async_call_num comsume, task_num:"
-              << push_dense_async_num
-              << ", max_task_limit:" << FLAGS_pserver_max_async_call_num;
+    //    LOG(INFO) << "push_dense Waiting for async_call_num comsume,
+    //    task_num:"
+    //              << push_dense_async_num
+    //              << ", max_task_limit:" << FLAGS_pserver_max_async_call_num;
     usleep(5000);  // 5ms
     push_dense_async_num = _push_dense_task_queue_map[table_id]->Size();
   }
@@ -1640,8 +1639,7 @@ void BrpcPsClient::push_dense_task_consume() {
   static bool scale_gradient = FLAGS_pserver_scale_gradient_by_merge;
   ::ThreadPool async_merge_dense_threads(10);
   while (_running) {
-    platform::Timer timeline;
-    timeline.Start();
+    auto async_start_time_ms = butil::gettimeofday_ms();
     for (auto &task_queue_itr : _push_dense_task_queue_map) {
       auto &task_queue = task_queue_itr.second;
       auto queue_size = task_queue->Size();
@@ -1730,9 +1728,8 @@ void BrpcPsClient::push_dense_task_consume() {
       push_dense_raw_gradient(task_ptr, total_send_data, total_send_data_size,
                               closure);
     }
-    timeline.Pause();
-    auto wait_ms =
-        FLAGS_pserver_async_push_dense_interval_ms - (timeline.ElapsedMS());
+    auto wait_ms = FLAGS_pserver_async_push_dense_interval_ms -
+                   (butil::gettimeofday_ms() - async_start_time_ms);
     if (wait_ms > 0) {
       usleep(wait_ms * 1000);
     }
