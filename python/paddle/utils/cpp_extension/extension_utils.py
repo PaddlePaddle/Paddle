@@ -936,7 +936,7 @@ def _custom_api_content(op_name):
                     for i in {in_names}:
                         ctx.add_inputs(i)
                     for j in {attr_names}:
-                        ctx.add_attrs(j)
+                        ctx.add_attr(j)
                     for out_name in out_names:
                         outs[out_name] = core.eager.Tensor()
                         ctx.add_outputs(outs[out_name])

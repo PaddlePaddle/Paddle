@@ -344,7 +344,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
   std::vector<paddle::any> res_attrs = CastAttrsToTragetType(
       ctx.Attrs(), paddle::framework::OpMetaInfoHelper::GetAttrs(
                        meta_info_map.at(op_type)[0]));
-  ctx.EmplaceBackAttr(res_attrs);
+  ctx.EmplaceBackAttrs(res_attrs);
   const auto& vec_map = meta_info_map.at(op_type);
   (*paddle::framework::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
 

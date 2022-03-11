@@ -776,29 +776,29 @@ PYBIND11_MODULE(core_noavx, m) {
                self.EmplaceBackOutput(std::move(CastPyArg2Tensor(obj, 1)));
              }
            })
-      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
-                           bool attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
-                           int attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
-                           float attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
-                           int64_t attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attrs",
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          bool attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          int attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          float attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          int64_t attr) { self.EmplaceBackAttr(attr); })
+      .def("add_attr",
            [](paddle::CustomOpKernelContext &self, const std::string &attr) {
              self.EmplaceBackAttr(attr);
            })
-      .def("add_attrs",
+      .def("add_attr",
            [](paddle::CustomOpKernelContext &self,
               const std::vector<int> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attrs",
+      .def("add_attr",
            [](paddle::CustomOpKernelContext &self,
               const std::vector<float> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attrs",
+      .def("add_attr",
            [](paddle::CustomOpKernelContext &self,
               const std::vector<int64_t> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attrs", [](paddle::CustomOpKernelContext &self,
-                           const std::vector<std::string> &attr) {
+      .def("add_attr", [](paddle::CustomOpKernelContext &self,
+                          const std::vector<std::string> &attr) {
         self.EmplaceBackAttr(attr);
       });
 

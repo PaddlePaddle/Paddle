@@ -56,7 +56,7 @@ operator()(
     ctx.EmplaceBackInputs(in);
   }
   VLOG(6) << "Prepare Grad attrs";
-  ctx.EmplaceBackAttr(attrs_);
+  ctx.EmplaceBackAttrs(attrs_);
   std::vector<std::vector<paddle::experimental::Tensor>> outs(
       GetEdges().size());
   std::vector<std::vector<paddle::experimental::Tensor>> tmp_outs(

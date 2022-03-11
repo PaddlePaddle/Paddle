@@ -90,13 +90,15 @@ class PADDLE_API CustomOpKernelContext {
   void EmplaceBackOutput(Tensor&& output);
   void EmplaceBackOutputs(const std::vector<Tensor>& outputs);
   void EmplaceBackAttr(paddle::any attr);
-  void EmplaceBackAttr(std::vector<paddle::any> attrs) { attrs_ = attrs; }
+  void EmplaceBackAttrs(const std::vector<paddle::any>& attrs) {
+    attrs_ = std::move(attrs);
+  }
   const std::pair<size_t, size_t>& InputRangeAt(size_t idx) const;
   const std::pair<size_t, size_t>& OutputRangeAt(size_t idx) const;
 
   const Tensor& InputAt(size_t idx) const;
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
-  std::vector<paddle::any> Attrs() const { return attrs_; }
+  const std::vector<paddle::any>& Attrs() const { return attrs_; }
   const std::vector<std::pair<size_t, size_t>>& InputRange() {
     return input_range_;
   }
