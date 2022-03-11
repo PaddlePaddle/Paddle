@@ -14,7 +14,7 @@
 
 import os
 import argparse
-from eager_gen import yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
+from eager_gen import namespace, yaml_types_mapping, ReadFwdFile, ParseDispensable, IsVectorTensorType, GetForwardFunctionName, ParseYamlForward, DetermineForwardPositionMap
 
 skipped_fwd_api_names = set(["scale"])
 
@@ -126,16 +126,20 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
 }}
 
 """
+    namespace_str = ""
+    if len(namespace) > 0:
+        namespace_str = f"{namespace}::"
+
     if is_forward_only:
-        fwd_function_name = fwd_api_name
+        fwd_function_name = "paddle::experimental::" + namespace_str + fwd_api_name
     else:
-        fwd_function_name = GetForwardFunctionName(fwd_api_name)
+        fwd_function_name = namespace_str + GetForwardFunctionName(fwd_api_name)
 
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
         fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,
         fwd_function_name, dygraph_function_call_str)
 
-    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void))eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}}\n"
+    python_c_function_reg_str = f"{{\"final_state_{fwd_api_name}\", (PyCFunction)(void(*)(void)) {namespace_str}eager_final_state_api_{fwd_api_name}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {fwd_api_name} in dygraph.\"}}\n"
 
     return python_c_function_str, python_c_function_reg_str
 
@@ -189,7 +193,7 @@ static PyObject * eager_get_final_state_core_ops_returns_info(PyObject *self) {
     """
 
     core_ops_infos_registry = """
-    ,{\"get_final_state_core_ops_args_info\",
+    {\"get_final_state_core_ops_args_info\",
     (PyCFunction)(void(*)(void))eager_get_final_state_core_ops_args_info, METH_NOARGS,
     \"C++ interface function for eager_get_final_state_core_ops_args_info.\"},
     {\"get_final_state_core_ops_args_type_info\",
@@ -218,10 +222,12 @@ def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
 
 #include  "pybind11/detail/common.h"
 #include  "paddle/phi/api/all.h"
+#include  "paddle/phi/api/lib/dygraph_api.h"
 #include  "paddle/phi/common/backend.h"
 #include  "paddle/phi/common/data_type.h"
 #include  "paddle/phi/common/scalar.h"
 #include  "paddle/phi/common/scalar_array.h"
+#include  "paddle/phi/api/include/sparse_api.h"
 #include  "paddle/fluid/pybind/op_function_common.h"
 #include  "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include  "paddle/fluid/pybind/exception.h"
@@ -254,57 +260,80 @@ def GeneratePythonCFile(filepath, python_c_str):
 if __name__ == "__main__":
     args = ParseArguments()
 
-    api_yaml_path = args.api_yaml_path
-    fwd_api_list = ReadFwdFile(api_yaml_path)
+    api_yaml_paths = args.api_yaml_path.split(",")
 
-    python_c_function_list = []
-    python_c_function_reg_list = []
-    for fwd_api in fwd_api_list:
+    python_c_functions_reg_str = ""
+    python_c_functions_str = ""
 
-        # We only generate Ops with grad
-        is_forward_only = False
-        if 'backward' not in fwd_api.keys():
-            is_forward_only = True
+    for i in range(len(api_yaml_paths)):
+        api_yaml_path = api_yaml_paths[i]
 
-        assert 'api' in fwd_api.keys()
-        assert 'args' in fwd_api.keys()
-        assert 'output' in fwd_api.keys()
+        if "sparse" in api_yaml_path:
+            namespace = "sparse"
+        else:
+            namespace = ""
 
-        fwd_api_name = fwd_api['api']
-        fwd_args_str = fwd_api['args']
-        fwd_returns_str = fwd_api['output']
+        fwd_api_list = ReadFwdFile(api_yaml_path)
 
-        if fwd_api_name in skipped_fwd_api_names:
-            continue
+        python_c_function_list = []
+        python_c_function_reg_list = []
+        for fwd_api in fwd_api_list:
 
-        # Parse Dispensable Inputs
-        optional_inputs = []
-        if 'optional' in fwd_api.keys():
-            optional_inputs = ParseDispensable(fwd_api['optional'])
+            # We only generate Ops with grad
+            is_forward_only = False
+            if 'backward' not in fwd_api.keys():
+                is_forward_only = True
 
-        # Collect Original Forward Inputs/Outputs and then perform validation checks
-        forward_inputs_list, forward_attrs_list, forward_returns_list = ParseYamlForward(
-            fwd_args_str, fwd_returns_str)
-        print("Parsed Original Forward Inputs List: ", forward_inputs_list)
-        print("Prased Original Forward Attrs List: ", forward_attrs_list)
-        print("Parsed Original Forward Returns List: ", forward_returns_list)
+            assert 'api' in fwd_api.keys()
+            assert 'args' in fwd_api.keys()
+            assert 'output' in fwd_api.keys()
 
-        forward_inputs_position_map, forward_outputs_position_map = DetermineForwardPositionMap(
-            forward_inputs_list, forward_returns_list)
-        print("Generated Forward Input Position Map: ",
-              forward_inputs_position_map)
-        print("Generated Forward Output Position Map: ",
-              forward_outputs_position_map)
+            fwd_api_name = fwd_api['api']
+            fwd_args_str = fwd_api['args']
+            fwd_returns_str = fwd_api['output']
 
-        python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
-            fwd_api_name, forward_inputs_position_map, forward_attrs_list,
-            forward_outputs_position_map, optional_inputs, is_forward_only)
-        python_c_function_list.append(python_c_function_str)
-        python_c_function_reg_list.append(python_c_function_reg_str)
-        print("Generated Python-C Function: ", python_c_function_str)
+            if fwd_api_name in skipped_fwd_api_names:
+                continue
 
-    python_c_functions_str = "\n".join(python_c_function_list)
-    python_c_functions_reg_str = ",\n".join(python_c_function_reg_list)
+            # Parse Dispensable Inputs
+            optional_inputs = []
+            if 'optional' in fwd_api.keys():
+                optional_inputs = ParseDispensable(fwd_api['optional'])
+
+            # Collect Original Forward Inputs/Outputs and then perform validation checks
+            forward_inputs_list, forward_attrs_list, forward_returns_list = ParseYamlForward(
+                fwd_args_str, fwd_returns_str)
+            print("Parsed Original Forward Inputs List: ", forward_inputs_list)
+            print("Prased Original Forward Attrs List: ", forward_attrs_list)
+            print("Parsed Original Forward Returns List: ",
+                  forward_returns_list)
+
+            forward_inputs_position_map, forward_outputs_position_map = DetermineForwardPositionMap(
+                forward_inputs_list, forward_returns_list)
+            print("Generated Forward Input Position Map: ",
+                  forward_inputs_position_map)
+            print("Generated Forward Output Position Map: ",
+                  forward_outputs_position_map)
+
+            python_c_function_str, python_c_function_reg_str = GeneratePythonCFunction(
+                fwd_api_name, forward_inputs_position_map, forward_attrs_list,
+                forward_outputs_position_map, optional_inputs, is_forward_only)
+            python_c_function_list.append(python_c_function_str)
+            python_c_function_reg_list.append(python_c_function_reg_str)
+            print("Generated Python-C Function: ", python_c_function_str)
+
+        # Append Namespace
+        python_c_functions_reg_str += ",\n".join(
+            python_c_function_reg_list) + ","
+        python_c_functions = "\n".join(python_c_function_list)
+        if len(namespace) > 0:
+            python_c_functions_str += f"""namespace {namespace} {{
+    {python_c_functions}
+}}
+"""
+
+        else:
+            python_c_functions_str += python_c_functions
 
     python_c_str = GeneratePythonCWrappers(python_c_functions_str,
                                            python_c_functions_reg_str)

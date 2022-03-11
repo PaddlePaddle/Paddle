@@ -80,10 +80,23 @@ void CrossInferMeta(const MetaTensor& x,
                     MetaTensor* out);
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void SegmentPoolInferMeta(const MetaTensor& x,
+                          const MetaTensor& segment_ids,
+                          const std::string& pooltype,
+                          MetaTensor* out,
+                          MetaTensor* summed_ids,
+                          MetaConfig config = MetaConfig());
+
 void BCELossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
+
+void BincountInferMeta(const MetaTensor& x,
+                       const paddle::optional<const MetaTensor&> weights,
+                       int minlength,
+                       MetaTensor* out);
 
 void DistInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
@@ -98,6 +111,19 @@ void GatherTreeMeta(const MetaTensor& ids,
                     const MetaTensor& parents,
                     MetaTensor* out);
 
+void LogLossInferMeta(const MetaTensor& input,
+                      const MetaTensor& label,
+                      float epsilon,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out);
+
+void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
+                                            const MetaTensor& label,
+                                            bool normalize,
+                                            int ignore_index,
+                                            MetaTensor* out,
+                                            MetaConfig config = MetaConfig());
 
 }  // namespace phi
