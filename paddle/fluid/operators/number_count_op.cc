@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/expert_count_op.h"
+#include "paddle/fluid/operators/number_count_op.h"
 
 namespace paddle {
 namespace operators {
 
-class ExpertCountOp : public framework::OperatorWithKernel {
+class NumberCountOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("gate_idx"), "Input", "gate_idx",
-                   "ExpertCount");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "expert_count",
-                   "ExpertCount");
+                   "NumberCount");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "number_count",
+                   "NumberCount");
   }
 
  protected:
@@ -42,14 +42,14 @@ class ExpertCountOp : public framework::OperatorWithKernel {
   }
 };
 
-class ExpertCountOpMaker : public framework::OpProtoAndCheckerMaker {
+class NumberCountOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("gate_idx", "(Tensor) The input gate index tensor.");
     AddOutput("Out", "(Tensor) The output expert count tensor.");
-    AddAttr<int>("n_expert", "（int), The number of experts.");
+    AddAttr<int>("upper_range", "（int), The number of experts.");
 
-    AddComment(R"DOC(expert_count Operator.count gate indices.)DOC");
+    AddComment(R"DOC(number_count Operator.count gate indices.)DOC");
   }
 };
 
@@ -59,8 +59,8 @@ class ExpertCountOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CPU_KERNEL(expert_count, ops::ExpertCountOpCPUKernel<int>,
-                       ops::ExpertCountOpCPUKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(number_count, ops::NumberCountOpCPUKernel<int>,
+                       ops::NumberCountOpCPUKernel<int64_t>);
 
-REGISTER_OP_WITHOUT_GRADIENT(expert_count, ops::ExpertCountOp,
-                             ops::ExpertCountOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(number_count, ops::NumberCountOp,
+                             ops::NumberCountOpMaker);

@@ -25,7 +25,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class ExpertCountOpCPUKernel : public framework::OpKernel<T> {
+class NumberCountOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_THROW(platform::errors::Unavailable(
