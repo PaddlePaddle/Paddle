@@ -731,18 +731,24 @@ def GenerateNodeCreationCodes(
 
     # SetTensorWrappers
     set_tensor_wrappers_list = []
-    for name, (_, is_fwd_input, _) in backward_fwd_input_map.items():
+    for name, (atype, is_fwd_input, pos) in backward_fwd_input_map.items():
         is_optional = (name in optional_inputs)
+
         if is_fwd_input:
             if is_optional:
                 set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
             else:
                 set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
-            if is_optional:
-                set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, false);"
+            if IsVectorTensorType(atype):
+                tw_name = f"api_result[{pos}]"
             else:
-                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
+                tw_name = f"api_result"
+
+            if is_optional:
+                set_tensor_wrappers = f"        if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
+            else:
+                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({tw_name}, false);"
         set_tensor_wrappers_list.append(set_tensor_wrappers)
     set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
 
@@ -1059,12 +1065,12 @@ def GenerateNodeHFile(filepath, node_declaration_str):
 
 def GenerateForwardCCFile(filepath, forward_definition_str):
     file_contents = """
+#include "paddle/phi/api/lib/dygraph_api.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-
 """
 
     file_contents += GenerateCoreOpInfoDefinition()
