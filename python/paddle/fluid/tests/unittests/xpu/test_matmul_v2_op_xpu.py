@@ -289,6 +289,18 @@ class TestMatMulOp17(TestMatMulV2Op):
         self.trans_y = False
 
 
+class TestMatMulOp18(TestMatMulV2Op):
+    """
+    case 18 : for ppyoloe model
+    """
+
+    def config(self):
+        self.x_shape = (8, 111, 4, 17)
+        self.y_shape = (17)
+        self.trans_x = False
+        self.trans_y = False
+
+
 # class TestMatMulOpBroadcast1(TestMatMulV2Op):
 #     """
 #     case 14_3

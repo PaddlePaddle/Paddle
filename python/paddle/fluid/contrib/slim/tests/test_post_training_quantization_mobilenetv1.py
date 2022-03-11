@@ -394,5 +394,27 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
                       diff_threshold)
 
 
+class TestPostTrainingEMDForMobilenetv1(TestPostTrainingQuantization):
+    def test_post_training_avg_mobilenetv1(self):
+        model = "MobileNet-V1"
+        algo = "emd"
+        data_urls = [
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        ]
+        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
+        quantizable_op_type = [
+            "conv2d",
+            "depthwise_conv2d",
+            "mul",
+        ]
+        is_full_quantize = False
+        is_use_cache_file = False
+        is_optimize_model = True
+        diff_threshold = 0.025
+        self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
+                      is_full_quantize, is_use_cache_file, is_optimize_model,
+                      diff_threshold)
+
+
 if __name__ == '__main__':
     unittest.main()
