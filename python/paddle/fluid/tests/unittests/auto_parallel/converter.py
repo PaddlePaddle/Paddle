@@ -21,26 +21,26 @@ from paddle.distributed.auto_parallel.converter import Converter
 
 def test_convert():
     rank_id = paddle.distributed.get_rank()
-    complete_param = np.arange(64).reshape([8, 8])
-    param_row = np.split(complete_param, 2, axis=0)
-    param_col = np.split(complete_param, 2, axis=1)
-    param_name = "param_0"
+    complete_tensor = np.arange(64).reshape([8, 8])
+    tensor_row = np.split(complete_tensor, 2, axis=0)
+    tensor_col = np.split(complete_tensor, 2, axis=1)
+    tensor_name = "tensor_0"
     complet_strategy = {
-        param_name: {
+        tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
             "dims_mapping": [-1, -1]
         }
     }
     row_strategy = {
-        param_name: {
+        tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
             "dims_mapping": [0, -1]
         }
     }
     col_strategy = {
-        param_name: {
+        tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
             "dims_mapping": [-1, 0]
@@ -48,25 +48,25 @@ def test_convert():
     }
 
     # test merge
-    param_dict = {param_name: param_row}
-    converter = Converter(param_dict, row_strategy, complet_strategy)
-    convert_param_dict = converter.convert()
-    assert np.equal(convert_param_dict[param_name], complete_param).all()
+    tensor_dict = {tensor_name: tensor_row}
+    converter = Converter(tensor_dict, row_strategy, complet_strategy)
+    convert_tensor_dict = converter.convert()
+    assert np.equal(convert_tensor_dict[tensor_name], complete_tensor).all()
 
     # test slice
-    param_dict = {param_name: [complete_param]}
-    converter = Converter(param_dict, complet_strategy, col_strategy)
-    convert_param_dict = converter.convert()
-    assert np.equal(convert_param_dict[param_name], param_col[rank_id]).all()
+    tensor_dict = {tensor_name: [complete_tensor]}
+    converter = Converter(tensor_dict, complet_strategy, col_strategy)
+    convert_tensor_dict = converter.convert()
+    assert np.equal(convert_tensor_dict[tensor_name], tensor_col[rank_id]).all()
 
     # test merge and slice
-    param_dict = {param_name: param_col}
-    converter = Converter(param_dict, col_strategy, row_strategy)
-    convert_param_dict = converter.convert()
-    assert np.equal(convert_param_dict[param_name], param_row[rank_id]).all()
+    tensor_dict = {tensor_name: tensor_col}
+    converter = Converter(tensor_dict, col_strategy, row_strategy)
+    convert_tensor_dict = converter.convert()
+    assert np.equal(convert_tensor_dict[tensor_name], tensor_row[rank_id]).all()
 
     # test merge and slice with prefix match
-    new_name = "param_1"
+    new_name = "tensor_1"
     row_strategy = {
         new_name: {
             "process_shape": [2],
@@ -74,9 +74,9 @@ def test_convert():
             "dims_mapping": [0, -1]
         }
     }
-    converter = Converter(param_dict, col_strategy, row_strategy)
-    convert_param_dict = converter.convert(strict=False)
-    assert np.equal(convert_param_dict[new_name], param_row[rank_id]).all()
+    converter = Converter(tensor_dict, col_strategy, row_strategy)
+    convert_tensor_dict = converter.convert(strict=False)
+    assert np.equal(convert_tensor_dict[new_name], tensor_row[rank_id]).all()
 
 
 if __name__ == "__main__":
