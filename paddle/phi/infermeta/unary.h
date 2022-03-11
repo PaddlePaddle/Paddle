@@ -100,6 +100,11 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
 
+void TileInferMeta(const MetaTensor& x,
+                   const ScalarArray& repeat_times,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
 void SumRawInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
@@ -189,5 +194,13 @@ void EighInferMeta(const MetaTensor& x,
                    MetaTensor* out_v);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
+
+void ShardIndexInferMeta(const MetaTensor& in,
+                         int index_num,
+                         int nshards,
+                         int shard_id,
+                         int ignore_value,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
 
 }  // namespace phi
