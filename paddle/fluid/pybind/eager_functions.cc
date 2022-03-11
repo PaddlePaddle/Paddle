@@ -314,8 +314,9 @@ static std::vector<paddle::any> CastAttrsToTragetType(
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Your No. %s attrs should only can be bool or int32 or int64_t, "
-            "other type is forbidden for now. Check your code first please",
-            i));
+            "other type is forbidden for now but we got %s. Check your code "
+            "first please",
+            i, src[i].type().name()));
       }
     } else {
       res.emplace_back(src[i]);
