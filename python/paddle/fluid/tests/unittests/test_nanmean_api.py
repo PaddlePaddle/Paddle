@@ -50,7 +50,7 @@ class API_Test_Nanmean(unittest.TestCase):
             out4_np = np.array(res[3])
             out1_ref = np.array([4.5]).astype(np.float32)
             out2_ref = np.array([1, 2.5, 5, 8]).astype(np.float32)
-            out3_ref = np.array([5.6666665 ,3.3333333]).astype(np.float32)
+            out3_ref = np.array([5.6666665, 3.3333333]).astype(np.float32)
             out4_ref = np.array([[5.6666665], [3.3333333]]).astype(np.float32)
 
             self.assertTrue(
