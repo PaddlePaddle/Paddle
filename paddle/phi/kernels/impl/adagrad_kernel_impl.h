@@ -37,8 +37,8 @@ phi::SelectedRows SquareSelectedRows(const DeviceContext& context,
   phi::SelectedRows out;
   out.set_rows(input.rows());
   out.set_height(input.height());
-  out.mutable_value()->mutable_data<T>(input.value().dims(),
-                                       context.GetPlace());
+  out.mutable_value()->Resize(input.value().dims());
+  context.template Alloc<T>(out.mutable_value());
   auto e_out = EigenVector<T>::Flatten(*(out.mutable_value()));
   auto e_in = EigenVector<T>::Flatten(input.value());
   e_out.device(*context.eigen_device()) = e_in.square();
@@ -54,8 +54,8 @@ void AdagradDenseKernel(const Context& ctx,
                         float epsilon_t,
                         DenseTensor* param_out_tensor,
                         DenseTensor* moment_out_tensor) {
-  param_out_tensor->mutable_data<T>(ctx.GetPlace());
-  moment_out_tensor->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(param_out_tensor);
+  ctx.template Alloc<T>(moment_out_tensor);
 
   T epsilon = static_cast<T>(epsilon_t);
 
@@ -94,8 +94,8 @@ void AdagradSparseKernel(const Context& ctx,
   auto* param_out_tensor = param_out;
   auto* moment_out_tensor = moment_out;
 
-  param_out_tensor->mutable_data<T>(ctx.GetPlace());
-  moment_out_tensor->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(param_out_tensor);
+  ctx.template Alloc<T>(moment_out_tensor);
 
   T epsilon = static_cast<T>(epsilon_t);
 

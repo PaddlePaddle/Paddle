@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include "paddle/fluid/operators/optimizers/momentum_op.h"
 #include "paddle/phi/kernels/momentum_kernel.h"
 #include "paddle/phi/kernels/sgd_kernel.h"
 
@@ -59,9 +60,9 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
     VLOG(10) << "current_step:" << *current_step
              << ", rampup_begin_step:" << rampup_begin_step;
 
+    const auto* grad_var = context.InputVar("Grad");
     if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
       VLOG(10) << " so use momentum optimizer";
-      return _momentum_op_kernel->Compute(context);
       auto* learning_rate = context.Input<framework::Tensor>("LearningRate");
       bool multi_precision = context.Attr<bool>("multi_precision");
 
@@ -77,9 +78,9 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       bool use_nesterov = context.Attr<bool>("use_nesterov");
       std::string regularization_method =
           context.Attr<std::string>("regularization_method");
-      float regularization_coeff = context.attr<float>("regularization_coeff");
-      bool multi_precision = false;  // dgc momontum kernel only support float
+      float regularization_coeff = context.Attr<float>("regularization_coeff");
       float rescale_grad = context.Attr<float>("rescale_grad");
+
       if (grad_var->IsType<framework::Tensor>()) {
         // sgd_dense
         auto* grad = context.Input<framework::Tensor>("Grad");
@@ -93,7 +94,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
       } else {
         // sgd dense param sparse grad
         auto* grad = context.Input<phi::SelectedRows>("Grad");
-        phi::MomenumSparseKernel<T>(
+        phi::MomentumSparseKernel<T>(
             static_cast<const typename framework::ConvertToPhiContext<
                 DeviceContext>::TYPE&>(dev_ctx),
             *param, *grad, *velocity, *learning_rate, master_param_opt, mu,
@@ -106,7 +107,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
     VLOG(10) << " so use sgd optimizer";
 
     const auto* param_var = context.InputVar("Param");
-    const auto* grad_var = context.InputVar("Grad");
+
     auto* learning_rate = context.Input<framework::Tensor>("LearningRate");
     bool multi_precision = context.Attr<bool>("multi_precision");
     if (param_var->IsType<framework::LoDTensor>()) {

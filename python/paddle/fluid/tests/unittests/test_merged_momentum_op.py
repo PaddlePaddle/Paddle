@@ -303,8 +303,6 @@ class TestMergedMomentum(unittest.TestCase):
         self.assertEqual(len(outs1), len(outs2))
         for i, (out1, out2) in enumerate(zip(outs1, outs2)):
             if isinstance(place, paddle.CUDAPlace):
-                print(out1)
-                print(out2)
                 self.assertTrue(np.array_equal(out1, out2))
             else:
                 self.assertTrue(np.allclose(out1, out2, atol=1e-7))

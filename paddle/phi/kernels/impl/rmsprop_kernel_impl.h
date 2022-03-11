@@ -223,10 +223,10 @@ void RmspropDenseKernel(const Context &ctx,
           phi::errors::InvalidArgument(
               "MeanGrad and MeanGradOut must be the same Tensor"));
       for_range(CenteredRmspropFunctor<T, DenseRmspropGradFunctor<T>>(
-          param_out->mutable_data<T>(ctx.GetPlace()),
-          mean_square_out->mutable_data<T>(ctx.GetPlace()),
-          moment_out->mutable_data<T>(ctx.GetPlace()),
-          mean_grad_out->mutable_data<T>(ctx.GetPlace()),
+          ctx.template Alloc<T>(param_out),
+          ctx.template Alloc<T>(mean_square_out),
+          ctx.template Alloc<T>(moment_out),
+          ctx.template Alloc<T>(mean_grad_out),
           lr_tensor.data<T>(),
           rho,
           epsilon,
@@ -234,9 +234,9 @@ void RmspropDenseKernel(const Context &ctx,
           grad_func));
     } else {
       for_range(UncenteredRmspropFunctor<T, DenseRmspropGradFunctor<T>>(
-          param_out->mutable_data<T>(ctx.GetPlace()),
-          mean_square_out->mutable_data<T>(ctx.GetPlace()),
-          moment_out->mutable_data<T>(ctx.GetPlace()),
+          ctx.template Alloc<T>(param_out),
+          ctx.template Alloc<T>(mean_square_out),
+          ctx.template Alloc<T>(moment_out),
           lr_tensor.data<T>(),
           rho,
           epsilon,
@@ -310,10 +310,10 @@ void RmspropSparseKernel(const Context &ctx,
                       phi::errors::InvalidArgument(
                           "MeanGrad and MeanGradOut must be the same Tensor"));
     for_range(CenteredRmspropFunctor<T, SparseRmspropGradFunctor<T>>(
-        param_out->mutable_data<T>(ctx.GetPlace()),
-        mean_square_out->mutable_data<T>(ctx.GetPlace()),
-        moment_out->mutable_data<T>(ctx.GetPlace()),
-        mean_grad_out->mutable_data<T>(ctx.GetPlace()),
+        ctx.template Alloc<T>(param_out),
+        ctx.template Alloc<T>(mean_square_out),
+        ctx.template Alloc<T>(moment_out),
+        ctx.template Alloc<T>(mean_grad_out),
         lr_tensor.data<T>(),
         rho,
         epsilon,
@@ -321,9 +321,9 @@ void RmspropSparseKernel(const Context &ctx,
         grad_func));
   } else {
     for_range(UncenteredRmspropFunctor<T, SparseRmspropGradFunctor<T>>(
-        param_out->mutable_data<T>(ctx.GetPlace()),
-        mean_square_out->mutable_data<T>(ctx.GetPlace()),
-        moment_out->mutable_data<T>(ctx.GetPlace()),
+        ctx.template Alloc<T>(param_out),
+        ctx.template Alloc<T>(mean_square_out),
+        ctx.template Alloc<T>(moment_out),
         lr_tensor.data<T>(),
         rho,
         epsilon,
