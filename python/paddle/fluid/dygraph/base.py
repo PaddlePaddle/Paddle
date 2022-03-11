@@ -599,10 +599,10 @@ def grad(outputs,
                     assert isinstance(
                         each_var, core.eager.Tensor
                     ), "grad_outputs must be None, a Variable or a list containing None or Variables"
-            else:
-                assert isinstance(
-                    each_var, core.VarBase
-                ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+                else:
+                    assert isinstance(
+                        each_var, core.VarBase
+                    ), "grad_outputs must be None, a Variable or a list containing None or Variables"
     else:
         grad_outputs = []
 
