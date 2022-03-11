@@ -21,7 +21,7 @@ from ..utils import get_logger
 
 class Converter(object):
     """
-    Converter is a class object for auto parallel to convert a parameter from 
+    Converter is a class object for auto parallel to convert parameters from 
     one parallel strategy to another one. Parameters will merge and slice value 
     with their strategy when strategies are different.
     """
@@ -88,7 +88,12 @@ class Converter(object):
 
     def convert(self, strict=True):
         """
-        convert parameters
+        Convert parameters
+
+        Args:
+            strict(bool): whether to strict convert param with param's name. If False, it will
+            convert parameters by prefix matching. Otherwise, parameters will be converted with
+            their name strictly.
 
         Returns:
             converted parameters(dict)
@@ -97,10 +102,10 @@ class Converter(object):
             .. code-block:: python
 
                 import numpy as np
-                complete_param = np.arange(4).reshape([2, 2])
-                partitial_param = np.split(complete_param, 2, axis=0)
+                complete_params = np.arange(4).reshape([2, 2])
+                partitial_params = np.split(complete_params, 2, axis=0)
                 name = "param_0"
-                param_dict = {name: partitial_param}
+                param_dict = {name: partitial_params}
                 strategy_1 = {
                     name: {
                         "process_shape": [2],
@@ -117,7 +122,7 @@ class Converter(object):
                 }
                 converter = Converter(param_dict, strategy_1, strategy_2)
                 result = converter.convert()
-                # the result's value is equal to `complete_param`
+                # the result's value is equal to `complete_params`
         """
         params_dict = {}
         # the name which is in cur_process but not in pre_process
