@@ -112,36 +112,6 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
         f"Invalid equation: duplicate output labels are found.")
 
 
-#     '''
-#     Tests if the two operands can perform a broadcast operation on the given ranges of dimensions. 
-#     We follow the Numpy broadcasting convention which states that, by lining up the shape arrays
-#     starting from the right most dimension, all the aligned dimensions either have equal sizes or
-#     one of them is sized one.
-#     Parameters
-#     ----------
-#     args:
-#         *args unpacks into operand one's axes range, shape, operand two's axes range, shape
-#     f: 
-#         if available, is used as a callback for postprocessing the aligned operand dimensions.
-#     '''
-#     xran, xshape, yran, yshape = args
-#
-#     xran_inv, yran_inv = xran[::-1], yran[::-1]
-#
-#     for xi, yi in zip(xran_inv, yran_inv):
-#         xs, ys = xshape[xi], yshape[yi]
-#         cond = xs == ys or xs == 1 or ys == 1
-#         if not cond:
-#             return False
-#
-#     if not f:
-#         return True
-#
-#     # Apply the callback to each aligned dimension pair
-#     for xi, yi in zip(xran_inv, yran_inv):
-#         f(xi, yi)
-
-
 def build_view(in_labels, out_labels):
     '''
     Build an inverse map of dimension indices. Three conditions must hold for 
@@ -298,34 +268,6 @@ def build_global_shape(g_view, g_labels, op_shapes):
     return g_shape, g_masks
 
 
-def dim_strides(shape):
-    '''
-    Returns the dimension strides for a tensor shape
-    '''
-    strides = []
-    stride = 1
-    for size in shape[::-1]:
-        strides.append(stride)
-        stride = stride * size
-    return strides
-
-
-def create_view(operand, *view_def):
-    '''
-    Create and materialize a view.
-    
-    Parameters
-    ----------
-    operand:
-        the base tensor operand
-    view_def: 
-        include two lists which define the view's dimension sizes and strides
-    '''
-    assert False, f'Diagonal and trace not implemented yet.'
-    view_shape, view_strides = view_def
-    return operand.create_view(view_shape, view_strides)
-
-
 def has_duplicated_labels(labels):
     '''
     Returns True if there is any duplicate label.
@@ -339,37 +281,17 @@ def diagonalize(labels, operand):
     Merges dimensions with duplicate labels. 
     
     For those dimensions with duplicate labels, merge them into one dimension
-    which represents the diagonal elements. That requires the duplicate labeled
-    dimensions equal sized. The order of dimensions is kept unchanged up to 
-    the left-most appearance of each label.
+    which represents the diagonal elements. This requires the dimensions with
+    duplicate labels are equal sized.
     
     Examples
     -------- 
     'ijj...i' would be merged into 'ij...'
     '''
-    if not has_duplicated_labels(labels):
-        return labels, operand
+    assert not has_duplicated_labels(labels), (
+        f'Duplicate labels are not supported.')
 
-    strides = dim_strides(operand.shape)
-    shape = operand.shape
-    new_labels = []
-    new_shape = []
-    new_strides = []
-
-    for ax, l in enumerate(labels):
-        if l == '.' or l not in new_labels:
-            # not duplicate
-            new_labels.append(l)
-            new_strides.append(strides[ax])
-            new_shape.append(shape[ax])
-        else:
-            # duplicate label
-            diag_ax = new_labels.index(l)
-            new_strides[diag_ax] += strides[ax]
-
-    # Call framework API to build a new tensor
-    new_op = create_view(operand, new_shape, new_strides)
-    return new_labels, new_op
+    return labels, operand
 
 
 def plan_reduce(plan, op, reduce_dims, keepdim):
