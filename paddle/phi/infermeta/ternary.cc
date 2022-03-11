@@ -192,6 +192,53 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void ViterbiDecodeInferMeta(const MetaTensor& input,
+                            const MetaTensor& transition,
+                            const MetaTensor& length,
+                            bool include_bos_eos_tag,
+                            MetaTensor* scores,
+                            MetaTensor* path,
+                            MetaConfig config) {
+  auto in_dims = input.dims();
+  PADDLE_ENFORCE_EQ(in_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input in ViterbiDecode  must be 3. But "
+                        "received Input's rank is %d.",
+                        in_dims.size()));
+  auto length_dims = length.dims();
+  PADDLE_ENFORCE_EQ(length_dims.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The rank of Length in ViterbiDecode must be 1. But "
+                        "received Length's rank is %d.",
+                        length_dims.size()));
+  auto transition_dims = transition.dims();
+  PADDLE_ENFORCE_EQ(
+      transition_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Transition in ViterbiDecode must be 2. But "
+          "received Transition's rank is %d.",
+          transition_dims.size()));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(
+        in_dims[0],
+        length_dims[0],
+        phi::errors::InvalidArgument(
+            "The batch size of Input and Length should be equal."));
+    PADDLE_ENFORCE_EQ(in_dims[2],
+                      transition_dims[0],
+                      phi::errors::InvalidArgument(
+                          "The number of tags of Input (%d) and Transition "
+                          "(%d) should be equal.",
+                          transition_dims[0],
+                          in_dims[2]));
+  }
+  scores->set_dims(length_dims);
+  scores->set_dtype(length.dtype());
+}
+
 void LerpInferMeta(const MetaTensor& x,
                    const MetaTensor& y,
                    const MetaTensor& weight,
@@ -209,4 +256,139 @@ void LerpInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       MetaTensor* out) {
+  auto s_dims = start.dims();
+  PADDLE_ENFORCE_EQ(
+      (s_dims.size() == 1) && (s_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
+                                   "but received input shape is [%s].",
+                                   s_dims));
+  auto e_dims = stop.dims();
+  PADDLE_ENFORCE_EQ(
+      (e_dims.size() == 1) && (e_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
+                                   "but received input shape is [%s].",
+                                   e_dims));
+  auto step_dims = number.dims();
+  PADDLE_ENFORCE_EQ(
+      (step_dims.size() == 1) && (step_dims[0] == 1),
+      true,
+      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
+                                   "but received input shape is [%s].",
+                                   step_dims));
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(start.dtype());
+}
+
+void AccuracyInferMeta(const MetaTensor& out,
+                       const MetaTensor& indice,
+                       const MetaTensor& label,
+                       MetaTensor* accuracy,
+                       MetaTensor* correct,
+                       MetaTensor* total,
+                       MetaConfig config) {
+  auto inference_dim = out.dims();
+  auto label_dim = label.dims();
+  // Assume indices has same shape as inference, because
+  // it's the output of topk.
+  PADDLE_ENFORCE_EQ(
+      label_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: label's dimensions of AccuracyOp must be 2. "
+          "But received label's dimensions = %d, label's shape = [%s]",
+          label_dim.size(),
+          label_dim));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(label_dim[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: label's second dimension of "
+                          "AccuracyOp must be 1. But received label's "
+                          "second dimension is = %d, label's shape = [%s]",
+                          label_dim[1],
+                          label_dim));
+    PADDLE_ENFORCE_EQ(
+        inference_dim[0],
+        label_dim[0],
+        phi::errors::InvalidArgument(
+            "ShapeError: the output's num_rows of AccuracyOp must be"
+            " the same as label's num_rows. But received output's "
+            "shape = [%s], label's shape = [%s], output's num_rows = %d, "
+            "label's "
+            "num_rows = %d",
+            inference_dim,
+            label_dim,
+            inference_dim[0],
+            label_dim[0]));
+  }
+
+  accuracy->set_dims({1});
+  accuracy->set_dtype(out.dtype());
+  correct->set_dims({1});
+  correct->set_dtype(out.dtype());
+  total->set_dims({1});
+  total->set_dtype(out.dtype());
+  accuracy->share_lod(out);
+}
+
+void GraphSendRecvInferMeta(const MetaTensor& x,
+                            const MetaTensor& src_index,
+                            const MetaTensor& dst_index,
+                            const std::string& pool_type,
+                            MetaTensor* out,
+                            MetaTensor* dst_count) {
+  auto src_index_dims = src_index.dims();
+  if (src_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(src_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Src_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          src_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The Src_index should be 1D, when it is not 2D, but we get %d",
+            src_index_dims.size()));
+  }
+
+  auto dst_index_dims = dst_index.dims();
+  if (dst_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(dst_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Dst_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          dst_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dst_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The Dst_index should be 1D, "
+                                     "when it is not 2D, but we get %d",
+                                     dst_index_dims.size()));
+  }
+
+  PADDLE_ENFORCE_EQ(src_index_dims[0],
+                    dst_index_dims[0],
+                    phi::errors::InvalidArgument(
+                        "Src_index and Dst_index should have the same shape."));
+
+  auto dims = x.dims();
+  out->set_dims(dims);
+  out->set_dtype(x.dtype());
+
+  if (pool_type == "MEAN") {
+    dst_count->set_dims({dims[0]});
+    dst_count->set_dtype(DataType::INT32);
+  }
+}
 }  // namespace phi
