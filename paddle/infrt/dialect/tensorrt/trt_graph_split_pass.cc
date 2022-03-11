@@ -16,7 +16,6 @@
 
 #include <mlir/IR/Builders.h>
 #include "paddle/infrt/dialect/pd_ops.h"
-#include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
 namespace trt {

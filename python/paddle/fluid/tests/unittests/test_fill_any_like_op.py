@@ -21,7 +21,7 @@ from paddle.fluid import Program, program_guard
 import paddle.compat as cpt
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 
 class TestFillAnyLikeOp(OpTest):
@@ -45,6 +45,25 @@ class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
     def init(self):
         self.dtype = np.float32
         self.value = 0.0
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestFillAnyLikeOpBfloat16(OpTest):
+    def setUp(self):
+        self.op_type = "fill_any_like"
+        self.dtype = np.uint16
+        self.value = 0.0
+        self.inputs = {'X': np.random.random((219, 232)).astype(np.float32)}
+        self.attrs = {'value': self.value, 'dtype': core.VarDesc.VarType.BF16}
+        self.outputs = {
+            'Out':
+            convert_float_to_uint16(self.value * np.ones_like(self.inputs["X"]))
+        }
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
 
 class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
@@ -77,19 +96,6 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
             'Out':
             self.value * np.ones_like(self.inputs["X"]).astype(np.float32)
         }
-
-
-class TestFillAnyLikeOpOverflow(TestFillAnyLikeOp):
-    def init(self):
-        self.value = 1e100
-
-    def test_check_output(self):
-        exception = None
-        try:
-            self.check_output(check_dygraph=False)
-        except ValueError as ex:
-            exception = ex
-        self.assertIsNotNone(exception)
 
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):

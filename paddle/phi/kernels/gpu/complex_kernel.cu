@@ -38,11 +38,15 @@ PD_REGISTER_KERNEL(real,
                    ALL_LAYOUT,
                    phi::RealKernel,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
 
 PD_REGISTER_KERNEL(imag,
                    GPU,
                    ALL_LAYOUT,
                    phi::ImagKernel,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}

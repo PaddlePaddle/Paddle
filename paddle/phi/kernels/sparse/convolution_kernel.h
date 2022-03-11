@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -124,6 +125,7 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
+                  const bool subm,
                   SparseCooTensor* out,
                   DenseTensor* rulebook);
 
@@ -135,12 +137,23 @@ SparseCooTensor Conv3d(const Context& dev_ctx,
                        const std::vector<int>& dilations,
                        const std::vector<int>& strides,
                        const int groups,
+                       const bool subm,
                        DenseTensor* rulebook) {
-  DenseTensor indices = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor values = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor indices = phi::Empty<Context>(
+      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
+  DenseTensor values =
+      phi::Empty<Context>(dev_ctx, DenseTensorMeta(x.dtype(), {1}, x.layout()));
   SparseCooTensor coo(indices, values, x.dims());
-  Conv3dKernel<T, Context>(
-      dev_ctx, x, kernel, paddings, dilations, strides, groups, &coo, rulebook);
+  Conv3dKernel<T, Context>(dev_ctx,
+                           x,
+                           kernel,
+                           paddings,
+                           dilations,
+                           strides,
+                           groups,
+                           subm,
+                           &coo,
+                           rulebook);
   return coo;
 }
 

@@ -11,11 +11,19 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-
 namespace paddle {
+namespace framework {
+class Scope;
+}
+
 namespace pybind {
 
 typedef struct {
@@ -33,6 +41,8 @@ int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
+std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
+                                                       ssize_t arg_pos);
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj, ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
@@ -89,6 +99,21 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
   return result;
 }
 
+paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
+                                              const std::string& op_type,
+                                              ssize_t arg_pos);
+
+paddle::experimental::ScalarArray CastPyArg2ScalarArray(
+    PyObject* obj, const std::string& op_type, ssize_t arg_pos);
+
+paddle::experimental::Backend CastPyArg2Backend(PyObject* obj,
+                                                const std::string& op_type,
+                                                ssize_t arg_pos);
+
+paddle::experimental::DataType CastPyArg2DataType(PyObject* obj,
+                                                  const std::string& op_type,
+                                                  ssize_t arg_pos);
+
 paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
@@ -111,6 +136,11 @@ paddle::experimental::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
 std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     const std::string& op_type, const std::string& arg_name, PyObject* args,
     ssize_t arg_idx, bool dispensable = false);
+
+// end of Slice related methods
+std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable);
 
 }  // namespace pybind
 }  // namespace paddle

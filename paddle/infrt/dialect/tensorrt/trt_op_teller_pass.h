@@ -14,6 +14,7 @@
 
 #pragma once
 #include <mlir/Pass/Pass.h>
+#include "paddle/infrt/dialect/infrt_base.h"
 
 namespace infrt {
 namespace trt {
@@ -24,30 +25,28 @@ namespace trt {
  *
  * source func:
  *
- * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()...
+ * func @main(%a : tensor<?xf32>) -> tensor<?xf32> {
  *  %c = "pd.conv2d"(%a) ...
  *  %d = "pd.conv3d"(%c) ...
  *  %f = "pd.conv2d"(%a) ...
- *  "pd.fetch" (%d, %f)
+ *  "infrt.return"(%d, %f) ...
  * }
  *
  * destination func:
- * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()...
+ * func @main(%a : tensor<?xf32>) -> tensor<?xf32> {
  *  %c = "pd.graph"(%a) {
  *     %m = "pd.conv2d"(%a)...
- *     "pd.return" (%m)
+ *     "infrt.return" (%m)
  *  } ...
  *  %d = "pd.graph"(%c) {
  *      %m = "pd.conv3d"(%c)...
- *      "pd.return" (%m)
+ *      "infrt.return" (%m)
  *  } ...
  *  %f = "pd.graph"(%a) {
  *      %m = "pd.conv2d"(%a)...
- *      "pd.return" (%m)
+ *      "infrt.return" (%m)
  *  } ...
- *  "pd.fetch" (%d, %f)
+ *  "infrt.return" (%d, %f)
  * }
  * TODO(winter-wang): Supplementary how to judge the operators can be supported
  * by tensorrt.
@@ -55,6 +54,7 @@ namespace trt {
 class TRTOpTellerPass
     : public mlir::PassWrapper<TRTOpTellerPass, mlir::FunctionPass> {
  public:
+  void getDependentDialects(mlir::DialectRegistry &registry) const override {}
   ::llvm::StringRef getName() const override { return "trtOpTellerPass"; }
   void runOnFunction() override;
 };
