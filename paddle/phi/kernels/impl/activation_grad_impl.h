@@ -137,6 +137,7 @@ void LeakyReluDoubleGradKernel(const Context& dev_ctx,
                                float alpha,
                                DenseTensor* ddout) {
   funcs::LeakyReluGradGradFunctor<T> leaky_relu_double_grad_functor;
+  leaky_relu_double_grad_functor.alpha = alpha;
   ActivationDoubleGradImpl<T, Context, funcs::LeakyReluGradGradFunctor<T>>(
       dev_ctx,
       &x,
