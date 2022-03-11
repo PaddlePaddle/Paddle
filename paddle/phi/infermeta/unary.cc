@@ -461,6 +461,7 @@ void TileInferMeta(const MetaTensor& x,
   if (out_shape[0] == x_dims[0]) {
     out->share_lod(x);
   }
+  out->set_dtype(x.data_type());
 }
 
 void ReshapeInferMeta(const MetaTensor& x,

@@ -16,6 +16,8 @@ import os
 import re
 import json
 
+skip_list = ["adam_sig.cc", "adamw_sig.cc"]
+
 
 def parse_compat_registry(kernel_info):
     name, inputs_str, attrs_str, outputs_str = kernel_info.split(",{")

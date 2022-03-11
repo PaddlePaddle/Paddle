@@ -20,12 +20,12 @@
 
 #include "paddle/phi/kernels/adamw_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
@@ -249,16 +249,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
   // mutable_data
   if (skip_update_) {
     VLOG(4) << "Adamw skip update";
-    paddle::framework::TensorCopy(
-        param, dev_ctx.GetPlace(), dev_ctx, param_out);
-    paddle::framework::TensorCopy(
-        moment1, dev_ctx.GetPlace(), dev_ctx, moment1_out);
-    paddle::framework::TensorCopy(
-        moment2, dev_ctx.GetPlace(), dev_ctx, moment2_out);
-    paddle::framework::TensorCopy(
-        beta1_pow, dev_ctx.GetPlace(), dev_ctx, beta1_pow_out);
-    paddle::framework::TensorCopy(
-        beta2_pow, dev_ctx.GetPlace(), dev_ctx, beta2_pow_out);
+    phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
+    phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
+    phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, beta1_pow_out);
+    phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, beta2_pow_out);
     return;
   }
 
@@ -409,16 +404,11 @@ void AdamwDenseParamSparseGradKernel(
   // mutable_data
   if (skip_update_) {
     VLOG(4) << "Adamw skip update";
-    paddle::framework::TensorCopy(
-        param, dev_ctx.GetPlace(), dev_ctx, param_out);
-    paddle::framework::TensorCopy(
-        moment1, dev_ctx.GetPlace(), dev_ctx, moment1_out);
-    paddle::framework::TensorCopy(
-        moment2, dev_ctx.GetPlace(), dev_ctx, moment2_out);
-    paddle::framework::TensorCopy(
-        beta1_pow, dev_ctx.GetPlace(), dev_ctx, beta1_pow_out);
-    paddle::framework::TensorCopy(
-        beta2_pow, dev_ctx.GetPlace(), dev_ctx, beta2_pow_out);
+    phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
+    phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
+    phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, beta1_pow_out);
+    phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, beta2_pow_out);
     return;
   }
 

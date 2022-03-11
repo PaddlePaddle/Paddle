@@ -16,7 +16,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
@@ -90,8 +90,7 @@ void TileGradKernel(const Context& dev_ctx,
   if (just_copy) {
     dev_ctx.template Alloc<T>(x_grad);
 
-    paddle::framework::TensorCopy(
-        out_grad, dev_ctx.GetPlace(), dev_ctx, x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     // TensorCopy may change the dims of dx
     x_grad->Resize(x_dims);
   } else {
