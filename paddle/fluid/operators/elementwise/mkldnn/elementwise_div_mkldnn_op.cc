@@ -16,16 +16,13 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(
-    elementwise_add, MKLDNN, ::paddle::platform::CPUPlace,
-    ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_add>,
-    ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
-                             dnnl::algorithm::binary_add>,
-    ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_add>,
-    ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_add>)
+REGISTER_OP_KERNEL(elementwise_div, MKLDNN, paddle::platform::CPUPlace,
+                   ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_div>,
+                   ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
+                                            dnnl::algorithm::binary_div>)
 
 REGISTER_OP_KERNEL(
-    elementwise_add_grad, MKLDNN, ::paddle::platform::CPUPlace,
+    elementwise_div_grad, MKLDNN, paddle::platform::CPUPlace,
     ops::EltwiseMKLDNNGradKernel<paddle::platform::bfloat16,
-                                 dnnl::algorithm::binary_add>,
-    ops::EltwiseMKLDNNGradKernel<float, dnnl::algorithm::binary_add>)
+                                 dnnl::algorithm::binary_div>,
+    ops::EltwiseMKLDNNGradKernel<float, dnnl::algorithm::binary_div>)
