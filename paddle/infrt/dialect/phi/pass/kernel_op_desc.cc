@@ -102,8 +102,7 @@ std::vector<PhiKernelDesc> GetCandidateKernels(
       phi_kernel_desc.input_types.emplace_back(cvtPlaceFromPhi(tensor_arg));
     }
     for (auto tensor_arg : output_arg) {
-      phi_kernel_desc.output_types.emplace_back(
-          cvtPlaceFromPhi(tensor_arg));
+      phi_kernel_desc.output_types.emplace_back(cvtPlaceFromPhi(tensor_arg));
     }
     candidate_kernels.emplace_back(phi_kernel_desc);
   }
