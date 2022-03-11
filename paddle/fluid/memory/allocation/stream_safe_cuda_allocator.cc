@@ -155,8 +155,8 @@ StreamSafeCUDAAllocator::~StreamSafeCUDAAllocator() {
 bool StreamSafeCUDAAllocator::IsAllocThreadSafe() const { return true; }
 
 phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
-  platform::RecordEvent("StreamSafeCUDAAllocator::Allocate",
-                        platform::TracerEventType::UserDefined, 9 /*level*/);
+  // platform::RecordEvent("StreamSafeCUDAAllocator::Allocate",
+  //                      platform::TracerEventType::UserDefined, 9 /*level*/);
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
@@ -184,15 +184,11 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
 }
 
 void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
-  platform::RecordEvent("StreamSafeCUDAAllocator::Free",
-                        platform::TracerEventType::UserDefined, 9 /*level*/);
+  // platform::RecordEvent("StreamSafeCUDAAllocator::Free",
+  //                      platform::TracerEventType::UserDefined, 9 /*level*/);
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
-      dynamic_cast<StreamSafeCUDAAllocation*>(allocation);
-  PADDLE_ENFORCE_NOT_NULL(stream_safe_cuda_allocation,
-                          platform::errors::InvalidArgument(
-                              "Failed to dynamic cast %p from Allocation* to "
-                              "StreamSafeCUDAAllocation*",
-                              allocation));
+      static_cast<StreamSafeCUDAAllocation*>(allocation);
+
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
   if (stream_safe_cuda_allocation->CanBeFreed()) {
     VLOG(9) << "Directly delete allocation";

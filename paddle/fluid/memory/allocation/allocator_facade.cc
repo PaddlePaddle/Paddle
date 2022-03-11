@@ -359,7 +359,7 @@ class AllocatorFacadePrivate {
 
   gpuStream_t GetDefaultStream(const platform::CUDAPlace& place) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    return static_cast<platform::CUDADeviceContext*>(pool.Get(place))->stream();
+    return static_cast<phi::GPUContext*>(pool.Get(place))->stream();
   }
 
   void RecordStream(std::shared_ptr<phi::Allocation> allocation,
