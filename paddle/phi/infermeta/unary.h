@@ -100,6 +100,11 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
 
+void TileInferMeta(const MetaTensor& x,
+                   const ScalarArray& repeat_times,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
 void SumRawInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,
