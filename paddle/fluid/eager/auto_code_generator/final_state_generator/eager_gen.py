@@ -556,7 +556,7 @@ class {} : public egr::GradNodeBase {{
   // SetAttributes
   {}
 
-  bool IsClearTensorWrapper() override {{
+  bool IsClearTensorWrappers() override {{
       return is_clear_tensor_wrappers;
   }}
  private:
