@@ -42,10 +42,10 @@ class GradNodeScale : public GradNodeBase {
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
       const bool create_graph = false) override;
 
-  void ClearTensorWrappers() override { VLOG(1) << "Do nothing here now"; }
+  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
-  bool IsClearTensorWrapper() override {
-    VLOG(1) << "Do nothing here now";
+  bool IsClearTensorWrappers() override {
+    VLOG(6) << "Do nothing here now";
     return false;
   }
 

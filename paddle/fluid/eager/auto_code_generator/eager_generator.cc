@@ -2106,7 +2106,7 @@ static std::string GenerateGradNodeHeaderContents(
       "%s\n"
       "  // SetAttrMap\n"
       "%s\n"
-      "  bool IsClearTensorWrapper() override { \n"
+      "  bool IsClearTensorWrappers() override { \n"
       "    return is_clear_tensor_wrappers;\n"
       "  }\n"
       " private:\n"

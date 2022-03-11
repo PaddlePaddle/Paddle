@@ -411,9 +411,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     // return {x_grad, details::DereferenceTensors(params_grad_ptr)};
   }
 
-  void ClearTensorWrappers() override { VLOG(1) << "Do nothing here now"; }
-  bool IsClearTensorWrapper() override {
-    VLOG(1) << "Do nothing here now";
+  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
+  bool IsClearTensorWrappers() override {
+    VLOG(6) << "Do nothing here now";
     return false;
   }
 
