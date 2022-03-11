@@ -966,6 +966,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
     return sum(tmp_tensor, axis, dtype, keepdim, name)
 
+
 def nanmean(x,axis=None,keepdim=None,name=None):
     r"""
     Compute the arithmetic mean along the specified axis, ignoring NaNs.
@@ -1027,13 +1028,13 @@ def nanmean(x,axis=None,keepdim=None,name=None):
         axis = [axis]
     if axis == None:
         return paddle.mean(x[~paddle.isnan(x)], keepdim=keepdim,name=name)
-
-    tot = paddle.nansum(x,axis=axis,keepdim=keepdim,name=name)
-    cnt = paddle.sum( ~paddle.isnan(x) ,axis = axis,keepdim=keepdim )
-    avg = paddle.divide(tot,cnt.astype(tot.dtype))
-
-    return avg
-
+    check_variable_and_dtype(x, 'x/input',
+                             ['uint16', 'float16', 'float32', 'float64'],
+                             'nanmean' )
+    check_type(axis, 'axis/dim', (int, list, tuple), 'nanmean')
+    
+    cnt = paddle.sum(~paddle.isnan(x), axis = axis,keepdim=keepdim)
+    return paddle.divide(paddle.nansum(x, axis=axis, keepdim=keepdim, name=name), cnt.astype(x.dtype))
 
 
 @templatedoc(op_type="sum")
