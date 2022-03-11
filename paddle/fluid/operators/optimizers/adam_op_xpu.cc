@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/operators/optimizers/adam_op_functor.h"
 
 namespace paddle {
 namespace operators {
