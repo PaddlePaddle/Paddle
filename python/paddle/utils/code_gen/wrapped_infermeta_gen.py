@@ -26,7 +26,7 @@ def get_wrapped_infermeta_name(api_name):
 def gene_wrapped_infermeta_and_register(api):
     if api.is_base_api and not api.is_dygraph_api:
         register_code = f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']});"""
+PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']});"""
 
         if api.infer_meta['param'] is not None:
             kernel_params = api.kernel['param']
@@ -73,7 +73,7 @@ void {wrapped_infermeta_name}({", ".join(args)}) {{
 """
 
             register_code = f"""
-PT_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{get_wrapped_infermeta_name(api.kernel['func'][0])});"""
+PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{get_wrapped_infermeta_name(api.kernel['func'][0])});"""
 
             return declare_code, defind_code, register_code
         else:

@@ -1131,7 +1131,7 @@ class AdaptiveMaxPool3D(Layer):
 
 
 class MaxUnPool1D(Layer):
-    """
+    r"""
     This API implements max unpooling 1d opereation.
 
     `max_unpool1d` accepts the output of `max_pool1d` as input, 
@@ -1213,7 +1213,7 @@ class MaxUnPool1D(Layer):
 
 
 class MaxUnPool2D(Layer):
-    """
+    r"""
     This API implements max unpooling 2d opereation.
 
     'max_unpool2d' accepts the output of 'max_unpool2d' as input
@@ -1257,9 +1257,8 @@ class MaxUnPool2D(Layer):
         
         import paddle
         import paddle.nn.functional as F
-        import numpy as np
 
-        data = paddle.rand(shape=[1,1,7,7])
+        data = paddle.rand(shape=[1,1,6,6])
         pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
         # pool_out shape: [1, 1, 3, 3],  indices shape: [1, 1, 3, 3]
         Unpool2D = paddle.nn.MaxUnPool2D(kernel_size=2, padding=0)
@@ -1299,7 +1298,7 @@ class MaxUnPool2D(Layer):
 
 
 class MaxUnPool3D(Layer):
-    """
+    r"""
     This API implements max unpooling 3d opereation.
 
     `max_unpool3d` accepts the output of `max_pool3d` as input, 

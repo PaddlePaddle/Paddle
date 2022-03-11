@@ -40,7 +40,7 @@ template <typename DeviceContext, typename T>
 class EighGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using ValueType = phi::funcs::Real<T>;
+    using ValueType = phi::dtype::Real<T>;
     auto& x_grad = *ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     x_grad.mutable_data<T>(ctx.GetPlace());
     auto& output_w = *ctx.Input<Tensor>("Eigenvalues");

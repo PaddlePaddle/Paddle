@@ -79,7 +79,7 @@ void DiagonalKernel(const Context& dev_ctx,
   }
 }
 }  // namespace phi
-PT_REGISTER_KERNEL(diagonal,
+PD_REGISTER_KERNEL(diagonal,
                    CPU,
                    ALL_LAYOUT,
                    phi::DiagonalKernel,

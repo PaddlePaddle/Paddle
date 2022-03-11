@@ -29,7 +29,7 @@ USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP(relu);
 USE_OP_DEVICE_KERNEL(relu, MKLDNN);
-USE_OP(softmax);
+USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 
 namespace paddle {

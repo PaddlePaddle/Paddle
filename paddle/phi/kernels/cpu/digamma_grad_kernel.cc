@@ -19,5 +19,5 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/digamma_grad_kernel_impl.h"
 
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     digamma_grad, CPU, ALL_LAYOUT, phi::DigammaGradKernel, float, double) {}

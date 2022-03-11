@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 namespace kps = phi::kps;
 
@@ -24,6 +24,8 @@ namespace kps = phi::kps;
 
 namespace phi {
 namespace funcs {
+
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 struct DimensionsTransform {
   using DimVector = std::vector<int64_t>;
@@ -122,7 +124,7 @@ struct DimensionsTransform {
   explicit DimensionsTransform(const std::vector<const DenseTensor *> &ins,
                                const phi::DDim &dims,
                                int axis) {
-    const int N = max(static_cast<int>(ins.size()), 2);
+    const int N = std::max(static_cast<int>(ins.size()), 2);
     dim_size = dims.size();
     out_dims = phi::vectorize<int64_t>(dims);
     in_dims.resize(N);
@@ -182,8 +184,6 @@ struct DimensionsTransform {
     std::swap(in_dims[min_idx], in_dims[0]);
   }
 };
-
-#if defined(__NVCC__) || defined(__HIPCC__)
 
 template <typename T, int VecSize, int Rank, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
@@ -268,7 +268,7 @@ __global__ void VectorizedBroadcastKernel(
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   int stride = BLOCK_NUM_X * GRID_NUM_X * VecSize;
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
   for (; block_offset < main_offset; block_offset += stride) {
     VectorizedBroadcastKernelImpl<InT,
                                   OutT,
@@ -348,12 +348,12 @@ void LaunchBroadcastKernel(const KPDevice &ctx,
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
 
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
+    outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
 
   for (int i = 0; i < Arity; i++) {
     use_broadcast[i] = (ins[i]->numel() != numel);
-    ins_data[i] = (_ptr_ InT *)(ins[i]->data<InT>());
+    ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
     if (use_broadcast[i]) {
       // get the broadcast config,
       // if data shape is[m, n], then you should set data_dim = {n, m}
@@ -363,7 +363,7 @@ void LaunchBroadcastKernel(const KPDevice &ctx,
     }
   }
 
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
   const int threads = 64;
   const int blocks = 8;
   int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
@@ -576,6 +576,20 @@ void BroadcastKernel(const KPDevice &ctx,
     BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
         ctx, ins, outs, axis, func);
   }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+void ElementwiseCompute(const GPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        int axis,
+                        Functor func,
+                        DenseTensor *z) {
+  std::vector<const DenseTensor *> ins = {&x, &y};
+  std::vector<DenseTensor *> outs = {z};
+  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  BroadcastKernel<ElementwiseType::kBinary, T, OutType, Functor, 1>(
+      dev_ctx, ins, &outs, axis, func);
 }
 
 #endif

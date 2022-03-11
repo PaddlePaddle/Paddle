@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 from paddle.framework import core
@@ -115,6 +115,39 @@ class TestCase6(TestGatherOp):
         self.x_type = "float64"
         self.index = [1, 3]
         self.index_type = "int32"
+
+
+class TestGatherBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "gather"
+        self.dtype = np.uint16
+        self.config()
+        xnp = np.random.random(self.x_shape).astype(np.float32)
+        axis_np = np.array(self.axis).astype(self.axis_type)
+        index_np = np.array(self.index).astype(self.index_type)
+        self.inputs = {
+            'X': convert_float_to_uint16(xnp),
+            'Index': index_np,
+            'Axis': axis_np
+        }
+        out = gather_numpy(self.inputs['X'], index_np, axis_np[0])
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5)
+
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (3, 88, 3)
+        self.index = [1, 3, 5]
+        self.index_type = "int32"
+        self.axis = [1]
+        self.axis_type = "int32"
 
 
 class TestGatherOp1(OpTest):
