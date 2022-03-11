@@ -19,4 +19,4 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/softmax_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    softmax, CPU, ALL_LAYOUT, phi::SoftmaxRawKernel, float, double) {}
+    softmax, CPU, ALL_LAYOUT, phi::SoftmaxKernel, float, double) {}
