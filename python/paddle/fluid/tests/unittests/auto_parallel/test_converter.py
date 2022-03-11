@@ -17,13 +17,12 @@ import os
 import sys
 import shutil
 import subprocess
-from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
-class TestEngineAPI(unittest.TestCase):
-    def test_engine_api(self):
+class TestConverter(unittest.TestCase):
+    def test_converter(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir, "engine_api.py")
+        launch_model_path = os.path.join(file_dir, "converter.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
