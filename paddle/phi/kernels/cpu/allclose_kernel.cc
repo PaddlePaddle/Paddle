@@ -16,6 +16,7 @@
 
 #include <cmath>
 
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -28,6 +29,17 @@ void AllCloseKernel(const Context& dev_ctx,
                     const Scalar& atol,
                     bool equal_nan,
                     DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      rtol.dtype(),
+      DataType::FLOAT64,
+      phi::errors::InvalidArgument(
+          "Input (Rtol) type must be double, but get %s.", rtol.dtype()));
+  PADDLE_ENFORCE_EQ(
+      atol.dtype(),
+      DataType::FLOAT64,
+      phi::errors::InvalidArgument(
+          "Input (Atol) type must be double, but get %s.", atol.dtype()));
+
   auto* in_a = x.data<T>();
   auto* in_b = y.data<T>();
   auto rtol_v = rtol.to<double>();
