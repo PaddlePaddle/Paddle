@@ -29,17 +29,20 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
+        FCAsX = draw(st.sampled_from([True, False]))
+        fc_in = draw(st.sampled_from([16, 32, 48, 64]))
+        fc_wei = draw(st.sampled_from([16, 32, 48, 64]))
 
         def generate_input():
             return np.random.random(
-                [32, 64]).astype(np.float32)
+                [fc_in, fc_wei]).astype(np.float32)
 
         def generate_fc_weight():
             return np.random.random(
-                [64, 64]).astype(np.float32)
+                [fc_wei, fc_wei]).astype(np.float32)
 
         def generate_fc_bias():
-            return np.random.random([64]).astype(np.float32)
+            return np.random.random([fc_wei]).astype(np.float32)
 
         relu_op = OpConfig(
             type="relu",
@@ -61,11 +64,11 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
                 "in_num_col_dims": 1,
             })
 
-        if axis == 1:
+        if FCAsX:
             elt_add_op = OpConfig(
                 type="elementwise_add",
                 inputs={"X": ["fc_output"],
-                        "Y": ["elementwise_weight"]},
+                        "Y": ["input_data"]},
                 outputs={"Out": ["elementwise_output"]},
                 attrs={'axis': axis})
         else:
@@ -78,36 +81,19 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
         model_net = [relu_op, fc_op, elt_add_op]
 
-        if axis == 1:
-            program_config = ProgramConfig(
-                ops=model_net,
-                weights={
-                    "fc_weight":
-                    TensorConfig(data_gen=partial(generate_fc_weight)),
-                    "fc_bias":
-                    TensorConfig(data_gen=partial(generate_fc_bias)),
-                    "elementwise_weight":
-                    TensorConfig(data_gen=partial(generate_fc_bias))
-                },
-                inputs={
-                    "input_data":
-                    TensorConfig(data_gen=partial(generate_input))
-                },
-                outputs=["elementwise_output"])
-        else:
-            program_config = ProgramConfig(
-                ops=model_net,
-                weights={
-                    "fc_weight":
-                    TensorConfig(data_gen=partial(generate_fc_weight)),
-                    "fc_bias":
-                    TensorConfig(data_gen=partial(generate_fc_bias)),
-                },
-                inputs={
-                    "input_data":
-                    TensorConfig(data_gen=partial(generate_input))
-                },
-                outputs=["elementwise_output"])
+        program_config = ProgramConfig(
+            ops=model_net,
+            weights={
+                "fc_weight":
+                TensorConfig(data_gen=partial(generate_fc_weight)),
+                "fc_bias":
+                TensorConfig(data_gen=partial(generate_fc_bias)),
+            },
+            inputs={
+                "input_data":
+                TensorConfig(data_gen=partial(generate_input))
+            },
+            outputs=["elementwise_output"])
 
         return program_config
 
