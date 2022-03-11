@@ -77,7 +77,7 @@ RecordEvent::RecordEvent(const char *name, const TracerEventType type,
 #endif
 #endif
   if (FLAGS_enable_host_event_recorder_hook == false) {
-    if (g_state != ProfilerState::kDisable) {  // avoid temp string
+    if (g_state != ProfilerState::kDisabled) {  // avoid temp string
       OriginalConstruct(name, role, "none");
     }
     return;
