@@ -439,12 +439,11 @@ void MomentumDenseImpl(const Context& ctx,
   }
 
   ctx.template Alloc<T>(param_out);
-  velocity_out->mutable_data<MT>(ctx.GetPlace());
+  ctx.template Alloc<MT>(velocity_out);
   const MT* master_in_data =
       multi_precision ? master_param->data<MT>() : nullptr;
-  MT* master_out_data = multi_precision
-                            ? master_param_out->mutable_data<MT>(ctx.GetPlace())
-                            : nullptr;
+  MT* master_out_data =
+      multi_precision ? ctx.template Alloc<MT>(master_param_out) : nullptr;
   if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
     CPUDenseMomentumFunctor<MT> functor;
     functor(&param,
@@ -470,8 +469,8 @@ void MomentumDenseImpl(const Context& ctx,
       rescale_grad,                                                 \
       param.numel(),                                                \
       regularization_coeff,                                         \
-      param_out->mutable_data<T>(ctx.GetPlace()),                   \
-      velocity_out->mutable_data<MT>(ctx.GetPlace()),               \
+      ctx.template Alloc<T>(param_out),                             \
+      ctx.template Alloc<MT>(velocity_out),                         \
       master_out_data);                                             \
   for_range(functor);
 
@@ -533,13 +532,13 @@ void MomentumSparseImpl(const Context& ctx,
                           "the attr `multi_precision` is true"));
   }
 
-  param_out->mutable_data<T>(ctx.GetPlace());
-  velocity_out->mutable_data<MT>(ctx.GetPlace());
+  ctx.template Alloc<T>(param_out);
+  ctx.template Alloc<MT>(velocity_out);
+
   const MT* master_in_data =
       multi_precision ? master_param->data<MT>() : nullptr;
-  MT* master_out_data = multi_precision
-                            ? master_param_out->mutable_data<MT>(ctx.GetPlace())
-                            : nullptr;
+  MT* master_out_data =
+      multi_precision ? ctx.template Alloc<MT>(master_param_out) : nullptr;
 
   // sparse update maybe empty.
   if (grad.rows().size() == 0) {
@@ -571,8 +570,8 @@ void MomentumSparseImpl(const Context& ctx,
         static_cast<int64_t>(merged_grad->rows().size()),
         regularization_flag,
         regularization_coeff,
-        param_out->mutable_data<T>(ctx.GetPlace()),
-        velocity_out->mutable_data<MT>(ctx.GetPlace()),
+        ctx.template Alloc<T>(param_out),
+        ctx.template Alloc<MT>(velocity_out),
         master_out_data);
     for_range(functor);
 
@@ -590,8 +589,8 @@ void MomentumSparseImpl(const Context& ctx,
         static_cast<int64_t>(merged_grad->rows().size()),
         regularization_flag,
         regularization_coeff,
-        param_out->mutable_data<T>(ctx.GetPlace()),
-        velocity_out->mutable_data<MT>(ctx.GetPlace()),
+        ctx.template Alloc<T>(param_out),
+        ctx.template Alloc<MT>(velocity_out),
         master_out_data);
     for_range(functor);
   }
