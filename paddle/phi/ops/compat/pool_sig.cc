@@ -50,7 +50,7 @@ KernelSignature Pool2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature Pool2dDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("pool2d_grad_grad",
+  return KernelSignature("pool2d_double_grad",
                          {"X"},
                          {"ksize",
                           "strides",
@@ -137,7 +137,7 @@ KernelSignature MaxPool3dWithIndexGradOpArgumentMapping(
 
 PD_REGISTER_ARG_MAPPING_FN(pool2d, phi::Pool2dOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pool2d_grad, phi::Pool2dGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(pool2d_grad_grad,
+PD_REGISTER_ARG_MAPPING_FN(pool2d_double_grad,
                            phi::Pool2dDoubleGradOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(max_pool2d_with_index,

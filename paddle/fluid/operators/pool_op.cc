@@ -348,7 +348,7 @@ class Pool2dOpGradGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("pool2d_grad_grad");
+    grad_op->SetType("pool2d_double_grad");
     grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
     grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
     grad_op->SetAttrMap(this->Attrs());
@@ -573,7 +573,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(pool2d, Pool2dInferShapeFunctor,
                             PD_INFER_META(phi::PoolInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad, Pool2dGradInferShapeFunctor,
                             PD_INFER_META(phi::PoolGradInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad_grad, Pool2dDoubleGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d_double_grad,
+                            Pool2dDoubleGradInferShapeFunctor,
                             PD_INFER_META(phi::PoolInferMeta));
 
 REGISTER_OPERATOR(
@@ -585,7 +586,7 @@ REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad,
                   ops::Pool2dOpGradGradMaker<paddle::framework::OpDesc>,
                   ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>,
                   Pool2dGradInferShapeFunctor);
-REGISTER_OPERATOR(pool2d_grad_grad, ops::PoolOp,
+REGISTER_OPERATOR(pool2d_double_grad, ops::PoolOp,
                   Pool2dDoubleGradInferShapeFunctor);
 
 DECLARE_INFER_SHAPE_FUNCTOR(pool3d, Pool3dInferShapeFunctor,

@@ -13,13 +13,14 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/pool_grad_kernel.h"
+
 #include "paddle/phi/kernels/impl/pool_grad_kernel_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_REGISTER_KERNEL(
     pool2d_grad, CPU, ALL_LAYOUT, phi::Pool2dGradKernel, float, double) {}
-PD_REGISTER_KERNEL(pool2d_grad_grad,
+PD_REGISTER_KERNEL(pool2d_double_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::Pool2dDoubleGradKernel,

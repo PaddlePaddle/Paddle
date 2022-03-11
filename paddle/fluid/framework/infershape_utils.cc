@@ -90,6 +90,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsForInferShape() const override { return true; }
 
+  bool IsRuntime() const override { return ctx_.IsRuntime(); }
+
  private:
   const InferShapeContext& ctx_;
 };

@@ -57,6 +57,16 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx);
 
+void PsroiPoolGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& rois,
+                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& dout,
+                            int pooled_height,
+                            int pooled_width,
+                            int output_channels,
+                            float spatial_scale,
+                            MetaTensor* dx);
+
 void PoolGradInferMeta(const MetaTensor& x,
                        const MetaTensor& out,
                        const MetaTensor& dout,

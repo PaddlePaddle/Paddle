@@ -136,6 +136,18 @@ void DivideGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void MultiplyGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& dout,
+                        int axis,
+                        DenseTensor* dx,
+                        DenseTensor* dy) {
+  funcs::ElementwiseGradPreProcess(dout, dx);
+  ElementwiseMulGrad<T>(dev_ctx, x, y, dout, dx, dy, axis);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(add_grad,
@@ -226,5 +238,47 @@ PD_REGISTER_KERNEL(divide_double_grad,
                    double,
                    int,
                    int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyDoubleGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(multiply_triple_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MultiplyTripleGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

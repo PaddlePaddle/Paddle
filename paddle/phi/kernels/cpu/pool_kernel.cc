@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/pool_kernel.h"
+
 #include "paddle/phi/kernels/impl/pool_kernel_impl.h"
 
 #include "paddle/phi/core/kernel_registry.h"

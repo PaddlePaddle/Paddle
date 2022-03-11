@@ -144,6 +144,18 @@ void PoolGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
+void PsroiPoolGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& rois,
+                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& dout,
+                            int pooled_height,
+                            int pooled_width,
+                            int output_channels,
+                            float spatial_scale,
+                            MetaTensor* dx) {
+  dx->share_meta(x);
+}
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,
