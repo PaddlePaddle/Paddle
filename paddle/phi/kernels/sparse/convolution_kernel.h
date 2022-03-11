@@ -20,18 +20,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
-
-template <typename T, typename Context>
-DenseTensor Empty(const Context& dev_ctx) {
-  phi::DenseTensor dense_out(
-      phi::make_intrusive<paddle::experimental::SharedStorage>(
-          dev_ctx.GetPlace()),
-      {paddle::experimental::CppTypeToDataType<T>::Type(),
-       {-1},
-       DataLayout::NCHW});
-  return dense_out;
-}
-
 namespace sparse {
 
 struct Dims4D {
@@ -149,8 +137,10 @@ SparseCooTensor Conv3d(const Context& dev_ctx,
                        const std::vector<int>& strides,
                        const int groups,
                        DenseTensor* rulebook) {
-  DenseTensor indices = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor values = phi::Empty<T, Context>(dev_ctx);
+  DenseTensor indices = phi::Empty<Context>(
+      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
+  DenseTensor values =
+      phi::Empty<Context>(dev_ctx, DenseTensorMeta(x.dtype(), {1}, x.layout()));
   SparseCooTensor coo(indices, values, x.dims());
   Conv3dKernel<T, Context>(
       dev_ctx, x, kernel, paddings, dilations, strides, groups, &coo, rulebook);
