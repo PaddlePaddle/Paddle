@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -19,6 +20,12 @@ namespace operators {
 
 using NPUDeviceContext = platform::NPUDeviceContext;
 
+static inline int CanonicalAxis(const int axis, const int rank) {
+  if (axis < 0) {
+    return axis + rank;
+  }
+  return axis;
+}
 template <typename T>
 class LogSoftmaxNPUKernel : public framework::OpKernel<T> {
  public:
