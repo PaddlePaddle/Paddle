@@ -395,6 +395,74 @@ void MultinomialInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::INT64);
 }
 
+void TileInferMeta(const MetaTensor& x,
+                   const ScalarArray& repeat_times,
+                   MetaTensor* out,
+                   MetaConfig config) {
+#define MAX_RANK_SUPPORTED 6
+
+  auto repeat_times_data = repeat_times.GetData();
+  auto x_dims = x.dims();
+  if (repeat_times_data.size() == 0) {
+    repeat_times_data = std::vector<int64_t>(x_dims.size(), -1);
+  }
+
+  PADDLE_ENFORCE_LE(
+      x_dims.size(),
+      MAX_RANK_SUPPORTED,
+      errors::InvalidArgument(
+          "The rank of the input 'x' for tile op "
+          "must not be greater than %d, but the value received is %d.",
+          MAX_RANK_SUPPORTED,
+          x_dims.size()));
+  PADDLE_ENFORCE_LE(
+      repeat_times_data.size(),
+      MAX_RANK_SUPPORTED,
+      errors::InvalidArgument(
+          "The size of the shape of input 'repeat_times' for tile op "
+          "must not be greater than %d, but the value received is %d.",
+          MAX_RANK_SUPPORTED,
+          repeat_times_data.size()));
+  PADDLE_ENFORCE_GE(
+      repeat_times_data.size(),
+      1,
+      errors::InvalidArgument(
+          "The size of the shape of input 'repeat_times' for tile op "
+          "must be positive integers, but the value received is %d.",
+          repeat_times_data.size()));
+
+  auto out_rank =
+      std::max(static_cast<size_t>(x_dims.size()), repeat_times_data.size());
+  std::vector<int64_t> out_shape(out_rank);
+  auto x_dim_vec = phi::vectorize<int>(x_dims);
+  if (x_dim_vec.size() > repeat_times_data.size()) {
+    auto diff = x_dim_vec.size() - repeat_times_data.size();
+    repeat_times_data.insert(repeat_times_data.begin(), diff, -1);
+  } else {
+    auto diff = repeat_times_data.size() - x_dim_vec.size();
+    x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
+  }
+  for (size_t i = 0; i < repeat_times_data.size(); ++i) {
+    if (x_dim_vec[i] == -1 || repeat_times_data[i] == -1) {
+      out_shape[i] = -1;
+    } else {
+      PADDLE_ENFORCE_GT(
+          repeat_times_data[i],
+          0,
+          errors::InvalidArgument(
+              "Every element of the input 'repeat_times' for tile op must be "
+              "greater than 0, but the value given is %d.",
+              repeat_times_data[i]));
+      out_shape[i] = x_dim_vec[i] * repeat_times_data[i];
+    }
+  }
+
+  out->set_dims(phi::make_ddim(out_shape));
+  if (out_shape[0] == x_dims[0]) {
+    out->share_lod(x);
+  }
+}
+
 void ReshapeInferMeta(const MetaTensor& x,
                       const ScalarArray& shape,
                       MetaTensor* out,
@@ -1347,6 +1415,34 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
           "Input(Condition) should have number of dimension at least 1"));
   out->set_dims(phi::make_ddim({-1, rank}));
   out->set_dtype(DataType::INT64);
+}
+
+void ShardIndexInferMeta(const MetaTensor& in,
+                         int index_num,
+                         int nshards,
+                         int shard_id,
+                         int ignore_value,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  auto x_dims = in.dims();
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument("Rank of Input(X) should be at least 2, "
+                                   "but the value given is %d.",
+                                   x_dims.size()));
+  if (config.is_runtime || x_dims[x_dims.size() - 1] > 0) {
+    PADDLE_ENFORCE_EQ(x_dims[x_dims.size() - 1],
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "The last dimension of Input(X) should be 1, "
+                          "but the value given is %d.",
+                          x_dims[x_dims.size() - 1]));
+  }
+
+  out->set_dims(x_dims);
+  out->share_lod(in);
+  out->set_dtype(in.dtype());
 }
 
 }  // namespace phi
