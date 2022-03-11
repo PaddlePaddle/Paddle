@@ -100,9 +100,7 @@ class Converter(object):
                 complete_param = np.arange(4).reshape([2, 2])
                 partitial_param = np.split(complete_param, 2, axis=0)
                 name = "param_0"
-                param_dict = {
-                    name: partitial_param
-                }
+                param_dict = {name: partitial_param}
                 strategy_1 = {
                     name: {
                         "process_shape": [2],
@@ -111,13 +109,13 @@ class Converter(object):
                     }
                 }
                 strategy_2 = {
-                    param_name: {
+                    name: {
                         "process_shape": [2],
                         "process_group": [0, 1],
                         "dims_mapping": [-1, -1]
                     }
                 }
-                converter = Convert(param_dict, strategy_1, strategy_2)
+                converter = Converter(param_dict, strategy_1, strategy_2)
                 result = converter.convert()
                 # the result's value is equal to `complete_param`
         """
