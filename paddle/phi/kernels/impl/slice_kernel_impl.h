@@ -110,12 +110,15 @@ template <typename T, typename Context>
 void SliceRawKernel(const Context& ctx,
                     const DenseTensor& input,
                     const std::vector<int64_t>& axes,
-                    const std::vector<int64_t>& starts,
-                    const std::vector<int64_t>& ends,
+                    const ScalarArray& starts_arr,
+                    const ScalarArray& ends_arr,
                     const std::vector<int64_t>& infer_flags,
                     const std::vector<int64_t>& decrease_axis,
                     DenseTensor* out) {
   int rank = input.dims().size();
+
+  auto& starts = starts_arr.GetData();
+  auto& ends = ends_arr.GetData();
 
   switch (rank) {
     case 1:

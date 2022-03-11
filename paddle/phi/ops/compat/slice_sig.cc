@@ -17,19 +17,155 @@
 namespace phi {
 
 KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "slice",
-      {"Input"},
-      {"axes", "starts", "ends", "infer_flags", "decrease_axis"},
-      {"Out"});
+  if (ctx.HasInput("StartsTensor")) {
+    if (ctx.HasInput("EndsTensor")) {
+      return KernelSignature("slice",
+                             {"Input"},
+                             {"axes",
+                              "StartsTensor",
+                              "EndsTensor",
+                              "infer_flags",
+                              "decrease_axis"},
+                             {"Out"});
+    } else if (ctx.InputSize("EndsTensorList") > 0) {
+      return KernelSignature("slice",
+                             {"Input"},
+                             {"axes",
+                              "StartsTensor",
+                              "EndsTensorList",
+                              "infer_flags",
+                              "decrease_axis"},
+                             {"Out"});
+    } else {
+      return KernelSignature(
+          "slice",
+          {"Input"},
+          {"axes", "StartsTensor", "ends", "infer_flags", "decrease_axis"},
+          {"Out"});
+    }
+  } else if (ctx.InputSize("StartsTensorList") > 0) {
+    if (ctx.HasInput("EndsTensor")) {
+      return KernelSignature("slice",
+                             {"Input"},
+                             {"axes",
+                              "StartsTensorList",
+                              "EndsTensor",
+                              "infer_flags",
+                              "decrease_axis"},
+                             {"Out"});
+    } else if (ctx.InputSize("EndsTensorList") > 0) {
+      return KernelSignature("slice",
+                             {"Input"},
+                             {"axes",
+                              "StartsTensorList",
+                              "EndsTensorList",
+                              "infer_flags",
+                              "decrease_axis"},
+                             {"Out"});
+    } else {
+      return KernelSignature(
+          "slice",
+          {"Input"},
+          {"axes", "StartsTensorList", "ends", "infer_flags", "decrease_axis"},
+          {"Out"});
+    }
+  } else {
+    if (ctx.HasInput("EndsTensor")) {
+      return KernelSignature(
+          "slice",
+          {"Input"},
+          {"axes", "starts", "EndsTensor", "infer_flags", "decrease_axis"},
+          {"Out"});
+    } else if (ctx.InputSize("EndsTensorList") > 0) {
+      return KernelSignature(
+          "slice",
+          {"Input"},
+          {"axes", "starts", "EndsTensorList", "infer_flags", "decrease_axis"},
+          {"Out"});
+    } else {
+      return KernelSignature(
+          "slice",
+          {"Input"},
+          {"axes", "starts", "ends", "infer_flags", "decrease_axis"},
+          {"Out"});
+    }
+  }
 }
 
 KernelSignature SliceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "slice_grad",
-      {GradVarName("Out")},
-      {"axes", "starts", "ends", "infer_flags", "decrease_axis"},
-      {GradVarName("Input")});
+  if (ctx.HasInput("StartsTensor")) {
+    if (ctx.HasInput("EndsTensor")) {
+      return KernelSignature("slice_grad",
+                             {"Input", GradVarName("Out")},
+                             {"axes",
+                              "StartsTensor",
+                              "EndsTensor",
+                              "infer_flags",
+                              "decrease_axis"},
+                             {GradVarName("Input")});
+    } else if (ctx.InputSize("EndsTensorList") > 0) {
+      return KernelSignature("slice_grad",
+                             {"Input", GradVarName("Out")},
+                             {"axes",
+                              "StartsTensor",
+                              "EndsTensorList",
+                              "infer_flags",
+                              "decrease_axis"},
+                             {GradVarName("Input")});
+    } else {
+      return KernelSignature(
+          "slice_grad",
+          {"Input", GradVarName("Out")},
+          {"axes", "StartsTensor", "ends", "infer_flags", "decrease_axis"},
+          {GradVarName("Input")});
+    }
+  } else if (ctx.InputSize("StartsTensorList") > 0) {
+    if (ctx.HasInput("EndsTensor")) {
+      return KernelSignature("slice_grad",
+                             {"Input", GradVarName("Out")},
+                             {"axes",
+                              "StartsTensorList",
+                              "EndsTensor",
+                              "infer_flags",
+                              "decrease_axis"},
+                             {GradVarName("Input")});
+    } else if (ctx.InputSize("EndsTensorList") > 0) {
+      return KernelSignature("slice_grad",
+                             {"Input", GradVarName("Out")},
+                             {"axes",
+                              "StartsTensorList",
+                              "EndsTensorList",
+                              "infer_flags",
+                              "decrease_axis"},
+                             {GradVarName("Input")});
+    } else {
+      return KernelSignature(
+          "slice_grad",
+          {"Input", GradVarName("Out")},
+          {"axes", "StartsTensorList", "ends", "infer_flags", "decrease_axis"},
+          {GradVarName("Input")});
+    }
+  } else {
+    if (ctx.HasInput("EndsTensor")) {
+      return KernelSignature(
+          "slice_grad",
+          {"Input", GradVarName("Out")},
+          {"axes", "starts", "EndsTensor", "infer_flags", "decrease_axis"},
+          {GradVarName("Input")});
+    } else if (ctx.InputSize("EndsTensorList") > 0) {
+      return KernelSignature(
+          "slice_grad",
+          {"Input", GradVarName("Out")},
+          {"axes", "starts", "EndsTensorList", "infer_flags", "decrease_axis"},
+          {GradVarName("Input")});
+    } else {
+      return KernelSignature(
+          "slice_grad",
+          {"Input", GradVarName("Out")},
+          {"axes", "starts", "ends", "infer_flags", "decrease_axis"},
+          {GradVarName("Input")});
+    }
+  }
 }
 
 }  // namespace phi

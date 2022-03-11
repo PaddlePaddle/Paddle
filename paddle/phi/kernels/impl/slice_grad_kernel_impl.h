@@ -30,6 +30,8 @@ void LaunchEigenPadding(
     const DDim& out_dims,
     const Eigen::array<std::pair<int64_t, int64_t>, D>& paddings) {
   auto& place = *context.template eigen_device();
+  LOG(ERROR) << D << "\t" << in_dims;
+  LOG(ERROR) << out_dims;
   auto d_in_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
       *d_input, in_dims);
   auto d_out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
@@ -150,12 +152,12 @@ void EigenPaddingCompute(
         // the second dimension do not need padding, set padding[1] zero
         reshaped_padding[1].first = reshaped_padding[1].second = 0;
 
-        LaunchEigenPadding<T, Context>(context,
-                                       d_input,
-                                       reshaped_in_dims,
-                                       d_out,
-                                       reshaped_out_dims,
-                                       reshaped_padding);
+        LaunchEigenPadding<T, Context, 2>(context,
+                                          d_input,
+                                          reshaped_in_dims,
+                                          d_out,
+                                          reshaped_out_dims,
+                                          reshaped_padding);
       } else {
         // other dimension need padding
         // reshape the dimension of tensor in 3:
@@ -190,12 +192,13 @@ void EigenPaddingCompute(
         // the third dimension do not need padding, set padding[2] zero
         reshaped_padding[2].first = reshaped_padding[2].second = 0;
 
-        LaunchEigenPadding<T, Context>(context,
-                                       d_input,
-                                       reshaped_in_dims,
-                                       d_out,
-                                       reshaped_out_dims,
-                                       reshaped_padding);
+        LOG(ERROR) << "run here";
+        LaunchEigenPadding<T, Context, 3>(context,
+                                          d_input,
+                                          reshaped_in_dims,
+                                          d_out,
+                                          reshaped_out_dims,
+                                          reshaped_padding);
       }
     } else {
       // need padding at many dimension, cannot reduce dimension
@@ -270,14 +273,18 @@ void SliceGradCompute(const Context& ctx,
 
 template <typename T, typename Context>
 void SliceGradRawKernel(const Context& ctx,
+                        const DenseTensor& input,
                         const DenseTensor& out_grad,
                         const std::vector<int64_t>& axes,
-                        const std::vector<int64_t>& starts,
-                        const std::vector<int64_t>& ends,
+                        const ScalarArray& starts_arr,
+                        const ScalarArray& ends_arr,
                         const std::vector<int64_t>& infer_flags,
                         const std::vector<int64_t>& decrease_axis,
                         DenseTensor* input_grad) {
-  size_t rank = out_grad.dims().size();
+  size_t rank = input.dims().size();
+
+  auto& starts = starts_arr.GetData();
+  auto& ends = ends_arr.GetData();
 
   switch (rank) {
     case 1:
