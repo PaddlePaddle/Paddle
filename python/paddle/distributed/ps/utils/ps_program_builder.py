@@ -247,25 +247,25 @@ class FlPsProgramBuilder(PsProgramBuilder):
         print("start building fl-async-ps program")
 
         _main_file = ps_log_root_dir + '0_fl_worker_main_program.prototxt'
-        debug_program(_main_file, self.cloned_main)
+        #debug_program(_main_file, self.cloned_main)
 
         distributed_ops_pass = new_pass("distributed_ops_pass", self.attrs)
         distributed_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '1_fl_worker_main_program.prototxt'
-        debug_program(_main_file, self.cloned_main)
+        #debug_program(_main_file, self.cloned_main)
 
         delete_optimizer_pass = new_pass("delete_optimizer_pass", self.attrs)
         delete_optimizer_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '2_fl_worker_main_program.prototxt'
-        debug_program(_main_file, self.cloned_main)
+        #debug_program(_main_file, self.cloned_main)
 
         append_send_ops_pass = new_pass("append_send_ops_pass", self.attrs)
         append_send_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '3_fl_worker_main_program.prototxt'
-        debug_program(_main_file, self.cloned_main)
+        #debug_program(_main_file, self.cloned_main)
 
         delete_extra_optimizer_pass = new_pass("delete_extra_optimizer_pass",
                                                self.attrs)
@@ -273,13 +273,13 @@ class FlPsProgramBuilder(PsProgramBuilder):
                                           [self.cloned_startup], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '4_fl_worker_main_program.prototxt'
-        debug_program(_main_file, self.cloned_main)
+        #debug_program(_main_file, self.cloned_main)
 
         fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
         fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '5_fl_worker_main_program.prototxt'
-        debug_program(_main_file, self.cloned_main)
+        #debug_program(_main_file, self.cloned_main)
 
         split_trainer_ops_pass = new_pass("split_fl_ops_pass", self.attrs)
         split_trainer_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
@@ -288,10 +288,10 @@ class FlPsProgramBuilder(PsProgramBuilder):
         part_b_program = self.pass_ctx._attrs['part_b_main_program']
 
         _main_file = ps_log_root_dir + '7_fl_A_main_program.prototxt'
-        debug_program(_main_file, part_a_program)
+        #debug_program(_main_file, part_a_program)
 
         _main_file = ps_log_root_dir + '7_fl_B_main_program.prototxt'
-        debug_program(_main_file, part_b_program)
+        #debug_program(_main_file, part_b_program)
 
         return
 

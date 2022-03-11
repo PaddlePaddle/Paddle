@@ -65,5 +65,5 @@ class TestFlPs(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    print('testing fl ps\n')
+    remove_path_if_exists('/ps_log')
     unittest.main()
