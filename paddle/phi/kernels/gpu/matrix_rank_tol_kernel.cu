@@ -15,12 +15,15 @@
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
+#include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
+
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/abs_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
@@ -350,10 +353,9 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   if (hermitian) {
     SyevjBatched<T>(
         dev_ctx, batches, rows, x_tmp.data<T>(), eigenvalue_data, info_ptr);
-    phi::funcs::ForRange<Context> for_range(dev_ctx, eigenvalue_tensor.numel());
-    phi::funcs::AbsFunctor<T> functor(
-        eigenvalue_data, eigenvalue_data, eigenvalue_tensor.numel());
-    for_range(functor);
+
+    phi::AbsKernel<T, Context>(dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
+
   } else {
     DenseTensor U, VH;
     U.Resize(detail::GetUDDim(dim_x, k));
@@ -384,8 +386,8 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                              &max_eigenvalue_tensor);
 
   DenseTensor temp_rtol_tensor;
-  paddle::framework::TensorFromVector<T>(
-      std::vector<T>{rtol_T}, dev_ctx, &temp_rtol_tensor);
+  temp_rtol_tensor =
+      phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(rtol_T));
 
   DenseTensor rtol_tensor =
       phi::Multiply<T>(dev_ctx, temp_rtol_tensor, max_eigenvalue_tensor);
@@ -416,13 +418,12 @@ void MatrixRankTolKernel(const Context& dev_ctx,
       funcs::GreaterThanFunctor<T, int64_t>(),
       &compare_result);
 
-  DenseTensor result = phi::Sum<int64_t>(dev_ctx,
-                                         compare_result,
-                                         std::vector<int64_t>{-1},
-                                         compare_result.type(),
-                                         false);
-
-  out->ShareDataWith(result);
+  phi::SumKernel<int64_t>(dev_ctx,
+                          compare_result,
+                          std::vector<int64_t>{-1},
+                          compare_result.dtype(),
+                          false,
+                          out);
 }
 
 }  // namespace phi

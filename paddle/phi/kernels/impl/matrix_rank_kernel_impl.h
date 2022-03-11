@@ -19,7 +19,6 @@
 
 namespace phi {
 
-using DDim = phi::DDim;
 namespace detail {
 static DDim GetEigenvalueDim(const DDim& dim, int k) {
   auto vec = phi::vectorize(dim);

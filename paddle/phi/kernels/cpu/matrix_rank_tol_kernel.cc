@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
+
 #include <Eigen/Dense>
 #include <Eigen/SVD>
-#include <memory>
-#include <string>
-#include <vector>
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
@@ -124,8 +123,9 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                              &max_eigenvalue_tensor);
 
   DenseTensor temp_rtol_tensor;
-  paddle::framework::TensorFromVector<T>(std::vector<T>{rtol_T},
-                                         &temp_rtol_tensor);
+  temp_rtol_tensor =
+      phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(rtol_T));
+
   DenseTensor rtol_tensor =
       phi::Multiply<T>(dev_ctx, temp_rtol_tensor, max_eigenvalue_tensor);
 
@@ -163,12 +163,13 @@ void MatrixRankTolKernel(const Context& dev_ctx,
         funcs::LessThanFunctor<T, int64_t>(),
         &compare_result);
   }
-  DenseTensor result = phi::Sum<int64_t>(dev_ctx,
-                                         compare_result,
-                                         std::vector<int64_t>{-1},
-                                         compare_result.dtype(),
-                                         false);
-  out->ShareDataWith(result);
+
+  phi::SumKernel<int64_t>(dev_ctx,
+                          compare_result,
+                          std::vector<int64_t>{-1},
+                          compare_result.dtype(),
+                          false,
+                          out);
 }
 }  // namespace phi
 

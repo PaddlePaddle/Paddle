@@ -15,9 +15,11 @@
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/matrix_rank_kernel.h"
 #include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
+
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -30,11 +32,9 @@ void MatrixRankKernel(const Context& dev_ctx,
                       DenseTensor* out) {
   DenseTensor atol_tensor;
   if (use_default_tol) {
-    paddle::framework::TensorFromVector(
-        std::vector<T>{0}, dev_ctx, &atol_tensor);
+    atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(0));
   } else {
-    paddle::framework::TensorFromVector(
-        std::vector<T>{tol}, dev_ctx, &atol_tensor);
+    atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(tol));
   }
   MatrixRankTolKernel<T, Context>(
       dev_ctx, x, atol_tensor, use_default_tol, hermitian, out);
