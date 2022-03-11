@@ -568,11 +568,8 @@ void Conv3dKernel(const Context& dev_ctx,
 
   std::vector<int> subm_paddings(paddings), subm_strides(strides);
   if (subm) {
-    auto kernel_dims = kernel.dims();
-    for (int i = 0; i < paddings.size(); i++) {
-      subm_paddings[i] = kernel_dims[i] / 2;
-      subm_strides[i] = 1;
-    }
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
   }
 
   int n = ProductRuleBook<T, Context>(dev_ctx,

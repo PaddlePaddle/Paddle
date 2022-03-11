@@ -49,6 +49,11 @@ void Conv3dKernel(const Context& dev_ctx,
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
 
+  std::vector<int> subm_paddings(paddings), subm_strides(strides);
+  if (subm) {
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
+  }
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
@@ -59,9 +64,9 @@ void Conv3dKernel(const Context& dev_ctx,
   ProductRuleBook<T, Context>(dev_ctx,
                               x,
                               kernel,
-                              paddings,
+                              subm_paddings,
                               dilations,
-                              strides,
+                              subm_strides,
                               out_dims,
                               subm,
                               rulebook,

@@ -117,6 +117,15 @@ inline void GetOutShape(const DDim& x_dims,
   }
 }
 
+inline void ResetSubmKernelSizeAndStrides(const DDim& kernel_dims,
+                                          std::vector<int>* paddings,
+                                          std::vector<int>* strides) {
+  for (uint64_t i = 0; i < paddings->size(); i++) {
+    (*paddings)[i] = kernel_dims[i] / 2;
+    (*strides)[i] = 1;
+  }
+}
+
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi

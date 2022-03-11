@@ -67,7 +67,8 @@ void ProductRuleBook(const Context& dev_ctx,
       int in_z = indices_ptr[i + non_zero_num];
       int in_y = indices_ptr[i + 2 * non_zero_num];
       int in_x = indices_ptr[i + 3 * non_zero_num];
-      int index = PointToIndex<DDim>(batch, in_x, in_y, in_z, x_dims);
+      int index = phi::funcs::sparse::PointToIndex<DDim>(
+          batch, in_x, in_y, in_z, x_dims);
       hash_in.insert(index);
     }
   }
@@ -98,8 +99,8 @@ void ProductRuleBook(const Context& dev_ctx,
                                           ky,
                                           kz)) {
               if (subm) {
-                int out_index =
-                    PointToIndex<DDim>(batch, out_x, out_y, out_z, out_dims);
+                int out_index = phi::funcs::sparse::PointToIndex<DDim>(
+                    batch, out_x, out_y, out_z, out_dims);
                 if (hash_in.find(out_index) == hash_in.end()) {
                   continue;
                 }
