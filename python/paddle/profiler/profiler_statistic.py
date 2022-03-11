@@ -799,7 +799,7 @@ def _build_table(statistic_data,
             "Communication:\n"
             "  CPU:              |_________________|\n"
             "  GPU:                                  |______________|\n"
-            "Total:              |_________________| |______________|\n"
+            "  Total:            |_________________| |______________|\n"
             "Computation time(Kernel):\n"
             "  GPU:         |________________|\n"
             "Overlap time:       |___________|\n")
