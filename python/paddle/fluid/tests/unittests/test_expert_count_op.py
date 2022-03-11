@@ -63,7 +63,7 @@ class TestExpertCountAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('x', self.x.shape, dtype="int64")
-            out = utils.expert_count(x, self.n_expert)
+            out = utils._expert_count(x, self.n_expert)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'x': self.x}, fetch_list=[out])
             assert np.allclose(res, self.out)
@@ -71,7 +71,7 @@ class TestExpertCountAPI(unittest.TestCase):
     def test_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
-        out = utils.expert_count(x, self.n_expert)
+        out = utils._expert_count(x, self.n_expert)
         assert np.allclose(out.numpy(), self.out)
 
 

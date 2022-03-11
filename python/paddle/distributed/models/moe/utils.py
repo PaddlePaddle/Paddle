@@ -16,12 +16,8 @@ from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
 
-__all__ = [  #noqa
-    'expert_count'
-]
 
-
-def expert_count(gate_idx, n_expert):
+def _expert_count(gate_idx, n_expert):
     """
     calculate the expert count according to the gate index.
     Args:
