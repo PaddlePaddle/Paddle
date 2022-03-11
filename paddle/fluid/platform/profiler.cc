@@ -77,7 +77,9 @@ RecordEvent::RecordEvent(const char *name, const TracerEventType type,
 #endif
 #endif
   if (FLAGS_enable_host_event_recorder_hook == false) {
-    OriginalConstruct(name, role, "none");
+    if (g_state != ProfilerState::kDisable) {  // avoid temp string
+      OriginalConstruct(name, role, "none");
+    }
     return;
   }
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
@@ -165,8 +167,8 @@ void RecordEvent::End() {
   }
 #endif
 #endif
-  uint64_t end_ns = PosixInNsec();
   if (LIKELY(FLAGS_enable_host_event_recorder_hook && is_enabled_)) {
+    uint64_t end_ns = PosixInNsec();
     if (LIKELY(shallow_copy_name_ != nullptr)) {
       HostEventRecorder::GetInstance().RecordEvent(
           shallow_copy_name_, start_ns_, end_ns, role_, type_);
@@ -190,6 +192,7 @@ void RecordEvent::End() {
   // lock is not needed, the code below is thread-safe
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer) {
+    uint64_t end_ns = PosixInNsec();
     tracer->AddCPURecords(CurAnnotationName(), start_ns_, end_ns, BlockDepth(),
                           g_thread_id);
   }
