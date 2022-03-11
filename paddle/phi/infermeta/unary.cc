@@ -26,6 +26,34 @@ limitations under the License. */
 
 namespace phi {
 
+void ArgsortInferMeta(const MetaTensor& input,
+                      int axis,
+                      bool descending,
+                      MetaTensor* output,
+                      MetaTensor* indices) {
+  auto in_dims = input.dims();
+  auto num_dims = in_dims.size();
+  PADDLE_ENFORCE_GE(
+      axis,
+      -num_dims,
+      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
+                                   " -num_dims(%d).",
+                                   axis,
+                                   -num_dims));
+  PADDLE_ENFORCE_LT(
+      axis,
+      num_dims,
+      phi::errors::InvalidArgument(
+          "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
+
+  output->share_dims(input);
+  output->set_dtype(input.dtype());
+  indices->share_dims(input);
+  indices->set_dtype(DataType::INT64);
+  output->share_lod(input);
+  indices->share_lod(input);
+}
+
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
 }
@@ -1096,6 +1124,47 @@ void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dims({1});
 }
 
+void PadInferMeta(const MetaTensor& input,
+                  const std::vector<int>& paddings,
+                  float pad_value,
+                  MetaTensor* out,
+                  MetaConfig config) {
+  auto x_dim = input.dims();
+  PADDLE_ENFORCE_EQ(
+      static_cast<int>(paddings.size()),
+      x_dim.size() * 2,
+      phi::errors::InvalidArgument(
+          "Size of 'paddings' dimension should be equal to 2 * size of "
+          "Input(X)'s dimension, but received (size of 'paddings' dimension "
+          "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
+          static_cast<int>(paddings.size()),
+          x_dim.size() * 2));
+  for (size_t i = 0; i < paddings.size(); ++i) {
+    PADDLE_ENFORCE_GE(paddings[i],
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The element of 'paddings' should >= 0, but "
+                          "received %d for index %d.",
+                          paddings[i],
+                          static_cast<int>(i)));
+  }
+  std::vector<int64_t> out_dims(x_dim.size());
+  for (int i = 0; i < x_dim.size(); ++i) {
+    if ((!config.is_runtime) && (x_dim[i] == -1)) {
+      out_dims[i] = -1;
+    } else {
+      out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
+    }
+  }
+  out->set_dims(phi::make_ddim(out_dims));
+  if (out_dims[0] == x_dim[0]) {
+    // Only pass LoD when the first dimension is equal between
+    // output and input.
+    out->share_lod(input);
+  }
+  out->set_dtype(input.dtype());
+}
+
 void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(DataType::BOOL);
@@ -1230,6 +1299,17 @@ void EighInferMeta(const MetaTensor& x,
   }
   out_w->set_dims(phi::make_ddim(values_dim));
   out_v->set_dims(input_dim);
+}
+
+void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
+  auto rank = condition.dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      1UL,
+      phi::errors::InvalidArgument(
+          "Input(Condition) should have number of dimension at least 1"));
+  out->set_dims(phi::make_ddim({-1, rank}));
+  out->set_dtype(DataType::INT64);
 }
 
 }  // namespace phi

@@ -12,17 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/shape_kernel.h"
+#include "paddle/phi/kernels/impl/shape_kernel_impl.h"
 
-#include "paddle/infrt/backends/host/phi_allocator.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace infrt {
-namespace kernel {
-namespace phi {
-
-backends::CpuPhiAllocator CreateCpuAllocator();
-
-}  // namespace phi
-}  // namespace kernel
-}  // namespace infrt
+PD_REGISTER_KERNEL(shape,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ShapeKernel,
+                   bool,
+                   int,
+                   int8_t,
+                   uint8_t,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -29,6 +29,14 @@ namespace phi {
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
+//
+void AccuracyInferMeta(const MetaTensor& out,
+                       const MetaTensor& indice,
+                       const MetaTensor& label,
+                       MetaTensor* accuracy,
+                       MetaTensor* correct,
+                       MetaTensor* total,
+                       MetaConfig config = MetaConfig());
 
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
@@ -47,6 +55,15 @@ void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& updates,
                       bool overwrite,
                       MetaTensor* out);
+
+void NllLossRawInferMeta(const MetaTensor& input,
+                         const MetaTensor& label,
+                         paddle::optional<const MetaTensor&> weight,
+                         int64_t ignore_index,
+                         const std::string& reduction,
+                         MetaTensor* out,
+                         MetaTensor* total_weight,
+                         MetaConfig config = MetaConfig());
 
 void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
@@ -71,4 +88,10 @@ void LinspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& number,
                        MetaTensor* out);
 
+void GraphSendRecvInferMeta(const MetaTensor& x,
+                            const MetaTensor& src_index,
+                            const MetaTensor& dst_index,
+                            const std::string& pool_type,
+                            MetaTensor* out,
+                            MetaTensor* dst_count);
 }  // namespace phi

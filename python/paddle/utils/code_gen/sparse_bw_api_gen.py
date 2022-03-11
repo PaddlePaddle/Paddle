@@ -25,9 +25,6 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def __init__(self, bw_api_item_yaml):
         BackwardAPI.__init__(self, bw_api_item_yaml)
 
-    def get_api_name(self, api_item_yaml):
-        return api_item_yaml['sparse_bw_api']
-
     def get_api_func_name(self):
         return self.api
 

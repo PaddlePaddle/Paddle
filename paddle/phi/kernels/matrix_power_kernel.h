@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/kernel/phi/allocator_kernels.h"
+#pragma once
 
-namespace infrt {
-namespace kernel {
+#include "paddle/phi/core/dense_tensor.h"
+
 namespace phi {
 
-backends::CpuPhiAllocator CreateCpuAllocator() { return {}; }
+template <typename T, typename Context>
+void MatrixPowerKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       int n,
+                       DenseTensor* out);
 
 }  // namespace phi
-}  // namespace kernel
-}  // namespace infrt

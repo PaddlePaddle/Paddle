@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/matrix_power_op.h"
+#include <memory>
+#include <vector>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace operators {
@@ -119,13 +122,3 @@ REGISTER_OPERATOR(matrix_power, ops::MatrixPowerOp, ops::MatrixPowerOpMaker,
                   ops::MatrixPowerGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(matrix_power_grad, ops::MatrixPowerGradOp);
-
-REGISTER_OP_CPU_KERNEL(
-    matrix_power,
-    ops::MatrixPowerKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatrixPowerKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    matrix_power_grad,
-    ops::MatrixPowerGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatrixPowerGradKernel<paddle::platform::CPUDeviceContext, double>);
