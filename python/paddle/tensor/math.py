@@ -966,6 +966,75 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
     return sum(tmp_tensor, axis, dtype, keepdim, name)
 
+def nanmean(x,axis=None,keepdim=None,name=None):
+    r"""
+    Compute the arithmetic mean along the specified axis, ignoring NaNs.
+
+    Args:
+        x (Tensor): The input Tensor with data type float32, float64.
+        axis (int|list|tuple, optional):The axis along which to perform mean
+            calculations. ``axis`` should be int, list(int) or tuple(int). If
+            ``axis`` is a list/tuple of dimension(s), mean is calculated along
+            all element(s) of ``axis`` . ``axis`` or element(s) of ``axis``
+            should be in range [-D, D), where D is the dimensions of ``x`` . If
+            ``axis`` or element(s) of ``axis`` is less than 0, it works the
+            same way as :math:`axis + D` . If ``axis`` is None, mean is
+            calculated over all elements of ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keepdim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, results of arithmetic mean along ``axis`` of ``x``, with the same data
+        type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            # x is a Tensor with following elements:
+            #    [[nan, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, -nan, 0.7]]
+            # Each example is followed by the corresponding output tensor.
+            x = np.array([[float('nan'), 0.3, 0.5, 0.9],
+                            [0.1, 0.2, float('-nan'), 0.7]]).astype(np.float32)
+            x = paddle.to_tensor(x)
+
+            out1 = nanmean(x)                       #[0.45000002]                   
+            out2 = nanmean(x,axis=0)                #[0.1        0.25       0.5        0.79999995]
+            out3 = nanmean(x,axis=0,keepdim=True)   #[[0.1        0.25       0.5        0.79999995]]
+            out4 = nanmean(x,axis=1)                #[0.56666666 0.33333334]
+            out5 = nanmean(x,axis=1,keepdim=True)   #[[0.56666666]
+                                                    # [0.33333334]]
+            
+            # y is a Tensor with shape [2, 2, 2] and elements as below:
+            #      [[[1, nan], [3, 4]],
+            #      [[5, 6], [-nan, 8]]]
+            # Each example is followed by the corresponding output tensor.
+            y = np.array([[[1, float('nan')], [3, 4]], 
+                            [[5, 6], [float('-nan'), 8]]])
+            y = paddle.to_tensor(y)
+            out5 = paddle.nanmean(y, axis=[1, 2]) # [3. 6.]
+            out6 = paddle.nanmean(y, axis=[0, 1]) # [2.66666667 6.33333333]
+    """
+    if isinstance(axis, int):
+        axis = [axis]
+    if axis == None:
+        return paddle.mean(x[~paddle.isnan(x)], keepdim=keepdim,name=name)
+
+    tot = paddle.nansum(x,axis=axis,keepdim=keepdim,name=name)
+    cnt = paddle.sum( ~paddle.isnan(x) ,axis = axis,keepdim=keepdim )
+    avg = paddle.divide(tot,cnt.astype(tot.dtype))
+
+    return avg
+
+
 
 @templatedoc(op_type="sum")
 def add_n(inputs, name=None):
@@ -3798,6 +3867,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         else:
             out = elementwise_sub(input_back, input_front, axis=axis)
         return out
+
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff')
         check_type(axis, 'axis', (int), 'diff')
@@ -3904,3 +3974,6 @@ def angle(x, name=None):
     outputs = {"Out": out}
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
+
+
+
