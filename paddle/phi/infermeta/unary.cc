@@ -1409,6 +1409,25 @@ void ShardIndexInferMeta(const MetaTensor& in,
   out->set_dtype(in.dtype());
 }
 
+void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out) {
+  auto dim_x = x.dims();
+  auto rank_x = dim_x.size();
+  PADDLE_ENFORCE_GE(axis,
+                    -rank_x,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(X)."));
+  PADDLE_ENFORCE_LT(axis,
+                    rank_x,
+                    phi::errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], "
+                        "R is the rank of Input(X)."));
+
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);
