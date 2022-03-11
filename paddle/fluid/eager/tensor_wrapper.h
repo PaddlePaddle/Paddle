@@ -36,6 +36,22 @@ class TensorWrapper {
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
                          bool full_reserved = false,
                          bool no_need_buffer = false) {
+    // set inplace_version_snapshot_ according to tensor's current inplace
+    // version.
+    if (phi::DenseTensor::classof(tensor.impl().get())) {
+      phi::DenseTensor* dense_tensor =
+          static_cast<phi::DenseTensor*>(tensor.impl().get());
+      auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
+      inplace_version_snapshot_ = inplace_version_counter.CurrentVersion();
+      VLOG(6) << " yoki: The inplace_version_snapshot_ of Tensor '"
+              << intermidiate_tensor_.name() << "' is [ "
+              << inplace_version_snapshot_ << " ]";
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Unrecognized tensor type for snapshoting inplace version."));
+    }
+
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
@@ -45,19 +61,6 @@ class TensorWrapper {
     if (full_reserved_) {
       VLOG(6) << "Fully reserved tensor: " << tensor.name();
       intermidiate_tensor_ = tensor;
-
-      // set inplace_version_snapshot_ according to tensor's current inplace
-      // version.
-      if (phi::DenseTensor::classof(tensor.impl().get())) {
-        phi::DenseTensor* dense_tensor =
-            static_cast<phi::DenseTensor*>(tensor.impl().get());
-        auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
-        inplace_version_snapshot_ = inplace_version_counter.CurrentVersion();
-
-      } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal(
-            "Unrecognized tensor type for snapshoting inplace version."));
-      }
       return;
     }
 
@@ -109,7 +112,7 @@ class TensorWrapper {
       intermidiate_tensor_.set_autograd_meta(
           std::static_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
               p_ab_autograd_meta));
-      // check_inplace_version();
+      check_inplace_version();
       return intermidiate_tensor_;
     }
   }
@@ -141,6 +144,9 @@ class TensorWrapper {
       VLOG(6) << " The inplace_version_snapshot_ of Tensor '"
               << intermidiate_tensor_.name() << "' is [ "
               << inplace_version_snapshot_ << " ]";
+      VLOG(6) << " yoki: The current_inplace_version of Tensor '"
+              << intermidiate_tensor_.name() << "' is [ "
+              << current_inplace_version << " ]";
     } else {
       PADDLE_THROW(paddle::platform::errors::Fatal(
           "Unrecognized tensor type for checking inplace version."));

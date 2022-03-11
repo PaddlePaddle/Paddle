@@ -73,10 +73,14 @@ const char* OUT_VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* OUT_VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
 
 const char* CAST_VAR_TEMPLATE = R"(
-    auto& %s = GetTensorFromArgs("%s", "%s", args, %d, %s);)";
+    //VLOG(3) << "yoki: %s ptr1: " << &%s;
+    auto& %s = GetTensorFromArgs("%s", "%s", args, %d, %s);
+    VLOG(3) << "yoki: pyobj %s ptr2: " << &%s;)";
 
 const char* CAST_VAR_LIST_TEMPLATE = R"(
-    auto %s = GetTensorListFromArgs("%s", "%s", args, %d, %s);)";
+    // %s %s
+    auto %s = GetTensorListFromArgs("%s", "%s", args, %d, %s);
+    // %s %s)";
 
 const char* CAST_VAR_PTR_TEMPLATE = R"(
     auto %s = GetTensorPtrFromArgs("%s", "%s", args, %d, %s);)";
@@ -116,6 +120,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     %s
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
+    VLOG(3) << "yoki pyobj out ptr: " << &out;
     %s
   }
   catch(...) {
@@ -155,7 +160,8 @@ static inline std::string TempName(const std::string& name) {
 
 std::string GenerateOpFunctionsBody(
     const paddle::framework::proto::OpProto* op_proto, std::string func_name,
-    bool use_inplace_strategy = false) {
+    bool use_inplace_strategy = false,
+    std::map<std::string, std::string> inplace_map = {}) {
   auto& op_type = op_proto->type();
   std::string input_args = "";
   std::string call_api_str = "";
@@ -185,8 +191,9 @@ std::string GenerateOpFunctionsBody(
     const auto in_cast_type =
         input.duplicable() ? CAST_VAR_LIST_TEMPLATE : CAST_VAR_TEMPLATE;
     auto dispensable = input.dispensable() ? "true" : "false";
-    ins_cast_str += paddle::string::Sprintf(in_cast_type, in_name, op_type,
-                                            in_name, arg_idx++, dispensable);
+    ins_cast_str += paddle::string::Sprintf(
+        in_cast_type, in_name, in_name, in_name, op_type, in_name, arg_idx++,
+        dispensable, in_name, in_name);
 
     call_api_str += in_name + ", ";
   }
@@ -285,8 +292,21 @@ std::string GenerateOpFunctionsBody(
         HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
         viwe_input_name, viwe_output_name);
   }
-
-  return_str = "return ToPyObject(out);";
+  if (op_type == "exp" && !inplace_map.empty()) {
+    return_str =
+        "VLOG(3) << \"yoki inplace X ptr: \" << &X;\n    VLOG(3) << \"yoki: "
+        "core_ops_returns_info[exp]: \" << core_ops_returns_info[\"exp\"][0] "
+        "<< \"   : \" << core_ops_args_info[\"exp\"][0];\n    auto x_obj = "
+        "GetPyobjFromArgs(\"exp\", \"X\", args, 0, false);\n    "
+        "Py_INCREF(x_obj);\n    return x_obj;";
+    // return_str = "VLOG(3) << \"yoki inplace X ptr: \" << &X;\n    VLOG(3) <<
+    // \"yoki: core_ops_returns_info[exp]: \" <<
+    // core_ops_returns_info[\"exp\"][0] << \"   : \" <<
+    // core_ops_args_info[\"exp\"][0];\n    return ToPyObject(out);";
+  } else {
+    return_str = "return ToPyObject(out);";
+  }
+  // return_str = "return ToPyObject(out);";
 
   std::string function_args = "";
   if (input_args == "") {
@@ -376,7 +396,7 @@ GenerateOpFunctions() {
     }
     std::string func_name = "eager_api_" + op_type;
     std::string op_function_str =
-        GenerateOpFunctionsBody(op_proto, func_name, false);
+        GenerateOpFunctionsBody(op_proto, func_name, false, {});
 
     // generate pybind item
     auto bind_function_str = paddle::string::Sprintf(
@@ -394,13 +414,19 @@ GenerateOpFunctions() {
     // mapping relationship between Inplace output and input.
     auto& infer_inplace =
         paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
+    std::map<std::string, std::string> inplace_map;
     if (op_type != "sum" && infer_inplace) {
       // Reuse Varbase Inplace OP: op_type_.
       // The inplace OP needs a new implementation method.
+      auto in_to_outs = infer_inplace(true);
+      for (auto& inplace_pair : in_to_outs) {
+        inplace_map[inplace_pair.second] = inplace_pair.first;
+      }
+
       std::string inplace_op_type = op_type + "_";
       std::string inplace_func_name = "eager_api_" + inplace_op_type;
-      std::string inplace_op_function_str =
-          GenerateOpFunctionsBody(op_proto, inplace_func_name, true);
+      std::string inplace_op_function_str = GenerateOpFunctionsBody(
+          op_proto, inplace_func_name, true, inplace_map);
 
       // generate pybind item
       auto inplace_bind_function_str =

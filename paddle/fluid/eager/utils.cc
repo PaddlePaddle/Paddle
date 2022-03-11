@@ -215,13 +215,23 @@ std::vector<std::shared_ptr<EagerVariable>> EagerUtils::CreateVars(
 void EagerUtils::ModifyInplaceInput(
     const std::shared_ptr<EagerVariable>& inplace_variable,
     paddle::experimental::Tensor* inplace_tensor) {
-  PADDLE_ENFORCE_NOT_NULL(inplace_tensor,
-                          paddle::platform::errors::Fatal(
-                              "Inplace Tensor is null and cannot be copied. "
-                              "We are tring to Modify Inplace Input from its "
-                              "shared_ptr, this error may indicate the inplace "
-                              " input is nullptr"));
-  inplace_tensor->set_impl(inplace_variable->GetTensorBase());
+  // PADDLE_ENFORCE_NOT_NULL(inplace_tensor,
+  //                         paddle::platform::errors::Fatal(
+  //                             "Inplace Tensor is null and cannot be copied. "
+  //                             "We are tring to Modify Inplace Input from its
+  //                             "
+  //                             "shared_ptr, this error may indicate the
+  //                             inplace "
+  //                             " input is nullptr"));
+  // inplace_tensor.set_impl(inplace_variable->GetTensorBase());
+  if (phi::DenseTensor::classof(inplace_variable->GetTensorBase().get())) {
+    phi::DenseTensor* variable_dense_tensor =
+        static_cast<phi::DenseTensor*>(inplace_variable->GetTensorBase().get());
+    phi::DenseTensor* tensor_dense_tensor =
+        static_cast<phi::DenseTensor*>(inplace_tensor->impl().get());
+    tensor_dense_tensor->set_meta(std::move(variable_dense_tensor->meta()));
+    // tensor_dense_tensor->set_meta(variable_dense_tensor->meta());
+  }
 }
 
 std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(

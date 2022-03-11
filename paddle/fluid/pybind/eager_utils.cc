@@ -607,6 +607,13 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
   return reinterpret_cast<TensorObject*>(obj)->tensor;
 }
 
+PyObject* GetPyobjFromArgs(const std::string& op_type,
+                           const std::string& arg_name, PyObject* args,
+                           ssize_t arg_idx, bool dispensable) {
+  PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+  return obj;
+}
+
 // For Intermediate State Dygraph,
 // we use an uninitialized Tensor to represent dispensable Tensor
 paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,

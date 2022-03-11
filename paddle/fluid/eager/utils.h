@@ -145,6 +145,16 @@ class EagerUtils {
     iter.apply(std::forward<Args>(args)...);
   }
 
+  static void yoki_grad_node_name(AutogradMeta* meta) {
+    if (meta && !meta->StopGradient()) {
+      auto node = meta->GetMutableGradNode();
+      if (node && node.get()) {
+        VLOG(6) << "yoki: the grad_node name is: "
+                << meta->GetMutableGradNode()->name();
+      }
+    }
+  }
+
   static void CheckInplace(const paddle::experimental::Tensor& target,
                            const AutogradMeta* autograd_meta,
                            bool require_any_grad) {
