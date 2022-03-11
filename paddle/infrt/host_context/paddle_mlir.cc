@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
-#include "paddle/infrt/dialect/pd_ops_info.h"
 #include "paddle/infrt/dialect/basic_kernels.h"
+#include "paddle/infrt/dialect/pd_ops_info.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
@@ -200,11 +200,12 @@ void MLIRModelGenImpl::UpdateModelOutputs(
         llvm::SmallVector<mlir::Type, 4> resultTypes;
         llvm::SmallVector<mlir::NamedAttribute, 4> attrs;
 
-        mlir::OperationState state(loc,
-                                   ::infrt::dialect::ReturnOp::getOperationName(),
-                                   operands,
-                                   resultTypes,
-                                   attrs);
+        mlir::OperationState state(
+            loc,
+            ::infrt::dialect::ReturnOp::getOperationName(),
+            operands,
+            resultTypes,
+            attrs);
         builder_.createOperation(state);
       }
     }
