@@ -6948,8 +6948,8 @@ def _get_paddle_place(place):
             device_id = place_info_list[1]
             device_id = int(device_id)
             return core.CUDAPlace(device_id)
-            
-    # XPU   
+
+    # XPU
     avaliable_xpu_place = re.match(r'xpu:\d+', place)
     if avaliable_xpu_place:
         if not core.is_compiled_with_xpu():
