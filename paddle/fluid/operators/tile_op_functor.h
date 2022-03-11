@@ -17,6 +17,8 @@
 
 #include "paddle/fluid/framework/operator.h"
 
+#define MAX_RANK_SUPPORTED 6
+
 namespace paddle {
 namespace operators {
 
