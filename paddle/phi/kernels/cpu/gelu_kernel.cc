@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/blas/blas_impl.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
@@ -98,10 +99,4 @@ void GeluKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(gelu,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::GeluKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(gelu, CPU, ALL_LAYOUT, phi::GeluKernel, float, double) {}
