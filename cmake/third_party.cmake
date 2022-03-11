@@ -250,6 +250,12 @@ IF(WITH_TESTING OR WITH_DISTRIBUTE)
     list(APPEND third_party_deps extern_gtest)
 ENDIF()
 
+if(WITH_ONNXRUNTIME)
+    include(external/onnxruntime)            # download, build, install onnxruntime、paddle2onnx
+    include(external/paddle2onnx)          
+    list(APPEND third_party_deps extern_onnxruntime extern_paddle2onnx)
+endif()
+
 if(WITH_GPU)
     if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
         include(external/cub)       # download cub
