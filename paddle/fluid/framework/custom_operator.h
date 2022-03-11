@@ -21,7 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 // Load custom op api: register op after user compiled
-void LoadOpMetaInfoAndRegisterOp(const std::string& dso_name);
+const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
+LoadOpMetaInfoAndRegisterOp(const std::string& dso_name);
 
 // Register custom op api: register op directly
 void RegisterOperatorWithMetaInfoMap(

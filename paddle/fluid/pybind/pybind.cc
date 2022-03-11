@@ -161,6 +161,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "pybind11/stl.h"
@@ -2583,10 +2584,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
-  m.def("load_op_meta_info_and_register_op",
-        framework::LoadOpMetaInfoAndRegisterOp);
+  m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
+    egr::Controller::Instance().MergeOpMetaInfoMap(
+        framework::LoadOpMetaInfoAndRegisterOp(dso_name));
+  });
   m.def("init_devices", []() { framework::InitDevices(); });
-
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
