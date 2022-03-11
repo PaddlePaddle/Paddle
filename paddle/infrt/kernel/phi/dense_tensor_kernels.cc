@@ -13,20 +13,25 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
-#include <iostream>
+#include "paddle/infrt/dialect/phi/data_type.h"
+#include "paddle/infrt/kernel/phi/context_kernels.h"
+
 namespace infrt {
 namespace kernel {
 namespace phi {
 
-::phi::DenseTensor CreateDenseTensorCpuF32Nchw(
-    backends::CpuPhiAllocator* allocator,
+::phi::DenseTensor CreateDenseTensor(
+    const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
-    host_context::Attribute<std::vector<int64_t>> lod) {
-  return ::phi::DenseTensor(allocator,
-                            ::phi::DenseTensorMeta(::phi::DataType::FLOAT32,
-                                                   ::phi::make_ddim(dims.get()),
-                                                   ::phi::DataLayout::NCHW,
-                                                   {}));
+    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::PrecisionType> precision) {
+  return ::phi::DenseTensor(
+      const_cast<::phi::Allocator*>(&context.GetAllocator()),
+      ::phi::DenseTensorMeta(cvtPrecision2Phi(precision.get()),
+                             ::phi::make_ddim(dims.get()),
+                             cvtLayout2Phi(layout.get()),
+                             {}));
 }
 
 void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
