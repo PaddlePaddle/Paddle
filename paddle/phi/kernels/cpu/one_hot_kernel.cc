@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/one_hot_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -78,7 +79,7 @@ template <typename T, typename Context>
 void OneHotRawKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int32_t depth,
-                     int dtype,
+                     DataType dtype,
                      bool allow_out_of_range,
                      DenseTensor* out) {
   auto out_dims = out->dims();
@@ -87,10 +88,9 @@ void OneHotRawKernel(const Context& dev_ctx,
     out->Resize(out_dims);
   }
 
-  paddle::framework::VisitDataType(
-      static_cast<paddle::framework::proto::VarType::Type>(dtype),
-      OneHotV2OpFunctor<Context, T>(
-          &x, out, depth, dev_ctx, allow_out_of_range));
+  phi::VisitDataType(dtype,
+                     OneHotV2OpFunctor<Context, T>(
+                         &x, out, depth, dev_ctx, allow_out_of_range));
 }
 
 template <typename T, typename Context>

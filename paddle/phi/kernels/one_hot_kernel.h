@@ -29,7 +29,7 @@ template <typename T, typename Context>
 void OneHotRawKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int32_t depth,
-                     int dtype,
+                     DataType dtype,
                      bool allow_out_of_range,
                      DenseTensor* out);
 

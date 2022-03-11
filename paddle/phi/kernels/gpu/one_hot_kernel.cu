@@ -66,7 +66,7 @@ template <typename T, typename Context>
 void OneHotRawKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int32_t depth,
-                     int dtype,
+                     DataType dtype,
                      bool allow_out_of_range,
                      DenseTensor* out) {
   auto out_dims = out->dims();
@@ -75,9 +75,8 @@ void OneHotRawKernel(const Context& dev_ctx,
     out->Resize(out_dims);
   }
 
-  paddle::framework::VisitDataType(
-      static_cast<paddle::framework::proto::VarType::Type>(dtype),
-      OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
+  phi::VisitDataType(
+      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
 }
 
 template <typename T, typename Context>

@@ -150,7 +150,7 @@ void UnfoldInferMeta(const MetaTensor& x,
 
 void OneHotRawInferMeta(const MetaTensor& x,
                         int32_t depth,
-                        int dtype,
+                        DataType dtype,
                         bool allow_out_of_range,
                         MetaTensor* out);
 

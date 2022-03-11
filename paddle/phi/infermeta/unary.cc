@@ -1006,7 +1006,7 @@ void UnfoldInferMeta(const MetaTensor& x,
 
 void OneHotRawInferMeta(const MetaTensor& x,
                         int32_t depth,
-                        int dtype,
+                        DataType dtype,
                         bool allow_out_of_range,
                         MetaTensor* out) {
   auto x_dims = x.dims();
@@ -1020,7 +1020,7 @@ void OneHotRawInferMeta(const MetaTensor& x,
   auto out_dims = phi::make_ddim(out_dims_vec);
   out->set_dims(out_dims);
   out->share_lod(x);
-  // when we need include protobuf when we convert int dtype to phi::DataType
+  out->set_dtype(dtype);
 }
 
 void OneHotInferMeta(const MetaTensor& x,
