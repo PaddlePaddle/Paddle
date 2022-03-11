@@ -274,6 +274,60 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void CholeskySolveInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            bool upper,
+                            MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  auto x_dims_n = x_dims.size();
+  auto y_dims_n = y_dims.size();
+
+  PADDLE_ENFORCE_GE(x_dims_n,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "the rank of input Y must greater or equal to 2"));
+  PADDLE_ENFORCE_GE(y_dims_n,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "the rank of input X must greater or equal to 2"));
+  PADDLE_ENFORCE_EQ(
+      y_dims[y_dims_n - 1],
+      y_dims[y_dims_n - 2],
+      phi::errors::InvalidArgument("input Matrix Y should be square matrix,"
+                                   "But Got last shape of %ld x %ld",
+                                   y_dims[y_dims_n - 1],
+                                   y_dims[y_dims_n - 2]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims_n - 2],
+      y_dims[y_dims_n - 2],
+      phi::errors::InvalidArgument("the first dim of Matrix X must be equal to "
+                                   "the fisrt dim of Matrix Y,"
+                                   "But Got %ld and %ld",
+                                   x_dims[x_dims_n - 2],
+                                   y_dims[y_dims_n - 2]));
+
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y_dims);
+
+  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 2);
+  std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(), y_dims_vec.end() - 2);
+
+  std::vector<int64_t> expand_batch_portion =
+      funcs::MatrixGetBroadcastBatchPortion(x_dims_vec_cut, y_dims_vec_cut);
+
+  std::vector<int64_t> x_broadcast_dims({expand_batch_portion});
+  x_broadcast_dims.insert(x_broadcast_dims.end(),
+                          {x_dims_vec[x_dims_n - 2], x_dims_vec[x_dims_n - 1]});
+
+  // dim of 'out' is the same with 'X' after broadcast
+  out->set_dims(phi::make_ddim(x_broadcast_dims));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,
@@ -415,6 +469,25 @@ void CrossInferMeta(const MetaTensor& x,
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_meta(x);
+}
+
+void SegmentPoolInferMeta(const MetaTensor& x,
+                          const MetaTensor& segment_ids,
+                          const std::string& pooltype,
+                          MetaTensor* out,
+                          MetaTensor* summed_ids,
+                          MetaConfig config) {
+  auto dims = x.dims();
+  dims[0] = -1;
+  out->set_dims(dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+
+  if (pooltype == "MEAN") {
+    summed_ids->set_dims({-1, 1});
+    summed_ids->set_dtype(x.dtype());
+    summed_ids->set_layout(x.layout());
+  }
 }
 
 void BCELossInferMeta(const MetaTensor& input,
@@ -575,6 +648,48 @@ void GatherTreeMeta(const MetaTensor& ids,
   out->set_dims(ids_dims);
 }
 
+void LogLossInferMeta(const MetaTensor& input,
+                      const MetaTensor& label,
+                      float epsilon,
+                      MetaTensor* out,
+                      MetaConfig config) {
+  auto pred_dims = input.dims();
+  auto label_dims = label.dims();
+
+  if (config.is_runtime ||
+      (phi::product(pred_dims) > 0 && phi::product(label_dims) > 0)) {
+    PADDLE_ENFORCE_EQ(
+        pred_dims,
+        label_dims,
+        phi::errors::InvalidArgument(
+            "The dimensions of Input(Predicted) must be equal to the"
+            "dimensions of Input(Labels), but received dimensions of "
+            "Input(Predicted)"
+            "is [%s], received dimensions of Input(Labels) is [%s].",
+            pred_dims,
+            label_dims));
+  }
+  PADDLE_ENFORCE_EQ(pred_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The dimensions of Input(Predicted) must be 2,"
+                        "But received dimensions of Input(Predicted)"
+                        "is [%d]",
+                        pred_dims.size()));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(pred_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "Each row of Input(Predicted) contains a real value, "
+                          "so the 2nd dimension of Input(X) must be 1,"
+                          "But got [%d]",
+                          pred_dims[1]));
+  }
+  out->set_dims({pred_dims[0], 1});
+  out->set_dtype(input.dtype());
+  out->share_lod(input);
+}
+
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_vec = vec.dims();
@@ -602,6 +717,47 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   out->set_dims(dim_out);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
+void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
+                                            const MetaTensor& label,
+                                            bool normalize,
+                                            int ignore_index,
+                                            MetaTensor* out,
+                                            MetaConfig config) {
+  auto x_dims = x.dims();
+  auto labels_dims = label.dims();
+  int rank = x_dims.size();
+  PADDLE_ENFORCE_EQ(rank,
+                    labels_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        rank,
+                        labels_dims.size()));
+
+  bool check = true;
+  if ((!config.is_runtime) &&
+      (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        phi::slice_ddim(x_dims, 0, rank),
+        phi::slice_ddim(labels_dims, 0, rank),
+        phi::errors::InvalidArgument(
+            "Input(X) and Input(Label) shall have the same shape "
+            "except the last dimension. But received: the shape of "
+            "Input(X) is [%s], the shape of Input(Label) is [%s].",
+            x_dims,
+            labels_dims));
+  }
+
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
   out->share_lod(x);
 }
 
