@@ -47,6 +47,9 @@ std::unordered_map<std::string, std::vector<std::string>>
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
+/* --- Black Ops list that's NO NEED to apply code generation --- */
+static std::unordered_set<std::string> black_ops_list = {"run_program"};
+
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
   std::replace(ret.begin(), ret.end(), '-', '_');  // replace all '-' to '_'
@@ -73,12 +76,6 @@ static bool IgnoreGradAttribute(const std::string& op_type,
 }
 
 static void PrepareAttrMapForOps() {
-  // Handle "run_program_op"
-  static framework::ProgramDesc fake_prog;
-  operators_with_attrs["run_program"] = {};
-  operators_with_attrs["run_program"]["global_block"] =
-      fake_prog.MutableBlock(0);
-
   // Handle "fused_elemwise_add_activation"
   std::vector<std::string> functor_list = {"a", "b"};
   operators_with_attrs["fused_elemwise_add_activation"] = {};
@@ -2358,6 +2355,9 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
 
     if (!CheckOpProto(op_proto)) continue;
     const std::string& op_type = op_proto->type();
+    if (black_ops_list.count(op_type)) {
+      continue;
+    }
 
     /* ----------------------------- */
     /* ---- Collect Information ---- */

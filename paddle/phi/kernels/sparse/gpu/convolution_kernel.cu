@@ -17,7 +17,6 @@ limitations under the License. */
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 
-#include "glog/logging.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -28,18 +27,10 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/sparse/convolution_kernel.h"
+#include "paddle/phi/kernels/sparse/gpu/convolution.cu.h"
 
 namespace phi {
 namespace sparse {
-
-// TODO(zhangkaihuo) replace this kernel with KP::InitWithDataIndex
-__global__ void InitByIndexKernel(const int n, int* out1, int* out2) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int i = tid; i < n; i += gridDim.x * blockDim.x) {
-    out1[i] = i;
-    out2[i] = i;
-  }
-}
 
 /**
  * @brief: update the out index and indices
@@ -124,7 +115,7 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
           int in_z = x_indices[i + non_zero_num];
           int in_y = x_indices[i + 2 * non_zero_num];
           int in_x = x_indices[i + 3 * non_zero_num];
-          int in_i = -1, out_index = -1;
+          int in_i = -1, out_index = -1, kernel_i = -1;
           if (Check(x_dims,
                     kernel_dims,
                     paddings,
@@ -143,9 +134,11 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
             out_index =
                 PointToIndex<Dims4D>(batch, out_x, out_y, out_z, out_dims);
             atomicAdd(&counter_buf[kernel_index], 1);
+            kernel_i = kernel_index;
           }
-          rulebook[kernel_index * non_zero_num + i] = in_i;
-          rulebook[kernel_index * non_zero_num + offset + i] = out_index;
+          rulebook[kernel_index * non_zero_num + i] = kernel_i;
+          rulebook[kernel_index * non_zero_num + offset + i] = in_i;
+          rulebook[kernel_index * non_zero_num + offset * 2 + i] = out_index;
           ++kernel_index;
         }
       }
@@ -154,68 +147,6 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
   __syncthreads();
   for (int i = threadIdx.x; i < kernel_size; i += blockDim.x) {
     atomicAdd(&counter[i], counter_buf[i]);
-  }
-}
-
-// TODO(zhangkaihuo): After the GatherCUDAKernel is migrated to phi, replace
-// this kernel with phi::GatherCUDAKernel;
-// Vectorization can be used to improve read and write bandwidth
-/**
- * brief: gather data from params according to indices
- * params: the inputs
- * indices: the indices you want to gather
- * output: the outputs
- * index_size: the size of indices
- * slice_size: slice size corresponding to each index, here is the channel size
-**/
-template <typename T, typename IndexT = int>
-__global__ void GatherKernel(const T* params,
-                             const IndexT* indices,
-                             T* output,
-                             size_t index_size,
-                             size_t slice_size) {
-  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
-    int64_t indices_i = i / slice_size;
-    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
-    IndexT gather_i = indices[indices_i];
-    int64_t params_i = gather_i * slice_size + slice_i;
-    *(output + i) = *(params + params_i);
-  }
-}
-
-/**
- * brief: scatter add
- * input: the inputs
- * unique_value: refer to UpdateIndexKernel notes
- * out_index: the output feature index
- * non_zero_num: the number of output features
- * rulebook_len: the length of rulebook
- * channels: the output channel size
- * out: the outputs
-**/
-template <typename T>
-__global__ void ScatterKernel(const T* input,
-                              const int* unique_value,
-                              const int* out_index,
-                              const int non_zero_num,
-                              const int rulebook_len,
-                              const int channels,
-                              T* out) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int i = tid; i < non_zero_num * channels; i += gridDim.x * blockDim.x) {
-    int indices_i = i / channels;
-    int channels_i = i - indices_i * channels;
-
-    int start = unique_value[indices_i];
-    int end = indices_i == non_zero_num - 1 ? rulebook_len
-                                            : unique_value[indices_i + 1];
-    // max(end-start) = kernel_size
-    T sum = static_cast<T>(0);
-    for (int j = start; j < end; j++) {
-      const int out_feature_i = out_index[j];
-      sum += input[out_feature_i * channels + channels_i];
-    }
-    out[indices_i * channels + channels_i] = sum;
   }
 }
 
@@ -264,16 +195,12 @@ int ProductRuleBook(const Context& dev_ctx,
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
   const int* indices_ptr = non_zero_indices.data<int>();
-  dev_ctx.Alloc(counter_per_kernel,
-                counter_per_kernel->dtype(),
-                sizeof(int) * counter_per_kernel->numel());
   int* counter_ptr = counter_per_kernel->data<int>();
-  dev_ctx.Alloc(offsets_per_kernel,
-                offsets_per_kernel->dtype(),
-                sizeof(int) * offsets_per_kernel->numel());
   int* offsets_ptr = offsets_per_kernel->data<int>();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  rulebook->ResizeAndAllocate({2, kernel_size * non_zero_num});
+  const int rulebook_rows = 3;
+  const int rulebook_cols = kernel_size * non_zero_num;
+  rulebook->ResizeAndAllocate({rulebook_rows, rulebook_cols});
   dev_ctx.Alloc(rulebook, rulebook->dtype(), sizeof(int) * rulebook->numel());
   int* rulebook_ptr = rulebook->data<int>();
 
@@ -312,7 +239,7 @@ int ProductRuleBook(const Context& dev_ctx,
   int* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
                              rulebook_ptr,
-                             rulebook_ptr + 2 * kernel_size * non_zero_num,
+                             rulebook_ptr + rulebook_rows * rulebook_cols,
                              -1);
 
 #ifdef PADDLE_WITH_HIP
@@ -350,6 +277,7 @@ int ProductRuleBook(const Context& dev_ctx,
   dev_ctx.Wait();
   int rulebook_len =
       (*h_counter)[kernel_size - 1] + (*h_offsets)[kernel_size - 1];
+  rulebook->Resize({rulebook_rows, rulebook_len});
 
   // 3. sorted or merge the out index
   out_index->ResizeAndAllocate({rulebook_len});
@@ -365,66 +293,30 @@ int ProductRuleBook(const Context& dev_ctx,
       unique_key, unique_key->dtype(), sizeof(int) * unique_key->numel());
   int* unique_key_ptr = unique_key->data<int>();
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-  InitByIndexKernel<<<config.block_per_grid.x,
-                      config.thread_per_block.x,
-                      0,
-                      dev_ctx.stream()>>>(
-      rulebook_len, out_index_ptr, unique_value_ptr);
-
-#ifdef PADDLE_WITH_HIP
-  phi::backends::gpu::GpuMemcpyAsync(unique_key_ptr,
-                                     rulebook_ptr + rulebook_len,
-                                     rulebook_len * sizeof(int),
-                                     hipMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
-#else
-  phi::backends::gpu::GpuMemcpyAsync(unique_key_ptr,
-                                     rulebook_ptr + rulebook_len,
-                                     rulebook_len * sizeof(int),
-                                     cudaMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
-#endif
-
-// compared with thrust::sort_by_key, thrust::merge_by_key may achieved higher
-// performance, but thrust::merge_by_key limited by data size
-#ifdef PADDLE_WITH_HIP
-  thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
-#else
-  thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-#endif
-                      unique_key_ptr,
-                      unique_key_ptr + rulebook_len,
-                      out_index_ptr);
-
-  // 4. unique
-  thrust::pair<int*, int*> new_end =
-#ifdef PADDLE_WITH_HIP
-      thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
-#else
-      thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
-#endif
-                            unique_key_ptr,
-                            unique_key_ptr + rulebook_len,
-                            unique_value_ptr);
+  int* new_end = SortedAndUniqueIndex(dev_ctx,
+                                      rulebook_ptr + 2 * rulebook_len,
+                                      rulebook_len,
+                                      out_index,
+                                      unique_key,
+                                      unique_value);
   // thrust::distance doesn't support stream parameters
   // const int out_non_zero_num = thrust::distance(unique_key_ptr,
   // new_end.first);
   DistanceKernel<<<1, 1>>>(unique_key_ptr,
-                           new_end.first,
-                           rulebook_ptr + 2 * kernel_size * non_zero_num - 1);
+                           new_end,
+                           rulebook_ptr + rulebook_rows * rulebook_cols - 1);
   int out_non_zero_num = 0;
 #ifdef PADDLE_WITH_HIP
   phi::backends::gpu::GpuMemcpyAsync(
       &out_non_zero_num,
-      rulebook_ptr + 2 * kernel_size * non_zero_num - 1,
+      rulebook_ptr + rulebook_rows * rulebook_cols - 1,
       sizeof(int),
       hipMemcpyDeviceToHost,
       dev_ctx.stream());
 #else
   phi::backends::gpu::GpuMemcpyAsync(
       &out_non_zero_num,
-      rulebook_ptr + 2 * kernel_size * non_zero_num - 1,
+      rulebook_ptr + rulebook_rows * rulebook_cols - 1,
       sizeof(int),
       cudaMemcpyDeviceToHost,
       dev_ctx.stream());
@@ -440,8 +332,6 @@ int ProductRuleBook(const Context& dev_ctx,
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
-  dev_ctx.Alloc(
-      &out_indices, out_indices.dtype(), sizeof(int) * out_indices.numel());
   int* out_indices_ptr = out_indices.data<int>();
 
   config =
@@ -456,7 +346,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                           rulebook_len,
                                           d_out_dims,
                                           out_indices_ptr,
-                                          rulebook_ptr + rulebook_len);
+                                          rulebook_ptr + 2 * rulebook_len);
   out->SetMember(out_indices, out_values, out_dims, true);
   return rulebook_len;
 }
@@ -499,9 +389,12 @@ void Conv3dKernel(const Context& dev_ctx,
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
   DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(offsets_meta));
-  DenseTensor out_index = phi::Empty<int, Context>(dev_ctx);
-  DenseTensor unique_key = phi::Empty<int, Context>(dev_ctx);
-  DenseTensor unique_value = phi::Empty<int, Context>(dev_ctx);
+  DenseTensor out_index = phi::Empty(
+      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
+  DenseTensor unique_key = phi::Empty(
+      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
+  DenseTensor unique_value = phi::Empty(
+      dev_ctx, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
 
   int n = ProductRuleBook<T, Context>(dev_ctx,
                                       x,
@@ -522,6 +415,7 @@ void Conv3dKernel(const Context& dev_ctx,
 
   const int* counter_ptr = counter_per_kernel.data<int>();
   const int* offsets_ptr = counter_per_kernel.data<int>();
+  const int* rulebook_ptr = rulebook->data<int>();
 
   // 2. gather
   DenseTensorMeta in_features_meta(
@@ -532,11 +426,7 @@ void Conv3dKernel(const Context& dev_ctx,
       phi::Empty(dev_ctx, std::move(in_features_meta));
   phi::DenseTensor out_features =
       phi::Empty(dev_ctx, std::move(out_features_meta));
-  dev_ctx.Alloc(
-      &in_features, in_features.dtype(), sizeof(T) * in_features.numel());
   T* in_features_ptr = in_features.data<T>();
-  dev_ctx.Alloc(
-      &out_features, out_features.dtype(), sizeof(T) * out_features.numel());
   T* out_features_ptr = out_features.data<T>();
 
   auto config =
@@ -545,7 +435,7 @@ void Conv3dKernel(const Context& dev_ctx,
                          config.thread_per_block.x,
                          0,
                          dev_ctx.stream()>>>(x.non_zero_elements().data<T>(),
-                                             rulebook->data<int>(),
+                                             rulebook_ptr + n,
                                              in_features_ptr,
                                              n,
                                              in_channels);
@@ -553,8 +443,6 @@ void Conv3dKernel(const Context& dev_ctx,
   // 3. call gemm for every werght
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   auto* out_values = out->mutable_non_zero_elements();
-  dev_ctx.Alloc(
-      out_values, out_values->dtype(), sizeof(T) * out_values->numel());
   T* out_values_ptr = out_values->data<T>();
 
   const T* kernel_ptr = kernel.data<T>();
