@@ -1372,13 +1372,13 @@ class SplitFlOpsPass(PassBase):
 
         p = party_program_map['a']
         _main_file = ps_log_root_dir + '6_fl_A_main_program.prototxt'
-        debug_program(_main_file, p)
+        #debug_program(_main_file, p)
         self.partA_program = framework.Program()
         self._get_partA_program(p.global_block())
 
         p = party_program_map['b']
         _main_file = ps_log_root_dir + '6_fl_B_main_program.prototxt'
-        debug_program(_main_file, p)
+        #debug_program(_main_file, p)
         self.partB_program = framework.Program()
         self._get_partB_program(p.global_block())
 
