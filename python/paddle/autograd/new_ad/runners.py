@@ -44,22 +44,22 @@ def get_current_runner():
 
 
 class Runner(object):
-    def run_op(self, op, *args, **kwargs):
+    def run_op(self, op, ins, outs, attrs):
         raise f'This `process_op` method is missing in {type(self)}.'
 
 
 class MakePrimitive(Runner):
-    def run_op(self, op):
+    def run_op(self, op, ins, outs, attrs):
         primitivemaker = primitivemakers[op.type()]
-        primitive_fn = primitivemaker(op.inputs, op.attrs)
+        primitive_fn = primitivemaker(ins, outs, attrs)
         switch_runner('edit')
-        primitive_fn(op.inputs)
+        primitive_fn(ins)
         switch_runner('primitive')
         return
 
 
 class JVP(Runner):
-    def run_op(self, op, *args, **kwargs):
+    def run_op(self, op, ins, outs, attrs):
         jvpmaker = jvpmakers[op]
         jvp_fn = jvpmaker(*args, **kwargs)
         switch_runner('edit')
@@ -69,7 +69,7 @@ class JVP(Runner):
 
 
 class Transpose(Runner):
-    def run_op(self, op, *args, **kwargs):
+    def run_op(self, op, ins, outs, attrs):
         transposemaker = transposemakers[op]
         transpose_fn = transposemaker(*args, **kwargs)
         switch_runner('edit')
@@ -80,7 +80,6 @@ class Transpose(Runner):
 
 
 class Edit(Runner):
-    def run_op(self, op, *args, **kwargs):
-        outs = makeoutvar(op)
-        create_op_desc(op.op_type, {*args}, {*outs}, { ** kwargs})
-        return [out.name for out in outs]
+    def run_op(self, op, ins, outs, attrs):
+        create_op_desc(op.op_type, ins, outs, attrs)
+        return outs

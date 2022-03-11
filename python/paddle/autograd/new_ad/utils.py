@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import threading
 
 
 def var2dot(var):
@@ -21,3 +22,29 @@ def var2dot(var):
 def set_var2dot(var, dot):
     lookup_tab = adrunner_state.dot_lookup
     lookup_tab[var] = dot
+
+
+class NameGen(thearding.local):
+    def __init__(self):
+        super().__init__()
+        self.cnt = 0
+
+    def get_name(self):
+        name = 'name_gen_' + str(self.cnt)
+        self.cnt = self.cnt + 1
+        return name
+
+    def get_var(self, block=None, ref_var=None, shape=None):
+        name = self.get_name()
+        new_shape = ref_var.shape if shape is None else shape
+        block.create_var(
+            name=name,
+            shape=new_shape,
+            dtype=ref_var.dtype,
+            type=ref_var.type,
+            persistable=False,
+            stop_gradient=False)
+        return name
+
+
+name_gen = NameGen()

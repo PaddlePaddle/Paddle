@@ -28,9 +28,9 @@ class Primitive(object):
     def __init__(self, optype) -> None:
         self.optype = optype
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, ins, outs, attrs) -> Any:
         runner = get_current_runner()
-        runner.run_op(self, *args, **kwargs)
+        runner.run_op(self, ins, outs, attrs)
 
 
 RESHAPE = Primitive('reshape_p')
@@ -96,13 +96,12 @@ transposemakers[ADD] = add_transposemaker
 transposemakers[SUB] = sub_transposemaker
 transposemakers[MUL] = mul_transposemaker
 
-
 # Changes on original operator and variable 
 # TODO(add convert2primitive method to class Operator)
-class Operator(object):
-    def convert2primitive(self) -> None:
-        runner = get_current_runner()
-        runner.run_op(self)
+# class OpDesc(object):
+#     def convert2primitive(self) -> None:
+#         runner = get_current_runner()
+#         runner.run_op(self)
 
 
 # TODO(add is_tangent content to class Variable)
