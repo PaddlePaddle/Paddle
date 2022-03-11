@@ -2137,3 +2137,38 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
         return paddle.sum(loss, name=name)
     elif reduction == 'none':
         return loss
+
+
+def pairwise_distance(x1, x2, p, eps, keepdim=False):
+    # keepdim的用法
+    x1_dim = len(x1.shape)
+    x2_dim = len(x2.shape)
+    output_dim = x1_dim if x1_dim > x2_dim else x2_dim
+    innermost_dim = output_dim - 1
+    return paddle.linalg.norm(x1 - x2 + eps, p, innermost_dim, keepdim)
+
+
+def triplet_margin_loss(anchor, positive, negative, margin=1.0, p=2, eps=1e-6, swap=False, size_average=None,
+                        reduce=None, reduction="mean"):
+    ''' # type: (Tensor, Tensor, Tensor, float, float, float, bool, Optional[bool], Optional[bool], str) -> Tensor'''
+    # dim 和 shape
+    a_dim = len(anchor.shape)
+    p_dim = len(positive.shape)
+    n_dim = len(negative.shape)
+    if not (a_dim == p_dim and p_dim == n_dim):
+        print(f"All input should have same dim but got, {a_dim, p_dim, n_dim}  ")
+    dist_p = pairwise_distance(anchor, positive, p, eps)
+    dist_n = pairwise_distance(anchor, negative, p, eps)
+    if swap:
+        dist_swap = pairwise_distance(positive, negative, p, eps)
+        # min的用法
+        dist_n = paddle.min(dist_n, dist_swap)
+    loss = paddle.nn.functional.relu(margin + dist_p - dist_n)
+    if reduction == 'mean':
+        loss = paddle.mean(loss)
+    elif reduction == 'sum':
+        loss = paddle.sum(loss)
+    elif reduction == 'batchmean':
+        batch_size = paddle.shape(anchor)[0]
+        loss = paddle.sum(loss) / batch_size
+    return loss
