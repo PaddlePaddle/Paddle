@@ -487,4 +487,4 @@ def fused_multi_head_attention(x,
             },
             attrs=attrs)
 
-        return final_out, cache_kv_out if cache_kv else final_out
+        return (final_out, cache_kv_out) if cache_kv else final_out
