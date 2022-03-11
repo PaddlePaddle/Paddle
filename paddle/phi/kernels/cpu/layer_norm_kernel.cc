@@ -42,9 +42,9 @@ void LayerNormKernel(const Context& dev_ctx,
   auto* scale = scale_opt.get_ptr();
   auto* bias = bias_opt.get_ptr();
 
-  ctx.template Alloc<T>(y);
-  ctx.template Alloc<T>(mean);
-  ctx.template Alloc<T>(var);
+  dev_ctx.template Alloc<T>(y);
+  dev_ctx.template Alloc<T>(mean);
+  dev_ctx.template Alloc<T>(var);
 
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int left = static_cast<int>(matrix_dim[0]);

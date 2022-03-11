@@ -44,7 +44,7 @@ class RowwiseMean2D<phi::GPUContext, T> {
       : left_(left), right_(right) {
     DDim ones_dim({right_});
     divisor_.Resize(ones_dim);
-    dev_ctx.template Alloc<T>(&divisor);
+    dev_ctx.template Alloc<T>(&divisor_);
     phi::funcs::set_constant(dev_ctx, &divisor_, 1.0 / right);
   }
   void operator()(const phi::GPUContext& context,
