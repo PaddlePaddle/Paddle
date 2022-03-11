@@ -31,24 +31,25 @@ class TestLinesearch(unittest.TestCase):
             j = paddle.full(shape=[1], fill_value=0, dtype='int64')
             done = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
-            def cond(j,done):
+            def cond(j, done):
                 #done_print = paddle.static.Print(done, message="done cond")
                 j_print = paddle.static.Print(j, message="j cond")
                 return j < 3
 
-            def body(j,done):
+            def body(j, done):
                 j = j + 1
                 j_print = paddle.static.Print(j, message="j body")
                 y = 2 * j
-                
+
                 def true_fn():
-                    paddle.assign(True,done)
+                    paddle.assign(True, done)
                     #done_print = paddle.static.Print(done, message="done true_fn")
                 #paddle.static.nn.cond(j>0, true_fn, None)
                 #done_print = paddle.static.Print(done, message="done body")
-                return j,done
 
-            paddle.static.nn.while_loop(cond, body, [j,done])
+                return j, done
+
+            paddle.static.nn.while_loop(cond, body, [j, done])
             j_print = paddle.static.Print(j, message="j out")
             return j
 
@@ -110,19 +111,19 @@ class TestLinesearch(unittest.TestCase):
 
     def test_static_quadratic_2d(self):
         paddle.enable_static()
-        
+
         def func(x):
-            minimun = paddle.assign(np.array([1.0, 2.0],dtype='float32'))
-            scale = paddle.assign(np.array([3.0, 4.0],dtype='float32'))
+            minimun = paddle.assign(np.array([1.0, 2.0], dtype='float32'))
+            scale = paddle.assign(np.array([3.0, 4.0], dtype='float32'))
             return paddle.sum(scale.multiply(F.square_error_cost(x, minimun)))
 
         def grad(x):
-            minimun = paddle.assign(np.array([1.0, 2.0],dtype='float32'))
-            scale = paddle.assign(np.array([3.0, 4.0],dtype='float32'))
+            minimun = paddle.assign(np.array([1.0, 2.0], dtype='float32'))
+            scale = paddle.assign(np.array([3.0, 4.0], dtype='float32'))
             return -paddle.multiply(2 * scale, paddle.subtract(x, minimun))
 
         position = [2.0, 3.0]
-        
+
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -134,12 +135,16 @@ class TestLinesearch(unittest.TestCase):
         exe = fluid.Executor()
         exe.run(startup)
         for i in range(100):
-            results = exe.run(main, feed={'x': np.array(position,dtype='float32')}, fetch_list=[Y,pk])
+            results = exe.run(main,
+                              feed={'x': np.array(
+                                  position, dtype='float32')},
+                              fetch_list=[Y, pk])
             position = position + results[0] * results[-1]
-            print('position: {} \n alpha: {} \n pk: {}'.format(position, results[0], results[-1]))
+            print('position: {} \n alpha: {} \n pk: {}'.format(
+                position, results[0], results[-1]))
             if np.allclose([1.0, 2.0], position, rtol=1e-07):
                 break
-        
+
         self.assertTrue(np.allclose([1.0, 2.0], position, rtol=1e-07))
 
     def test_static_inf_minima(self):
@@ -168,11 +173,14 @@ class TestLinesearch(unittest.TestCase):
         exe.run(startup)
 
         for i in range(30):
-            print('--------------------------------------------------------  iter: {}'.format(i))
+            print(
+                '--------------------------------------------------------  iter: {}'.
+                format(i))
             print('position: {}'.format(position))
-            results = exe.run(main, feed={'x': position}, fetch_list=[Y,pk])
+            results = exe.run(main, feed={'x': position}, fetch_list=[Y, pk])
             position = position + results[0] * results[-1]
-            print('position: {} \n alpha: {} \n pk: {}'.format(position, results[0], results[-1]))
+            print('position: {} \n alpha: {} \n pk: {}'.format(
+                position, results[0], results[-1]))
             if np.isinf(position):
                 break
 
@@ -201,11 +209,14 @@ class TestLinesearch(unittest.TestCase):
         exe = fluid.Executor()
         exe.run(startup)
         for i in range(100):
-            print('--------------------------------------------------------  iter: {}'.format(i))
+            print(
+                '--------------------------------------------------------  iter: {}'.
+                format(i))
             print('position: {}'.format(position))
-            results = exe.run(main, feed={'x': position}, fetch_list=[Y,pk])
+            results = exe.run(main, feed={'x': position}, fetch_list=[Y, pk])
             position = position + results[0] * results[-1]
-            print('position: {} \n alpha: {} \n pk: {}'.format(position, results[0], results[-1]))
+            print('position: {} \n alpha: {} \n pk: {}'.format(
+                position, results[0], results[-1]))
             if np.allclose(-1.1, position, rtol=1e-04):
                 break
         self.assertTrue(np.allclose(-1.1, position, rtol=1e-04))
@@ -235,7 +246,7 @@ class TestLinesearch(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 minimun.numpy(), position.numpy(), rtol=1e-08))
-        
+
     def test_quadratic_2d(self):
         minimun = paddle.to_tensor([1.0, 2.0])
         scale = paddle.to_tensor([3.0, 4.0])

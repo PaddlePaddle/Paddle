@@ -30,38 +30,41 @@ class TestBfgs(unittest.TestCase):
             # df = 2 * (x - minimun)
             return (x - minimun)**2
 
-        position = np.array([2.0],dtype='float32')
+        position = np.array([2.0], dtype='float32')
         paddle.enable_static()
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             X = paddle.static.data(name='x', shape=[1], dtype='float32')
             Y = miminize_bfgs(func, position)
-        
+
         exe = fluid.Executor()
         exe.run(startup)
         results = exe.run(main, feed={'x': position}, fetch_list=[Y])
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2], results[3]))
+        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+                                                    results[3]))
         self.assertTrue(np.allclose(minimun, results[0], rtol=1e-08))
 
     def test_static_quadratic_2d(self):
         def func(x):
-            minimun = paddle.assign(np.array([1.0, 2.0],dtype='float32'))
-            scale = paddle.assign(np.array([3.0, 4.0],dtype='float32'))
-            return paddle.sum(paddle.multiply(scale, F.square_error_cost(x, minimun)))
+            minimun = paddle.assign(np.array([1.0, 2.0], dtype='float32'))
+            scale = paddle.assign(np.array([3.0, 4.0], dtype='float32'))
+            return paddle.sum(
+                paddle.multiply(scale, F.square_error_cost(x, minimun)))
 
-        position = np.array([2.0, 3.0],dtype='float32')
+        position = np.array([2.0, 3.0], dtype='float32')
         paddle.enable_static()
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             X = paddle.static.data(name='x', shape=[2], dtype='float32')
             Y = miminize_bfgs(func, position)
-        
+
         exe = fluid.Executor()
         exe.run(startup)
         results = exe.run(main, feed={'x': position}, fetch_list=[Y])
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2], results[3]))
+        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+                                                    results[3]))
 
         self.assertTrue(np.allclose([1.0, 2.0], results[0], rtol=1e-08))
 
@@ -77,7 +80,8 @@ class TestBfgs(unittest.TestCase):
 
         position = paddle.to_tensor(3.15)
         results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2], results[3]))
+        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+                                                    results[3]))
 
         self.assertAlmostEqual(float("-inf"), position.numpy())
 
@@ -94,11 +98,12 @@ class TestBfgs(unittest.TestCase):
         with fluid.program_guard(main, startup):
             X = paddle.static.data(name='x', shape=[1], dtype='float32')
             Y = miminize_bfgs(func, position)
-        
+
         exe = fluid.Executor()
         exe.run(startup)
         results = exe.run(main, feed={'x': position}, fetch_list=[Y])
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2], results[3]))
+        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+                                                    results[3]))
 
         self.assertTrue(np.allclose(-1.1, results[0], rtol=1e-08))
 
@@ -106,10 +111,10 @@ class TestBfgs(unittest.TestCase):
         import tensorflow_probability as tfp
         fdf = lambda x: ValueAndGradient(x=x, f=3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x, df=12 * x**3 + 1.2 * x**2 - 11.28 * x + 2.112)
         #for position in positions:
-            #results = tfp.optimizer.linesearch.hager_zhang(fdf)
 
-        #self.assertTrue(np.allclose(minimun.numpy(), results_paddle.numpy(), rtol=1e-08))
+    #results = tfp.optimizer.linesearch.hager_zhang(fdf)
 
+    #self.assertTrue(np.allclose(minimun.numpy(), results_paddle.numpy(), rtol=1e-08))
 
     def test_quadratic_1d(self):
         minimun = paddle.to_tensor([1.0])
@@ -120,7 +125,8 @@ class TestBfgs(unittest.TestCase):
 
         position = paddle.to_tensor([2.0])
         results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2], results[3]))
+        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+                                                    results[3]))
 
         self.assertTrue(
             np.allclose(
@@ -135,9 +141,12 @@ class TestBfgs(unittest.TestCase):
 
         position = paddle.to_tensor([2.0, 3.0])
         results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2], results[3]))
+        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+                                                    results[3]))
 
-        self.assertTrue(np.allclose(minimun.numpy(), results[0].numpy(), rtol=1e-08))
+        self.assertTrue(
+            np.allclose(
+                minimun.numpy(), results[0].numpy(), rtol=1e-08))
 
     def test_inf_minima(self):
         extream_point = paddle.to_tensor([-1, 2])
@@ -151,7 +160,8 @@ class TestBfgs(unittest.TestCase):
 
         position = paddle.to_tensor(3.15)
         results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2], results[3]))
+        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+                                                    results[3]))
 
         self.assertAlmostEqual(float("-inf"), position.numpy())
 
@@ -165,7 +175,8 @@ class TestBfgs(unittest.TestCase):
 
         position = paddle.to_tensor(0.9)
         results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2], results[3]))
+        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+                                                    results[3]))
 
         self.assertTrue(np.allclose(-1.1, results[0].numpy(), rtol=1e-07))
 
@@ -173,9 +184,10 @@ class TestBfgs(unittest.TestCase):
         import tensorflow_probability as tfp
         fdf = lambda x: ValueAndGradient(x=x, f=3 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x, df=12 * x**3 + 1.2 * x**2 - 11.28 * x + 2.112)
         #for position in positions:
-            #results = tfp.optimizer.linesearch.hager_zhang(fdf)
 
-        #self.assertTrue(np.allclose(minimun.numpy(), results_paddle.numpy(), rtol=1e-08))
+    #results = tfp.optimizer.linesearch.hager_zhang(fdf)
+
+    #self.assertTrue(np.allclose(minimun.numpy(), results_paddle.numpy(), rtol=1e-08))
 
 
 test = TestBfgs()
