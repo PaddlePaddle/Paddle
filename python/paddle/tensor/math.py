@@ -3974,6 +3974,3 @@ def angle(x, name=None):
     outputs = {"Out": out}
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
-
-
-
