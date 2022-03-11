@@ -165,5 +165,49 @@ struct DivGradYFunctor<ComplexType<T>> {
   }
 };
 
+template <typename T>
+struct MultiplyGradFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a * b; }
+};
+template <typename T>
+struct MultiplyGradFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
+                                              const ComplexType<T> b) const {
+    ComplexType<T> b_conj(b.real, -b.imag);
+    return a * b_conj;
+  }
+};
+
+template <typename InT, typename OutT>
+struct MultiplyGradXYFunctor {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT a,
+                                                   const InT b,
+                                                   const InT c) {
+    phi::Array<OutT, 2> outs;
+    // dx = dout * y
+    outs[0] = a * b;
+    // dy = dout * x
+    outs[1] = a * c;
+    return outs;
+  }
+};
+
+template <typename InT, typename OutT>
+struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
+  inline HOSTDEVICE phi::Array<ComplexType<OutT>, 2> operator()(
+      const ComplexType<InT> a,
+      const ComplexType<InT> b,
+      const ComplexType<InT> c) {
+    phi::Array<ComplexType<OutT>, 2> outs;
+    // dx = dout * y
+    ComplexType<InT> b_conj(b.real, -b.imag);
+    outs[0] = a * b_conj;
+    // dy = dout * x
+    ComplexType<InT> c_conj(c.real, -c.imag);
+    outs[1] = a * c_conj;
+    return outs;
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi

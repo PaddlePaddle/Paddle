@@ -16,12 +16,12 @@
 
 #include <thrust/transform.h>
 #include "paddle/fluid/operators/math/inclusive_scan.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 // NOTE(@xiongkun): use of IsComplex<>
 #include "paddle/fluid/framework/data_type.h"
 
@@ -159,11 +159,11 @@ void CumprodGradKernel(const Context &dev_ctx,
                  .Allocate(numel * sizeof(T));
     auto *y_data_conj = reinterpret_cast<T *>(y_conj->ptr());
 
-    paddle::platform::ForRange<Context> for_range_x(dev_ctx, numel);
+    phi::funcs::ForRange<Context> for_range_x(dev_ctx, numel);
     phi::funcs::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
     for_range_x(functor_x);
 
-    paddle::platform::ForRange<Context> for_range_y(dev_ctx, numel);
+    phi::funcs::ForRange<Context> for_range_y(dev_ctx, numel);
     phi::funcs::ConjFunctor<T> functor_y(y_data, numel, y_data_conj);
     for_range_y(functor_y);
     x_data_deal = x_data_conj;
@@ -245,7 +245,7 @@ void CumprodGradKernel(const Context &dev_ctx,
   auto *first_zero_idx_data =
       reinterpret_cast<int64_t *>(first_zero_idx->ptr());
   auto *x_filled_one_data = dy_mul_y_data;  // reuse former allocated memory
-  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   CumprodGradFunctorExceptFirstZero<T> functor_except_first_zero(
       x_data_deal,
       y_data_deal,
@@ -295,7 +295,7 @@ void CumprodGradKernel(const Context &dev_ctx,
       dev_ctx);
 
   // Step 6: fill zero pos gradient value
-  paddle::platform::ForRange<Context> for_range_fill_zero_pos_grad(
+  phi::funcs::ForRange<Context> for_range_fill_zero_pos_grad(
       dev_ctx, outer_dim * inner_dim);
   FillFirstZeroPositionGradFunctor<T> fill_first_zero_pos_grad_functor(
       first_zero_idx_data,

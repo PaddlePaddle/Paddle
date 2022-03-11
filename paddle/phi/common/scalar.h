@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-void ThrowErrorIf(int);
+void ThrowErrorIfNotScalar(int);
 
 template <typename T>
 class ScalarBase {
@@ -157,7 +157,7 @@ class ScalarBase {
 
   // NOTE(xiongkun): some op need to judge the dtype of the Scalar, we expose a
   // interface.
-  bool is_dype(DataType d) const { return d == dtype_; }
+  bool IsDtype(DataType d) const { return d == dtype_; }
 
   bool FromTensor() const { return is_from_tensor_; }
 

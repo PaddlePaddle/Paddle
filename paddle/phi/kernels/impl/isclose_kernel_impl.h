@@ -17,7 +17,6 @@
 #include <string>
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
@@ -162,12 +161,12 @@ void IscloseKernel(const Context& dev_ctx,
                    bool equal_nan,
                    DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      atol.is_dype(paddle::experimental::DataType::FLOAT64),
+      atol.IsDtype(paddle::experimental::DataType::FLOAT64),
       true,
       phi::errors::InvalidArgument("Input(Atol) type must be double"));
 
   PADDLE_ENFORCE_EQ(
-      rtol.is_dype(paddle::experimental::DataType::FLOAT64),
+      rtol.IsDtype(paddle::experimental::DataType::FLOAT64),
       true,
       phi::errors::InvalidArgument("Input(Rtol) type must be double"));
 

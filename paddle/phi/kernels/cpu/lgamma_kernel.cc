@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/lgamma_kernel.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 template <typename T>
@@ -40,7 +40,7 @@ void LgammaKernel(const Context& dev_ctx,
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
-  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   LgammaFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);
 }

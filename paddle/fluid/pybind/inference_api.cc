@@ -33,6 +33,10 @@
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 
+#ifdef PADDLE_WITH_ONNXRUNTIME
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
+#endif
+
 namespace py = pybind11;
 
 namespace pybind11 {
@@ -556,6 +560,10 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
+      .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
+      .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
+      .def("onnxruntime_enabled", &AnalysisConfig::use_onnxruntime)
+      .def("enable_ort_optimization", &AnalysisConfig::EnableORTOptimization)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("use_xpu", &AnalysisConfig::use_xpu)
       .def("use_npu", &AnalysisConfig::use_npu)

@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/cumprod_grad_kernel.h"
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 // NOTE(@xiongkun): use of IsComplex<>
 #include "paddle/fluid/framework/data_type.h"
@@ -59,11 +59,11 @@ void CumprodGradKernel(const Context& dev_ctx,
                    .Allocate(numel * sizeof(T));
     auto* out_data_conj = reinterpret_cast<T*>(out_conj->ptr());
 
-    paddle::platform::ForRange<Context> for_range_x(dev_ctx, numel);
+    phi::funcs::ForRange<Context> for_range_x(dev_ctx, numel);
     phi::funcs::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
     for_range_x(functor_x);
 
-    paddle::platform::ForRange<Context> for_range_out(dev_ctx, numel);
+    phi::funcs::ForRange<Context> for_range_out(dev_ctx, numel);
     phi::funcs::ConjFunctor<T> functor_out(out_data, numel, out_data_conj);
     for_range_out(functor_out);
 

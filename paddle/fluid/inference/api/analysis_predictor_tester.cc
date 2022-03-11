@@ -357,6 +357,24 @@ TEST(AnalysisPredictor, set_xpu_device_id) {
 }
 #endif
 
+TEST(AnalysisPredictor, enable_onnxruntime) {
+  AnalysisConfig config;
+  config.EnableONNXRuntime();
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  ASSERT_TRUE(config.use_onnxruntime());
+#else
+  ASSERT_TRUE(!config.use_onnxruntime());
+#endif
+  config.EnableORTOptimization();
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  ASSERT_TRUE(config.ort_optimization_enabled());
+#else
+  ASSERT_TRUE(!config.ort_optimization_enabled());
+#endif
+  config.DisableONNXRuntime();
+  ASSERT_TRUE(!config.use_onnxruntime());
+}
+
 }  // namespace paddle
 
 namespace paddle_infer {
@@ -406,6 +424,14 @@ TEST(Predictor, Run) {
   out->data<float>(&place, &size);
   LOG(INFO) << "output size: " << size / sizeof(float);
   predictor->TryShrinkMemory();
+}
+
+TEST(Predictor, EnableONNXRuntime) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.EnableONNXRuntime();
+  config.EnableORTOptimization();
+  auto predictor = CreatePredictor(config);
 }
 
 TEST(Tensor, CpuShareExternalData) {

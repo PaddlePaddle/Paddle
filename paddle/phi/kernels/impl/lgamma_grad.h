@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 namespace phi {
 template <typename T>
 struct LgammaGradFunctor {
@@ -40,7 +40,7 @@ void LgammaGradKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* dx_data =
       dev_ctx.template Alloc<T>(d_x, static_cast<size_t>(numel * sizeof(T)));
-  paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   LgammaGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }
