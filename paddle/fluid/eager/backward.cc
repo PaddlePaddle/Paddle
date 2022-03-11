@@ -309,8 +309,12 @@ std::vector<paddle::experimental::Tensor> RunBackward(
               "size = 0 or same size as tensors"));
       // Feed given tensor if it's provided
       VLOG(6) << "Fill grad input tensor " << i << "with give grad tensor";
-      node_input_buffers_dict[grad_node]->add(
-          input_info.first, input_info.second, grad_tensors[i]);
+
+      paddle::experimental::Tensor tmp_tensor;
+      // Deep copy
+      tmp_tensor.copy_(grad_tensors[i], true);
+      node_input_buffers_dict[grad_node]->add(input_info.first,
+                                              input_info.second, tmp_tensor);
 
     } else {
       VLOG(6) << "Fill grad input tensor " << i << " with 1.0";
