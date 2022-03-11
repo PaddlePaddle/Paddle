@@ -44,7 +44,6 @@ class API_Test_Nanmean(unittest.TestCase):
             res = exe.run(train_program,
                           feed={'input': x},
                           fetch_list=[out1, out2, out3, out4])
-
             out1_np = np.array(res[0])
             out2_np = np.array(res[1])
             out3_np = np.array(res[2])

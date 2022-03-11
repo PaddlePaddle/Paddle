@@ -1028,7 +1028,7 @@ def nanmean(x,axis=None,keepdim=None,name=None):
     if axis == None:
         return paddle.mean(x[~paddle.isnan(x)], keepdim=keepdim,name=name)
 
-    tot = paddle.nansum(x,axis=axis,dtype=x.dtype,keepdim=keepdim,name=name)
+    tot = paddle.nansum(x,axis=axis,keepdim=keepdim,name=name)
     cnt = paddle.sum( ~paddle.isnan(x) ,axis = axis,keepdim=keepdim )
     avg = paddle.divide(tot,cnt.astype(tot.dtype))
 

@@ -334,6 +334,7 @@ tensor_method_func  = [ #noqa
            'stanh',
            'sum',
            'nansum',
+           'nanmean',
            'tanh',
            'tanh_',
            'add_n',
