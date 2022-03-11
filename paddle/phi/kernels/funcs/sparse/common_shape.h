@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 
 namespace phi {
+namespace funcs {
 namespace sparse {
 
 inline const DDim InferDenseDims(const DDim& x_dims,
@@ -40,4 +41,5 @@ inline const DDim InferDenseDims(const DDim& x_dims,
 }
 
 }  // namespace sparse
+}  // namespace funcs
 }  // namespace phi

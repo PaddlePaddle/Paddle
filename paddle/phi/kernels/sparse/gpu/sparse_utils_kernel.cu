@@ -171,7 +171,8 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   dev_ctx.Wait();  // wait the copy
 
-  const auto values_dims = InferDenseDims(x_dims, sparse_dim, non_zero_num);
+  const auto values_dims =
+      phi::funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
   DenseTensorMeta indices_meta(DataType::INT64,
                                {sparse_dim, static_cast<int64_t>(non_zero_num)},
                                DataLayout::NCHW);

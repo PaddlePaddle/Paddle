@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 
 namespace phi {
+namespace funcs {
 namespace sparse {
 
 struct Dims4D {
@@ -117,4 +118,5 @@ inline void GetOutShape(const DDim& x_dims,
 }
 
 }  // namespace sparse
+}  // namespace funcs
 }  // namespace phi
