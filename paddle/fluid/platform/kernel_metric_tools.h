@@ -19,8 +19,9 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-class KernelMetricsTool {
+struct KernelMetricsTool {
  public:
+  KernelMetricsTool() {}
   size_t GpuMemoryQuery() const { return GpuAvailableMemToAlloc(); }
 };
 
