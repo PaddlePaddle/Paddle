@@ -21,79 +21,65 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
+np.random.seed(10)
 
-class API_Test_Nanmean(unittest.TestCase):
-    def test_static_graph(self):
+class TestNanmeanAPI(unittest.TestCase):
+    # test paddle.tensor.math.nanmean
+
+    def setUp(self):
+        self.x_shape = [2,3,4,5]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+            else paddle.CPUPlace()
+    
+    def test_api_static(self):
         paddle.enable_static()
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 4])
-            out1 = paddle.nanmean(input)
-            out2 = paddle.nanmean(input, axis=0)
-            out3 = paddle.nanmean(input, axis=-1)
-            out4 = paddle.nanmean(input, axis=1, keepdim=True)
-            place = fluid.CPUPlace()
-            if fluid.core.is_compiled_with_cuda():
-                place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            exe.run(startup_program)
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.fluid.data('X', self.x_shape)
+            out1 = paddle.nanmean(x)
+            out2 = paddle.tensor.nanmean(x)
+            out3 = paddle.tensor.math.nanmean(x)
+            axis = np.arange(len(self.x_shape)).tolist()
+            out4 = paddle.nanmean(x, axis)
+            out5 = paddle.nanmean(x, tuple(axis))
 
-            x = np.array([[float('nan'), 3, 5, 9],
-                          [1, 2, float('-nan'), 7]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': x},
-                          fetch_list=[out1, out2, out3, out4])
-            out1_np = np.array(res[0])
-            out2_np = np.array(res[1])
-            out3_np = np.array(res[2])
-            out4_np = np.array(res[3])
-            out1_ref = np.array([4.5]).astype(np.float32)
-            out2_ref = np.array([1, 2.5, 5, 8]).astype(np.float32)
-            out3_ref = np.array([5.6666665, 3.3333333]).astype(np.float32)
-            out4_ref = np.array([[5.6666665], [3.3333333]]).astype(np.float32)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x},
+                          fetch_list=[out1, out2, out3, out4, out5])
+        out_ref = np.nanmean(self.x)
+        for out in res:
+            self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
 
-            self.assertTrue(
-                (out1_np == out1_ref).all(),
-                msg='nanmean output is wrong, out =' + str(out1_np))
-            self.assertTrue(
-                (out2_np == out2_ref).all(),
-                msg='nanmean output is wrong, out =' + str(out2_np))
-            self.assertTrue(
-                (out3_np == out3_ref).all(),
-                msg='nanmean output is wrong, out =' + str(out3_np))
-            self.assertTrue(
-                (out4_np == out4_ref).all(),
-                msg='nanmean output is wrong, out =' + str(out4_np))
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
 
-    def test_error_api(self):
+        def test_case(x, axis=None, keepdim=False):
+            x_tensor = paddle.to_tensor(x)
+            out = paddle.nanmean(x_tensor, axis, keepdim)
+            if isinstance(axis, list):
+                axis = tuple(axis)
+                if len(axis) == 0:
+                    axis = None
+            out_ref = np.nanmean(x, axis, keepdims=keepdim)
+            self.assertEqual(
+                np.allclose(
+                    out.numpy(), out_ref, rtol=1e-04), True)
+
+        test_case(self.x)
+        test_case(self.x, [])
+        test_case(self.x, -1)
+        test_case(self.x, keepdim=True)
+        test_case(self.x, 2, keepdim=True)
+        test_case(self.x, [0, 2])
+        test_case(self.x, (0, 2))
+        test_case(self.x, [0, 1, 2, 3])
         paddle.enable_static()
-
-        ## input dtype error
-        def run1():
-            input = fluid.data(name='input', dtype='float16', shape=[2, 3])
-            output = paddle.nanmean(input)
-
-        self.assertRaises(TypeError, run1)
-
-        ## axis type error
-        def run2():
-            input = fluid.data(name='input', dtype='float16', shape=[2, 3])
-            output = paddle.nanmean(input, axis=1.2)
-
-        self.assertRaises(TypeError, run2)
-
-    def test_dygraph(self):
-        x = np.array([[float('nan'), 3, 5, 9],
-                      [1, 2, float('-nan'), 7]]).astype(np.float32)
-        with fluid.dygraph.guard():
-            inputs = fluid.dygraph.to_variable(x)
-            out = paddle.nanmean(inputs)
-            out_ref = np.array([4.5]).astype(np.float32)
-
-            self.assertTrue(
-                (out.numpy() == out_ref).all(),
-                msg='nanmean output is wrong, out =' + str(out.numpy()))
+    
+    def test_errors(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.fluid.data('X', [10, 12], 'int32')
+            self.assertRaises(TypeError, paddle.nanmean, x)
 
 
 if __name__ == "__main__":
