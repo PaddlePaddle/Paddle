@@ -28,25 +28,28 @@ class TestLinesearch(unittest.TestCase):
         minimun = 1.2
 
         def func1(x):
-            def func2():
-                y = 2 * y
-                return
-
-            def func3():
-                return
-
             j = paddle.full(shape=[1], fill_value=0, dtype='int64')
-            y = paddle.full(shape=[1], fill_value=1, dtype='int64')
+            done = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
-            def cond(j):
+            def cond(j,done):
+                #done_print = paddle.static.Print(done, message="done cond")
+                j_print = paddle.static.Print(j, message="j cond")
                 return j < 3
 
-            def body(j):
+            def body(j,done):
+                j = j + 1
+                j_print = paddle.static.Print(j, message="j body")
+                y = 2 * j
+                
+                def true_fn():
+                    paddle.assign(True,done)
+                    #done_print = paddle.static.Print(done, message="done true_fn")
+                #paddle.static.nn.cond(j>0, true_fn, None)
+                #done_print = paddle.static.Print(done, message="done body")
+                return j,done
 
-                j += x
-                return j
-
-            paddle.static.nn.while_loop(cond, body, [j])
+            paddle.static.nn.while_loop(cond, body, [j,done])
+            j_print = paddle.static.Print(j, message="j out")
             return j
 
         def func2(x):
@@ -64,7 +67,7 @@ class TestLinesearch(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             X = paddle.static.data(name='x', shape=[-1], dtype='float')
-            Y = func2(X)
+            Y = func1(X)
 
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
@@ -90,16 +93,122 @@ class TestLinesearch(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            X = paddle.static.data(name='x', shape=[1], dtype='float')
+            X = paddle.static.data(name='x', shape=[1], dtype='float32')
             value, pk = _value_and_gradient(func, X)
-            results = strong_wolfe(func, X, -pk)
+            Y = strong_wolfe(func, X, -pk)
 
         exe = fluid.Executor()
         exe.run(startup)
-        feeds = {'x': position}
-        results = exe.run(main, feed=feeds, fetch_list=[results])
-        position = position[0] + results[0] * grad(position[0])
-        print('position: {} \n alpha: {}'.format(position[0], results[0]))
+        for i in range(100):
+            results = exe.run(main, feed={'x': position}, fetch_list=[Y])
+            position = position[0] + results[0] * grad(position[0])
+            print('position: {} \n alpha: {}'.format(position[0], results[0]))
+            if abs(position - minimun) < 1e-8:
+                break
+
+        self.assertTrue(np.allclose(minimun, position, rtol=1e-08))
+
+    def test_static_quadratic_2d(self):
+        paddle.enable_static()
+        
+        def func(x):
+            minimun = paddle.assign(np.array([1.0, 2.0],dtype='float32'))
+            scale = paddle.assign(np.array([3.0, 4.0],dtype='float32'))
+            return paddle.sum(scale.multiply(F.square_error_cost(x, minimun)))
+
+        def grad(x):
+            minimun = paddle.assign(np.array([1.0, 2.0],dtype='float32'))
+            scale = paddle.assign(np.array([3.0, 4.0],dtype='float32'))
+            return -paddle.multiply(2 * scale, paddle.subtract(x, minimun))
+
+        position = [2.0, 3.0]
+        
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            X = paddle.static.data(name='x', shape=[2], dtype='float32')
+            #value, pk = _value_and_gradient(func, X)
+            pk = grad(X)
+            Y = strong_wolfe(func, X, pk)
+
+        exe = fluid.Executor()
+        exe.run(startup)
+        for i in range(100):
+            results = exe.run(main, feed={'x': np.array(position,dtype='float32')}, fetch_list=[Y,pk])
+            position = position + results[0] * results[-1]
+            print('position: {} \n alpha: {} \n pk: {}'.format(position, results[0], results[-1]))
+            if np.allclose([1.0, 2.0], position, rtol=1e-07):
+                break
+        
+        self.assertTrue(np.allclose([1.0, 2.0], position, rtol=1e-07))
+
+    def test_static_inf_minima(self):
+        extream_point = [-1, 2]
+
+        def func(x):
+            # df = 3(x - 1.01)(x - 0.99) = 3x^2 - 3*2x + 3*1.01*0.99
+            # f = x^3 - 3x^2 + 3*1.01*0.99x
+            return x * x * x / 3.0 - (
+                extream_point[0] + extream_point[1]
+            ) * x * x / 2 + extream_point[0] * extream_point[1] * x
+
+        def grad(x):
+            return -(x - extream_point[0]) * (x - extream_point[1])
+
+        position = 3.6
+        paddle.enable_static()
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            X = paddle.static.data(name='x', shape=[1], dtype='float32')
+            pk = grad(X)
+            Y = strong_wolfe(func, X, pk)
+
+        exe = fluid.Executor()
+        exe.run(startup)
+
+        for i in range(30):
+            print('--------------------------------------------------------  iter: {}'.format(i))
+            print('position: {}'.format(position))
+            results = exe.run(main, feed={'x': position}, fetch_list=[Y,pk])
+            position = position + results[0] * results[-1]
+            print('position: {} \n alpha: {} \n pk: {}'.format(position, results[0], results[-1]))
+            if np.isinf(position):
+                break
+
+        self.assertAlmostEqual(float("-inf"), position)
+
+    def test_static_multi_minima(self):
+        def func(x):
+            # df = 12(x + 1.1)(x - 0.2)(x - 0.8)
+            # f = 3*x^4+0.4*x^3-5.46*x^2+2.112*x
+            #return 3.0 * x**4 + 0.4 * x**3 - 5.64 * x**2 + 2.112 * x
+            return 3.0 * paddle.pow(x, 4) + 0.4 * paddle.pow(
+                x, 3) - 5.64 * paddle.pow(x, 2) + 2.112 * x
+
+        def grad(x):
+            return -(12.0 * x**3 + 1.2 * x**2 - 11.28 * x + 2.112)
+
+        position = -1.9
+        paddle.enable_static()
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            X = paddle.static.data(name='x', shape=[1], dtype='float32')
+            pk = grad(X)
+            Y = strong_wolfe(func, X, pk)
+
+        exe = fluid.Executor()
+        exe.run(startup)
+        for i in range(100):
+            print('--------------------------------------------------------  iter: {}'.format(i))
+            print('position: {}'.format(position))
+            results = exe.run(main, feed={'x': position}, fetch_list=[Y,pk])
+            position = position + results[0] * results[-1]
+            print('position: {} \n alpha: {} \n pk: {}'.format(position, results[0], results[-1]))
+            if np.allclose(-1.1, position, rtol=1e-04):
+                break
+        self.assertTrue(np.allclose(-1.1, position, rtol=1e-04))
 
     def test_quadratic_1d(self):
         minimun = paddle.to_tensor([1.0])
@@ -126,7 +235,7 @@ class TestLinesearch(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 minimun.numpy(), position.numpy(), rtol=1e-08))
-
+        
     def test_quadratic_2d(self):
         minimun = paddle.to_tensor([1.0, 2.0])
         scale = paddle.to_tensor([3.0, 4.0])
