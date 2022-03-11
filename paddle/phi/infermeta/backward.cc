@@ -105,4 +105,61 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
   dx->share_meta(dout);
 }
 
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad) {
+  const auto& dtype = out_grad.dtype();
+  x_grad->set_dims(x.dims());
+  x_grad->share_lod(x);
+  x_grad->set_dtype(dtype);
+}
+
+void PsroiPoolGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& rois,
+                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& dout,
+                            int pooled_height,
+                            int pooled_width,
+                            int output_channels,
+                            float spatial_scale,
+                            MetaTensor* dx) {
+  dx->share_meta(x);
+}
+
+void ScatterGradInferMeta(const MetaTensor& index,
+                          const MetaTensor& updates,
+                          const MetaTensor& out_grad,
+                          bool overwrite,
+                          MetaTensor* x_grad,
+                          MetaTensor* updates_grad) {
+  const auto& dtype = out_grad.dtype();
+  if (updates_grad) {
+    updates_grad->set_dims(updates.dims());
+    updates_grad->set_dtype(dtype);
+  }
+
+  if (x_grad) {
+    x_grad->set_dims(out_grad.dims());
+    x_grad->set_dtype(dtype);
+  }
+}
+
+void ScatterNdAddGradInferMeta(const MetaTensor& index,
+                               const MetaTensor& updates,
+                               const MetaTensor& out_grad,
+                               MetaTensor* x_grad,
+                               MetaTensor* updates_grad) {
+  const auto& dtype = out_grad.dtype();
+  if (updates_grad) {
+    updates_grad->set_dims(updates.dims());
+    updates_grad->set_dtype(dtype);
+  }
+
+  if (x_grad) {
+    x_grad->set_dims(out_grad.dims());
+    x_grad->set_dtype(dtype);
+  }
+}
+
 }  // namespace phi

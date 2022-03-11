@@ -492,6 +492,10 @@ void NvprofDisableRecordEvent() { g_enable_nvprof_hook = false; }
 
 void EnableHostEventRecorder() { FLAGS_enable_host_event_recorder_hook = true; }
 
+void DisableHostEventRecorder() {
+  FLAGS_enable_host_event_recorder_hook = false;
+}
+
 std::string PrintHostEvents() {
   std::ostringstream oss;
   auto host_evt_sec = HostEventRecorder::GetInstance().GatherEvents();

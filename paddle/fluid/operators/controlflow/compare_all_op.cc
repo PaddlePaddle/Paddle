@@ -12,48 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/controlflow/compare_all_op.h"
-#include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename DeviceContext, typename Functor>
-class CompareReduceOpKernel
-    : public framework::OpKernel<typename Functor::ELEM_TYPE> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    using T = typename Functor::ELEM_TYPE;
-    using Tensor = framework::Tensor;
-
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Y");
-    auto* z = context.Output<Tensor>("Out");
-    Tensor tmp;
-    bool* z_data = z->mutable_data<bool>(context.GetPlace());
-
-    if (x->dims() != y->dims()) {
-      z_data[0] = false;
-    } else {
-      tmp.mutable_data<bool>(x->dims(), context.GetPlace());
-      if (x->numel() == 1 && y->numel() == 1) {
-        bool* z_data = tmp.mutable_data<bool>(context.GetPlace());
-        z_data[0] = Functor()(x->data<T>()[0], y->data<T>()[0]);
-      } else {
-        ElementwiseComputeEx<Functor, platform::CPUDeviceContext, T, bool>(
-            context, x, y, 0, Functor(), &tmp);
-      }
-      auto ipt = framework::EigenVector<bool>::Flatten(tmp);
-      auto out = framework::EigenScalar<bool>::From(*z);
-      auto& place =
-          *context.template device_context<platform::CPUDeviceContext>()
-               .eigen_device();
-      auto reduce_dim = Eigen::array<int, 1>({{0}});
-      out.device(place) = ipt.all(reduce_dim);
-    }
-  }
-};
 
 template <typename OpComment>
 class CompareReduceOpProtoMaker : public framework::OpProtoAndCheckerMaker {
@@ -81,26 +46,6 @@ template <typename OpComment>
 class CompareReduceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext* context) const override {
-    OpComment comment;
-    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "%s operator must have input X", comment.type));
-    PADDLE_ENFORCE_EQ(context->HasInput("Y"), true,
-                      platform::errors::InvalidArgument(
-                          "%s operator must have input Y", comment.type));
-    auto dim_x = context->GetInputDim("X");
-    auto dim_y = context->GetInputDim("Y");
-    PADDLE_ENFORCE_GE(
-        dim_x.size(), dim_y.size(),
-        platform::errors::InvalidArgument(
-            "The size of dim_y should not be greater than dim_x's."));
-
-    context->SetOutputDim("Out", {1});
-    context->ShareLoD("X", "Out");
-  }
 };
 
 }  // namespace operators
@@ -113,25 +58,13 @@ class CompareReduceOp : public framework::OperatorWithKernel {
   };                                                                       \
   char _##op_type##Comment::type[]{#op_type};                              \
   char _##op_type##Comment::equation[]{_equation};                         \
+  DECLARE_INFER_SHAPE_FUNCTOR(op_type, op_type##_InferShapeFunctor,        \
+                              PD_INFER_META(phi::CompareAllInferMeta));    \
   REGISTER_OPERATOR(                                                       \
       op_type, ::paddle::operators::CompareReduceOp<_##op_type##Comment>,  \
       ::paddle::operators::CompareReduceOpProtoMaker<_##op_type##Comment>, \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
-      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,   \
+      op_type##_InferShapeFunctor);
 
-#define REGISTER_COMPARE_REDUCE_CPU_KERNEL(op_type, functor)             \
-  REGISTER_OP_CPU_KERNEL(                                                \
-      op_type, ::paddle::operators::CompareReduceOpKernel<               \
-                   ::paddle::platform::CPUDeviceContext, functor<bool>>, \
-      ::paddle::operators::CompareReduceOpKernel<                        \
-          ::paddle::platform::CPUDeviceContext, functor<int>>,           \
-      ::paddle::operators::CompareReduceOpKernel<                        \
-          ::paddle::platform::CPUDeviceContext, functor<int64_t>>,       \
-      ::paddle::operators::CompareReduceOpKernel<                        \
-          ::paddle::platform::CPUDeviceContext, functor<float>>,         \
-      ::paddle::operators::CompareReduceOpKernel<                        \
-          ::paddle::platform::CPUDeviceContext, functor<double>>);
 REGISTER_COMPARE_REDUCE_OP(equal_all, "X == Y");
-
-REGISTER_COMPARE_REDUCE_CPU_KERNEL(equal_all,
-                                   paddle::operators::EqualReduceFunctor);

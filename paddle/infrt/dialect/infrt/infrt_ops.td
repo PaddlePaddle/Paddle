@@ -17,3 +17,25 @@ def Infrt_KernelOp : Infrt_Op<"kernel", [NoSideEffect]> {
                        OptionalAttr<DictionaryAttr>:$attrs);
   let results = (outs Variadic<AnyType>);
 }
+
+def Infrt_ReturnOp : Infrt_Op<"return", [Terminator]> {
+  let summary = "host executor return operation";
+  let description = [{
+      The "infrt.return" operation represents a return operation within a function.
+
+        func @foo() : (i32, f8) {
+        infrt.return %0, %1 : i32, f8
+        }
+    }];
+
+  let arguments = (ins Variadic<AnyType>:$operands);
+
+  let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
+}
+
+def Infrt_CvtTensorOp : Infrt_Op<"cvt_tensor", [NoSideEffect]> {
+  let summary = "convert tensor type op";
+  let description = [{convert tensor type op!}];
+  let arguments = (ins AnyType:$input);
+  let results = (outs AnyType:$output);
+}

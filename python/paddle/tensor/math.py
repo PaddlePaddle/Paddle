@@ -27,7 +27,7 @@ from paddle.tensor import cast
 from paddle.tensor.attribute import _complex_to_real_dtype
 import paddle
 from paddle.static import Variable
-from ..framework import core
+from ..framework import core, _in_eager_mode
 from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
@@ -1083,6 +1083,8 @@ def trunc(input, name=None):
             #         [0., 0.]]))
     '''
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return  _C_ops.final_state_trunc(input)
         return _C_ops.trunc(input)
     else:
         inputs = {"X": input}
@@ -2425,6 +2427,8 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_diagonal(x, offset, axis1, axis2)
         return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
     def __check_input(input, offset, dim1, dim2):
@@ -3184,6 +3188,8 @@ def digamma(x, name=None):
     """
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_digamma(x)
         return _C_ops.digamma(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'digamma')
