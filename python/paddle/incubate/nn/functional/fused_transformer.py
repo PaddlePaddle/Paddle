@@ -405,8 +405,7 @@ def fused_multi_head_attention(x,
             inputs['Ln2Scale'] = [ln_scale]
         if ln_bias:
             inputs['Ln2Bias'] = [ln_bias]
-        if cache_kv:
-            inputs['CacheKV'] = [cache_kv]
+        if cache_kv: inputs['CacheKV'] = [cache_kv]
 
         if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
             seed = helper.main_program.random_seed
@@ -488,6 +487,4 @@ def fused_multi_head_attention(x,
             },
             attrs=attrs)
 
-        if cache_kv:
-            return final_out, cache_kv_out
-        return final_out
+        return final_out, cache_kv_out if cache_kv else final_out
