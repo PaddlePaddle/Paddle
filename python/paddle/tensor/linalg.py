@@ -3023,11 +3023,13 @@ def corrcoef(x, rowvar=True, ddof=True, name=None):
             "length of Input(input) is %s." % len(x.shape))
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'corrcoef')
 
-    x_cov = paddle.linalg.cov(x, rowvar = rowvar, ddof = ddof, name = name)
+    x_cov = paddle.linalg.cov(x, rowvar=rowvar, ddof=ddof, name=name)
     if x_cov.shape == []:
-        corr = paddle.to_tensor([1], dtype = x.dtype)
+        corr = paddle.to_tensor([1], dtype=x.dtype)
     else:
-        x_div = paddle.mm(paddle.diag(x_cov).reshape([-1, 1]), paddle.diag(x_cov).reshape([1, -1])) ** 0.5
+        x_div = paddle.mm(
+            paddle.diag(x_cov).reshape([-1, 1]),
+            paddle.diag(x_cov).reshape([1, -1]))**0.5
         corr = paddle.divide(x_cov, x_div)
 
     return corr
