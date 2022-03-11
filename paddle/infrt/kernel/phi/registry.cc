@@ -19,7 +19,6 @@
 
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
-#include "paddle/infrt/kernel/phi/allocator_kernels.h"
 #include "paddle/infrt/kernel/phi/context_kernels.h"
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
 #include "paddle/infrt/kernel/phi/infershaped/phi_kernel_launcher.h"
@@ -33,26 +32,14 @@ namespace infrt {
 namespace kernel {
 
 void RegisterPhiKernels(host_context::KernelRegistry* registry) {
-  registry->AddKernel("phi_dt.create_allocator.cpu",
-                      INFRT_KERNEL(infrt::kernel::phi::CreateCpuAllocator));
   registry->AddKernel("phi_dt.create_context.cpu",
-                      INFRT_KERNEL(infrt::kernel::phi::CreateCpuContext));
-  registry->AddKernel(
-      "phi_dt.create_dense_tensor.cpu.f32.nchw",
-      INFRT_KERNEL(infrt::kernel::phi::CreateDenseTensorCpuF32Nchw));
+                      INFRT_KERNEL(infrt::kernel::phi::CreateCPUContext));
+  registry->AddKernel("phi_dt.create_dense_tensor",
+                      INFRT_KERNEL(infrt::kernel::phi::CreateDenseTensor));
   registry->AddKernel("phi_dt.fill_dense_tensor.f32",
                       INFRT_KERNEL(infrt::kernel::phi::FillDenseTensorF32));
-  registry->AddKernel(
-      "phi_dt.fake_phi_kernel",
-      std::bind(&KernelLauncherFunc<decltype(&FakePhiKernel),
-                                    &FakePhiKernel,
-                                    decltype(&FakePhiInferShape),
-                                    &FakePhiInferShape>,
-                KernelLauncher<decltype(&FakePhiKernel),
-                               &FakePhiKernel,
-                               decltype(&FakePhiInferShape),
-                               &FakePhiInferShape>(),
-                std::placeholders::_1));
+  registry->AddKernel("phi_dt.print_tensor",
+                      INFRT_KERNEL(infrt::kernel::phi::PrintDenseTensor));
 }
 
 }  // namespace kernel

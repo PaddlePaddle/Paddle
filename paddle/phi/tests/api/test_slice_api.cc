@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+
 namespace paddle {
 namespace tests {
 

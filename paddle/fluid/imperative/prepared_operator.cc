@@ -186,11 +186,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
               << " | kernel key: " << pt_kernel_key
               << " | kernel: " << pt_kernel;
 
-      if (platform::is_cpu_place(expected_kernel_key.place_)) {
-        auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
-        return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
-                          pt_kernel, cpu_ctx);
+      if (expected_kernel_key.place_ != place) {
+        dev_ctx = pool.Get(expected_kernel_key.place_);
       }
+
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, expected_kernel_key, pt_kernel_signature,
                         pt_kernel, dev_ctx);
@@ -248,6 +247,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
+  expected_kernel_key.place_ = platform::XPUPlace();
   bool use_xpu_kp_kernel_rt =
       FLAGS_run_kp_kernel &&
       paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
