@@ -438,7 +438,7 @@ void MomentumDenseImpl(const Context& ctx,
                           "the attr `multi_precision` is true"));
   }
 
-  param_out->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(param_out);
   velocity_out->mutable_data<MT>(ctx.GetPlace());
   const MT* master_in_data =
       multi_precision ? master_param->data<MT>() : nullptr;
