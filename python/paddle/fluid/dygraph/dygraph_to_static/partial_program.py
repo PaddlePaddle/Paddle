@@ -461,12 +461,6 @@ class PartialProgramLayer:
             tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                          "program_out_scope",
                                          core.VarDesc.VarType.STEP_SCOPES, True)
-            # TODO(jiabin): Support this later.
-            # else:
-            #     tmp_scope_vec = core.eager.Tensor(core.VarDesc.VarType.FP32, [],
-            #                                 "program_out_scope",
-            #                                 core.VarDesc.VarType.STEP_SCOPES, True)
-
             tmp_scope_vec.value().set_scope(inner_scope)
         else:
             tmp_scope_vec = [inner_scope]
@@ -607,12 +601,10 @@ def _create_fake_var():
                          core.VarDesc.VarType.RAW, False)
         ]
     else:
-        # TODO(jiabin): Support this later
-        with paddle.fluid.dygraph.guard():
-            return [
-                core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
-                                  core.VarDesc.VarType.RAW, False)
-            ]
+        return [
+            core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
+                              core.VarDesc.VarType.RAW, False)
+        ]
 
 
 def partial_program_from(concrete_program):

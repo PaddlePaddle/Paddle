@@ -436,7 +436,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     fwd_out_names_ = out_names;
   }
 
-  void SetOut(std::vector<paddle::experimental::Tensor *> out) { out_ = out; }
+  void SetOut(const std::vector<paddle::experimental::Tensor *> &out) {
+    out_ = out;
+  }
 
  protected:
   void ConstructGradTensors(
