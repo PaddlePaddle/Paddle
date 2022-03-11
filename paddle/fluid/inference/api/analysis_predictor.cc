@@ -65,6 +65,10 @@
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #endif
 
+#ifdef PADDLE_WITH_ONNXRUNTIME
+#include "paddle/fluid/inference/api/onnxruntime_predictor.h"
+#endif
+
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
@@ -1762,6 +1766,27 @@ namespace paddle_infer {
 Predictor::Predictor(const Config &config) {
   const_cast<Config *>(&config)->SwitchUseFeedFetchOps(false);
   // The second parameter indicates that the discard log is not printed
+  if (config.use_onnxruntime()) {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+    if (config.use_gpu()) {
+      LOG(WARNING) << "The current ONNXRuntime backend doesn't support GPU,"
+                      "and it falls back to use Paddle Inference.";
+    } else if (!paddle::CheckConvertToONNX(config)) {
+      LOG(WARNING)
+          << "Paddle2ONNX do't support convert the Model， fall back to using "
+             "Paddle Inference.";
+    } else {
+      predictor_ = paddle::CreatePaddlePredictor<
+          Config, paddle::PaddleEngineKind::kONNXRuntime>(config);
+      return;
+    }
+#else
+    LOG(WARNING)
+        << "The onnxruntime backend isn't enabled,"
+           " and please re-compile Paddle with WITH_ONNXRUNTIME option,"
+           "fall back to using Paddle Inference.";
+#endif
+  }
   predictor_ = paddle::CreatePaddlePredictor<
       Config, paddle::PaddleEngineKind::kAnalysis>(config);
 }
