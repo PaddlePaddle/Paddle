@@ -14,15 +14,6 @@ def INFRT_Dialect : Dialect {
   let cppNamespace = "::infrt::dialect";
 }
 
-// Type definitions
-def StringType :
-    Type<CPred<"$_self.isa<::infrt::dt::StringType>()">, "!infrt.string type">,
-    BuildableType<"$_builder.getType<::infrt::dt::StringType>()">;
-
-def TensorMapType :
-    Type<CPred<"$_self.isa<::infrt::dt::TensorMapType>()">, "!infrt.tensor_map type">,
-    BuildableType<"$_builder.getType<::infrt::dt::TensorMapType>()">;
-
 def BufferType : OpaqueType<"b", "buffer", "buffer">;
 
 class INFRT_createI32Attr<string value> : NativeCodeCall<
