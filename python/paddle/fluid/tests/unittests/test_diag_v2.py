@@ -73,7 +73,7 @@ class TestDiagV2OpCase3(TestDiagV2Op):
 class TestDiagV2OpCase4(TestDiagV2Op):
     def init_config(self):
         self.x = np.random.rand(100)
-        self.padding_value = 8
+        self.padding_value = 2
         n = self.x.size
         self.out = self.padding_value * np.ones((n, n)) + np.diag(
             self.x, self.offset) - np.diag(self.padding_value * np.ones(n))
