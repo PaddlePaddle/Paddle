@@ -837,6 +837,7 @@ void TraceInferMeta(
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));
   }
   out->set_dims(phi::make_ddim(sizes));
+  out->set_dtype(x.dtype());
 }
 
 void DiagonalInferMeta(const MetaTensor& input,
