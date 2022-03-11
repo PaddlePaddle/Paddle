@@ -56,8 +56,8 @@ void GradTensorHolder::add(size_t slot_id, size_t rank,
     // This if statement is trying to test neither phi::Tensor nor
     // framework::Variable is initialized.
     if ((!buffer_tensor.defined() || !buffer_tensor.initialized())) {
-      // Simply copy tensor->impl
-      buffer_tensor = t;
+      // Deep Copy
+      buffer_tensor.copy_(t, true);
     } else {
       // Accumulation
       PADDLE_ENFORCE_EQ(t.initialized(), true,

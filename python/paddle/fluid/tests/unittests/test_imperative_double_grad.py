@@ -246,7 +246,7 @@ class TestDygraphDoubleGrad(TestCase):
         self.func_example_no_grad_vars()
 
     @dygraph_guard
-    def test_none_one_initial_gradient(self):
+    def func_none_one_initial_gradient(self):
         numel = 1
         for s in self.shape:
             numel *= s
@@ -311,6 +311,11 @@ class TestDygraphDoubleGrad(TestCase):
                         self.assertTrue(
                             np.array_equal(grad_z.numpy(),
                                            original_random_grad_z))
+
+    def test_none_one_initial_gradient(self):
+        with _test_eager_guard():
+            self.func_none_one_initial_gradient()
+        self.func_none_one_initial_gradient()
 
     @dygraph_guard
     def test_example_with_gradient_accumulation_and_create_graph(self):
