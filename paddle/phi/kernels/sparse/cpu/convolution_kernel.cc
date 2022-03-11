@@ -33,6 +33,7 @@ void Conv3dKernel(const Context& dev_ctx,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const int groups,
+                  const bool subm,
                   SparseCooTensor* out,
                   DenseTensor* rulebook) {
   // update padding and dilation
@@ -62,6 +63,7 @@ void Conv3dKernel(const Context& dev_ctx,
                               dilations,
                               strides,
                               out_dims,
+                              subm,
                               rulebook,
                               &counter_per_kernel);
 

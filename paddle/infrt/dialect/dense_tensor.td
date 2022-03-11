@@ -105,11 +105,10 @@ def LoadParamsOp : DT_Op<"load_params", [NoSideEffect]> {
   }];
 
   // input path of model params.
-  let arguments = (ins StringType:$path);
-  let results = (outs TensorMapType);
+  let arguments = (ins StrAttr:$path);
+  let results = (outs DenseTensorMap:$out);
 
-  let assemblyFormat = "`(` operands `)` attr-dict";
-  let verifier = ?;
+  let assemblyFormat = "`(``)`attr-dict";
 }
 
 
@@ -122,7 +121,7 @@ def TensorMapGetTensorOp : DT_Op<"tensor_map_get_tensor", [NoSideEffect]> {
 
   // input path of model params.
   let arguments = (ins
-          TensorMapType:$map,
+          DenseTensorMap:$map,
           StrAttr:$name
           );
   let results = (outs DenseTensor:$output);
@@ -137,7 +136,7 @@ def TensorMapGetSizeOp : DT_Op<"tensor_map_get_size", [NoSideEffect]> {
     An operation that get the size of a TensorMap.
   }];
 
-  let arguments = (ins TensorMapType:$map);
+  let arguments = (ins DenseTensorMap:$map);
   let results = (outs I32:$size);
   let assemblyFormat = "`(` $map `)` attr-dict `->` type($size)";
 }
