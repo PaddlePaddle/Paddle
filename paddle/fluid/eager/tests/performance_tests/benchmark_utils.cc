@@ -80,7 +80,7 @@ void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
-  RunBackward(target_tensors, {});
+  Backward(target_tensors, {});
 
   if (accuracy_check) {
     // Examine Forward Grad (w.r.t max_num_runs = 2)
