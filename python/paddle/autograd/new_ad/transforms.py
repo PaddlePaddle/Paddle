@@ -45,13 +45,13 @@ class Hessian(object):
 
 
 # procedural apis
-def gradients(ys, xs, ys_bar):
+def gradients(ys, xs, v):
     if ys_bar is None:
         ys_bar = [paddle.ones_like(y) for y in ys]
     convert2primitive(ys, xs)
-    ys_dot, xs_dot = linearize(ys, xs)
-    xs_bar = transpose(ys_bar)
-    return xs_bar
+    y_dots, x_dots = linearize(ys, xs)
+    _, x_bars = transpose(y_dots, x_dots, v)
+    return x_bars
 
 
 class Optimizer(object):
@@ -74,43 +74,60 @@ def convert2primitive(ys, xs):
     op_path = subtrace(ys, xs)
     switch_runner('primitive')
     for op_idx in op_path:
-        op_desc = block.desc.op(op_idx)
-        if not is_primitive(op_desc):
+        op = block.ops(op_idx)
+        if not is_primitive(op):
             runner = get_current_runner()
-            runner.run_op(op_desc)
+            runner.run_op(op.type(), *op.ins, *op.outs, op.attrs)
             ops_to_remove.append[op_idx]
 
     for op_idx in reversed(ops_to_remove):
         block.desc._remove_op(op_idx, op_idx + 1)
 
+    block.infer_shape()
 
-def linearize(ys, xs):
-    op_descs = subtrace(ys, xs)
+
+def linearize(ys, xs, v=None):
+    op_path = subtrace(ys, xs)
 
     # create jvps for all nodes and update dot lookup table
     switch_runner('jvp')
 
-    # (TODO) find entry nodes
-    in_dots = (make_var(is_tangent=True) for var in in_vars)
-    for var, dot in zip(in_vars, in_dots):
-        set_var2dot(var, dot)
+    x_dots = [make_var(
+        is_tangent=True, ref_var=x) for x in xs] if v is None else v
+    for x, x_dot in zip(xs, x_dots):
+        set_var2dot(x, x_dot)
 
-    out_dot = None
+    y_dots = []
 
-    for node in subtrace(nodes, in_vars, out_vars):
-        out_dot = node.op(*node.in_vars, **node.attributes)
-        set_var2dot(node.out_var, out_dot)
+    for op_idx in op_path:
+        op = block.ops(op_idx)
+        runner = get_current_runner()
+        y_dot = runner.run_op(op.type(), *op.ins, *op.outs, op.attrs)
+        set_var2dot(op.outs, y_dot)
+        y_dots += y_dot
 
-    return xs_dot, ys_dot
+    block.infer_shape()
+    return y_dots, x_dots
 
 
-def transpose(ys, xs):
+def transpose(y_dots, x_dots, v=None):
+    op_path = subtrace(y_dots, x_dots)
     # transpose all nodes and update bar lookup table
     switch_runner('transpose')
+    y_bars = [make_var(
+        is_tangent=False, ref_var=y_dot)
+              for y_dot in y_dots] if v is None else v
+    for y_bar, y_dot in zip(y_bars, y_dots):
+        set_dot2bar(y_dot, y_bar)
 
+    x_bars = []
 
-# for new_op_desc in to_insert:
-#     _new_op_desc = new_block.desc.append_op()
-#     _new_op_desc.copy_from(new_op_desc)
-#     op = Operator(block=new_block, desc=_new_op_desc)
-#     new_block.ops.append(op)
+    for op_idx in reversed(op_path):
+        op = block.ops(op_idx)
+        runner = get_current_runner()
+        x_bar = runner.run_op(op.type(), *op.ins, *op.outs, op.attrs)
+        set_dot2bar(op.ins, x_bar)
+        x_bars += x_bar
+
+    block.infer_shape()
+    return y_bars, x_bars

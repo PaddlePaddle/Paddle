@@ -25,48 +25,50 @@ class Primitive(object):
 
     """
 
-    def __init__(self, optype) -> None:
+    def __init__(self, optype, nins, nouts) -> None:
         self.optype = optype
+        self.nins = nins
+        self.nouts = nouts
 
     def __call__(self, ins, outs, attrs) -> Any:
         runner = get_current_runner()
         runner.run_op(self, ins, outs, attrs)
 
 
-RESHAPE = Primitive('reshape_p')
-BCAST = Primitive('broadcast_p')
-REDUCE = Primitive('reduce_p')
-TRANSPOSE = Primitive('transpose_p')
-SPLIT = Primitive('split_p')
-CONCAT = Primitive('concat_p')
-SLISELECT = Primitive('slice_select_p')
-SLIASSIGN = Primitive('slice_assign_p')
-INDSELECT = Primitive('index_select_p')
-INDASSIGN = Primitive('index_assign_p')
-ADD = Primitive('add_p')
-SUB = Primitive('sub_p')
-MUL = Primitive('mul_p')
-DIV = Primitive('div_p')
-SQRT = Primitive('sqrt_p')
-TANH = Primitive('tanh_p')
-MATMUL = Primitive('matmul_p')
-FILL = Primitive('fill_constant_p')
+RESHAPE = Primitive('reshape_p', 1, 1)
+BCAST = Primitive('broadcast_p', 1, 1)
+REDUCE = Primitive('reduce_p', 1, 1)
+TRANSPOSE = Primitive('transpose_p', 1, 1)
+SPLIT = Primitive('split_p', 1, None)
+CONCAT = Primitive('concat_p', None, 1)
+SLISELECT = Primitive('slice_select_p', 1, 1)
+SLIASSIGN = Primitive('slice_assign_p', 2, 1)
+INDSELECT = Primitive('index_select_p', None, 1)
+INDASSIGN = Primitive('index_assign_p', None, 1)
+ADD = Primitive('add_p', 2, 1)
+SUB = Primitive('sub_p', 2, 1)
+MUL = Primitive('mul_p', 2, 1)
+DIV = Primitive('div_p', 2, 1)
+SQRT = Primitive('sqrt_p', 1, 1)
+TANH = Primitive('tanh_p', 1, 1)
+MATMUL = Primitive('matmul_p', 2, 1)
+FILL = Primitive('fill_constant_p', None, 1)
 
 # jvp and transpose rules on primitives
 jvpmakers = {}
 transposemakers = {}
 
 
-def add_jvpmaker(x, y):
-    return lambda tx, ty: ADD(tx, ty)
+def add_jvpmaker(x, y, z):
+    return lambda tx, ty: ADD(tx, ty, make_var(True, z))
 
 
-def sub_jvpmaker(x, y):
-    return lambda tx, ty: SUB(tx, ty)
+def sub_jvpmaker(x, y, z):
+    return lambda tx, ty: SUB(tx, ty, make_var(True, z))
 
 
-def mul_jvpmaker(x, y):
-    return lambda tx, ty: ADD(MUL(x, ty), MUL(tx, y))
+def mul_jvpmaker(x, y, z):
+    return lambda tx, ty: ADD(MUL(x, ty, make_var(True, z)), MUL(tx, y, make_var(True, z)), make_var(True, z))
 
 
 jvpmakers[ADD] = add_jvpmaker
@@ -75,18 +77,18 @@ jvpmakers[MUL] = mul_jvpmaker
 
 
 def add_transposemaker(x, y):
-    assert x.is_tangent and y.is_tangent
+    assert is_tangent(x) and is_tangent(y)
     return lambda t: t, lambda t: t
 
 
 def sub_transposemaker(x, y):
-    assert x.is_tangent and y.is_tangent
+    assert is_tangent(x) and is_tangent(y)
     return lambda t: t, lambda t: NEG(t)
 
 
 def mul_transposemaker(x, y):
-    assert x.is_tangent ^ y.is_tangent
-    if x.is_tangent:
+    assert is_tangent(x) ^ is_tangent(y)
+    if is_tangent(x):
         return lambda t: (MUL(t, y), None)
     else:
         return lambda t: (None, MUL(x, t))
@@ -96,29 +98,16 @@ transposemakers[ADD] = add_transposemaker
 transposemakers[SUB] = sub_transposemaker
 transposemakers[MUL] = mul_transposemaker
 
-# Changes on original operator and variable 
-# TODO(add convert2primitive method to class Operator)
-# class OpDesc(object):
-#     def convert2primitive(self) -> None:
-#         runner = get_current_runner()
-#         runner.run_op(self)
-
-
-# TODO(add is_tangent content to class Variable)
-class Variable(object):
-    def __init__(self, is_tangent=False):
-        self.is_tangent = is_tangent
-
-
 # rules to transform original operator to primitives
 primitivemakers = {}
 
 
-def add_maker(x, y):
+# TODO(lml): how to support concat
+def add_maker(x, y, z):
     if x.shape == y.shape:
-        return lambda _x, _y: ADD(_x, _y)
+        return lambda _x, _y: ADD(_x, _y, z.name())
     else:
-        return lambda _x, _y: ADD(_x, BCAST(_y, x.shape))
+        return lambda _x, _y: ADD(_x, BCAST(_y, make_var(), shape=x.shape))
 
 
 primitivemakers['elementwise_add'] = add_maker

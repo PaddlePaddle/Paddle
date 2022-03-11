@@ -13,11 +13,15 @@
 # limitations under the License.
 
 import threading
+import inspect
+from paddle.fluid.framework import Operator
+from paddle.fluid.backward import _create_op_desc_
 
 
 class ADRunnerState(threading.local):
     def __init__(self) -> None:
         super().__init__()
+        self.tangent_set = set()
         self.dot_lookup = {}
         self.bar_lookup = {}
         self.runners = {
@@ -30,6 +34,11 @@ class ADRunnerState(threading.local):
 
     def switch_runner(self, kind):
         self.runner = self.runners[kind]
+
+    def clear_state(self):
+        self.tangent_set = set()
+        self.dot_lookup = {}
+        self.bar_lookup = {}
 
 
 adrunner_state = ADRunnerState()
@@ -44,32 +53,36 @@ def get_current_runner():
 
 
 class Runner(object):
-    def run_op(self, op, ins, outs, attrs):
+    def run_op(self, op, *args, **kwargs):
         raise f'This `process_op` method is missing in {type(self)}.'
 
 
 class MakePrimitive(Runner):
-    def run_op(self, op, ins, outs, attrs):
-        primitivemaker = primitivemakers[op.type()]
-        primitive_fn = primitivemaker(ins, outs, attrs)
+    def run_op(self, op, *args, **kwargs):
+        primitivemaker = primitivemakers[op]
+        primitive_fn = primitivemaker(*args, **kwargs)
         switch_runner('edit')
-        primitive_fn(ins)
+        nins = len(inspect.getargspec(primitive_fn).args)
+        ins = [args[i].name for i in range(nins)]
+        primitive_fn(*ins)
         switch_runner('primitive')
         return
 
 
 class JVP(Runner):
-    def run_op(self, op, ins, outs, attrs):
+    def run_op(self, op, *args, **kwargs):
         jvpmaker = jvpmakers[op]
         jvp_fn = jvpmaker(*args, **kwargs)
         switch_runner('edit')
-        out_dot = jvp_fn(*map(var2dot, args))
+        nins = len(inspect.getargspec(primitive_fn).args)
+        ins = [var.name for var in map(var2dot, args[0:nins])]
+        out_dot = list(jvp_fn(ins))
         switch_runner('jvp')
         return out_dot
 
 
 class Transpose(Runner):
-    def run_op(self, op, ins, outs, attrs):
+    def run_op(self, op, *args, **kwargs):
         transposemaker = transposemakers[op]
         transpose_fn = transposemaker(*args, **kwargs)
         switch_runner('edit')
@@ -80,6 +93,15 @@ class Transpose(Runner):
 
 
 class Edit(Runner):
-    def run_op(self, op, ins, outs, attrs):
-        create_op_desc(op.op_type, ins, outs, attrs)
-        return outs
+    def run_op(self, op, *args, **kwargs):
+        nins = op.nins if op.nins is not None else len(args - op.nouts)
+        op_desc = _create_op_desc(op.optype,
+                                  to_in_dict(args[0:nins]),
+                                  to_out_dict(args[nins + 1:len(args)]),
+                                  dict(**kwargs))
+        block = default_main_program().current_block()
+        new_op_desc = block.append_op()
+        new_op_desc.copy_from(op_desc)
+        new_op = Operator(block=block, desc=new_op_desc)
+        block.ops.append(new_op)
+        return args[nins + 1:len(args)]
