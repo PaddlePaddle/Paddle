@@ -288,8 +288,8 @@ void RmspropSparseKernel(const Context &ctx,
 
   phi::SelectedRows tmp_merged_grad;
   phi::SelectedRows *merged_grad = &tmp_merged_grad;
-  //   math::scatter::MergeAdd<Context, T> merge_func;
-  //   merge_func(ctx, grad, merged_grad);
+  paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+  merge_func(ctx, grad, merged_grad);
 
   funcs::ForRange<Context> for_range(ctx, limit);
   auto &grad_merge_rows = merged_grad->rows();

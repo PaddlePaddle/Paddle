@@ -202,9 +202,9 @@ class TestRmspropOp(TestBase):
         size = (128, 320)
         for place in places:
             for centered in [False, True]:
-                # with fluid.scope_guard(core.Scope()):
-                #     self.check_with_place(
-                #         place, is_sparse=False, centered=centered, size=size)
+                with fluid.scope_guard(core.Scope()):
+                    self.check_with_place(
+                        place, is_sparse=False, centered=centered, size=size)
 
                 with fluid.scope_guard(core.Scope()):
                     self.check_with_place(
@@ -214,103 +214,119 @@ class TestRmspropOp(TestBase):
                         row_num=512,
                         size=size)
 
-                # with fluid.scope_guard(core.Scope()):
-                #     self.check_with_place(
-                #         place,
-                #         is_sparse=True,
-                #         centered=centered,
-                #         row_num=60,
-                #         size=size)
+                with fluid.scope_guard(core.Scope()):
+                    self.check_with_place(
+                        place,
+                        is_sparse=True,
+                        centered=centered,
+                        row_num=60,
+                        size=size)
 
-                # class TestRMSPropV2(unittest.TestCase):
-                #     def test_rmsprop_dygraph(self):
-                #         paddle.disable_static()
-                #         value = np.arange(26).reshape(2, 13).astype("float32")
-                #         a = paddle.to_tensor(value)
-                #         linear = paddle.nn.Linear(13, 5)
-                #         # This can be any optimizer supported by dygraph.
-                #         adam = paddle.optimizer.RMSProp(
-                #             learning_rate=0.01,
-                #             parameters=linear.parameters(),
-                #             weight_decay=0.01)
-                #         out = linear(a)
-                #         out.backward()
-                #         adam.step()
-                #         adam.clear_gradients()
+                class TestRMSPropV2(unittest.TestCase):
+                    def test_rmsprop_dygraph(self):
+                        paddle.disable_static()
+                        value = np.arange(26).reshape(2, 13).astype("float32")
+                        a = paddle.to_tensor(value)
+                        linear = paddle.nn.Linear(13, 5)
+                        # This can be any optimizer supported by dygraph.
+                        adam = paddle.optimizer.RMSProp(
+                            learning_rate=0.01,
+                            parameters=linear.parameters(),
+                            weight_decay=0.01)
+                        out = linear(a)
+                        out.backward()
+                        adam.step()
+                        adam.clear_gradients()
 
-                #     def test_rmsprop(self):
-                #         paddle.enable_static()
-                #         place = fluid.CPUPlace()
-                #         main = fluid.Program()
-                #         with fluid.program_guard(main):
-                #             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                #             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-                #             y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                #             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                #             avg_cost = fluid.layers.mean(cost)
+                    def test_rmsprop(self):
+                        paddle.enable_static()
+                        place = fluid.CPUPlace()
+                        main = fluid.Program()
+                        with fluid.program_guard(main):
+                            x = fluid.layers.data(
+                                name='x', shape=[13], dtype='float32')
+                            y = fluid.layers.data(
+                                name='y', shape=[1], dtype='float32')
+                            y_predict = fluid.layers.fc(input=x,
+                                                        size=1,
+                                                        act=None)
+                            cost = fluid.layers.square_error_cost(
+                                input=y_predict, label=y)
+                            avg_cost = fluid.layers.mean(cost)
 
-                #             rms_optimizer = paddle.optimizer.RMSProp(learning_rate=0.1)
-                #             rms_optimizer.minimize(avg_cost)
+                            rms_optimizer = paddle.optimizer.RMSProp(
+                                learning_rate=0.1)
+                            rms_optimizer.minimize(avg_cost)
 
-                #             fetch_list = [avg_cost]
-                #             train_reader = paddle.batch(
-                #                 paddle.dataset.uci_housing.train(), batch_size=1)
-                #             feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-                #             exe = fluid.Executor(place)
-                #             exe.run(fluid.default_startup_program())
-                #             for data in train_reader():
-                #                 exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+                            fetch_list = [avg_cost]
+                            train_reader = paddle.batch(
+                                paddle.dataset.uci_housing.train(),
+                                batch_size=1)
+                            feeder = fluid.DataFeeder(
+                                place=place, feed_list=[x, y])
+                            exe = fluid.Executor(place)
+                            exe.run(fluid.default_startup_program())
+                            for data in train_reader():
+                                exe.run(main,
+                                        feed=feeder.feed(data),
+                                        fetch_list=fetch_list)
 
-                #     def test_raise_error(self):
-                #         self.assertRaises(ValueError, paddle.optimizer.RMSProp, None)
-                #         self.assertRaises(
-                #             ValueError, paddle.optimizer.RMSProp, learning_rate=0.1, rho=None)
-                #         self.assertRaises(
-                #             ValueError,
-                #             paddle.optimizer.RMSProp,
-                #             learning_rate=0.1,
-                #             epsilon=None)
-                #         self.assertRaises(
-                #             ValueError,
-                #             paddle.optimizer.RMSProp,
-                #             learning_rate=0.1,
-                #             momentum=None)
+                    def test_raise_error(self):
+                        self.assertRaises(ValueError, paddle.optimizer.RMSProp,
+                                          None)
+                        self.assertRaises(
+                            ValueError,
+                            paddle.optimizer.RMSProp,
+                            learning_rate=0.1,
+                            rho=None)
+                        self.assertRaises(
+                            ValueError,
+                            paddle.optimizer.RMSProp,
+                            learning_rate=0.1,
+                            epsilon=None)
+                        self.assertRaises(
+                            ValueError,
+                            paddle.optimizer.RMSProp,
+                            learning_rate=0.1,
+                            momentum=None)
 
-                #     def test_rmsprop_op_invalid_input(self):
-                #         paddle.disable_static()
-                #         linear = paddle.nn.Linear(10, 10)
-                #         with self.assertRaises(ValueError):
-                #             adam = paddle.optimizer.RMSProp(
-                #                 0.1, epsilon=-1, parameters=linear.parameters())
-                #         with self.assertRaises(ValueError):
-                #             adam = paddle.optimizer.RMSProp(
-                #                 0.1, momentum=-1, parameters=linear.parameters())
-                #         with self.assertRaises(ValueError):
-                #             adam = paddle.optimizer.RMSProp(
-                #                 0.1, rho=-1, parameters=linear.parameters())
+                    def test_rmsprop_op_invalid_input(self):
+                        paddle.disable_static()
+                        linear = paddle.nn.Linear(10, 10)
+                        with self.assertRaises(ValueError):
+                            adam = paddle.optimizer.RMSProp(
+                                0.1, epsilon=-1, parameters=linear.parameters())
+                        with self.assertRaises(ValueError):
+                            adam = paddle.optimizer.RMSProp(
+                                0.1,
+                                momentum=-1,
+                                parameters=linear.parameters())
+                        with self.assertRaises(ValueError):
+                            adam = paddle.optimizer.RMSProp(
+                                0.1, rho=-1, parameters=linear.parameters())
 
-                # class TestRMSPropV2Group(TestRMSPropV2):
-                #     def test_rmsprop_dygraph(self):
-                #         paddle.disable_static()
-                #         value = np.arange(26).reshape(2, 13).astype("float32")
-                #         a = paddle.to_tensor(value)
-                #         linear_1 = paddle.nn.Linear(13, 5)
-                #         linear_2 = paddle.nn.Linear(5, 3)
-                #         # This can be any optimizer supported by dygraph.
-                #         adam = paddle.optimizer.RMSProp(
-                #             learning_rate=0.01,
-                #             parameters=[{
-                #                 'params': linear_1.parameters()
-                #             }, {
-                #                 'params': linear_2.parameters(),
-                #                 'weight_decay': 0.001
-                #             }],
-                #             weight_decay=0.01)
-                #         out = linear_1(a)
-                #         out = linear_2(out)
-                #         out.backward()
-                #         adam.step()
-                #         adam.clear_gradients()
+                class TestRMSPropV2Group(TestRMSPropV2):
+                    def test_rmsprop_dygraph(self):
+                        paddle.disable_static()
+                        value = np.arange(26).reshape(2, 13).astype("float32")
+                        a = paddle.to_tensor(value)
+                        linear_1 = paddle.nn.Linear(13, 5)
+                        linear_2 = paddle.nn.Linear(5, 3)
+                        # This can be any optimizer supported by dygraph.
+                        adam = paddle.optimizer.RMSProp(
+                            learning_rate=0.01,
+                            parameters=[{
+                                'params': linear_1.parameters()
+                            }, {
+                                'params': linear_2.parameters(),
+                                'weight_decay': 0.001
+                            }],
+                            weight_decay=0.01)
+                        out = linear_1(a)
+                        out = linear_2(out)
+                        out.backward()
+                        adam.step()
+                        adam.clear_gradients()
 
 
 if __name__ == "__main__":

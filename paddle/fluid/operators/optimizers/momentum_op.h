@@ -110,13 +110,5 @@ class MomentumOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename DeviceContext, typename T>
-class MomentumOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(ERROR) << "run here";
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle

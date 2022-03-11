@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/adagrad_op.h"
+#include <cmath>
 #include <vector>
 
-#include <cmath>
-
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -102,54 +101,8 @@ for numerical stability to avoid the division by zero error.
   }
 };
 
-namespace {
-size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
-  return std::find(rows.begin(), rows.end(), value) - rows.begin();
-}
-}  // namespace
-
-template <typename T>
-struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
-  void operator()(const platform::CPUDeviceContext& context,
-                  const phi::SelectedRows& grad,
-                  const framework::Tensor& learning_rate, T epsilon,
-                  framework::Tensor* moment, framework::Tensor* param) {
-    // 1. g_m.rows = set(g.rows)
-    auto grad_width = grad.value().dims()[1];
-    math::scatter::MergeAdd<platform::CPUDeviceContext, T> merge_func;
-    auto grad_merge = merge_func(context, grad);
-    auto& merge_rows = grad_merge.rows();
-    auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
-
-    // 2. m += g_m * g_m
-    auto grad_square =
-        SquareSelectedRows<platform::CPUDeviceContext, T>(context, grad_merge);
-
-    math::SelectedRowsAddToTensor<platform::CPUDeviceContext, T> functor;
-    functor(context, grad_square, moment);
-
-    // 3. update parameter
-    auto* lr = learning_rate.data<T>();
-    auto* param_data = param->data<T>();
-    auto* moment_data = moment->data<T>();
-
-    for (size_t i = 0; i < merge_rows.size(); i++) {
-      for (int64_t j = 0; j < grad_width; j++) {
-        param_data[merge_rows[i] * grad_width + j] -=
-            lr[0] * grad_merge_data[i * grad_width + j] /
-            (std::sqrt(moment_data[merge_rows[i] * grad_width + j]) + epsilon);
-      }
-    }
-  }
-};
-
-template struct SparseAdagradFunctor<platform::CPUDeviceContext, float>;
-template struct SparseAdagradFunctor<platform::CPUDeviceContext, double>;
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adagrad, ops::AdagradOp, ops::AdagradOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    adagrad, ops::AdagradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::AdagradOpKernel<paddle::platform::CPUDeviceContext, double>);

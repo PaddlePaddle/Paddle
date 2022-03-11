@@ -424,8 +424,6 @@ void MomentumDenseImpl(const Context& ctx,
   if (regularization_method == "l2_decay") {
     regularization_flag = RegularizationType::kL2DECAY;
   }
-  LOG(ERROR) << regularization_method;
-  LOG(ERROR) << use_nesterov;
   MT mu = static_cast<MT>(mu_t);
   MT rescale_grad = static_cast<MT>(rescale_grad_t);
   auto master_param = master_param_opt.get_ptr();
@@ -460,7 +458,6 @@ void MomentumDenseImpl(const Context& ctx,
             param_out,
             velocity_out);
   } else if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
-    LOG(ERROR) << "gpu here";
     funcs::ForRange<Context> for_range(ctx, param.numel());
 #define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type) \
   DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(      \
@@ -552,9 +549,8 @@ void MomentumSparseImpl(const Context& ctx,
 
   phi::SelectedRows tmp_merged_grad;
   phi::SelectedRows* merged_grad = &tmp_merged_grad;
-  //   math::scatter::MergeAdd<DeviceContext, T> merge_func;
-  //   merge_func(ctx.template device_context<DeviceContext>(), *grad,
-  //              merged_grad);
+  paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+  merge_func(ctx, grad, merged_grad);
 
   auto* grad_merge_rows = merged_grad->mutable_rows();
   paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
