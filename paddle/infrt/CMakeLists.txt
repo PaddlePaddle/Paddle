@@ -95,9 +95,7 @@ set(infrt_mlir_incs
         dense_tensor_inc
         pd_ops_inc
         pd_extra_ops_inc
-        rewrite_inc
         trt_ops_inc
-        pd_lower_to_trt_inc
         )
 
 if (INFRT_WITH_PHI)

@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/metrics/accuracy_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,69 +22,6 @@ namespace operators {
 class AccuracyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Out"), true,
-        platform::errors::NotFound("Input (Out) of AccuracyOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Indices"), true,
-                      platform::errors::NotFound(
-                          "Input (Indices) of AccuracyOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
-                      platform::errors::NotFound(
-                          "Input (Label) of AccuracyOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Accuracy"), true,
-                      platform::errors::NotFound(
-                          "Output (Accuracy) of AccuracyOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Correct"), true,
-                      platform::errors::NotFound(
-                          "Output (Correct) of AccuracyOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Total"), true,
-                      platform::errors::NotFound(
-                          "Output (Total) of AccuracyOp is not found."));
-
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "Accuracy");
-    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Input", "Indices", "Accuracy");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "Accuracy");
-    OP_INOUT_CHECK(ctx->HasOutput("Accuracy"), "Output", "Accuracy",
-                   "Accuracy");
-    OP_INOUT_CHECK(ctx->HasOutput("Correct"), "Output", "Correct", "Accuracy");
-    OP_INOUT_CHECK(ctx->HasOutput("Total"), "Output", "Total", "Accuracy");
-
-    auto inference_dim = ctx->GetInputDim("Out");
-    auto label_dim = ctx->GetInputDim("Label");
-    // Assume indices has same shape as inference, because
-    // it's the output of topk.
-
-    PADDLE_ENFORCE_EQ(
-        label_dim.size(), 2,
-        platform::errors::InvalidArgument(
-            "ShapeError: label's dimensions of AccuracyOp must be 2. "
-            "But received label's dimensions = %d, label's shape = [%s]",
-            label_dim.size(), label_dim));
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(label_dim[1], 1,
-                        platform::errors::InvalidArgument(
-                            "ShapeError: label's second dimension of "
-                            "AccuracyOp must be 1. But received label's "
-                            "second dimension is = %d, label's shape = [%s]",
-                            label_dim[1], label_dim));
-      PADDLE_ENFORCE_EQ(
-          inference_dim[0], label_dim[0],
-          platform::errors::InvalidArgument(
-              "ShapeError: the output's num_rows of AccuracyOp must be"
-              " the same as label's num_rows. But received output's "
-              "shape = [%s], label's shape = [%s], output's num_rows = %d, "
-              "label's "
-              "num_rows = %d",
-              inference_dim, label_dim, inference_dim[0], label_dim[0]));
-    }
-
-    ctx->SetOutputDim("Accuracy", {1});
-    ctx->SetOutputDim("Correct", {1});
-    ctx->SetOutputDim("Total", {1});
-    ctx->ShareLoD("Out", /*->*/ "Accuracy");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -123,13 +62,13 @@ with the input Out(Inference).
 }  // namespace operators
 }  // namespace paddle
 
+// FIXME(typhoonzero): types of T is for infernece data.
+// label data is always int.
+DECLARE_INFER_SHAPE_FUNCTOR(accuracy, AccuracyInferShapeFunctor,
+                            PD_INFER_META(phi::AccuracyInferMeta));
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-// FIXME(typhoonzero): types of T is for infernece data.
-// label data is always int.
-REGISTER_OP_CPU_KERNEL(accuracy,
-                       ops::AccuracyKernel<paddle::platform::CPUPlace, float>,
-                       ops::AccuracyKernel<paddle::platform::CPUPlace, double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    AccuracyInferShapeFunctor);
