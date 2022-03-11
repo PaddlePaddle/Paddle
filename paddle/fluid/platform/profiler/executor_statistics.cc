@@ -19,7 +19,6 @@
 #include <unordered_map>
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/fluid/platform/profiler/trace_event_collector.h"
 
 namespace paddle {
 namespace platform {
@@ -71,14 +70,14 @@ uint64_t CalcOverlapTotal(const TraceEventCollector& collector,
   for (const auto& kv : m) {
     cur += kv.second;
     if (cur > 0) {
-      overlap_start = kv.first;
-    } else if (cur == 0) {
-      if (overlap_start > 0) {
-        total += (kv.first - overlap_start);
-        VLOG(1) << "slice:" << overlap_start << "->" << kv.first << " add "
-                << kv.first - overlap_start;
-        overlap_start = 0;
+      if (overlap_start == 0) {
+        overlap_start = kv.first;
       }
+    } else if (cur == 0) {
+      total += (kv.first - overlap_start);
+      // VLOG(1) << "slice:" << overlap_start << "->" << kv.first << " add "
+      //         << kv.first - overlap_start;
+      overlap_start = 0;
     } else {
       VLOG(1) << "cnt < 0, fatal error";
     }
@@ -102,6 +101,7 @@ void StatisticsHostEvents(const TraceEventCollector& collector) {
   REG_EVENT(StreamSafeCUDAAllocator::Free);
   REG_EVENT(WorkQueue::AddTask);
   REG_EVENT(prepare_data);
+  REG_EVENT(infer_shape);
   REG_EVENT(compute);
   REG_EVENT(ProfileStep);
 #undef REG_EVENT
@@ -113,7 +113,6 @@ void StatisticsHostEvents(const TraceEventCollector& collector) {
     size_t split = evt.name.find('#');
     if (split != std::string::npos) {
       prefix = evt.name.substr(0, split);
-      // VLOG(1) << "prefix name: " << prefix;
     }
     auto iter = name2idx.find(prefix);
     if (iter != name2idx.end()) {
@@ -124,6 +123,7 @@ void StatisticsHostEvents(const TraceEventCollector& collector) {
     }
   }
 
+  // Events Statistics
   VLOG(1) << "=========Events Statistics==========";
   for (const auto& kv : name2idx) {
     VLOG(1) << kv.first << " cnt:" << idx2cnt[kv.second]
@@ -131,20 +131,22 @@ void StatisticsHostEvents(const TraceEventCollector& collector) {
             << " threads:" << idx2threads[kv.second].size();
   }
 
+// Executor analysis
 #define GET_EVENT_TATALTIME(event) idx2total_ns[name2idx[#event]]
 #define GET_EVENT_COUNT(event) idx2cnt[name2idx[#event]]
-  bool new_executor =
+  bool is_new_executor =
       GET_EVENT_COUNT(prepare_data) * 2 < GET_EVENT_COUNT(compute);
   VLOG(1) << "========Executor analysis("
-          << (new_executor ? "new executor" : "old executor") << ")========";
-  if (new_executor) {
-    VLOG(1) << "Step: " << GET_EVENT_TATALTIME(ProfileStep) << "ns "
-            << GET_EVENT_COUNT(ProfileStep) << "times";
+          << (is_new_executor ? "new executor" : "old executor") << ")========";
+  VLOG(1) << "Step: " << GET_EVENT_TATALTIME(ProfileStep) << "ns "
+          << GET_EVENT_COUNT(ProfileStep) << "times";
+  uint64_t allocator_cost = 0;
+  if (is_new_executor) {
+    VLOG(1) << "thread model==========";
     VLOG(1) << "threadpool AddTask: " << GET_EVENT_TATALTIME(WorkQueue::AddTask)
             << "ns " << GET_EVENT_COUNT(WorkQueue::AddTask) << "times";
-    uint64_t allocator_cost =
-        GET_EVENT_TATALTIME(StreamSafeCUDAAllocator::Allocate) +
-        GET_EVENT_TATALTIME(StreamSafeCUDAAllocator::Free);
+    allocator_cost = GET_EVENT_TATALTIME(StreamSafeCUDAAllocator::Allocate) +
+                     GET_EVENT_TATALTIME(StreamSafeCUDAAllocator::Free);
     VLOG(1) << "Allocator: " << allocator_cost << "ns "
             << GET_EVENT_COUNT(StreamSafeCUDAAllocator::Allocate) +
                    GET_EVENT_COUNT(StreamSafeCUDAAllocator::Free)
@@ -156,34 +158,42 @@ void StatisticsHostEvents(const TraceEventCollector& collector) {
             << GET_EVENT_COUNT(AutoGrowthBestFitAllocator::Allocate) +
                    GET_EVENT_COUNT(AutoGrowthBestFitAllocator::Free)
             << "times";
-    VLOG(1) << "kernel luanch: "
-            << GET_EVENT_TATALTIME(compute) - allocator_cost << "ns ";
-    VLOG(1) << "op count: " << GET_EVENT_COUNT(compute);
+    uint64_t kernel_luanch = CalcOverlapTotal(collector,
+                                              [](const HostTraceEvent& evt) {
+                                                return evt.name == "compute";
+                                              }) -
+                             allocator_cost;
+    VLOG(1) << "kernel luanch: " << kernel_luanch << "ns ";
   } else {  // old executor
-    VLOG(1) << "Step: " << GET_EVENT_TATALTIME(ProfileStep) << "ns "
-            << GET_EVENT_COUNT(ProfileStep) << "times";
     VLOG(1) << "static kernel=========";
     VLOG(1) << "data transform: " << GET_EVENT_TATALTIME(prepare_data) << "ns "
             << GET_EVENT_COUNT(prepare_data) << "times";
     VLOG(1) << "thread model==========";
     VLOG(1) << "threadpool AddTask: " << GET_EVENT_TATALTIME(WorkQueue::AddTask)
             << "ns " << GET_EVENT_COUNT(WorkQueue::AddTask) << "times";
-    uint64_t allocator_cost =
-        GET_EVENT_TATALTIME(AutoGrowthBestFitAllocator::Allocate) +
-        GET_EVENT_TATALTIME(AutoGrowthBestFitAllocator::Free);
+    allocator_cost = GET_EVENT_TATALTIME(AutoGrowthBestFitAllocator::Allocate) +
+                     GET_EVENT_TATALTIME(AutoGrowthBestFitAllocator::Free);
     VLOG(1) << "Allocator: " << allocator_cost << "ns "
             << GET_EVENT_COUNT(AutoGrowthBestFitAllocator::Allocate) +
                    GET_EVENT_COUNT(AutoGrowthBestFitAllocator::Free)
             << "times";
-    VLOG(1) << "kernel luanch: "
-            << CalcOverlapTotal(collector,
-                                [](const HostTraceEvent& evt) {
-                                  return evt.name == "compute";
-                                }) -
-                   allocator_cost
-            << "ns ";
-    VLOG(1) << "op count: " << GET_EVENT_COUNT(compute);
   }
+  // common
+  uint64_t op_run = CalcOverlapTotal(collector, [](const HostTraceEvent& evt) {
+    return evt.type == TracerEventType::Operator;
+  });
+  VLOG(1) << "run op(overlap): " << op_run << "ns ";
+  uint64_t infer_shape = CalcOverlapTotal(
+      collector,
+      [](const HostTraceEvent& evt) { return evt.name == "infer_shape"; });
+  VLOG(1) << "infershape(overlap): " << infer_shape << "ns ";
+  uint64_t kernel_luanch = CalcOverlapTotal(collector,
+                                            [](const HostTraceEvent& evt) {
+                                              return evt.name == "compute";
+                                            }) -
+                           allocator_cost;
+  VLOG(1) << "kernel luanch(overlap): " << kernel_luanch << "ns ";
+  VLOG(1) << "op count: " << GET_EVENT_COUNT(compute);
   VLOG(1) << "op gaps: " << CalcOverlapGaps(collector);
 #undef GET_EVENT_TATALTIME
 #undef GET_EVENT_COUNT

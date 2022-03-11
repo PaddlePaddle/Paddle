@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/profiler/trace_event_collector.h"
+
 namespace paddle {
 namespace platform {
 
