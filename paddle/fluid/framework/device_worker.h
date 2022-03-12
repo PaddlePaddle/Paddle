@@ -27,7 +27,7 @@ limitations under the License. */
 #include <utility>        // NOLINT
 #include <vector>
 
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
+// #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -109,7 +109,7 @@ class PullDenseWorker {
 
  private:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
-  std::shared_ptr<paddle::distributed::FleetWrapper> new_fleet_ptr_;
+  // std::shared_ptr<paddle::distributed::FleetWrapper> new_fleet_ptr_;
   PullDenseWorkerParameter param_;
   DownpourWorkerParameter dwp_param_;
   Scope* root_scope_;
@@ -343,6 +343,7 @@ class DownpourWorker : public HogwildWorker {
   // std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
 };
 
+/*
 class DownpourLiteWorker : public HogwildWorker {
  public:
   DownpourLiteWorker() {}
@@ -412,7 +413,7 @@ class DownpourLiteWorker : public HogwildWorker {
   std::vector<float> nid_show_;
   // std::map<uint64_t, uint64_t> table_dependency_;
   // std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
-};
+};*/
 
 class DownpourWorkerOpt : public DownpourWorker {
  public:
