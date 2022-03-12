@@ -89,6 +89,86 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void NllLossRawInferMeta(const MetaTensor& input,
+                         const MetaTensor& label,
+                         paddle::optional<const MetaTensor&> weight,
+                         int64_t ignore_index,
+                         const std::string& reduction,
+                         MetaTensor* out,
+                         MetaTensor* total_weight,
+                         MetaConfig config) {
+  auto x_dims = input.dims();
+  auto label_dims = label.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size() == 2 || x_dims.size() == 4,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The tensor rank of Input(X) must be 2 or 4."));
+  bool contain_unknown_dim =
+      phi::contain_unknown_dim(x_dims) || phi::contain_unknown_dim(label_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0],
+        label_dims[0],
+        phi::errors::InvalidArgument(
+            "ShapeError: Expected input batch_size to match label batch_size,"
+            "But received: the Input(x) batch_size is [%s], the Input(label) "
+            " batch_size is [%s].",
+            x_dims[0],
+            label_dims[0]));
+    if (weight.get_ptr() != nullptr) {
+      auto w_dims = weight->dims();
+      PADDLE_ENFORCE_EQ(
+          w_dims.size(),
+          1,
+          phi::errors::InvalidArgument("Input(Weight) should be a 1D tensor."));
+      PADDLE_ENFORCE_EQ(
+          x_dims[1],
+          w_dims[0],
+          phi::errors::InvalidArgument(
+              "Expected input tensor Weight's size should equal "
+              "to the first dimension of the input tensor X. But received "
+              "Weight's "
+              "size is %d, the first dimension of input X is %d",
+              w_dims[0],
+              x_dims[1]));
+    }
+  }
+  if (x_dims.size() == 2) {
+    if (reduction == "none") {
+      out->set_dims({x_dims[0]});
+    } else {
+      out->set_dims({1});
+    }
+  } else if (x_dims.size() == 4) {
+    PADDLE_ENFORCE_EQ(label_dims.size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "Expected Input(Lable) dimensions=3, received %d.",
+                          label_dims.size()));
+    auto input0 = x_dims[0];
+    auto input2 = x_dims[2];
+    auto input3 = x_dims[3];
+    auto label0 = label_dims[0];
+    auto label1 = label_dims[1];
+    auto label2 = label_dims[2];
+    PADDLE_ENFORCE_EQ(
+        input0 == label0 && input2 == label1 && input3 == label2,
+        true,
+        phi::errors::InvalidArgument("Input(X) tensor shape should "
+                                     "match to Input(Label) tensor "
+                                     "shape."));
+    if (reduction == "none") {
+      out->set_dims({x_dims[0], x_dims[2], x_dims[3]});
+    } else {
+      out->set_dims({1});
+    }
+  }
+  total_weight->set_dims({1});
+  out->set_dtype(input.dtype());
+  total_weight->set_dtype(input.dtype());
+}
+
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,
@@ -283,6 +363,58 @@ void LinspaceInferMeta(const MetaTensor& start,
                                    step_dims));
   out->set_dims(phi::make_ddim({-1}));
   out->set_dtype(start.dtype());
+}
+
+void AccuracyInferMeta(const MetaTensor& out,
+                       const MetaTensor& indice,
+                       const MetaTensor& label,
+                       MetaTensor* accuracy,
+                       MetaTensor* correct,
+                       MetaTensor* total,
+                       MetaConfig config) {
+  auto inference_dim = out.dims();
+  auto label_dim = label.dims();
+  // Assume indices has same shape as inference, because
+  // it's the output of topk.
+  PADDLE_ENFORCE_EQ(
+      label_dim.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: label's dimensions of AccuracyOp must be 2. "
+          "But received label's dimensions = %d, label's shape = [%s]",
+          label_dim.size(),
+          label_dim));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(label_dim[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "ShapeError: label's second dimension of "
+                          "AccuracyOp must be 1. But received label's "
+                          "second dimension is = %d, label's shape = [%s]",
+                          label_dim[1],
+                          label_dim));
+    PADDLE_ENFORCE_EQ(
+        inference_dim[0],
+        label_dim[0],
+        phi::errors::InvalidArgument(
+            "ShapeError: the output's num_rows of AccuracyOp must be"
+            " the same as label's num_rows. But received output's "
+            "shape = [%s], label's shape = [%s], output's num_rows = %d, "
+            "label's "
+            "num_rows = %d",
+            inference_dim,
+            label_dim,
+            inference_dim[0],
+            label_dim[0]));
+  }
+
+  accuracy->set_dims({1});
+  accuracy->set_dtype(out.dtype());
+  correct->set_dims({1});
+  correct->set_dtype(out.dtype());
+  total->set_dims({1});
+  total->set_dtype(out.dtype());
+  accuracy->share_lod(out);
 }
 
 void GraphSendRecvInferMeta(const MetaTensor& x,
