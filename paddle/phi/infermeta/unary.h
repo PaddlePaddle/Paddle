@@ -203,4 +203,6 @@ void ShardIndexInferMeta(const MetaTensor& in,
                          MetaTensor* out,
                          MetaConfig config = MetaConfig());
 
+void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out);
+
 }  // namespace phi
