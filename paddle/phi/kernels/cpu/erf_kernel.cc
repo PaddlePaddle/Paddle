@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,16 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/dynload/lapack.h"
+#include "paddle/phi/kernels/erf_kernel.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/erf_kernel_impl.h"
 
-namespace paddle {
-namespace platform {
-namespace dynload {
-
-#define DEFINE_WRAP(__name) DynLoad__##__name __name
-
-LAPACK_ROUTINE_EACH(DEFINE_WRAP);
-
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
+PD_REGISTER_KERNEL(
+    erf, CPU, ALL_LAYOUT, phi::ErfKernel, float, double, phi::dtype::float16) {}
