@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -28,10 +29,10 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
     std::string regularization_method =
         ctx.Attr<std::string>("regularization_method");
     auto regularization_coeff = ctx.Attr<float>("regularization_coeff");
-    RegularizationType regularization_flag{
-        RegularizationType::kNONE};  // disable regularization
+    phi::RegularizationType regularization_flag{
+        phi::RegularizationType::kNONE};  // disable regularization
     if (regularization_method == "l2_decay") {
-      regularization_flag = RegularizationType::kL2DECAY;
+      regularization_flag = phi::RegularizationType::kL2DECAY;
     }
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
@@ -55,7 +56,7 @@ class NPUMomentumOpKernel : public framework::OpKernel<T> {
       FillNpuTensorWithConstant<T>(&mu_tensor, mu);
 
       Tensor regularized_grad;
-      if (regularization_flag == RegularizationType::kL2DECAY) {
+      if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad.mutable_data<T>(grad->dims(), ctx.GetPlace());
         const auto& runner1 = NpuOpRunner("Muls", {*param}, {regularized_grad},
                                           {{"value", regularization_coeff}});
