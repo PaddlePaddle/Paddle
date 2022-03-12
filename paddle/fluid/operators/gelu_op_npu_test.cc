@@ -31,6 +31,7 @@ namespace f = paddle::framework;
 namespace p = paddle::platform;
 
 USE_OP_ITSELF(gelu);
+USE_OP_DEVICE_KERNEL(gelu, NPU);
 
 template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
