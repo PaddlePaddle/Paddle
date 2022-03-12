@@ -1032,7 +1032,7 @@ def nanmean(x,axis=None,keepdim=None,name=None):
                              ['uint16', 'float16', 'float32', 'float64'],
                              'nanmean' )
     check_type(axis, 'axis/dim', (int, list, tuple), 'nanmean')
-    
+
     cnt = paddle.sum(~paddle.isnan(x), axis = axis,keepdim=keepdim)
     return paddle.divide(paddle.nansum(x, axis=axis, keepdim=keepdim, name=name), cnt.astype(x.dtype))
 
