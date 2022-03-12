@@ -189,7 +189,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     if (dy) {
       dnnl::primitive_attr broadcast_reduction_attr;
       std::shared_ptr<dnnl::memory> broadcast_src_memory;
-      std::shared_ptr<dnnl::memory> broadcast_dst_memory;
+      std::shared_ptr<dnnl::memory> dst_memory;
 
       // elementwise_add & elementwise_sub
       if (BINARY_OP == dnnl::algorithm::binary_add ||
@@ -209,6 +209,8 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
               platform::EventRole::kUniqueOp);
           reorder_p->execute(astream, *reorder_src_memory_p,
                              *reorder_dst_memory_p);
+
+          dst_memory = reorder_dst_memory_p;
         } else {
           broadcast_src_memory = reorder_src_memory_p;
         }
@@ -263,6 +265,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
         binary_prim->execute(astream, args);
         broadcast_src_memory = dst_dy_memory;
+        dst_memory = dst_dy_memory;
       }
       astream.wait();
       dy->set_layout(DataLayout::kMKLDNN);
@@ -279,20 +282,19 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
             dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
             ctx.GetPlace(), dout, dy, CalculateBroadcastedDims(dout, dy),
             broadcast_reduction_attr);
-        broadcast_dst_memory = reduction_handler.AcquireDstMemory(dy);
+        dst_memory = reduction_handler.AcquireDstMemory(dy);
 
         auto reduction_p = reduction_handler.AcquireForwardPrimitive();
 
         reduction_p->execute(astream, {
                                           {DNNL_ARG_SRC, *broadcast_src_memory},
-                                          {DNNL_ARG_DST, *broadcast_dst_memory},
+                                          {DNNL_ARG_DST, *dst_memory},
                                       });
         astream.wait();
-        dy->set_format(
-            platform::GetMKLDNNFormat(broadcast_src_memory->get_desc().reshape(
-                phi::vectorize<int64_t>(dy->dims()))));
+        dy->set_format(platform::GetMKLDNNFormat(dst_memory->get_desc().reshape(
+            phi::vectorize<int64_t>(dy->dims()))));
       } else {
-        dy->set_format(platform::GetMKLDNNFormat(*broadcast_src_memory));
+        dy->set_format(platform::GetMKLDNNFormat(*dst_memory));
       }
     }
   }
