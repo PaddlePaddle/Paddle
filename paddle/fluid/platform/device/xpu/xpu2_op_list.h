@@ -249,7 +249,7 @@ XPUOpMap& get_kl2_ops() {
       {"not_equal", XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                                   pOpKernelType(vartype::INT32, XPUPlace()),
                                   pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"one_hot_v2", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+      {"one_hot_v2", XPUKernelSet({pOpKernelType(vartype::INT32, XPUPlace()),
                                    pOpKernelType(vartype::INT64, XPUPlace())})},
       {"pool2d_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                                     pOpKernelType(vartype::FP16, XPUPlace())})},

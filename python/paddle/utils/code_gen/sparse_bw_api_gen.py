@@ -25,9 +25,6 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def __init__(self, bw_api_item_yaml):
         BackwardAPI.__init__(self, bw_api_item_yaml)
 
-    def get_api_name(self, api_item_yaml):
-        return api_item_yaml['sparse_bw_api']
-
     def get_api_func_name(self):
         return self.api
 
@@ -114,7 +111,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/declarations.h"
 """
 
 
