@@ -127,7 +127,7 @@ if(WITH_PSLIB OR WITH_PSCORE)
 endif()
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
-cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS})
+cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS} ps_framework_proto)
 cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
@@ -314,7 +314,7 @@ if(WITH_DISTRIBUTE)
             dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc heter_pipeline_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc
-            downpour_worker.cc downpour_lite_worker.cc downpour_worker_opt.cc
+            downpour_worker.cc downpour_worker_opt.cc
             pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             index_sampler index_wrapper sampler index_dataset_proto

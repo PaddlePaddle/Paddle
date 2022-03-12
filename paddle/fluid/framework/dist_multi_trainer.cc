@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -63,11 +62,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
 }
 
 void DistMultiTrainer::RegisterHeterCallback() {
-#ifdef PADDLE_WITH_PSLIB
   auto fleet_ptr = FleetWrapper::GetInstance();
-#else
-  auto fleet_ptr = paddle::distributed::FleetWrapper::GetInstance();
-#endif
   fleet_ptr->RegisterHeterCallback(
       [this](int worker, int taskid) { workers_[worker]->Schedule(taskid); });
 }
@@ -98,7 +93,7 @@ void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
-#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
+#ifdef PADDLE_WITH_PSLIB
     workers_[i]->CacheProgram(main_program);
 #endif
   }
@@ -115,7 +110,7 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   }
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->Start();
-#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
+#ifdef PADDLE_WITH_PSLIB
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->GetXpuOpIndex();
   }
@@ -181,12 +176,8 @@ void DistMultiTrainer::Finalize() {
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
 
-// flush local client push queue
-#ifdef PADDLE_WITH_PSLIB
+  // flush local client push queue
   auto fleet_ptr_ = FleetWrapper::GetInstance();
-#else
-  auto fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
-#endif
   fleet_ptr_->ClientFlush();
 }
 
