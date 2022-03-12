@@ -64,6 +64,12 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+}
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
