@@ -67,10 +67,10 @@ void LayerNormGradKernel(const Context& dev_ctx,
   if (d_scale || d_x) {
     x_tmp.Resize(matrix_shape);
     temp.Resize(matrix_shape);
-    ctx.template Alloc<T>(&temp);
+    dev_ctx.template Alloc<T>(&temp);
 
     temp_norm.Resize(matrix_shape);
-    ctx.template Alloc<T>(&temp_norm);
+    dev_ctx.template Alloc<T>(&temp_norm);
     // get x_norm
     phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T, T>(
         dev_ctx,
@@ -89,11 +89,11 @@ void LayerNormGradKernel(const Context& dev_ctx,
   }
 
   if (d_bias) {
-    ctx.template Alloc<T>(d_bias);
+    dev_ctx.template Alloc<T>(d_bias);
     colwise_sum(dev_ctx, d_y, d_bias);
   }
   if (d_scale) {
-    ctx.template Alloc<T>(d_scale);
+    dev_ctx.template Alloc<T>(d_scale);
     phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
         dev_ctx, temp_norm, d_y, 0, funcs::MultiplyFunctor<T>(), &temp);
     colwise_sum(dev_ctx, temp, d_scale);
@@ -101,11 +101,11 @@ void LayerNormGradKernel(const Context& dev_ctx,
 
   if (d_x) {
     DDim vec_shape({left});
-    ctx.template Alloc<T>(d_x);
+    dev_ctx.template Alloc<T>(d_x);
     auto dx_dim = d_x->dims();
     DenseTensor temp_vec;
     temp_vec.Resize(vec_shape);
-    ctx.template Alloc<T>(&temp_vec);
+    dev_ctx.template Alloc<T>(&temp_vec);
 
     funcs::RowwiseMean2D<phi::CPUContext, T> row_mean(left, right, dev_ctx);
 
@@ -113,7 +113,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
       // dy_dx
       phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
           dev_ctx, d_y, *scale, /*axis*/ 1, funcs::MultiplyFunctor<T>(), &temp);
-      copy(dev_ctx, temp, dev_ctx.GetPlace(), false, d_x);
+      phi::Copy<Context>(dev_ctx, temp, dev_ctx.GetPlace(), false, d_x);
 
       // dy_dmean_dx
       row_mean(dev_ctx, temp, &temp_vec);
@@ -135,7 +135,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
           &temp);
     } else {
       // dy_dx
-      copy(dev_ctx, d_y, dev_ctx.GetPlac(), false, d_x);
+      phi::Copy<Context>(dev_ctx, d_y, dev_ctx.GetPlace(), false, d_x);
 
       // dy_dmean_dx
       row_mean(dev_ctx, d_y, &temp_vec);
