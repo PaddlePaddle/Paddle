@@ -41,6 +41,11 @@ void BincountInferMeta(const MetaTensor& x,
                        int minlength,
                        MetaTensor* out);
 
+void CholeskySolveInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            bool upper,
+                            MetaTensor* out);
+
 void CompareAllInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out);

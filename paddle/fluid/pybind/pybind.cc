@@ -729,6 +729,13 @@ PYBIND11_MODULE(core_noavx, m) {
                lib[string]: the libarary, could be 'phi', 'fluid' and 'all'.
            )DOC");
 
+  // NOTE(Aganlengzi): KernelFactory static instance is initialized BEFORE
+  // plugins are loaded for custom kernels, but de-initialized AFTER they are
+  // unloaded. We need manually clear symbols(may contain plugins' symbols)
+  // stored in this static instance to avoid illegal memory access.
+  m.def("clear_kernel_factory",
+        []() { phi::KernelFactory::Instance().kernels().clear(); });
+
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
   // to enable eager deletion mode in unittest.

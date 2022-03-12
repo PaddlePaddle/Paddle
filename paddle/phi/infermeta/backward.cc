@@ -103,6 +103,12 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
   }
 }
 
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+}
+
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
                                 int axis,
@@ -113,6 +119,18 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
       errors::InvalidArgument(
           "Input(Out) and its gradients should have the same shape."));
   dx->share_meta(dout);
+}
+
+void PsroiPoolGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& rois,
+                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& dout,
+                            int pooled_height,
+                            int pooled_width,
+                            int output_channels,
+                            float spatial_scale,
+                            MetaTensor* dx) {
+  dx->share_meta(x);
 }
 
 void ScatterGradInferMeta(const MetaTensor& index,

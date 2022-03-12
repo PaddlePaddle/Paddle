@@ -111,7 +111,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/declarations.h"
 """
 
 

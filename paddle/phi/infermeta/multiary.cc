@@ -369,6 +369,81 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void PsroiPoolInferMeta(const MetaTensor& x,
+                        const MetaTensor& rois,
+                        paddle::optional<const MetaTensor&> rois_num,
+                        int pooled_height,
+                        int pooled_width,
+                        int output_channels,
+                        float spatial_scale,
+                        MetaTensor* out) {
+  auto input_dims = x.dims();
+  auto rois_dims = rois.dims();
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      errors::InvalidArgument("The format of input tensor is NCHW"));
+  PADDLE_ENFORCE_EQ(rois_dims.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                        "given as [(x1, y1, x2, y2), ...]"));
+  PADDLE_ENFORCE_EQ(rois_dims[1],
+                    4,
+                    errors::InvalidArgument(
+                        "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                        "given as [(x1, y1, x2, y2), ...]"));
+  if (rois_num.get_ptr()) {
+    auto rois_num_dims = rois_num->dims();
+    PADDLE_ENFORCE_EQ(
+        rois_num_dims.size(),
+        1,
+        errors::InvalidArgument("The second dimension of RoisNum should "
+                                "be 1, but received dimension is %d",
+                                rois_num_dims.size()));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      input_dims[1],
+      output_channels * pooled_height * pooled_width,
+      errors::InvalidArgument(
+          "the channel of X(%d) "
+          "should be equal to the product of "
+          "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
+          input_dims[1],
+          output_channels,
+          pooled_height,
+          pooled_width));
+
+  PADDLE_ENFORCE_GT(pooled_height,
+                    0,
+                    errors::InvalidArgument(
+                        "The pooled output height must be greater than 0"));
+  PADDLE_ENFORCE_GT(pooled_width,
+                    0,
+                    errors::InvalidArgument(
+                        "The pooled output width must be greater than 0"));
+  PADDLE_ENFORCE_GT(output_channels,
+                    1,
+                    errors::InvalidArgument(
+                        "The pooled output channels must greater than 1"));
+  PADDLE_ENFORCE_GT(
+      spatial_scale,
+      0.0f,
+      errors::InvalidArgument("The spatial scale must greater than 0."));
+
+  auto out_dims = input_dims;
+  out_dims[0] = rois_dims[0];
+  out_dims[1] =
+      output_channels;  // input_dims[1] / (pooled_height * pooled_width);
+  out_dims[2] = pooled_height;
+  out_dims[3] = pooled_width;
+
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,

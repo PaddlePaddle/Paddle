@@ -222,6 +222,7 @@ def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
 
 #include  "pybind11/detail/common.h"
 #include  "paddle/phi/api/all.h"
+#include  "paddle/phi/api/lib/dygraph_api.h"
 #include  "paddle/phi/common/backend.h"
 #include  "paddle/phi/common/data_type.h"
 #include  "paddle/phi/common/scalar.h"
