@@ -14,10 +14,34 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/strings/case_utils.h"
-#include "paddle/phi/kernels/strings/impl/case_convert_kernel_impl.h"
 
 using pstring = ::phi::dtype::pstring;
+
+namespace phi {
+namespace strings {
+
+template <typename ContextT>
+void StringLowerKernel(const ContextT& dev_ctx,
+                       const StringTensor& x,
+                       const std::string& encoding,
+                       StringTensor* out) {
+  StringCaseConvertKernel<AsciiCaseConverter<ContextT, AsciiToLower>,
+                          UTF8CaseConverter<ContextT, UTF8ToLower>,
+                          ContextT>()(dev_ctx, x, encoding, out);
+}
+
+template <typename ContextT>
+void StringUpperKernel(const ContextT& dev_ctx,
+                       const StringTensor& x,
+                       const std::string& encoding,
+                       StringTensor* out) {
+  StringCaseConvertKernel<AsciiCaseConverter<ContextT, AsciiToUpper>,
+                          UTF8CaseConverter<ContextT, UTF8ToUpper>,
+                          ContextT>()(dev_ctx, x, encoding, out);
+}
+
+}  // namespace strings
+}  // namespace phi
 
 PD_REGISTER_GENERAL_KERNEL(strings_lower,
                            CPU,

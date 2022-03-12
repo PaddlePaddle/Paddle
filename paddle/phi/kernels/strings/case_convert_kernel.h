@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/strings/case_utils.h"
 #include "paddle/phi/kernels/strings/strings_empty_kernel.h"
 
 using pstring = ::phi::dtype::pstring;
@@ -52,6 +53,66 @@ StringTensor StringUpper(const ContextT& dev_ctx,
   StringUpperKernel(dev_ctx, x, encoding, &string_out);
   return string_out;
 }
+
+template <typename AsciiCoverter, typename UTF8Converter, typename ContextT>
+struct StringCaseConvertKernel {
+  void operator()(const ContextT& dev_ctx,
+                  const StringTensor& x,
+                  const std::string& encoding,
+                  StringTensor* out) {
+    AsciiCoverter ascii_converter;
+    UTF8Converter utf8_converter;
+    const pstring* in_ptr = x.data();
+    pstring* out_ptr = dev_ctx.template Alloc<pstring>(out);
+    auto num = x.numel();
+    if (encoding.empty()) {
+      ascii_converter(dev_ctx, in_ptr, out_ptr, num);
+    } else {
+      utf8_converter(dev_ctx, in_ptr, out_ptr, num);
+    }
+  }
+};
+
+template <typename DeviceContext, typename CharConverter>
+struct AsciiCaseConverter {
+  void operator()(const DeviceContext& dev_ctx,
+                  const pstring* in,
+                  pstring* out,
+                  size_t num) const {
+    paddle::platform::Transform<DeviceContext> trans;
+    for (size_t i = 0; i < num; ++i) {
+      trans(
+          dev_ctx, in[i].begin(), in[i].end(), out[i].mdata(), CharConverter());
+    }
+  }
+};
+
+template <typename DeviceContext,
+          template <typename DeviceContextT> typename CharConverter>
+struct UTF8CaseConverter {
+  void operator()(const DeviceContext& dev_ctx,
+                  const pstring* in,
+                  pstring* out,
+                  size_t num) const {
+    paddle::platform::Transform<DeviceContext> trans;
+    auto unicode_flag_map = strings::get_uniflag_map();
+    auto cases_map = strings::get_charcases_map();
+    for (size_t i = 0; i < num; ++i) {
+      uint32_t unicode_len = get_unicode_str_len(in[i].data(), in[i].size());
+      std::vector<uint32_t> unicode_in(unicode_len, 0);
+      get_unicode_str(in[i].data(), unicode_in.data(), unicode_len);
+      trans(dev_ctx,
+            unicode_in.begin(),
+            unicode_in.end(),
+            unicode_in.begin(),
+            CharConverter<DeviceContext>(unicode_flag_map, cases_map));
+      uint32_t utf8_len = get_utf8_str_len(unicode_in.data(), unicode_len);
+      std::vector<char> result(utf8_len, 0);
+      get_utf8_str(unicode_in.data(), result.data(), unicode_len);
+      out[i] = result.data();
+    }
+  }
+};
 
 }  // namespace strings
 }  // namespace phi
