@@ -30,8 +30,7 @@ def Infrt_ReturnOp : Infrt_Op<"return", [Terminator]> {
 
   let arguments = (ins Variadic<AnyType>:$operands);
 
-  let builders = [OpBuilder<(ins),
-                  [{ build($_builder, $_state, llvm::None); }]>];
+  let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
 def Infrt_CvtTensorOp : Infrt_Op<"cvt_tensor", [NoSideEffect]> {

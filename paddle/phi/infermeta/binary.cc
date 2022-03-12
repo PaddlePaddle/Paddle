@@ -274,6 +274,60 @@ void HuberLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void CholeskySolveInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            bool upper,
+                            MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  auto x_dims_n = x_dims.size();
+  auto y_dims_n = y_dims.size();
+
+  PADDLE_ENFORCE_GE(x_dims_n,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "the rank of input Y must greater or equal to 2"));
+  PADDLE_ENFORCE_GE(y_dims_n,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "the rank of input X must greater or equal to 2"));
+  PADDLE_ENFORCE_EQ(
+      y_dims[y_dims_n - 1],
+      y_dims[y_dims_n - 2],
+      phi::errors::InvalidArgument("input Matrix Y should be square matrix,"
+                                   "But Got last shape of %ld x %ld",
+                                   y_dims[y_dims_n - 1],
+                                   y_dims[y_dims_n - 2]));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims_n - 2],
+      y_dims[y_dims_n - 2],
+      phi::errors::InvalidArgument("the first dim of Matrix X must be equal to "
+                                   "the fisrt dim of Matrix Y,"
+                                   "But Got %ld and %ld",
+                                   x_dims[x_dims_n - 2],
+                                   y_dims[y_dims_n - 2]));
+
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y_dims);
+
+  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 2);
+  std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(), y_dims_vec.end() - 2);
+
+  std::vector<int64_t> expand_batch_portion =
+      funcs::MatrixGetBroadcastBatchPortion(x_dims_vec_cut, y_dims_vec_cut);
+
+  std::vector<int64_t> x_broadcast_dims({expand_batch_portion});
+  x_broadcast_dims.insert(x_broadcast_dims.end(),
+                          {x_dims_vec[x_dims_n - 2], x_dims_vec[x_dims_n - 1]});
+
+  // dim of 'out' is the same with 'X' after broadcast
+  out->set_dims(phi::make_ddim(x_broadcast_dims));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,

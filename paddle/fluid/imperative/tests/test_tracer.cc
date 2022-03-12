@@ -28,6 +28,14 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
+#endif
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
@@ -591,5 +599,5 @@ TEST(test_tracer, eager_tracer) {
 USE_OP(mul);
 USE_OP(mul_grad);
 USE_OP_ITSELF(reduce_sum);
-USE_OP(reduce_sum_grad);
+USE_OP_ITSELF(reduce_sum_grad);
 USE_OP_ITSELF(elementwise_add);

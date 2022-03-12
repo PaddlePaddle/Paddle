@@ -79,7 +79,7 @@ mlir::FuncOp MLIRModelGenImpl::UpdateModelModule(
 llvm::SmallVector<mlir::Type, 4> MLIRModelGenImpl::GetModelInputsType(
     const infrt::paddle::framework_proto::ProgramDesc &program) {
   llvm::SmallVector<mlir::Type, 4> operandTypes;
-  operandTypes.push_back(infrt::dt::TensorMapType::get(context_));
+  operandTypes.push_back(infrt::DenseTensorMapType::get(context_));
   for (auto &op_desc : main_block_.ops()) {
     if (op_desc.type() != "feed") continue;
     for (int var_idx = 0; var_idx < op_desc.outputs_size(); ++var_idx) {
