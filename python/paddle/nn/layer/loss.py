@@ -1298,3 +1298,82 @@ class HingeEmbeddingLoss(Layer):
             reduction=self.reduction,
             margin=self.margin,
             name=self.name)
+
+
+class TripletMarginLoss(Layer):
+    """
+    Creates a criterion that measures the triplet loss given an input
+    tensors :math:`x1`, :math:`x2`, :math:`x3` and a margin with a value greater than :math:`0`.
+    This is used for measuring a relative similarity between samples. A triplet
+    is composed by `input`, `positive` and `negative` (i.e., `input`, `positive examples` and `negative
+    examples` respectively). The shapes of all input tensors should be
+    :math:`(N, D)`.
+
+    The distance swap is described in detail in the paper `Learning shallow
+    convolutional feature descriptors with triplet losses`_ by
+    V. Balntas, E. Riba et al.
+
+    The loss function for each sample in the mini-batch is:
+
+    .. math::
+        L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
+
+
+    where
+
+    .. math::
+        d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_p
+
+    :param input:Input tensor, the data type is float32 or float64.
+            the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+    :param positive:Positive tensor containing 1 or -1, the data type is float32 or float64.
+            The shape of label is the same as the shape of input.
+    :param negative:Negative tensor containing 1 or -1, the data type is float32 or float64.
+            The shape of label is the same as the shape of input.
+    :param swap:The distance swap is described in detail in the paperT
+            `Learning shallow convolutional feature descriptors with triplet losses` by
+            V. Balntas, E. Riba et al. Default: ``False``.
+    :param p:The norm degree for pairwise distance. Default: :math:`2`.
+    :param margin:Default: :math:`1`.
+    :param reduction:Indicate how to average the loss by batch_size.
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default: ``'mean'``
+    :return:Tensor. The tensor variable storing the triplet_margin_loss of input and positive and negative.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
+            positive= paddle.to_tensor([[5, 1, 2], [3, 2, 1], [3, -1, 1]], dtype=paddle.float32)
+            negative = paddle.to_tensor([[2, 1, -3], [1, 1, -1], [4, -2, 1]], dtype=paddle.float32)
+            loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='none')
+            print(loss)
+            # Tensor([0.        , 0.57496738, 0.        ])
+
+
+            loss = F.triplet_margin_loss(input, positive, negative, margin=1.0, reduction='mean')
+            print(loss)
+            # Tensor([0.19165580])
+
+    """
+    def __init__(self, margin: float = 1.0, p: float = 2., eps: float = 1e-6, swap: bool = False,reduction: str = 'mean'):
+        super(TripletMarginLoss, self).__init__()
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction)
+        self.margin = margin
+        self.p = p
+        self.eps = eps
+        self.swap = swap
+        self.reduction = reduction
+
+    def forward(self, input, positive, negative):
+        return F.triplet_margin_loss(input, positive, negative, margin=self.margin, p=self.p,
+                                     eps=self.eps, swap=self.swap, reduction=self.reduction)
