@@ -22,7 +22,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-from paddle.fluid.framework import Program, program_guard
+from paddle.framework import _in_eager_mode
+from paddle.fluid.framework import Program, program_guard, _test_eager_guard
 
 
 class TestOneHotOp(OpTest):
@@ -189,6 +190,12 @@ class TestOneHotOpApi(unittest.TestCase):
         with fluid.dygraph.guard():
             one_hot_label = fluid.one_hot(
                 input=fluid.dygraph.to_variable(label), depth=depth)
+
+            one_hot_label = paddle.nn.functional.one_hot(
+                fluid.dygraph.to_variable(label), depth)
+            with _test_eager_guard():
+                one_hot_label = paddle.nn.functional.one_hot(
+                    paddle.to_tensor(label), depth)
 
     def _run(self, depth):
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
