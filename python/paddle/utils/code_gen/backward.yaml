@@ -90,3 +90,204 @@
 #     func : MatmulTripleGradInferMeta
 #   kernel :
 #     func : matmul_triple_grad
+
+- backward_api : softmax_grad
+  forward : softmax (Tensor x, int axis) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : softmax_grad
+
+- backward_api : maxout_grad
+  forward : maxout (Tensor x, int groups, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int groups, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : maxout_grad
+
+
+- backward_api : put_along_axis_grad
+  forward : put_along_axis (Tensor x, Tensor index, Tensor value, int axis, string reduce) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor out_grad, int axis, string reduce)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, valule]
+  kernel :
+    func : put_along_axis_grad
+
+- backward_api : take_along_axis_grad
+  forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : take_along_axis_grad
+
+- backward_api : maxtrix_power_grad
+  forward : maxtrix_power (Tensor x, int n) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int n)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : maxtrix_power_grad
+  
+- backward_api : eigh_grad
+  forward : eigh (Tensor x, string uplo) -> Tensor(out_w), Tensor(out_v)
+  args : (Tensor out_w, Tensor out_v, Tensor outw_grad, Tensor outv_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : XXXXXXXInferMeta
+    param : [x]
+  kernel :
+    func : eigh_grad
+
+- backward_api : segment_pool_grad
+  forward : segment_pool (Tensor x, Tensor segment_ids, string pooltype) -> Tensor(out), Tensor(summed_ids)
+  args : (Tensor x, Tensor segment_ids, Tensor out, Tensor summed_ids, Tenosr out_grad, string pooltype)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : segment_pool_grad
+
+- backward_api : cos_grad
+  forward : cos (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : cos_grad
+
+- backward_api : tan_grad
+  forward : tan (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : tam_grad
+
+- backward_api : acos_grad
+  forward : acos (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : acos_grad
+
+- backward_api : sin_grad
+  forward : sin (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : sin_grad
+
+- backward_api : asin_grad
+  forward : asin (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : asin_grad
+
+- backward_api : atan_grad
+  forward : atan (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : atan_grad
+  
+- backward_api : sinh_grad
+  forward : sinh (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : sinh_grad
+
+- backward_api : cosh_grad
+  forward : cosh (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : cosh_grad
+
+- backward_api : asinh_grad
+  forward : asinh (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : asinh_grad
+
+- backward_api : acosh_grad
+  forward : acosh (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : acosh_grad
+  
+- backward_api : atanh_grad
+  forward : atanh (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : atanh_grad
+
+- backward_api : relu_grad
+  forward : relu (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : relu_grad
+
+- backward_api : argsort_grad
+  forward : argsort (Tensor x, int axis, bool descending) -> Tensor(out), tensor(indices)
+  args : (Tensor indices, Tensor x, Tensor out_grad, int axis, bool descending)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : argsort_grad

@@ -239,3 +239,308 @@
   kernel :
     func : diagonal
   backward : diagonal_grad
+
+
+
+# softmax
+- api : softmax
+  args : (Tensor x, int axis)
+  output : Tensor
+  infer_meta :
+    func : SoftmaxInferMeta
+  kernel :
+    func : softmax
+  backward : softmax_grad
+
+# maxout
+- api : maxout
+  args : (Tensor x, int groups, int axis)
+  output : Tensor
+  infer_meta :
+    func : MaxoutInferMeta
+  kernel :
+    func : maxout
+  backward : maxout_grad
+
+# put_along_axis
+- api : put_along_axis
+  args : (Tensor x, Tensor index, Tensor value, int axis, string reduce)
+  output : Tensor
+  infer_meta :
+    func : PutAlongAxisInferMeta
+  kernel :
+    func : put_along_axis
+  backward : put_along_axis_grad
+
+
+# take_along_axis
+- api : take_along_axis
+  args : (Tensor x, Tensor index, int axis)
+  output : Tensor
+  infer_meta :
+    func : TakeAlongAxisInferMeta
+  kernel :
+    func : take_along_axis
+  backward : take_along_axis_grad
+
+# matrix_power
+- api : maxtrix_power
+  args : (Tensor x, int n)
+  output : Tensor
+  infer_meta :
+    func : MaxtrixPowerInferMeta
+  kernel :
+    func : maxtrix_power
+  backward : maxtrix_power_grad
+
+# eigh
+- api : eigh
+  args : (Tensor x, string uplo)
+  output : Tensor(out_w), Tensor(out_v)
+  infer_meta :
+    func : EighInferMeta
+  kernel :
+    func : eigh
+  backward : eigh_grad
+
+# segment_pool
+- api : segment_pool
+  args : (Tensor x, Tensor segment_ids, string pooltype)
+  output : Tensor(out), Tensor(summed_ids)
+  infer_meta :
+    func : SegmentPoolInferMeta
+  kernel :
+    func : segment_pool
+  backward : segment_pool_grad
+
+# accuracy
+- api : accuracy
+  args : (Tensor x, Tensor indices, Tensor label)
+  output : Tensor(accuracy), Tensor(correct), Tensor(total)
+  infer_meta :
+    func : AccuracyInferMeta
+  kernel :
+    func : accuracy
+
+# sin
+- api : sin
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sin
+  backward : sin_grad
+
+# cos
+- api : cos
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : cos
+  backward : cos_grad
+
+
+# tanh
+- api : tanh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : tanh
+  backward : tanh_grad
+
+# acos
+- api : acos
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : acos
+  backward : acos_grad
+
+
+# asin
+- api : asin
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : asin
+  backward : asin_grad
+
+
+# atan
+- api : atan
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : atan
+  backward : atan_grad
+
+# sinh
+- api : sinh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sinh
+  backward : sinh_grad
+
+# cosh
+- api : cosh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : cosh
+  backward : cosh_grad
+
+# asinh
+- api : asinh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : asinh
+  backward : asinh_grad
+
+# acosh
+- api : acosh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : acosh
+  backward : acosh_grad
+
+# atanh
+- api : atanh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : atanh
+  backward : atanh_grad
+
+# relu
+- api : relu
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : relu
+  backward : relu_grad
+
+
+# arg_min  # int64 ???? dtype
+- api : agrmin
+  args : (Tensor x, int axis, bool keepdims, bool flatten, int dtype)
+  output : Tensor
+  infer_meta :
+    func : XXXXInferMeta
+  kernel :
+    func : argmin
+
+# arg_max  # int64 ???? dtype
+- api : agrmax
+  args : (Tensor x, int axis, bool keepdims, bool flatten, int dtype)
+  output : Tensor
+  infer_meta :
+    func : XXXXInferMeta
+  kernel :
+    func : argmax
+
+# argsort; kernel why input?
+- api : argsort
+  args : (Tensor x, int axis, bool descending)
+  output : Tensor(out), tensor(indices)
+  infer_meta :
+    func : XXXXInferMeta
+  kernel :
+    func : argsort
+
+# auc
+
+
+# batch_norm
+# bernoulli
+# bilinear_tensor_product
+# bincount
+# bitwise_and
+# broadcast_tensors
+# cholesky
+# cholesky_solve
+# conv2d
+# copy
+# cumsum
+# depthwise_conv2d
+# dropout
+# embedding
+# erf
+# erfinv
+# expand_as
+# expand
+# eye
+# flip
+# gaussian_random
+# graph_send_recv
+# histogram
+# increment
+# is_empty
+# isinf
+# isinf_sr
+# label_smooth
+# linspace
+# log_loss
+# logical_and
+# masked_select
+# multi_dot
+# multinomial
+# nll_loss
+# pad
+# pixel_shuffle
+# poisson
+# psroi_pool
+# randint_raw
+# randperm_raw
+# max
+# max_raw
+# reduce_prod
+# scale_sr
+# selu
+# set_value
+# sgd
+# shape
+# shape_sr
+# shard_index
+# sigmoid_cross_entropy_with_logits
+# size
+# sparse_weight_embedding
+# tile
+# top_k
+# trace
+# phi_transfer_layout
+# truncated_gaussian_random
+# unbind
+# unfold
+# uniform_random_raw
+# uniform_random_raw_sr
+# viterbi_decode
+# where_index
+# yolo_box
+# sparse_conv3d
+# dense_to_sparse_coo
