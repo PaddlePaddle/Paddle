@@ -78,6 +78,9 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                         int output_channels,
                         float spatial_scale,
                         MetaTensor* out);
+void StackInferMeta(const std::vector<MetaTensor*>& x,
+                    int axis,
+                    MetaTensor* out);
 
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,

@@ -786,6 +786,53 @@ void UnbindInferMeta(const MetaTensor& x,
   }
 }
 
+void UnStackInferMeta(const MetaTensor& x,
+                      int axis,
+                      int num,
+                      std::vector<MetaTensor*> outs) {
+  auto x_dim = x.dims();
+  int rank = x_dim.size();
+  PADDLE_ENFORCE_GE(axis,
+                    -rank,
+                    phi::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be "
+                        "inside [-rank, rank), where rank = %d",
+                        rank));
+  PADDLE_ENFORCE_LT(axis,
+                    rank,
+                    phi::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be "
+                        "inside [-rank, rank), where rank = %d",
+                        rank));
+  if (axis < 0) axis += rank;
+
+  size_t output_count = outs.size();
+  PADDLE_ENFORCE_EQ(output_count,
+                    static_cast<size_t>(num),
+                    phi::errors::InvalidArgument(
+                        "Number of Outputs(Y) is wrong. Got %d , but it must "
+                        "equal to attribute num which is %d.",
+                        output_count,
+                        static_cast<size_t>(num)));
+  if (x_dim[axis] > 0) {
+    PADDLE_ENFORCE_EQ(
+        num,
+        x_dim[axis],
+        phi::errors::InvalidArgument(
+            "The number of attribute num is not equal to the length of the "
+            "%d axis of Input(X). Expect %d but got %d.",
+            axis,
+            x_dim[axis],
+            num));
+  }
+  auto vec = phi::vectorize<int>(x_dim);
+  vec.erase(vec.begin() + axis);
+  for (size_t i = 0; i < output_count; i++) {
+    outs[i]->set_dims(phi::make_ddim(vec));
+    outs[i]->set_dtype(x.dtype());
+  }
+}
+
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out) {
   int dim1 = axis1;

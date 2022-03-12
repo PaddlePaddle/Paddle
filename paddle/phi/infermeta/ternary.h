@@ -50,6 +50,11 @@ void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& out_grad,
                            MetaTensor* x_grad);
 
+void RangeInferMeta(const MetaTensor& Start,
+                    const MetaTensor& End,
+                    const MetaTensor& Step,
+                    MetaTensor* out);
+
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,
