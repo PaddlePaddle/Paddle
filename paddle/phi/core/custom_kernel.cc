@@ -33,6 +33,10 @@ void CustomKernelMap::RegisterCustomKernel(const std::string& name,
 void CustomKernelMap::RegisterCustomKernels() {
   VLOG(3) << "Size of custom_kernel_map: " << kernels_.size();
 
+  if (kernels_.size() <= 0) {
+    LOG(INFO) << "No custom kernel info found in loaded lib(s).";
+    return;
+  }
   auto& kernels = KernelFactory::Instance().kernels();
   for (auto& pair : kernels_) {
     PADDLE_ENFORCE_NE(
@@ -60,9 +64,10 @@ void CustomKernelMap::RegisterCustomKernels() {
               << info_pair.first
               << "] to Paddle. It will be used like native ones.";
     }
-    kernels_[pair.first].clear();
   }
-  LOG(INFO) << "Successed in loading custom kernels.";
+  LOG(INFO) << "Successed in loading " << kernels_.size()
+            << " custom kernel(s) from loaded lib(s), will be "
+            << "used like native ones.";
   kernels_.clear();
 }
 
