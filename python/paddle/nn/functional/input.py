@@ -19,6 +19,7 @@ from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle import _C_ops
 from paddle import in_dynamic_mode
+from paddle.framework import _in_eager_mode
 
 __all__ = []
 
@@ -87,6 +88,8 @@ def one_hot(x, num_classes, name=None):
     """
 
     if in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.one_hot(x, num_classes)
         return _C_ops.one_hot_v2(x, 'depth', num_classes, 'allow_out_of_range',
                                  False)
     else:
