@@ -84,29 +84,6 @@ class ProcessGroupHCCL : public ProcessGroup {
       std::vector<Tensor>& tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
 
-  std::shared_ptr<ProcessGroup::Task> Barrier(
-      const BarrierOptions& = BarrierOptions()) override;
-
-  std::shared_ptr<ProcessGroup::Task> Send(std::vector<Tensor>& tensors,
-                                           int dst_rank) override;
-
-  std::shared_ptr<ProcessGroup::Task> Recv(std::vector<Tensor>& tensors,
-                                           int src_rank) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<Tensor>& in_tensors,
-      std::vector<Tensor>& out_tensors) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<Tensor>& in, std::vector<Tensor>& out) override;
-
-  std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<Tensor>& tensors, const ReduceOptions& opts) override;
-
-  std::shared_ptr<ProcessGroup::Task> Scatter(std::vector<Tensor>& in_tensors,
-                                              std::vector<Tensor>& out_tensors,
-                                              const ScatterOptions&) override;
-
  protected:
   virtual std::shared_ptr<ProcessGroupHCCL::HCCLTask> CreateTask(
       std::vector<Place> places, int rank, CommType opType,
