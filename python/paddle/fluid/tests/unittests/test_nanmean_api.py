@@ -23,6 +23,7 @@ from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 
+
 class TestNanmeanAPI(unittest.TestCase):
     # test paddle.tensor.math.nanmean
 
@@ -31,7 +32,7 @@ class TestNanmeanAPI(unittest.TestCase):
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
-    
+  
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -74,7 +75,7 @@ class TestNanmeanAPI(unittest.TestCase):
         test_case(self.x, (0, 2))
         test_case(self.x, [0, 1, 2, 3])
         paddle.enable_static()
-    
+
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
