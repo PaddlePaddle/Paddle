@@ -2149,8 +2149,15 @@ def pairwise_distance(x1, x2, p, eps, keepdim=False):
 
 
 def triplet_margin_loss(anchor, positive, negative, margin=1.0, p=2, eps=1e-6, swap=False, size_average=None,
-                        reduce=None, reduction="mean"):
+                        reduce=None, reduction="mean",name=None):
     ''' # type: (Tensor, Tensor, Tensor, float, float, float, bool, Optional[bool], Optional[bool], str) -> Tensor'''
+
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in sigmoid_focal_loss "
+            "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
+            % reduction)
+
     # dim 和 shape
     a_dim = len(anchor.shape)
     p_dim = len(positive.shape)
@@ -2165,10 +2172,10 @@ def triplet_margin_loss(anchor, positive, negative, margin=1.0, p=2, eps=1e-6, s
         dist_n = paddle.min(dist_n, dist_swap)
     loss = paddle.nn.functional.relu(margin + dist_p - dist_n)
     if reduction == 'mean':
-        loss = paddle.mean(loss)
+        loss = paddle.mean(loss,name=name)
     elif reduction == 'sum':
-        loss = paddle.sum(loss)
+        loss = paddle.sum(loss,name=name)
     elif reduction == 'batchmean':
         batch_size = paddle.shape(anchor)[0]
-        loss = paddle.sum(loss) / batch_size
+        loss = paddle.sum(loss,name=name) / batch_size
     return loss

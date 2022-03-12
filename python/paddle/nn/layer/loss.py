@@ -1298,3 +1298,36 @@ class HingeEmbeddingLoss(Layer):
             reduction=self.reduction,
             margin=self.margin,
             name=self.name)
+
+
+class TripletMarginLoss(Layer):
+    r"""
+
+    """
+
+    def __init__(self, margin=1.0, p=2, eps=1e-6, swap=False, size_average=None,
+                        reduce=None, reduction="mean", name=None):
+        super(TripletMarginLoss, self).__init__()
+        self.margin = margin
+        self.reduction = reduction
+        self.p=p
+        self.eps=eps
+        self.swap=swap
+        self.size_average=size_average
+        self.reduce=reduce
+        self.name = name
+
+    def forward(self, anchor, positive, negative):
+        return F.triplet_margin_loss(
+            anchor,
+            positive,
+            negative,
+            margin=self.margin,
+            p=self.p,
+            eps=self.eps,
+            swap=self.swap,
+            size_average=self.size_average,
+            reduce=self.reduce,
+            reduction=self.reduction,
+            name=self.name
+        )

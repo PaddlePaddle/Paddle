@@ -105,6 +105,7 @@ from .layer.loss import MarginRankingLoss  # noqa: F401
 from .layer.loss import CTCLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
+from .layer.loss import TripletMarginLoss  # noqa: F401
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
@@ -305,5 +306,6 @@ __all__ = [     #noqa
            'MaxUnPool1D',
            'MaxUnPool2D',
            'MaxUnPool3D',
+           'TripletMarginLoss',
            'HingeEmbeddingLoss',
 ]
