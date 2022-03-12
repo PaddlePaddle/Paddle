@@ -32,7 +32,7 @@ class TestNanmeanAPI(unittest.TestCase):
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
-  
+
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
