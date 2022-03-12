@@ -182,20 +182,13 @@ HOSTDEVICE inline void get_utf8_str(const uint32_t* unicode_str,
   *utf8_str = '\0';
 }
 
-template <typename DeviceContext, typename FlagType>
-class UnicodeFlagMap {
- public:
-  explicit UnicodeFlagMap(FlagType* flag_map) : m_charcases_map(flag_map) {}
-  static UnicodeFlagMap* Instance() { return &m_instance; }
-  FlagType operator[](int idx) { return m_charcases_map[idx]; }
-  FlagType* data() { return m_charcases_map; }
-  ~UnicodeFlagMap() {}
+const uint8_t* get_uniflag_map();
+const uint16_t* get_charcases_map();
 
- private:
-  static UnicodeFlagMap m_instance;
-  FlagType* m_charcases_map;
-  DISABLE_COPY_AND_ASSIGN(UnicodeFlagMap);
-};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+const uint8_t* get_gpu_uniflag_map();
+const uint16_t* get_gpu_charcases_map();
+#endif
 
 }  // namespace strings
 }  // namespace phi

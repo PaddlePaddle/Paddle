@@ -57,11 +57,8 @@ struct UTF8CaseConverter<phi::GPUContext, CharConverter> {
                   const pstring* in,
                   pstring* out,
                   size_t num) const {
-    auto unicode_flag_map =
-        strings::UnicodeFlagMap<phi::GPUContext, uint8_t>::Instance()->data();
-    auto cases_map =
-        strings::UnicodeFlagMap<phi::GPUContext, uint16_t>::Instance()->data();
-
+    auto unicode_flag_map = strings::get_gpu_uniflag_map();
+    auto cases_map = strings::get_gpu_charcases_map();
     thrust::device_vector<uint32_t> unicode_offsets(num + 1, 0);
     uint32_t* unicode_offsets_ptr =
         thrust::raw_pointer_cast(unicode_offsets.data());

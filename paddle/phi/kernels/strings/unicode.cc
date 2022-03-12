@@ -14,18 +14,24 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/strings/unicode.h"
 #include <utf8proc.h>
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/strings/unicode_flag.h"
 
 namespace phi {
 namespace strings {
 
-static uint16_t CHARCASES_MAP[65537] = {0};
-static uint16_t* get_charcases_map() {
-  if (CHARCASES_MAP[65536] == 0) {
-    CHARCASES_MAP[65536] = 1;
+static const void* utils_map[4] = {nullptr};
+static uint16_t CHARCASES_MAP[65536] = {0};
+
+const uint8_t* get_uniflag_map() {
+  if (utils_map[1] == nullptr) {
+    utils_map[1] = UNIFLAG_MAP;
+  }
+  return reinterpret_cast<const uint8_t*>(utils_map[1]);
+}
+
+const uint16_t* get_charcases_map() {
+  if (utils_map[0] == nullptr) {
     for (uint32_t i = 0; i < 65536; ++i) {
       if (utf8proc_islower(i)) {
         CHARCASES_MAP[i] = utf8proc_toupper(i);
@@ -33,77 +39,50 @@ static uint16_t* get_charcases_map() {
         CHARCASES_MAP[i] = utf8proc_tolower(i);
       }
     }
+    utils_map[0] = CHARCASES_MAP;
   }
-  return CHARCASES_MAP;
+  return reinterpret_cast<const uint16_t*>(utils_map[0]);
 }
-
-template <>
-UnicodeFlagMap<CPUContext, uint8_t>
-    UnicodeFlagMap<CPUContext, uint8_t>::m_instance(UNIFLAG_MAP);
-template <>
-UnicodeFlagMap<CPUContext, uint16_t>
-    UnicodeFlagMap<CPUContext, uint16_t>::m_instance(get_charcases_map());
-
-template class UnicodeFlagMap<CPUContext, uint8_t>;
-template class UnicodeFlagMap<CPUContext, uint16_t>;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <>
-UnicodeFlagMap<GPUContext, uint8_t>::UnicodeFlagMap(uint8_t* flag_map) {
-  uint32_t gUMapSize = sizeof(UNIFLAG_MAP);
-// Cannot use RecordedGpuMalloc, because it depend on a static instance
-// StatRegistry
+
+const uint8_t* get_gpu_uniflag_map() {
+  if (utils_map[3] == nullptr) {
+    const uint8_t* cpu_uniflag = get_uniflag_map();
+    auto size = sizeof(UNIFLAG_MAP);
+    uint8_t* gpu_uniflag;
 #ifdef PADDLE_WITH_HIP
-  hipMalloc(reinterpret_cast<void**>(&m_charcases_map), gUMapSize);
-  phi::backends::gpu::GpuMemcpySync(
-      m_charcases_map, flag_map, gUMapSize, hipMemcpyHostToDevice);
+    hipMalloc(reinterpret_cast<void**>(&gpu_uniflag), size);
+    phi::backends::gpu::GpuMemcpySync(
+        gpu_uniflag, cpu_uniflag, size, hipMemcpyHostToDevice);
 #else
-  cudaMalloc(reinterpret_cast<void**>(&m_charcases_map), gUMapSize);
-  phi::backends::gpu::GpuMemcpySync(
-      m_charcases_map, flag_map, gUMapSize, cudaMemcpyHostToDevice);
+    cudaMalloc(reinterpret_cast<void**>(&gpu_uniflag), size);
+    phi::backends::gpu::GpuMemcpySync(
+        gpu_uniflag, cpu_uniflag, size, cudaMemcpyHostToDevice);
 #endif
+    utils_map[3] = gpu_uniflag;
+  }
+  return reinterpret_cast<const uint8_t*>(utils_map[3]);
 }
 
-template <>
-UnicodeFlagMap<GPUContext, uint16_t>::UnicodeFlagMap(uint16_t* flag_map) {
-  uint32_t gCMapSize = sizeof(CHARCASES_MAP);
+const uint16_t* get_gpu_charcases_map() {
+  if (utils_map[2] == nullptr) {
+    const uint16_t* cpu_charcases = get_charcases_map();
+    auto size = sizeof(CHARCASES_MAP);
+    uint16_t* gpu_charcases;
 #ifdef PADDLE_WITH_HIP
-  hipMalloc(reinterpret_cast<void**>(&m_charcases_map), gCMapSize);
-  phi::backends::gpu::GpuMemcpySync(
-      m_charcases_map, flag_map, gCMapSize, hipMemcpyHostToDevice);
+    hipMalloc(reinterpret_cast<void**>(&gpu_charcases), size);
+    phi::backends::gpu::GpuMemcpySync(
+        gpu_charcases, cpu_charcases, size, hipMemcpyHostToDevice);
 #else
-  cudaMalloc(reinterpret_cast<void**>(&m_charcases_map), gCMapSize);
-  phi::backends::gpu::GpuMemcpySync(
-      m_charcases_map, flag_map, gCMapSize, cudaMemcpyHostToDevice);
+    cudaMalloc(reinterpret_cast<void**>(&gpu_charcases), size);
+    phi::backends::gpu::GpuMemcpySync(
+        gpu_charcases, cpu_charcases, size, cudaMemcpyHostToDevice);
 #endif
+    utils_map[2] = gpu_charcases;
+  }
+  return reinterpret_cast<const uint16_t*>(utils_map[2]);
 }
-
-template <>
-UnicodeFlagMap<GPUContext, uint16_t>::~UnicodeFlagMap() {
-#ifdef PADDLE_WITH_HIP
-  hipFree(reinterpret_cast<void*>(m_charcases_map));
-#else
-  cudaFree(reinterpret_cast<void*>(m_charcases_map));
-#endif
-}
-
-template <>
-UnicodeFlagMap<GPUContext, uint8_t>::~UnicodeFlagMap() {
-#ifdef PADDLE_WITH_HIP
-  hipFree(reinterpret_cast<void*>(m_charcases_map));
-#else
-  cudaFree(reinterpret_cast<void*>(m_charcases_map));
-#endif
-}
-
-template <>
-UnicodeFlagMap<GPUContext, uint8_t>
-    UnicodeFlagMap<GPUContext, uint8_t>::m_instance(UNIFLAG_MAP);
-template <>
-UnicodeFlagMap<GPUContext, uint16_t>
-    UnicodeFlagMap<GPUContext, uint16_t>::m_instance(get_charcases_map());
-template class UnicodeFlagMap<GPUContext, uint8_t>;
-template class UnicodeFlagMap<GPUContext, uint16_t>;
 #endif
 
 }  // namespace strings

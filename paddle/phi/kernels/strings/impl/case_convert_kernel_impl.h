@@ -63,10 +63,8 @@ struct UTF8CaseConverter {
                   pstring* out,
                   size_t num) const {
     paddle::platform::Transform<DeviceContext> trans;
-    auto unicode_flag_map =
-        strings::UnicodeFlagMap<DeviceContext, uint8_t>::Instance()->data();
-    auto cases_map =
-        strings::UnicodeFlagMap<DeviceContext, uint16_t>::Instance()->data();
+    auto unicode_flag_map = strings::get_uniflag_map();
+    auto cases_map = strings::get_charcases_map();
     for (size_t i = 0; i < num; ++i) {
       uint32_t unicode_len = get_unicode_str_len(in[i].data(), in[i].size());
       std::vector<uint32_t> unicode_in(unicode_len, 0);

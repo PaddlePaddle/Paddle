@@ -41,7 +41,8 @@ struct AsciiToUpper {
 
 template <typename DeviceContext>
 struct UTF8ToLower {
-  HOSTDEVICE UTF8ToLower(uint8_t* unicode_flag_map, uint16_t* cases_map)
+  HOSTDEVICE UTF8ToLower(const uint8_t* unicode_flag_map,
+                         const uint16_t* cases_map)
       : unicode_flag_map_(unicode_flag_map), cases_map_(cases_map) {}
 
   HOSTDEVICE uint32_t operator()(uint32_t in) const {
@@ -49,13 +50,14 @@ struct UTF8ToLower {
     return (strings::isupper(flg) ? cases_map_[in] : in);
   }
 
-  uint8_t* unicode_flag_map_;
-  uint16_t* cases_map_;
+  const uint8_t* unicode_flag_map_;
+  const uint16_t* cases_map_;
 };
 
 template <typename DeviceContext>
 struct UTF8ToUpper {
-  HOSTDEVICE UTF8ToUpper(uint8_t* unicode_flag_map, uint16_t* cases_map)
+  HOSTDEVICE UTF8ToUpper(const uint8_t* unicode_flag_map,
+                         const uint16_t* cases_map)
       : unicode_flag_map_(unicode_flag_map), cases_map_(cases_map) {}
 
   HOSTDEVICE uint32_t operator()(uint32_t in) const {
@@ -63,8 +65,8 @@ struct UTF8ToUpper {
     return (strings::islower(flg) ? cases_map_[in] : in);
   }
 
-  uint8_t* unicode_flag_map_;
-  uint16_t* cases_map_;
+  const uint8_t* unicode_flag_map_;
+  const uint16_t* cases_map_;
 };
 
 }  // namespace strings
