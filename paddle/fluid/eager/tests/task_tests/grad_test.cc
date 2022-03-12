@@ -28,8 +28,11 @@
 #include "paddle/fluid/eager/api/all.h"
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
 namespace egr {
 
 TEST(Grad, SingleNodeEmptyGrad) {
