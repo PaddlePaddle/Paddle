@@ -27,7 +27,7 @@ class TestNanmeanAPI(unittest.TestCase):
     # test paddle.tensor.math.nanmean
 
     def setUp(self):
-        self.x_shape = [2,3,4,5]
+        self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
