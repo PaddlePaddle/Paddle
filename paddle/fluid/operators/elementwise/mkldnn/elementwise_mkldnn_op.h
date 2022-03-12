@@ -105,6 +105,9 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
 
     binary_prim->execute(astream, args);
     astream.wait();
+
+    z->set_layout(DataLayout::kMKLDNN);
+    z->set_format(platform::GetMKLDNNFormat(*dst_memory));
   }
 };
 
@@ -178,6 +181,9 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         binary_prim->execute(astream, args);
       }
       astream.wait();
+
+      dx->set_layout(framework::DataLayout::kMKLDNN);
+      dx->set_format(platform::GetMKLDNNFormat(*dst_memory));
     }
 
     if (dy) {
@@ -259,6 +265,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         broadcast_src_memory = dst_dy_memory;
       }
       astream.wait();
+      dy->set_layout(DataLayout::kMKLDNN);
 
       if (dout->dims() != dy->dims()) {
         // Broadcasting
@@ -281,6 +288,11 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                           {DNNL_ARG_DST, *broadcast_dst_memory},
                                       });
         astream.wait();
+        dy->set_format(
+            platform::GetMKLDNNFormat(broadcast_src_memory->get_desc().reshape(
+                phi::vectorize<int64_t>(dy->dims()))));
+      } else {
+        dy->set_format(platform::GetMKLDNNFormat(*broadcast_src_memory));
       }
     }
   }
