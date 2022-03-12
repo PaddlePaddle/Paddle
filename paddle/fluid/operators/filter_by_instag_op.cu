@@ -96,30 +96,6 @@ __global__ void filter_copy_fuse_kernel(
 
   if (N < ins_end) ins_end = N;
 
-  /*
-    if (!x1_lods_filled) {
-      for (int p = ins_start; p < ins_end; p++) {
-        x1_lods_data[p] = p;
-      }
-      if (idx == 0) {
-        x1_lods_data[N] = N;
-      }
-    }
-
-    if (!x2_lods_filled) {
-      for (int p = ins_start; p < ins_end; p++) {
-        x2_lods_data[p] = p;
-      }
-      if (idx == 0) {
-        x2_lods_data[N] = N;
-      }
-    }
-
-    if (!x1_lods_filled || !x2_lods_filled) {
-      b.sync();
-    }
-  */
-
   int flag_data[5];
   int prefix_sum_data[5];
   int prefix_sum_data2[5];
@@ -173,8 +149,6 @@ __global__ void filter_copy_fuse_kernel(
     local_addr = prefix_sum_data[ins_end - 1 - ins_start];
     sum_addr = local_addr;
 
-    // flag
-    // local_flag = 0;
     for (int p = ins_start; p < ins_end; p++) {
       local_flag += flag_data[p - ins_start];
     }
@@ -188,7 +162,6 @@ __global__ void filter_copy_fuse_kernel(
     sum_out_lods = local_out_lods;
   }
 
-  // 32 threads
   for (int i = 1; i < warp_thread_num; i *= 2) {
     int temp_addr = g.shfl_up(sum_addr, i);
     int temp_flag = g.shfl_up(sum_flag, i);
@@ -266,27 +239,16 @@ __global__ void filter_copy_fuse_kernel(
 
   if (ins_start < ins_end) {
     int out_lods_idx = p_flag + 1;
-
-    // ins_start = 1
-    // BUG fix
     for (int p = ins_start; p < ins_end; p++) {
       if (flag_data[p - ins_start] == 1) {
-        // batch_len = 2
-        // batch_len = 4
         size_t batch_len = x1_lods_data[p + 1] - x1_lods_data[p];
-        // t = 0
-        // t = 1
         int t = out_lods_idx - 1;
-        // out_lods_data[0] = 0;
         int previous;
-
         if (out_lods_idx == p_flag + 1) {
-          // out_lods_data[t] = p_out_lods;
           previous = p_out_lods;
         } else {
           previous = out_lods_data[t];
         }
-
         map_data[t * 3] = (int64_t)previous;
         map_data[t * 3 + 1] = x1_lods_data[p];
         map_lods_data[t] = t;
@@ -300,7 +262,6 @@ __global__ void filter_copy_fuse_kernel(
     if (sum_out_lods4 > 1) {
       int out_data_num = sum_out_lods4 - 1;
       int out_start = ins_start;
-
       if (out_start < out_data_num) {
         int out_end = ins_end >= out_data_num ? out_data_num : ins_end;
         for (int p = out_start; p < out_end; p++) {
@@ -314,11 +275,8 @@ __global__ void filter_copy_fuse_kernel(
       if (flag_data[p - ins_start] == 1) {
         auto output_start_idx = prefix_sum_data2[p - ins_start];
         T* dst = out_data + output_start_idx * x1_embed_size;
-
         const T* src_start = x1_data + x1_lods_data[p] * x1_embed_size;
         const T* src_end = x1_data + x1_lods_data[p + 1] * x1_embed_size;
-
-        // optimized
         for (const T *j = src_start; j != src_end; dst++, j++) {
           *dst = *j;
         }
@@ -394,21 +352,17 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     const Tensor* x3 = context.Input<Tensor>("Filter_tag");
     const int64_t* x3_data = x3->data<int64_t>();
 
-    // int x2_lods_filled = 1;
-
     Vector<size_t> x2_lods;
-    // Vector, in GPU
     if (x2->lod().size() != 0) {  // lod_level = 1
       x2_lods = x2->lod()[0];
-      // x2_lods_filled = 1;
-
     } else {  // lod_level = 0
       const size_t x2_lods_size = x2->dims()[0];
+      const size_t instag_per_num = x2->dims()[1];
       // x2_lods.resize(x2->dims()[0] + 1);
       // move to cuda
       x2_lods.push_back(0);
       for (size_t i = 0; i < x2_lods_size; i++) {
-        x2_lods.push_back(i + 1);
+        x2_lods.push_back(x2_lods.back() + instag_per_num);
       }
     }
 
@@ -417,13 +371,8 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     size_t* x2_lods_data = mixv_x2_lods.CUDAMutableData(gpu_place);
 
-    // Vector, in GPU
-    // int x1_lods_filled = 1;
     Vector<size_t> x1_lods;
-
     if (!is_x1_lod) {
-      // move to cuda
-      // x1_lods.resize(x1->dims()[0] + 1);
       x1_lods.push_back(0);
       for (int i = 0; i < x1->dims()[0]; i++) {
         x1_lods.push_back(i + 1);
@@ -432,7 +381,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       // x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
       // new: lod_level=0 => lod() return {}
       if (x1->lod().size() != 0) {  // lod_level = 1
-        // x1_lods_filled = 1;
         x1_lods = x1->lod()[0];
       } else {  // lod_level = 0
         // x1_lods.resize(x1->dims()[0] + 1);
@@ -458,10 +406,6 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
 
     int out_first = x1_lods.back();
-    // int out_first = x1->dims()[0];
-    // if (x1_lods_filled) {
-    //  out_first = x1_lods.back();
-    // }
 
     out->Resize(phi::make_ddim({(int64_t)out_first, (int64_t)x1_embed_size}));
     map->Resize(phi::make_ddim({(int64_t)x2_lods_size, 3}));
