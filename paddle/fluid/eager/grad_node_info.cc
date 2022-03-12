@@ -39,6 +39,7 @@ GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
   VLOG(6) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
+  adj_edges_.resize(bwd_out_slot_num);
 }
 
 void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
@@ -60,12 +61,14 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
     // its pre-ops
     if (meta && !meta->StopGradient()) {
       auto node = meta->GetMutableGradNode();
-      if (!node) {
+      if (!node || !node.get()) {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
       }
 
-      out_meta[i].SetEdge(
-          Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
+      adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
+                                       meta->OutRankInfo());
+      // out_meta[i].SetEdge(
+      //    Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
     }
   }
 }
@@ -79,7 +82,7 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
           "inputs's slot num."));
   if (meta && !meta->StopGradient()) {
     auto node = meta->GetMutableGradNode();
-    if (!node) {
+    if (!node || !node.get()) {
       meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
     }
     VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
@@ -89,7 +92,11 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
     if (out_meta.size() == 0) {
       out_meta.resize(1);
     }
-    out_meta[0].SetEdge(Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
+
+    adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
+                                     meta->OutRankInfo());
+    // out_meta[0].SetEdge(Edge(meta->GetMutableGradNode(),
+    // meta->OutRankInfo()));
   }
 }
 
@@ -99,6 +106,10 @@ const std::vector<std::vector<GradSlotMeta>>& GradNodeBase::InputMeta() const {
 
 const std::vector<std::vector<GradSlotMeta>>& GradNodeBase::OutputMeta() const {
   return bwd_out_meta_;
+}
+
+const std::vector<std::vector<Edge>>& GradNodeBase::GetEdges() const {
+  return adj_edges_;
 }
 
 void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,

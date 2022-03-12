@@ -122,6 +122,8 @@ class GradNodeBase {
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads) = 0;
 
+  const std::vector<std::vector<Edge>>& GetEdges() const;
+
   /**
    * AddEdges is designed to set input tensors' backward Node as current
    * node's Edges.
@@ -199,6 +201,7 @@ class GradNodeBase {
 
  private:
   // TODO(jiabin): Use SmallVector instead after merge PR from develop
+  std::vector<std::vector<Edge>> adj_edges_;
 
   // bwd_out_meta_ is used to record Grad output info for backward
   std::vector<std::vector<GradSlotMeta>> bwd_out_meta_;
