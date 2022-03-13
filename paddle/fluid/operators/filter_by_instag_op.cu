@@ -296,12 +296,10 @@ __global__ void copy_grad_kernel(const size_t N, const int ins_per_thread,
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   int ins_start = idx * ins_per_thread;
   int ins_end = (idx + 1) * ins_per_thread;
-
   if (ins_start >= N) {
     return;
   }
   if (ins_end > N) ins_end = N;
-
   for (int p = ins_start; p < ins_end; p++) {
     T* dst = x1_grad_data + map_data[p * 3 + 1] * x1_embed_size;
     const T* src_start = out_grad_data + map_data[p * 3] * x1_embed_size;
