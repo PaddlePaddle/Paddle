@@ -28,7 +28,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 using DataLayout = platform::DataLayout;
+using framework::AlgorithmsCache;
+using framework::ConvSearchCache;
+
+template <typename T>
+using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
 template <typename Handle_t, typename Data_t>
 struct ConvArgsBase {
@@ -47,9 +53,8 @@ struct ConvArgsBase {
   std::vector<int> d;
 
   ConvArgsBase(const framework::Tensor* x, const framework::Tensor* w,
-           const framework::Tensor* o, const std::vector<int> s,
-           const std::vector<int> p, const std::vector<int> d,
-           Data_t dtype)
+               const framework::Tensor* o, const std::vector<int> s,
+               const std::vector<int> p, const std::vector<int> d, Data_t dtype)
       : x(x), w(w), o(o), s(s), p(p), d(d), cudnn_dtype(dtype) {}
 };
 
@@ -71,12 +76,15 @@ static inline void GetNCDHW(const framework::DDim& dims,
 }
 
 template <typename T>
-std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
+static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   out << "[";
   for (auto const& tmp : v) out << tmp << ",";
   out << "]";
   return out;
 }
+
+// template <typename algo_t>
+// struct SearchAlgorithm {};
 
 }  // namespace operators
 }  // namespace paddle

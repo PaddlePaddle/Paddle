@@ -215,9 +215,9 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 
     size_t workspace_size = 0;
 #ifdef PADDLE_WITH_HIP
-    miopenConvBwdDataAlgorithm_t algo{};
+    AlgoResult<miopenConvBwdDataAlgorithm_t> algo_result;
 #else
-    cudnnConvolutionBwdDataAlgo_t algo{};
+    AlgoResult<cudnnConvolutionBwdDataAlgo_t> algo_result;
 #endif
     // ------------------- cudnn conv algorithm ---------------------
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -227,13 +227,8 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 
     auto dtype = platform::CudnnDataType<T>::type;
     // ------------------- cudnn descriptors ---------------------
-    ConvArgs args{&transformed_output,
-                  filter,
-                  &transformed_input,
-                  strides,
-                  padding_common,
-                  dilations,
-                  dtype};
+    auto args = ConvArgs(&transformed_output, filter, &transformed_input,
+                         strides, padding_common, dilations, dtype);
     args.handle = handle;
     args.idesc.set(transformed_output, iwo_groups);
     args.wdesc.set(*filter, layout_tensor, iwo_groups);
@@ -244,16 +239,14 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
     using search = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
     workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
-    algo = search::Find<T>(
+    algo_result.algo = search::Find<T>(
         args, false, deterministic, workspace_size,
-        ctx.template device_context<platform::CUDADeviceContext>());
+        ctx.template device_context<platform::CUDADeviceContext>()););
 #else
     using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-    algo = search::Find<T>(
-        args, false, deterministic,
-        ctx.template device_context<platform::CUDADeviceContext>());
-    workspace_size =
-        std::max(workspace_size, search::GetWorkspaceSize(args, algo));
+    algo_result = search::Find<T>(args, false, deterministic, dev_ctx);
+    workspace_size = std::max(workspace_size,
+                              search::GetWorkspaceSize(args, algo_result.algo));
 #endif
 
     // ------------------- cudnn conv transpose forward ---------------------
@@ -272,9 +265,10 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
             platform::dynload::miopenConvolutionBackwardData(
                 handle, &alpha, args.odesc.desc(),
                 input_data + input_offset * g, args.wdesc.desc(),
-                filter_data + filter_offset * g, args.cdesc.desc(), algo, &beta,
-                args.idesc.desc(), transformed_output_data + output_offset * g,
-                cudnn_workspace, workspace_size));
+                filter_data + filter_offset * g, args.cdesc.desc(),
+                algo_result.algo, &beta, args.idesc.desc(),
+                transformed_output_data + output_offset * g, cudnn_workspace,
+                workspace_size));
       };
 #else   // PADDLE_WITH_HIP
       auto cudnn_func = [&](void* cudnn_workspace) {
@@ -282,8 +276,9 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
             platform::dynload::cudnnConvolutionBackwardData(
                 handle, &alpha, args.wdesc.desc(),
                 filter_data + filter_offset * g, args.odesc.desc(),
-                input_data + input_offset * g, args.cdesc.desc(), algo,
-                cudnn_workspace, workspace_size, &beta, args.idesc.desc(),
+                input_data + input_offset * g, args.cdesc.desc(),
+                algo_result.algo, cudnn_workspace, workspace_size, &beta,
+                args.idesc.desc(),
                 transformed_output_data + output_offset * g));
       };
 #endif  // PADDLE_WITH_HIP
@@ -462,27 +457,17 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
 
     auto dtype = platform::CudnnDataType<T>::type;
 
-    ConvArgs args1{&transformed_output_grad,
-                   filter,
-                   &input_transpose,
-                   strides,
-                   padding_common,
-                   dilations,
-                   dtype};
-    ConvArgs args2{&transformed_output_grad,
-                   filter,
-                   &input_transpose,
-                   strides,
-                   padding_common,
-                   dilations,
-                   dtype};
+    auto args1 = ConvArgs(&transformed_output_grad, filter, &input_transpose,
+                          strides, padding_common, dilations, dtype);
+    auto args2 = ConvArgs(&transformed_output_grad, filter, &input_transpose,
+                          strides, padding_common, dilations, dtype);
 
 #ifdef PADDLE_WITH_HIP
-    miopenConvFwdAlgorithm_t data_algo{};
-    miopenConvBwdWeightsAlgorithm_t filter_algo{};
+    AlgoResult<miopenConvFwdAlgorithm_t> data_result;
+    AlgoResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
 #else
-    cudnnConvolutionFwdAlgo_t data_algo{};
-    cudnnConvolutionBwdFilterAlgo_t filter_algo{};
+    AlgoResult<cudnnConvolutionFwdAlgo_t> data_result;
+    AlgoResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif
 
     auto layout_tensor = GetCudnnTensorFormat(layout);
@@ -505,16 +490,16 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       using search1 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search1::GetWorkspaceSize(args1));
-      data_algo = search1::Find<T>(
+      data_result.algo = search1::Find<T>(
           args1, false, deterministic, workspace_size,
           ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      data_algo = search1::Find<T>(
+      data_result = search1::Find<T>(
           args1, false, deterministic,
           ctx.template device_context<platform::CUDADeviceContext>());
-      workspace_size =
-          std::max(workspace_size, search1::GetWorkspaceSize(args1, data_algo));
+      workspace_size = std::max(
+          workspace_size, search1::GetWorkspaceSize(args1, data_result.algo));
 #endif
     }
 
@@ -530,16 +515,16 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search2::GetWorkspaceSize(args2));
-      filter_algo = search2::Find<T>(
+      filter_result.algo = search2::Find<T>(
           args2, false, deterministic, workspace_size,
           ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-      filter_algo = search2::Find<T>(
+      filter_result = search2::Find<T>(
           args2, false, deterministic,
           ctx.template device_context<platform::CUDADeviceContext>());
-      workspace_size = std::max(workspace_size,
-                                search2::GetWorkspaceSize(args2, filter_algo));
+      workspace_size = std::max(
+          workspace_size, search2::GetWorkspaceSize(args2, filter_result.algo));
 #endif
     }
 
@@ -562,7 +547,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
                   handle, &alpha, args1.idesc.desc(),
                   output_grad_data + output_grad_offset * g, args1.wdesc.desc(),
                   filter_data + filter_offset * g, args1.cdesc.desc(),
-                  data_algo, &beta, args1.odesc.desc(),
+                  data_result.algo, &beta, args1.odesc.desc(),
                   input_grad_data + input_offset * g, cudnn_workspace,
                   workspace_size));
         };
@@ -571,9 +556,9 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnConvolutionForward(
               handle, &alpha, args1.idesc.desc(),
               output_grad_data + output_grad_offset * g, args1.wdesc.desc(),
-              filter_data + filter_offset * g, args1.cdesc.desc(), data_algo,
-              cudnn_workspace, workspace_size, &beta, args1.odesc.desc(),
-              input_grad_data + input_offset * g));
+              filter_data + filter_offset * g, args1.cdesc.desc(),
+              data_result.algo, cudnn_workspace, workspace_size, &beta,
+              args1.odesc.desc(), input_grad_data + input_offset * g));
         };
 #endif  // PADDLE_WITH_HIP
         workspace_handle.RunFunc(cudnn_func, workspace_size);
@@ -610,7 +595,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
                   handle, &alpha, args2.odesc.desc(),
                   input_data + input_offset * g, args2.idesc.desc(),
                   output_grad_data + output_grad_offset * g, args2.cdesc.desc(),
-                  filter_algo, &beta, args2.wdesc.desc(),
+                  filter_result.algo, &beta, args2.wdesc.desc(),
                   filter_grad_data + filter_offset * g, cudnn_workspace,
                   workspace_size));
         };
@@ -621,7 +606,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
                   handle, &alpha, args2.idesc.desc(),
                   output_grad_data + output_grad_offset * g, args2.odesc.desc(),
                   input_data + input_offset * g, args2.cdesc.desc(),
-                  filter_algo, cudnn_workspace, workspace_size, &beta,
+                  filter_result.algo, cudnn_workspace, workspace_size, &beta,
                   args2.wdesc.desc(), filter_grad_data + filter_offset * g));
         };
 #endif  // PADDLE_WITH_HIP
@@ -894,44 +879,24 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 
     auto handle = dev_ctx.cudnn_handle();
 
-    ConvArgs args1{&transformed_ddO_channel,
-                   W,
-                   &transformed_ddX,
-                   strides,
-                   padding_common,
-                   dilations,
-                   dtype};
-    ConvArgs args2{&transformed_ddO_channel, ddW,       &transformed_X, strides,
-                   padding_common,           dilations, dtype};
-
-    ConvArgs args3{&transformed_dO,
-                   dW,
-                   &transformed_ddX_channel,
-                   strides,
-                   padding_common,
-                   dilations,
-                   dtype};
-    ConvArgs args4{
-        &transformed_dO, ddW,  &transformed_dX_channel, strides, padding_common,
-        dilations,       dtype};
+    auto args1 = ConvArgs(&transformed_ddO_channel, W, &transformed_ddX,
+                          strides, padding_common, dilations, dtype);
+    auto args2 = ConvArgs(&transformed_ddO_channel, ddW, &transformed_X,
+                          strides, padding_common, dilations, dtype);
+    auto args3 = ConvArgs(&transformed_dO, dW, &transformed_ddX_channel,
+                          strides, padding_common, dilations, dtype);
+    auto args4 = ConvArgs(&transformed_dO, ddW, &transformed_dX_channel,
+                          strides, padding_common, dilations, dtype);
 #ifdef PADDLE_WITH_HIP
-    miopenConvBwdDataAlgorithm_t bwd_algo1 =
-        static_cast<miopenConvBwdDataAlgorithm_t>(0);
-    miopenConvBwdDataAlgorithm_t bwd_algo2 =
-        static_cast<miopenConvBwdDataAlgorithm_t>(0);
-    miopenConvFwdAlgorithm_t data_algo =
-        static_cast<miopenConvFwdAlgorithm_t>(0);
-    miopenConvBwdWeightsAlgorithm_t filter_algo =
-        static_cast<miopenConvBwdWeightsAlgorithm_t>(0);
+    AlgoResult<miopenConvBwdDataAlgorithm_t> bwd_result1;
+    AlgoResult<miopenConvBwdDataAlgorithm_t> bwd_result2;
+    AlgoResult<miopenConvFwdAlgorithm_t> data_result;
+    AlgoResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
 #else
-    cudnnConvolutionBwdDataAlgo_t bwd_algo1 =
-        static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
-    cudnnConvolutionBwdDataAlgo_t bwd_algo2 =
-        static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
-    cudnnConvolutionFwdAlgo_t data_algo =
-        static_cast<cudnnConvolutionFwdAlgo_t>(0);
-    cudnnConvolutionBwdFilterAlgo_t filter_algo =
-        static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
+    AlgoResult<cudnnConvolutionBwdDataAlgo_t> bwd_result1;
+    AlgoResult<cudnnConvolutionBwdDataAlgo_t> bwd_result2;
+    AlgoResult<cudnnConvolutionFwdAlgo_t> data_result;
+    AlgoResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif
 
     auto layout = GetCudnnTensorFormat(platform::DataLayout::kNCHW);
@@ -954,15 +919,15 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_HIP
         using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
         workspace_size = search1::GetWorkspaceSize(args1);
-        bwd_algo1 = search1::Find<T>(
+        bwd_result1.algo = search1::Find<T>(
             args1, false, deterministic, workspace_size,
             ctx.template device_context<platform::CUDADeviceContext>());
 #else
         using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-        bwd_algo1 = search1::Find<T>(
+        bwd_result1 = search1::Find<T>(
             args1, false, deterministic,
             ctx.template device_context<platform::CUDADeviceContext>());
-        workspace_size = search1::GetWorkspaceSize(args1, bwd_algo1);
+        workspace_size = search1::GetWorkspaceSize(args1, bwd_result1.algo);
 #endif
       }
 
@@ -978,16 +943,16 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
         using search2 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
         workspace_size =
             std::max(workspace_size, search2::GetWorkspaceSize(args2));
-        bwd_algo2 = search2::Find<T>(
+        bwd_result2.algo = search2::Find<T>(
             args2, false, deterministic, workspace_size,
             ctx.template device_context<platform::CUDADeviceContext>());
 #else
         using search2 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-        bwd_algo2 = search2::Find<T>(
+        bwd_result2 = search2::Find<T>(
             args2, false, deterministic,
             ctx.template device_context<platform::CUDADeviceContext>());
-        workspace_size = std::max(workspace_size,
-                                  search2::GetWorkspaceSize(args2, bwd_algo2));
+        workspace_size = std::max(
+            workspace_size, search2::GetWorkspaceSize(args2, bwd_result2.algo));
 #endif
       }
     }
@@ -1006,16 +971,16 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       using search3 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search3::GetWorkspaceSize(args3));
-      filter_algo = search3::Find<T>(
+      filter_result.algo = search3::Find<T>(
           args3, false, deterministic, workspace_size,
           ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-      filter_algo = search3::Find<T>(
+      filter_result = search3::Find<T>(
           args3, false, deterministic,
           ctx.template device_context<platform::CUDADeviceContext>());
-      workspace_size = std::max(workspace_size,
-                                search3::GetWorkspaceSize(args3, filter_algo));
+      workspace_size = std::max(
+          workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
 #endif
     }
 
@@ -1032,16 +997,16 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
       using search4 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search4::GetWorkspaceSize(args4));
-      data_algo = search4::Find<T>(
+      data_result.algo = search4::Find<T>(
           args4, false, deterministic, workspace_size,
           ctx.template device_context<platform::CUDADeviceContext>());
 #else
       using search4 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      data_algo = search4::Find<T>(
+      data_result = search4::Find<T>(
           args4, false, deterministic,
           ctx.template device_context<platform::CUDADeviceContext>());
-      workspace_size =
-          std::max(workspace_size, search4::GetWorkspaceSize(args4, data_algo));
+      workspace_size = std::max(
+          workspace_size, search4::GetWorkspaceSize(args4, data_result.algo));
 #endif
     }
 
@@ -1076,7 +1041,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                         handle, &alpha, args1.odesc.desc(),
                         ddx + i * group_offset_in, args1.wdesc.desc(),
                         w + i * group_offset_filter, args1.cdesc.desc(),
-                        bwd_algo1, &beta, args1.idesc.desc(),
+                        bwd_result1.algo, &beta, args1.idesc.desc(),
                         transformed_ddy_channel + i * group_offset_out,
                         workspace_ptr, workspace_size));
               },
@@ -1089,7 +1054,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                         handle, &alpha, args1.wdesc.desc(),
                         w + i * group_offset_filter, args1.odesc.desc(),
                         ddx + i * group_offset_in, args1.cdesc.desc(),
-                        bwd_algo1, workspace_ptr, workspace_size, &beta,
+                        bwd_result1.algo, workspace_ptr, workspace_size, &beta,
                         args1.idesc.desc(),
                         transformed_ddy_channel + i * group_offset_out));
               },
@@ -1111,7 +1076,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                         handle, &alpha, args2.odesc.desc(),
                         x + i * group_offset_in, args2.wdesc.desc(),
                         ddw + i * group_offset_filter, args2.cdesc.desc(),
-                        bwd_algo2, &beta, args2.idesc.desc(),
+                        bwd_result2.algo, &beta, args2.idesc.desc(),
                         conv_x_ddw_data + i * group_offset_out, workspace_ptr,
                         workspace_size));
               },
@@ -1129,8 +1094,8 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                     platform::dynload::cudnnConvolutionBackwardData(
                         handle, &alpha, args2.wdesc.desc(),
                         ddw + i * group_offset_filter, args2.odesc.desc(),
-                        x + i * group_offset_in, args2.cdesc.desc(), bwd_algo2,
-                        workspace_ptr, workspace_size, &alpha,
+                        x + i * group_offset_in, args2.cdesc.desc(),
+                        bwd_result2.algo, workspace_ptr, workspace_size, &alpha,
                         args2.idesc.desc(),
                         transformed_ddy_channel + i * group_offset_out));
               },
@@ -1174,7 +1139,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                       handle, &alpha, args3.odesc.desc(),
                       ddx + i * group_offset_in, args3.idesc.desc(),
                       transformed_dy_channel + i * group_offset_out,
-                      args3.cdesc.desc(), filter_algo, &beta,
+                      args3.cdesc.desc(), filter_result.algo, &beta,
                       args3.wdesc.desc(), dw + i * group_offset_filter,
                       workspace_ptr, workspace_size));
             },
@@ -1187,7 +1152,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                       handle, &alpha, args3.idesc.desc(),
                       transformed_dy_channel + i * group_offset_out,
                       args3.odesc.desc(), ddx + i * group_offset_in,
-                      args3.cdesc.desc(), filter_algo, workspace_ptr,
+                      args3.cdesc.desc(), filter_result.algo, workspace_ptr,
                       workspace_size, &beta, args3.wdesc.desc(),
                       dw + i * group_offset_filter));
             },
@@ -1207,9 +1172,9 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                       handle, &alpha, args4.idesc.desc(),
                       transformed_dy_channel + i * group_offset_out,
                       args4.wdesc.desc(), ddw + i * group_offset_filter,
-                      args4.cdesc.desc(), data_algo, &beta, args4.odesc.desc(),
-                      transformed_dx + i * group_offset_in, workspace_ptr,
-                      workspace_size));
+                      args4.cdesc.desc(), data_result.algo, &beta,
+                      args4.odesc.desc(), transformed_dx + i * group_offset_in,
+                      workspace_ptr, workspace_size));
             },
             workspace_size);
 #else   // PADDLE_WITH_HIP
@@ -1220,7 +1185,7 @@ class CUDNNConvTransposeDoubleGradOpKernel : public framework::OpKernel<T> {
                       handle, &alpha, args4.idesc.desc(),
                       transformed_dy_channel + i * group_offset_out,
                       args4.wdesc.desc(), ddw + i * group_offset_filter,
-                      args4.cdesc.desc(), data_algo, workspace_ptr,
+                      args4.cdesc.desc(), data_result.algo, workspace_ptr,
                       workspace_size, &beta, args4.odesc.desc(),
                       transformed_dx + i * group_offset_in));
             },

@@ -19,13 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using ConvArgs = ConvArgsBase<miopenHandle_t, miopenDataType_t>;
-using framework::AlgorithmsCache;
-
-template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
-
 
 template <typename DeviceContext, typename T, size_t D>
 static void RemovePaddingSlice(const phi::GPUContext& context,
@@ -43,7 +37,8 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
   }
 
   for (size_t i = 0; i < axes.size(); ++i) {
-    int start; = starts[i];
+    int start;
+    = starts[i];
     if (start < 0) {
       start = (start + in_dims[axes[i]]);
     }
@@ -59,30 +54,6 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
           *out, new_out_dims);
   out_t.device(place) = in_t.slice(offsets, extents);
 }
-
-using framework::ConvSearchCache;
-
-// struct ConvArgs {
-//   miopenHandle_t handle;
-//   platform::TensorDescriptor idesc, odesc;
-//   platform::FilterDescriptor wdesc;
-//   platform::ConvolutionDescriptor cdesc;
-//   const framework::Tensor *x, *w, *o;
-//   miopenDataType_t cudnn_dtype;
-
-//   // strides
-//   std::vector<int> s;
-//   // paddings
-//   std::vector<int> p;
-//   // dilations
-//   std::vector<int> d;
-
-//   ConvArgs(const framework::Tensor* x, const framework::Tensor* w,
-//            const framework::Tensor* o, const std::vector<int> s,
-//            const std::vector<int> p, const std::vector<int> d,
-//            miopenDataType_t dtype)
-//       : x(x), w(w), o(o), s(s), p(p), d(d), cudnn_dtype(dtype) {}
-// };
 
 template <typename algo_t>
 struct SearchAlgorithm {};

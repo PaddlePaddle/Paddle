@@ -68,7 +68,6 @@ void ConvCudnnKernel(const Context& ctx,
                         "FLAGS_cudnn_deterministic True at same time."));
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
 #ifdef PADDLE_WITH_HIP
@@ -213,12 +212,12 @@ void ConvCudnnKernel(const Context& ctx,
 
   // ------------------- cudnn descriptors ---------------------
   auto args = paddle::operators::ConvArgs(&transformed_input,
-                                   &transformed_filter_channel,
-                                   &transformed_output,
-                                   strides,
-                                   padding_common,
-                                   dilations,
-                                   dtype);
+                                          &transformed_filter_channel,
+                                          &transformed_output,
+                                          strides,
+                                          padding_common,
+                                          dilations,
+                                          dtype);
 
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -309,16 +308,17 @@ void ConvCudnnKernel(const Context& ctx,
   size_t workspace_size = 0;  // final workspace to allocate.
 // ------------------- cudnn conv algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
-  miopenConvFwdAlgorithm_t algo{};
+  paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> algo_result;
   using search = paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
   workspace_size = search::GetWorkspaceSize(args);
-  algo = search::Find<T>(args, exhaustive_search, deterministic, workspace_size, ctx);
+  algo_result.algo = search::Find<T>(
+      args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
   paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> algo_result;
-  using search = paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+  using search =
+      paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
   algo_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
   workspace_size = search::GetWorkspaceSize(args, algo_result.algo);
-  auto algo = algo_result.algo;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
