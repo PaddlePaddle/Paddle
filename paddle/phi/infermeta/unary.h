@@ -212,46 +212,6 @@ void OneHotRawInferMeta(const MetaTensor& x,
 
 void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
-void DiagInferMeta(const MetaTensor& x,
-                   int offset,
-                   float padding_value,
-                   MetaTensor* out);
-
-void ArgMinMaxInferMeta(const MetaTensor& x,
-                        int64_t axis,
-                        bool keepdims,
-                        bool flatten,
-                        int dtype,
-                        MetaTensor* out,
-                        MetaConfig config = MetaConfig());
-
-void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
-
-void PadInferMeta(const MetaTensor& input,
-                  const std::vector<int>& paddings,
-                  float pad_value,
-                  MetaTensor* out,
-                  MetaConfig config = MetaConfig());
-
-void DiagonalInferMeta(
-    const MetaTensor& input, int offset, int axis1, int axis2, MetaTensor* out);
-
-void PixelShuffleInferMeta(const MetaTensor& x,
-                           int upscale_factor,
-                           const std::string& data_format,
-                           MetaTensor* out);
-
-void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
-
-void TransposeInferMeta(const MetaTensor& x,
-                        const std::vector<int>& axis,
-                        MetaTensor* out);
-
-void EighInferMeta(const MetaTensor& x,
-                   const std::string& uplo,
-                   MetaTensor* out_w,
-                   MetaTensor* out_v);
-
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
 }  // namespace phi
