@@ -21,7 +21,6 @@ import numpy as np
 from types import MethodType
 
 import paddle
-import paddle.distributed as dist
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid import layers
