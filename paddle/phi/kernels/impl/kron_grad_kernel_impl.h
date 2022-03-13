@@ -19,6 +19,7 @@
 namespace phi {
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 template <typename T>
 struct KronGradElemFunctor {
@@ -86,12 +87,12 @@ struct KronGradElemFunctor {
 };
 
 template <typename T>
-struct KronGradElemFunctor<platform::complex<T>> {
-  KronGradElemFunctor(const platform::complex<T>* dout,
-                      const platform::complex<T>* A,
-                      const platform::complex<T>* B,
-                      platform::complex<T>* dout_a,
-                      platform::complex<T>* dout_b,
+struct KronGradElemFunctor<plat::complex<T>> {
+  KronGradElemFunctor(const plat::complex<T>* dout,
+                      const plat::complex<T>* A,
+                      const plat::complex<T>* B,
+                      plat::complex<T>* dout_a,
+                      plat::complex<T>* dout_b,
                       const int64_t* stride_dout,
                       const int64_t* stride_a,
                       const int64_t* stride_b,
@@ -128,23 +129,21 @@ struct KronGradElemFunctor<platform::complex<T>> {
     if (dout_a_) {
       size_t index_out_a = index_a * numel_b_ + index_b;
       dout_a_[index_out_a] =
-          dout_[idx] *
-          platform::complex<T>(B_[index_b].real, -B_[index_b].imag);
+          dout_[idx] * plat::complex<T>(B_[index_b].real, -B_[index_b].imag);
     }
     if (dout_b_) {
       size_t index_out_b = index_b * numel_a_ + index_a;
       dout_b_[index_out_b] =
-          dout_[idx] *
-          platform::complex<T>(A_[index_a].real, -A_[index_a].imag);
+          dout_[idx] * plat::complex<T>(A_[index_a].real, -A_[index_a].imag);
     }
   }
 
  private:
-  const platform::complex<T>* dout_;
-  const platform::complex<T>* A_;
-  const platform::complex<T>* B_;
-  platform::complex<T>* dout_a_;
-  platform::complex<T>* dout_b_;
+  const plat::complex<T>* dout_;
+  const plat::complex<T>* A_;
+  const plat::complex<T>* B_;
+  plat::complex<T>* dout_a_;
+  plat::complex<T>* dout_b_;
   const int64_t* stride_dout_;
   const int64_t* stride_a_;
   const int64_t* stride_b_;
@@ -217,7 +216,7 @@ struct KronGradOpFunctor {
       p_dout_y = dout_y.data<T>();
     }
 
-    paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+    plat::ForRange<Context> for_range(dev_ctx, numel);
     KronGradElemFunctor<T> func(dout.data<T>(),
                                 x.data<T>(),
                                 y.data<T>(),
@@ -235,8 +234,7 @@ struct KronGradOpFunctor {
 // reduce_sum along aixs 1
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
-    auto* ctx =
-        reinterpret_cast<const paddle::platform::CUDADeviceContext*>(&dev_ctx);
+    auto* ctx = reinterpret_cast<const plat::CUDADeviceContext*>(&dev_ctx);
     if (dx) {
       ops::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           *ctx, dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
