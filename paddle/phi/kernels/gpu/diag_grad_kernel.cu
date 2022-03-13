@@ -77,10 +77,10 @@ void DiagGradKernel(const Context& dev_ctx,
   if (dx_dims.size() == 1) {
     auto dx_length = dx_dims[0];
     auto size = (offset > 0) ? dx_length + offset : dx_length - offset;
-    const int& dx_stride = phi::funcs::ComputeStride(0, dx_dims);
+    int dx_stride = phi::funcs::ComputeStride(0, dx_dims);
     if (size > 0) {
-      const auto& dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
-      const auto& dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);
+      auto dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
+      auto dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);
       auto start =
           (offset >= 0 ? offset * dout_stride_1 : -offset * dout_stride_0);
 
@@ -100,8 +100,8 @@ void DiagGradKernel(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_padding_value;
     set_padding_value(dev_ctx, x_grad, static_cast<T>(0));
 
-    const int& dx_stride_0 = phi::funcs::ComputeStride(0, dx_dims);
-    const int& dx_stride_1 = phi::funcs::ComputeStride(1, dx_dims);
+    int dx_stride_0 = phi::funcs::ComputeStride(0, dx_dims);
+    int dx_stride_1 = phi::funcs::ComputeStride(1, dx_dims);
     int64_t size;
     if (offset > 0) {
       size = std::min(dx_dims[0], dx_dims[1] - offset);
@@ -111,7 +111,7 @@ void DiagGradKernel(const Context& dev_ctx,
 
     if (size > 0) {
       auto start = (offset >= 0 ? offset * dx_stride_1 : -offset * dx_stride_0);
-      const auto& dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
+      auto dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
       PasteDiagonalKernel<T><<<std::get<1>(block_grid_size),
                                std::get<0>(block_grid_size),
@@ -132,6 +132,7 @@ PD_REGISTER_KERNEL(diag_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DiagGradKernel,
+                   phi::dtype::float16,
                    int,
                    int64_t,
                    float,

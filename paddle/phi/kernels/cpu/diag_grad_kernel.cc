@@ -33,7 +33,7 @@ void DiagGradKernel(const Context& dev_ctx,
 
   if (dx_dims.size() == 1) {
     auto dx_length = dx_dims[0];
-    const int& dx_stride = phi::funcs::ComputeStride(0, dx_dims);
+    int dx_stride = phi::funcs::ComputeStride(0, dx_dims);
 
     auto dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
     auto dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);
@@ -47,8 +47,8 @@ void DiagGradKernel(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_padding_value;
     set_padding_value(dev_ctx, x_grad, static_cast<T>(0));
 
-    const int& dx_stride_0 = phi::funcs::ComputeStride(0, dx_dims);
-    const int& dx_stride_1 = phi::funcs::ComputeStride(1, dx_dims);
+    int dx_stride_0 = phi::funcs::ComputeStride(0, dx_dims);
+    int dx_stride_1 = phi::funcs::ComputeStride(1, dx_dims);
     auto dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
     dx_data += (offset >= 0 ? offset * dx_stride_1 : -offset * dx_stride_0);
 
@@ -65,6 +65,7 @@ PD_REGISTER_KERNEL(diag_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::DiagGradKernel,
+                   phi::dtype::float16,
                    int,
                    int64_t,
                    float,
