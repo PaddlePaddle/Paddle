@@ -19,7 +19,6 @@
 namespace phi {
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 template <typename T>
 struct KronGradElemFunctor {
