@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/fused/attn_feed_forward.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace framework = paddle::framework;
@@ -28,6 +29,11 @@ namespace platform = paddle::platform;
 
 USE_OP(matmul);
 USE_OP_ITSELF(elementwise_add);
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
+#endif
 
 // get paddle matmul op results as baseline
 template <typename T>
