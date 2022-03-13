@@ -67,9 +67,9 @@ void AdagradDenseKernel(const Context& ctx,
 
   auto param_out = EigenVector<T>::Flatten(*param_out_tensor);
   auto moment_out = EigenVector<T>::Flatten(*moment_out_tensor);
-  auto* place = ctx.template eigen_device();
+  auto place = *ctx.eigen_device();
 
-  moment_out.device(*place) = moment + grad * grad;
+  moment_out.device(place) = moment + grad * grad;
   Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
   if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
     auto* lr = learning_rate.data<T>();
