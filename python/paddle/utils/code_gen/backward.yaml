@@ -352,3 +352,54 @@
     param : [out_grad]
   kernel :
     func : dropout_grad
+
+
+- backward_api : erf_grad
+  forward : erf (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : erf_grad
+  
+- backward_api : erfinv_grad
+  forward : erf (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : ErfinvGradInferMeta
+    param : [out]
+  kernel :
+    func : erfinv_grad
+
+- backward_api : expand_as_grad
+  forward : expand_as (Tensor x, Tensor y, int[] target_shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] target_shape)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedGradInferMeta
+    param : [x]
+  kernel :
+    func : expand_as_grad
+
+- backward_api : expand_grad
+  forward : expand (Tensor x, ScalarArray shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, ScalarArray shape)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedGradInferMeta
+    param : [x]
+  kernel :
+    func : expand_grad
+
+- backward_api : graph_send_recv_grad
+  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, string pool_type) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor out_grad, Tensor x, Tensor out, Tensor src_index, Tensor dst_index, Tensor dst_count, string pool_type)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedGradInferMeta
+    param : [x]
+  kernel :
+    func : graph_send_recv_grad
