@@ -38,25 +38,12 @@ class Converter(object):
                 key is tensor's name(str), value is tensor's distributed attribute in current
                 rank.
         """
-        self._tensors_dict = tensors_dict
-        self._pre_strategy = pre_strategy
-        self._cur_strategy = cur_strategy
+        self._tensors_dict = self._check_tensor_dict(tensors_dict)
+        self._pre_strategy = self._check_pre_strategy(pre_strategy)
+        self._cur_strategy = self._check_cur_strategy(cur_strategy)
         self._logger = get_logger(logging.INFO)
 
-    @property
-    def tensors_dict(self):
-        return self._tensors_dict
-
-    @property
-    def pre_strategy(self):
-        return self._pre_strategy
-
-    @property
-    def cur_strategy(self):
-        return self._cur_strategy
-
-    @tensors_dict.setter
-    def tensors_dict(self, tensors_dict):
+    def _check_tensor_dict(self, tensors_dict):
         if not tensors_dict:
             raise ValueError("'tensors_dict' is None, "
                              "the tensors to be converted cannot be None.")
@@ -64,27 +51,25 @@ class Converter(object):
             raise TypeError(
                 "The type of 'tensors_dict' should be 'dict', but got '{}'.".
                 format(str(type(tensors_dict))))
-        self._tensors_dict = tensors_dict
+        return tensors_dict
 
-    @pre_strategy.setter
-    def pre_strategy(self, pre_strategy):
+    def _check_pre_strategy(self, pre_strategy):
         if not pre_strategy:
             raise ValueError("'pre_strategy' is None, "
                              "there are not tensors in pre process.")
         if not isinstance(pre_strategy, dict):
             raise TypeError("The type of 'pre_strategy' should be 'dict', "
                             "but got '{}'.".format(str(type(pre_strategy))))
-        self._pre_strategy = pre_strategy
+        return pre_strategy
 
-    @cur_strategy.setter
-    def cur_strategy(self, cur_strategy):
+    def _check_cur_strategy(self, cur_strategy):
         if not cur_strategy:
             warnings.warn("'cur_strategy' is None, "
                           "there are not tensors in cur process")
         if not isinstance(cur_strategy, dict):
             raise TypeError("The type of 'cur_strategy' should be 'dict', "
                             "but got '{}'.".format(str(type(cur_strategy))))
-        self._cur_strategy = cur_strategy
+        return cur_strategy
 
     def convert(self, strict=True):
         """

@@ -18,6 +18,7 @@ import sys
 import shutil
 import subprocess
 from paddle.distributed.fleet.launch_utils import run_with_coverage
+from paddle.distributed.auto_parallel.converter import Converter
 
 
 class TestConverter(unittest.TestCase):
@@ -42,6 +43,26 @@ class TestConverter(unittest.TestCase):
         log_path = os.path.join(file_dir, "log")
         if os.path.exists(log_path):
             shutil.rmtree(log_path)
+
+    def test_input_invalid(self):
+        with self.assertRaises(ValueError):
+            Converter({}, [], [])
+        with self.assertRaises(TypeError):
+            Converter([0, 1], [], [])
+        with self.assertRaises(ValueError):
+            Converter({"tmp_0": [0]}, {}, [])
+        with self.assertRaises(TypeError):
+            Converter({"tmp_0": [0]}, [0], [])
+
+        strategy_1 = {
+            'tmp_0': {
+                "process_shape": [1],
+                "process_group": [0],
+                "dims_mapping": [-1]
+            }
+        }
+        with self.assertRaises(TypeError):
+            Converter({"tmp_0": [0]}, strategy_1, [])
 
 
 if __name__ == "__main__":
