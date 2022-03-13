@@ -413,7 +413,7 @@ class CAllReduceOpMLUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
     cnclDataType_t dtype =
-        platform::ToCNCLDataType(framework::TransToProtoVarType(in->type()));
+        platform::ToCNCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());

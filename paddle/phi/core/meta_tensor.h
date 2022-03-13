@@ -66,7 +66,7 @@ class MetaTensor {
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;
-  TensorBase* get_tensor() const;
+  TensorBase* tensor() const;
   TensorBase* tensor_;
 };
 
