@@ -1678,34 +1678,6 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
 }
 
-void ShardIndexInferMeta(const MetaTensor& in,
-                         int index_num,
-                         int nshards,
-                         int shard_id,
-                         int ignore_value,
-                         MetaTensor* out,
-                         MetaConfig config) {
-  auto x_dims = in.dims();
-  PADDLE_ENFORCE_GE(
-      x_dims.size(),
-      2,
-      phi::errors::InvalidArgument("Rank of Input(X) should be at least 2, "
-                                   "but the value given is %d.",
-                                   x_dims.size()));
-  if (config.is_runtime || x_dims[x_dims.size() - 1] > 0) {
-    PADDLE_ENFORCE_EQ(x_dims[x_dims.size() - 1],
-                      1U,
-                      phi::errors::InvalidArgument(
-                          "The last dimension of Input(X) should be 1, "
-                          "but the value given is %d.",
-                          x_dims[x_dims.size() - 1]));
-  }
-
-  out->set_dims(x_dims);
-  out->share_lod(in);
-  out->set_dtype(in.dtype());
-}
-
 void RollInferMeta(const MetaTensor& x,
                    const ScalarArray& shifts,
                    const ScalarArray& axis,
