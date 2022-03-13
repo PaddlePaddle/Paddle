@@ -215,7 +215,7 @@ REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
                   ops::SoftmaxOpGradMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
                   ops::SoftmaxInplaceInferer, SoftmaxInferShapeFunctor);
-DECLARE_INFER_SHAPE_FUNCTOR(softmax_grad, SoftmaxGradnferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(softmax_grad, SoftmaxGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralUnaryGradInferMeta));
 REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad,
-                  SoftmaxGradnferShapeFunctor);
+                  SoftmaxGradInferShapeFunctor);
