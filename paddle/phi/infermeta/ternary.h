@@ -30,6 +30,11 @@ namespace phi {
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
 //
+void RangeInferMeta(const MetaTensor& Start,
+                    const MetaTensor& End,
+                    const MetaTensor& Step,
+                    MetaTensor* out);
+
 void AccuracyInferMeta(const MetaTensor& out,
                        const MetaTensor& indice,
                        const MetaTensor& label,
