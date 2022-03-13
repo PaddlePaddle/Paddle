@@ -484,5 +484,33 @@ TEST(ARG_MAP, set_value) {
       "set_value");
 }
 
+TEST(ARG_MAP, allclose) {
+  TestArgumentMappingContext arg_case1(
+      {"Input", "Other", "Rtol"},
+      {},
+      {{"atol", paddle::any(std::string{"1e-8"})},
+       {"equal_nan", paddle::any(false)}},
+      {"Out"},
+      {});
+  auto signature1 =
+      OpUtilsMap::Instance().GetArgumentMappingFn("allclose")(arg_case1);
+  ASSERT_EQ(signature1.name, "allclose");
+  auto attr_names1 = std::get<1>(signature1.args);
+  ASSERT_EQ(attr_names1[0], "Rtol");
+
+  TestArgumentMappingContext arg_case2(
+      {"Input", "Other", "Atol"},
+      {},
+      {{"rtol", paddle::any(std::string{"1e-5"})},
+       {"equal_nan", paddle::any(false)}},
+      {"Out"},
+      {});
+  auto signature2 =
+      OpUtilsMap::Instance().GetArgumentMappingFn("allclose")(arg_case2);
+  ASSERT_EQ(signature2.name, "allclose");
+  auto attr_names2 = std::get<1>(signature2.args);
+  ASSERT_EQ(attr_names2[1], "Atol");
+}
+
 }  // namespace tests
 }  // namespace phi
