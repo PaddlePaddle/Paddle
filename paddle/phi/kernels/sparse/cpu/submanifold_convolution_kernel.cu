@@ -12,11 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/softmax_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include <set>
+
+#include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/softmax_kernel_impl.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/sparse/submanifold_convolution_kernel.h"
 
-PD_REGISTER_KERNEL(
-    softmax, CPU, ALL_LAYOUT, phi::SoftmaxKernel, float, double) {}
+namespace phi {
+namespace sparse {}  // namespace sparse
+}  // namespace phi
