@@ -137,7 +137,7 @@ struct KronOpFunctor {
     p_shape_y = dim_y.Get();
 #endif
 
-    paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
     KronElemFunctor<T> functor(x.data<T>(),
                                y.data<T>(),
                                out->data<T>(),

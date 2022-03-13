@@ -149,7 +149,7 @@ struct KronGradOpFunctor {
       p_dout_y = dout_y.data<T>();
     }
 
-    paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
     KronGradElemFunctor<T> func(dout.data<T>(),
                                 x.data<T>(),
                                 y.data<T>(),
@@ -167,23 +167,15 @@ struct KronGradOpFunctor {
 // reduce_sum along aixs 1
 #if defined(__NVCC__) || defined(__HIPCC__)
     auto stream = dev_ctx.stream();  // it is a cuda device_context
+    auto* ctx =
+        reinterpret_cast<const paddle::platform::CUDADeviceContext*>(&dev_ctx);
     if (dx) {
       ops::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          plat::CUDADeviceContext(dev_ctx.GetPlace()),
-          dout_x,
-          dx,
-          kps::IdentityFunctor<T>(),
-          {1},
-          stream);
+          *ctx, dout_x, dx, kps::IdentityFunctor<T>(), {1}, stream);
     }
     if (dy) {
       ops::TensorReduceImpl<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          plat::CUDADeviceContext(dev_ctx.GetPlace()),
-          dout_y,
-          dy,
-          kps::IdentityFunctor<T>(),
-          {1},
-          stream);
+          *ctx, dout_y, dy, kps::IdentityFunctor<T>(), {1}, stream);
     }
 #else
     auto* place = dev_ctx.eigen_device();
