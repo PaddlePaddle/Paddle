@@ -745,49 +745,314 @@
   kernel :
     func : isfinite
 
+# label_smooth  ?? optional
+- api : label_smooth
+  args : (Tensor label, Tensor prior_dist, float epsilon)
+  output : Tensor
+  infer_meta :
+    func : LabelSmoothInferMeta
+  kernel :
+    func : label_smooth
+  backward : label_smooth_grad
 
-
-
-
-
-# label_smooth
 # linspace
+- api : linspace
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  output : Tensor
+  infer_meta :
+    func : LinspaceInferMeta
+  kernel :
+    func : linspace
+
 # log_loss
+- api : log_loss
+  args : (Tensor input, Tensor label, float epsilon)
+  output : Tensor
+  infer_meta :
+    func : LogLossInferMeta
+  kernel :
+    func : log_loss
+  backward : log_loss
+
 # logical_and
+- api : logical_and
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : LogicalInferMeta
+  kernel :
+    func : logical_and
+
+# logical_or
+- api : logical_or
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : LogicalInferMeta
+  kernel :
+    func : logical_or
+
+
+# logical_xor
+- api : logical_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : LogicalInferMeta
+  kernel :
+    func : logical_xor
+
+# logical_not
+- api : logical_not
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : logical_not
+
 # masked_select
+- api : masked_select
+  args : (Tensor x, Tensor mask)
+  output : Tensor
+  infer_meta :
+    func : MaksedSelectInferMeta
+  kernel :
+    func : masked_select
+  backward : masked_select_grad
+
 # multi_dot
+- api : multi_dot
+  args : (Tensor[] x)
+  output : Tensor
+  infer_meta :
+    func : MultiDotInferMeta
+  kernel :
+    func : multi_dot
+  backward : multi_dot_grad
+
 # multinomial
-# nll_loss
+- api : multinomial
+  args : (Tensor x, int num_samples, bool replacement)
+  output : Tensor
+  infer_meta :
+    func : MultinomialInferMeta
+  kernel :
+    func : multinomial
+
+# nll_loss  ?? optional
+- api : nll_loss
+  args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, string reduction)
+  output : Tensor(out), Tensor(total_weight)
+  infer_meta :
+    func : NllLossInferMeta
+  kernel :
+    func : nll_loss
+  backward : nll_loss_grad
+
 # pad
+- api : pad
+  args : (Tensor x, int[] paddings, float pad_value)
+  output : Tensor
+  infer_meta :
+    func : PadInferMeta
+  kernel :
+    func : pad
+  backward : pad_grad
+
 # pixel_shuffle
+- api : pixel_shuffle
+  args : (Tensor x, int upscale_factor, string data_format)
+  output : Tensor
+  infer_meta :
+    func : PixelShuffleInferMeta
+  kernel :
+    func : pixel_shuffle
+  backward : pixel_shuffle_grad
+
 # poisson
-# psroi_pool
+- api : poisson
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : PoissonInferMeta
+  kernel :
+    func : poisson
+  backward : poisson_grad
+
+# psroi_pool  ?? optional
+- api : psroi_pool
+  args : (Tensor x, Tensor rois, Tensor rois_num, int pooled_weight, int pooled_width, int output_channels, float spatial_scale )
+  output : Tensor
+  infer_meta :
+    func : PsroiPoolInferMeta
+  kernel :
+    func : psroi_pool
+  backward : psroi_pool_grad
+
 # randint_raw
+- api : randint
+  args : (int low, int high, ScalarArray shape, DataType dtype)
+  output : Tensor
+  infer_meta :
+    func : RandintInferMeta
+  kernel :
+    func : randint
+
 # randperm_raw
+- api : randperm
+  args : (int n, DataType dtype)
+  output : Tensor
+  infer_meta :
+    func : RandpermInferMeta
+  kernel :
+    func : randperm
+
 # max
-# max_raw
+- api : max
+  args : (Tensor x, int64_t[] dims, bool keep_dim)
+  output : Tensor
+  infer_meta :
+    func : MaxInferMeta
+  kernel :
+    func : max
+
 # reduce_prod
-# scale_sr
+- api : reduce_prod
+  args : (Tensor x, int64_t[] dims, bool keep_dim, bool reduce_all)
+  output : Tensor
+  infer_meta :
+    func : ReduceProdInferMeta
+  kernel :
+    func : reduce_prod
+
 # selu
-# set_value
-# sgd
-# shape
-# shape_sr
+- api : selu
+  args : (Tensor x, float scale, float alpha)
+  output : Tensor
+  infer_meta :
+    func : SeluInferMeta
+  kernel :
+    func : selu
+  backward : selu_grad
+
+# set_value None api
+
+# sgd # need invoke
+# shape ??? selcted rows
+
 # shard_index
+- api : shard_index
+  args : (Tensor in, int index_num, int nshards, int shard_id, int ignore_value)
+  output : Tensor
+  infer_meta :
+    func : ShardIndexInferMeta
+  kernel :
+    func : shard_index
+
 # sigmoid_cross_entropy_with_logits
+- api : sigmoid_cross_entropy_with_logits
+  args : (Tensor x, Tensor label, bool normalize, int ignore_index)
+  output : Tensor
+  infer_meta :
+    func : SigmoidCrossEntropyWithoLgitsInferMeta
+  kernel :
+    func : sigmoid_cross_entropy_with_logits
+
 # size
-# sparse_weight_embedding
+- api : size
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : SizeInferMeta
+  kernel :
+    func : size
+
 # tile
+- api : tile
+  args : (Tensor x, ScalarArray repeat_times)
+  output : Tensor
+  infer_meta :
+    func : TileInferMeta
+  kernel :
+    func : tile
+  backward : tile_grad
+
 # top_k
+- api : top_k
+  args : (Tensor x, Scalar k, int axis, bool largest, bool sorted)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopkInferMeta
+  kernel :
+    func : top_k
+  backward : top_k_grad
+
 # trace
-# phi_transfer_layout
+- api : trace
+  args : (Tensor x, int offset, int axis1, int axis2)
+  output : Tensor
+  infer_meta :
+    func : TraceInferMeta
+  kernel :
+    func : trace
+  backward : trace_grad
+
+# phi_transfer_layout | not have python api
+
 # truncated_gaussian_random
+- api : truncated_gaussian_random
+  args : (int[] shape, float mean, float std, int seed, DataType dtype)
+  output : Tensor
+  infer_meta :
+    func : TruncatedGaussianRandomInferMeta
+  kernel :
+    func : truncated_gaussian_random
+
 # unbind
+- api : unbind
+  args : (Tensor x, int axis)
+  output : Tensor[]
+  infer_meta :
+    func : UnbindInferMeta
+  kernel :
+    func : unbind
+
 # unfold
-# uniform_random_raw
-# uniform_random_raw_sr
+- api : unfold
+  args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
+  output : Tensor
+  infer_meta :
+    func : UnfoldInferMeta
+  kernel :
+    func : unfold
+  backward : unfold_grad
+
+# uniform_random_raw selected rows ??
 # viterbi_decode
+- api : viterbi_decode
+  args : (Tensor input, Tensor transition, Tensor length, bool include_bos_eos_tag)
+  output : Tensor(scores), Tensor(path)
+  infer_meta :
+    func : ViterbiDecodeInferMeta
+  kernel :
+    func : viterbi_decode
+
 # where_index
+- api : where_index
+  args : (Tensor condition)
+  output : Tensor
+  infer_meta :
+    func : WhereIndexInferMeta
+  kernel :
+    func : where_index
+
+
 # yolo_box
-# sparse_conv3d
-# dense_to_sparse_coo
+- api : yolo_box
+  args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y, bool iou_aware, float iou_aware_factor)
+  output : Tensor(boxes), Tensor(scores)
+  infer_meta :
+    func : YoloBoxInferMeta
+  kernel :
+    func : yolo_box

@@ -403,3 +403,165 @@
     param : [x]
   kernel :
     func : graph_send_recv_grad
+
+- backward_api : label_smooth_grad
+  forward : label_smooth (Tensor label, Tensor prior_dist, float epsilon) -> Tensor(out)
+  args : (Tensor out_grad, float epsilon)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : XXXXInferMeta
+    param : [x]
+  kernel :
+    func : label_smooth_grad
+  
+- backward_api : log_loss_grad
+  forward : log_loss (Tensor input, Tensor label, float epsilon) -> Tensor(out)
+  args : (Tensor input, Tensor label, Tensor out_grad, float epsilon)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : log_loss_grad
+
+- backward_api : masked_selecte_grad
+  forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
+  args : (Tensor out_grad, Tensor x, Tensor mask)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : masked_selecte_grad
+
+- backward_api : multi_dot_grad
+  forward : multi_dot (Tensor[] x) -> Tensor(out)
+  args : (Tensor out_grad, Tensor[] x)
+  output : Tensor[] (x_grad)
+  infer_meta :
+    func : XXXXInferMeta
+    param : [x]
+  kernel :
+    func : multi_dot_grad
+
+- backward_api : nll_loss_grad
+  forward : nll_loss (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, string reduction) -> Tensor(out), Tensor(total_weight)
+  args : (Tensor x, Tensor label, Tensor total_weight, Tensor weight, Tensor out_grad, int64_t ignore_index, string reduction)
+  output : Tensor[] (x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : nll_loss_grad
+  
+- backward_api : pad_grad
+  forward : pad (Tensor x, int[] paddings, float pad_value) -> Tensor(out)
+  args : (Tensor out_grad, int[] paddings, float pad_value)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : XXXXXInferMeta
+    param : [x]
+  kernel :
+    func : pad_grad
+
+- backward_api : pixel_shuffle_grad
+  forward : pixel_shuffle (Tensor x, int upscale_factor, string data_format) -> Tensor(out)
+  args : (Tensor out_grad, int upscale_factor, string data_format)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : XXXXXInferMeta
+    param : [x]
+  kernel :
+    func : pixel_shuffle_grad
+
+- backward_api : poisson_grad
+  forward : poisson (Tensor x) -> Tensor(out)
+  args : ()
+  output : Tensor(x_grad)
+  infer_meta :
+    func : XXXXXInferMeta
+    param : [x]
+  kernel :
+    func : poisson_grad
+
+- backward_api : psroi_pool_grad
+  forward : psroi_pool (Tensor x, Tensor rois, Tensor rois_num, int pooled_weight, int pooled_width, int output_channels, float spatial_scale ) -> Tensor(out)
+  args : (Tensor x, Tensor rois, Tensor rois_num, Tensor out_grad, int pooled_weight, int pooled_width, int output_channels, float spatial_scale)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : psroi_pool_grad
+
+- backward_api : selu_grad
+  forward : selu (Tensor x, float scale, float alpha) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float scale, float alpha)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : XXXXXInferMeta
+    param : [x]
+  kernel :
+    func : selu_grad
+
+- backward_api : sigmoid_cross_entropy_with_logits_grad
+  forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, bool normalize, int ignore_index) -> Tensor(out)
+  args : (Tensor x, Tensor label, Tensor out_grad, bool normalize, int ingore_index)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : sigmoid_cross_entropy_with_logits_grad
+
+- backward_api : tile_grad
+  forward : tile (Tensor x, ScalarArray repeat_times) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, ScalarArray repeat_times)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : tile_grad
+
+# forward backward type not match
+- backward_api : top_k_grad 
+  forward : top_k (Tensor x, Scalar k, int axis, bool largest, bool sorted) -> Tensor(out), Tensor(indices)
+  args : (Tensor out_grad, Tensor x, Tensor indices, int k, index axis, bool largest, bool sorted)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : top_k_grad
+
+
+- backward_api : trace_grad 
+  forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
+  args : (Tensor out_grad, Tensor x, int offset, int axis1, int axis2)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : trace_grad
+
+- backward_api : unfold_grad 
+  forward : unfold (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : unfold_grad
+
+- backward_api : where_index_grad 
+  forward : where_index (Tensor condition) -> Tensor(out)
+  args : (Tensor out_grad, Tensor x, int offset, int axis1, int axis2)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : trace_grad
