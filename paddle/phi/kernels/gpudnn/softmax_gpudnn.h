@@ -904,6 +904,32 @@ static bool CanUseCudnnSoftmax(const GPUContext& dev_ctx) {
   return false;
 }
 
+#if CUDNN_VERSION < 8100
+template <>
+inline void SoftmaxForwardCudnnKernel<phi::dtype::bfloat16>(
+    const GPUContext& dev_ctx,
+    const DenseTensor& x,
+    const int axis,
+    const bool log_mode,
+    DenseTensor* out) {
+  PADDLE_THROW(
+      "This kernel is not supported when the dtype is bf16 and CUDNN_VERSION < "
+      "8100.");
+}
+template <>
+inline void SoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
+    const GPUContext& dev_ctx,
+    const DenseTensor& out,
+    const DenseTensor& dout,
+    const int axis,
+    const bool log_mode,
+    DenseTensor* dx) {
+  PADDLE_THROW(
+      "This kernel is not supported when the dtype is bf16 and CUDNN_VERSION < "
+      "8100.");
+}
+#endif
+
 template <typename T, bool LogMode = false>
 void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
                                     const DenseTensor& x,
