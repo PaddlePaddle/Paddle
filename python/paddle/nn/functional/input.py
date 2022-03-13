@@ -89,7 +89,7 @@ def one_hot(x, num_classes, name=None):
 
     if in_dynamic_mode():
         if _in_eager_mode():
-            return _C_ops.one_hot(x, num_classes)
+            return _C_ops.final_state_one_hot(x, num_classes)
         return _C_ops.one_hot_v2(x, 'depth', num_classes, 'allow_out_of_range',
                                  False)
     else:
