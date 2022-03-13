@@ -1006,27 +1006,27 @@ def nanmean(x,axis=None,keepdim=None,name=None):
             x = np.array([[float('nan'), 0.3, 0.5, 0.9],
                           [0.1, 0.2, float('-nan'), 0.7]]).astype(np.float32)
             x = paddle.to_tensor(x)
-            out1 = nanmean(x)                       
-            # [0.45000002]                   
-            out2 = nanmean(x, axis=0)                
+            out1 = nanmean(x)
+            # [0.45000002] 
+            out2 = nanmean(x, axis=0)
             # [0.1, 0.25, 0.5, 0.79999995]
-            out3 = nanmean(x, axis=0, keepdim=True)   
+            out3 = nanmean(x, axis=0, keepdim=True)
             # [[0.1, 0.25, 0.5, 0.79999995]]
-            out4 = nanmean(x, axis=1)                
+            out4 = nanmean(x, axis=1)
             # [0.56666666 0.33333334]
-            out5 = nanmean(x, axis=1, keepdim=True)   
+            out5 = nanmean(x, axis=1, keepdim=True)
             # [[0.56666666]
             #  [0.33333334]]
             # y is a Tensor with shape [2, 2, 2] and elements as below:
             # [[[1, nan], [3, 4]],
             #   [[5, 6], [-nan, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = np.array([[[1, float('nan')], [3, 4]], 
+            y = np.array([[[1, float('nan')], [3, 4]],
                            [[5, 6], [float('-nan'), 8]]])
             y = paddle.to_tensor(y)
-            out5 = paddle.nanmean(y, axis=[1, 2]) 
+            out5 = paddle.nanmean(y, axis=[1, 2])
             # [2.66666667, 6.33333333]
-            out6 = paddle.nanmean(y, axis=[0, 1]) 
+            out6 = paddle.nanmean(y, axis=[0, 1])
             # [3., 6.]
     """
     if isinstance(axis, int):
