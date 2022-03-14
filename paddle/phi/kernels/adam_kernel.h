@@ -45,30 +45,4 @@ void AdamDenseKernel(const Context& dev_ctx,
                      DenseTensor* beta2_pow_out,
                      DenseTensor* master_param_outs);
 
-template <typename T, typename Context>
-void AdamDenseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const SelectedRows& grad,
-    const DenseTensor& learning_rate,
-    const DenseTensor& moment1,
-    const DenseTensor& moment2,
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
-    paddle::optional<const DenseTensor&> master_param,
-    paddle::optional<const DenseTensor&> skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
-    bool use_global_beta_pow,
-    DenseTensor* param_out,
-    DenseTensor* moment1_out,
-    DenseTensor* moment2_out,
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs);
-
 }  // namespace phi

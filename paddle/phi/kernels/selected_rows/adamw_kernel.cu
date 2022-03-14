@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/adamw_kernel.h"
+#include "paddle/phi/kernels/selected_rows/adamw_kernel.h"
 
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <vector>
@@ -28,103 +28,7 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
-template <typename T, typename MT>
-__global__ void AdamWKernelREG(MT beta1,
-                               MT beta2,
-                               MT epsilon,
-                               MT coeff,
-                               MT lr_ratio,
-                               MT beta1_pow_,
-                               MT beta2_pow_,
-                               const MT* moment1,
-                               MT* moment1_out,
-                               const MT* moment2,
-                               MT* moment2_out,
-                               const MT* lr_,
-                               const T* grad,
-                               const T* param,
-                               T* param_out,
-                               const MT* master_param,
-                               MT* master_param_out,
-                               int ndim) {
-  MT lr = *lr_ * lr_ratio;
-  MT beta1_pow = beta1_pow_;
-  MT beta2_pow = beta2_pow_;
-
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-
-  for (; id < ndim; id += gridDim.x * blockDim.x) {
-    MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
-    MT g = static_cast<MT>(grad[id]);
-    MT mom1 = static_cast<MT>(moment1[id]);
-    MT mom2 = static_cast<MT>(moment2[id]);
-
-    p *= (static_cast<MT>(1.0) - lr * coeff);
-
-    mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
-    mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-
-    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
-
-    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
-
-    moment1_out[id] = mom1;
-    moment2_out[id] = mom2;
-    param_out[id] = static_cast<T>(p);
-    if (master_param_out) {
-      master_param_out[id] = p;
-    }
-  }
-}
-
-template <typename T, typename MT>
-__global__ void AdamWKernelMEM(MT beta1,
-                               MT beta2,
-                               MT epsilon,
-                               MT coeff,
-                               MT lr_ratio,
-                               const MT* beta1_pow_,
-                               const MT* beta2_pow_,
-                               const MT* moment1,
-                               MT* moment1_out,
-                               const MT* moment2,
-                               MT* moment2_out,
-                               const MT* lr_,
-                               const T* grad,
-                               const T* param,
-                               T* param_out,
-                               const MT* master_param,
-                               MT* master_param_out,
-                               int ndim) {
-  MT lr = *lr_ * lr_ratio;
-  MT beta1_pow = *beta1_pow_;
-  MT beta2_pow = *beta2_pow_;
-
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-
-  for (; id < ndim; id += gridDim.x * blockDim.x) {
-    MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
-    MT g = static_cast<MT>(grad[id]);
-    MT mom1 = static_cast<MT>(moment1[id]);
-    MT mom2 = static_cast<MT>(moment2[id]);
-
-    p *= (static_cast<MT>(1.0) - lr * coeff);
-
-    mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
-    mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
-
-    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
-
-    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
-
-    moment1_out[id] = mom1;
-    moment2_out[id] = mom2;
-    param_out[id] = static_cast<T>(p);
-    if (master_param_out) {
-      master_param_out[id] = p;
-    }
-  }
-}
+namespace sr {
 
 template <typename T>
 __global__ void UpdateAdamWBetaPow(T beta1,
@@ -137,33 +41,94 @@ __global__ void UpdateAdamWBetaPow(T beta1,
   *beta2_pow_out = beta2 * beta2_pow_[0];
 }
 
-template <typename T, typename Context>
-void AdamwDenseKernel(const Context& dev_ctx,
-                      const DenseTensor& param,
-                      const DenseTensor& grad,
-                      const DenseTensor& learning_rate,
-                      const DenseTensor& moment1,
-                      const DenseTensor& moment2,
-                      const DenseTensor& beta1_pow,
-                      const DenseTensor& beta2_pow,
-                      paddle::optional<const DenseTensor&> master_param,
-                      paddle::optional<const DenseTensor&> skip_update,
-                      const Scalar& beta1,
-                      const Scalar& beta2,
-                      const Scalar& epsilon,
-                      float lr_ratio,
-                      float coeff,
-                      bool with_decay,
-                      bool lazy_mode,
-                      int64_t min_row_size_to_use_multithread,
-                      bool multi_precision,
-                      bool use_global_beta_pow,
-                      DenseTensor* param_out,
-                      DenseTensor* moment1_out,
-                      DenseTensor* moment2_out,
-                      DenseTensor* beta1_pow_out,
-                      DenseTensor* beta2_pow_out,
-                      DenseTensor* master_param_outs) {
+template <typename T, typename MT>
+__global__ void SparseAdamWCUDAKernelREG(MT beta1,
+                                         MT beta2,
+                                         MT epsilon,
+                                         MT coeff,
+                                         MT lr_ratio,
+                                         const MT beta1_pow,
+                                         const MT beta2_pow,
+                                         const MT* mom1_,
+                                         MT* mom1_out_,
+                                         const MT* mom2_,
+                                         MT* mom2_out_,
+                                         const MT* lr_,
+                                         const T* grad_,
+                                         const T* param_,
+                                         T* param_out_,
+                                         const MT* master_param,
+                                         MT* master_param_out,
+                                         const int64_t* rows_,
+                                         int64_t row_numel,
+                                         int64_t row_count,
+                                         bool lazy_mode,
+                                         int ndim) {
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  MT lr = *lr_ * lr_ratio;
+
+  for (; id < ndim; id += blockDim.x * gridDim.x) {
+    auto row_idx =
+        phi::funcs::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
+    if (lazy_mode && row_idx < 0) {
+      return;
+    } else {
+      MT mom1 = static_cast<MT>(mom1_[id]);
+      MT mom2 = static_cast<MT>(mom2_[id]);
+
+      MT p = master_param ? master_param[id] : static_cast<MT>(param_[id]);
+      MT g = row_idx >= 0
+                 ? static_cast<MT>(grad_[row_idx * row_numel + id % row_numel])
+                 : static_cast<MT>(0);
+
+      p *= (static_cast<MT>(1.0) - lr * coeff);
+
+      mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
+      mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
+
+      MT denom =
+          (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+
+      p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
+
+      // Write back to global memory
+      mom1_out_[id] = mom1;
+      mom2_out_[id] = mom2;
+      param_out_[id] = static_cast<T>(p);
+      if (master_param_out) {
+        master_param_out[id] = p;
+      }
+    }
+  }
+}
+
+xtemplate<typename T, typename Context> void AdamwDenseParamSparseGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const SelectedRows& grad,
+    const DenseTensor& learning_rate,
+    const DenseTensor& moment1,
+    const DenseTensor& moment2,
+    const DenseTensor& beta1_pow,
+    const DenseTensor& beta2_pow,
+    paddle::optional<const DenseTensor&> master_param,
+    paddle::optional<const DenseTensor&> skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    float lr_ratio,
+    float coeff,
+    bool with_decay,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    DenseTensor* param_out,
+    DenseTensor* moment1_out,
+    DenseTensor* moment2_out,
+    DenseTensor* beta1_pow_out,
+    DenseTensor* beta2_pow_out,
+    DenseTensor* master_param_outs) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
@@ -226,13 +191,46 @@ void AdamwDenseKernel(const Context& dev_ctx,
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                       : nullptr;
 
-  // update param and moment
-  int threads = 512;
-  int blocks = (param.numel() + threads - 1) / threads;
+  if (grad.rows().size() == 0) {
+    VLOG(3) << "grad row size is 0!!";
+    return;
+  }
+
+  std::vector<int64_t> cpu_rows(grad.rows().begin(), grad.rows().end());
+  bool is_strict_sorted = true;
+  for (size_t i = 1; i < cpu_rows.size(); ++i) {
+    if (cpu_rows[i - 1] >= cpu_rows[i]) {
+      is_strict_sorted = false;
+      break;
+    }
+  }
+
+  phi::SelectedRows tmp_grad_merge;
+  const phi::SelectedRows* grad_merge_ptr;
+  if (is_strict_sorted) {
+    grad_merge_ptr = &grad;
+  } else {
+    // merge duplicated rows if any.
+    // The rows of grad_merge have been sorted inside MergeAdd functor
+    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+    merge_func(dev_ctx, grad, &tmp_grad_merge, true);
+    grad_merge_ptr = &tmp_grad_merge;
+  }
+  auto& grad_merge = *grad_merge_ptr;
+  auto& grad_tensor = grad_merge.value();
+  const T* grad_data = grad_tensor.template data<T>();
+  auto* grad_merge_rows = &grad_merge.rows();
+  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
+  auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
-    // Compute with betapow in REG
-    AdamWKernelREG<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+    int threads = 512;
+    int ndim = param.numel();
+    int blocks = (ndim + threads - 1) / threads;
+
+    SparseAdamWCUDAKernelREG<T,
+                             MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
         beta1_,
         beta2_,
         epsilon_,
@@ -245,21 +243,25 @@ void AdamwDenseKernel(const Context& dev_ctx,
         moment2.data<MPDType>(),
         dev_ctx.template Alloc<MPDType>(moment2_out),
         learning_rate.data<MPDType>(),
-        grad.data<T>(),
+        grad_data,
         param.data<T>(),
         dev_ctx.template Alloc<T>(param_out),
         master_in_data,
         master_out_data,
-        param.numel());
+        rows,
+        row_numel,
+        grad_merge.rows().size(),
+        lazy_mode,
+        ndim);
     if (!use_global_beta_pow) {
-      // Cpu update
+      // Update with cpu
       dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =
           beta1_ * beta1_pow.data<MPDType>()[0];
       dev_ctx.template HostAlloc<MPDType>(beta2_pow_out)[0] =
           beta2_ * beta2_pow.data<MPDType>()[0];
     }
   } else {
-    AdamWKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+    funcs::SparseAdamWFunctor<T, funcs::GPUAdamW, MPDType> functor(
         beta1_,
         beta2_,
         epsilon_,
@@ -272,14 +274,21 @@ void AdamwDenseKernel(const Context& dev_ctx,
         moment2.data<MPDType>(),
         dev_ctx.template Alloc<MPDType>(moment2_out),
         learning_rate.data<MPDType>(),
-        grad.data<T>(),
+        grad_data,
         param.data<T>(),
         dev_ctx.template Alloc<T>(param_out),
         master_in_data,
         master_out_data,
-        param.numel());
+        rows,
+        row_numel,
+        grad_merge.rows().size(),
+        lazy_mode);
+
+    // FIXME(minqiyang): remove BinarySearch in GPU later
+    funcs::ForRange<Context> for_range(dev_ctx, param.numel());
+    for_range(functor);
     if (!use_global_beta_pow) {
-      // Update with gpu
+      // update beta1 and beta2
       UpdateAdamWBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
@@ -291,12 +300,13 @@ void AdamwDenseKernel(const Context& dev_ctx,
   }
 }
 
+}  // namespace sr
 }  // namespace phi
 
-PD_REGISTER_KERNEL(adamw,
+PD_REGISTER_KERNEL(adamw_dense_param_sparse_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::AdamwDenseKernel,
+                   phi::sr::AdamwDenseParamSparseGradKernel,
                    float,
                    double,
                    phi::dtype::float16) {}
