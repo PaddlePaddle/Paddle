@@ -123,7 +123,7 @@ class LogSoftmaxGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(log_softmax, LogSoftmaxInferShapeFunctor,
-                            PD_INFER_META(phi::UnchangedInferMeta));
+                            PD_INFER_META(phi::UnchangedInferMetaCheckAxis));
 REGISTER_OPERATOR(log_softmax, ops::LogSoftmaxOp, ops::LogSoftmaxOpMaker,
                   ops::LogSoftmaxOpInferVarType,
                   ops::LogSoftmaxGradOpMaker<paddle::framework::OpDesc>,

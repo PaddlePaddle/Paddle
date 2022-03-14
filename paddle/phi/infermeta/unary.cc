@@ -1428,7 +1428,7 @@ void UnchangedInferMetaCheckAxis(const MetaTensor& x,
   PADDLE_ENFORCE_GE(
       axis,
       -rank,
-      errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Attr(axis) value should be in range [-R, R-1], "
           "R is the rank of Input(X). But received axis: %d, R: %d.",
           axis,
