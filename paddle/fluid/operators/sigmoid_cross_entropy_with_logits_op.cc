@@ -15,7 +15,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -26,46 +29,6 @@ const int kIgnoreIndex = -100;
 class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                   "SigmoidCrossEntropyWithLogitsOp");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
-                   "SigmoidCrossEntropyWithLogitsOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "SigmoidCrossEntropyWithLogitsOp");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto labels_dims = ctx->GetInputDim("Label");
-
-    int rank = x_dims.size();
-    PADDLE_ENFORCE_EQ(rank, labels_dims.size(),
-                      platform::errors::InvalidArgument(
-                          "Input(X) and Input(Label) shall have the same rank."
-                          "But received: the rank of Input(X) is [%d], "
-                          "the rank of Input(Label) is [%d].",
-                          rank, labels_dims.size()));
-
-    bool check = true;
-    if ((!ctx->IsRuntime()) &&
-        (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
-      check = false;
-    }
-
-    if (check) {
-      PADDLE_ENFORCE_EQ(
-          phi::slice_ddim(x_dims, 0, rank),
-          phi::slice_ddim(labels_dims, 0, rank),
-          platform::errors::InvalidArgument(
-              "Input(X) and Input(Label) shall have the same shape "
-              "except the last dimension. But received: the shape of "
-              "Input(X) is [%s], the shape of Input(Label) is [%s].",
-              x_dims, labels_dims));
-    }
-
-    ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class SigmoidCrossEntropyWithLogitsGradOp
@@ -201,12 +164,17 @@ DECLARE_INPLACE_OP_INFERER(SigmoidCrossEntropyWithLogitsGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(
+    sigmoid_cross_entropy_with_logits,
+    SigmoidCrossEntropyWithLogitsInferShapeFunctor,
+    PD_INFER_META(phi::SigmoidCrossEntropyWithLogitsInferMeta));
 REGISTER_OPERATOR(
     sigmoid_cross_entropy_with_logits, ops::SigmoidCrossEntropyWithLogitsOp,
     ops::SigmoidCrossEntropyWithLogitsOpMaker,
     ops::SigmoidCrossEntropyWithLogitsGradOpMaker<paddle::framework::OpDesc>,
     ops::SigmoidCrossEntropyWithLogitsGradOpMaker<paddle::imperative::OpBase>,
-    ops::SigmoidCrossEntropyWithLogitsInplaceInferer);
+    ops::SigmoidCrossEntropyWithLogitsInplaceInferer,
+    SigmoidCrossEntropyWithLogitsInferShapeFunctor);
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits_grad,
                   ops::SigmoidCrossEntropyWithLogitsGradOp,
                   ops::SigmoidCrossEntropyWithLogitsGradInplaceInferer);
