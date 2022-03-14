@@ -22,6 +22,56 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
+namespace detail {
+
+static void BinarySameInputDimsCheck(const MetaTensor& x,
+                                     const MetaTensor& y,
+                                     MetaConfig config) {
+  auto input_dim = x.dims();
+  auto other_dim = y.dims();
+  PADDLE_ENFORCE_EQ(input_dim.size(),
+                    other_dim.size(),
+                    phi::errors::PreconditionNotMet(
+                        "Input(Input) and Input(Other) must have the same "
+                        "dimension size."));
+  int n = input_dim.size();
+  bool is_runtime = config.is_runtime;
+  for (int i = 0; i < n; i++) {
+    if (is_runtime) {
+      PADDLE_ENFORCE_EQ(input_dim[i],
+                        other_dim[i],
+                        phi::errors::PreconditionNotMet(
+                            "The value at dim %d of Input(Input) is not "
+                            "equal to the Input(Other): %ld != %ld.",
+                            i,
+                            input_dim[i],
+                            other_dim[i]));
+    } else {
+      if (!(input_dim[i] < 0 || other_dim[i] < 0)) {
+        PADDLE_ENFORCE_EQ(input_dim[i],
+                          other_dim[i],
+                          phi::errors::PreconditionNotMet(
+                              "The value at dim %d of Input(Input) is not "
+                              "equal to the Input(Other): %ld != %ld.",
+                              i,
+                              input_dim[i],
+                              other_dim[i]));
+      }
+    }
+  }
+}
+
+}  // namespace detail
+
+void AllValueCompareInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  detail::BinarySameInputDimsCheck(x, y, config);
+
+  out->set_dims(phi::make_ddim({1}));
+  out->set_dtype(DataType::BOOL);
+}
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_meta(x);
