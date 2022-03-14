@@ -22,8 +22,8 @@ namespace ir {
 
 void MixedPrecisionConfigurePass::InsertCastOps(
     Graph* graph, const StringSet& blacklist) const {
-  VLOG(3) << "Insert the cast op before and after the kernel that only "
-             "supports fp32 precision";
+  VLOG(3) << "Insert the cast op before and after the kernel that does not "
+             "supports fp16 precision";
 
   auto update_cast_desc = [&](
       framework::OpDesc& desc, const std::string& x_name,
