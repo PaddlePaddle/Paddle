@@ -16,10 +16,6 @@
 
 namespace phi {
 
-KernelSignature KronOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("kron", {"X", "Y"}, {}, {"Out"});
-}
-
 KernelSignature KronGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("kron_grad",
                          {"X", "Y", GradVarName("Out")},
@@ -29,5 +25,4 @@ KernelSignature KronGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(kron, phi::KronOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(kron_grad, phi::KronGradOpArgumentMapping);

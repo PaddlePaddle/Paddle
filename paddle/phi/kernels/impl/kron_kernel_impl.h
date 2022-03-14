@@ -17,12 +17,11 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "thrust/device_vector.h"
 #endif
 
@@ -137,7 +136,7 @@ struct KronOpFunctor {
     p_shape_y = dim_y.Get();
 #endif
 
-    paddle::platform::ForRange<Context> for_range(dev_ctx, numel);
+    funcs::ForRange<Context> for_range(dev_ctx, numel);
     KronElemFunctor<T> functor(x.data<T>(),
                                y.data<T>(),
                                out->data<T>(),
