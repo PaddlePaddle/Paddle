@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,9 +13,23 @@
 // limitations under the License.
 
 #pragma once
+
+//===----------------------------------------------------------------------===//
+// Dialect
+//===----------------------------------------------------------------------===//
+#include <llvm/ADT/StringMap.h>
 #include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/Dialect.h>
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
+#include "paddle/infrt/dialect/infrt/common/types.h"
+
+#include "paddle/infrt/dialect/infrt/ir/infrt_opsDialect.h.inc"
+#define GET_TYPEDEF_CLASSES
+#include "paddle/infrt/dialect/infrt/ir/infrt_opsTypes.h.inc"
+
+#define GET_ATTRDEF_CLASSES
+#include "paddle/infrt/dialect/infrt/ir/infrt_opsAttributes.h.inc"
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/basic_kernels.hpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/infrt_ops.h.inc"

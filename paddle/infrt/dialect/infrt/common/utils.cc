@@ -12,25 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/infrt/dialect/infrt/common/utils.h"
 
-#include <string>
-#include <vector>
-#include "paddle/infrt/dialect/infrt/common/types.h"
+mlir::SmallVector<mlir::Value, 4> infrt::cvtValueToValueRange(
+    const mlir::Value &operand) {
+  return mlir::SmallVector<mlir::Value, 4>(1, operand);
+}
 
-namespace infrt {
-
-struct PhiKernelDesc {
-  std::vector<Place> inputsType;   // kernel input place
-  std::vector<Place> outputsType;  // kernel output place
-  Place kernelType;                // kernel place
-};
-
-std::string getPhiTargetPrefix(TargetType target);
-std::string getPhiPrecisionSuffix(PrecisionType precision);
-std::string getPhiLayoutSuffix(LayoutType layout);
-
-std::vector<PhiKernelDesc> getCandidateKernels(
-    std::string name, const std::vector<Place>& valid_palces);
-
-}  // namespace infrt
+mlir::SmallVector<mlir::Value, 4> infrt::concatTwoValueRange(
+    mlir::ValueRange operand_0, mlir::ValueRange operand_1) {
+  mlir::SmallVector<mlir::Value, 4> operands;
+  operands.append(operand_0.begin(), operand_0.end());
+  operands.append(operand_1.begin(), operand_1.end());
+  return operands;
+}

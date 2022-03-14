@@ -4,12 +4,12 @@
 #else
 #define TEST_OPS
 
-include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
 // Base class for Test dialect ops.
 class Test_Op<string mnemonic, list<OpTrait> traits = []> :
-    Op<INFRT_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
+    Op<Infrt_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
 
   // Each registered op in the Test namespace needs to provide all of a printer,
   // parser and verifier.
@@ -45,7 +45,7 @@ def BenchmarkOp : Test_Op<"benchmark"> {
          // The following code benchmarks the infrt.add.i32 kernel.
          %x = infrt.add.i32 %c, %c
          // The benchmarked function needs to return exactly one value.
-         Infrt.return %x : i32
+         infrt.return %x : i32
        }
   }];
 

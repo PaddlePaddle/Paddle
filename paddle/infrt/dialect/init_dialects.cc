@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/init_infrt_dialects.h"
+#include "paddle/infrt/dialect/init_dialects.h"
 
 #include <glog/logging.h>
 
-#include "paddle/infrt/dialect/basic_kernels.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
-#include "paddle/infrt/dialect/infrt_base.h"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+
 #include "paddle/infrt/dialect/pd_ops.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
@@ -30,8 +30,7 @@
 namespace infrt {
 void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
   registry.insert<ts::TensorShapeDialect,
-                  dialect::INFRTDialect,
-                  infrt::InfrtDialect,
+                  InfrtDialect,
                   dt::DTDialect,
                   mlir::pd::PaddleDialect,
 #ifdef INFRT_WITH_PHI
