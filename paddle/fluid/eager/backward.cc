@@ -169,8 +169,6 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
         std::string(typeid(*node).name()) + " grad_node",
         paddle::platform::TracerEventType::Operator, 1);
 
-    queue.pop();
-
     if (queue.size() > 1 && node_in_degree_map[node] != 0) {
       queue.pop();
       continue;
