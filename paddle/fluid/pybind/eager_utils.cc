@@ -34,6 +34,7 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
+using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 extern PyTypeObject* p_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;

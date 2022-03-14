@@ -385,8 +385,8 @@ bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
 }
 
 phi::KernelSignature Tracer::GetExpectedKernelSignature(
-    const std::string& type, const NameVarBaseMap& ins,
-    const NameVarBaseMap& outs, framework::AttributeMap attrs) const {
+    const std::string& type, const NameTensorMap& ins,
+    const NameTensorMap& outs, framework::AttributeMap attrs) const {
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   framework::RuntimeContext ctx({}, {});
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -401,7 +401,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
       attr_checker == nullptr ? empty_attrs_map
                               : attr_checker->GetDefaultAttrMap();
   auto dygraph_exe_ctx =
-      imperative::DygraphExecutionContext<imperative::VarBase>(
+      imperative::DygraphExecutionContext<egr::EagerVariable>(
           *op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs,
           default_attrs);
   auto* opbase_with_kernel =
