@@ -426,6 +426,13 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value) {
   return obj;
 }
 
+PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+                     ssize_t value_idx, PyObject* args, ssize_t arg_idx) {
+  PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+  Py_INCREF(obj);
+  return obj;
+}
+
 PyObject* ToPyObject(const std::vector<bool>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
@@ -494,6 +501,32 @@ PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value) {
 
   return result;
 }
+
+// PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
+// ssize_t value_idx, PyObject* args, ssize_t arg_idx) {
+//   PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+//   for (ssize_t i = 0; i < value.size(); i++) {
+//     if (i == value_idx) {
+//       PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+//       Py_INCREF(obj);
+//       PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
+//     } else {
+//       PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+//       if (obj) {
+//         auto v = reinterpret_cast<TensorObject*>(obj);
+//         new (&(v->tensor)) paddle::experimental::Tensor();
+//         v->tensor = value[i];
+//       } else {
+//         PADDLE_THROW(platform::errors::Fatal(
+//             "tp_alloc return null, can not new a PyObject."));
+//       }
+//       PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
+//     }
+//   }
+
+//   return result;
+// }
 
 PyObject* ToPyObject(const platform::Place& value) {
   auto obj = ::pybind11::cast(value);

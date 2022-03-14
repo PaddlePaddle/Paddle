@@ -854,5 +854,25 @@ void InitOpsAttrTypeMap() {
   }
 }
 
+ssize_t GetIdxFromCoreOpsInfoMap(
+    const std::unordered_map<std::string, std::vector<std::string>>&
+        core_ops_info_map,
+    const std::string& op_type, const std::string& name) {
+  if (!core_ops_info_map.count(op_type)) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Op %s is not found in core_ops_*_info map.", op_type));
+  } else {
+    auto args_list = core_ops_info_map.at(op_type);
+    auto it = std::find(args_list.begin(), args_list.end(), name);
+    if (it == args_list.end()) {
+      PADDLE_THROW(platform::errors::Fatal("%s is not found in op %s's args.",
+                                           name, op_type));
+    } else {
+      return std::distance(args_list.begin(), it);
+    }
+  }
+  return -1;
+}
+
 }  // namespace pybind
 }  // namespace paddle

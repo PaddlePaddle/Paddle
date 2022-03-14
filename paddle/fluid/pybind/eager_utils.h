@@ -56,12 +56,16 @@ PyObject* ToPyObject(double value);
 PyObject* ToPyObject(const char* value);
 PyObject* ToPyObject(const std::string& value);
 PyObject* ToPyObject(const paddle::experimental::Tensor& value);
+PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+                     ssize_t value_idx, PyObject* args, ssize_t arg_idx);
 PyObject* ToPyObject(const std::vector<bool>& value);
 PyObject* ToPyObject(const std::vector<int>& value);
 PyObject* ToPyObject(const std::vector<int64_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value);
+// PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
+// ssize_t value_idx, PyObject* args, ssize_t arg_idx);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const framework::LoDTensor* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
@@ -76,12 +80,33 @@ struct TupleTensorResult {
     TupleTensorResult<Tuple, N - 1>::Run(out, result);
     PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
   }
+
+  static void Run(const Tuple& out, PyObject* result, ssize_t value_idx,
+                  PyObject* args, ssize_t arg_idx) {
+    TupleTensorResult<Tuple, N - 1>::Run(out, result, value_idx, args, arg_idx);
+    if (N - 1 == value_idx) {
+      PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out),
+                                                 value_idx, args, arg_idx));
+    } else {
+      PyTuple_SET_ITEM(result, N - 1, ToPyObject(std::get<N - 1>(out)));
+    }
+  }
 };
 
 template <typename Tuple>
 struct TupleTensorResult<Tuple, 1> {
   static void Run(const Tuple& out, PyObject* result) {
     PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
+  }
+
+  static void Run(const Tuple& out, PyObject* result, ssize_t value_idx,
+                  PyObject* args, ssize_t arg_idx) {
+    if (value_idx == 0) {
+      PyTuple_SET_ITEM(result, 0,
+                       ToPyObject(std::get<0>(out), value_idx, args, arg_idx));
+    } else {
+      PyTuple_SET_ITEM(result, 0, ToPyObject(std::get<0>(out)));
+    }
   }
 };
 
@@ -91,6 +116,18 @@ PyObject* ToPyObject(const std::tuple<Args...>& out) {
   PyObject* result = PyTuple_New(len);
 
   TupleTensorResult<decltype(out), sizeof...(Args)>::Run(out, result);
+
+  return result;
+}
+
+template <typename... Args>
+PyObject* ToPyObject(const std::tuple<Args...>& out, ssize_t value_idx,
+                     PyObject* args, ssize_t arg_idx) {
+  auto len = sizeof...(Args);
+  PyObject* result = PyTuple_New(len);
+
+  TupleTensorResult<decltype(out), sizeof...(Args)>::Run(out, result, value_idx,
+                                                         args, arg_idx);
 
   return result;
 }

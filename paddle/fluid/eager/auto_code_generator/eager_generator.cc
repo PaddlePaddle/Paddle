@@ -1721,7 +1721,10 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   VLOG(6) << "Converted Output VarBase to EagerVariable(s)";
 
   // [Generation] Handle core_ops_returns_info
-  core_ops_returns_info[op_type] = return_contents;
+  // avoid inplace op changing core_ops_returns_info
+  if (core_ops_returns_info.empty() || !core_ops_returns_info.count(op_type)) {
+    core_ops_returns_info[op_type] = return_contents;
+  }
 
   // [Generation] ComputeRequireGrad -> GradNodeCreation
   if (!bwd_info.GenerateForwardOnly()) {

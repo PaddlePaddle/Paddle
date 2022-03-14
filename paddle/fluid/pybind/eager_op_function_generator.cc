@@ -292,17 +292,36 @@ std::string GenerateOpFunctionsBody(
         HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT, viwe_input_name, viwe_output_name,
         viwe_input_name, viwe_output_name);
   }
-  if (op_type == "exp" && !inplace_map.empty()) {
-    return_str =
-        "VLOG(3) << \"yoki inplace X ptr: \" << &X;\n    VLOG(3) << \"yoki: "
-        "core_ops_returns_info[exp]: \" << core_ops_returns_info[\"exp\"][0] "
-        "<< \"   : \" << core_ops_args_info[\"exp\"][0];\n    auto x_obj = "
-        "GetPyobjFromArgs(\"exp\", \"X\", args, 0, false);\n    "
-        "Py_INCREF(x_obj);\n    return x_obj;";
-    // return_str = "VLOG(3) << \"yoki inplace X ptr: \" << &X;\n    VLOG(3) <<
-    // \"yoki: core_ops_returns_info[exp]: \" <<
-    // core_ops_returns_info[\"exp\"][0] << \"   : \" <<
-    // core_ops_args_info[\"exp\"][0];\n    return ToPyObject(out);";
+  // if (op_type == "exp" && !inplace_map.empty()) {
+  //   return_str = "VLOG(3) << \"yoki inplace X ptr: \" << &X;\n    VLOG(3) <<
+  //   \"yoki: core_ops_returns_info[exp]: \" <<
+  //   core_ops_returns_info[\"exp\"][0] << \"   : \" <<
+  //   core_ops_args_info[\"exp\"][0];\n    auto x_obj =
+  //   GetPyobjFromArgs(\"exp\", \"X\", args, 0, false);\n
+  //   Py_INCREF(x_obj);\n    return x_obj;";
+  //   //return_str = "VLOG(3) << \"yoki inplace X ptr: \" << &X;\n    VLOG(3)
+  //   << \"yoki: core_ops_returns_info[exp]: \" <<
+  //   core_ops_returns_info[\"exp\"][0] << \"   : \" <<
+  //   core_ops_args_info[\"exp\"][0];\n    return ToPyObject(out);";
+  // }
+  if (!inplace_map.empty()) {
+    for (auto& inplace_pair : inplace_map) {
+      std::string inplace_arg_name = inplace_pair.second;
+      std::string inplace_return_name = inplace_pair.first;
+      const char* RETURN_INPLACE_TENSOR_TEMPLATE =
+          "ssize_t arg_id = GetIdxFromCoreOpsInfoMap(core_ops_args_info, "
+          "\"%s\", \"%s\");\n"
+          "    ssize_t return_id = "
+          "GetIdxFromCoreOpsInfoMap(core_ops_returns_info, \"%s\", \"%s\");\n"
+          "    VLOG(3) << \"yoki: return arg_id: \" << arg_id << \"    "
+          "return_id: \" << return_id;\n"
+          "    return ToPyObject(out, return_id, args, arg_id);";
+      return_str = paddle::string::Sprintf(RETURN_INPLACE_TENSOR_TEMPLATE,
+                                           op_type, inplace_arg_name, op_type,
+                                           inplace_return_name);
+      // only support one inplace_var
+      break;
+    }
   } else {
     return_str = "return ToPyObject(out);";
   }
