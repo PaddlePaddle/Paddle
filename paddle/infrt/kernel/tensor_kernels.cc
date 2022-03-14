@@ -49,8 +49,8 @@ void FillTensorWithConstant(Attribute<T> v, DenseHostTensor *tensor) {
   MutableDTArrayView<T>(tensor).Fill(v.get());
 }
 
-TensorMap LoadParams(const std::string &path) {
-  return *(infrt::tensor::LoadParams(path));
+TensorMap LoadParams(Attribute<std::string> path) {
+  return *(infrt::tensor::LoadParams(path.get()));
 }
 
 DenseHostTensor TensorMapGetTensor(TensorMap map, Attribute<std::string> name) {

@@ -729,6 +729,13 @@ PYBIND11_MODULE(core_noavx, m) {
                lib[string]: the libarary, could be 'phi', 'fluid' and 'all'.
            )DOC");
 
+  // NOTE(Aganlengzi): KernelFactory static instance is initialized BEFORE
+  // plugins are loaded for custom kernels, but de-initialized AFTER they are
+  // unloaded. We need manually clear symbols(may contain plugins' symbols)
+  // stored in this static instance to avoid illegal memory access.
+  m.def("clear_kernel_factory",
+        []() { phi::KernelFactory::Instance().kernels().clear(); });
+
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
   // to enable eager deletion mode in unittest.
@@ -1957,10 +1964,17 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
+#ifdef PADDLE_WITH_XPU_KP
+  m.def("get_xpu_device_op_support_types",
+        [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
+          return platform::get_xpu_kp_op_support_type(op_name, version);
+        });
+#else
   m.def("get_xpu_device_op_support_types",
         [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
           return platform::get_xpu_op_support_type(op_name, version);
         });
+#endif
   m.def("get_xpu_device_op_list", [](phi::backends::xpu::XPUVersion version) {
     return platform::get_xpu_op_list(version);
   });
