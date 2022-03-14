@@ -72,8 +72,10 @@ using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::PaddleBuf;
 using paddle::PaddleDType;
+using paddle::PaddleDLayout;
 using paddle::PaddlePassBuilder;
 using paddle::PaddlePlace;
+
 using paddle::PaddlePredictor;
 using paddle::PaddleTensor;
 using paddle::PassStrategy;
@@ -81,6 +83,7 @@ using paddle::ZeroCopyTensor;
 
 namespace {
 void BindPaddleDType(py::module *m);
+void BindPaddleDLayout(py::module *m);
 void BindPaddleBuf(py::module *m);
 void BindPaddleTensor(py::module *m);
 void BindPaddlePlace(py::module *m);
@@ -207,6 +210,34 @@ void PaddleInferTensorCreate(
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
 
+paddle_infer::PlaceType ToPaddleInferPlace(
+    phi::AllocationType allocation_type) {
+  if (allocation_type == phi::AllocationType::CPU) {
+    return paddle_infer::PlaceType::kCPU;
+  } else if (allocation_type == phi::AllocationType::GPU) {
+    return paddle_infer::PlaceType::kGPU;
+  } else {
+    return paddle_infer::PlaceType::kCPU;
+  }
+}
+
+void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
+                                  framework::Tensor input_tensor) {
+  std::vector<int> shape;
+  for (int i = 0; i < input_tensor.dims().size(); ++i) {
+    shape.push_back(input_tensor.dims()[i]);
+  }
+  if (input_tensor.dtype() == phi::DataType::FLOAT32) {
+    tensor.ShareExternalData(
+        static_cast<float *>(input_tensor.data()), shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  } else if (input_tensor.dtype() == phi::DataType::FLOAT16) {
+    tensor.ShareExternalData(
+        static_cast<paddle::platform::float16 *>(input_tensor.data()), shape,
+        ToPaddleInferPlace(input_tensor.place().GetType()));
+  }
+}
+
 /// \brief Experimental interface.
 /// Create the Strings tensor from data.
 /// \param tensor The tensor will be created and
@@ -323,6 +354,7 @@ void CopyPaddleInferTensor(paddle_infer::Tensor &dst,  // NOLINT
 
 void BindInferenceApi(py::module *m) {
   BindPaddleDType(m);
+  BindPaddleDLayout(m);
   BindPaddleBuf(m);
   BindPaddleTensor(m);
   BindPaddlePlace(m);
@@ -366,6 +398,14 @@ void BindPaddleDType(py::module *m) {
       .value("FLOAT32", PaddleDType::FLOAT32)
       .value("INT64", PaddleDType::INT64)
       .value("INT32", PaddleDType::INT32);
+}
+
+void BindPaddleDLayout(py::module *m) {
+  py::enum_<PaddleDLayout>(*m, "PaddleDLayout")
+      .value("UNK", PaddleDLayout::kUNK)
+      .value("Any", PaddleDLayout::kAny)
+      .value("NHWC", PaddleDLayout::kNHWC)
+      .value("NCHW", PaddleDLayout::kNCHW);
 }
 
 void BindPaddleBuf(py::module *m) {
@@ -806,6 +846,11 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu_bind",
            &PaddleInferTensorCreate<paddle_infer::float16>)
       .def("copy_from_cpu_bind", &PaddleInferStringTensorCreate)
+      .def("share_external_data", &PaddleInferShareExternalData)
+      // .def("share_external_data", &PaddleInferShareExternalData<int64_t>)
+      // .def("share_external_data", &PaddleInferShareExternalData<float>)
+      // .def("share_external_data",
+      //      &PaddleInferShareExternalData<paddle_infer::float16>)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)
