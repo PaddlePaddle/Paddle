@@ -151,5 +151,5 @@ if __name__ == '__main__':
     transform_and_save_int8_model(
         test_args.quant_model_path, test_args.int8_model_save_path,
         test_args.ops_to_quantize, test_args.op_ids_to_skip, test_args.debug,
-        test_args.save_model_filename, test_args.save_params_filename,
-        test_args.quant_model_filename, test_args.quant_params_filename)
+        test_args.quant_model_filename, test_args.quant_params_filename,
+        test_args.save_model_filename, test_args.save_params_filename)
