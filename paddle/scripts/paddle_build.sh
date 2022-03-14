@@ -242,6 +242,7 @@ function cmake_base() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -293,7 +294,9 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
-        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
+        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
+        
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -945,8 +948,17 @@ function generate_upstream_develop_api_spec() {
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     startTime_firstBuild=`date +%s`
-    cmake_gen $1
-    build $2
+
+    dev_commit=`git log -1|head -1|awk '{print $2}'`
+    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
+    url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
+    if [ "$url_return" == '200' ];then
+        mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
+    else
+        cmake_gen $1
+        build $2
+    fi
+
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
@@ -2504,7 +2516,8 @@ EOF
     fi
     startTime_s=`date +%s`
     set +e
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_PYTHON=${WITH_PYTHON:-ON};build_error=$?
+
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_TENSORRT=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
@@ -2548,7 +2561,7 @@ EOF
     demo_ci_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr}
+             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
     DEMO_EXIT_CODE=$?
     ./clean.sh
     demo_ci_endTime_s=`date +%s`
@@ -2558,7 +2571,7 @@ EOF
     infer_ut_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${TENSORRT_ROOT_DIR:-/usr}
+             ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
     TEST_EXIT_CODE=$?
     infer_ut_endTime_s=`date +%s`
     echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"

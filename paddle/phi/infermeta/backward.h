@@ -30,6 +30,11 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dweight,
                                         MetaTensor* dbias);
 
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad);
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
@@ -42,10 +47,22 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
                                  MetaTensor* dy,
                                  MetaTensor* dz);
 
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
+
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
                                 int axis,
                                 MetaTensor* dx);
+
+void PsroiPoolGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& rois,
+                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& dout,
+                            int pooled_height,
+                            int pooled_width,
+                            int output_channels,
+                            float spatial_scale,
+                            MetaTensor* dx);
 
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,

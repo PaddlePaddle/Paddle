@@ -25,10 +25,6 @@ namespace dialect {
 void INFRTDialect::initialize() {
   allowUnknownTypes();
   allowUnknownOperations();
-
-  addTypes<infrt::dt::StringType>();
-  addTypes<infrt::dt::TensorMapType>();
-
   addOperations<
 #define GET_OP_LIST
 #include "paddle/infrt/dialect/basic_kernels.cpp.inc"
@@ -43,14 +39,6 @@ mlir::Type INFRTDialect::parseType(mlir::DialectAsmParser &parser) const {
   llvm::StringRef keyword;
   if (parser.parseKeyword(&keyword)) return mlir::Type();
   // parse TensorMapType, for example: !infrt.tensor_map
-  if (keyword == "tensor_map") {
-    return infrt::dt::TensorMapType::get();
-  }
-  // parse StringType, for example: !infrt.string
-  if (keyword == "string") {
-    return infrt::dt::StringType::get();
-  }
-
   parser.emitError(parser.getCurrentLocation(), "unknown infrt type: ")
       << keyword;
   return mlir::Type();
@@ -59,15 +47,6 @@ mlir::Type INFRTDialect::parseType(mlir::DialectAsmParser &parser) const {
 void INFRTDialect::printType(mlir::Type type,
                              mlir::DialectAsmPrinter &printer) const {
   // print TensorMapType, for example: !infrt.tensor_map
-  if (type.isa<infrt::dt::TensorMapType>()) {
-    printer << "tensor_map";
-    return;
-  }
-  // print StringType, for example: !infrt.string
-  if (type.isa<infrt::dt::StringType>()) {
-    printer << "string";
-    return;
-  }
   llvm_unreachable("unknown infrt type.");
 }
 
