@@ -253,6 +253,27 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void DisableGpu();
+  ///
+  /// \brief Turn on GPU fp16 precision.
+  ///
+  ///
+  void EnableUseGpuFp16();
+  ///
+  /// \brief Specify the operator type list to keep original calculation
+  /// precision.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void SetGpuFp16DisabledOp(std::unordered_set<std::string> op_list) {
+    gpu_fp16_disabled_op_types_.insert(op_list.begin(), op_list.end());
+  }
+  ///
+  /// \brief A boolean state telling whether the GPU fp16 precision is turned
+  /// on.
+  ///
+  /// \return bool Whether the GPU fp16 precision is turned on.
+  ///
+  bool use_gpu_fp16() const { return use_gpu_fp16_; }
 
   ///
   /// \brief Turn on XPU.
@@ -859,6 +880,9 @@ struct PD_INFER_DECL AnalysisConfig {
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
   bool thread_local_stream_{false};
+  bool use_gpu_fp16_{false};
+  std::unordered_set<std::string> gpu_fp16_disabled_op_types_{
+      "conv2d_fusion", "conv2d", "roll", "strided_slice"};
 
   bool use_cudnn_{false};
 

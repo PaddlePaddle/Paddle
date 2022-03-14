@@ -83,6 +83,7 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 
   Update();
 }
+
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
                                   int device_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -97,8 +98,20 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
 
   Update();
 }
+
 void AnalysisConfig::DisableGpu() {
   use_gpu_ = false;
+
+  Update();
+}
+
+void AnalysisConfig::EnableUseGpuFp16() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  use_gpu_fp16_ = true;
+#else
+  LOG(ERROR) << "Please compile with gpu to EnableUseGpuFp16()";
+  use_gpu_fp16_ = false;
+#endif
 
   Update();
 }
@@ -213,6 +226,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
+  CP_MEMBER(use_gpu_fp16_);
+  CP_MEMBER(gpu_fp16_disabled_op_types_);
 
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
@@ -573,6 +588,19 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (use_gpu_fp16_) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (!enable_ir_optim_) {
+      LOG(ERROR)
+          << "EnableUseGpuFp16() only works when IR optimization is enabled.";
+    } else if (!use_gpu()) {
+      LOG(ERROR) << "EnableUseGpuFp16() only works when use_gpu is enabled.";
+    } else {
+      pass_builder()->EnableUseGpuFp16();
+    }
+#endif
+  }
+
   if (use_mkldnn_) {
 #ifdef PADDLE_WITH_MKLDNN
     if (!enable_ir_optim_) {
@@ -669,6 +697,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << use_gpu_fp16_;
+  for (auto &item : gpu_fp16_disabled_op_types_) ss << item;
   ss << use_fc_padding_;
   ss << gpu_device_id_;
   ss << xpu_device_id_;

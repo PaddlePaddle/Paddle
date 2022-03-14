@@ -551,6 +551,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("params_file", &AnalysisConfig::params_file)
       .def("enable_use_gpu", &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"), py::arg("device_id") = 0)
+      .def("enable_use_gpu_fp16", &AnalysisConfig::EnableUseGpuFp16)
+      .def("set_gpu_fp16_disabled_op", &AnalysisConfig::SetGpuFp16DisabledOp)
       .def("enable_xpu", &AnalysisConfig::EnableXpu,
            py::arg("l3_workspace_size") = 16 * 1024 * 1024,
            py::arg("locked") = false, py::arg("autotune") = true,
