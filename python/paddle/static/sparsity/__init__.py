@@ -1,5 +1,5 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# Copyright (c) 2022 NVIDIA Corporation.  All rights reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,5 @@ __all__ = [     #noqa
     'decorate',
     'prune_model',
     'set_excluded_layers',
-    'reset_excluded_layers',
-    'add_supported_layer'
+    'reset_excluded_layers'
 ]
