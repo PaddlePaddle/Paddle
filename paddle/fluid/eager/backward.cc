@@ -441,10 +441,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     VLOG(6) << "Running GradNode:" << node->name();
     ready_queue.pop();
 
-    if (ready_queue.size() > 1 && node_in_degree_map[node] != 0) {
-      ready_queue.pop();
-      continue;
-    }
     // Run node: This is where Hook happens
     PADDLE_ENFORCE(
         node_input_buffers_dict.count(node),
