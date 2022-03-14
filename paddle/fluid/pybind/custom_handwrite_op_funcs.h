@@ -31,7 +31,6 @@ static PyObject *eager_api_run_program(PyObject *self, PyObject *args,
 
     tstate = PyEval_SaveThread();
     run_program_dygraph_function(X, Params, Out, OutScope, DOut, attrs);
-    std::cout << "end run_program_dygraph_function" << std::endl;
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
   } catch (...) {
