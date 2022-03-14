@@ -44,6 +44,7 @@ function(gather_srcs SRC_GROUP)
     endforeach()
 endfunction()
 
+
 # This method is similar to the global cc_test, but discard the huge amount default dependencies those are
 # not needed by INFRT.
 function(cc_test_tiny TARGET_NAME)
