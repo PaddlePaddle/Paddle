@@ -193,8 +193,8 @@ static void ParseIndexingSlice(
           0 <= start && start < dim_len,
           platform::errors::OutOfRange("The starting index %d of slice is out "
                                        "of bounds in tensor %d-th axis, it "
-                                       "shound be in the range of [%d, %d)."),
-          s_t, dim, -dim_len, dim_len);
+                                       "shound be in the range of [%d, %d).",
+                                       s_t, dim, -dim_len, dim_len));
 
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
