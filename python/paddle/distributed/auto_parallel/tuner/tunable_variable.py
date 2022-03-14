@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 
 class TunableVariable(object):
     """
@@ -34,56 +36,55 @@ class TunableVariable(object):
         return cls(**state)
 
 
+class Fixed(TunableVariable):
+    """
+    Fixed variable which cannot be changed.
+    """
+
+    def __init__(self, name, default):
+        super(Fixed, self).__init__(name=name, default=default)
+        self.name = name
+        if not isinstance(default, (str, int, float, bool)):
+            raise ValueError(
+                "Fixed must be an str, int, float or bool, but found {}"
+                .format(default))
+        self._default = default
+
+    def random(self, seed=None):
+        return self._default
+
+    def __repr__(self):
+        return "Fixed(name: {}, value: {})".format(self.name, self.default)
+
+
 class Boolean(TunableVariable):
     """
     Choice between True and False.
     """
 
-    def __init__(self, name, default=False, **kwargs):
-        super(Boolean, self).__init__(name=name, default=default, **kwargs)
+    def __init__(self, name, default=False):
+        super(Boolean, self).__init__(name=name, default=default)
         if default not in {True, False}:
-            raise ValueError("`default` must be a Python boolean, but got {}".
-                             format(default))
+            raise ValueError(
+                "default must be a Python boolean, but got {}".format(default))
+
+    def random(self, seed=None):
+        rng = np.random.default_rng(seed)
+        return rng.choice((True, False))
 
     def __repr__(self):
         return 'Boolean(name: "{}", default: {})'.format(self.name,
                                                          self.default)
 
 
-class Fixed(TunableVariable):
-    """
-    Fixed variable which cannot be changed.
-    """
-
-    def __init__(self, name, value, **kwargs):
-        super(Fixed, self).__init__(name=name, default=value, **kwargs)
-        self.name = name
-        if not isinstance(value, (str, int, float, bool)):
-            raise ValueError(
-                "`Fixed` must be an `str`, `int`, `float` or `bool`, but found {}"
-                .format(value))
-        self.value = value
-
-    @property
-    def default(self):
-        return self.value
-
-    def get_state(self):
-        state = super(Fixed, self).get_state()
-        return state
-
-    def __repr__(self):
-        return "Fixed(name: {}, value: {})".format(self.name, self.value)
-
-
 class Choice(TunableVariable):
-    def __init__(self, name, values, default=None, ordered=None, **kwargs):
-        super(Choice, self).__init__(name=name, default=default, **kwargs)
+    def __init__(self, name, values, default=None):
+        super(Choice, self).__init__(name=name, default=default)
 
         types = set(type(v) for v in values)
         if len(types) > 1:
             raise TypeError(
-                "`Choice` can contain only one type of value, but found values: {} with types: {}."
+                "Choice can contain only one type of value, but found values: {} with types: {}."
                 .format(str(values), str(types)))
 
         if isinstance(values[0], str):
@@ -104,7 +105,7 @@ class Choice(TunableVariable):
                 default = bool(default)
         else:
             raise TypeError(
-                "`Choice` can only contain `str`, `int`, `float`, or `boll`, but found values: {} "
+                "Choice can only contain str, int, float, or boll, but found: {} "
                 .format(str(values)))
         self.values = values
 
@@ -114,14 +115,6 @@ class Choice(TunableVariable):
                 format(values, default))
         self._default = default
 
-        self.ordered = ordered
-        is_numerical = isinstance(values[0], (int, float))
-        if self.ordered and not is_numerical:
-            raise ValueError("`ordered` must be `False` for non-numerical "
-                             "types.")
-        if self.ordered is None:
-            self.ordered = is_numerical
-
     @property
     def default(self):
         if self._default is None:
@@ -130,15 +123,18 @@ class Choice(TunableVariable):
             return self.values[0]
         return self._default
 
+    def random(self, seed=None):
+        rng = np.random.default_rng(seed)
+        return rng.choice(self.values)
+
     def get_state(self):
         state = super(Choice, self).get_state()
         state["values"] = self.values
-        state["ordered"] = self.ordered
         return state
 
     def __repr__(self):
-        return 'Choice(name: "{}", values: {}, default: {}, ordered: {})'.format(
-            self.name, self.values, self.ordered, self.default)
+        return 'Choice(name: "{}", values: {}, default: {})'.format(
+            self.name, self.values, self.default)
 
 
 class IntRange(TunableVariable):
@@ -146,11 +142,13 @@ class IntRange(TunableVariable):
     Integer range.
     """
 
-    def __init__(self, name, start, end, step=1, default=None, **kwargs):
-        super(IntRange, self).__init__(name=name, default=default, **kwargs)
-        self.end = self._check_int(end, arg="end")
-        self.start = self._check_int(start, arg="start")
-        self.step = self._check_int(step, arg="step")
+    def __init__(self, name, start, stop, step=1, default=None, endpoint=False):
+        super(IntRange, self).__init__(name=name, default=default)
+        self.start = self._check_int(start)
+        self.stop = self._check_int(stop)
+        self.step = self._check_int(step)
+        self._default = default
+        self.endpoint = endpoint
 
     @property
     def default(self):
@@ -158,15 +156,27 @@ class IntRange(TunableVariable):
             return self._default
         return self.start
 
+    def random(self, seed=None):
+        rng = np.random.default_rng(seed)
+        value = (self.stop - self.start) * rng.random() + self.start
+        if self.step is not None:
+            if self.endpoint:
+                values = np.arange(self.start, self.stop + 1e-7, step=self.step)
+            else:
+                values = np.arange(self.start, self.stop, step=self.step)
+            closest_index = np.abs(values - value).argmin()
+            value = values[closest_index]
+        return int(value)
+
     def get_state(self):
         state = super(IntRange, self).get_state()
         state["start"] = self.start
-        state["end"] = self.end
+        state["stop"] = self.stop
         state["step"] = self.step
         state["default"] = self._default
         return state
 
-    def _check_int(self, val, arg):
+    def _check_int(self, val):
         int_val = int(val)
         if int_val != val:
             raise ValueError("Expects val is an int, but found: {}.".format(
@@ -174,8 +184,8 @@ class IntRange(TunableVariable):
         return int_val
 
     def __repr__(self):
-        return "IntRange(name: {}, start: {}, end: {}, step: {}, default: {})".format(
-            self.name, self.start, self.end, self.step, self.default)
+        return "IntRange(name: {}, start: {}, stop: {}, step: {}, default: {})".format(
+            self.name, self.start, self.stop, self.step, self.default)
 
 
 class FloatRange(TunableVariable):
@@ -183,14 +193,22 @@ class FloatRange(TunableVariable):
     Float range.
     """
 
-    def __init__(self, name, start, end, step=None, default=None, **kwargs):
-        super(FloatRange, self).__init__(name=name, default=default, **kwargs)
-        self.end = float(end)
+    def __init__(self,
+                 name,
+                 start,
+                 stop,
+                 step=None,
+                 default=None,
+                 endpoint=False):
+        super(FloatRange, self).__init__(name=name, default=default)
+        self.stop = float(stop)
         self.start = float(start)
         if step is not None:
             self.step = float(step)
         else:
             self.step = None
+        self._default = default
+        self.endpoint = endpoint
 
     @property
     def default(self):
@@ -198,17 +216,27 @@ class FloatRange(TunableVariable):
             return self._default
         return self.start
 
+    def random(self, seed=None):
+        rng = np.random.default_rng(seed)
+        value = (self.stop - self.start) * rng.random() + self.start
+        if self.step is not None:
+            if self.endpoint:
+                values = np.arange(self.start, self.stop + 1e-7, step=self.step)
+            else:
+                values = np.arange(self.start, self.stop, step=self.step)
+            closest_index = np.abs(values - value).argmin()
+            value = values[closest_index]
+        return value
+
     def get_state(self):
         state = super(FloatRange, self).get_state()
         state["start"] = self.start
-        state["end"] = self.end
+        state["stop"] = self.stop
         state["step"] = self.step
+        state["endpoint"] = self.endpoint
         return state
 
     def __repr__(self):
-        return "FloatRange(name: {}, start: {}, end: {}, step: {}, default: {})".format(
-            self.name,
-            self.start,
-            self.end,
-            self.step,
-            self.default, )
+        return "FloatRange(name: {}, start: {}, stop: {}, step: {}, default: {}, endpoint: {})".format(
+            self.name, self.start, self.stop, self.step, self.default,
+            self.endpoint)

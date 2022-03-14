@@ -19,9 +19,10 @@ from enum import Enum
 
 from .storable import Storable
 from .recorder import MetricsRecorder
+from .tunable_space import TunableSpace
 
 
-class TrialStatus(Enum):
+class TrialStatus:
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     STOPPED = "STOPPED"
@@ -35,8 +36,8 @@ class Trial(Storable):
         self._space = tunable_space
         self._recorder = MetricsRecorder()
         self._score = None
-        self._status = status
         self._best_step = None
+        self._status = status
 
     @property
     def id(self):
@@ -74,28 +75,6 @@ class Trial(Storable):
     def status(self, status):
         self._status = status
 
-    def get_state(self):
-        return {
-            "trial_id": self.id,
-            "space": self.space.get_state(),
-            "score": self.score,
-            "best_step": self.best_step,
-            "status": self.status,
-        }
-
-    def set_state(self, state):
-        self.trial_id = state["trial_id"]
-        self.space = state["space"]
-        self.score = state["score"]
-        self.best_step = state["best_step"]
-        self.status = state["status"]
-
-    @classmethod
-    def from_state(cls, state):
-        trial = cls(tunable_space=None)
-        trial.set_state(state)
-        return trial
-
     def summary(self):
         print("Tunable space:")
         if self.space.values:
@@ -104,6 +83,30 @@ class Trial(Storable):
 
         if self.score is not None:
             print("Score: {}".format(self.score))
+
+    def get_state(self):
+        return {
+            "id": self.id,
+            "space": self.space.get_state(),
+            "recorder": self.recorder.get_state(),
+            "score": self.score,
+            "best_step": self.best_step,
+            "status": self.status,
+        }
+
+    def set_state(self, state):
+        self._id = state["id"]
+        self._space = TunableSpace.from_state(state["space"])
+        self._recorder = MetricsRecorder.from_state(state["recorder"])
+        self._score = state["score"]
+        self._best_step = state["best_step"]
+        self._status = state["status"]
+
+    @classmethod
+    def from_state(cls, state):
+        trial = cls(tunable_space=None)
+        trial.set_state(state)
+        return trial
 
 
 def _generate_trial_id():

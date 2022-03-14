@@ -17,6 +17,11 @@ from .trail import TrialStatus
 
 
 class Tuner(Storable):
+    """"
+    Tuner is the base class for tuners such as the parallelization tuners and optimization tuners. 
+    The design of our tuner is mainly inspried by the Keras-Tuner (https://github.com/keras-team/keras-tuner). 
+    """
+
     def __init__(self,
                  tunable_space=None,
                  objective=None,

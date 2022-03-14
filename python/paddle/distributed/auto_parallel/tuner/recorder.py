@@ -21,24 +21,27 @@ class MetricRecord(object):
     """
 
     def __init__(self, value, step):
-        self.value = value
-        self.step = step
+        self._value = value
+        self._step = step
 
     @property
     def value(self):
-        return self.value
+        return self._value
 
     @value.setter
     def value(self, value):
-        self.value = value
+        self._value = value
 
     @property
     def step(self):
-        return self.step
+        return self._step
 
     @step.setter
     def step(self, step):
-        self.step = step
+        self._step = step
+
+    def mean(self):
+        return np.mean(self.value)
 
     def get_state(self):
         return {"value": self.value, "step": self.step}
@@ -64,7 +67,7 @@ class MetricRecords(object):
     def __init__(self, direction="min"):
         if direction not in {"min", "max"}:
             raise ValueError(
-                "`direction` should be one of {min, max}, but got: %s.".format(
+                "direction should be one of {min, max}, but got: {}.".format(
                     direction))
         self._direction = direction
         self._records = {}
@@ -78,7 +81,15 @@ class MetricRecords(object):
         for r in records:
             self.update(r.value, step=r.step)
 
-    def update(self, value, step):
+    @property
+    def direction(self):
+        return self._direction
+
+    @direction.setter
+    def direction(self, direction):
+        self._direction = direction
+
+    def update(self, value, step=0):
         if step in self._records:
             self._records[step].set_value(value)
         else:
@@ -101,7 +112,7 @@ class MetricRecords(object):
                 return r.step
 
     def get_statistics(self):
-        records = self._records
+        records = self.records
         records_values = [r.mean() for r in records]
         if not len(records_values):
             return {}
@@ -124,6 +135,7 @@ class MetricRecords(object):
     def from_state(cls, state):
         records = cls(state["direction"])
         records.records = [MetricRecord.from_state(r) for r in state["records"]]
+        print("here 1", records.records)
         return records
 
 
@@ -134,17 +146,21 @@ class MetricsRecorder(object):
 
     def __init__(self, metrics=None):
         self._records = {}
-        self._register_metrics(metrics)
+        self.register_metrics(metrics)
+
+    @property
+    def records(self):
+        return self._records
 
     def exists(self, name):
         return name in self._records
 
-    def _register_metrics(self, metrics=None):
+    def register_metrics(self, metrics=None):
         metrics = metrics or []
         for metric in metrics:
-            self._register(metric.name)
+            self.register(metric.name)
 
-    def _register(self, name, direction=None):
+    def register(self, name, direction=None):
         if self.exists(name):
             raise ValueError("Metric {} have been registered.".format(name))
         if direction is None:
@@ -154,7 +170,7 @@ class MetricsRecorder(object):
     def update(self, name, value, step=0):
         value = float(value)
         if not self.exists(name):
-            self._register(name)
+            self.register(name)
 
         prev_best = self._records[name].get_best_value()
         self._records[name].update(value, step=step)
@@ -164,12 +180,12 @@ class MetricsRecorder(object):
         return improved
 
     def get_records(self, name):
-        return self._records[name].get_records()
+        return self._records[name].records
 
     def set_records(self, name, records):
         if not self.exists(name):
-            self._register(name)
-        self._records[name].set_records(records)
+            self.register(name)
+        self._records[name].records = records
 
     def get_best_value(self, name):
         return self._records[name].get_best_value()
@@ -191,7 +207,7 @@ class MetricsRecorder(object):
     @classmethod
     def from_state(cls, state):
         recorder = cls()
-        recorder.metrics = {
+        recorder._records = {
             name: MetricRecords.from_state(metric_records)
             for name, metric_records in state["metrics"].items()
         }
