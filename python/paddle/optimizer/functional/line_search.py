@@ -14,23 +14,50 @@
 
 import paddle
 from utils import _value_and_gradient
-import numpy as np
 from paddle.fluid.framework import in_dygraph_mode
-import paddle.fluid as fluid
-import math
-
 
 def strong_wolfe(f,
                  xk,
                  pk,
                  max_iters=20,
                  tolerance_grad=1e-8,
-                 tolerance_change=1e-9,
+                 tolerance_change=1e-8,
                  initial_step_length=1.0,
                  c1=1e-4,
                  c2=0.9,
                  alpha_max=10,
                  dtype='float32'):
+    r"""Implements of line search algorithm that satisfies the strong Wolfe conditions using double zoom.
+    
+    Reference:
+        Jorge Nocedal, Stephen J. Wright, Numerical Optimization,
+        Second Edition, 2006.
+    Args:
+        f: the objective function to minimize. ``f`` accepts
+            a multivariate input and returns a scalar.
+        xk (Tensor): the starting point of the iterates.
+        pk (Tensor): .
+        gtol (Scalar): terminates if the gradient norm is smaller than
+            this `gtol`. Currently gradient norm uses inf norm.
+            The default value is 1e-8.
+        xtol (Scalar): terminates if the distance of succesive iterates
+            is smaller than this value. The default value is 0.
+        iters (Scalar): the maximum number minimization iterations.
+            The default value is 50.
+        ls_iters (Scalar): the maximum number of line search iterations.
+            The default value is 50.
+        summary_only (boolean, optional): specifies the result type. If True 
+            then returns the final result. Otherwise returns the results of
+            all steps.
+        dtype ('float' | 'float32' | 'float64' | 'double'): the data
+        type to be used.
+    
+    Returns:
+        summary (BfgsResult): The final optimization results if `summary_only`
+            is set True.
+        results (list[BfgsResult]): the results of all steps if `summary_only`
+            is set False.
+    """
     def phi(alpha):
         return f(xk + alpha * pk)
 

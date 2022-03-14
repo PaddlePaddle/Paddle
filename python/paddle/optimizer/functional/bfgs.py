@@ -30,7 +30,52 @@ def miminize_bfgs(objective_func,
                   initial_step_length=1.0,
                   dtype='float32',
                   name=None):
-
+    r"""Minimizes a differentiable function `func` using the BFGS method.
+    The BFGS is a quasi-Newton method for solving an unconstrained
+    optimization problem over a differentiable function.
+    Closely related is the Newton method for minimization. Consider the iterate 
+    update formula
+    .. math::
+        x_{k+1} = x_{k} + H^{-1} \nabla{f},
+    If $H$ is the Hessian of $f$ at $x_{k}$, then it's the Newton method.
+    If $H$ is positive definite, used as an approximation of the Hessian, then 
+    it's a quasi-Newton. In practice, the approximated Hessians are obtained
+    by only using the gradients, over either whole or part of the search 
+    history.
+    Reference:
+        Jorge Nocedal, Stephen J. Wright, Numerical Optimization,
+        Second Edition, 2006.
+    Args:
+        func: the objective function to minimize. ``func`` accepts
+            a multivariate input and returns a scalar, both allowed
+            batching into tensors in shape [..., n] and [...].
+        x0 (Tensor): the starting point of the iterates. The batching
+            form has the shape [..., n].
+        dtype ('float' | 'float32' | 'float64' | 'double'): the data
+            type to be used.
+        H0 (Tensor): the initial inverse hessian approximation. The
+            batching form has the shape [..., n, n], where the
+            batching dimensions have the same shape with ``x0``.
+            The default value is None.
+        gtol (Scalar): terminates if the gradient norm is smaller than
+            this `gtol`. Currently gradient norm uses inf norm.
+            The default value is 1e-8.
+        xtol (Scalar): terminates if the distance of succesive iterates
+            is smaller than this value. The default value is 0.
+        iters (Scalar): the maximum number minimization iterations.
+            The default value is 50.
+        ls_iters (Scalar): the maximum number of line search iterations.
+            The default value is 50.
+        summary_only (boolean, optional): specifies the result type. If True 
+            then returns the final result. Otherwise returns the results of
+            all steps.
+    
+    Returns:
+        summary (BfgsResult): The final optimization results if `summary_only`
+            is set True.
+        results (list[BfgsResult]): the results of all steps if `summary_only`
+            is set False.
+    """
     I = paddle.eye(initial_position.shape[0], dtype=dtype)
     if initial_inverse_hessian_estimate == None:
         initial_inverse_hessian_estimate = I
