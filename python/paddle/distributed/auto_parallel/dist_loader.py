@@ -114,9 +114,7 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                     if len(data) == 1:
                         yield batch_data[0]
                     elif len(data) == 2:
-                        print(batch_data[0])
-                        print(batch_data[1])
-                        yield (batch_data[0], batch_data[1])
+                        yield batch_data[0], batch_data[1]
                     else:
                         raise ValueError(
                             "data is expected to be in format `x`, `(x,)`, `(x, y)`"
