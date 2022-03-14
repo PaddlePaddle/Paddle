@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/kron_grad_kernel.h"
-#include "paddle/phi/kernels/impl/kron_grad_kernel_impl.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/kron_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(kron_grad,
                    CPU,
