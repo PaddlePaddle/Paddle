@@ -912,9 +912,9 @@ inline void SoftmaxForwardCudnnKernel<phi::dtype::bfloat16>(
     const int axis,
     const bool log_mode,
     DenseTensor* out) {
-  PADDLE_THROW(
+  PADDLE_THROW(errors::Unavailable(
       "This kernel is not supported when the dtype is bf16 and CUDNN_VERSION < "
-      "8100.");
+      "8100."));
 }
 template <>
 inline void SoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
@@ -924,9 +924,9 @@ inline void SoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
     const int axis,
     const bool log_mode,
     DenseTensor* dx) {
-  PADDLE_THROW(
+  PADDLE_THROW(errors::Unavailable(
       "This kernel is not supported when the dtype is bf16 and CUDNN_VERSION < "
-      "8100.");
+      "8100."));
 }
 #endif
 
