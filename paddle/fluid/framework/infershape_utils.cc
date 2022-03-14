@@ -297,7 +297,8 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
-  phi::InferMetaContext infer_meta_context(ctx->IsRuntime());
+  phi::InferMetaContext infer_meta_context(
+      {ctx->IsRuntime(), ctx->IsRunMKLDNNKernel()});
 
   auto& input_names = std::get<0>(signature.args);
   auto& attr_names = std::get<1>(signature.args);
