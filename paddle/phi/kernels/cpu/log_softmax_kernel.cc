@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/log_softmax_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/log_softmax_functor.h"
+#include "paddle/phi/kernels/cpu/log_softmax_functor.h"
 
 namespace phi {
 
