@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/isclose_kernel.h"
-#include "paddle/phi/kernels/impl/isclose_kernel_impl.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/isclose_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
     isclose, GPU, ALL_LAYOUT, phi::IscloseKernel, float, double) {}

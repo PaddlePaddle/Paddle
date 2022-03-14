@@ -18,12 +18,32 @@
 namespace phi {
 
 KernelSignature IscloseOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  std::string rtol_map_str = (ctx.HasInput("Rtol") ? "Rtol" : "rtol");
-  std::string atol_map_str = (ctx.HasInput("Atol") ? "Atol" : "atol");
-  return KernelSignature("isclose",
-                         {"Input", "Other"},
-                         {rtol_map_str, atol_map_str, "equal_nan"},
-                         {"Out"});
+  if (ctx.HasInput("Rtol")) {
+    if (ctx.HasInput("Atol")) {
+      return KernelSignature("isclose",
+                             {"Input", "Other"},
+                             {"Rtol", "Atol", "equal_nan"},
+                             {"Out"});
+
+    } else {
+      return KernelSignature("isclose",
+                             {"Input", "Other"},
+                             {"Rtol", "atol", "equal_nan"},
+                             {"Out"});
+    }
+  } else {
+    if (ctx.HasInput("Atol")) {
+      return KernelSignature("isclose",
+                             {"Input", "Other"},
+                             {"rtol", "Atol", "equal_nan"},
+                             {"Out"});
+    } else {
+      return KernelSignature("isclose",
+                             {"Input", "Other"},
+                             {"rtol", "atol", "equal_nan"},
+                             {"Out"});
+    }
+  }
 }
 
 }  // namespace phi
