@@ -95,6 +95,11 @@ class DenseTensor<string target, string precision, string layout> :
     "!infrt.DenseTensor<"#target#","#precision#","#layout#">", 
     "::infrt::DenseTensorType">;
 
+// TODO(wilber): Add !infrt.vec type.
+def TensorListType :
+    Type<CPred<"$_self.isa<::infrt::TensorListType>()">, "!infrt.tensor_list type">,
+    BuildableType<"$_builder.getType<::infrt::TensorListType>()">;
+
 // Base class for infrt dialect attributes.
 class Infrt_Attr<string name, list<Trait> traits = [],
                    string baseCppClass = "::mlir::Attribute">

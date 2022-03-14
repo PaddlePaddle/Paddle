@@ -16,12 +16,14 @@
 
 #include <llvm/Support/SourceMgr.h>
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
+#include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/Diagnostics.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Parser.h>
 
+#include <glog/logging.h>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -41,6 +43,11 @@
 #include "paddle/infrt/host_context/op_executable.h"
 #include "paddle/infrt/host_context/value.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
+
+#ifdef INFRT_WITH_TRT
+#include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
+#include "paddle/phi/core/dense_tensor.h"
+#endif
 
 namespace infrt {
 namespace host_context {
@@ -276,33 +283,54 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
       impl_->runtime->NewOpExecutable(op->getName().getStringRef().str());
 
   VLOG(3) << "processing general op : " << op->getName().getStringRef().str();
+  // TODO(wilber): Find a more appropriate way to handle special cases.
+  if (op->getName().getStringRef() == "trt.create_engine") {
+    auto* symbols = impl_->runtime->symbol_table();
+    ::infrt::kernel::tensorrt::MlirOperationWithInfrtSymbol mlir_operation;
+    mlir_operation.operation = op;
+    mlir_operation.symbol_table = symbols;
+    impl_->cur_op->AppendArgument(new Value(mlir_operation));
+    // TODO(wilber): how to pass DenseTensor to create_engine op? temporialiy
+    // add a naive implement.
+    for (int i = 0, e = op->getNumOperands(); i < e; ++i) {
+      auto operand = op->getOperand(i);
+      if (operand.isa<mlir::BlockArgument>()) {
+        mlir::BlockArgument arg = operand.dyn_cast<mlir::BlockArgument>();
+        Value* arg_value = GetValue(arg);
+        if (arg_value->is_type<phi::DenseTensor>()) {
+          impl_->runtime->FeedInArgs(
+              std::make_pair(std::to_string(i), ValueRef(arg_value)));
+        }
+      }
+    }
+  } else {
+    // process operands
+    for (int i = 0, e = op->getNumOperands(); i < e; i++) {
+      // function argument as value
+      auto operand = op->getOperand(i);
+      /// if (operand.getKind() == mlir::Value::Kind::BlockArgument) {
+      if (operand.isa<mlir::BlockArgument>()) {
+        mlir::BlockArgument arg = operand.dyn_cast<mlir::BlockArgument>();
+        Value* arg_value = GetValue(arg);
+        impl_->cur_op->AppendArgument(arg_value);
+        VLOG(3) << "* op mlir operand: " << DumpToString(arg) << " "
+                << GetValue(arg);
+        continue;
+      }
 
-  // process operands
-  for (int i = 0, e = op->getNumOperands(); i < e; i++) {
-    // function argument as value
-    auto operand = op->getOperand(i);
-    /// if (operand.getKind() == mlir::Value::Kind::BlockArgument) {
-    if (operand.isa<mlir::BlockArgument>()) {
-      mlir::BlockArgument arg = operand.dyn_cast<mlir::BlockArgument>();
-      Value* arg_value = GetValue(arg);
+      // normal value
+      Value* arg_value = GetValue(operand);
+      if (!arg_value) {
+        auto upstream_op = operand.getDefiningOp();
+        arg_value = GetOpResult(upstream_op);
+      }
+      CHECK(arg_value) << "No-exist argument value found: "
+                       << DumpToString(operand);
       impl_->cur_op->AppendArgument(arg_value);
-      VLOG(3) << "* op mlir operand: " << DumpToString(arg) << " "
-              << GetValue(arg);
-      continue;
-    }
 
-    // normal value
-    Value* arg_value = GetValue(operand);
-    if (!arg_value) {
-      auto upstream_op = operand.getDefiningOp();
-      arg_value = GetOpResult(upstream_op);
+      VLOG(3) << "* op mlir operand: " << DumpToString(operand) << " "
+              << GetValue(operand) << " vs " << arg_value;
     }
-    CHECK(arg_value) << "No-exist argument value found: "
-                     << DumpToString(operand);
-    impl_->cur_op->AppendArgument(arg_value);
-
-    VLOG(3) << "* op mlir operand: " << DumpToString(operand) << " "
-            << GetValue(operand) << " vs " << arg_value;
   }
 
   // process attributes
@@ -344,33 +372,6 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
     }
   }
 
-  // process results
-  llvm::SmallVector<Value*, 4> res_values;
-  for (int i = 0, e = op->getNumResults(); i < e; i++) {
-    auto res = op->getResult(i);
-    if (res.getType().isa<::infrt::DenseTensorType>()) {
-      auto r = impl_->value_map.try_emplace(
-          res, ValueRef(new Value{::phi::DenseTensor()}));
-      CHECK(r.second) << "Duplicate add mlir value [" << DumpToString(res)
-                      << "]";
-      res_values.push_back(r.first->second.get());
-    } else {
-      res_values.push_back(AddValue(res));
-    }
-
-    VLOG(3) << "* op mlir res: " << DumpToString(res) << " " << GetValue(res);
-  }
-  impl_->cur_op->SetResults(res_values);
-
-#ifdef INFRT_DEBUG
-  {
-    VLOG(3) << "check result";
-    for (int i = 0; i < impl_->cur_op->frame().GetNumResults(); i++) {
-      VLOG(3) << "+ res value: " << impl_->cur_op->frame().GetResults()[i];
-    }
-  }
-#endif
-
   // process regions, we treat regions as attribute.
   auto num_regions = op->getNumRegions();
   if (num_regions > 0) {
@@ -398,6 +399,33 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
         &region, func_type, &impl_->func_defs);
     impl_->cur_op->AppendAttribute(new Value(function));
   }
+
+  // process results
+  llvm::SmallVector<Value*, 4> res_values;
+  for (int i = 0, e = op->getNumResults(); i < e; i++) {
+    auto res = op->getResult(i);
+    if (res.getType().isa<::infrt::DenseTensorType>()) {
+      auto r = impl_->value_map.try_emplace(
+          res, ValueRef(new Value{::phi::DenseTensor()}));
+      CHECK(r.second) << "Duplicate add mlir value [" << DumpToString(res)
+                      << "]";
+      res_values.push_back(r.first->second.get());
+    } else {
+      res_values.push_back(AddValue(res));
+    }
+
+    VLOG(3) << "* op mlir res: " << DumpToString(res) << " " << GetValue(res);
+  }
+  impl_->cur_op->SetResults(res_values);
+
+#ifdef INFRT_DEBUG
+  {
+    VLOG(3) << "check result";
+    for (int i = 0; i < impl_->cur_op->frame().GetNumResults(); i++) {
+      VLOG(3) << "+ res value: " << impl_->cur_op->frame().GetResults()[i];
+    }
+  }
+#endif
 
   return true;
 }

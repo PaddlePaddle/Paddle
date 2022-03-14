@@ -26,6 +26,7 @@
 #include "paddle/infrt/dialect/phi/ir/phi_kernels.h"
 
 #include "paddle/infrt/dialect/tensor_shape.h"
+#include "paddle/infrt/dialect/tensorrt/trt_ops.h"
 
 namespace infrt {
 void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
@@ -38,7 +39,8 @@ void registerCinnDialects(mlir::DialectRegistry &registry) {  // NOLINT
                   phi::PHIDenseTensorDialect,
                   phi::PHICPUKernelDialect,
                   phi::PHIGPUKernelDialect,
-                  phi::PHIDialect
+                  phi::PHIDialect,
+                  infrt::trt::TensorRTDialect
 #endif
                   >();
 }

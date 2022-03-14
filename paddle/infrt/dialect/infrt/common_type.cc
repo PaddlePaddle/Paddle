@@ -14,6 +14,8 @@
 
 #include "paddle/infrt/dialect/infrt/common_type.h"
 
+#include "paddle/infrt/common/global.h"
+
 namespace infrt {
 
 llvm::Optional<TargetType> GetTargetType(llvm::StringRef key) {
@@ -88,4 +90,11 @@ llvm::StringRef GetString(PrecisionType type) {
   return str;
 }
 
+TensorListType TensorListType::get() {
+  return Base::get(::infrt::Global::getMLIRContext());
+}
+
+TensorListType TensorListType::get(mlir::MLIRContext *context) {
+  return Base::get(context);
+}
 }  // namespace infrt

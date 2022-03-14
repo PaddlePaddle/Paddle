@@ -17,8 +17,19 @@
 #include <llvm/ADT/Optional.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/raw_ostream.h>
+#include <mlir/IR/Dialect.h>
+#include <mlir/IR/OpDefinition.h>
 
 namespace infrt {
+
+class TensorListType : public mlir::Type::TypeBase<TensorListType,
+                                                   mlir::Type,
+                                                   mlir::TypeStorage> {
+ public:
+  using Base::Base;
+  static TensorListType get();
+  static TensorListType get(mlir::MLIRContext *context);
+};
 
 enum class TargetType : uint8_t { CPU, GPU, UNK };
 enum class LayoutType : uint8_t { NCHW, NHWC, ANY, UNK };
