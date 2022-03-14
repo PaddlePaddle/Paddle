@@ -169,18 +169,8 @@ class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
 class ConvOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
-
-    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "Conv");
-    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
-    ctx->ShareLoD("Input", "Output");
-  }
 
  protected:
-  std::vector<int64_t> ComputeOutputShape(
-      framework::InferShapeContext* ctx) const;
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 

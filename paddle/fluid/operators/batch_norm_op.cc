@@ -20,125 +20,11 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
-
-void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
-  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "BatchNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "BatchNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean", "BatchNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance", "BatchNorm");
-  OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "BatchNorm");
-
-  bool is_test = ctx->Attrs().Get<bool>("is_test");
-  bool trainable_stats = ctx->Attrs().Get<bool>("trainable_statistics");
-  bool test_mode = is_test && (!trainable_stats);
-  if (!test_mode) {
-    OP_INOUT_CHECK(ctx->HasOutput("MeanOut"), "Output", "MeanOut", "BatchNorm");
-    OP_INOUT_CHECK(ctx->HasOutput("VarianceOut"), "Output", "VarianceOut",
-                   "BatchNorm");
-    OP_INOUT_CHECK(ctx->HasOutput("SavedMean"), "Output", "SavedMean",
-                   "BatchNorm");
-    OP_INOUT_CHECK(ctx->HasOutput("SavedVariance"), "Output", "SavedVariance",
-                   "BatchNorm");
-  }
-
-  // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
-  PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
-                    platform::errors::InvalidArgument(
-                        "Mean and MeanOut should share the same memory"));
-  PADDLE_ENFORCE_EQ(
-      ctx->Inputs("Variance")[0], ctx->Outputs("VarianceOut")[0],
-      platform::errors::InvalidArgument(
-          "Variance and VarianceOut should share the same memory"));
-
-  const auto x_dims = ctx->GetInputDim("X");
-
-  for (int i = 0; i < x_dims.size(); i++) {
-    PADDLE_ENFORCE_EQ(
-        (x_dims[i] == -1) || (x_dims[i] > 0), true,
-        platform::errors::InvalidArgument(
-            "Each dimension of input tensor is expected to be -1 or a "
-            "positive number, but recieved %d. Input's shape is [%s].",
-            x_dims[i], x_dims));
-  }
-
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
-
-  if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
-    auto mom = ctx->Inputs("MomentumTensor");
-    PADDLE_ENFORCE_EQ(mom.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "The input tensor MomentumTensor's size must be 1"
-                          "But received: MomentumTensor's size is [%d]",
-                          mom.size()));
-  }
-
-  PADDLE_ENFORCE_GE(
-      x_dims.size(), 2,
-      platform::errors::InvalidArgument(
-          "ShapeError: the dimension of input "
-          "X must greater than or equal to 2. But received: the shape of input "
-          "X = [%s], the dimension of input X =[%d]",
-          x_dims, x_dims.size()));
-  PADDLE_ENFORCE_LE(
-      x_dims.size(), 5,
-      platform::errors::InvalidArgument(
-          "ShapeError: the dimension of input X "
-          "must smaller than or equal to 5. But received: the shape of input X "
-          "= [%s], the dimension of input X = [%d]",
-          x_dims, x_dims.size()));
-
-  const int64_t C =
-      ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
-           ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
-
-  auto scale_dim = ctx->GetInputDim("Scale");
-  auto bias_dim = ctx->GetInputDim("Bias");
-
-  PADDLE_ENFORCE_EQ(
-      scale_dim.size(), 1UL,
-      platform::errors::InvalidArgument(
-          "ShapeError: the dimension of scale must equal to 1."
-          "But received: the shape of scale is [%s], the dimension "
-          "of scale is [%d]",
-          scale_dim, scale_dim.size()));
-  PADDLE_ENFORCE_EQ(bias_dim.size(), 1UL,
-                    platform::errors::InvalidArgument(
-                        "ShapeError: the dimension of bias must equal to 1."
-                        "But received: the shape of bias is [%s],the dimension "
-                        "of bias is [%d]",
-                        bias_dim, bias_dim.size()));
-
-  bool check = true;
-  if ((!ctx->IsRuntime()) &&
-      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
-    check = false;
-  }
-
-  if (check) {
-    PADDLE_ENFORCE_EQ(scale_dim[0], C,
-                      platform::errors::InvalidArgument(
-                          "ShapeError: the shape of scale must equal to [%d]"
-                          "But received: the shape of scale is [%d]",
-                          C, scale_dim[0]));
-    PADDLE_ENFORCE_EQ(bias_dim[0], C,
-                      platform::errors::InvalidArgument(
-                          "ShapeError: the shape of bias must equal to [%d]"
-                          "But received: the shape of bias is [%d]",
-                          C, bias_dim[0]));
-  }
-  ctx->SetOutputDim("Y", x_dims);
-  ctx->SetOutputDim("MeanOut", {C});
-  ctx->SetOutputDim("VarianceOut", {C});
-  ctx->SetOutputDim("SavedMean", {C});
-  ctx->SetOutputDim("SavedVariance", {C});
-  ctx->ShareLoD("X", "Y");
-}
 
 framework::OpKernelType BatchNormOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
@@ -1280,10 +1166,13 @@ DECLARE_INPLACE_OP_INFERER(BatchNormDoubleGradOpInplaceInferer, {"DY", "DDY"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(batch_norm, BatchNormnferShapeFunctor,
+                            PD_INFER_META(phi::BatchNormInferMeta));
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::BatchNormGradMaker<paddle::framework::OpDesc>,
-                  ops::BatchNormGradMaker<paddle::imperative::OpBase>);
+                  ops::BatchNormGradMaker<paddle::imperative::OpBase>,
+                  BatchNormnferShapeFunctor);
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp,
                   ops::BatchNormDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::BatchNormDoubleGradMaker<paddle::imperative::OpBase>);

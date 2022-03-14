@@ -304,6 +304,25 @@ void DiagonalInferMeta(const MetaTensor& input,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
+void DropoutInferMeta(const MetaTensor& x,
+                      paddle::optional<const MetaTensor&> seed_tensor,
+                      float p,
+                      bool is_test,
+                      const std::string& mode,
+                      int seed,
+                      bool fix_seed,
+                      MetaTensor* out,
+                      MetaTensor* mask) {
+  auto x_dims = x.dims();
+  out->set_dims(x_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+
+  if (is_test == false) {
+    mask->set_dims(x_dims);
+  }
+}
+
 void EighInferMeta(const MetaTensor& x,
                    const std::string& uplo,
                    MetaTensor* out_w,
@@ -659,6 +678,24 @@ void MultinomialInferMeta(const MetaTensor& x,
 
   out->set_dims(make_ddim(out_dims));
   out->set_dtype(DataType::INT64);
+}
+
+void NormInferMeta(const MetaTensor& x,
+                   int axis,
+                   float epsilon,
+                   bool is_test,
+                   MetaTensor* out,
+                   MetaTensor* norm) {
+  auto xdim = x.dims();
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+
+  if (is_test == false) {
+    if (axis < 0) axis = xdim.size() + axis;
+    xdim[axis] = 1;
+    norm->set_dims(xdim);
+    norm->set_dtype(x.dtype());
+  }
 }
 
 void PadInferMeta(const MetaTensor& input,

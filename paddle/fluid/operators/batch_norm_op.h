@@ -45,7 +45,6 @@ using ConstEigenVectorArrayMap =
 class BatchNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
