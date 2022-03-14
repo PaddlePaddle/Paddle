@@ -14,6 +14,7 @@
 
 #pragma once
 #include "heter_comm.h"
+#include <thrust/host_vector.h>
 #include "paddle/fluid/platform/enforce.h"
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
@@ -95,14 +96,17 @@ node_list[8]-> node_id:17, neighbor_size:1, neighbor_offset:15
 struct NeighborSampleResult {
   int64_t *val;
   int *actual_sample_size, sample_size, key_size;
+  int *offset;
   NeighborSampleResult(int _sample_size, int _key_size)
       : sample_size(_sample_size), key_size(_key_size) {
     actual_sample_size = NULL;
     val = NULL;
+    offset = NULL;
   };
   ~NeighborSampleResult() {
     if (val != NULL) cudaFree(val);
     if (actual_sample_size != NULL) cudaFree(actual_sample_size);
+    if (offset != NULL) cudaFree(offset);
   }
 };
 
@@ -130,10 +134,13 @@ class GpuPsGraphTable : public HeterComm<int64_t, int, int> {
   NodeQueryResult *query_node_list(int gpu_id, int start, int query_size);
   void clear_graph_info();
   void move_neighbor_sample_result_to_source_gpu(int gpu_id, int gpu_num,
-                                                 int sample_size, int *h_left,
-                                                 int *h_right,
+                                                 int *h_left, int *h_right,
                                                  int64_t *src_sample_res,
-                                                 int *actual_sample_size);
+                                                 thrust::host_vector<int>& total_sample_size);
+  void move_neighbor_sample_size_to_source_gpu(int gpu_id, int gpu_num,
+                                               int *h_left, int *h_right,
+                                               int *actual_sample_size,
+                                               int *total_sample_size);
 
  private:
   std::vector<GpuPsCommGraph> gpu_graph_list;
