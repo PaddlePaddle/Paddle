@@ -264,14 +264,23 @@ void BuildDygraphPhiKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
 
-    if ((it == ins.end()) &&
-        (input_defs[i].type_index ==
-         std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
-      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
-      auto end_idx = start_idx + 1;
-      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
-      continue;
+    if (it == ins.end()) {
+      if (LIKELY(input_defs[i].type_index ==
+                 std::type_index(
+                     typeid(paddle::optional<const phi::DenseTensor&>)))) {
+        kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+        auto end_idx = start_idx + 1;
+        kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+        continue;
+      } else {
+        PADDLE_THROW(phi::errors::NotFound(
+            "Can not find input variable '%s' for %s OP, please check whether "
+            "the name setting in OpArgumentMapping is consistent with that in "
+            "OpMaker.",
+            input_names[i], pt_kernel_signature.name));
+      }
     }
+
     auto ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
 

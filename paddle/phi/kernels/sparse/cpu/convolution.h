@@ -16,8 +16,6 @@ limitations under the License. */
 
 #include <set>
 
-#include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -27,6 +25,8 @@ limitations under the License. */
 
 namespace phi {
 namespace sparse {
+
+using Dims4D = phi::funcs::sparse::Dims4D;
 
 // such as: kernel(3, 3, 3), kernel_size = 27
 // counter_per_weight: (kernel_size)
@@ -67,7 +67,8 @@ void ProductRuleBook(const Context& dev_ctx,
       int in_z = indices_ptr[i + non_zero_num];
       int in_y = indices_ptr[i + 2 * non_zero_num];
       int in_x = indices_ptr[i + 3 * non_zero_num];
-      int index = PointToIndex<DDim>(batch, in_x, in_y, in_z, x_dims);
+      int index = phi::funcs::sparse::PointToIndex<DDim>(
+          batch, in_x, in_y, in_z, x_dims);
       hash_in.insert(index);
     }
   }
@@ -86,20 +87,20 @@ void ProductRuleBook(const Context& dev_ctx,
             int out_z = (in_z + paddings[0] - kz * dilations[0]) / strides[0];
             int out_y = (in_y + paddings[1] - ky * dilations[1]) / strides[1];
             int out_x = (in_x + paddings[2] - kx * dilations[2]) / strides[2];
-            if (Check(c_x_dims,
-                      c_kernel_dims,
-                      c_paddings,
-                      c_dilations,
-                      c_strides,
-                      in_x,
-                      in_y,
-                      in_z,
-                      kx,
-                      ky,
-                      kz)) {
+            if (phi::funcs::sparse::Check(c_x_dims,
+                                          c_kernel_dims,
+                                          c_paddings,
+                                          c_dilations,
+                                          c_strides,
+                                          in_x,
+                                          in_y,
+                                          in_z,
+                                          kx,
+                                          ky,
+                                          kz)) {
               if (subm) {
-                int out_index =
-                    PointToIndex<DDim>(batch, out_x, out_y, out_z, out_dims);
+                int out_index = phi::funcs::sparse::PointToIndex<DDim>(
+                    batch, out_x, out_y, out_z, out_dims);
                 if (hash_in.find(out_index) == hash_in.end()) {
                   continue;
                 }
@@ -112,7 +113,7 @@ void ProductRuleBook(const Context& dev_ctx,
                 rulebook_ptr[rulebook_index] = kernel_index - 1;
                 rulebook_ptr[rulebook_index + rulebook_len] = i;  // in_i
                 rulebook_ptr[rulebook_index + rulebook_len * 2] =
-                    PointToIndex<DDim>(
+                    phi::funcs::sparse::PointToIndex<DDim>(
                         batch, out_x, out_y, out_z, out_dims);  // out_index
                 ++rulebook_index;
               }
@@ -161,7 +162,7 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   for (auto it = out_indexs.begin(); it != out_indexs.end(); it++, i++) {
     const int index = *it;
     int batch, x, y, z;
-    IndexToPoint<DDim>(index, out_dims, &batch, &x, &y, &z);
+    phi::funcs::sparse::IndexToPoint<DDim>(index, out_dims, &batch, &x, &y, &z);
     out_indices_ptr[i] = batch;
     out_indices_ptr[i + out_non_zero_num] = z;
     out_indices_ptr[i + out_non_zero_num * 2] = y;

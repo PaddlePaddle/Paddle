@@ -26,11 +26,13 @@ namespace phi {
 // TODO(chenweihang): add other flags if needed
 struct MetaConfig {
   bool is_runtime{true};
-
+  bool is_run_mkldnn_kernel{false};
   MetaConfig() = default;
 
   // supporting implicit construction is easier to use
-  MetaConfig(bool is_runtime) : is_runtime(is_runtime) {}  // NOLINT
+  MetaConfig(bool is_runtime, bool is_run_mkldnn_kernel)
+      : is_runtime(is_runtime),
+        is_run_mkldnn_kernel(is_run_mkldnn_kernel) {}  // NOLINT
 };
 
 class MetaTensor {
