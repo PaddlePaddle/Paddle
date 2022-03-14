@@ -295,12 +295,13 @@ class Engine:
                     for name, val in logs.items()
                 }
                 self._logger.info(train_logs)
+        return outputs
 
     def evaluate(self, eval_data, batch_size=1):
         # TODO: support metrics
         self.mode = 'eval'
         assert isinstance(eval_data, Dataset)
-        eval_dataloader = self._create_dataloader(eval_data, batch_size, 1)
+        eval_dataloader = self._create_dataloader(eval_data, batch_size)
 
         outputs = []
         for step, data in enumerate(eval_dataloader):
@@ -308,6 +309,7 @@ class Engine:
             outputs.append(loss)
             train_logs = {"eval_" + name: val for name, val in logs.items()}
             self._logger.info(train_logs)
+        return outputs
 
     def predict(self,
                 test_data,
@@ -316,7 +318,7 @@ class Engine:
                 return_numpy=True):
         self.mode = 'predict'
         # TODO: need check dataset
-        test_dataloader = self._create_dataloader(test_data, batch_size, 1)
+        test_dataloader = self._create_dataloader(test_data, batch_size)
 
         outputs = []
         for step, data in enumerate(test_dataloader):
@@ -376,7 +378,7 @@ class Engine:
     def _create_dataloader(self,
                            dataset,
                            batch_size,
-                           epochs,
+                           epochs=1,
                            steps_per_epoch=None):
         feed_list = self._feed_vars[self.mode]["inputs"] + self._feed_vars[
             self.mode]["labels"]
