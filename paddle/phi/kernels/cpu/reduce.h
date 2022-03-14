@@ -125,7 +125,6 @@ void GetShuffledInput(const DeviceContext& dev_ctx,
   trans(dev_ctx, input, shuffled_input, perm_axis);
 }
 
-// TODO(chentianyu03) move this into funcs
 template <typename DeviceContext, typename OutT, typename Functor>
 void HandleLargeDim(const DeviceContext& dev_ctx,
                     const phi::DenseTensor& input,
