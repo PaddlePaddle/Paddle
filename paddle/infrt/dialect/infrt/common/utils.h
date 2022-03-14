@@ -12,4 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/pd_types.h"
+#pragma once
+
+#include <mlir/IR/Builders.h>
+#include <mlir/IR/Dialect.h>
+#include <mlir/IR/DialectImplementation.h>
+#include <mlir/IR/MLIRContext.h>
+#include <mlir/IR/TypeUtilities.h>
+#include <mlir/IR/Types.h>
+
+namespace infrt {
+
+mlir::SmallVector<mlir::Value, 4> cvtValueToValueRange(
+    const mlir::Value &operand);
+
+mlir::SmallVector<mlir::Value, 4> concatTwoValueRange(
+    mlir::ValueRange operand_0, mlir::ValueRange operand_1);
+}  // namespace infrt

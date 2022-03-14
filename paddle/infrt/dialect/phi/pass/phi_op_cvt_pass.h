@@ -14,44 +14,14 @@
 
 #pragma once
 #include <mlir/Pass/Pass.h>
-#include "paddle/infrt/dialect/infrt/common_type.h"
+#include "paddle/infrt/dialect/infrt/common/types.h"
 
 namespace infrt {
 /*
  * phiOpCvtPass.
- *
- * Convert the general operators in pd Dialect to a infrt.kernelOp.
- *
- * source func:
- *
- * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()...
- *  %c = "pd.conv2d"(%a) ...
- *  %d = "pd.conv3d"(%c) ...
- *  %f = "pd.conv2d"(%a) ...
- *  "pd.fetch" (%d, %f)
- * }
- *
- * destination func:
- * func @main() -> tensor<?xf32> {
- *  %a = "pd.feed"()...
- *  %c = "infrt.kernel"(%a){name = "conv2d"} ...
- *  %d = "infrt.kernel"(%c){name = "conv3d"}...
- *  %f = "infrt.kernel"(%a){name = "conv2d"}...
- *  "pd.fetch" (%d, %f)
- * }
+ * Convert the general operators from pd Dialect to phi dialect.
  */
-class phiOpCvtPass
-    : public mlir::PassWrapper<phiOpCvtPass, mlir::FunctionPass> {
- public:
-  ::llvm::StringRef getName() const override { return "phiOpCvtPass"; }
-  void runOnFunction() override;
-  explicit phiOpCvtPass(std::vector<Place> valid_places = std::vector<Place>())
-      : valid_places_(valid_places) {}
+std::unique_ptr<mlir::Pass> createPhiOpCvtPass(
+    std::vector<Place> valid_places = std::vector<Place>());
 
- private:
-  void convertStage();
-  void diapatchStage();
-  std::vector<Place> valid_places_;
-};
 }  // namespace infrt

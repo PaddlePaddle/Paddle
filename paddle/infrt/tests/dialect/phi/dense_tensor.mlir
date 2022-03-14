@@ -11,6 +11,6 @@ func @sign_any_float32_execute() {
 
   // CHECK: dense_tensor: shape=shape[1], values=[1]
   "phi_dt.print_tensor" (%e) : (!infrt.dense_tensor<CPU, FP32, NCHW>) -> ()
-  Infrt.return
+  infrt.return
 }
 
