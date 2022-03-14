@@ -294,7 +294,7 @@ class ASPHelper(object):
     2. pruning well-trained models into 2:4 sparse pattern on FP16 or 1:2 sparse pattern on FP32 for fine-tuning.
     """
 
-    MASK_APPENDDED_NAME = '_asp_mask'
+    MASK_APPENDDED_NAME = 'asp_mask'
     PADDLE_WEIGHT_SUFFIX = "w_"
 
     __asp_info = {}
