@@ -1,24 +1,24 @@
-// RUN: trt-exec %s | FileCheck %s
+// RUN: infrtexec -i %s | FileCheck %s
 
-// CHECK-LABEL: run_trt
+// CHECK-LABEL: @run_trt
 func @run_trt(%0 : !infrt.dense_tensor<GPU, FP32, NCHW>, %ctx : !phi.context<GPU>) {
   %a = "trt.create_engine"(%0) ({
     %1 = "trt.Activation"(%0) {activation_type = 1 : si32, alpha = 1.0 : f32, beta = 6.0 : f32} : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> !infrt.dense_tensor<GPU, FP32, NCHW>
     "infrt.return"(%1) : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> ()
-  }) : ( !infrt.dense_tensor<GPU, FP32, NCHW>) -> !trt.engine
-  // CHECK 
-  "trt.inspect"(%a) {} : (!trt.engine) -> ()
+  }) : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> !trt.engine
+  "trt.inspect_engine"(%a) {} : (!trt.engine) -> ()
 
   %res = "trt.compute"(%a, %ctx) {} : (!trt.engine, !phi.context<GPU>) -> (!infrt.tensor_list)
   %size = "infrt.tensor_list_get_size"(%res) {} : (!infrt.tensor_list) -> (i32)
-  "Infrt.print.i32"(%size) {} : (i32) -> ()
+  "infrt.print.i32"(%size) {} : (i32) -> ()
 
   %ts0 = "infrt.tensor_list_get_tensor"(%res) {id = 0 : i32} : (!infrt.tensor_list) -> (!infrt.dense_tensor<GPU, FP32, NCHW>)
   "phi_dt.print_tensor" (%ts0) : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> ()
 
-  Infrt.return
+  infrt.return
 }
 
+// CHECK-LABEL: @main
 func @main() {
   %ctx = "phi_dt.create_context.gpu" (): () -> !phi.context<GPU>
   %t = "phi_dt.create_dense_tensor.gpu" (%ctx) {
@@ -30,8 +30,8 @@ func @main() {
   "phi_dt.print_tensor" (%t) : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> ()
 
   //%res = 
-  Infrt.call @run_trt(%t, %ctx) : (!infrt.dense_tensor<GPU, FP32, NCHW>, !phi.context<GPU>) -> ()
+  infrt.call @run_trt(%t, %ctx) : (!infrt.dense_tensor<GPU, FP32, NCHW>, !phi.context<GPU>) -> ()
   //-> (!infrt.dense_tensor<GPU, FP32, NCHW>)
 
-  Infrt.return
+  infrt.return
 }

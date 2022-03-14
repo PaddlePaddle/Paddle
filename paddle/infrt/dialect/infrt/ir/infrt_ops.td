@@ -68,7 +68,7 @@ def Infrt_TensorListGetTensorOp : Infrt_Op<"tensor_list_get_tensor", [NoSideEffe
   }];
 
   let arguments = (ins
-          TensorListType:$l,
+          DenseTensorList:$l,
           I32Attr:$id
           );
   let results = (outs DenseTensor:$output);
@@ -82,7 +82,7 @@ def TensorListGetSizeOp : Infrt_Op<"tensor_list_get_size", [NoSideEffect]> {
     An operation that get the size of a TensorList.
   }];
 
-  let arguments = (ins TensorListType:$map);
+  let arguments = (ins DenseTensorList:$map);
   let results = (outs I32:$size);
   // let assemblyFormat = "`(` $map `)` attr-dict `->` type($size)";
 }

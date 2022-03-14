@@ -24,8 +24,6 @@ namespace kernel {
 void RegisterTrtKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel("trt.create_engine",
                       INFRT_KERNEL(tensorrt::CreateTrtEngine));
-  // registry->AddKernel("trt.execute",
-  //                     INFRT_KERNEL(tensorrt::TrtEngineCompute));
   registry->AddKernel("trt.inspect_engine",
                       INFRT_KERNEL(tensorrt::PrintTrtLayer));
   registry->AddKernel("trt.compute", INFRT_KERNEL(tensorrt::TrtEngineCompute));

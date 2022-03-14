@@ -22,7 +22,7 @@
 #include "paddle/infrt/dialect/tensorrt/trt_dialect_types.h"
 
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/phi/ir/phi_base.h"
 
 namespace infrt {

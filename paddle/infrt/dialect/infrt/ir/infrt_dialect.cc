@@ -41,7 +41,6 @@ void InfrtDialect::initialize() {
 #define GET_TYPEDEF_LIST
 #include "paddle/infrt/dialect/infrt/ir/infrt_opsTypes.cpp.inc"  // NOLINT
       >();
-  addTypes<infrt::TensorListType>();
 
   addAttributes<
 #define GET_ATTRDEF_LIST
@@ -136,7 +135,7 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
         parser.getContext(), *targetType, *precisionType, *layoutType);
   }
   if (keyword == "tensor_list") {
-    return infrt::TensorListType::get();
+    return infrt::DenseTensorListType::get(parser.getContext());
   }
   // Todo: parse other type
   return mlir::Type();
@@ -168,7 +167,7 @@ void InfrtDialect::printType(::mlir::Type type,
     return;
   }
 
-  if (type.isa<infrt::TensorListType>()) {
+  if (type.isa<infrt::DenseTensorListType>()) {
     os << "tensor_list";
     return;
   }

@@ -22,15 +22,6 @@
 
 namespace infrt {
 
-class TensorListType : public mlir::Type::TypeBase<TensorListType,
-                                                   mlir::Type,
-                                                   mlir::TypeStorage> {
- public:
-  using Base::Base;
-  static TensorListType get();
-  static TensorListType get(mlir::MLIRContext *context);
-};
-
 enum class TargetType : uint8_t { CPU, GPU, UNK };
 enum class LayoutType : uint8_t { NCHW, NHWC, ANY, UNK };
 enum class PrecisionType : uint8_t {

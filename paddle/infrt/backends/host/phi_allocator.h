@@ -37,10 +37,7 @@ class CpuPhiAllocator : public phi::Allocator {
 // TODO(wilber): Just for demo test. we need a more efficient gpu allocator.
 class GpuPhiAllocator : public phi::Allocator {
  public:
-  static void deleter(phi::Allocation* ptr) {
-    cudaFree(ptr->ptr());
-    //  ::operator delete(ptr);
-  }
+  static void deleter(phi::Allocation* ptr) { cudaFree(ptr->ptr()); }
 
   AllocationPtr Allocate(size_t bytes_size) {
     void* ptr;

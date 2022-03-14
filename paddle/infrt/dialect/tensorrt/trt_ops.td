@@ -7,7 +7,7 @@ include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/IR/OpBase.td"
 include "paddle/infrt/dialect/tensorrt/trt_op_base.td"
 
-include "paddle/infrt/dialect/infrt/infrt_ops_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 include "paddle/infrt/dialect/phi/ir/infrt_phi_base.td"
 
 def TRT_CreateEngineOp : TRT_Op<"create_engine", [SingleBlockImplicitTerminator<"::infrt::ReturnOp">]> {
@@ -25,20 +25,20 @@ def TRT_ExecuteOp : TRT_Op<"execute", [NoSideEffect]> {
   let description = [{
     Describe a tensorrt runtime.
   }];
-  let arguments = (ins TRT_EngineType:$engine, Variadic<TRT_Tensor>:$inputs);
-  let results = (outs Variadic<TRT_Tensor>:$output);
+  let arguments = (ins TRT_EngineType:$engine, Variadic<DenseTensor>:$inputs);
+  let results = (outs Variadic<DenseTensor>:$output);
 }
 
-def TRT_EngineCompute : TRT_Op<"compute", [NoSideEffect]> {
+def TRT_EngineComputeOp : TRT_Op<"compute", [NoSideEffect]> {
   let summary = "trt compute engine";
   let description = [{
     execute engine
   }];
   let arguments = (ins TRT_EngineType:$engine, Context:$context);
-  let results = (outs TensorListType:$outputs);
+  let results = (outs DenseTensorList:$outputs);
 }
 
-def TRT_InspectEngine : TRT_Op<"inspect", [NoSideEffect]> {
+def TRT_InspectEngineOp : TRT_Op<"inspect_engine", [NoSideEffect]> {
   let summary = "trt inspect engine";
   let description = [{
     Show engine
@@ -67,9 +67,9 @@ def TRT_ElementWiseOp : TRT_Op<"ElementWise", [NoSideEffect]> {
     TensorRT IElementWiseLayer.
     
   }];
-  let arguments = (ins  TRT_Tensor:$input1, TRT_Tensor:$input2, SI32Attr:$elementwise_operation);
+  let arguments = (ins  DenseTensor:$input1, DenseTensor:$input2, SI32Attr:$elementwise_operation);
 
-  let results = (outs TRT_Tensor:$output);
+  let results = (outs DenseTensor:$output);
 }
 
 def TRT_MatrixMultiplyOp : TRT_Op<"MatrixMultiply", [NoSideEffect]> {
@@ -79,10 +79,10 @@ def TRT_MatrixMultiplyOp : TRT_Op<"MatrixMultiply", [NoSideEffect]> {
     TensorRT IMatrixMultiplyLayer.
     
   }];
-  let arguments = (ins  TRT_Tensor:$input1, BoolAttr:$transpose1,
-                        TRT_Tensor:$input2, BoolAttr:$transpose2);
+  let arguments = (ins  DenseTensor:$input1, BoolAttr:$transpose1,
+                        DenseTensor:$input2, BoolAttr:$transpose2);
 
-  let results = (outs TRT_Tensor:$output);
+  let results = (outs DenseTensor:$output);
 }
 
 #endif  // TRT_OPS
