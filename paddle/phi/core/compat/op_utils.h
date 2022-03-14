@@ -38,7 +38,6 @@ const std::unordered_set<std::string> standard_kernel_suffixs({
  * They are marked here uniformly.
  */
 const std::unordered_set<std::string> deprecated_op_names({"diag",
-                                                           "diag_grad",
                                                            "flatten",
                                                            "flatten_grad",
                                                            "isinf",
