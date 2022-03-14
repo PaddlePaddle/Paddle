@@ -75,7 +75,7 @@ struct MlirToRuntimeTranslator::Impl {
 };
 
 bool MlirToRuntimeTranslator::EmitConstantOp(mlir::Operation* op) {
-  if (!infrt::Startswith(op->getName().getStringRef().str(), "Infrt.constant"))
+  if (!infrt::Startswith(op->getName().getStringRef().str(), "infrt.constant"))
     return false;
   VLOG(3) << "Emitting constant op [" << op->getName().getStringRef().str()
           << "]";
@@ -174,6 +174,36 @@ boost::optional<double> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 template <>
+boost::optional<::infrt::TargetType> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<::infrt::TargetAttr>()) return boost::none;
+  if (attr.isa<::infrt::TargetAttr>()) {
+    return attr.cast<::infrt::TargetAttr>().getTarget();
+  }
+  return boost::none;
+}
+
+template <>
+boost::optional<::infrt::LayoutType> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<::infrt::LayoutAttr>()) return boost::none;
+  if (attr.isa<::infrt::LayoutAttr>()) {
+    return attr.cast<::infrt::LayoutAttr>().getLayout();
+  }
+  return boost::none;
+}
+
+template <>
+boost::optional<::infrt::PrecisionType> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<::infrt::PrecisionAttr>()) return boost::none;
+  if (attr.isa<::infrt::PrecisionAttr>()) {
+    return attr.cast<::infrt::PrecisionAttr>().getPrecision();
+  }
+  return boost::none;
+}
+
+template <>
 boost::optional<std::string> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
   if (!attr.isa<mlir::StringAttr>()) return boost::none;
@@ -237,7 +267,7 @@ boost::optional<std::vector<double>> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 static bool IsReturn(mlir::Operation* op) {
-  return op->getName().getStringRef() == "Infrt.return";
+  return op->getName().getStringRef() == "infrt.return";
 }
 
 bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
@@ -291,6 +321,13 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
     } else if (auto v = EmitAttribute<std::string>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
     } else if (auto v = EmitAttribute<bool>(attr.getValue())) {
+      impl_->cur_op->AppendAttribute(new Value(*v));
+    } else if (auto v = EmitAttribute<::infrt::TargetType>(attr.getValue())) {
+      impl_->cur_op->AppendAttribute(new Value(*v));
+    } else if (auto v =
+                   EmitAttribute<::infrt::PrecisionType>(attr.getValue())) {
+      impl_->cur_op->AppendAttribute(new Value(*v));
+    } else if (auto v = EmitAttribute<::infrt::LayoutType>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(*v));
     } else if (auto v = EmitAttribute<std::vector<int16_t>>(attr.getValue())) {
       impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
@@ -368,7 +405,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
 bool MlirToRuntimeTranslator::EmitReturnOp(
     mlir::Operation* op, llvm::SmallVectorImpl<mlir::Value>* results) {
   CHECK(results);
-  if (op->getName().getStringRef() == "Infrt.return") {
+  if (op->getName().getStringRef() == "infrt.return") {
     for (size_t i = 0; i < op->getNumOperands(); i++) {
       results->push_back(op->getOperand(i));
     }
@@ -441,7 +478,7 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
                                          function_defs_t* function_table) {
   CHECK(op);
   CHECK(function_table);
-  if (op->getName().getStringRef() != "Infrt.call") return false;
+  if (op->getName().getStringRef() != "infrt.call") return false;
 
   impl_->cur_op =
       impl_->runtime->NewOpExecutable(op->getName().getStringRef().str());

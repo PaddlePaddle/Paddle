@@ -90,6 +90,8 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsForInferShape() const override { return true; }
 
+  bool IsRuntime() const override { return ctx_.IsRuntime(); }
+
  private:
   const InferShapeContext& ctx_;
 };
@@ -247,13 +249,13 @@ class CompatMetaTensor : public phi::MetaTensor {
   }
 
   void share_meta(const MetaTensor& meta_tensor) override {
+    share_dims(meta_tensor);
     set_dtype(meta_tensor.dtype());
     // VarDesc doesn't contains layout, so we cannot share layout
     // set_layout(meta_tensor.layout());
 
-    // special case 1: share lod of LoDTensor
+    // special case: share lod of LoDTensor
     share_lod(meta_tensor);
-    share_dims(meta_tensor);
   }
 
  private:
@@ -295,7 +297,8 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
-  phi::InferMetaContext infer_meta_context(ctx->IsRuntime());
+  phi::InferMetaContext infer_meta_context(
+      {ctx->IsRuntime(), ctx->IsRunMKLDNNKernel()});
 
   auto& input_names = std::get<0>(signature.args);
   auto& attr_names = std::get<1>(signature.args);
