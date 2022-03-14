@@ -12,40 +12,52 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 
 #include <llvm/ADT/TypeSwitch.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/DialectImplementation.h>
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt/infrt_opsDialect.cpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/infrt_opsDialect.cpp.inc"
 
 #define GET_TYPEDEF_CLASSES
-#include "paddle/infrt/dialect/infrt/infrt_opsTypes.cpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/infrt_opsTypes.cpp.inc"
 
 #define GET_ATTRDEF_CLASSES
-#include "paddle/infrt/dialect/infrt/infrt_opsAttributes.cpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/infrt_opsAttributes.cpp.inc"
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/infrt/infrt_ops.cpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/infrt_ops.cpp.inc"
+
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+
+#include "paddle/infrt/dialect/infrt/ir/test_kernels.h"
 
 namespace infrt {
 
 void InfrtDialect::initialize() {
   addTypes<
 #define GET_TYPEDEF_LIST
-#include "paddle/infrt/dialect/infrt/infrt_opsTypes.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/infrt/ir/infrt_opsTypes.cpp.inc"  // NOLINT
       >();
 
   addAttributes<
 #define GET_ATTRDEF_LIST
-#include "paddle/infrt/dialect/infrt/infrt_opsAttributes.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/infrt/ir/infrt_opsAttributes.cpp.inc"  // NOLINT
       >();
 
   addOperations<
 #define GET_OP_LIST
-#include "paddle/infrt/dialect/infrt/infrt_ops.cpp.inc"  // NOLINT
+#include "paddle/infrt/dialect/infrt/ir/infrt_ops.cpp.inc"  // NOLINT
+      >();
+  addOperations<
+#define GET_OP_LIST
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.cpp.inc"
+      >();
+  addOperations<
+#define GET_OP_LIST
+#include "paddle/infrt/dialect/infrt/ir/test_kernels.cpp.inc"
       >();
 }
 
@@ -128,7 +140,7 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
 
 void InfrtDialect::printType(::mlir::Type type,
                              ::mlir::DialectAsmPrinter &os) const {
-  // print LoDTensorType, for example: !Infrt.lod_tensor<3x64x3x3xf32,5>
+  // print LoDTensorType, for example: !infrt.lod_tensor<3x64x3x3xf32,5>
   if (type.isa<infrt::LoDTensorType>()) {
     auto lod_tensor_type = type.cast<infrt::LoDTensorType>();
     os << "lod_tensor<";
