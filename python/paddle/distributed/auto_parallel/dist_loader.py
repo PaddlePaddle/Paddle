@@ -15,6 +15,7 @@
 import abc
 import numpy as np
 import paddle
+from .utils import to_list
 from paddle.io import DataLoader, DistributedBatchSampler
 
 
@@ -51,10 +52,11 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                  places,
                  batch_size=1,
                  epochs=1,
-                 steps_per_epoch=1000,
+                 steps_per_epoch=None,
                  data_parallel_world_size=None,
                  data_parallel_rank=None,
-                 drop_last=False):
+                 drop_last=False,
+                 inputs=[]):
         self.feed_list = feed_list
         self.places = places
         self.steps_per_epoch = steps_per_epoch
@@ -62,6 +64,8 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
             dataset, batch_size, epochs, data_parallel_world_size,
             data_parallel_rank, drop_last)
         self._inner_dataloader = self._create_inner_dataloader()
+        self._steps = self._infer_steps()
+        self._inputs = inputs
 
     def __iter__(self):
         self._cur_step = 0
@@ -69,22 +73,54 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
         return self
 
     def __next__(self):
-        if self._cur_step < self.steps_per_epoch:
+        if self._cur_step < self._steps:
             self._cur_step += 1
         else:
             self._inner_dataloader.reset()
             raise StopIteration
 
+    def _infer_steps(self):
+        if self.steps_per_epoch is not None:
+            return self.steps_per_epoch
+        try:
+            steps_per_epoch = len(self.dataset) // self.batch_size
+        except:
+            raise ValueError(
+                "Pleace set `steps_per_epoch` or implement `__len__` methond in dataset class."
+            )
+        return steps_per_epoch
+
     def _create_inner_dataloader(self):
         def data_generator():
             batch_data = None
             for step, data in enumerate(self.dataset):
+                if not isinstance(data, list) and not isinstance(data, tuple):
+                    data = to_list(data)
+
+                _inputs = data[:len(self._inputs)]
+                _labels = data[len(self._inputs):]
+                if _labels:
+                    data = [_inputs, _labels]
+                else:
+                    data = [_inputs]
+
                 if batch_data is None:
                     batch_data = [[] for i in range(len(data))]
-                for idx, data_item in enumerate(data):
-                    batch_data[idx].append(np.array(data_item))
+
+                for idx in range(len(data)):
+                    batch_data[idx].extend(data[idx])
+
                 if (step + 1) % self.batch_size == 0:
-                    yield batch_data[0], batch_data[1]
+                    if len(data) == 1:
+                        yield batch_data[0]
+                    elif len(data) == 2:
+                        print(batch_data[0])
+                        print(batch_data[1])
+                        yield (batch_data[0], batch_data[1])
+                    else:
+                        raise ValueError(
+                            "data is expected to be in format `x`, `(x,)`, `(x, y)`"
+                        )
                     batch_data = None
 
         dataloader = paddle.fluid.io.DataLoader.from_generator(
