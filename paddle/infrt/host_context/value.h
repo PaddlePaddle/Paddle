@@ -22,6 +22,7 @@
 
 #include "paddle/infrt/common/object.h"
 #include "paddle/infrt/common/shared.h"
+#include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/host_context/function.h"
 #include "paddle/infrt/support/variant.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"
@@ -64,10 +65,12 @@ using ValueVariantType =
             tensor::DenseHostTensor,
             MlirFunctionExecutable*,
             tensor::TensorMap,
+            ::infrt::PrecisionType,
+            ::infrt::LayoutType,
+            ::infrt::TargetType,
 #ifdef INFRT_WITH_PHI
             ::phi::MetaTensor,
             ::phi::DenseTensor,
-            backends::CpuPhiAllocator,
             backends::CpuPhiContext,
             ::phi::CPUContext,
             std::vector<const phi::DenseTensor*>,
@@ -101,6 +104,9 @@ class Value : public common::Object {
   explicit Value(float x) : data(x) {}
   explicit Value(double x) : data(x) {}
   explicit Value(bool x) : data(x) {}
+  explicit Value(::infrt::TargetType x) : data(x) {}
+  explicit Value(::infrt::LayoutType x) : data(x) {}
+  explicit Value(::infrt::PrecisionType x) : data(x) {}
   explicit Value(std::string x) : data(x) {}
   explicit Value(tensor::TensorMap&& x) : data(x) {}
   explicit Value(std::vector<int16_t>&& x) : data(x) {}
@@ -112,11 +118,10 @@ class Value : public common::Object {
   explicit Value(tensor::DenseHostTensor&& x) : data(std::move(x)) {}
   explicit Value(MlirFunctionExecutable* x) : data(x) {}
 #ifdef INFRT_WITH_PHI
-  explicit Value(backends::CpuPhiContext&& x) : data(std::move(x)) {}
   explicit Value(::phi::CPUContext&& x) : data(std::move(x)) {}
+  explicit Value(backends::CpuPhiContext&& x) : data(std::move(x)) {}
   explicit Value(::phi::DenseTensor&& x) : data(std::move(x)) {}
   explicit Value(::phi::MetaTensor&& x) : data(std::move(x)) {}
-  explicit Value(backends::CpuPhiAllocator&& x) : data(std::move(x)) {}
 #endif
 
   template <typename T>
@@ -179,10 +184,6 @@ class ValueRef : common::Shared<Value> {
   explicit ValueRef(float val);
   explicit ValueRef(double val);
   explicit ValueRef(bool val);
-  explicit ValueRef(::phi::MetaTensor&& val);
-  explicit ValueRef(backends::CpuPhiContext&& x);
-  explicit ValueRef(::phi::CPUContext&& x);
-  explicit ValueRef(::phi::DenseTensor&& x);
 
   using common::Shared<Value>::get;
   using common::Shared<Value>::Reset;
