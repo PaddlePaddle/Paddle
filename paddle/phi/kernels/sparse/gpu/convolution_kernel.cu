@@ -33,6 +33,8 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
+using Dims4D = phi::funcs::sparse::Dims4D;
+
 __global__ void SetFlagAndUpdateCounterKernel(const int* indexs,
                                               const int n,
                                               const int rulebook_len,
@@ -83,7 +85,8 @@ __global__ void UpdateIndexKernel(const int* unique_keys,
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     const int index = unique_keys[i];
     int batch, x, y, z;
-    IndexToPoint<Dims4D>(index, out_dims, &batch, &x, &y, &z);
+    phi::funcs::sparse::IndexToPoint<Dims4D>(
+        index, out_dims, &batch, &x, &y, &z);
     // get out indices
     out_indices[i] = batch;
     out_indices[i + non_zero_num] = z;
@@ -150,23 +153,23 @@ __global__ void ProductRuleBookKernel(const int* x_indices,
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
           int in_i = -1, out_index = -1, kernel_i = -1;
-          if (Check(x_dims,
-                    kernel_dims,
-                    paddings,
-                    dilations,
-                    strides,
-                    in_x,
-                    in_y,
-                    in_z,
-                    kx,
-                    ky,
-                    kz)) {
+          if (phi::funcs::sparse::Check(x_dims,
+                                        kernel_dims,
+                                        paddings,
+                                        dilations,
+                                        strides,
+                                        in_x,
+                                        in_y,
+                                        in_z,
+                                        kx,
+                                        ky,
+                                        kz)) {
             int out_z = (in_z + paddings[1] - kz * dilations[1]) / strides[1];
             int out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
             int out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             in_i = i;
-            out_index =
-                PointToIndex<Dims4D>(batch, out_x, out_y, out_z, out_dims);
+            out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
+                batch, out_x, out_y, out_z, out_dims);
             atomicAdd(&counter_buf[kernel_index], 1);
             kernel_i = kernel_index;
           }
@@ -542,7 +545,8 @@ void Conv3dKernel(const Context& dev_ctx,
   const auto& kernel_dims = kernel.dims();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   DDim out_dims = {1, 1, 1, 1, 1};
-  GetOutShape(x_dims, kernel_dims, paddings, dilations, strides, &out_dims);
+  phi::funcs::sparse::GetOutShape(
+      x_dims, kernel_dims, paddings, dilations, strides, &out_dims);
   out->set_dims(out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
@@ -564,11 +568,8 @@ void Conv3dKernel(const Context& dev_ctx,
 
   std::vector<int> subm_paddings(paddings), subm_strides(strides);
   if (subm) {
-    auto kernel_dims = kernel.dims();
-    for (int i = 0; i < paddings.size(); i++) {
-      subm_paddings[i] = kernel_dims[i] / 2;
-      subm_strides[i] = 1;
-    }
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
   }
 
   int n = ProductRuleBook<T, Context>(dev_ctx,
