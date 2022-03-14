@@ -474,14 +474,15 @@ PyMethodDef variable_functions[] = {
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"run_partial_grad",
      (PyCFunction)(void (*)(void))eager_api_run_partial_grad,
-     {"_run_custom_op", (PyCFunction)(void (*)(void))eager_api_run_costum_op,
-      METH_VARARGS | METH_KEYWORDS, NULL},
-     {"tensor_copy", (PyCFunction)(void (*)(void))eager_api_tensor_copy,
-      METH_VARARGS | METH_KEYWORDS, NULL},
-     {"read_next_tensor_list",
-      (PyCFunction)(void (*)(void))eager_api_read_next_tensor_list,
-      METH_VARARGS | METH_KEYWORDS, NULL},
-     {NULL, NULL, 0, NULL}};
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_run_custom_op", (PyCFunction)(void (*)(void))eager_api_run_costum_op,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"tensor_copy", (PyCFunction)(void (*)(void))eager_api_tensor_copy,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {"read_next_tensor_list",
+     (PyCFunction)(void (*)(void))eager_api_read_next_tensor_list,
+     METH_VARARGS | METH_KEYWORDS, NULL},
+    {NULL, NULL, 0, NULL}};
 
 void BindFunctions(PyObject* module) {
   if (PyModule_AddFunctions(module, variable_functions) < 0) {
