@@ -89,6 +89,7 @@ from .loss import margin_cross_entropy  # noqa: F401
 from .loss import square_error_cost  # noqa: F401
 from .loss import ctc_loss  # noqa: F401
 from .loss import hinge_embedding_loss  # noqa: F401
+from .loss import triplet_margin_with_distance_loss
 from .norm import batch_norm  # noqa: F401
 from .norm import instance_norm  # noqa: F401
 from .norm import layer_norm  # noqa: F401
@@ -224,4 +225,5 @@ __all__ = [     #noqa
            'class_center_sample',
            'sparse_attention',
            'fold',
+           'triplet_margin_with_distance_loss',
 ]
