@@ -34,26 +34,51 @@ def main():
         if module_name in static_mode_white_list.STATIC_MODE_TESTING_LIST:
             flag_need_static_mode = True
             paddle.enable_static()
-        buffer = cStringIO()
-        main = fluid.Program()
-        startup = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.program_guard(main, startup):
-            with fluid.scope_guard(scope):
-                with fluid.unique_name.guard():
-                    test_loader = unittest.TestLoader()
-                    module = importlib.import_module(module_name)
-                    tests = test_loader.loadTestsFromModule(module)
-                    res = unittest.TextTestRunner(stream=buffer).run(tests)
-                    if not res.wasSuccessful():
-                        some_test_failed = True
-                        print(
-                            module_name,
-                            'failed\n',
-                            buffer.getvalue(),
-                            file=sys.stderr)
-        if flag_need_static_mode:
-            paddle.disable_static()
+        if module_name in NEW_DY_TEST_LIST:
+            from paddle.fluid.framework import _test_eager_guard
+            with _test_eager_guard():
+                buffer = cStringIO()
+                main = fluid.Program()
+                startup = fluid.Program()
+                scope = fluid.core.Scope()
+                with fluid.program_guard(main, startup):
+                    with fluid.scope_guard(scope):
+                        with fluid.unique_name.guard():
+                            test_loader = unittest.TestLoader()
+                            module = importlib.import_module(module_name)
+                            tests = test_loader.loadTestsFromModule(module)
+                            res = unittest.TextTestRunner(
+                                stream=buffer).run(tests)
+                            if not res.wasSuccessful():
+                                some_test_failed = True
+                                print(
+                                    module_name,
+                                    'failed\n',
+                                    buffer.getvalue(),
+                                    file=sys.stderr)
+                if flag_need_static_mode:
+                    paddle.disable_static()
+        else:
+            buffer = cStringIO()
+            main = fluid.Program()
+            startup = fluid.Program()
+            scope = fluid.core.Scope()
+            with fluid.program_guard(main, startup):
+                with fluid.scope_guard(scope):
+                    with fluid.unique_name.guard():
+                        test_loader = unittest.TestLoader()
+                        module = importlib.import_module(module_name)
+                        tests = test_loader.loadTestsFromModule(module)
+                        res = unittest.TextTestRunner(stream=buffer).run(tests)
+                        if not res.wasSuccessful():
+                            some_test_failed = True
+                            print(
+                                module_name,
+                                'failed\n',
+                                buffer.getvalue(),
+                                file=sys.stderr)
+            if flag_need_static_mode:
+                paddle.disable_static()
 
     if some_test_failed:
         exit(1)
