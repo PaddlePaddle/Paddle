@@ -17,8 +17,6 @@
 #include <llvm/ADT/Optional.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/raw_ostream.h>
-#include <mlir/IR/Dialect.h>
-#include <mlir/IR/OpDefinition.h>
 
 namespace infrt {
 

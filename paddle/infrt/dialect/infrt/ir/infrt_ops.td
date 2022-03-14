@@ -59,30 +59,3 @@ def Infrt_CvtTensorOp : Infrt_Op<"cvt_tensor", [NoSideEffect]> {
   let arguments = (ins AnyType:$input);
   let results = (outs AnyType:$output);
 }
-
-def Infrt_TensorListGetTensorOp : Infrt_Op<"tensor_list_get_tensor", [NoSideEffect]> {
-  let summary = "infrt.tensor_list_get_tensor operation";
-
-  let description = [{
-    An operation that can get a tensor from a TensorList.
-  }];
-
-  let arguments = (ins
-          DenseTensorList:$l,
-          I32Attr:$id
-          );
-  let results = (outs DenseTensor:$output);
-  let verifier = ?;
-}
-
-def TensorListGetSizeOp : Infrt_Op<"tensor_list_get_size", [NoSideEffect]> {
-  let summary = "infrt.tensor_list_get_size operation";
-
-  let description = [{
-    An operation that get the size of a TensorList.
-  }];
-
-  let arguments = (ins DenseTensorList:$map);
-  let results = (outs I32:$size);
-  // let assemblyFormat = "`(` $map `)` attr-dict `->` type($size)";
-}

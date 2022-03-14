@@ -87,4 +87,5 @@ llvm::StringRef GetString(PrecisionType type) {
   }
   return str;
 }
+
 }  // namespace infrt

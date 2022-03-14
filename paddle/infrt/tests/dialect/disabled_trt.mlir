@@ -9,10 +9,10 @@ func @run_trt(%0 : !infrt.dense_tensor<GPU, FP32, NCHW>, %ctx : !phi.context<GPU
   "trt.inspect_engine"(%a) {} : (!trt.engine) -> ()
 
   %res = "trt.compute"(%a, %ctx) {} : (!trt.engine, !phi.context<GPU>) -> (!infrt.tensor_list)
-  %size = "infrt.tensor_list_get_size"(%res) {} : (!infrt.tensor_list) -> (i32)
+  %size = "dt.tensor_list_get_size"(%res) {} : (!infrt.tensor_list) -> (i32)
   "infrt.print.i32"(%size) {} : (i32) -> ()
 
-  %ts0 = "infrt.tensor_list_get_tensor"(%res) {id = 0 : i32} : (!infrt.tensor_list) -> (!infrt.dense_tensor<GPU, FP32, NCHW>)
+  %ts0 = "dt.tensor_list_get_tensor"(%res) {id = 0 : i32} : (!infrt.tensor_list) -> (!infrt.dense_tensor<GPU, FP32, NCHW>)
   "phi_dt.print_tensor" (%ts0) : (!infrt.dense_tensor<GPU, FP32, NCHW>) -> ()
 
   infrt.return
