@@ -25,19 +25,6 @@ class ShapeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  // void InferShape(framework::InferShapeContext *ctx) const override {
-  //   PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-  //                     platform::errors::InvalidArgument(
-  //                         "Input (Input) of get_shape op should not be
-  //                         null."));
-  //   PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-  //                     platform::errors::InvalidArgument(
-  //                         "Output (Out) of get_shape op should not be
-  //                         null."));
-  //   auto in_dim = ctx->GetInputDim("Input");
-  //   ctx->SetOutputDim("Out", {in_dim.size()});
-  // }
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =

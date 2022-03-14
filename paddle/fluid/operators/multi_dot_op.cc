@@ -29,70 +29,6 @@ namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 
-/**
- * @brief compute the output shape and check the input shape valid or not
- */
-// inline framework::DDim ComputeAndCheckShape(
-//     const bool is_runtime, const std::vector<framework::DDim>& inputs_dims) {
-//   const size_t n = inputs_dims.size();
-//   auto first_dim = inputs_dims[0];
-
-//   bool is_vector = false;
-//   framework::DDim out_dim;
-
-//   PADDLE_ENFORCE_LT(
-//       first_dim.size(), static_cast<size_t>(3),
-//       platform::errors::InvalidArgument(
-//           "multi_dot: the first input tensor must be 1D or 2D but got[%d]!",
-//           static_cast<int>(first_dim.size())));
-
-//   // If the first tensor is 1D of size n view it as a row vector (1, n)
-//   if (first_dim.size() == 1) {
-//     first_dim = phi::make_ddim({1, static_cast<int>(first_dim[0])});
-//     is_vector = true;
-//   }
-
-//   auto last_dim = inputs_dims[n - 1];
-//   PADDLE_ENFORCE_LT(
-//       last_dim.size(), static_cast<size_t>(3),
-//       platform::errors::InvalidArgument(
-//           "the last input tensor of multi_dot must be 1D or 2D but got[%d]!",
-//           static_cast<int>(first_dim.size())));
-
-//   // If the last tensor is 1D of size n view it as a column vector (n, 1)
-//   if (last_dim.size() == 1) {
-//     last_dim = phi::make_ddim({static_cast<int>(last_dim[0]), 1});
-//     out_dim = is_vector ? phi::make_ddim({1}) :
-//     phi::make_ddim({first_dim[0]});
-//   } else {
-//     out_dim = is_vector ? phi::make_ddim({last_dim[1]})
-//                         : phi::make_ddim({first_dim[0], last_dim[1]});
-//   }
-
-//   auto width = first_dim[1];
-//   for (size_t i = 1; i < n - 1; i++) {
-//     PADDLE_ENFORCE_EQ(inputs_dims[i].size(), static_cast<size_t>(2),
-//                       platform::errors::InvalidArgument(
-//                           "the input tensor of multi_dot op must be 2D."));
-
-//     const auto& tmp_dim = inputs_dims[i];
-//     PADDLE_ENFORCE_EQ(
-//         tmp_dim[0], width,
-//         platform::errors::InvalidArgument(
-//             "the input matrix does not meet the multiplication
-//             requirements."));
-//     width = tmp_dim[1];
-//   }
-
-//   PADDLE_ENFORCE_EQ(
-//       last_dim[0], width,
-//       platform::errors::InvalidArgument(
-//           "the input matrix does not meet the multiplication
-//           requirements."));
-
-//   return out_dim;
-// }
-
 class MultiDotOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -111,22 +47,6 @@ If the first argument is 1-D it is treated as a row vector. If the last argument
 class MultiDotOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  // void InferShape(framework::InferShapeContext* ctx) const override {
-  //   OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "multi_dot");
-  //   OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "multi_dot");
-
-  //   auto inputs_dims = ctx->GetInputsDim("X");
-
-  //   const size_t inputs_num = inputs_dims.size();
-  //   PADDLE_ENFORCE_GT(
-  //       inputs_num, static_cast<size_t>(1),
-  //       platform::errors::InvalidArgument(
-  //           "The number of input tensors in multi_dot op should > 1."));
-  //   auto out_dims = ComputeAndCheckShape(ctx->IsRuntime(), inputs_dims);
-  //   ctx->SetOutputDim("Out", out_dims);
-  //   ctx->ShareLoD("X", "Out");
-  // }
 };
 
 class MultiDotOpGrad : public framework::OperatorWithKernel {

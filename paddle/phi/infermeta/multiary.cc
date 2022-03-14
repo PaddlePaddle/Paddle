@@ -479,7 +479,6 @@ void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out) {
       phi::errors::InvalidArgument(
           "The number of input tensors in multi_dot op should > 1."));
 
-  // auto out_dims = ComputeAndCheckShape(ctx->IsRuntime(), inputs_dims);
   const size_t n = inputs_dims.size();
   auto first_dim = inputs_dims[0];
 
