@@ -27,13 +27,13 @@ class TestErrors(unittest.TestCase):
         a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
         a = paddle.to_tensor(a)
         with self.assertRaisesRegex(AssertionError, (
-                'Diagonal and trace not implemented yet.')):
+                'Duplicate labels are not supported.')):
             paddle.einsum('...ii->...i', a)
         with self.assertRaisesRegex(AssertionError, (
-                'Diagonal and trace not implemented yet.')):
+                'Duplicate labels are not supported.')):
             paddle.einsum('i...i', a)
         with self.assertRaisesRegex(AssertionError, (
-                'Diagonal and trace not implemented yet.')):
+                'Duplicate labels are not supported.')):
             paddle.einsum('i...i->i...', a)
 
     def test_param_errors(self):
