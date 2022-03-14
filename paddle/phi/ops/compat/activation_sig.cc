@@ -21,7 +21,7 @@ namespace phi {
       const ArgumentMappingContext& ctx) {                   \
     return KernelSignature(op_name "_grad",                  \
                            {"X", GradVarName("Out")},        \
-                           attrs,                            \
+                           {attrs},                          \
                            {GradVarName("X")});              \
   }
 
@@ -30,29 +30,31 @@ namespace phi {
       const ArgumentMappingContext& ctx) {                     \
     return KernelSignature(op_name "_grad",                    \
                            {"Out", GradVarName("Out")},        \
-                           attrs,                              \
+                           {attrs},                            \
                            {GradVarName("X")});                \
   }
 
 #define comma ,
 
-DefineActGradDepXOpArgMap(Cos, "cos", {});
-DefineActGradDepXOpArgMap(Tan, "tan", {});
-DefineActGradDepXOpArgMap(Acos, "acos", {});
-DefineActGradDepXOpArgMap(Sin, "sin", {});
-DefineActGradDepXOpArgMap(Asin, "asin", {});
-DefineActGradDepXOpArgMap(Atan, "atan", {});
-DefineActGradDepXOpArgMap(Sinh, "sinh", {});
-DefineActGradDepXOpArgMap(Cosh, "cosh", {});
-DefineActGradDepXOpArgMap(Asinh, "asinh", {});
-DefineActGradDepXOpArgMap(Acosh, "acosh", {});
-DefineActGradDepXOpArgMap(Atanh, "atanh", {});
-DefineActGradDepXOpArgMap(BRelu, "brelu", {"t_min" comma "t_max"});
-DefineActGradDepXOpArgMap(LeakyRelu, "leaky_relu", {"alpha"});
-DefineActGradDepXOpArgMap(ThresholdedRelu, "thresholded_relu", {"threshold"});
+DefineActGradDepXOpArgMap(Cos, "cos", );                           // NOLINT
+DefineActGradDepXOpArgMap(Tan, "tan", );                           // NOLINT
+DefineActGradDepXOpArgMap(Acos, "acos", );                         // NOLINT
+DefineActGradDepXOpArgMap(Sin, "sin", );                           // NOLINT
+DefineActGradDepXOpArgMap(Asin, "asin", );                         // NOLINT
+DefineActGradDepXOpArgMap(Atan, "atan", );                         // NOLINT
+DefineActGradDepXOpArgMap(Sinh, "sinh", );                         // NOLINT
+DefineActGradDepXOpArgMap(Cosh, "cosh", );                         // NOLINT
+DefineActGradDepXOpArgMap(Asinh, "asinh", );                       // NOLINT
+DefineActGradDepXOpArgMap(Acosh, "acosh", );                       // NOLINT
+DefineActGradDepXOpArgMap(Atanh, "atanh", );                       // NOLINT
+DefineActGradDepXOpArgMap(BRelu, "brelu", "t_min" comma "t_max");  // NOLINT
+DefineActGradDepXOpArgMap(LeakyRelu, "leaky_relu", "alpha");       // NOLINT
+DefineActGradDepXOpArgMap(ThresholdedRelu,
+                          "thresholded_relu",
+                          "threshold");  // NOLINT
 
-DefineActGradDepOutOpArgMap(Relu, "relu", {});
-DefineActGradDepOutOpArgMap(Tanh, "tanh", {});
+DefineActGradDepOutOpArgMap(Relu, "relu", );  // NOLINT
+DefineActGradDepOutOpArgMap(Tanh, "tanh", );  // NOLINT
 
 KernelSignature ReluDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
