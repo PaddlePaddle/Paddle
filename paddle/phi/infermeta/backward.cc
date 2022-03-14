@@ -64,6 +64,16 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
   }
 }
 
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad) {
+  const auto& dtype = out_grad.dtype();
+  x_grad->set_dims(x.dims());
+  x_grad->share_lod(x);
+  x_grad->set_dtype(dtype);
+}
+
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
@@ -93,6 +103,12 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
   }
 }
 
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
+  if (dx) {
+    dx->share_meta(x);
+  }
+}
+
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
                                 int axis,
@@ -102,17 +118,20 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
       dout.dims(),
       errors::InvalidArgument(
           "Input(Out) and its gradients should have the same shape."));
+
   dx->share_meta(dout);
 }
 
-void GatherNdGradInferMeta(const MetaTensor& x,
-                           const MetaTensor& index,
-                           const MetaTensor& out_grad,
-                           MetaTensor* x_grad) {
-  const auto& dtype = out_grad.dtype();
-  x_grad->set_dims(x.dims());
-  x_grad->share_lod(x);
-  x_grad->set_dtype(dtype);
+void PsroiPoolGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& rois,
+                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& dout,
+                            int pooled_height,
+                            int pooled_width,
+                            int output_channels,
+                            float spatial_scale,
+                            MetaTensor* dx) {
+  dx->share_meta(x);
 }
 
 void ScatterGradInferMeta(const MetaTensor& index,

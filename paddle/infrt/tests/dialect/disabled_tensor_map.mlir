@@ -19,9 +19,8 @@ func @main() {
   %input = dt.create_uninit_tensor.f32 [3, 3] -> !Infrt.tensor<X86, NCHW, F32>
   dt.fill_tensor_with_constant.f32 (%input : !Infrt.tensor<X86, NCHW, F32>) {value=1.0:f32}
 
-  %path = Infrt.get_string("/Infrt/build/paddle/paddle_1.8_fc_model")
   // CHECK-LABEL: loading params
-  %map = dt.load_params(%path)
+  %map = dt.load_params() {path="/Infrt/build/paddle/paddle_1.8_fc_model"}
 
   %out = Infrt.call @predict(%input, %map): (!Infrt.tensor<X86, NCHW, F32>, !Infrt.tensor_map) -> (!Infrt.tensor<X86, NCHW, F32>)
   dt.print_tensor (%out : !Infrt.tensor<X86, NCHW, F32>)

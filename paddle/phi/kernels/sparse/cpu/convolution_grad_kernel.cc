@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/convolution_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
 namespace phi {
@@ -37,6 +38,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       const int groups,
+                      const bool subm,
                       DenseTensor* x_grad,
                       DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
@@ -60,21 +62,66 @@ void Conv3dGradKernel(const Context& dev_ctx,
   phi::DenseTensor out_grad_features =
       phi::Empty(dev_ctx, std::move(out_grad_features_meta));
 
-  dev_ctx.Alloc(
-      &in_features, in_features.dtype(), sizeof(T) * in_features.numel());
   T* in_features_ptr = in_features.data<T>();
-  dev_ctx.Alloc(
-      &d_x_features, d_x_features.dtype(), sizeof(T) * d_x_features.numel());
   T* d_x_features_ptr = d_x_features.data<T>();
-  dev_ctx.Alloc(&out_grad_features,
-                out_grad_features.dtype(),
-                sizeof(T) * out_grad_features.numel());
   T* out_grad_features_ptr = out_grad_features.data<T>();
   kernel_grad->Resize(kernel_dims);
   dev_ctx.Alloc(
       kernel_grad, kernel_grad->dtype(), kernel_grad->numel() * sizeof(T));
   T* d_kernel_ptr = kernel_grad->data<T>();
   memset(d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel());
+
+  int half_kernel_size = kernel_size / 2;
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  x_grad->Resize(x.non_zero_elements().dims());
+  dev_ctx.Alloc(x_grad, x_grad->dtype(), sizeof(T) * x_grad->numel());
+  T* x_grad_values_ptr = x_grad->data<T>();
+  memset(x_grad_values_ptr, 0, sizeof(T) * x_grad->numel());
+  memset(d_x_features_ptr, 0, sizeof(T) * d_x_features.numel());
+
+  std::vector<int> offsets(kernel_size + 1), counter(kernel_size, 0);
+  for (int i = 0; i < rulebook_len; i++) {
+    counter[rulebook_ptr[i]] += 1;
+  }
+  int offset = 0, max_count = 0;
+  for (int i = 0; i < kernel_size; i++) {
+    offsets[i] = offset;
+    offset += counter[i];
+    if (i < half_kernel_size) {
+      max_count = std::max(max_count, counter[i]);
+    }
+  }
+  offsets[kernel_size] = offset;
+
+  if (subm) {
+    blas.GEMM(CblasTrans,
+              CblasNoTrans,
+              x.non_zero_elements().dims()[1],
+              out_grad.non_zero_elements().dims()[1],
+              x.non_zero_elements().dims()[0],
+              static_cast<T>(1),
+              x.non_zero_elements().data<T>(),
+              out_grad.non_zero_elements().data<T>(),
+              static_cast<T>(0),
+              d_kernel_ptr + half_kernel_size * in_channels * out_channels);
+
+    // call gemm: d_x = out_grad * transpose(kernel)
+    // (n, out_channels) * (out_channels, in_channels)
+    T* x_grad_ptr = x_grad->data<T>();
+    blas.GEMM(CblasNoTrans,
+              CblasTrans,
+              out_grad.non_zero_elements().dims()[0],
+              in_channels,
+              out_grad.non_zero_elements().dims()[1],
+              static_cast<T>(1),
+              out_grad.non_zero_elements().data<T>(),
+              kernel.data<T>() + half_kernel_size * in_channels * out_channels,
+              static_cast<T>(0),
+              x_grad_ptr);
+    if (max_count == 0) {
+      return;
+    }
+  }
 
   Gather<T>(x.non_zero_elements().data<T>(),
             rulebook_ptr + rulebook_len,
@@ -87,21 +134,9 @@ void Conv3dGradKernel(const Context& dev_ctx,
             out_channels,
             out_grad_features_ptr);
 
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-  std::vector<int> offsets(kernel_size + 1), counter(kernel_size, 0);
-  for (int i = 0; i < rulebook_len; i++) {
-    counter[rulebook_ptr[i]] += 1;
-  }
-  int offset = 0;
-  for (int i = 0; i < kernel_size; i++) {
-    offsets[i] = offset;
-    offset += counter[i];
-  }
-  offsets[kernel_size] = offset;
-
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
-    if (counter[i] <= 0) {
+    if (counter[i] <= 0 || (subm && i == half_kernel_size)) {
       continue;
     }
 
@@ -142,10 +177,6 @@ void Conv3dGradKernel(const Context& dev_ctx,
   }
 
   // 4. scatter
-  x_grad->Resize(x.non_zero_elements().dims());
-  dev_ctx.Alloc(x_grad, x_grad->dtype(), sizeof(T) * x_grad->numel());
-  T* x_grad_values_ptr = x_grad->data<T>();
-  memset(x_grad_values_ptr, 0, sizeof(T) * x_grad->numel());
   Scatter<T>(d_x_features_ptr,
              rulebook.data<int>() + rulebook_len,
              rulebook_len,
@@ -156,12 +187,11 @@ void Conv3dGradKernel(const Context& dev_ctx,
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sparse_conv_grad,
+PD_REGISTER_KERNEL(sparse_conv3d_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::Conv3dGradKernel,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
