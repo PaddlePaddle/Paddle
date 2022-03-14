@@ -24,6 +24,21 @@ KernelSignature GatherOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
+KernelSignature GatherGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("Axis")) {
+    return KernelSignature("gather_grad",
+                           {"X", "Index", GradVarName("Out")},
+                           {"Axis", "overwrite"},
+                           {GradVarName("X")});
+  } else {
+    return KernelSignature("gather_grad",
+                           {"X", "Index", GradVarName("Out")},
+                           {"axis", "overwrite"},
+                           {GradVarName("X")});
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(gather, phi::GatherOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(gather_grad, phi::GatherGradOpArgumentMapping);
