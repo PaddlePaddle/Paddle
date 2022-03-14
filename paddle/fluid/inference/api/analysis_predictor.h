@@ -486,7 +486,7 @@ class AnalysisPredictor : public PaddlePredictor {
   bool status_is_cloned_{false};
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
-  int clone_num_{1};
+  static int clone_num_;
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE) && \
     !defined(PADDLE_WITH_ASCEND_CL)

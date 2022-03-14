@@ -101,8 +101,8 @@ class DotOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DELCARE_INFER_SHAPE_FUNCTOR(dot, DotInferShapeFunctor,
-                            PT_INFER_META(phi::DotInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(dot, DotInferShapeFunctor,
+                            PD_INFER_META(phi::DotInferMeta));
 
 REGISTER_OPERATOR(dot, ops::DotOp, ops::DotOpMaker,
                   ops::DotOpGradMaker<paddle::framework::OpDesc>,

@@ -44,35 +44,41 @@ int main(int argc, char **argv) {
   paddle::framework::InitDefaultKernelSignatureMap();
   auto &kernel_signature_map = phi::DefaultKernelSignatureMap::Instance();
   auto &kernel_factory = phi::KernelFactory::Instance();
-  std::cout << "{";
+  std::string kernel_signature_map_str{"{"};
   for (const auto &op_kernel_pair : kernel_factory.kernels()) {
     if (kernel_signature_map.Has(op_kernel_pair.first)) {
-      std::cout << "\"" << op_kernel_pair.first << "\":{";
+      kernel_signature_map_str =
+          kernel_signature_map_str + "\"" + op_kernel_pair.first + "\":{";
       auto &args = kernel_signature_map.Get(op_kernel_pair.first).args;
 
-      std::cout << "\"inputs\":[";
+      kernel_signature_map_str += "\"inputs\":[";
       auto inputs_ = std::get<0>(args);
-      if (inputs_.size() > 0) std::cout << inputs_[0];
-      for (size_t i = 1; i < inputs_.size(); i++) {
-        std::cout << ",\"" << inputs_[i] << "\"";
+      for (size_t i = 0; i < inputs_.size(); i++) {
+        kernel_signature_map_str =
+            kernel_signature_map_str + "\"" + inputs_[i] + "\",";
       }
+      if (inputs_.size()) kernel_signature_map_str.pop_back();
 
-      std::cout << "],\"attrs\":[";
+      kernel_signature_map_str += "],\"attrs\":[";
       auto attrs_ = std::get<1>(args);
-      if (attrs_.size() > 0) std::cout << attrs_[0];
-      for (size_t i = 1; i < attrs_.size(); i++) {
-        std::cout << ",\"" << attrs_[i] << "\"";
+      for (size_t i = 0; i < attrs_.size(); i++) {
+        kernel_signature_map_str =
+            kernel_signature_map_str + "\"" + attrs_[i] + "\",";
       }
-
-      std::cout << "],\"outputs\":[";
+      if (attrs_.size()) kernel_signature_map_str.pop_back();
+      kernel_signature_map_str += "],\"outputs\":[";
       auto outputs_ = std::get<2>(args);
-      for (size_t i = 1; i < outputs_.size(); i++) {
-        std::cout << ",\"" << outputs_[i] << "\"";
+      for (size_t i = 0; i < outputs_.size(); i++) {
+        kernel_signature_map_str =
+            kernel_signature_map_str + "\"" + outputs_[i] + "\",";
       }
 
-      std::cout << "]},";
+      if (outputs_.size()) kernel_signature_map_str.pop_back();
+      kernel_signature_map_str += "]},";
     }
   }
-  std::cout << "}" << std::endl;
+  kernel_signature_map_str.pop_back();
+  kernel_signature_map_str += "}\n";
+  std::cout << kernel_signature_map_str;
   return 0;
 }

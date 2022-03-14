@@ -1,0 +1,6 @@
+- backward_api : conv3d_grad
+  forward : conv3d (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm) -> Tensor(out@SparseCooTensor), Tensor(rulebook@DenseTensor)
+  args : (Tensor x, Tensor kernel, Tensor rulebook, Tensor out_grad, int[] paddings, int[] dilations, int[] strides, int groups, bool subm)
+  output : Tensor(x_grad@DenseTensor), Tensor(kernel_grad@DenseTensor)
+  kernel :
+    func : sparse_conv3d_grad
