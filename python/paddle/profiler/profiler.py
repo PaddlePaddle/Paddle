@@ -503,7 +503,23 @@ class Profiler:
             event_type=TracerEventType.ProfileStep)
         self.record_event.begin()
 
-    def step_info(self, unit='samples'):
+    def step_info(self, unit=None):
+        r"""
+        Get statistics for current step, such as the cost of loading data, the cost of
+        a step and the speed of the model when `timer_only` is true. If the function
+        is called at certain iteration intervals, the result is the average of all
+        steps between the previous call and this call.
+
+        Parameters:
+            unit (string, optional): Specifies the unit of input data for throughput.
+            For example, when it is `images`, the unit of throughput is `images/s`.
+            Default: None, the unit of throughput is `samples/s` .
+
+        Returns:
+            string: A string representing the statistic.
+        """
+        if unit is None:
+            unit = 'samples'
         return benchmark().step_info(unit)
 
     def _trigger_action(self):

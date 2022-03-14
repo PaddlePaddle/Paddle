@@ -81,19 +81,22 @@ class Benchmark(object):
         self.num_samples = num_samples
         self.after_step()
 
-    def step_info(self):
+    def step_info(self, unit):
         message = ''
         reader_average = self.current_event.reader_average()
         batch_average = self.current_event.batch_average()
         if reader_average:
             message += ' reader_cost: %.5f s' % (reader_average)
         if batch_average:
-            info = "step_cost" if self.current_event.speed_mode == "steps/s" else "batch_cost"
-            message += ' %s: %.5f s' % (info, batch_average)
+            if self.current_event.speed_mode == 'steps/s':
+                self.current_event.speed_unit = 'steps/s'
+            else:
+                self.current_event.speed_unit = unit + '/s'
+            message += ' %s: %.5f s' % ('step_cost', batch_average)
         speed_average = self.current_event.speed_average()
         if speed_average:
             message += ' speed: %.3f %s' % (speed_average,
-                                            self.current_event.speed_mode)
+                                            self.current_event.speed_unit)
         self.current_event.reset()
         return message
 
@@ -195,7 +198,7 @@ class TimerHook(Hook):
         if summary['reader_ratio'] != 0:
             print('Reader_ratio: ' + '%.3f' % (summary['reader_ratio']) + '%')
         print('Time unit: s, Speed unit: %s' %
-              (benchmark.current_event.speed_mode))
+              (benchmark.current_event.speed_unit))
         print('|', ''.center(15), '|', 'avg'.center(15), '|', 'max'.center(15),
               '|', 'min'.center(15), '|')
         # if DataLoader is not called, reader_summary is unnecessary.
@@ -232,7 +235,8 @@ class Event(object):
         self.speed_records = dict(max=0, min=float('inf'))
         self.reader = None
         self.need_record = True
-        self.speed_mode = "samples/s"
+        self.speed_mode = 'samples/s'
+        self.speed_unit = 'samples/s'
 
     def reset(self):
         self.reader_cost_averager.reset()
