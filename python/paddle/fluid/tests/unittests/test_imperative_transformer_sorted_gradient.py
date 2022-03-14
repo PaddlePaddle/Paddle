@@ -1117,7 +1117,6 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     4]] = out[k]
 
-        print(static_avg_cost_value, dy_avg_cost_value)
         self.assertTrue(
             np.array_equal(static_avg_cost_value, dy_avg_cost_value))
         self.assertTrue(

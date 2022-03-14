@@ -91,7 +91,7 @@ class Controller {
   std::shared_ptr<paddle::imperative::Tracer> tracer_{
       new paddle::imperative::Tracer()};
   // TODO(jiabin): remove when we don't need imperative.
-  bool in_eager_mode_{true};
+  bool in_eager_mode_{false};
   std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>
       op_meta_info_map_;
   /* op_type : {{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}}*/

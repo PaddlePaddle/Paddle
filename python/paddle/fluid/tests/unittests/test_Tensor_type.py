@@ -34,7 +34,6 @@ class TensorTypeTest(unittest.TestCase):
         inx = np.array([1, 2])
         tensorx = paddle.Tensor(inx)
         typex_str = str(type(tensorx))
-        print(typex_str)
         expectx = "<class 'paddle.Tensor'>"
         self.assertEqual((typex_str == expectx), True)
 
