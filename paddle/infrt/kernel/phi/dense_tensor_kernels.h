@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/infrt/backends/host/phi_allocator.h"
-#include "paddle/infrt/dialect/infrt/common_type.h"
+#include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
