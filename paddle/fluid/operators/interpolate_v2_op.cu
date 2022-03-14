@@ -670,8 +670,9 @@ __global__ void KeBilinearInterpBwShareMemory(
   }
 }
 
-__device__ __forceinline__ int idx(const size_t nc, const int height,
-                                   const int width, const int h, const int w) {
+__device__ __forceinline__ int GetInputIndex(const size_t nc, const int height,
+                                             const int width, const int h,
+                                             const int w) {
   return (nc * height + h) * width + w;
 }
 
@@ -708,14 +709,15 @@ __global__ void KeBilinearInterpNCHWBw(T* in, const int in_h, const int in_w,
 
     T d2val = out[index];
 
-    platform::CudaAtomicAdd(in + idx(nc, in_h, in_w, h1, w1),
+    platform::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1),
                             h0lambda * w0lambda * d2val);
-    platform::CudaAtomicAdd(in + idx(nc, in_h, in_w, h1, w1 + x_id),
+    platform::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1 + x_id),
                             h0lambda * w1lambda * d2val);
-    platform::CudaAtomicAdd(in + idx(nc, in_h, in_w, h1 + y_id, w1),
+    platform::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1),
                             h1lambda * w0lambda * d2val);
-    platform::CudaAtomicAdd(in + idx(nc, in_h, in_w, h1 + y_id, w1 + x_id),
-                            h1lambda * w1lambda * d2val);
+    platform::CudaAtomicAdd(
+        in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1 + x_id),
+        h1lambda * w1lambda * d2val);
   }
 }
 
