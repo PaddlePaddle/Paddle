@@ -48,6 +48,12 @@ class FCResidualConnectionMKLDNNFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const;
 
+  static bool HasFusedActivation(Node* fc_node) {
+    return !(fc_node->Op()
+                 ->GetAttrIfExists<std::string>("activation_type")
+                 .empty());
+  }
+
   const std::string name_scope_{"fc_residual_connection_fuse_pass"};
 };
 }  // namespace ir

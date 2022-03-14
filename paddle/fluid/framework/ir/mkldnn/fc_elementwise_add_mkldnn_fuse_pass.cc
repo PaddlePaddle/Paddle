@@ -96,6 +96,8 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsX(
 
     if (!IsReachable(g, elementwise_add_y, fc_output)) return;
 
+    if (HasFusedActivation(fc_op)) return;
+
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
           << "fc_elementwise_add_mkldnn_fuse_pass in op compat failed.";
@@ -160,6 +162,8 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFCAsY(
     if (FindFuseOption(*fc_op, *elementwise_add_op) != FUSE_MKLDNN) return;
 
     if (!IsReachable(g, elementwise_add_x, fc_output)) return;
+    
+    if (HasFusedActivation(fc_op)) return;
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
@@ -226,6 +230,8 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseProjectionFC(
                               elementwise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
                               elementwise_add_pattern);
+
+    if (HasFusedActivation(fc_op)) return;
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
