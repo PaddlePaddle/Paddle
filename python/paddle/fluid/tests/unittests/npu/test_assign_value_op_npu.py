@@ -71,7 +71,7 @@ class TestAssignValueNPUOp4(TestAssignValueNPUOp):
     def init_data(self):
         self.value = numpy.random.choice(
             a=[False, True], size=(2, 5)).astype(numpy.bool)
-        self.attrs["bool_values"] = [bool(v) for v in self.value.flat]
+        self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignApi(unittest.TestCase):

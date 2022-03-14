@@ -268,7 +268,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
 
-    if not tensor._is_initialized():
+    if not tensor._dense_tensor_is_initialized():
         return "Tensor(Not initialized)"
 
     np_tensor = tensor.numpy()

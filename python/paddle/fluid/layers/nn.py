@@ -3691,7 +3691,8 @@ def group_norm(input,
     input_shape = input.shape
     if len(input_shape) < 2:
         raise ValueError(
-            f"The dimensions of Op(fluid.layers.group_norm)'s input should be more than 1. But received {len(input_shape)}"
+            ""
+            # f"The dimensions of Op(fluid.layers.group_norm)'s input should be more than 1. But received {len(input_shape)}"
         )
     if data_layout != 'NCHW' and data_layout != 'NHWC':
         raise ValueError(
@@ -11167,8 +11168,8 @@ def slice(input, axes, starts, ends):
             ends_tensor.stop_gradient = True
             infer_flags = list(-1 for i in range(len(axes)))
 
-        return _C_ops.slice(input, starts_tensor, ends_tensor, 'axes', axes,
-                            'infer_flags', infer_flags, *attrs)
+        return _C_ops.slice(input, starts_tensor, ends_tensor, None, None,
+                            'axes', axes, 'infer_flags', infer_flags, *attrs)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(

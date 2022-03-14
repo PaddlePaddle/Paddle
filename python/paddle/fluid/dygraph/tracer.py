@@ -140,7 +140,7 @@ class Tracer(core.Tracer):
                             outputs[retname][j].reconstruct_from_(returns[i][j],
                                                                   False)
                     else:
-                        outputs[retname][0].reconstruct_from_(returns[i], False)
+                        outputs[retname].reconstruct_from_(returns[i], False)
         elif isinstance(returns, list):
             assert len(outputs.keys()) == 1
             key = list(outputs.keys())[0]
