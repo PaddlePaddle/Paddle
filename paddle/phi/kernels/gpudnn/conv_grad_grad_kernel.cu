@@ -289,27 +289,11 @@ void ConvCudnnGradGradKernel(
                                            dtype);
 
 #ifdef PADDLE_WITH_HIP
-  // miopenConvFwdAlgorithm_t fwd_algo1 =
-  // static_cast<miopenConvFwdAlgorithm_t>(0);
-  // miopenConvFwdAlgorithm_t fwd_algo2 =
-  // static_cast<miopenConvFwdAlgorithm_t>(0);
-  // miopenConvBwdDataAlgorithm_t data_algo =
-  // static_cast<miopenConvBwdDataAlgorithm_t>(0);
-  // miopenConvBwdWeightsAlgorithm_t filter_algo =
-  // static_cast<miopenConvBwdWeightsAlgorithm_t>(0);
   paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> fwd_result1;
   paddle::operators::AlgoResult<miopenConvFwdAlgorithm_t> fwd_result2;
   paddle::operators::AlgoResult<miopenConvBwdDataAlgorithm_t> data_result;
   paddle::operators::AlgoResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
 #else
-  // cudnnConvolutionFwdAlgo_t fwd_algo1 =
-  // static_cast<cudnnConvolutionFwdAlgo_t>(0);
-  // cudnnConvolutionFwdAlgo_t fwd_algo2 =
-  // static_cast<cudnnConvolutionFwdAlgo_t>(0);
-  // cudnnConvolutionBwdDataAlgo_t data_algo =
-  // static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
-  // cudnnConvolutionBwdFilterAlgo_t filter_algo =
-  // static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
   paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> fwd_result1;
   paddle::operators::AlgoResult<cudnnConvolutionFwdAlgo_t> fwd_result2;
   paddle::operators::AlgoResult<cudnnConvolutionBwdDataAlgo_t> data_result;
