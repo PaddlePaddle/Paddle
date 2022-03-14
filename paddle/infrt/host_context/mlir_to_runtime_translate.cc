@@ -270,7 +270,8 @@ static bool IsReturn(mlir::Operation* op) {
   return op->getName().getStringRef() == "Infrt.return";
 }
 
-bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
+bool MlirToRuntimeTranslator::EmitGeneralOp(
+    mlir::Operation* op, const KernelRegistry& kernel_registry) {
   CHECK(impl_->runtime);
   impl_->cur_op =
       impl_->runtime->NewOpExecutable(op->getName().getStringRef().str());
@@ -308,40 +309,74 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
   // process attributes
   auto attrs = op->getAttrs();
 
+  // MLIR's underlying attr storage type is `Builtin_Dictionary`, and its
+  // elements
+  // are sorted by name. The following code adapts the order of function
+  // signatures
+  // of the phi operator library.
+  llvm::SmallVector<Value*, 4> tmp;
+  tmp.resize(attrs.size());
+  const std::string& kernel_name = op->getName().getStringRef().str();
+  const auto& attr_names = kernel_registry.GetAttrNameList(kernel_name);
+  if (attrs.size() && attr_names.empty()) {
+    LOG(WARNING) << "The kernel `" << kernel_name
+                 << "` has no specified attr order.";
+  }
+  auto get_offset = [](const char* attr,
+                       const std::vector<const char*>& names) -> int {
+    for (size_t i = 0; i < names.size(); ++i) {
+      if (!std::strcmp(attr, names[i])) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
   for (size_t i = 0; i < attrs.size(); i++) {
     auto& attr = attrs[i];
+    int offset{};
+    if (attr_names.size()) {
+      offset = get_offset(attr.getName().data(), attr_names);
+    } else {
+      offset = i;
+    }
+    CHECK_NE(offset, -1);
     if (auto v = EmitAttribute<int32_t>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
+      tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<int64_t>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
+      tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<float>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
+      tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<double>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
+      tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<std::string>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
+      tmp[offset] = new Value(std::move(*v));
     } else if (auto v = EmitAttribute<bool>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
+      tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<::infrt::TargetType>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
+      tmp[offset] = new Value(*v);
     } else if (auto v =
                    EmitAttribute<::infrt::PrecisionType>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
+      tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<::infrt::LayoutType>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
+      tmp[offset] = new Value(*v);
     } else if (auto v = EmitAttribute<std::vector<int16_t>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
+      tmp[offset] = new Value(std::move(*v));
     } else if (auto v = EmitAttribute<std::vector<int32_t>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
+      tmp[offset] = new Value(std::move(*v));
     } else if (auto v = EmitAttribute<std::vector<int64_t>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
+      tmp[offset] = new Value(std::move(*v));
     } else if (auto v = EmitAttribute<std::vector<float>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
+      tmp[offset] = new Value(std::move(*v));
     } else if (auto v = EmitAttribute<std::vector<double>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
+      tmp[offset] = new Value(std::move(*v));
     } else {
       LOG(FATAL) << "Not supported attribute type";
     }
+  }
+
+  for (size_t i = 0; i < tmp.size(); i++) {
+    impl_->cur_op->AppendAttribute(tmp[i]);
   }
 
   // process results
@@ -598,7 +633,7 @@ class MlirProgramTestExecutor : public MlirToRuntimeTranslator {
         llvm::SmallVector<mlir::Value, 3> results;
         if (EmitReturnOp(&op, &results)) continue;
         if (EmitCallOp(&op, &impl_->func_defs)) continue;
-        if (EmitGeneralOp(&op)) continue;
+        if (EmitGeneralOp(&op, *registry)) continue;
         LOG(FATAL) << "Not supported op: " << DumpToString(op);
       }
 
