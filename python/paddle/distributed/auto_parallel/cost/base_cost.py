@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import abc
-
 
 class Cost:
     def __init__(self, time=0., memory=0, flops=0):
@@ -28,11 +26,11 @@ class Cost:
 
     def _check_memory(self, val):
         assert isinstance(
-            val, int) and val > 0, "Memory must be int and greater than 0."
+            val, int) and val >= 0, "Memory must be int and greater than 0."
 
     def _check_flops(self, val):
         assert isinstance(
-            val, int) and val > 0, "FLOPs must be int and greater than 0."
+            val, int) and val >= 0, "FLOPs must be int and greater than 0."
 
     @property
     def time(self):

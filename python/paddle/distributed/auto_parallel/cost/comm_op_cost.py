@@ -63,6 +63,11 @@ class CommOpCost(OpCost):
             raise TypeError("Please Check op type in {}, but got {}.".format(
                 COMM_OP_TYPE, op.type))
 
+    def calc_cost(self):
+        # For comm op, its memory cost is 0, flops is 0 in default
+        cost = Cost()
+        return cost
+
 
 @register_op_cost
 class AllreduceSumCost(CommOpCost):
@@ -72,5 +77,10 @@ class AllreduceSumCost(CommOpCost):
         super(AllreduceSumCost, self).__init__(op, dist_context, cluster)
         self._cost = self.calc_cost()
 
-    def calc_cost(self):
+    def calc_time(self):
         return 0
+
+    def calc_cost(self):
+        cost = Cost()
+        cost.time = calc_time()
+        return cost
