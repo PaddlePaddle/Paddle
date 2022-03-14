@@ -37,8 +37,7 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
   }
 
   for (size_t i = 0; i < axes.size(); ++i) {
-    int start;
-    = starts[i];
+    int start = starts[i];
     if (start < 0) {
       start = (start + in_dims[axes[i]]);
     }
@@ -54,9 +53,6 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
           *out, new_out_dims);
   out_t.device(place) = in_t.slice(offsets, extents);
 }
-
-template <typename algo_t>
-struct SearchAlgorithm {};
 
 template <>
 struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {

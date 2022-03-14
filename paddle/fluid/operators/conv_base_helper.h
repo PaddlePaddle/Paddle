@@ -36,6 +36,10 @@ using framework::ConvSearchCache;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
+// As the basic for SearchAlgorithm struct.
+template <typename conv_t>
+struct SearchAlgorithm {};
+
 template <typename Handle_t, typename Data_t>
 struct ConvArgsBase {
   Handle_t handle;

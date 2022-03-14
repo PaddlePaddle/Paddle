@@ -112,9 +112,6 @@ static void SetConvMathType(const phi::GPUContext& ctx, cudnnDataType_t dtype,
 #endif
 }
 
-template <typename perf_t>
-struct SearchAlgorithm {};
-
 template <>
 struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   using perf_t = cudnnConvolutionFwdAlgoPerf_t;
