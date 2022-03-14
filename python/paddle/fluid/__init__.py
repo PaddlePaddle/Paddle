@@ -226,3 +226,5 @@ if core.is_compiled_with_npu():
     atexit.register(core.npu_finalize)
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
+# NOTE(Aganlengzi): clean up KernelFactory in advance manually.
+atexit.register(core.clear_kernel_factory)
