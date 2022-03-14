@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/sparse/pool_grad_kernel.h"
-#include "paddle/phi/kernels/sparse/pool_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_pool_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -277,7 +277,7 @@ TEST(DEV_API, sparse_maxpool) {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1,
   };
   std::vector<float> out_features = {2, 2, 3, 3};
-  std::vector<float> x_grad = {4, 6};
+  std::vector<float> x_grad = {0, 4, 6};
 
   TestMaxPool(indices,
               features,

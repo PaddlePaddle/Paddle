@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
-#include "paddle/phi/kernels/sparse/pool_grad_kernel.h"
 
 namespace phi {
 namespace sparse {
