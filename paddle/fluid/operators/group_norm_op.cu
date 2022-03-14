@@ -528,9 +528,9 @@ __global__ void GetBackwardParamsCUDAKernel(int imsize, int groups,
 }
 
 template <typename T>
-__global__ void GetDxGradientCUDAKernel(int imsize, int C, int group_size,
-                                        int groups, T* p1, T* p2, T* p3,
-                                        const T* x, const T* dy, T* dx) {
+__global__ void GetXGradientCUDAKernel(int imsize, int C, int group_size,
+                                       int groups, T* p1, T* p2, T* p3,
+                                       const T* x, const T* dy, T* dx) {
   int cid = blockIdx.x;
   int gid = blockIdx.y;
   int bid = blockIdx.z;
@@ -642,6 +642,12 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
       block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
       dim3 blocks(block_size_nchw);
       if (imsize < vec_size) {
+        if (d_scale) {
+          set_zero(dev_ctx, d_scale, static_cast<T>(0));
+        }
+        if (d_bias) {
+          set_zero(dev_ctx, d_bias, static_cast<T>(0));
+        }
         ScalarGetDsDbCUDAKernel<
             T><<<x_dims[0] * C, blocks, 0, dev_ctx.stream()>>>(
             imsize, x_data, dy_data, ds_data, db_data);
@@ -677,14 +683,18 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
             dim3(x_dims[0], groups), block_dims, 0, dev_ctx.stream()>>>(
             imsize, groups, group_size, epsilon, mean_data, var_data,
             scale_data, ds_data, db_data, p1_data, p2_data, p3_data);
-        GetDxGradientCUDAKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
+        GetXGradientCUDAKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
             imsize, C, group_size, groups, p1_data, p2_data, p3_data, x_data,
             dy_data, d_x_data);
       }
 
     } else {
-      set_zero(dev_ctx, d_scale, static_cast<T>(0));
-      set_zero(dev_ctx, d_bias, static_cast<T>(0));
+      if (d_scale) {
+        set_zero(dev_ctx, d_scale, static_cast<T>(0));
+      }
+      if (d_bias) {
+        set_zero(dev_ctx, d_bias, static_cast<T>(0));
+      }
 
       Tensor temp_var;
       temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
