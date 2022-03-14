@@ -309,14 +309,19 @@ class Engine:
             train_logs = {"eval_" + name: val for name, val in logs.items()}
             self._logger.info(train_logs)
 
-    def predict(self, test_data, batch_size=1):
+    def predict(self,
+                test_data,
+                batch_size=1,
+                use_program_cache=False,
+                return_numpy=True):
         self.mode = 'predict'
         # TODO: need check dataset
         test_dataloader = self._create_dataloader(test_data, batch_size, 1)
 
         outputs = []
         for step, data in enumerate(test_dataloader):
-            logs, outs = self._predict_step(data)
+            logs, outs = self._predict_step(data, use_program_cache,
+                                            return_numpy)
             outputs.append(outs)
             predict_logs = {
                 "predict_" + name: val
@@ -351,21 +356,20 @@ class Engine:
             logs["loss"] = loss
         return logs, loss
 
-    def _predict_step(self, data):
+    def _predict_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
         # print(dist_main_prog)
         fetch_var = self._fetch_vars[self.mode]["outputs"]
         if fetch_var[0].name not in dist_main_prog.global_block().vars:
             outs = self._executor.run(dist_main_prog,
-                                      use_program_cache=True,
-                                      return_numpy=False)
+                                      use_program_cache=use_program_cache)
             logs["pred"] = None
         else:
             outs = self._executor.run(dist_main_prog,
                                       fetch_list=to_list(fetch_var),
-                                      use_program_cache=True,
-                                      return_numpy=False)
+                                      use_program_cache=use_program_cache,
+                                      return_numpy=return_numpy)
             logs["pred"] = outs
         return logs, outs
 
