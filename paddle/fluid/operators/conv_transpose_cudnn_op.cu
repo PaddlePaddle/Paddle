@@ -241,7 +241,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
     algo_result.algo = search::Find<T>(
         args, false, deterministic, workspace_size,
-        ctx.template device_context<platform::CUDADeviceContext>()););
+        ctx.template device_context<platform::CUDADeviceContext>());
 #else
     using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     algo_result = search::Find<T>(args, false, deterministic, dev_ctx);

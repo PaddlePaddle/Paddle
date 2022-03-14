@@ -24,13 +24,6 @@ namespace operators {
 
 using ConvArgs = ConvArgsBase<cudnnHandle_t, cudnnDataType_t>;
 
-template <typename Algo_t>
-struct AlgoResult {
-  Algo_t algo = static_cast<Algo_t>(0);
-  float time = -1.f;
-  size_t workspace_size = -1;
-};
-
 template <typename DeviceContext, typename T, size_t D>
 static void RemovePaddingSlice(const phi::GPUContext& context,
                                const Tensor* input, Tensor* out,

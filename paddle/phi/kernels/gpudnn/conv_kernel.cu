@@ -318,6 +318,7 @@ void ConvCudnnKernel(const Context& ctx,
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
   algo_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
+  VLOG(3) << "algo : " << algo_result.algo << ", time " << algo_result.time;
   workspace_size = search::GetWorkspaceSize(args, algo_result.algo);
 #endif
 
