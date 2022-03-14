@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,14 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include <vector>
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/phi/core/ddim.h"
 
-namespace paddle {
-namespace operators {
-using Tensor = framework::Tensor;
-using DDim = framework::DDim;
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/matrix_rank_kernel.h"
+
+namespace phi {
 
 namespace detail {
 static DDim GetEigenvalueDim(const DDim& dim, int k) {
@@ -44,6 +41,18 @@ static DDim RemoveLastDim(const DDim& dim) {
   vec.erase(vec.end() - 1, vec.end());
   return phi::make_ddim(vec);
 }
+
+static DDim GetUDDim(const DDim& x_dim, int k) {
+  auto x_vec = phi::vectorize(x_dim);
+  x_vec[x_vec.size() - 1] = k;
+  return phi::make_ddim(x_vec);
+}
+
+static DDim GetVHDDim(const DDim& x_dim, int k) {
+  auto x_vec = phi::vectorize(x_dim);
+  x_vec[x_vec.size() - 2] = k;
+  return phi::make_ddim(x_vec);
+}
 }  // namespace detail
 
 template <typename T>
@@ -57,5 +66,4 @@ struct GreaterElementFunctor {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
