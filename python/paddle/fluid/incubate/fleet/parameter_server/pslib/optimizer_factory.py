@@ -94,8 +94,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
         self.supported_embedding_types = [
-            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse",
-            "pull_gpups_sparse"
+            "lookup_table", "pull_sparse", "pull_sparse_v2", "pull_box_sparse", "pull_gpups_sparse"
         ]
         self.supported_embedding_grad_types = [
             "lookup_table_grad", "push_sparse", "push_sparse_v2"
@@ -193,6 +192,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 if op.type in self.supported_embedding_types:
                     if op.attr('is_distributed') is True:
                         table_name = op.input("W")[0]
+                        print("yxf table name: {}".format(table_name))
                         if table_name not in table_names:
                             table_names.add(table_name)
                             tmp_list.append([table_name, cnt])

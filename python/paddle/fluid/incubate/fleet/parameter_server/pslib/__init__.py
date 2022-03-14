@@ -90,6 +90,7 @@ class PSLib(Fleet):
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             # worker_index * 2 is for compatible with older versions of pslib
+            print("yxf dist_desc: {}".format(self._dist_desc_str))
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
                                         self._role_maker.worker_index() * 2)
@@ -111,6 +112,7 @@ class PSLib(Fleet):
                     self._client2client_request_timeout_ms,
                     self._client2client_connect_timeout_ms,
                     self._client2client_max_retry)
+                print("yxf::python create connection")
                 self._fleet_ptr.create_client2client_connection()
             # barrier for init model
             self._role_maker._barrier_worker()
