@@ -657,11 +657,15 @@ struct GPUContext::Impl {
     // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
     // launch too
     // many threads and result in thread oversubscription.
-    auto* func =
-        new std::function<void()>([ this, callback = std::move(callback) ] {
-          std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
-          last_future_ = std::async(std::launch::async, callback);
-        });
+    auto* callback_func = new std::function<void()>(std::move(callback));
+    auto* func = new std::function<void()>([this, callback_func] {
+      std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
+      VLOG(4) << "Stream callback";
+      last_future_ = std::async(std::launch::async, [callback_func]() {
+        std::unique_ptr<std::function<void()>> releaser(callback_func);
+        (*callback_func)();
+      });
+    });
 
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
