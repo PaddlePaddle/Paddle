@@ -1559,7 +1559,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         GenerateGradNodeCreationContent(fwd_info, bwd_info);
 
     // Add event record
-    std::string event_name = op_type + " node creation";
+    std::string event_name = op_type + " node_creation";
     const char* NODE_CREATION_TEMPLATE =
         "{\n"
         "   paddle::platform::RecordEvent node_creation_record_event(\"%s\", "

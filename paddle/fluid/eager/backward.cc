@@ -165,7 +165,7 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
     GradNodeBase* node = queue.front();
 
     paddle::platform::RecordEvent node_record_event(
-        std::string(typeid(*node).name()) + " grad node",
+        std::string(typeid(*node).name()) + " grad_node",
         paddle::platform::TracerEventType::Operator, 1);
 
     queue.pop();

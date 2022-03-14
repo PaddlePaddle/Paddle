@@ -910,7 +910,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
         backward_fwd_input_map, backward_grad_input_map,
         backward_grad_output_map, backward_attrs_list, optional_inputs)
 
-    node_event_name = fwd_api_name + " node creation"
+    node_event_name = fwd_api_name + " node_creation"
     NODE_CREATION_TEMPLATE = """{{\n
            paddle::platform::RecordEvent node_creation_record_event(\"{}\", paddle::platform::TracerEventType::Operator, 1);\n
            {}\n
