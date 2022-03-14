@@ -226,11 +226,7 @@ REGISTER_OPERATOR(roi_align, ops::ROIAlignOp, ops::ROIAlignOpMaker,
                   ops::ROIAlignGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp,
                   ops::RoiAlignGradNoNeedBufVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    roi_align,
-    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, int>);
+
 REGISTER_OP_CPU_KERNEL(
     roi_align_grad,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, float>,
