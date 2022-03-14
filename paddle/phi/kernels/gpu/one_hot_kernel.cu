@@ -80,25 +80,7 @@ void OneHotRawKernel(const Context& dev_ctx,
       dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth, dev_ctx));
 }
 
-template <typename T, typename Context>
-void OneHotKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const Scalar& num_classes_s,
-                  DenseTensor* out) {
-  int num_classes = num_classes_s.to<int>();
-  auto out_dims = out->dims();
-  if (out_dims[out_dims.size() - 1] == -1) {
-    out_dims[out_dims.size() - 1] = num_classes;
-    out->Resize(out_dims);
-  }
-
-  OneHotV2OpCUDAFunctor<Context, T> one_hot_func(&x, out, num_classes, dev_ctx);
-  one_hot_func.template apply<float>();
-}
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     one_hot_raw, GPU, ALL_LAYOUT, phi::OneHotRawKernel, int, int64_t) {}
-
-PD_REGISTER_KERNEL(one_hot, GPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}
