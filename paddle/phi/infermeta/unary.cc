@@ -1430,8 +1430,8 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
   auto in_dim = input.dims();
-  out->set_dims(in_dim);
-  out->set_dtype(DataType::INT64);
+  out->set_dims(phi::make_ddim({in_dim.size()}));
+  out->set_dtype(DataType::INT32);
 }
 
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
