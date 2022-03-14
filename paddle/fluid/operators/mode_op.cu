@@ -24,7 +24,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mode_op.h"
 #include "paddle/fluid/operators/top_k_function_cuda.h"
-#include "paddle/fluid/operators/top_k_v2_op.h"
 
 namespace paddle {
 namespace operators {
