@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature GatherOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.HasOutput("Axis")) {
+  if (ctx.HasInput("Axis")) {
     return KernelSignature("gather", {"X", "Index"}, {"Axis"}, {"Out"});
   } else {
     return KernelSignature("gather", {"X", "Index"}, {"axis"}, {"Out"});

@@ -22,63 +22,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class GatherOpCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      platform::errors::PreconditionNotMet(
-                          "This kernel only runs on GPU device."));
-    auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *output = ctx.Output<Tensor>("Out");
-
-    int axis = ctx.Attr<int>("axis");
-
-    // get axis from tensor
-    if (ctx.HasInput("Axis")) {
-      Tensor cpu_axis;
-      const Tensor *axis_tensor = ctx.Input<Tensor>("Axis");
-      framework::TensorCopy(*axis_tensor, platform::CPUPlace(), &cpu_axis);
-      const auto &axis_type =
-          framework::TransToProtoVarType(axis_tensor->dtype());
-      if (axis_type == framework::proto::VarType::INT32) {
-        axis = static_cast<int>(cpu_axis.data<int32_t>()[0]);
-      } else if (axis_type == framework::proto::VarType::INT64) {
-        axis = static_cast<int>(cpu_axis.data<int64_t>()[0]);
-      } else if (axis_type == framework::proto::VarType::INT16) {
-        axis = static_cast<int>(cpu_axis.data<int16_t>()[0]);
-      }
-    }
-    const auto &place = ctx.GetPlace();
-    const auto &index_type = framework::TransToProtoVarType(index->dtype());
-    const auto &dev_ctx = ctx.cuda_device_context();
-    if (axis != 0) {
-      if (index_type == framework::proto::VarType::INT32) {
-        phi::funcs::GatherV2CUDAFunction<T, int32_t>(x, index, axis, output,
-                                                     dev_ctx);
-      } else if (index_type == framework::proto::VarType::INT64) {
-        phi::funcs::GatherV2CUDAFunction<T, int64_t>(x, index, axis, output,
-                                                     dev_ctx);
-      } else if (index_type == framework::proto::VarType::INT16) {
-        phi::funcs::GatherV2CUDAFunction<T, int16_t>(x, index, axis, output,
-                                                     dev_ctx);
-      }
-      return;
-    }
-
-    output->mutable_data<T>(ctx.GetPlace());
-    if (x->numel() == 0) return;
-    if (index_type == framework::proto::VarType::INT32) {
-      phi::funcs::GPUGather<T, int>(dev_ctx, *x, *index, output);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      phi::funcs::GPUGather<T, int64_t>(dev_ctx, *x, *index, output);
-    } else if (index_type == framework::proto::VarType::INT16) {
-      phi::funcs::GPUGather<T, int16_t>(dev_ctx, *x, *index, output);
-    }
-  }
-};
-
-template <typename T>
 class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -137,13 +80,6 @@ class GatherGradOpCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(gather, ops::GatherOpCUDAKernel<float>,
-                        ops::GatherOpCUDAKernel<double>,
-                        ops::GatherOpCUDAKernel<int64_t>,
-                        ops::GatherOpCUDAKernel<int>,
-                        ops::GatherOpCUDAKernel<int16_t>,
-                        ops::GatherOpCUDAKernel<plat::float16>,
-                        ops::GatherOpCUDAKernel<plat::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(gather_grad, ops::GatherGradOpCUDAKernel<float>,
                         ops::GatherGradOpCUDAKernel<double>,
                         ops::GatherGradOpCUDAKernel<int64_t>,

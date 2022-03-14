@@ -25,52 +25,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-class GatherOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(ctx.GetPlace()), true,
-        platform::errors::PreconditionNotMet("This kernel only runs on CPU."));
-
-    auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *output = ctx.Output<Tensor>("Out");
-
-    int axis = ctx.Attr<int>("axis");
-    // get axis from tensor
-    if (ctx.HasInput("Axis")) {
-      const Tensor *axis_tensor = ctx.Input<Tensor>("Axis");
-      const auto &axis_type = axis_tensor->dtype();
-      if (axis_type == phi::DataType::INT32) {
-        axis = static_cast<int>(axis_tensor->data<int32_t>()[0]);
-      } else if (axis_type == phi::DataType::INT64) {
-        axis = static_cast<int>(axis_tensor->data<int64_t>()[0]);
-      }
-    }
-    const auto &index_type = index->dtype();
-    auto &dev_ctx = ctx.template device_context<phi::CPUContext>();
-    if (axis != 0) {
-      if (index_type == phi::DataType::INT32) {
-        phi::funcs::GatherV2Function<T, int32_t>(dev_ctx, x, index, axis,
-                                                 output);
-      } else if (index_type == phi::DataType::INT64) {
-        phi::funcs::GatherV2Function<T, int64_t>(dev_ctx, x, index, axis,
-                                                 output);
-      }
-      return;
-    }
-
-    output->mutable_data<T>(ctx.GetPlace());
-    if (x->numel() == 0) return;
-    if (index_type == phi::DataType::INT32) {
-      phi::funcs::CPUGather<T, int>(dev_ctx, *x, *index, output);
-    } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::CPUGather<T, int64_t>(dev_ctx, *x, *index, output);
-    }
-  }
-};
-
-template <typename T>
 class GatherGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
