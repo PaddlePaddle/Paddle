@@ -14,6 +14,7 @@
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
 #include "paddle/infrt/dialect/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd_ops_info.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
@@ -24,6 +25,7 @@ MLIRModelGenImpl::MLIRModelGenImpl()
   context_->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
   context_->getOrLoadDialect<mlir::pd::PaddleDialect>();
+  context_->getOrLoadDialect<::infrt::InfrtDialect>();
   module_ = mlir::ModuleOp::create(mlir::UnknownLoc::get(context_));
 }
 
@@ -57,7 +59,6 @@ mlir::ModuleOp MLIRModelGenImpl::ImportPaddleModel(
   UpdateModelParams(program, &mainFunc);
   UpdateModelOps(program);
   UpdateModelOutputs(program);
-
   return module_;
 }
 
