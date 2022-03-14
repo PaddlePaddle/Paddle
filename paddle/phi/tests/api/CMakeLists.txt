@@ -28,3 +28,4 @@ cc_test(test_data_transform SRCS test_data_transform.cc DEPS ${COMMON_API_TEST_D
 cc_test(test_sparse_utils_api SRCS test_sparse_utils_api.cc DEPS ${COMMON_API_TEST_DEPS})
 cc_test(test_sparse_conv_api SRCS test_sparse_conv_api.cc DEPS ${COMMON_API_TEST_DEPS})
 cc_test(test_strings_case_convert_api SRCS test_strings_case_convert_api.cc DEPS ${COMMON_API_TEST_DEPS})
+cc_test(test_strings_empty_api SRCS test_strings_empty_api.cc DEPS ${COMMON_API_TEST_DEPS})

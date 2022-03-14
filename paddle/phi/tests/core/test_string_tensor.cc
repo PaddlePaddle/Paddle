@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+#include <utility>
 #include "gtest/gtest.h"
 
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -38,6 +39,7 @@ TEST(string_tensor, ctor) {
     r = r && (t.place() == paddle::platform::CPUPlace());
     r = r && t.initialized();
     r = r && t.IsSharedWith(t);
+    r = r && (t.meta() == m);
     return r;
   };
   auto cpu = CPUPlace();
@@ -58,6 +60,24 @@ TEST(string_tensor, ctor) {
   data[1] = pshort_str;
   CHECK_EQ(tensor_0.data()[0], plong_str);
   CHECK_EQ(tensor_0.data()[1], pshort_str);
+
+  // Test Copy Constructor
+  StringTensor tensor_1(tensor_0);
+  CHECK_EQ(tensor_1.data()[0], plong_str);
+  CHECK_EQ(tensor_1.data()[1], pshort_str);
+
+  // Test Copy Assignment
+  StringTensor tensor_2 = tensor_1;
+  CHECK_EQ(tensor_2.data()[0], plong_str);
+  CHECK_EQ(tensor_2.data()[1], pshort_str);
+
+  // Test Move Assignment
+  StringTensor tensor_3 = std::move(tensor_1);
+  CHECK_EQ(tensor_3.data()[0], plong_str);
+  CHECK_EQ(tensor_3.data()[1], pshort_str);
+
+  tensor_2.set_meta(meta);
+  check_string_tensor(tensor_2, meta);
 }
 
 }  // namespace tests

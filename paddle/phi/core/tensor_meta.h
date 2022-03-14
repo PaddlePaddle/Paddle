@@ -78,4 +78,11 @@ struct StringTensorMeta {
   size_t offset{0};
 };
 
+inline bool operator==(const StringTensorMeta& lhs,
+                       const StringTensorMeta& rhs) {
+  bool ret = true;
+  return ret && (lhs.is_scalar == rhs.is_scalar) && (lhs.dims == rhs.dims) &&
+         (lhs.offset == rhs.offset);
+}
+
 }  // namespace phi

@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/string_tensor.h"
-#include "paddle/phi/kernels/strings/strings_empty_kernel.h"
 
 namespace paddle {
 namespace tests {

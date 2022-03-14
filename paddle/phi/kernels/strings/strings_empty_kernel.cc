@@ -44,20 +44,20 @@ PD_REGISTER_GENERAL_KERNEL(strings_empty,
                            phi::strings::EmptyKernel<phi::CPUContext>,
                            pstring) {}
 
-PD_REGISTER_GENERAL_KERNEL(string_empty_like,
+PD_REGISTER_GENERAL_KERNEL(strings_empty_like,
                            CPU,
                            ALL_LAYOUT,
                            phi::strings::EmptyLikeKernel<phi::CPUContext>,
                            pstring) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(string_empty,
+PD_REGISTER_GENERAL_KERNEL(strings_empty,
                            GPU,
                            ALL_LAYOUT,
                            phi::strings::EmptyKernel<phi::GPUContext>,
                            pstring) {}
 
-PD_REGISTER_GENERAL_KERNEL(string_empty_like,
+PD_REGISTER_GENERAL_KERNEL(strings_empty_like,
                            GPU,
                            ALL_LAYOUT,
                            phi::strings::EmptyLikeKernel<phi::GPUContext>,
