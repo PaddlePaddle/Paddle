@@ -22,7 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMod
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestMean(IPUOpTest):
+class TestReduceOpBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -161,26 +161,6 @@ class TestMean(IPUOpTest):
         self.attrs['dim'] = [0, 1]
         self.attrs['keep_dim'] = True
         self.run_test_base()
-
-
-class TestMax(TestMean):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_max
-
-
-class TestMin(TestMean):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_min
-
-
-class TestProd(TestMean):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_prod
-
-
-class TestSum(TestMean):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_sum
 
 
 if __name__ == "__main__":

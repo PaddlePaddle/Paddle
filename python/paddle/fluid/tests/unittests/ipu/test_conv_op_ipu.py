@@ -132,41 +132,5 @@ class TestCase2_1(TestBase):
         self.attrs['filter_size'] = [3, 2]
 
 
-class TestCase3(TestBase):
-    def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['stride'] = [2, 3]
-
-
-class TestCase4(TestBase):
-    def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['dilation'] = [2, 2]
-
-
-class TestCase5(TestBase):
-    def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['groups'] = 3
-
-
-class TestCase6(TestBase):
-    def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['padding'] = 2
-
-
-class TestCase7(TestBase):
-    def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['padding'] = [2, 3]
-
-
-class TestCase8(TestBase):
-    def set_op_attrs(self):
-        super().set_op_attrs()
-        self.attrs['padding'] = [1, 2, 2, 3]
-
-
 if __name__ == "__main__":
     unittest.main()

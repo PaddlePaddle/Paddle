@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import (ExecutionMode,
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestMul(IPUOpTest):
+class TestElemetwiseOpBase(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -161,47 +161,6 @@ class TestMul(IPUOpTest):
         self.set_feed_attr()
         self.attrs = {"axis": 0}
         self.run_test_base()
-
-
-class TestAdd(TestMul):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_add
-
-
-class TestSub(TestMul):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_sub
-
-
-class TestDiv(TestMul):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_div
-
-
-class TestMin(TestMul):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_min
-
-
-class TestMax(TestMul):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_max
-
-
-class TestPow(TestMul):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_pow
-
-
-class TestMod(TestMul):
-    def set_atol(self):
-        self.atol = 1e-7
-        self.rtol = 1e-5
-        self.atol_fp16 = 1e-2
-        self.rtol_fp16 = 1e-3
-
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_mod
 
 
 if __name__ == "__main__":

@@ -157,41 +157,5 @@ class TestLamb(TestBase):
         self.attrs['model_path'] = tempfile.TemporaryDirectory()
 
 
-@unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
-class TestSGDFP16(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['steps'] = 100
-        self.attrs['save_at_step'] = 20
-        self.attrs['is_training'] = True
-        self.attrs['opt_type'] = 'sgd'
-        self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.TemporaryDirectory()
-
-
-@unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
-class TestAdamFP16(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['steps'] = 100
-        self.attrs['save_at_step'] = 20
-        self.attrs['is_training'] = True
-        self.attrs['opt_type'] = 'adam'
-        self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.TemporaryDirectory()
-
-
-@unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
-class TestLambFP16(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {}
-        self.attrs['steps'] = 100
-        self.attrs['save_at_step'] = 20
-        self.attrs['is_training'] = True
-        self.attrs['opt_type'] = 'lamb'
-        self.attrs['enable_fp16'] = True
-        self.attrs['model_path'] = tempfile.TemporaryDirectory()
-
-
 if __name__ == "__main__":
     unittest.main()
