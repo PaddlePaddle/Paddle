@@ -41,6 +41,7 @@
 #include "paddle/infrt/host_context/op_executable.h"
 #include "paddle/infrt/host_context/value.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace infrt {
 namespace host_context {
@@ -323,12 +324,16 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
                  << "` has no specified attr order.";
   }
   auto get_offset = [](const char* attr,
-                       const std::vector<const char*>& names) -> int {
+                       const std::vector<const char*>& names,
+                       const std::string& kernel_name) -> int {
     for (size_t i = 0; i < names.size(); ++i) {
       if (!std::strcmp(attr, names[i])) {
         return i;
       }
     }
+    LOG(WARNING) << "The attribute `" << attr << "` of kernel `" << kernel_name
+                 << "` is not properly registered with "
+                    "`KernelRegistry::AddKernelWithAttrs()`.";
     return -1;
   };
 
@@ -336,7 +341,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
     auto& attr = attrs[i];
     int offset{};
     if (attr_names.size()) {
-      offset = get_offset(attr.getName().data(), attr_names);
+      offset = get_offset(attr.getName().data(), attr_names, kernel_name);
     } else {
       offset = i;
     }
