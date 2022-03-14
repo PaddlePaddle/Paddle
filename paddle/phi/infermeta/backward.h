@@ -17,6 +17,9 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace phi {

@@ -202,7 +202,7 @@ def ParseYamlArgs(string):
         default_value = m.group(3).split("=")[1].strip() if len(
             m.group(3).split("=")) > 1 else None
 
-        assert arg_type in yaml_types_mapping.keys()
+        assert arg_type in yaml_types_mapping.keys(), arg_type
         arg_type = yaml_types_mapping[arg_type]
         if "Tensor" in arg_type:
             assert default_value is None
@@ -1126,7 +1126,7 @@ if __name__ == "__main__":
             fwd_returns_str = fwd_api['output']
 
             bwd_api_name = fwd_api['backward']
-            assert bwd_api_name in grad_api_dict.keys()
+            assert bwd_api_name in grad_api_dict.keys(), bwd_api_name
             bwd_api = grad_api_dict[bwd_api_name]
 
             assert 'args' in bwd_api.keys()
