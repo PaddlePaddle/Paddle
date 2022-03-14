@@ -64,6 +64,10 @@ static std::string HandleDynamicGradAttributes(const std::string& fwd_op_type,
     const char* GRAD_ATTRS_TEMPLATE = "  %s[\"%s\"] = %s;\n";
     additional_grad_attrs_str = paddle::string::Sprintf(
         GRAD_ATTRS_TEMPLATE, attrs_name, "scale", "float(1.0)");
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias", "float(0.0f)");
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias_after_scale", "bool(true)");
 
   } else if (fwd_op_type == "scale") {
     const char* GRAD_ATTRS_TEMPLATE = "  %s[\"%s\"] = %s;\n";
