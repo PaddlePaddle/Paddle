@@ -127,7 +127,7 @@ if(WITH_PSLIB OR WITH_PSCORE)
 endif()
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
-cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope ${BRPC_DEPS})
+cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor scope ps_framework_proto ${BRPC_DEPS})
 cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
