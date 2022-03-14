@@ -383,7 +383,7 @@ NeighborSampleResult* GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
   auto d_shard_keys = memory::Alloc(place, len * sizeof(int64_t));
   int64_t* d_shard_keys_ptr = reinterpret_cast<int64_t*>(d_shard_keys->ptr());
 
-  split_input_to_shard(key, d_idx_ptr, len, d_left_ptr, d_right_ptr, gpu_id); // 将key划分给每个gpu
+  split_input_to_shard(key, d_idx_ptr, len, d_left_ptr, d_right_ptr, gpu_id); 
 
   fill_shard_key<<<grid_size, block_size_, 0, stream>>>(d_shard_keys_ptr, key,
                                                         d_idx_ptr, len);
