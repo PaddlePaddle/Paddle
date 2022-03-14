@@ -807,143 +807,74 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
   PrettyLogDetail("---    quantized %d matmul ops", quantize_matmul_count);
 }
 
-void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
+void CPUQuantizePass::QuantizeElementwise(
+    Graph* graph, const std::string elementwise_type) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::ElementwiseAdd elementwise_add_pattern{pattern, name_scope_};
+  patterns::Elementwise elementwise_pattern{pattern, name_scope_};
 
-  elementwise_add_pattern(
-      pattern->NewNode(elementwise_add_pattern.elementwise_add_x_repr()),
-      pattern->NewNode(elementwise_add_pattern.elementwise_add_y_repr()));
+  elementwise_pattern(
+      pattern->NewNode(elementwise_pattern.elementwise_x_repr()),
+      pattern->NewNode(elementwise_pattern.elementwise_y_repr()),
+      elementwise_type);
 
-  int quantize_elementwise_add_count = 0;
+  int quantize_elementwise_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "Quantize elementwise_add op";
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
-                              elementwise_add_pattern);
+    VLOG(4) << "Quantize " + elementwise_type + " op";
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op,
+                              elementwise_pattern);
 
     // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(elementwise_add_op->Op())) {
-      LogQuantizationDisabled(elementwise_add_op);
+    if (!platform::HasOpINT8DataType(elementwise_op->Op())) {
+      LogQuantizationDisabled(elementwise_op);
       return;
     }
 
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_x, elementwise_add_x,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_y, elementwise_add_y,
-                              elementwise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
-                              elementwise_add_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_x, elementwise_x,
+                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_y, elementwise_y,
+                              elementwise_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
+                              elementwise_pattern);
 
     if (!AreScalesPresentForNodes(
-            {elementwise_add_x, elementwise_add_y, elementwise_add_out})) {
-      LogCannotQuantizeOp(elementwise_add_op,
+            {elementwise_x, elementwise_y, elementwise_out})) {
+      LogCannotQuantizeOp(elementwise_op,
                           "No scale available for the operator");
       return;
     }
 
     bool is_x_unsigned{false}, is_y_unsigned{false};
-    auto input_x_scale =
-        GetScaleValueForNode(elementwise_add_x, &is_x_unsigned);
-    auto input_y_scale =
-        GetScaleValueForNode(elementwise_add_y, &is_y_unsigned);
+    auto input_x_scale = GetScaleValueForNode(elementwise_x, &is_x_unsigned);
+    auto input_y_scale = GetScaleValueForNode(elementwise_y, &is_y_unsigned);
 
     // TODO(sfraczek): add support for different signness
     if (is_x_unsigned != is_y_unsigned) {
-      LogCannotQuantizeOp(elementwise_add_op,
-                          "ElementwiseAdd inputs must be of the same type.");
+      LogCannotQuantizeOp(elementwise_op,
+                          "Elementwise inputs must be of the same type.");
       return;
     }
 
-    QuantizeInput(g, elementwise_add_op, elementwise_add_x, "X", input_x_scale,
+    QuantizeInput(g, elementwise_op, elementwise_x, "X", input_x_scale,
                   is_x_unsigned, "Scale_x");
-    QuantizeInput(g, elementwise_add_op, elementwise_add_y, "Y", input_y_scale,
+    QuantizeInput(g, elementwise_op, elementwise_y, "Y", input_y_scale,
                   is_y_unsigned, "Scale_y");
 
     bool is_output_unsigned{false};
     auto output_scale =
-        GetScaleValueForNode(elementwise_add_out, &is_output_unsigned);
+        GetScaleValueForNode(elementwise_out, &is_output_unsigned);
 
-    DequantizeOutput(g, elementwise_add_op, elementwise_add_out, "Out",
-                     output_scale, is_output_unsigned, "Scale_out");
+    DequantizeOutput(g, elementwise_op, elementwise_out, "Out", output_scale,
+                     is_output_unsigned, "Scale_out");
 
-    ++quantize_elementwise_add_count;
+    ++quantize_elementwise_count;
   };
   gpd(graph, handler);
-  AddStatis(quantize_elementwise_add_count);
+  AddStatis(quantize_elementwise_count);
 
-  PrettyLogDetail("---    quantized %d elementwise_add ops",
-                  quantize_elementwise_add_count);
-}
-
-void CPUQuantizePass::QuantizeElementwiseMul(Graph* graph) const {
-  GraphPatternDetector gpd;
-  auto pattern = gpd.mutable_pattern();
-  patterns::ElementwiseMul elementwise_mul_pattern{pattern, name_scope_};
-
-  elementwise_mul_pattern(
-      pattern->NewNode(elementwise_mul_pattern.elementwise_mul_x_repr()),
-      pattern->NewNode(elementwise_mul_pattern.elementwise_mul_y_repr()));
-
-  int quantize_elementwise_mul_count = 0;
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
-    VLOG(4) << "Quantize elementwise_mul op";
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_mul_op, elementwise_mul_op,
-                              elementwise_mul_pattern);
-
-    // skip if should not be quantized
-    if (!platform::HasOpINT8DataType(elementwise_mul_op->Op())) {
-      LogQuantizationDisabled(elementwise_mul_op);
-      return;
-    }
-
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_mul_x, elementwise_mul_x,
-                              elementwise_mul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_mul_y, elementwise_mul_y,
-                              elementwise_mul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_mul_out, elementwise_mul_out,
-                              elementwise_mul_pattern);
-
-    if (!AreScalesPresentForNodes(
-            {elementwise_mul_x, elementwise_mul_y, elementwise_mul_out})) {
-      LogCannotQuantizeOp(elementwise_mul_op);
-      return;
-    }
-
-    bool is_x_unsigned{false}, is_y_unsigned{false};
-    auto input_x_scale =
-        GetScaleValueForNode(elementwise_mul_x, &is_x_unsigned);
-    auto input_y_scale =
-        GetScaleValueForNode(elementwise_mul_y, &is_y_unsigned);
-
-    // TODO(sfraczek): mul support for different signness
-    if (is_x_unsigned != is_y_unsigned) {
-      LogCannotQuantizeOp(elementwise_mul_op,
-                          "ElementwiseMul inputs must be of the same type.");
-      return;
-    }
-
-    QuantizeInput(g, elementwise_mul_op, elementwise_mul_x, "X", input_x_scale,
-                  is_x_unsigned, "Scale_x");
-    QuantizeInput(g, elementwise_mul_op, elementwise_mul_y, "Y", input_y_scale,
-                  is_y_unsigned, "Scale_y");
-
-    bool is_output_unsigned{false};
-    auto output_scale =
-        GetScaleValueForNode(elementwise_mul_out, &is_output_unsigned);
-
-    DequantizeOutput(g, elementwise_mul_op, elementwise_mul_out, "Out",
-                     output_scale, is_output_unsigned, "Scale_out");
-
-    ++quantize_elementwise_mul_count;
-  };
-  gpd(graph, handler);
-  AddStatis(quantize_elementwise_mul_count);
-
-  PrettyLogDetail("---    quantized %d elementwise_mul ops",
-                  quantize_elementwise_mul_count);
+  PrettyLogDetail("---    quantized %d %s ops", quantize_elementwise_count,
+                  elementwise_type);
 }
 
 void CPUQuantizePass::QuantizeFusionGru(Graph* graph) const {
@@ -1215,8 +1146,8 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeFc(graph);
   QuantizeReshape(graph);
   QuantizeMatmul(graph);
-  QuantizeElementwiseAdd(graph);
-  QuantizeElementwiseMul(graph);
+  QuantizeElementwise(graph, "elementwise_add");
+  QuantizeElementwise(graph, "elementwise_mul");
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);

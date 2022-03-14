@@ -935,35 +935,20 @@ struct Pool : public PatternBase {
   PATTERN_DECL_NODE(pool_output);
 };
 
-// ElementwiseAdd used in residual connections.
-// y_var is used and convolution output.
-// The operator is removed, when residual
-// connection fusion is on.
-struct ElementwiseAdd : public PatternBase {
-  ElementwiseAdd(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "elementwise_add") {}
-
-  PDNode* operator()(PDNode* x_var, PDNode* y_var);
-
-  PATTERN_DECL_NODE(elementwise_add_op);
-  PATTERN_DECL_NODE(elementwise_add_x);
-  PATTERN_DECL_NODE(elementwise_add_y);
-  PATTERN_DECL_NODE(elementwise_add_out);
-};
-
-// ElementwiseMul op
-// Forward pass for element-wise multiplication
+// Elementwise ops
+// Forward pass for element-wise operators (add, mul)
 // elementwise_mul_out is the result of the operator
-struct ElementwiseMul : public PatternBase {
-  ElementwiseMul(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "elementwise_mul") {}
+struct Elementwise : public PatternBase {
+  Elementwise(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise") {}
 
-  PDNode* operator()(PDNode* x_var, PDNode* y_var);
+  PDNode* operator()(PDNode* x_var, PDNode* y_var,
+                     const std::string elementwise_type);
 
-  PATTERN_DECL_NODE(elementwise_mul_op);
-  PATTERN_DECL_NODE(elementwise_mul_x);
-  PATTERN_DECL_NODE(elementwise_mul_y);
-  PATTERN_DECL_NODE(elementwise_mul_out);
+  PATTERN_DECL_NODE(elementwise_op);
+  PATTERN_DECL_NODE(elementwise_x);
+  PATTERN_DECL_NODE(elementwise_y);
+  PATTERN_DECL_NODE(elementwise_out);
 };
 
 // Transpose op
