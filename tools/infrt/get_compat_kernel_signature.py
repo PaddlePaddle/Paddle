@@ -44,6 +44,8 @@ def get_compat_kernels_info():
             compat_files.remove(file_)
 
     for file_ in compat_files:
+        if file_ in skip_list:
+            continue
         with open("../../paddle/phi/ops/compat/" + file_) as in_file:
             txt = in_file.readlines()
             content = ""
