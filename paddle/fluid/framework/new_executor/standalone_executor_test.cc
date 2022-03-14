@@ -38,7 +38,7 @@ USE_OP(softmax_with_cross_entropy);
 USE_OP_ITSELF(reduce_mean);
 USE_OP_ITSELF(reduce_sum);
 USE_OP_ITSELF(reduce_sum_grad);
-USE_OP(reduce_mean_grad);
+USE_OP_ITSELF(reduce_mean_grad);
 USE_OP_ITSELF(reshape2_grad);
 USE_OP(softmax_with_cross_entropy_grad);
 USE_OP_ITSELF(elementwise_add_grad);
