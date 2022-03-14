@@ -28,9 +28,9 @@ namespace phi {
     host_context::Attribute<::infrt::PrecisionType> precision) {
   return ::phi::DenseTensor(
       const_cast<::phi::Allocator*>(&context.GetAllocator()),
-      ::phi::DenseTensorMeta(cvtPrecision2Phi(precision.get()),
+      ::phi::DenseTensorMeta(ConvertPrecisionToPhi(precision.get()),
                              ::phi::make_ddim(dims.get()),
-                             cvtLayout2Phi(layout.get()),
+                             ConvertLayoutToPhi(layout.get()),
                              {}));
 }
 

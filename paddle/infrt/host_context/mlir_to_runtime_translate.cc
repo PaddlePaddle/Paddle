@@ -41,7 +41,6 @@
 #include "paddle/infrt/host_context/op_executable.h"
 #include "paddle/infrt/host_context/value.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace infrt {
 namespace host_context {
