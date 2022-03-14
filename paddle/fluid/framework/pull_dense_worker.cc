@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <time.h>
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/device_worker.h"
 
 namespace phi {
@@ -63,9 +62,9 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     current_version_[tid] = 0;
   }
 
-#ifdef PADDLE_WITH_PSLIB
   fleet_ptr_ = FleetWrapper::GetInstance();
-#else
+
+#if defined(PADDLE_WITH_PSCORE)
   new_fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
 #endif
 

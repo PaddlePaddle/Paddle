@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/fleet/metrics.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -1032,3 +1033,4 @@ void DownpourLiteWorker::TrainFiles() {
 
 }  // end namespace framework
 }  // end namespace paddle
+#endif
