@@ -15,9 +15,9 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
@@ -55,7 +55,7 @@ inline T GetValue(const DenseTensor& x) {
     DenseTensor cpu_x;
     paddle::framework::TensorCopy(x, phi::CPUPlace(), &cpu_x);
 #ifdef PADDLE_WITH_ASCEND_CL
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto& pool = paddle::platform::DeviceContextPool::Instance();
     const phi::DeviceContext* dev_ctx = pool.Get(x.place());
     dev_ctx->Wait();
 #endif
@@ -72,4 +72,5 @@ void RangeKernel(const Context& dev_ctx,
                  const DenseTensor& end,
                  const DenseTensor& step,
                  DenseTensor* out);
+
 }  // namespace phi
