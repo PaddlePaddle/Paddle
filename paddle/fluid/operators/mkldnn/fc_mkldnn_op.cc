@@ -406,22 +406,24 @@ class FCPrimitiveFactory {
   // scaled with its own scales, this data needs to be divided by
   // those scales to normalise them back to what their floating-point range
   // was. Then we multiply them by desired output scale we want on the output.
-  std::tuple<std::vector<float>, float> ComputeOutputShiftScale(
+  std::tuple<float, std::vector<float>, float> ComputeOutputShiftScale(
       const ExecutionContext& ctx) {
     auto scale_in_data = ctx.Attr<float>("Scale_in");
+    auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
     auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+    bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+    bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
 
     // If the output will be in floats, we don't multiply by scale_out.
-    float activation_scale = 1.0f;
-    float inner_scale = 1.0f;
-    if (!ctx.Attr<bool>("force_fp32_output")) {
-      // if has activation use it's scale, otherwise use inner scale.
-      if (!ctx.Attr<std::string>("activation_type").empty()) {
-        activation_scale = ctx.Attr<float>("Scale_out");
-      } else {
-        inner_scale = ctx.Attr<float>("Scale_out");
-      }
-    }
+    float activation_scale = force_fp32_output ? 1.0f
+                             : has_activation  ? ctx.Attr<float>("Scale_out")
+                                               : 1.0f;
+    float inner_scale = force_fp32_output ? 1.0f
+                        : has_activation  ? 1.0f
+                                          : ctx.Attr<float>("Scale_out");
+    float sum_scale =
+        fuse_residual_conn ? inner_scale / scale_in_eltwise_data : 1.0f;
 
     const size_t weight_scales_num = scale_weights_data.size();
     std::vector<float> output_shift_scale(weight_scales_num);
@@ -435,7 +437,7 @@ class FCPrimitiveFactory {
             inner_scale / (scale_in_data * scale_weights_data[i]);
     }
 
-    return make_tuple(output_shift_scale, activation_scale);
+    return make_tuple(sum_scale, output_shift_scale, activation_scale);
   }
 
   // Computing MKL-DNN's scaling mask which determines along which dimension
@@ -462,51 +464,59 @@ class FCPrimitiveFactory {
     dnnl::primitive_attr attributes;
     dnnl::post_ops post_operations;
 
-    std::vector<float> output_shift_scale;
-    float scale;
-    std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
-    int mask = CreateMask(1, output_shift_scale.size() > 1);
-    attributes.set_output_scales(mask, output_shift_scale);
+    float sum_scale = 1.0f;
+    float activation_scale = 1.0f;
+    std::vector<float> output_shift_scale = {};
+    if (platform::is_int8<T_in>()) {
+      std::tie(sum_scale, output_shift_scale, activation_scale) =
+          ComputeOutputShiftScale(ctx);
+      int mask = CreateMask(1, output_shift_scale.size() > 1);
+      attributes.set_output_scales(mask, output_shift_scale);
+    }
+  
+    if (ctx.Attr<bool>("fuse_residual_connection")) {
+      post_operations.append_sum(sum_scale);
+    }
 
     if (ctx.Attr<std::string>("activation_type") == "relu") {
       constexpr float negative_slope = 0.0f;
       constexpr float placeholder = 1.0f;  // beta
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_relu,
+      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_relu,
                                      negative_slope, placeholder);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu,
+      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_gelu,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu_tanh") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu_tanh,
+      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_gelu_tanh,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "gelu_erf") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_gelu_erf,
+      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_gelu_erf,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "tanh") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_tanh,
+      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_tanh,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "sigmoid") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_logistic,
+      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_logistic,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "mish") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_mish,
+      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_mish,
                                      alpha, beta);
     } else if (ctx.Attr<std::string>("activation_type") == "hard_swish") {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-      post_operations.append_eltwise(scale, dnnl::algorithm::eltwise_hardswish,
+      post_operations.append_eltwise(activation_scale, dnnl::algorithm::eltwise_hardswish,
                                      alpha, beta);
     }
 

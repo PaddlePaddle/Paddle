@@ -183,6 +183,11 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("Scale_out",
                    "(float, default 1.0f), The quantize scale of output data")
         .SetDefault(1.0f);
+    AddAttr<float>("Scale_in_eltwise",
+                 "Scale_in_eltwise to be used for int8 eltwise input data."
+                 "Only used with MKL-DNN INT8.")
+      .SetDefault(1.0f)
+      .AsExtra();    
     AddAttr<bool>("force_fp32_output",
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")

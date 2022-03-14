@@ -99,10 +99,7 @@ class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
-        # Set big threshold to ignore Maximum Absolute Value error
-        # and focus on not fusing when axis=1
-        # yield config, ["relu", "fc", "relu"], (1e-5, 1e-5)
-        yield config, ["relu", "fc"], (1e5, 1e5)
+        yield config, ["relu", "fc"], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

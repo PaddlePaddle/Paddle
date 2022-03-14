@@ -231,7 +231,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseProjectionFC(
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
                               elementwise_add_pattern);
 
-    if (HasFusedActivation(fc_op)) return;
+    if (HasFusedActivation(fc_x_op) || HasFusedActivation(fc_y_op)) return;
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
