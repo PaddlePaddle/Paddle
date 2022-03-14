@@ -17,4 +17,4 @@
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
 #define GET_OP_CLASSES
-#include "paddle/infrt/dialect/test_kernels.hpp.inc"
+#include "paddle/infrt/dialect/infrt/ir/test_kernels.hpp.inc"

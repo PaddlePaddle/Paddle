@@ -1,4 +1,4 @@
-include "paddle/infrt/dialect/infrt/infrt_ops_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 
 // Op definition
 class Infrt_Op<string mnemonic, list<OpTrait> traits = []> : Op<Infrt_Dialect, mnemonic, traits> {
@@ -31,6 +31,26 @@ def Infrt_ReturnOp : Infrt_Op<"return", [Terminator]> {
   let arguments = (ins Variadic<AnyType>:$operands);
 
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
+}
+
+def Infrt_CallOp : Infrt_Op<"call"> {
+  let summary = "call a host operation";
+  let description = [{
+      The "infrt.call" operation represents a direct call to a function. The operands and result types of the call must match the specified function type.
+
+          %2 = infrt.call @add(%0, %1) : (f32, f32) -> f32
+    }];
+
+  let arguments = (ins FlatSymbolRefAttr:$callee, Variadic<AnyType>:$operands);
+  let results = (outs Variadic<AnyType>);
+
+  //let extraClassDeclaration = [{
+  //    mlir::StringRef getCallee() { return callee(); }
+  //    mlir::FunctionType getCalleeType();
+  //  }];
+  let assemblyFormat = [{
+    $callee `(` $operands `)` attr-dict `:` functional-type($operands, results)
+  }];
 }
 
 def Infrt_CvtTensorOp : Infrt_Op<"cvt_tensor", [NoSideEffect]> {

@@ -4,32 +4,15 @@
 #else
 #define BASIC_OPS
 
-include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
-class INFRT_Op<string mnemonic, list<OpTrait> traits = []> : Op<INFRT_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
+class INFRT_Op<string mnemonic, list<OpTrait> traits = []> : Op<Infrt_Dialect, mnemonic, !listconcat(traits, [IsolatedFromAbove])> {
 
   // Each registered op needs to provide all of a printer, parser and verifier.
   let printer = [{ return infrt::dialect::print(p, *this); }];
   let verifier = [{ return infrt::dialect::verify(*this); }];
   let parser = [{ return infrt::dialect::parse$cppClass(parser, result); }];
-}
-
-def CallOp : INFRT_Op<"call"> {
-  let summary = "call a host operation";
-  let description = [{
-      The "infrt.call" operation represents a direct call to a function. The operands and result types of the call must match the specified function type.
-
-          %2 = infrt.call @add(%0, %1) : (f32, f32) -> f32
-    }];
-
-  let arguments = (ins FlatSymbolRefAttr:$callee, Variadic<AnyType>:$operands);
-  let results = (outs Variadic<AnyType>);
-
-  let extraClassDeclaration = [{
-      mlir::StringRef getCallee() { return callee(); }
-      mlir::FunctionType getCalleeType();
-    }];
 }
 
 class ConstantOp<string suffix, Type baseType, Attr attr>
@@ -44,22 +27,6 @@ def ConstantI32Op : ConstantOp<"i32", I32, I32Attr>;
 def ConstantI64Op : ConstantOp<"i64", I64, I64Attr>;
 def ConstantF32Op : ConstantOp<"f32", F32, F32Attr>;
 def ConstantF64Op : ConstantOp<"f64", F64, F64Attr>;
-
-def ReturnOp : INFRT_Op<"return", [Terminator]> {
-  let summary = "host executor return operation";
-  let description = [{
-      The "Infrt.return" operation represents a return operation within a function.
-
-        func @foo() : (i32, f8) {
-        Infrt.return %0, %1 : i32, f8
-        }
-    }];
-
-  let arguments = (ins Variadic<AnyType>:$operands);
-
-  let builders = [OpBuilder<(ins),
-                  [{ build($_builder, $_state, llvm::None); }]>];
-}
 
 class AddOp<string suffix, Type type> : INFRT_Op<"add." # suffix, [NoSideEffect]> {
   let summary = "infrt.add operation";
@@ -112,7 +79,7 @@ def PrintF32Op : PrintOp<"f32", F32>;
 def PrintF64Op : PrintOp<"f64", F64>;
 
 def PrintStringOp : INFRT_Op<"print_string"> {
-  let summary = "Infrt.print_string";
+  let summary = "infrt.print_string";
   let description = [{
       An operation that prints a string.
   }];

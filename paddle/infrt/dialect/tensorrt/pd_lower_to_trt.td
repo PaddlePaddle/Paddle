@@ -2,7 +2,7 @@
 #define PD_LOWER_TO_TRT
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 include "paddle/infrt/dialect/pd_ops.td"
 include "paddle/infrt/dialect/tensorrt/trt_ops.td"
 

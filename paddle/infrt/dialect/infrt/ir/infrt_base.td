@@ -101,4 +101,21 @@ class Infrt_Attr<string name, list<Trait> traits = [],
     : AttrDef<Infrt_Dialect, name, traits, baseCppClass> {
   let mnemonic = ?;
 }
+
+// tools function. used for pattern rewriter
+class INFRT_createI32Attr<string value> : NativeCodeCall<
+    "$_builder.getI32IntegerAttr(" # value # ")">;
+
+class INFRT_createSI32Attr<string value> : NativeCodeCall<
+    "$_builder.getSI32IntegerAttr(" # value # ")">;
+
+class INFRT_createF32Attr<string value> : NativeCodeCall<
+    "$_builder.getF32FloatAttr(" # value # ")">;
+
+def INFRT_cvtValueToValueRange : NativeCodeCall<
+    "infrt::cvtValueToValueRange($0)">;
+
+def INFRT_concatTwoValueRange : NativeCodeCall<
+    "infrt::concatTwoValueRange($0, $1)">;
+
 #endif // INFRT_OPS_BASE
