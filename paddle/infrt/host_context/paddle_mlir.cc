@@ -19,7 +19,6 @@ MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
   context_->allowUnregisteredDialects();
   context_->getOrLoadDialect<mlir::StandardOpsDialect>();
-  context_->getOrLoadDialect<infrt::dialect::INFRTDialect>();
   context_->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
   context_->getOrLoadDialect<mlir::pd::PaddleDialect>();

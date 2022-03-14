@@ -5,7 +5,7 @@
 include "paddle/infrt/dialect/phi/ir/infrt_phi_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/OpBase.td"
-include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 
 def PHI_DenseTensorDialect : Dialect {
   let name = "phi_dt";

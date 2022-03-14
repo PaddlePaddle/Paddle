@@ -82,7 +82,7 @@ struct MlirToRuntimeTranslator::Impl {
 };
 
 bool MlirToRuntimeTranslator::EmitConstantOp(mlir::Operation* op) {
-  if (!infrt::Startswith(op->getName().getStringRef().str(), "Infrt.constant"))
+  if (!infrt::Startswith(op->getName().getStringRef().str(), "infrt.constant"))
     return false;
   VLOG(3) << "Emitting constant op [" << op->getName().getStringRef().str()
           << "]";
@@ -274,7 +274,7 @@ boost::optional<std::vector<double>> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 static bool IsReturn(mlir::Operation* op) {
-  return op->getName().getStringRef() == "Infrt.return";
+  return op->getName().getStringRef() == "infrt.return";
 }
 
 bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
@@ -433,7 +433,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
 bool MlirToRuntimeTranslator::EmitReturnOp(
     mlir::Operation* op, llvm::SmallVectorImpl<mlir::Value>* results) {
   CHECK(results);
-  if (op->getName().getStringRef() == "Infrt.return") {
+  if (op->getName().getStringRef() == "infrt.return") {
     for (size_t i = 0; i < op->getNumOperands(); i++) {
       results->push_back(op->getOperand(i));
     }
@@ -506,7 +506,7 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
                                          function_defs_t* function_table) {
   CHECK(op);
   CHECK(function_table);
-  if (op->getName().getStringRef() != "Infrt.call") return false;
+  if (op->getName().getStringRef() != "infrt.call") return false;
 
   impl_->cur_op =
       impl_->runtime->NewOpExecutable(op->getName().getStringRef().str());

@@ -71,7 +71,8 @@ __global__ void ScatterKernel(const T* input,
                               const int non_zero_num,
                               const int rulebook_len,
                               const int channels,
-                              T* out) {
+                              T* out,
+                              const bool subm = false) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < non_zero_num * channels; i += gridDim.x * blockDim.x) {
     int indices_i = i / channels;
@@ -82,6 +83,9 @@ __global__ void ScatterKernel(const T* input,
                                             : unique_value[indices_i + 1];
     // max(end-start) = kernel_size
     T sum = static_cast<T>(0);
+    if (subm) {
+      sum = out[indices_i * channels + channels_i];
+    }
     for (int j = start; j < end; j++) {
       const int out_feature_i = out_index[j];
       sum += input[out_feature_i * channels + channels_i];

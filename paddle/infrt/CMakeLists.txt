@@ -100,7 +100,6 @@ add_subdirectory(tests)
 set(infrt_mlir_incs
         basic_kernels_inc
         test_kernels_inc
-        infrt_base_inc
         tensor_shape_inc
         dense_tensor_inc
         pd_ops_inc
