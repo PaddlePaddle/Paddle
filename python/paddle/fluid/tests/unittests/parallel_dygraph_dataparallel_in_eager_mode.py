@@ -59,21 +59,24 @@ class LinearModel(nn.Layer):
 
 class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
-        dist.init_parallel_env()
         process_group = init_process_group()
+        self.generate_reducer("float32", process_group)
+        self.generate_reducer("float16", process_group)
 
+    def generate_reducer(self, dtype, process_group):
         dev_id = ParallelEnv().dev_id
         np.random.seed(2022 + dev_id)
+        paddle.set_default_dtype(dtype)
 
-        w_1 = paddle.ParamAttr(
-            initializer=NumpyArrayInitializer(np.random.rand(50, 30)))
-        w_2 = paddle.ParamAttr(
-            initializer=NumpyArrayInitializer(np.random.rand(30, 10)))
-        w_3 = paddle.ParamAttr(
-            initializer=NumpyArrayInitializer(np.random.rand(10, 10)))
+        w_1 = paddle.ParamAttr(initializer=NumpyArrayInitializer(
+            np.random.rand(50, 30).astype(dtype)))
+        w_2 = paddle.ParamAttr(initializer=NumpyArrayInitializer(
+            np.random.rand(30, 10).astype(dtype)))
+        w_3 = paddle.ParamAttr(initializer=NumpyArrayInitializer(
+            np.random.rand(10, 10).astype(dtype)))
 
         attr_list = [w_1, w_2, w_3]
-        inp = np.random.rand(10, 50)
+        inp = np.random.rand(10, 50).astype(dtype)
 
         # original reducer
         params_a = self.model_train(attr_list, inp)
@@ -91,7 +94,7 @@ class TestDistTraning(unittest.TestCase):
         model = paddle.DataParallel(model, process_group=process_group)
         optimizer = SGD(learning_rate=0.0003, parameters=model.parameters())
 
-        x = paddle.to_tensor(inp, dtype="float32")
+        x = paddle.to_tensor(inp)
         x.stop_gradient = False
 
         for step in range(10):
@@ -105,5 +108,20 @@ class TestDistTraning(unittest.TestCase):
         return model.parameters()
 
 
+class TestCatchErrors1(unittest.TestCase):
+    def test_multiple_gpus(self):
+        linear = paddle.nn.Linear(2, 4)
+        with _test_eager_guard():
+            self.assertRaises(RuntimeError, paddle.DataParallel, linear)
+
+
+class TestCatchErrors2(unittest.TestCase):
+    def test_multiple_gpus(self):
+        with _test_eager_guard():
+            linear = paddle.nn.Linear(2, 4)
+            self.assertRaises(RuntimeError, paddle.DataParallel, linear)
+
+
 if __name__ == '__main__':
+    dist.init_parallel_env()
     unittest.main()

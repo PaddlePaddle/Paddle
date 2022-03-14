@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/reducer.h"
-#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace distributed {
@@ -127,6 +126,140 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
   return res;
 }
 
+template <typename DeviceContext, typename T>
+static void ConcatTensorsForAllReduce(
+    const DeviceContext &context,
+    const std::vector<phi::DenseTensor> &dense_tensors_,
+    Tensor *p_dense_contents) {
+  operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
+  concat_functor_(
+      context, dense_tensors_, 0,
+      std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
+          .get());
+}
+
+template <typename DeviceContext, typename T>
+static void SplitTensorsForAllReduce(
+    const DeviceContext &context, Tensor *p_dense_contents,
+    std::vector<phi::DenseTensor> *p_dense_tensors) {
+  auto *in =
+      std::dynamic_pointer_cast<phi::DenseTensor>(p_dense_contents->impl())
+          .get();
+  std::vector<phi::DenseTensor *> outs;
+  std::vector<const phi::DenseTensor *> shape_refer;
+
+  outs.reserve(p_dense_tensors->size());
+  shape_refer.reserve(p_dense_tensors->size());
+
+  for (auto &tensor : *p_dense_tensors) {
+    outs.emplace_back(&tensor);
+    shape_refer.emplace_back(&tensor);
+  }
+
+  operators::math::SplitFunctor<DeviceContext, T> split_functor_;
+  split_functor_(context, *in, shape_refer, 0, &outs);
+}
+
+// context is used to select the stream for concat
+template <typename DeviceContext>
+static void ConcatTensorsWithType(
+    const DeviceContext &context,
+    const std::vector<phi::DenseTensor> &dense_tensors_,
+    Tensor *p_dense_contents, phi::DataType type) {
+  switch (type) {
+    case phi::DataType::FLOAT16:
+      ConcatTensorsForAllReduce<DeviceContext, platform::float16>(
+          context, dense_tensors_, p_dense_contents);
+      break;
+    case phi::DataType::FLOAT32:
+      ConcatTensorsForAllReduce<DeviceContext, float>(context, dense_tensors_,
+                                                      p_dense_contents);
+      break;
+    case phi::DataType::FLOAT64:
+      ConcatTensorsForAllReduce<DeviceContext, double>(context, dense_tensors_,
+                                                       p_dense_contents);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when it concats tensors for "
+          "allreduce.",
+          type));
+  }
+}
+
+// context is used to select the stream for split
+template <typename DeviceContext>
+static void SplitTensorsWithType(const DeviceContext &context,
+                                 Tensor *p_dense_contents,
+                                 std::vector<phi::DenseTensor> *p_dense_tensors,
+                                 phi::DataType type) {
+  switch (type) {
+    case phi::DataType::FLOAT16:
+      SplitTensorsForAllReduce<DeviceContext, platform::float16>(
+          context, p_dense_contents, p_dense_tensors);
+      break;
+    case phi::DataType::FLOAT32:
+      SplitTensorsForAllReduce<DeviceContext, float>(context, p_dense_contents,
+                                                     p_dense_tensors);
+      break;
+    case phi::DataType::FLOAT64:
+      SplitTensorsForAllReduce<DeviceContext, double>(context, p_dense_contents,
+                                                      p_dense_tensors);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Data type (%s) is not supported when it splits tensors for "
+          "allreduce.",
+          type));
+  }
+}
+
+void EagerGroup::ConcatTensors(const platform::Place &place) {
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    auto *default_ctx = static_cast<platform::CUDADeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(place));
+    ConcatTensorsWithType(*default_ctx, dense_tensors_, &dense_contents_,
+                          dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't concat grad tensors since it's not compiled with NCCL,"
+        "Please recompile or reinstall Paddle with NCCL support."));
+#endif
+  } else if (platform::is_cpu_place(place)) {
+    auto *default_ctx = static_cast<platform::CPUDeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(place));
+    ConcatTensorsWithType(*default_ctx, dense_tensors_, &dense_contents_,
+                          dtype_);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Concat grad tensor not supported on place (%s)", place));
+  }
+}
+
+void EagerGroup::SplitTensors(const platform::Place &place) {
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    auto *default_ctx = static_cast<platform::CUDADeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(place));
+    SplitTensorsWithType(*default_ctx, &dense_contents_, &dense_tensors_,
+                         dtype_);
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't split grad tensor since it's not compiled with NCCL,"
+        "Please recompile or reinstall Paddle with NCCL support."));
+#endif
+  } else if (platform::is_cpu_place(place)) {
+    auto *default_ctx = static_cast<platform::CPUDeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(place));
+    SplitTensorsWithType(*default_ctx, &dense_contents_, &dense_tensors_,
+                         dtype_);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Split grad tensor not supported on place (%s)", place));
+  }
+}
+
 EagerReducer::EagerReducer(
     const std::vector<Tensor> tensors,
     const std::vector<std::vector<size_t>> &group_indices,
@@ -208,6 +341,21 @@ void EagerReducer::InitializeGroups(
     } else {
       // process the dense gradient.
       InitializeDenseGroups(tensor_indices_, &group);
+      experimental::Backend backend;
+      switch (inner_place_.GetType()) {
+        case phi::AllocationType::GPU:
+          backend = experimental::Backend::GPU;
+          break;
+        case phi::AllocationType::CPU:
+          backend = experimental::Backend::CPU;
+          break;
+        default:
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Place type (%s) is not supported. ", inner_place_));
+          break;
+      }
+      group.dense_contents_ = paddle::experimental::empty(
+          ScalarArray({group.all_length_}), group.dtype_, backend);
     }
 
     // map tensors to this group by VariableLocator
@@ -247,11 +395,24 @@ void EagerReducer::InitializeDenseGroups(
 
     // for concat operator
     p_group->origin_shapes_.push_back(ScalarArray(tensor.shape()));
-    p_group->dense_tensors_.push_back(Tensor());
+    p_group->dense_tensors_.push_back(phi::DenseTensor());
 
-    if (index == 0) {
-      p_group->dtype_ = tensor.dtype();
-      place_ = tensor.place();
+    const auto &dtype = tensor.dtype();
+    const auto &place = tensor.place();
+    const auto &inner_place = tensor.impl()->place();
+    if (index > 0) {
+      PADDLE_ENFORCE_EQ(dtype, p_group->dtype_,
+                        platform::errors::PreconditionNotMet(
+                            "Tensor %s has unexpected dtype.", tensor_name));
+      PADDLE_ENFORCE_EQ(place, place_,
+                        platform::errors::PreconditionNotMet(
+                            "Tensor %s has different place. Expected place is "
+                            "%s, but actual place is %s",
+                            tensor_name, inner_place_, inner_place));
+    } else {
+      p_group->dtype_ = dtype;
+      place_ = place;
+      inner_place_ = inner_place;
     }
   }
   p_group->all_length_ = all_length;
@@ -300,10 +461,15 @@ void EagerReducer::MarkVarReady(const size_t var_index,
   const auto inside_group_index = var_locator.inside_group_index;
 
   auto &group = groups_[group_index];
+  auto &group_tensor = group.dense_tensors_[inside_group_index];
   auto *autograd_meta = tensors_[var_index].get_autograd_meta();
   auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
 
-  group.dense_tensors_[inside_group_index] = grad_tensor;
+  group_tensor
+      .ShareDataWith(
+          *(std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl())))
+      .Resize({grad_tensor.numel()});
+
   vars_marked_ready_[var_index] = true;
 
   if (--group.pending_ == 0) {
@@ -333,63 +499,37 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
     UNUSED auto &group = groups_[next_group_];
     FusedAllReduceSchedule(&group, next_group_);
   }
-
-  auto &group = groups_[group_index];
-  const auto &tensor_indices_ = group.tensor_indices_;
-  for (size_t index = 0; index < tensor_indices_.size(); index++) {
-    auto &tensor = tensors_[tensor_indices_[index]];
-    auto *autograd_meta = tensor.get_autograd_meta();
-    auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
-    grad_tensor.impl().reset();
-    std::static_pointer_cast<phi::DenseTensor>(grad_tensor.impl())
-        ->ShareBufferWith(*(std::static_pointer_cast<phi::DenseTensor>(
-            group.dense_tensors_[index].impl())));
-  }
 }
 
 void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
                                           const int curr_group_index) {
   // The overall timeline: concat > div_nranks > allreduce > split
-  // dev_context is used to select different stream
   distributed::AllreduceOptions opts;
   opts.reduce_op = ReduceOp::SUM;
 
   VLOG(3) << "group [" << curr_group_index << "] start fused_allreduce.";
 
   // concat tensors
-  if (group->dense_tensors_.size() == 1) {
-    group->tensor_ = group->dense_tensors_[0];
-  } else {
-    std::vector<Tensor> concat_tensors_;
-    for (size_t index = 0; index < group->dense_tensors_.size(); ++index) {
-      auto &tensor = group->dense_tensors_[index];
-      concat_tensors_.push_back(paddle::experimental::reshape(
-          tensor, ScalarArray({group->length_[index]})));
-    }
-    group->tensor_ = paddle::experimental::concat(concat_tensors_, Scalar(0));
-    concat_tensors_.clear();
-  }
+  group->ConcatTensors(inner_place_);
 
   // div nranks
   double scaling = 1.0 / nranks_;
-  paddle::experimental::scale_(group->tensor_, scaling, 0.0, false);
+  paddle::experimental::scale_(group->dense_contents_, scaling, 0.0, false);
 
-  // allreduce
-  std::vector<Tensor> reduce_tensors = {group->tensor_};
-  process_group_->AllReduce(reduce_tensors, opts)->Synchronize();
+  // all_reduce
+  std::vector<Tensor> reduce_tensors = {group->dense_contents_};
+  tasks_.push_back(process_group_->AllReduce(reduce_tensors, opts));
 
-  // split tensors
-  if (group->dense_tensors_.size() == 1) {
-    group->dense_tensors_[0] = group->tensor_;
-  } else {
-    std::vector<Tensor> split_tensors_ = paddle::experimental::split(
-        group->tensor_, ScalarArray(group->length_), Scalar(0));
-    for (size_t index = 0; index < group->dense_tensors_.size(); ++index) {
-      auto &tensor = split_tensors_[index];
-      group->dense_tensors_[index].impl().reset();
-      group->dense_tensors_[index].set_impl(std::move(tensor.impl()));
+  if (tasks_.size() == groups_.size()) {
+    for (size_t index = 0; index < tasks_.size(); index++) {
+      auto &task = tasks_.back();
+      task->Synchronize();
+      tasks_.pop_back();
     }
-    split_tensors_.clear();
+    for (size_t index = 0; index < groups_.size(); index++) {
+      auto &group = groups_[index];
+      group.SplitTensors(inner_place_);
+    }
   }
 }
 

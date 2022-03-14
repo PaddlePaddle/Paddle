@@ -22,8 +22,11 @@
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -40,10 +43,10 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 
 class EagerGroup {
  public:
-  Tensor tensor_;
+  Tensor dense_contents_;
 
   // for concat kernel
-  std::vector<Tensor> dense_tensors_;
+  std::vector<phi::DenseTensor> dense_tensors_;
   std::vector<int64_t> length_;
   int64_t all_length_{0};
   std::vector<ScalarArray> origin_shapes_;
@@ -57,6 +60,12 @@ class EagerGroup {
 
   // external message of group
   phi::DataType dtype_;
+
+  // context is used to select the stream for concat
+  void ConcatTensors(const platform::Place &);
+
+  // context is used to select the stream for split
+  void SplitTensors(const platform::Place &);
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };
@@ -101,8 +110,10 @@ class EagerReducer {
   std::vector<EagerGroup> groups_;
   std::vector<TensorLocator> variable_locators_;
   PlaceType place_;
+  platform::Place inner_place_;
   size_t next_group_ = 0;
   int64_t nranks_ = -1;
+  std::vector<std::shared_ptr<paddle::distributed::ProcessGroup::Task>> tasks_;
 
   bool grad_need_hooks_{false};
 
