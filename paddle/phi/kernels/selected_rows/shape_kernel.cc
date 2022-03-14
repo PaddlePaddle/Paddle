@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/shape_kernel.h"
 
 namespace phi {
 namespace sr {
@@ -25,15 +26,16 @@ template <typename T, typename Context>
 void ShapeKernel(const Context& ctx,
                  const SelectedRows& input,
                  DenseTensor* out) {
-  auto in_var = input;
-  phi::DDim in_dims;
-  in_dims = in_var.value().dims();
-  auto out_t = out;
-  out_t->Resize({in_dims.size()});
-  auto out_data = ctx.template HostAlloc<int32_t>(out_t);
-  for (int i = 0; i < in_dims.size(); ++i) {
-    out_data[i] = in_dims[i];
-  }
+  // auto in_var = input;
+  // phi::DDim in_dims;
+  // in_dims = in_var.value().dims();
+  // auto out_t = out;
+  // out_t->Resize({in_dims.size()});
+  // auto out_data = ctx.template HostAlloc<int32_t>(out_t);
+  // for (int i = 0; i < in_dims.size(); ++i) {
+  //   out_data[i] = in_dims[i];
+  // }
+  phi::ShapeKernel<T, Context>(ctx, input.value(), out);
 }
 
 }  // namespace sr

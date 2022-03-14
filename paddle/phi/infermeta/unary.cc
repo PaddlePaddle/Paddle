@@ -1428,6 +1428,34 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
 }
 
+void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
+  auto in_dim = input.dims();
+  out->set_dims(in_dim);
+  out->set_dtype(DataType::INT64);
+}
+
+void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
+  auto dims = x.dims();
+  auto n_dim = dims.size();
+  PADDLE_ENFORCE_GE(n_dim,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input(X) should have at least 2 dimensions. But "
+                        "received a %d dimension tensor.",
+                        n_dim));
+  PADDLE_ENFORCE_EQ(dims[n_dim - 2],
+                    dims[n_dim - 1],
+                    phi::errors::InvalidArgument(
+                        "The inner-most 2 dimensions of Input(X) all should "
+                        "be square matrices "
+                        "But received X's shape[-2] = %d and shape[-1] = %d.",
+                        dims[n_dim - 2],
+                        dims[n_dim - 1]));
+  out->set_dims(dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(copy_to, phi::CopyToInferMeta);

@@ -84,4 +84,6 @@ void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& y,
                     MetaTensor* out);
 
+void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+
 }  // namespace phi

@@ -206,4 +206,8 @@ void UnfoldInferMeta(const MetaTensor& x,
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
+void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
+
+void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
+
 }  // namespace phi
