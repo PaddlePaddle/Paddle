@@ -12,14 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pool_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::DataLayout;
+using framework::Tensor;
 using dnnl::memory;
 using dnnl::pooling_backward;
 using dnnl::pooling_forward;
@@ -83,11 +85,11 @@ class PoolingMKLDNNHandler
         phi::slice_ddim(input_dims, 2, input_dims.size());
 
     if (global_pooling) {
-      operators::UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
-    operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
-                             data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
+                              data_dims, strides, ksize);
 
     const auto src_tz = phi::vectorize(input->dims());
     const auto dst_tz = phi::vectorize(output->dims());
@@ -173,11 +175,11 @@ class PoolingMKLDNNHandler
     framework::DDim data_dims = phi::slice_ddim(in_x_dims, 2, in_x_dims.size());
 
     if (global_pooling) {
-      operators::UpdateKsize(&ksize, data_dims);
+      phi::funcs::UpdateKernelSize(&ksize, data_dims);
     }
 
-    operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
-                             data_dims, strides, ksize);
+    phi::funcs::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
+                              data_dims, strides, ksize);
 
     auto src_tz = phi::vectorize<int64_t>(in_x->dims());
     auto diff_src_tz = phi::vectorize<int64_t>(in_x_grad->dims());

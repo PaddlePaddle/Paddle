@@ -117,7 +117,8 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
-      VLOG(6) << "Create Value for grad input tensor " << i;
+      VLOG(6) << "Create Value for grad input tensor " << i
+              << " of grad node: " << grad_node->name();
       node_input_buffers_dict[grad_node] =
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
@@ -170,17 +171,22 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
     queue.pop();
 
+    if (queue.size() > 1 && node_in_degree_map[node] != 0) {
+      queue.pop();
+      continue;
+    }
+    queue.pop();
     // Run node: This is where Hook happens
     PADDLE_ENFORCE(
         node_input_buffers_dict.count(node),
         paddle::platform::errors::Fatal(
-            "Unable to find next node in the InputBuufer"
+            "Unable to find next node in the GradTensorHolder \n"
             "Trying to run Node without configuring its GradTensorHolder"));
 
     std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffers_dict[node]);
 
-    VLOG(6) << "Run Backward Kernel with input_buffer";
+    VLOG(6) << "Run Backward Kernel with GradTensorHolder";
     // Run Pre Backward Node and get outputs
     std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers());
@@ -225,9 +231,8 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
         if ((!grad_output_tensor.defined() ||
              !grad_output_tensor.initialized())) {
-          VLOG(6)
-              << "We get grad_output_tensor with slot: " << i << ", rank: " << j
-              << " as uninitialized or undefined in both tensor and variable";
+          VLOG(6) << "We get grad_output_tensor with slot: " << i
+                  << ", rank: " << j << " as uninitialized or undefined tensor";
         }
         VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
                 << ", rank: " << j
@@ -238,6 +243,8 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
           const auto& input_meta = next_node->InputMeta();
           auto grad_tensor_holder =
               std::make_unique<GradTensorHolder>(input_meta);
+          VLOG(6) << "Construct GradTensorHolder for grad node: "
+                  << next_node->name();
           node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
         }
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
@@ -247,10 +254,12 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
         // Update queue
         node_in_degree_map[next_node]--;
-        PADDLE_ENFORCE(node_in_degree_map[next_node] >= 0,
-                       paddle::platform::errors::Fatal(
-                           "Detected in-degree value smaller than zero."
-                           "Node's in-degree cannot be negative"));
+        PADDLE_ENFORCE(
+            node_in_degree_map[next_node] >= 0,
+            paddle::platform::errors::Fatal(
+                "Detected in-degree value smaller than zero. For Node: %s"
+                "Node's in-degree cannot be negative",
+                next_node->name()));
         if (node_in_degree_map[next_node] == 0) {
           queue.emplace(std::move(next_node));
         }

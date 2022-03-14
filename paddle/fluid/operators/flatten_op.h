@@ -16,7 +16,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/flatten_grad_kernel.h"
