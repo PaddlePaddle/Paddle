@@ -2052,34 +2052,19 @@ PDNode *patterns::Pool::operator()() {
   return output_var;
 }
 
-PDNode *patterns::ElementwiseAdd::operator()(PDNode *x_var, PDNode *y_var) {
-  auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
-                                ->assert_is_op("elementwise_add");
+PDNode *patterns::Elementwise::operator()(PDNode *x_var, PDNode *y_var,
+                                          const std::string elementwise_type) {
+  auto elementwise_op =
+      pattern->NewNode(elementwise_op_repr())->assert_is_op(elementwise_type);
 
-  x_var->AsInput()->assert_is_op_input("elementwise_add", "X");
-  y_var->AsInput()->assert_is_op_input("elementwise_add", "Y");
-  auto out_var = pattern->NewNode(elementwise_add_out_repr())
+  x_var->AsInput()->assert_is_op_input(elementwise_type, "X");
+  y_var->AsInput()->assert_is_op_input(elementwise_type, "Y");
+  auto out_var = pattern->NewNode(elementwise_out_repr())
                      ->AsOutput()
-                     ->assert_is_op_output("elementwise_add", "Out");
+                     ->assert_is_op_output(elementwise_type, "Out");
 
-  elementwise_add_op->LinksFrom({x_var, y_var});
-  elementwise_add_op->LinksTo({out_var});
-
-  return out_var;
-}
-
-PDNode *patterns::ElementwiseMul::operator()(PDNode *x_var, PDNode *y_var) {
-  auto elementwise_mul_op = pattern->NewNode(elementwise_mul_op_repr())
-                                ->assert_is_op("elementwise_mul");
-
-  x_var->AsInput()->assert_is_op_input("elementwise_mul", "X");
-  y_var->AsInput()->assert_is_op_input("elementwise_mul", "Y");
-  auto out_var = pattern->NewNode(elementwise_mul_out_repr())
-                     ->AsOutput()
-                     ->assert_is_op_output("elementwise_mul", "Out");
-
-  elementwise_mul_op->LinksFrom({x_var, y_var});
-  elementwise_mul_op->LinksTo({out_var});
+  elementwise_op->LinksFrom({x_var, y_var});
+  elementwise_op->LinksTo({out_var});
 
   return out_var;
 }
