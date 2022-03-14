@@ -17,9 +17,6 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    determinant, ops::DeterminantKernel<plat::CUDADeviceContext, float>,
-    ops::DeterminantKernel<plat::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     determinant_grad,

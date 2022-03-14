@@ -168,10 +168,6 @@ REGISTER_OPERATOR(determinant, ops::DeterminantOp, ops::DeterminantOpMaker,
 
 REGISTER_OPERATOR(determinant_grad, ops::DeterminantGradOp)
 
-REGISTER_OP_CPU_KERNEL(determinant,
-                       ops::DeterminantKernel<plat::CPUDeviceContext, float>,
-                       ops::DeterminantKernel<plat::CPUDeviceContext, double>);
-
 REGISTER_OP_CPU_KERNEL(
     determinant_grad, ops::DeterminantGradKernel<plat::CPUDeviceContext, float>,
     ops::DeterminantGradKernel<plat::CPUDeviceContext, double>);

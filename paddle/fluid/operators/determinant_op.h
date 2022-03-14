@@ -43,62 +43,6 @@ T sign(T val) {
 }
 
 template <typename T>
-struct DeterminantFunctor {
-  void operator()(const Tensor& input, const framework::ExecutionContext ctx,
-                  int64_t rank, int64_t batch_count, Tensor* output) {
-    std::vector<T> input_vec;
-    std::vector<T> output_vec;
-    framework::TensorToVector(input, ctx.device_context(), &input_vec);
-    for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
-      auto begin_iter = input_vec.begin() + i * rank * rank;
-      auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<T> sub_vec(begin_iter,
-                             end_iter);  // get every square matrix data
-      typename phi::detail::EigenMatrix<T>::MatrixType matrix(rank, rank);
-      for (int64_t i = 0; i < rank; ++i) {
-        for (int64_t j = 0; j < rank; ++j) {
-          matrix(i, j) = sub_vec[rank * i + j];
-        }
-      }
-      output_vec.push_back(matrix.determinant());
-    }
-    framework::TensorFromVector(output_vec, output);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class DeterminantKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<framework::Tensor>("Input");
-    auto input_dim = vectorize(input->dims());
-    auto input_dim_size = input_dim.size();
-    auto* output = context.Output<framework::Tensor>("Out");
-
-    auto batch_count = phi::detail::GetBatchCount(input->dims());
-    VLOG(2) << "input dim:" << input->dims();
-    PADDLE_ENFORCE_GE(
-        input_dim_size, 2,
-        platform::errors::InvalidArgument(
-            "the input matrix dimension size should greater than 2."));
-    PADDLE_ENFORCE_EQ(input_dim[input_dim_size - 1],
-                      input_dim[input_dim_size - 2],
-                      platform::errors::InvalidArgument(
-                          "the input matrix should be square matrix."));
-    auto rank = input_dim[input_dim_size - 1];  // square matrix length
-    DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
-    auto output_dims = phi::slice_ddim(input->dims(), 0, input_dim_size - 2);
-    if (input_dim_size > 2) {
-      output->Resize(output_dims);
-    } else {
-      // when input is a two-dimension matrix, The det value is a number.
-      output->Resize({1});
-    }
-    VLOG(2) << "output dim:" << output->dims();
-  }
-};
-
-template <typename T>
 struct FoundZeroFunctor {
   FoundZeroFunctor(const T* x, int64_t numel, bool* res)
       : x_(x), numel_(numel), res_(res) {}
