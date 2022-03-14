@@ -827,12 +827,6 @@ def _run_dygraph(instance, input, program_holder):
 
     # hold forward variables
     if framework._in_eager_mode():
-        # tmp_scope_vec = core.eager.Tensor(
-        #     dtype=core.VarDesc.VarType.FP32,
-        #     dims=[],
-        #     name="program_out_scope",
-        #     type=core.VarDesc.VarType.STEP_SCOPES,
-        #     persistable=True)
         tmp_scope_vec = [program_holder.scope]
     else:
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
