@@ -23,10 +23,12 @@
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
+#include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
 #include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -41,40 +43,6 @@ T sign(T val) {
 }
 
 template <typename T>
-class EigenMatrix {};
-
-template <>
-class EigenMatrix<float> {
- public:
-  using MatrixType = Eigen::MatrixXf;
-};
-
-template <>
-class EigenMatrix<double> {
- public:
-  using MatrixType = Eigen::MatrixXd;
-};
-
-inline int64_t GetBatchCount(const framework::DDim dims) {
-  int64_t batch_count = 1;
-  auto dim_size = dims.size();
-  PADDLE_ENFORCE_GE(
-      dim_size, 2,
-      platform::errors::InvalidArgument(
-          "the input matrix dimension size should greater than 2."));
-
-  // Cumulative multiplying each dimension until the last 2 to get the batch
-  // count,
-  // for example a tensor with shape [3,3,3,3], the batch count of matrices is
-  // 9.
-  for (int64_t i = 0; i < dims.size() - 2; i++) {
-    batch_count *= dims[i];
-  }
-
-  return batch_count;
-}
-
-template <typename T>
 struct DeterminantFunctor {
   void operator()(const Tensor& input, const framework::ExecutionContext ctx,
                   int64_t rank, int64_t batch_count, Tensor* output) {
@@ -86,7 +54,7 @@ struct DeterminantFunctor {
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
       std::vector<T> sub_vec(begin_iter,
                              end_iter);  // get every square matrix data
-      typename EigenMatrix<T>::MatrixType matrix(rank, rank);
+      typename phi::detail::EigenMatrix<T>::MatrixType matrix(rank, rank);
       for (int64_t i = 0; i < rank; ++i) {
         for (int64_t j = 0; j < rank; ++j) {
           matrix(i, j) = sub_vec[rank * i + j];
@@ -97,6 +65,7 @@ struct DeterminantFunctor {
     framework::TensorFromVector(output_vec, output);
   }
 };
+
 template <typename DeviceContext, typename T>
 class DeterminantKernel : public framework::OpKernel<T> {
  public:
@@ -106,7 +75,7 @@ class DeterminantKernel : public framework::OpKernel<T> {
     auto input_dim_size = input_dim.size();
     auto* output = context.Output<framework::Tensor>("Out");
 
-    auto batch_count = GetBatchCount(input->dims());
+    auto batch_count = phi::detail::GetBatchCount(input->dims());
     VLOG(2) << "input dim:" << input->dims();
     PADDLE_ENFORCE_GE(
         input_dim_size, 2,
@@ -280,7 +249,7 @@ struct SlogDeterminantFunctor {
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
       std::vector<T> sub_vec(begin_iter,
                              end_iter);  // get every square matrix data
-      typename EigenMatrix<T>::MatrixType matrix(rank, rank);
+      typename phi::detail::EigenMatrix<T>::MatrixType matrix(rank, rank);
       for (int64_t i = 0; i < rank; ++i) {
         for (int64_t j = 0; j < rank; ++j) {
           matrix(i, j) = sub_vec[rank * i + j];
@@ -311,7 +280,7 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     auto input_dim_size = input_dim.size();
     auto* output = context.Output<framework::Tensor>("Out");
 
-    auto batch_count = GetBatchCount(input->dims());
+    auto batch_count = phi::detail::GetBatchCount(input->dims());
     VLOG(2) << "input dim:" << input->dims();
     PADDLE_ENFORCE_GE(
         input_dim_size, 2,
