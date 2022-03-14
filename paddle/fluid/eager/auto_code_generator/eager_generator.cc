@@ -2094,11 +2094,9 @@ static std::string GenerateGradNodeHeaderContents(
       "bool create_graph = false) "
       "override;\n"
       "\n"
-      "  virtual void ClearTensorWrappers() override { \n"
-      "    for (auto tw : TensorWrappersSet) {\n"
-      "      tw.clear();\n"
-      "    }\n"
-      "    is_clear_tensor_wrappers = true;\n"
+      "  void ClearTensorWrappers() override { \n"
+      "%s\n"
+      "    is_tensor_wrappers_cleared = true;\n"
       "  }\n"
       "  std::string name() override { return \" GradNode%s \"; } \n "
       "\n"
@@ -2106,15 +2104,13 @@ static std::string GenerateGradNodeHeaderContents(
       "%s\n"
       "  // SetAttrMap\n"
       "%s\n"
-      "  bool IsClearTensorWrappers() override { \n"
-      "    return is_clear_tensor_wrappers;\n"
+      "  bool IsTensorWrappersCleared() override { \n"
+      "    return is_tensor_wrappers_cleared;\n"
       "  }\n"
       " private:\n"
       "   // TensorWrappers\n"
       "%s\n"
-      "   // Vector or TensorWrappers\n"
-      "   std::vector<egr::TensorWrapper> TensorWrappersSet;\n"
-      "   bool is_clear_tensor_wrappers = false;\n"
+      "   bool is_tensor_wrappers_cleared = false;\n"
       "\n"
       "   // Attribute Map\n"
       "%s\n"
@@ -2149,6 +2145,7 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string set_tensor_wrappers_str = "";
   std::string tensor_wrapper_members_str = "";
+  std::string clear_tensor_wrappers_str = "";
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
@@ -2175,11 +2172,17 @@ static std::string GenerateGradNodeHeaderContents(
             "for(const auto& eager_tensor : %s) {\n"
             "          %s.emplace_back( egr::TensorWrapper(eager_tensor, true "
             "/*full_reserved*/) );\n"
-            "          TensorWrappersSet.emplace_back(%s.back());\n"
             "      }\n";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, tensor_wrapper_name,
-            struct_tensor_wrapper_name, struct_tensor_wrapper_name);
+            struct_tensor_wrapper_name);
+
+        const char* CLEAR_TENSOR_WRAPPER_TEMPLATE =
+            "for (auto tw: %s)   {\n"
+            "       tw.clear();\n"
+            "     }\n";
+        clear_tensor_wrappers_str += paddle::string::Sprintf(
+            CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
 
       } else {
         const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE =
@@ -2193,11 +2196,14 @@ static std::string GenerateGradNodeHeaderContents(
             TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
 
         const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE =
-            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);\n"
-            "     TensorWrappersSet.emplace_back(%s);";
+            "%s = egr::TensorWrapper(%s, %s /*full_reserved*/);\n";
         tensor_wrapper_body_str = paddle::string::Sprintf(
             SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name,
-            tensor_wrapper_name, full_reserved_str, struct_tensor_wrapper_name);
+            tensor_wrapper_name, full_reserved_str);
+
+        const char* CLEAR_TENSOR_WRAPPER_TEMPLATE = "   %s.clear();\n";
+        clear_tensor_wrappers_str += paddle::string::Sprintf(
+            CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
       }
       std::string full_reserved_signature_str = "bool full_reserved";
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
@@ -2212,8 +2218,8 @@ static std::string GenerateGradNodeHeaderContents(
 
   std::string grad_node_str = paddle::string::Sprintf(
       GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type, op_type, op_type,
-      op_type, op_type, set_tensor_wrappers_str, set_attr_map_str,
-      tensor_wrapper_members_str, attr_members_str);
+      op_type, clear_tensor_wrappers_str, op_type, set_tensor_wrappers_str,
+      set_attr_map_str, tensor_wrapper_members_str, attr_members_str);
 
   return grad_node_str;
 }
