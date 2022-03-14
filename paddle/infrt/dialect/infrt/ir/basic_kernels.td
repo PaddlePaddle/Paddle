@@ -28,23 +28,6 @@ def ConstantI64Op : ConstantOp<"i64", I64, I64Attr>;
 def ConstantF32Op : ConstantOp<"f32", F32, F32Attr>;
 def ConstantF64Op : ConstantOp<"f64", F64, F64Attr>;
 
-def ReturnOp : INFRT_Op<"return", [Terminator]> {
-  let summary = "host executor return operation";
-  let description = [{
-      The "Infrt.return" operation represents a return operation within a function.
-
-        func @foo() : (i32, f8) {
-        Infrt.return %0, %1 : i32, f8
-        }
-    }];
-
-  let arguments = (ins Variadic<AnyType>:$operands);
-
-  let builders = [OpBuilder<(ins),
-                  [{ build($_builder, $_state, llvm::None); }]>];
-  let assemblyFormat = "`(` $operands `:` type($operands) `)`  attr-dict";
-}
-
 class AddOp<string suffix, Type type> : INFRT_Op<"add." # suffix, [NoSideEffect]> {
   let summary = "infrt.add operation";
   let description = [{

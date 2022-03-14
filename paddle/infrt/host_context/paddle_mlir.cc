@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
-#include "paddle/infrt/dialect/basic_kernels.h"
-#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd_ops_info.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
@@ -202,7 +202,7 @@ void MLIRModelGenImpl::UpdateModelOutputs(
 
         mlir::OperationState state(
             loc,
-            ::infrt::dialect::ReturnOp::getOperationName(),
+            ::infrt::ReturnOp::getOperationName(),
             operands,
             resultTypes,
             attrs);
