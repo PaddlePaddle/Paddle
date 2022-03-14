@@ -34,22 +34,21 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   // pass
   std::unordered_map<GradNodeBase*, int> node_in_degree_map;
 
-  // Init potential startup node's indegree
-  std::queue<GradNodeBase*> queue_tmp = init_queue;
-  while (!queue_tmp.empty()) {
-    GradNodeBase* node = queue_tmp.front();
-    queue_tmp.pop();
-    node_in_degree_map[node] = 0;
-  }
-
   // Copy nodes
   std::queue<GradNodeBase*> queue = init_queue;
   std::unordered_set<GradNodeBase*> visited;
+  size_t potential_startup_ops_cnt = queue.size();
+  size_t cnt = 0;
 
   // Visit each node exactly once in any order
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     queue.pop();
+
+    if (cnt < potential_startup_ops_cnt) {
+      node_in_degree_map[node] = 0;
+      cnt++;
+    }
 
     if (visited.count(node)) {
       continue;
@@ -82,14 +81,18 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   return node_in_degree_map;
 }
 
-// Remove some nodes those doesn't need to be stored in potential_stop_nodes
+// Remove some nodes those doesn't need to be
+// stored in potential_stop_nodes、potential_startup_nodes
 void UpdateGraphInfo(
     std::unordered_map<GradNodeBase*, AutogradMeta*>*
         target_nodes_inputmeta_map,
-    std::unordered_map<GradNodeBase*, GradNodeBase*>* depending_nodes,
-    std::unordered_set<GradNodeBase*>* potential_stop_nodes) {
-  // according depending_nodes to updated potential_sotp_nodes,
+    std::unordered_map<GradNodeBase*, std::unordered_set<GradNodeBase*>>*
+        depending_nodes,
+    std::unordered_set<GradNodeBase*>* potential_stop_nodes,
+    std::unordered_set<GradNodeBase*>* potential_startup_nodes) {
+  // Updated potential_sotp_nodes by depending_nodes,
   // make sure the path from root to target_node is ok
+  std::unordered_set<GradNodeBase*> _startup_ops;
   VLOG(6) << "Update GraphInfo";
   std::queue<GradNodeBase*> queue;
   for (auto& target_nodes_inputmeta_pair : *target_nodes_inputmeta_map) {
@@ -99,27 +102,44 @@ void UpdateGraphInfo(
   while (!queue.empty()) {
     auto* target_node = queue.front();
     queue.pop();
-    if ((*depending_nodes)[target_node]) {
-      auto* precedding_node = (*depending_nodes)[target_node];
-      queue.emplace(precedding_node);
-      if (potential_stop_nodes->find(precedding_node) !=
-          potential_stop_nodes->end()) {
-        potential_stop_nodes->erase(precedding_node);
+    if (!(*depending_nodes)[target_node].empty()) {
+      auto precedding_nodes = (*depending_nodes)[target_node];
+      for (auto pre_nodes : precedding_nodes) {
+        queue.emplace(pre_nodes);
+        if (potential_stop_nodes->find(pre_nodes) !=
+            potential_stop_nodes->end()) {
+          potential_stop_nodes->erase(pre_nodes);
+        }
       }
+    } else {  // startup_ops have no precedding nodes
+      VLOG(6) << "Emplace _startup_ops";
+      _startup_ops.emplace(target_node);
+    }
+  }
+  // Purify potential_startup_nodes again
+  for (auto node : *potential_startup_nodes) {
+    if (_startup_ops.count(node) == 0) {
+      VLOG(6) << "Erase potential_startup_ops";
+      potential_startup_nodes->erase(node);
     }
   }
 }
 
-// Get Graph Info Betweent input target gradnode and outputs
-// Record the depending_nodes and potential_stop_nodes
+// Get Graph Info Betweent input target gradnode and outputs，
+// record depending_nodes、 potential_stop_nodes、potential_startup_nodes
 void GetGraphInfoBetweenTargets(
     const std::queue<GradNodeBase*>& init_queue,
     std::unordered_map<GradNodeBase*, AutogradMeta*>*
-        target_nodes_inputmeta_map,
+        input_target_nodes_inputmeta_map,
     std::unordered_map</*child node*/ GradNodeBase*,
-                       /*father node*/ GradNodeBase*>* depending_nodes,
-    std::unordered_set<GradNodeBase*>* potential_stop_nodes) {
-  VLOG(6) << "Run In GetGraphInfoBetweenTargets";
+                       /*father nodes*/ std::unordered_set<GradNodeBase*>>*
+        depending_nodes,
+    std::unordered_set<GradNodeBase*>* potential_stop_nodes,
+    std::unordered_set<GradNodeBase*>* potential_startup_nodes) {
+  if (input_target_nodes_inputmeta_map->empty()) return;
+
+  VLOG(6) << "Runing In GetGraphInfoBetweenTargets";
+
   // Calculate in_degree for each node
   std::unordered_map<GradNodeBase*, int> node_in_degree_map;
 
@@ -139,11 +159,8 @@ void GetGraphInfoBetweenTargets(
 
     // Check node is target_nodes or not, if node is not target_node,
     // all the next_node will be marked in potential_stop_nodes
-    bool is_potential_stop_nodes = false;
-    if (target_nodes_inputmeta_map->find(node) !=
-        target_nodes_inputmeta_map->end()) {
-      is_potential_stop_nodes = true;
-    }
+    bool is_potential_stop_nodes =
+        input_target_nodes_inputmeta_map->count(node);
 
     // Find and append next nodes
     const std::vector<std::vector<Edge>>& edges = node->GetEdges();
@@ -169,14 +186,14 @@ void GetGraphInfoBetweenTargets(
         node_in_degree_map[next_node]++;
 
         // Record depending relationship
-        (*depending_nodes)[next_node] = node;
+        (*depending_nodes)[next_node].emplace(node);
         queue.push(next_node);
       }
     }
   }
   // Update Graph Info, remove some stop_node in potential_stop_nodes
-  UpdateGraphInfo(target_nodes_inputmeta_map, depending_nodes,
-                  potential_stop_nodes);
+  UpdateGraphInfo(input_target_nodes_inputmeta_map, depending_nodes,
+                  potential_stop_nodes, potential_startup_nodes);
 }
 
 void GetTargetNodesInfo(const std::vector<paddle::experimental::Tensor>& inputs,
@@ -203,7 +220,7 @@ void GetTargetNodesInfo(const std::vector<paddle::experimental::Tensor>& inputs,
 
 std::vector<paddle::experimental::Tensor> GetResults(
     const std::vector<paddle::experimental::Tensor>& inputs,
-    const std::unordered_map<GradNodeBase*, paddle::experimental::Tensor>&
+    std::unordered_map<GradNodeBase*, paddle::experimental::Tensor>*
         results_map,
     bool allow_unused, bool create_graph) {
   VLOG(6) << "Get Results";
@@ -211,18 +228,19 @@ std::vector<paddle::experimental::Tensor> GetResults(
 
   std::vector<paddle::experimental::Tensor> results;
   results.reserve(inputs.size());
-  auto results_map_ = results_map;
+
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto& input = inputs[i];
     AutogradMeta* auto_grad_meta = EagerUtils::unsafe_autograd_meta(input);
     auto target_node = auto_grad_meta->GetMutableGradNode().get();
 
-    if (results_map_.find(target_node) != results_map_.end()) {
+    auto iter = results_map->find(target_node);
+    if (iter != results_map->end()) {
       // set StopGradient = !create_graph
-      auto result = results_map_[target_node];
-      AutogradMeta* tensor_auto_grad_meta = EagerUtils::autograd_meta(&result);
+      AutogradMeta* tensor_auto_grad_meta =
+          EagerUtils::autograd_meta(&(iter->second));
       tensor_auto_grad_meta->SetStopGradient(!create_graph);
-      results.emplace_back(result);
+      results.emplace_back(iter->second);
     } else {
       PADDLE_ENFORCE_EQ(allow_unused, true,
                         paddle::platform::errors::InvalidArgument(
@@ -239,13 +257,28 @@ std::vector<paddle::experimental::Tensor> GetResults(
 // Enforce GradNode has TensorWrappers as Input
 void EnforceGradNodeHasInput(GradNodeBase* node) {
   PADDLE_ENFORCE_NE(
-      node->IsClearTensorWrappers(), true,
+      node->IsTensorWrappersCleared(), true,
       paddle::platform::errors::Fatal(
           "The TensorWrappers of %s do not exist. This may be because:\n"
           "You calculate backward twice for the same subgraph without "
           "setting retain_graph=True. Please set retain_graph=True in the "
           "first backward/grad call.\n",
           node->name()));
+}
+
+// Purify potential_startup_ops, remove nodes those are the same as
+// input_target_nodes
+void PurifyPotentialStartUpNodes(
+    std::unordered_set<GradNodeBase*>* potential_startup_ops,
+    std::unordered_map<GradNodeBase*, AutogradMeta* /* InputMeta */>*
+        input_target_nodes_inputmeta_map) {
+  if (input_target_nodes_inputmeta_map->empty()) return;
+  for (auto startup_op : *potential_startup_ops) {
+    auto iter = input_target_nodes_inputmeta_map->find(startup_op);
+    if (iter != input_target_nodes_inputmeta_map->end()) {
+      potential_startup_ops->erase(iter->first);
+    }
+  }
 }
 
 std::vector<paddle::experimental::Tensor> RunBackward(
@@ -271,6 +304,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   std::queue<GradNodeBase*> queue;
   std::unordered_map<GradNodeBase*, std::unique_ptr<GradTensorHolder>>
       node_input_buffers_dict;
+  std::unordered_set<GradNodeBase*> potential_startup_nodes;
   for (size_t i = 0; i < tensors.size(); i++) {
     const paddle::experimental::Tensor& tensor = tensors[i];
 
@@ -310,11 +344,17 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       // Feed given tensor if it's provided
       VLOG(6) << "Fill grad input tensor " << i << "with give grad tensor";
 
-      // Deep copy
-      paddle::experimental::Tensor tmp_tensor;
-      tmp_tensor.copy_(grad_tensors[i], true);
-      node_input_buffers_dict[grad_node]->add(input_info.first,
-                                              input_info.second, tmp_tensor);
+      if (grad_tensors[i].is_initialized()) {
+        // Deep copy
+        paddle::experimental::Tensor tmp_tensor;
+        tmp_tensor.copy_(grad_tensors[i], true);
+        node_input_buffers_dict[grad_node]->add(input_info.first,
+                                                input_info.second, tmp_tensor);
+      } else {
+        node_input_buffers_dict[grad_node]->add(
+            input_info.first, input_info.second, grad_tensors[i]);
+      }
+
     } else {
       VLOG(6) << "Fill grad input tensor " << i << " with 1.0";
       // Initialize tensor with 1.0
@@ -326,8 +366,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           input_info.first, input_info.second, tensor, true /*fill_one=true*/);
     }
 
-    // Prepare queue, potential startup_ops
+    // Prepare queue, potential startup_nodes
     queue.push(grad_node);
+    potential_startup_nodes.emplace(grad_node);
   }
 
   VLOG(6) << "Update In degree Map for backward";
@@ -340,29 +381,51 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       input_target_nodes_inputmeta_map;
   GetTargetNodesInfo(inputs, &input_target_nodes_inputmeta_map);
 
+  // Purify potential_startup_ops, remove those nodes that are the same as
+  // input_target_nodes
+  PurifyPotentialStartUpNodes(&potential_startup_nodes,
+                              &input_target_nodes_inputmeta_map);
+
   // Get Graph Info Betweent input target gradnode and outputs
   // Record the depending_nodes and potential_stop_nodes
   std::unordered_map<GradNodeBase* /* child node */,
-                     GradNodeBase* /* father node */>
+                     std::unordered_set<GradNodeBase*> /* father node */>
       depending_nodes;
   std::unordered_set<GradNodeBase*> potential_stop_nodes;
-  std::unordered_set<GradNodeBase*> startup_ops;
+  // std::unordered_set<GradNodeBase*> startup_ops;
+
   GetGraphInfoBetweenTargets(queue, &input_target_nodes_inputmeta_map,
-                             &depending_nodes, &potential_stop_nodes);
+                             &depending_nodes, &potential_stop_nodes,
+                             &potential_startup_nodes);
 
   // ready_queue store all startup nodes
   std::queue<GradNodeBase*> ready_queue;
   // startup op's indegree should be 0
-  for (auto& pair : node_in_degree_map) {
-    if (pair.second == 0) {
-      auto* node = pair.first;
+  for (auto node : potential_startup_nodes) {
+    if (node_in_degree_map[node] == 0) {
       ready_queue.emplace(node);
     }
   }
 
-  VLOG(6) << " startup_ops' size is :" << ready_queue.size();
+  VLOG(1) << " startup_ops' size is :" << ready_queue.size();
 
   std::unordered_map<GradNodeBase*, paddle::experimental::Tensor> results_map;
+
+  // read_queue is empty only when 1.input equals to output. 2.input can not
+  // reach to output.
+  if (ready_queue.size() == 0) {
+    for (auto input_target_node : input_target_nodes_inputmeta_map) {
+      // out rank_info of forward op
+      auto rank_info = input_target_node.second->OutRankInfo();
+      if (node_input_buffers_dict[input_target_node.first]) {
+        auto& target_result =
+            node_input_buffers_dict[input_target_node.first]
+                ->Buffers()[rank_info.first][rank_info.second];
+        // save the target result
+        results_map[input_target_node.first] = target_result;
+      }
+    }
+  }
 
   /* --- Topological Visit --- */
   // 1. Pop queue
@@ -374,6 +437,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   VLOG(6) << "Run Backward";
   while (!ready_queue.empty()) {
     GradNodeBase* node = ready_queue.front();
+    VLOG(6) << "Running GradNode:" << node->name();
     ready_queue.pop();
 
     // Run node: This is where Hook happens
@@ -398,8 +462,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       // save the target result
       results_map[node] = target_result;
     }
-
-    if (node->IsClearTensorWrappers()) continue;
 
     // no_grad_vars
     if (no_grad_var_nodes_inputmeta_map.find(node) !=
@@ -494,11 +556,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                            "Detected in-degree value smaller than zero."
                            "Node's in-degree cannot be negative"));
 
-        bool is_potential_stop_node = false;
-        if (potential_stop_nodes.find(next_node) !=
-            potential_stop_nodes.end()) {
-          is_potential_stop_node = true;
-        }
+        bool is_potential_stop_node = potential_stop_nodes.count(next_node);
 
         if (node_in_degree_map[next_node] == 0 && !is_potential_stop_node) {
           ready_queue.emplace(std::move(next_node));
@@ -507,7 +565,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     }
   }
 
-  return GetResults(inputs, results_map, allow_unused, create_graph);
+  return GetResults(inputs, &results_map, allow_unused, create_graph);
 }
 
 void Backward(

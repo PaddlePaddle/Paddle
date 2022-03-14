@@ -96,11 +96,11 @@ class GradNodeBase {
    * **/
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
-      const bool create_graph = false) = 0;
+      bool create_graph = false) = 0;
 
   virtual void ClearTensorWrappers() = 0;
 
-  virtual bool IsClearTensorWrappers() = 0;
+  virtual bool IsTensorWrappersCleared() = 0;
   /**
    * AddEdges is designed to set input tensors' backward Node as current
    * node's Edges.
