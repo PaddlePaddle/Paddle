@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
+#include "paddle/phi/kernels/sparse/pool_grad_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -33,7 +34,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const DenseTensor& rulebook,
                       const DenseTensor& kernel,
-                      const SparseCooTensor& out_grad,
+                      const DenseTensor& out_grad,
                       const std::vector<int>& paddings,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
@@ -97,11 +98,11 @@ void Conv3dGradKernel(const Context& dev_ctx,
     blas.GEMM(CblasTrans,
               CblasNoTrans,
               x.non_zero_elements().dims()[1],
-              out_grad.non_zero_elements().dims()[1],
+              out_grad.dims()[1],
               x.non_zero_elements().dims()[0],
               static_cast<T>(1),
               x.non_zero_elements().data<T>(),
-              out_grad.non_zero_elements().data<T>(),
+              out_grad.data<T>(),
               static_cast<T>(0),
               d_kernel_ptr + half_kernel_size * in_channels * out_channels);
 
@@ -110,11 +111,11 @@ void Conv3dGradKernel(const Context& dev_ctx,
     T* x_grad_ptr = x_grad->data<T>();
     blas.GEMM(CblasNoTrans,
               CblasTrans,
-              out_grad.non_zero_elements().dims()[0],
+              out_grad.dims()[0],
               in_channels,
-              out_grad.non_zero_elements().dims()[1],
+              out_grad.dims()[1],
               static_cast<T>(1),
-              out_grad.non_zero_elements().data<T>(),
+              out_grad.data<T>(),
               kernel.data<T>() + half_kernel_size * in_channels * out_channels,
               static_cast<T>(0),
               x_grad_ptr);
@@ -128,7 +129,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
             rulebook_len,
             in_channels,
             in_features_ptr);
-  Gather<T>(out_grad.non_zero_elements().data<T>(),
+  Gather<T>(out_grad.data<T>(),
             rulebook_ptr + rulebook_len * 2,
             rulebook_len,
             out_channels,

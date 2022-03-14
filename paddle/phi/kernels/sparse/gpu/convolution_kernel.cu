@@ -542,7 +542,11 @@ void Conv3dKernel(const Context& dev_ctx,
   const auto& kernel_dims = kernel.dims();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   DDim out_dims = {1, 1, 1, 1, 1};
-  GetOutShape(x_dims, kernel_dims, paddings, dilations, strides, &out_dims);
+  std::vector<int> kernel_sizes(kernel_dims.size());
+  for (int i = 0; i < kernel_dims.size(); i++) {
+    kernel_sizes[i] = kernel_dims[i];
+  }
+  GetOutShape(x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
   out->set_dims(out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];

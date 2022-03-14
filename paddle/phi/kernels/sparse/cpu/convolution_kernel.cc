@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -46,7 +45,12 @@ void Conv3dKernel(const Context& dev_ctx,
   const auto& kernel_dims = kernel.dims();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   DDim out_dims = {1, 1, 1, 1, 1};
-  GetOutShape(x_dims, kernel_dims, paddings, dilations, strides, &out_dims);
+  std::vector<int> kernel_sizes(kernel_dims.size());
+  for (int i = 0; i < kernel_dims.size(); i++) {
+    kernel_sizes[i] = kernel_dims[i];
+  }
+
+  GetOutShape(x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
 
@@ -59,7 +63,7 @@ void Conv3dKernel(const Context& dev_ctx,
 
   ProductRuleBook<T, Context>(dev_ctx,
                               x,
-                              kernel,
+                              kernel_sizes,
                               paddings,
                               dilations,
                               strides,

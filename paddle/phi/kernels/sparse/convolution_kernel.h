@@ -92,7 +92,7 @@ inline HOSTDEVICE void IndexToPoint(
 }
 
 inline void GetOutShape(const DDim& x_dims,
-                        const DDim& kernel_dims,
+                        const std::vector<int>& kernel_sizes,
                         const std::vector<int>& paddings,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
@@ -101,17 +101,17 @@ inline void GetOutShape(const DDim& x_dims,
       x_dims.size(),
       5,
       phi::errors::InvalidArgument("the shape of x should be (N, D, H, W, C)"));
-  PADDLE_ENFORCE_EQ(kernel_dims.size(),
+  PADDLE_ENFORCE_EQ(kernel_sizes.size(),
                     5,
                     phi::errors::InvalidArgument(
                         "the shape of kernel should be (D, H, W, C, OC)"));
 
   // infer out shape
   (*out_dims)[0] = x_dims[0];
-  (*out_dims)[4] = kernel_dims[4];
+  (*out_dims)[4] = kernel_sizes[4];
   for (int i = 1; i < 4; i++) {
     (*out_dims)[i] = (x_dims[i] + 2 * paddings[i - 1] -
-                      dilations[i - 1] * (kernel_dims[i - 1] - 1) - 1) /
+                      dilations[i - 1] * (kernel_sizes[i - 1] - 1) - 1) /
                          strides[i - 1] +
                      1;
   }

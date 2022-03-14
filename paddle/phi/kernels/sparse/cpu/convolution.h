@@ -34,7 +34,7 @@ namespace sparse {
 template <typename T, typename Context>
 void ProductRuleBook(const Context& dev_ctx,
                      const SparseCooTensor& x,
-                     const DenseTensor& kernel,
+                     const std::vector<int>& kernel_sizes,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,
@@ -42,19 +42,19 @@ void ProductRuleBook(const Context& dev_ctx,
                      const bool subm,
                      DenseTensor* rulebook,
                      DenseTensor* counter_per_kernel) {
-  const auto& kernel_dims = kernel.dims();
   const int64_t non_zero_num = x.nnz();
   const auto& non_zero_indices = x.non_zero_indices();
   const int* indices_ptr = non_zero_indices.data<int>();
   int* counter_ptr = counter_per_kernel->data<int>();
-  int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+  int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   memset(counter_ptr, 0, kernel_size * sizeof(int));
 
   int rulebook_len = 0;
   // calc the rulebook_len
   const auto& x_dims = x.dims();
   const Dims4D c_x_dims(x_dims[0], x_dims[3], x_dims[2], x_dims[1]);
-  const Dims4D c_kernel_dims(1, kernel_dims[2], kernel_dims[1], kernel_dims[0]);
+  const Dims4D c_kernel_dims(
+      1, kernel_sizes[2], kernel_sizes[1], kernel_sizes[0]);
   const Dims4D c_out_dims(out_dims[0], out_dims[3], out_dims[2], out_dims[1]);
   const Dims4D c_paddings(1, paddings[2], paddings[1], paddings[0]);
   const Dims4D c_strides(1, strides[2], strides[1], strides[0]);
@@ -74,9 +74,9 @@ void ProductRuleBook(const Context& dev_ctx,
 
   auto f_calc_rulebook = [&](int* rulebook_ptr) {
     int kernel_index = 0, rulebook_index = 0;
-    for (int kz = 0; kz < kernel_dims[0]; kz++) {
-      for (int ky = 0; ky < kernel_dims[1]; ky++) {
-        for (int kx = 0; kx < kernel_dims[2]; kx++) {
+    for (int kz = 0; kz < kernel_sizes[0]; kz++) {
+      for (int ky = 0; ky < kernel_sizes[1]; ky++) {
+        for (int kx = 0; kx < kernel_sizes[2]; kx++) {
           ++kernel_index;
           for (int64_t i = 0; i < non_zero_num; i++) {
             int batch = indices_ptr[i];
