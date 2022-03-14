@@ -312,7 +312,7 @@ def monkey_patch_varbase():
 
         """
         if core._in_eager_mode():
-            if not self.grad._is_initialized():
+            if self.grad is None:
                 return None
             # TODO(wanghuancoder) support SELECTED_ROWS
             return self.grad.numpy()

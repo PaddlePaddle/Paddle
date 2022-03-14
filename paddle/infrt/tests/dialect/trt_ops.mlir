@@ -12,5 +12,5 @@ func @main(%bias:tensor<?xf32>, %c:tensor<?xf32>, %b1:tensor<?xf32>, %b2:tensor<
   %d2 = "pd.elementwise_add"(%c2, %bias2) {axis=-1:si32} : (tensor<?xf32>, tensor<?xf32>) -> tensor<?xf32>
   %e2 = "pd.relu"(%d2) {} : (tensor<?xf32>) -> tensor<?xf32>
   
-  "infrt.return"(%e2) : (tensor<?xf32>)->()
+  infrt.return %e2 : tensor<?xf32>
 }
