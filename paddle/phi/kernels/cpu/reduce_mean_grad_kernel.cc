@@ -16,27 +16,9 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/reduce_grad.h"
-
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
+#include "paddle/phi/kernels/impl/reduce_grad.h"
 namespace phi {
-
-struct MeanGradFunctor {
-  template <typename DeviceContext,
-            typename X,
-            typename Y,
-            typename DX,
-            typename DY,
-            typename Dim>
-  void operator()(const DeviceContext& place,
-                  X* x,
-                  Y* y,
-                  DX* dx,
-                  DY* dy,
-                  const Dim& dim,
-                  int size) {
-    dx->device(place) = dy->broadcast(dim) / dx->constant(size);
-  }
-};
 
 template <typename T, typename Context>
 void ReduceMeanGradKernel(const Context& dev_ctx,
@@ -48,16 +30,16 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           DataType in_dtype,
                           DataType out_dtype,
                           DenseTensor* x_grad) {
-  ReduceGradKernel<Context, T, MeanGradFunctor, true>(dev_ctx,
-                                                      x,
-                                                      out_grad,
-                                                      paddle::none,
-                                                      dims,
-                                                      keep_dim,
-                                                      reduce_all,
-                                                      in_dtype,
-                                                      out_dtype,
-                                                      x_grad);
+  ReduceGradKernel<Context, T, funcs::MeanGradFunctor, true>(dev_ctx,
+                                                             x,
+                                                             out_grad,
+                                                             paddle::none,
+                                                             dims,
+                                                             keep_dim,
+                                                             reduce_all,
+                                                             in_dtype,
+                                                             out_dtype,
+                                                             x_grad);
 }
 
 }  // namespace phi
