@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
@@ -96,6 +96,46 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             if core.is_float16_supported(place):
                 self.check_output_with_place(
                     place, atol=1e-3, check_dygraph=(self.use_mkldnn == False))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+class TestBF16ElementwiseAddOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.dtype = np.uint16
+
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        self.out = np.add(self.x, self.y)
+
+        self.axis = -1
+
+        self.inputs = {
+            'X':
+            OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.x)),
+            'Y':
+            OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.y))
+        }
+        self.attrs = {'axis': self.axis, 'use_mkldnn': False}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad_normal(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(

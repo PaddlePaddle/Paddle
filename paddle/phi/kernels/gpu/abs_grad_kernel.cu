@@ -20,7 +20,7 @@
 
 using phi::dtype::complex;
 
-PT_REGISTER_KERNEL(abs_grad,
+PD_REGISTER_KERNEL(abs_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::AbsGradKernel,
@@ -31,7 +31,7 @@ PT_REGISTER_KERNEL(abs_grad,
                    phi::dtype::float16,
                    complex<float>,
                    complex<double>) {}
-PT_REGISTER_KERNEL(abs_double_grad,
+PD_REGISTER_KERNEL(abs_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::AbsDoubleGradKernel,

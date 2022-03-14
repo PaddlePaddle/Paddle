@@ -45,7 +45,7 @@ void TraceKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(trace,
+PD_REGISTER_KERNEL(trace,
                    CPU,
                    ALL_LAYOUT,
                    phi::TraceKernel,

@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/math_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/gpu/elementwise.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
 #ifdef __NVCC__
@@ -92,10 +92,11 @@ DEFINE_CUDA_ELEMENTWISE_OP(Divide)
 }  // namespace phi
 
 using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PT_REGISTER_KERNEL(add_raw,
+PD_REGISTER_KERNEL(add_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::AddRawKernel,
@@ -105,9 +106,10 @@ PT_REGISTER_KERNEL(add_raw,
                    int,
                    int64_t,
                    float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(subtract_raw,
+PD_REGISTER_KERNEL(subtract_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::SubtractRawKernel,
@@ -117,9 +119,10 @@ PT_REGISTER_KERNEL(subtract_raw,
                    int,
                    int64_t,
                    float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(divide_raw,
+PD_REGISTER_KERNEL(divide_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::DivideRawKernel,
@@ -128,9 +131,10 @@ PT_REGISTER_KERNEL(divide_raw,
                    int,
                    int64_t,
                    float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(multiply_raw,
+PD_REGISTER_KERNEL(multiply_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultiplyRawKernel,
@@ -141,8 +145,9 @@ PT_REGISTER_KERNEL(multiply_raw,
                    bool,
                    float16,
                    complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(sum_raw,
+                   complex128,
+                   bfloat16) {}
+PD_REGISTER_KERNEL(sum_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::SumRawKernel,
@@ -150,6 +155,7 @@ PT_REGISTER_KERNEL(sum_raw,
                    float,
                    double,
                    float16,
+                   bfloat16,
                    int16_t,
                    int,
                    int64_t,
@@ -158,7 +164,7 @@ PT_REGISTER_KERNEL(sum_raw,
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
 
-PT_REGISTER_KERNEL(mean_raw,
+PD_REGISTER_KERNEL(mean_raw,
                    GPU,
                    ALL_LAYOUT,
                    phi::MeanRawKernel,

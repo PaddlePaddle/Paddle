@@ -23,8 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||          \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_XPU_BKCL) || \
+    defined(PADDLE_WITH_CNCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -43,6 +44,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/device/npu/hccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_CNCL)
+#include "paddle/fluid/platform/device/mlu/cncl_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
@@ -394,6 +399,65 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
+#endif
+  }
+};
+
+template <ReduceType red_type, typename T>
+class CAllReduceOpMLUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(PADDLE_WITH_CNCL)
+    auto in = ctx.Input<framework::Tensor>("X");
+    auto out = ctx.Output<framework::Tensor>("Out");
+
+    auto place = ctx.GetPlace();
+    cnclDataType_t dtype =
+        platform::ToCNCLDataType(framework::TransToProtoVarType(in->dtype()));
+    int64_t numel = in->numel();
+    const void* sendbuff = in->data<T>();
+    out->Resize(in->dims());
+    void* recvbuff = out->mutable_data<T>(place);
+
+    int rid = ctx.Attr<int>("ring_id");
+    auto comm = platform::CNCLCommContext::Instance().Get(rid, place);
+
+    mluStream stream = nullptr;
+    if (ctx.Attr<bool>("use_calc_stream")) {
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<platform::MLUDeviceContext*>(dev_ctx)->stream();
+    } else {
+      stream = comm->stream();
+    }
+
+    cnclReduceOp_t cncl_red_type = cnclSum;
+    switch (red_type) {
+      case kRedSum:
+        cncl_red_type = cnclSum;
+        break;
+
+      case kRedMax:
+        cncl_red_type = cnclMax;
+        break;
+
+      case kRedMin:
+        cncl_red_type = cnclMin;
+        break;
+
+      case kRedProd:
+        cncl_red_type = cnclProd;
+        break;
+
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid reduce type: %d", red_type));
+    }
+
+    PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(
+        sendbuff, recvbuff, numel, dtype, cncl_red_type, comm->comm(), stream));
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with MLU."));
 #endif
   }
 };

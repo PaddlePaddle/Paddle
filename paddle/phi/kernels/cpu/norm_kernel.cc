@@ -76,4 +76,4 @@ void NormKernel(const Context& ctx,
 
 }  // namespace phi
 
-PT_REGISTER_KERNEL(norm, CPU, ALL_LAYOUT, phi::NormKernel, float, double) {}
+PD_REGISTER_KERNEL(norm, CPU, ALL_LAYOUT, phi::NormKernel, float, double) {}

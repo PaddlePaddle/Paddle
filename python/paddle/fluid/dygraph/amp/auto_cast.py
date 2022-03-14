@@ -75,8 +75,15 @@ PURE_FP16_BLACK_LIST = {
     'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
 }
 
-BF16_WHITE_LIST = {'conv2d'}
+BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
 BF16_BLACK_LIST = {' '}
+
+_g_amp_state_ = None
+
+
+def amp_state():
+    global _g_amp_state_
+    return _g_amp_state_
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
@@ -149,7 +156,7 @@ def _is_gpu_bfloat16_supported():
     """
     prop = paddle.device.cuda.get_device_capability()
     cuda_version = paddle.version.cuda()
-    if cuda_version is not None:
+    if cuda_version is not None and cuda_version != 'False':
         cuda_version_check = int(cuda_version.split('.')[0]) >= 11
     else:
         cuda_version_check = False
@@ -161,7 +168,7 @@ def pure_fp16_initialize(models):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             layer._casted_by_pure_fp16 = True
-            if (layer._dtype is 'float16') or isinstance(
+            if (layer._dtype == 'float16') or isinstance(
                     layer, (paddle.nn.BatchNorm, paddle.nn.BatchNorm1D,
                             paddle.nn.BatchNorm2D, paddle.nn.BatchNorm3D,
                             paddle.nn.LayerNorm)):
@@ -240,6 +247,11 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
+    amp_state = locals()
+    global _g_amp_state_
+    original_state = _g_amp_state_
+    _g_amp_state_ = amp_state
+
     # check amp_level: O0-O2
     level = level.upper()
     if not (level in ['O0', 'O1', 'O2']):
@@ -349,6 +361,7 @@ def amp_guard(enable=True,
         yield
     finally:
         if tracer:
+            _g_amp_state_ = original_state
             tracer._amp_level = original_amp_level
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
@@ -398,9 +411,9 @@ def amp_decorate(models,
         import paddle
 
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
-        optimzier = paddle.optimizer.SGD(parameters=model.parameters())
+        optimizer = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimzier, level='O2')
+        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimizer, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -413,7 +426,7 @@ def amp_decorate(models,
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
+        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 

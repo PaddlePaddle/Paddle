@@ -1,7 +1,3 @@
-core_gather_headers()
-
-gather_srcs(infrt_src SRCS
-    infrt_dialect.cc
-    )
-
-add_mlir_dialect(infrt_ops Infrt)
+add_subdirectory(common)
+add_subdirectory(ir)
+add_subdirectory(pass)

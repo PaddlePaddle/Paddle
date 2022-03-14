@@ -23,6 +23,20 @@ core_ops_returns_info = {}
 core_ops_args_info = {}
 core_ops_args_type_info = {}
 
+namespace = ""
+
+yaml_types_mapping = {
+    'int' : 'int', 'int32' : 'int32_t', 'int64' : 'int64_t',  'size_t' : 'size_t', \
+    'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
+    'Backend' : 'paddle::experimental::Backend', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
+    'int64[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
+    'Tensor' : 'Tensor',
+    'Tensor[]' : 'std::vector<Tensor>',
+    'Tensor[Tensor[]]' : 'std::vector<std::vector<Tensor>>',
+    'Scalar' : 'paddle::experimental::Scalar',
+    'ScalarArray' : 'paddle::experimental::ScalarArray'
+}
+
 
 def ParseArguments():
     parser = argparse.ArgumentParser(
@@ -59,7 +73,9 @@ def IsPlainTensorType(string):
 
 
 def IsVectorTensorType(string):
-    vector_tensor_types = ['list(Tensor)']
+    vector_tensor_types = [
+        'std::vector<std::vector<Tensor>>', 'std::vector<Tensor>'
+    ]
     if string in vector_tensor_types:
         return True
     return False
@@ -110,6 +126,7 @@ def GetAutoGradMetaVectorName(string):
 def ReadFwdFile(filepath):
     f = open(filepath, 'r')
     contents = yaml.load(f, Loader=yaml.FullLoader)
+    f.close()
     return contents
 
 
@@ -118,15 +135,63 @@ def ReadBwdFile(filepath):
     contents = yaml.load(f, Loader=yaml.FullLoader)
     ret = {}
     for content in contents:
-        assert 'backward_api' in content.keys()
-        api_name = content['backward_api']
+        if 'backward_api' in content.keys():
+            api_name = content['backward_api']
+        else:
+            assert False
+
         ret[api_name] = content
+    f.close()
     return ret
 
 
 ######################
 ###  Yaml Parsers  ###
 ######################
+def RemoveSpecialSymbolsInName(string):
+    # Remove any name after '@'
+    ret = string.split("@")[0]
+    return ret
+
+
+def IntermediateValidationCheck(intermediate_outputs, forward_returns_list):
+    # intermediate_outputs : [name0, name1, ...]
+    # forward_returns_list : [[ret_name, type, orig_pos], ...]
+    """
+    Check whether intermediate_outputs are positioned
+    at the very end of forward_returns_list
+    """
+
+    intermediate_positions = range(
+        len(forward_returns_list) - len(intermediate_outputs),
+        len(forward_returns_list))
+    for ret_name, _, pos in forward_returns_list:
+        if ret_name in intermediate_outputs:
+            assert pos in intermediate_positions
+
+
+def ParseDispensable(string):
+    # string: "X, Y"
+    string = RemoveSpecialSymbolsInName(string)
+    return [v.strip() for v in string.split(",")]
+
+
+def ParseIntermediate(string):
+    string = RemoveSpecialSymbolsInName(string)
+    return [v.strip() for v in string.split(",")]
+
+
+def ParseNoNeedBuffer(string):
+    # string: "x, y"
+    string = RemoveSpecialSymbolsInName(string)
+
+    no_need_buffer_set = set()
+    for name in string.split(","):
+        no_need_buffer_set.add(name.strip())
+
+    return no_need_buffer_set
+
+
 def ParseYamlArgs(string):
     # Example: const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y
 
@@ -146,6 +211,11 @@ def ParseYamlArgs(string):
         arg_name = m.group(3).split("=")[0].strip()
         default_value = m.group(3).split("=")[1].strip() if len(
             m.group(3).split("=")) > 1 else None
+
+        assert arg_type in yaml_types_mapping.keys()
+        arg_type = yaml_types_mapping[arg_type]
+
+        arg_name = RemoveSpecialSymbolsInName(arg_name)
         if "Tensor" in arg_type:
             assert default_value is None
             inputs_list.append([arg_name, arg_type, i])
@@ -156,36 +226,32 @@ def ParseYamlArgs(string):
 
 
 def ParseYamlReturns(string):
-    # Example: Tensor, Tensor
-
-    # list = [ ["", ret_type, orig_position], ...]
-    returns_list = []
-
-    returns = [x.strip() for x in string.strip().split(",")]
-    for i in range(len(returns)):
-        ret = returns[i]
-        returns_list.append(["", ret, i])
-
-    return returns_list
-
-
-def ParseYamlReturnsWithName(string):
-    # Example: Tensor(out), Tensor(out1)
+    # Example0: Tensor(out), Tensor(out1)
+    # Example1: Tensor, Tensor
+    # Example2: Tensor[](out), Tensor
 
     # list = [ [ret_name, ret_type, orig_position], ...]
     returns_list = []
 
     returns = [x.strip() for x in string.strip().split(",")]
 
-    atype = r'(.*?)'
-    aname = r'(.*?)'
-    pattern = f'{atype}\({aname}\)'
     for i in range(len(returns)):
         ret = returns[i]
-        m = re.search(pattern, ret)
-        ret_type = m.group(1)
-        ret_name = m.group(2)
+
+        ret_name = ""
+        if "(" in ret and ")" in ret:
+            # Remove trailing ')'
+            ret = ret[:-1]
+            ret_type = ret.split("(")[0].strip()
+            ret_name = ret.split("(")[1].strip()
+        else:
+            ret_type = ret.strip()
+
+        assert ret_type in yaml_types_mapping.keys()
+        ret_type = yaml_types_mapping[ret_type]
+
         assert "Tensor" in ret_type
+        ret_name = RemoveSpecialSymbolsInName(ret_name)
         returns_list.append([ret_name, ret_type, i])
 
     return returns_list
@@ -206,7 +272,7 @@ def ParseYamlForwardFromBackward(string):
     function_returns = m.group(3)
 
     forward_inputs_list, forward_attrs_list = ParseYamlArgs(function_args)
-    forward_returns_list = ParseYamlReturnsWithName(function_returns)
+    forward_returns_list = ParseYamlReturns(function_returns)
 
     return forward_inputs_list, forward_attrs_list, forward_returns_list
 
@@ -236,7 +302,7 @@ def ParseYamlBackward(args_str, returns_str):
     args_str = re.search(args_pattern, args_str).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
-    returns_list = ParseYamlReturnsWithName(returns_str)
+    returns_list = ParseYamlReturns(returns_str)
 
     return inputs_list, attrs_list, returns_list
 
@@ -397,7 +463,7 @@ def SlotNameMatching(backward_inputs_list, backward_returns_list,
 
 
 def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
-                            backward_attrs_list):
+                            backward_attrs_list, no_need_buffer_set):
     # Inputs:
     # fwd_api_name = ""
     # backward_fwd_input_map   = { "name" : [type, is_fwd_input, orig_position] ...}
@@ -410,15 +476,20 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
     set_tensor_wrapper_methods_str = ""
     tensor_wrapper_members_str = ""
     for tname, (ttype, is_fwd_input, _) in backward_fwd_input_map.items():
+        if tname in no_need_buffer_set:
+            no_need_buffer = "true"
+        else:
+            no_need_buffer = "false"
+
         tensor_wrapper_name = GetSavedName(tname)
         if IsPlainTensorType(ttype):
             SET_PLAIN_TENSOR_WRAPPER_TEMPLATE = """
    void SetTensorWrapper{}(const paddle::experimental::Tensor& {}, bool full_reserved) {{     
-     {} = egr::TensorWrapper({}, full_reserved);
+     {} = egr::TensorWrapper({}, full_reserved, {});
    }}
 """
             set_tensor_wrapper_methods_str += SET_PLAIN_TENSOR_WRAPPER_TEMPLATE.format(
-                tname, tname, tensor_wrapper_name, tname)
+                tname, tname, tensor_wrapper_name, tname, no_need_buffer)
 
             PLAIN_TENSOR_MEMBER_TEMPLATE = """
    egr::TensorWrapper {};
@@ -430,12 +501,12 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
             SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = """
    void SetTensorWrapper{}(const std::vector<paddle::experimental::Tensor>& {}, bool full_reserved) {{
      for(const auto& eager_tensor : {}) {{
-        {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved) );
+        {}.emplace_back( egr::TensorWrapper(eager_tensor, full_reserved, {}) );
      }};
    }}
 """
             set_tensor_wrapper_methods_str += SET_VECTOR_TENSOR_WRAPPER_TEMPLATE.format(
-                tname, tname, tname, tensor_wrapper_name)
+                tname, tname, tname, tensor_wrapper_name, no_need_buffer)
 
             VECTOR_TENSOR_MEMBER_TEMPLATE = """
    std::vector<egr::TensorWrapper> {};
@@ -457,11 +528,18 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
         set_attribute_methods_str += SET_ATTR_METHOD_TEMPLATE.format(
             aname, GetConstReference(atype), aname, saved_attr_name, aname)
 
-        ATTRIBUTE_MEMBER_TEMPLATE = """
-   {} {} = {};
-"""
-        attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
-            RemoveConstAndReference(atype), saved_attr_name, default_val)
+        if default_val:
+            ATTRIBUTE_MEMBER_TEMPLATE = """
+       {} {} = {};
+    """
+            attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
+                RemoveConstAndReference(atype), saved_attr_name, default_val)
+        else:
+            ATTRIBUTE_MEMBER_TEMPLATE = """
+       {} {};
+    """
+            attribute_members_str += ATTRIBUTE_MEMBER_TEMPLATE.format(
+                RemoveConstAndReference(atype), saved_attr_name)
     # End: SetAttributes & Attribute Members
 
     grad_node_name = GetGradNodeName(fwd_api_name)
@@ -475,7 +553,7 @@ class {} : public egr::GradNodeBase {{
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
       const std::vector<std::vector<paddle::experimental::Tensor>>& grads) override;
-  
+  std::string name() override {{ return \" {} \"; }}
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
   // SetAttributes
@@ -490,8 +568,9 @@ class {} : public egr::GradNodeBase {{
 """
     node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
         grad_node_name, grad_node_name, grad_node_name, grad_node_name,
-        set_tensor_wrapper_methods_str, set_attribute_methods_str,
-        tensor_wrapper_members_str, attribute_members_str)
+        grad_node_name, set_tensor_wrapper_methods_str,
+        set_attribute_methods_str, tensor_wrapper_members_str,
+        attribute_members_str)
 
     return node_declaration_str
 
@@ -548,25 +627,32 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
     returns_str += f"return returns;\n"
 
     grad_node_name = GetGradNodeName(fwd_api_name)
+
+    if len(namespace) > 0:
+        grad_api_namespace = f"paddle::experimental::{namespace}"
+    else:
+        grad_api_namespace = f"paddle::experimental"
+
     FUNCTION_TEMPLATE = """
 std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {{
     // Call grad_api function
-    auto grad_api_returns = paddle::experimental::{}({});
+    auto grad_api_returns = {}::{}({});
     {}
 }}
   """
 
     node_definition_str = FUNCTION_TEMPLATE.format(
-        grad_node_name, bwd_api_name, grad_api_args_str, returns_str)
+        grad_node_name, grad_api_namespace, bwd_api_name, grad_api_args_str,
+        returns_str)
 
     return node_definition_str
 
 
-def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
-                              forward_inputs_position_map,
-                              forward_outputs_position_map, forward_attrs_list,
-                              backward_fwd_input_map, backward_grad_input_map,
-                              backward_grad_output_map, backward_attrs_list):
+def GenerateNodeCreationCodes(
+        fwd_api_name, bwd_api_name, forward_inputs_position_map,
+        forward_outputs_position_map, forward_attrs_list,
+        backward_fwd_input_map, backward_grad_input_map,
+        backward_grad_output_map, backward_attrs_list, optional_inputs):
     # fwd_api_name = ""
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
@@ -611,7 +697,7 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
         else:
             # Tuple api_result
             if IsPlainTensorType(rtype):
-                outputs_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);"
+                output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);"
             else:
                 assert IsVectorTensorType(rtype)
                 output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);\n"
@@ -639,11 +725,24 @@ def GenerateNodeCreationCodes(fwd_api_name, bwd_api_name,
 
     # SetTensorWrappers
     set_tensor_wrappers_list = []
-    for name, (_, is_fwd_input, _) in backward_fwd_input_map.items():
+    for name, (atype, is_fwd_input, pos) in backward_fwd_input_map.items():
+        is_optional = (name in optional_inputs)
+
         if is_fwd_input:
-            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
+            if is_optional:
+                set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
+            else:
+                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
-            set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, false);"
+            if IsVectorTensorType(atype):
+                tw_name = f"api_result[{pos}]"
+            else:
+                tw_name = f"api_result"
+
+            if is_optional:
+                set_tensor_wrappers = f"        if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
+            else:
+                set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({tw_name}, false);"
         set_tensor_wrappers_list.append(set_tensor_wrappers)
     set_tensor_wrappers_str = "\n".join(set_tensor_wrappers_list)
 
@@ -732,7 +831,8 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
                               forward_inputs_position_map,
                               forward_outputs_position_map, forward_attrs_list,
                               backward_fwd_input_map, backward_grad_input_map,
-                              backward_grad_output_map, backward_attrs_list):
+                              backward_grad_output_map, backward_attrs_list,
+                              optional_inputs, intermediate_outputs):
     # fwd_api_name = ""
     # forward_inputs_position_map = { "name" : [type, fwd_position] }
     # forward_outputs_position_map = { "name" : [type, fwd_position] }
@@ -741,6 +841,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     # backward_grad_input_map  = { "name" : [type, fwd_position, orig_position] ...}
     # backward_grad_output_map = { "name" : [type, fwd_position, orig_position] ...}
     # backward_attrs_list = [ [attr_name, attr_type, default_value, orig_position], ...]
+    # optional_inputs = ["name0", ...]
 
     # Get Function Args
     num_inputs = len(forward_attrs_list) + len(forward_inputs_position_map.keys(
@@ -750,17 +851,18 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     inputs_call_list = ["" for i in range(num_inputs)]
     for name, (ttype, pos) in forward_inputs_position_map.items():
         inputs_call_list[pos] = f"{name}"
+        is_optional = (name in optional_inputs)
         if IsPlainTensorType(ttype):
-            inputs_args_definition_list[
-                pos] = f"const paddle::experimental::Tensor& {name}"
-            inputs_args_declaration_list[
-                pos] = f"const paddle::experimental::Tensor& {name}"
+            if is_optional:
+                arg_str = f"const paddle::optional<paddle::experimental::Tensor>& {name}"
+            else:
+                arg_str = f"const paddle::experimental::Tensor& {name}"
         else:
             assert IsVectorTensorType(ttype)
-            inputs_args_definition_list[
-                pos] = f"const std::vector<paddle::experimental::Tensor>& {name}"
-            inputs_args_declaration_list[
-                pos] = f"const std::vector<paddle::experimental::Tensor>& {name}"
+            arg_str = f"const std::vector<paddle::experimental::Tensor>& {name}"
+
+        inputs_args_definition_list[pos] = arg_str
+        inputs_args_declaration_list[pos] = arg_str
 
     for name, atype, default_val, pos in forward_attrs_list:
         inputs_call_list[pos] = name
@@ -776,13 +878,24 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     inputs_call_args_str = ", ".join(inputs_call_list)
 
     # Forward Full Logic
-    forward_call_str = f"auto api_result = paddle::experimental::{fwd_api_name}({inputs_call_args_str});"
+    if len(intermediate_outputs) == 0:
+        function_name = fwd_api_name
+    else:
+        function_name = fwd_api_name + "_intermediate"
+
+    if len(namespace) > 0:
+        forward_call_str = f"auto api_result = paddle::experimental::{namespace}::{function_name}({inputs_call_args_str});"
+    else:
+        forward_call_str = f"auto api_result = paddle::experimental::{function_name}({inputs_call_args_str});"
 
     # Get return type list & outputs
-    num_outputs = len(forward_outputs_position_map.keys())
+    num_outputs = len(forward_outputs_position_map.keys()) - len(
+        intermediate_outputs)
     returns_type_list = ["" for i in range(num_outputs)]
     returns_list = ["" for i in range(num_outputs)]
     for name, (rtype, pos) in forward_outputs_position_map.items():
+        if name in intermediate_outputs:
+            continue
         if num_outputs == 1:
             returns_list[0] = f"api_result"
         else:
@@ -808,7 +921,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
         fwd_api_name, bwd_api_name, forward_inputs_position_map,
         forward_outputs_position_map, forward_attrs_list,
         backward_fwd_input_map, backward_grad_input_map,
-        backward_grad_output_map, backward_attrs_list)
+        backward_grad_output_map, backward_attrs_list, optional_inputs)
 
     FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{
@@ -923,7 +1036,9 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
+#include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
+#include "paddle/phi/api/include/sparse_api.h"
 """
     file_contents += node_definition_str
     with open(filepath, 'a') as f:
@@ -944,11 +1059,12 @@ def GenerateNodeHFile(filepath, node_declaration_str):
 
 def GenerateForwardCCFile(filepath, forward_definition_str):
     file_contents = """
+#include "paddle/phi/api/lib/dygraph_api.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 
+#include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-
 """
 
     file_contents += GenerateCoreOpInfoDefinition()
@@ -965,6 +1081,7 @@ def GenerateForwardHFile(filepath, forward_function_declaration_str):
 #include "paddle/phi/api/all.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/eager/to_static/run_program_op_func.h"
 
 """
     file_contents += GenerateCoreOpInfoDeclaration()
@@ -976,116 +1093,184 @@ def GenerateForwardHFile(filepath, forward_function_declaration_str):
 if __name__ == "__main__":
     args = ParseArguments()
 
-    api_yaml_path = args.api_yaml_path
-    backward_yaml_path = args.backward_yaml_path
-
-    fwd_api_list = ReadFwdFile(api_yaml_path)
-    grad_api_dict = ReadBwdFile(backward_yaml_path)
+    api_yaml_paths = args.api_yaml_path.split(",")
+    backward_yaml_paths = args.backward_yaml_path.split(",")
 
     # Generate per Dygraph API
     node_declaration_str = ""
     node_definition_str = ""
     forward_definition_str = ""
     forward_declaration_str = ""
-    for fwd_api in fwd_api_list:
-        # We only generate Ops with grad
-        if 'backward' not in fwd_api.keys():
-            continue
 
-        assert 'api' in fwd_api.keys()
-        assert 'args' in fwd_api.keys()
-        assert 'output' in fwd_api.keys()
-        assert 'backward' in fwd_api.keys()
+    for i in range(len(api_yaml_paths)):
+        api_yaml_path = api_yaml_paths[i]
+        backward_yaml_path = backward_yaml_paths[i]
 
-        fwd_api_name = fwd_api['api']
-        fwd_args_str = fwd_api['args']
-        fwd_returns_str = fwd_api['output']
+        if "sparse" in api_yaml_path:
+            assert "sparse" in backward_yaml_path
+            namespace = "sparse"
+        else:
+            namespace = ""
 
-        bwd_api_name = fwd_api['backward']
-        assert bwd_api_name in grad_api_dict.keys()
-        bwd_api = grad_api_dict[bwd_api_name]
+        fwd_api_list = ReadFwdFile(api_yaml_path)
+        grad_api_dict = ReadBwdFile(backward_yaml_path)
 
-        assert 'args' in bwd_api.keys()
-        assert 'output' in bwd_api.keys()
-        assert 'forward' in bwd_api.keys()
-        bwd_forward_str = bwd_api['forward']
-        bwd_args_str = bwd_api['args']
-        bwd_returns_str = bwd_api['output']
+        yaml_forward_definition_str = ""
+        yaml_forward_declaration_str = ""
+        yaml_node_declaration_str = ""
+        yaml_node_definition_str = ""
+        for fwd_api in fwd_api_list:
+            # We only generate Ops with grad
+            if 'backward' not in fwd_api.keys():
+                continue
 
-        # Collect Forward Inputs/Outputs
-        forward_inputs_list, forward_attrs_list, forward_returns_list = ParseYamlForwardFromBackward(
-            bwd_forward_str)
-        print("Parsed Forward Inputs List: ", forward_inputs_list)
-        print("Prased Forward Attrs List: ", forward_attrs_list)
-        print("Parsed Forward Returns List: ", forward_returns_list)
+            assert 'api' in fwd_api.keys()
+            assert 'args' in fwd_api.keys()
+            assert 'output' in fwd_api.keys()
+            assert 'backward' in fwd_api.keys()
 
-        # Collect Original Forward Inputs/Outputs and then perform validation checks
-        orig_forward_inputs_list, orig_forward_attrs_list, orig_forward_returns_list = ParseYamlForward(
-            fwd_args_str, fwd_returns_str)
-        print("Parsed Original Forward Inputs List: ", orig_forward_inputs_list)
-        print("Prased Original Forward Attrs List: ", orig_forward_attrs_list)
-        print("Parsed Original Forward Returns List: ",
-              orig_forward_returns_list)
+            no_need_buffer_set = set()
+            if 'no_need_buffer' in fwd_api.keys():
+                no_need_buffer_set = ParseNoNeedBuffer(fwd_api[
+                    'no_need_buffer'])
 
-        # Forward Validation Checks
-        ForwardsValidationCheck(forward_inputs_list, forward_attrs_list,
-                                forward_returns_list, orig_forward_inputs_list,
-                                orig_forward_attrs_list,
-                                orig_forward_returns_list)
+            fwd_api_name = fwd_api['api']
+            fwd_args_str = fwd_api['args']
+            fwd_returns_str = fwd_api['output']
 
-        # Parse Backward Inputs/Outputs
-        backward_inputs_list, backward_attrs_list, backward_returns_list = ParseYamlBackward(
-            bwd_args_str, bwd_returns_str)
-        print("Parsed Backward Inputs List: ", backward_inputs_list)
-        print("Prased Backward Attrs List: ", backward_attrs_list)
-        print("Parsed Backward Returns List: ", backward_returns_list)
+            bwd_api_name = fwd_api['backward']
+            assert bwd_api_name in grad_api_dict.keys()
+            bwd_api = grad_api_dict[bwd_api_name]
 
-        # Determine Forward Inputs/Outputs Position
-        forward_inputs_position_map, forward_outputs_position_map = DetermineForwardPositionMap(
-            forward_inputs_list, forward_returns_list)
-        print("Generated Forward Input Position Map: ",
-              forward_inputs_position_map)
-        print("Generated Forward Output Position Map: ",
-              forward_outputs_position_map)
+            assert 'args' in bwd_api.keys()
+            assert 'output' in bwd_api.keys()
+            assert 'forward' in bwd_api.keys()
 
-        # SlotName Matching
-        backward_fwd_input_map, backward_grad_input_map, backward_grad_output_map = SlotNameMatching(
-            backward_inputs_list, backward_returns_list,
-            forward_inputs_position_map, forward_outputs_position_map)
-        print("Generated Backward Fwd Input Map: ", backward_fwd_input_map)
-        print("Generated Backward Grad Input Map: ", backward_grad_input_map)
-        print("Generated Backward Grad Output Map: ", backward_grad_output_map)
+            # Parse Dispensable Inputs
+            optional_inputs = []
+            if 'optional' in fwd_api.keys():
+                optional_inputs = ParseDispensable(fwd_api['optional'])
 
-        # Backward Validation Check
-        BackwardValidationCheck(backward_fwd_input_map, backward_grad_input_map,
-                                backward_attrs_list)
+            bwd_forward_str = bwd_api['forward']
+            bwd_args_str = bwd_api['args']
+            bwd_returns_str = bwd_api['output']
 
-        # Node Declaration Generation
-        node_declaration_str += GenerateNodeDeclaration(
-            fwd_api_name, backward_fwd_input_map, backward_attrs_list)
-        print("Generated Node Declaration: ", node_declaration_str)
+            # Collect Forward Inputs/Outputs
+            forward_inputs_list, forward_attrs_list, forward_returns_list = ParseYamlForwardFromBackward(
+                bwd_forward_str)
+            print("Parsed Forward Inputs List: ", forward_inputs_list)
+            print("Prased Forward Attrs List: ", forward_attrs_list)
+            print("Parsed Forward Returns List: ", forward_returns_list)
 
-        node_definition_str += GenerateNodeDefinition(
-            fwd_api_name, bwd_api_name, backward_fwd_input_map,
-            backward_grad_input_map, backward_grad_output_map,
-            backward_attrs_list)
-        print("Generated Node Definition: ", node_definition_str)
+            intermediate_outputs = []
+            if 'intermediate' in fwd_api.keys():
+                intermediate_outputs = ParseIntermediate(fwd_api[
+                    'intermediate'])
 
-        # Node Definition Generation
-        definition_declaration_pair = GenerateForwardDefinition(
-            fwd_api_name, bwd_api_name, forward_inputs_position_map,
-            forward_outputs_position_map, forward_attrs_list,
-            backward_fwd_input_map, backward_grad_input_map,
-            backward_grad_output_map, backward_attrs_list)
-        print("Generated Forward Definition: ", forward_definition_str)
-        print("Generated Forward Declaration: ", forward_declaration_str)
-        forward_definition_str += definition_declaration_pair[0]
-        forward_declaration_str += definition_declaration_pair[1]
+            IntermediateValidationCheck(intermediate_outputs,
+                                        forward_returns_list)
 
-        # For python-level API dispatch
-        CollectCoreOpsInformation(fwd_api_name, forward_inputs_position_map,
-                                  forward_outputs_position_map,
-                                  forward_attrs_list)
+            # Collect Original Forward Inputs/Outputs and then perform validation checks
+            orig_forward_inputs_list, orig_forward_attrs_list, orig_forward_returns_list = ParseYamlForward(
+                fwd_args_str, fwd_returns_str)
+            print("Parsed Original Forward Inputs List: ",
+                  orig_forward_inputs_list)
+            print("Prased Original Forward Attrs List: ",
+                  orig_forward_attrs_list)
+            print("Parsed Original Forward Returns List: ",
+                  orig_forward_returns_list)
+
+            # Forward Validation Checks
+            ForwardsValidationCheck(
+                forward_inputs_list, forward_attrs_list, forward_returns_list,
+                orig_forward_inputs_list, orig_forward_attrs_list,
+                orig_forward_returns_list)
+
+            # Parse Backward Inputs/Outputs
+            backward_inputs_list, backward_attrs_list, backward_returns_list = ParseYamlBackward(
+                bwd_args_str, bwd_returns_str)
+            print("Parsed Backward Inputs List: ", backward_inputs_list)
+            print("Prased Backward Attrs List: ", backward_attrs_list)
+            print("Parsed Backward Returns List: ", backward_returns_list)
+
+            # Determine Forward Inputs/Outputs Position
+            forward_inputs_position_map, forward_outputs_position_map = DetermineForwardPositionMap(
+                forward_inputs_list, forward_returns_list)
+            print("Generated Forward Input Position Map: ",
+                  forward_inputs_position_map)
+            print("Generated Forward Output Position Map: ",
+                  forward_outputs_position_map)
+
+            # SlotName Matching
+            backward_fwd_input_map, backward_grad_input_map, backward_grad_output_map = SlotNameMatching(
+                backward_inputs_list, backward_returns_list,
+                forward_inputs_position_map, forward_outputs_position_map)
+            print("Generated Backward Fwd Input Map: ", backward_fwd_input_map)
+            print("Generated Backward Grad Input Map: ",
+                  backward_grad_input_map)
+            print("Generated Backward Grad Output Map: ",
+                  backward_grad_output_map)
+
+            # Backward Validation Check
+            BackwardValidationCheck(backward_fwd_input_map,
+                                    backward_grad_input_map,
+                                    backward_attrs_list)
+
+            # Node Declaration Generation
+            yaml_node_declaration_str += GenerateNodeDeclaration(
+                fwd_api_name, backward_fwd_input_map, backward_attrs_list,
+                no_need_buffer_set)
+            print("Generated Node Declaration: ", node_declaration_str)
+
+            yaml_node_definition_str += GenerateNodeDefinition(
+                fwd_api_name, bwd_api_name, backward_fwd_input_map,
+                backward_grad_input_map, backward_grad_output_map,
+                backward_attrs_list)
+            print("Generated Node Definition: ", node_definition_str)
+
+            # Node Definition Generation
+            definition_declaration_pair = GenerateForwardDefinition(
+                fwd_api_name, bwd_api_name, forward_inputs_position_map,
+                forward_outputs_position_map, forward_attrs_list,
+                backward_fwd_input_map, backward_grad_input_map,
+                backward_grad_output_map, backward_attrs_list, optional_inputs,
+                intermediate_outputs)
+            print("Generated Forward Definition: ", forward_definition_str)
+            print("Generated Forward Declaration: ", forward_declaration_str)
+            yaml_forward_definition_str += definition_declaration_pair[0]
+            yaml_forward_declaration_str += definition_declaration_pair[1]
+
+            # For python-level API dispatch
+            CollectCoreOpsInformation(fwd_api_name, forward_inputs_position_map,
+                                      forward_outputs_position_map,
+                                      forward_attrs_list)
+
+        if len(namespace) > 0:
+            forward_definition_str += f"""namespace {namespace} {{
+    {yaml_forward_definition_str}
+}}
+"""
+
+            forward_declaration_str += f"""namespace {namespace} {{
+    {yaml_forward_declaration_str}
+}}
+"""
+
+            node_declaration_str += f"""namespace {namespace} {{
+    {yaml_node_declaration_str}
+}}
+"""
+
+            node_definition_str += f"""namespace {namespace} {{
+    {yaml_node_definition_str}
+}}
+"""
+
+        else:
+            forward_definition_str += yaml_forward_definition_str
+            forward_declaration_str += yaml_forward_declaration_str
+            node_declaration_str += yaml_node_declaration_str
+            node_definition_str += yaml_node_definition_str
 
     # Generate Files
     nodes_h_path = args.nodes_h_path

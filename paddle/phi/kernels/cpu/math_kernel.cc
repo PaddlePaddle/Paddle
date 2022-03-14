@@ -20,6 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 
@@ -45,10 +46,10 @@ namespace phi {
       auto x_dims = x.dims();                                               \
       auto y_dims = y.dims();                                               \
       if (x_dims.size() >= y_dims.size()) {                                 \
-        ElementwiseCompute<funcs::name##Functor<T>, T>(                     \
+        funcs::ElementwiseCompute<funcs::name##Functor<T>, T>(              \
             dev_ctx, x, y, axis, funcs::name##Functor<T>(), out);           \
       } else {                                                              \
-        ElementwiseCompute<funcs::Inverse##name##Functor<T>, T>(            \
+        funcs::ElementwiseCompute<funcs::Inverse##name##Functor<T>, T>(     \
             dev_ctx, x, y, axis, funcs::Inverse##name##Functor<T>(), out);  \
       }                                                                     \
     }                                                                       \
@@ -93,10 +94,10 @@ void DivideRawKernel(const Context& dev_ctx,
     auto x_dims = x.dims();
     auto y_dims = y.dims();
     if (x_dims.size() >= y_dims.size()) {
-      ElementwiseCompute<funcs::DivideFunctor<T>, T>(
+      funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
           dev_ctx, x, y, axis, funcs::DivideFunctor<T>(), out);
     } else {
-      ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
+      funcs::ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
           dev_ctx, x, y, axis, funcs::InverseDivideFunctor<T>(), out);
     }
   }
@@ -118,7 +119,7 @@ using complex128 = ::phi::dtype::complex<double>;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::dtype::bfloat16;
-PT_REGISTER_KERNEL(add_raw,
+PD_REGISTER_KERNEL(add_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::AddRawKernel,
@@ -129,7 +130,7 @@ PT_REGISTER_KERNEL(add_raw,
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(subtract_raw,
+PD_REGISTER_KERNEL(subtract_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::SubtractRawKernel,
@@ -139,8 +140,9 @@ PT_REGISTER_KERNEL(subtract_raw,
                    int,
                    int64_t,
                    complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(divide_raw,
+                   complex128,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(divide_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::DivideRawKernel,
@@ -150,7 +152,7 @@ PT_REGISTER_KERNEL(divide_raw,
                    int64_t,
                    complex64,
                    complex128) {}
-PT_REGISTER_KERNEL(multiply_raw,
+PD_REGISTER_KERNEL(multiply_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::MultiplyRawKernel,
@@ -160,8 +162,9 @@ PT_REGISTER_KERNEL(multiply_raw,
                    int64_t,
                    bool,
                    complex64,
-                   complex128) {}
-PT_REGISTER_KERNEL(sum_raw,
+                   complex128,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(sum_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::SumRawKernel,
@@ -176,5 +179,5 @@ PT_REGISTER_KERNEL(sum_raw,
                    complex128) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
-PT_REGISTER_KERNEL(
+PD_REGISTER_KERNEL(
     mean_raw, CPU, ALL_LAYOUT, phi::MeanRawKernel, float, double, bool) {}

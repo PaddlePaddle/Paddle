@@ -84,12 +84,32 @@ class XPUTestSigmoidOP(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = "sigmoid"
             self.dtype = self.in_type
+            self.init_config()
+            out = 1 / (1 + np.exp(-self.x))
 
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-            out = 1 / (1 + np.exp(-x))
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
             self.outputs = {'Out': out}
+
+        def init_config(self):
+            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestSigmoid2(XPUTestSigmoid):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [100]).astype(self.dtype)
+
+    class XPUTestSigmoid3(XPUTestSigmoid):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [10, 12, 15]).astype(self.dtype)
+
+    class XPUTestSigmoid4(XPUTestSigmoid):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [19, 19]).astype(self.dtype)
+
+    class XPUTestSigmoid5(XPUTestSigmoid):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2,
+                                       [10, 20, 30, 40]).astype(self.dtype)
 
 
 support_types = get_xpu_op_support_types('sigmoid')
@@ -229,7 +249,7 @@ def gelu(x, approximate):
     return y_ref.astype(x.dtype)
 
 
-class XPUTestHardSwishGeluOP(XPUOpTestWrapper):
+class XPUTestHardSwishOP(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'hard_swish'
         self.use_dynamic_create_class = False
@@ -292,13 +312,31 @@ class XPUTestSquareOP(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = "square"
             self.dtype = self.in_type
-
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-            out = np.square(x)
+            self.init_config()
+            out = np.square(self.x)
 
             self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+            self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
             self.outputs = {'Out': out}
+
+        def init_config(self):
+            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestSquare2(XPUTestSquare):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [100]).astype(self.dtype)
+
+    class XPUTestSquare3(XPUTestSquare):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [1, 15, 19]).astype(self.dtype)
+
+    class XPUTestSquare4(XPUTestSquare):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [100, 10]).astype(self.dtype)
+
+    class XPUTestSquare5(XPUTestSquare):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [1, 2, 5, 17]).astype(self.dtype)
 
 
 support_types = get_xpu_op_support_types('square')

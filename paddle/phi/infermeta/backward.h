@@ -17,12 +17,89 @@ limitations under the License. */
 #include <tuple>
 
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
+
+void BilinearTensorProductGradInferMeta(const MetaTensor& x,
+                                        const MetaTensor& y,
+                                        const MetaTensor& weight,
+                                        const MetaTensor& dout,
+                                        MetaTensor* dx,
+                                        MetaTensor* dy,
+                                        MetaTensor* dweight,
+                                        MetaTensor* dbias);
+
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad);
 
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 MetaTensor* dx,
                                 MetaTensor* dy);
+
+void GeneralTernaryGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 const MetaTensor& z,
+                                 MetaTensor* dx,
+                                 MetaTensor* dy,
+                                 MetaTensor* dz);
+
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
+
+void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
+                                const MetaTensor& dout,
+                                int axis,
+                                MetaTensor* dx);
+
+void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& mask,
+                                   const MetaTensor& dout,
+                                   const std::vector<int>& kernel_size,
+                                   const std::vector<int>& strides,
+                                   const std::vector<int>& paddings,
+                                   bool global_pooling,
+                                   bool adaptive,
+                                   MetaTensor* dx);
+
+void PsroiPoolGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& rois,
+                            paddle::optional<const MetaTensor&> rois_num,
+                            const MetaTensor& dout,
+                            int pooled_height,
+                            int pooled_width,
+                            int output_channels,
+                            float spatial_scale,
+                            MetaTensor* dx);
+
+void PoolGradInferMeta(const MetaTensor& x,
+                       const MetaTensor& out,
+                       const MetaTensor& dout,
+                       const std::vector<int>& kernel_size,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       bool ceil_mode,
+                       bool exclusive,
+                       const std::string& data_format,
+                       const std::string& pooling_type,
+                       bool global_pooling,
+                       bool adaptive,
+                       const std::string& padding_algorithm,
+                       MetaTensor* dx);
+
+void ScatterGradInferMeta(const MetaTensor& index,
+                          const MetaTensor& updates,
+                          const MetaTensor& out_grad,
+                          bool overwrite,
+                          MetaTensor* x_grad,
+                          MetaTensor* updates_grad);
+
+void ScatterNdAddGradInferMeta(const MetaTensor& index,
+                               const MetaTensor& updates,
+                               const MetaTensor& out_grad,
+                               MetaTensor* x_grad,
+                               MetaTensor* updates_grad);
 
 }  // namespace phi

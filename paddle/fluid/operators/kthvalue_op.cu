@@ -16,7 +16,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/kthvalue_op.h"
 #include "paddle/fluid/operators/top_k_function_cuda.h"
-#include "paddle/fluid/operators/top_k_v2_op.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif

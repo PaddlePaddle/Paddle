@@ -18,8 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -87,6 +88,10 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_types[0] == proto::VarType::SELECTED_ROWS;
   }
 
+  bool IsForInferShape() const override { return true; }
+
+  bool IsRuntime() const override { return ctx_.IsRuntime(); }
+
  private:
   const InferShapeContext& ctx_;
 };
@@ -126,7 +131,9 @@ class CompatMetaTensor : public phi::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return phi::make_ddim(var->GetShape());
+
+      return var->GetShape().empty() ? phi::make_ddim({0UL})
+                                     : phi::make_ddim(var->GetShape());
     }
   }
 
@@ -143,7 +150,7 @@ class CompatMetaTensor : public phi::MetaTensor {
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
-      return paddle::framework::TransToPtenDataType(var->GetDataType());
+      return paddle::framework::TransToPhiDataType(var->GetDataType());
     }
   }
 
@@ -227,16 +234,8 @@ class CompatMetaTensor : public phi::MetaTensor {
     }
   }
 
-  void share_meta(const MetaTensor& meta_tensor) override {
+  void share_dims(const MetaTensor& meta_tensor) override {
     set_dims(meta_tensor.dims());
-    set_dtype(meta_tensor.dtype());
-    // VarDesc doesn't contains layout, so we cannot share layout
-    // set_layout(meta_tensor.layout());
-
-    // special case 1: share lod of LoDTensor
-    share_lod(meta_tensor);
-
-    // special case 2: share height and rows of SelectedRows in runtime
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
       if (var->IsType<phi::SelectedRows>()) {
@@ -247,6 +246,16 @@ class CompatMetaTensor : public phi::MetaTensor {
         selected_rows->set_height(input_selected_rows.height());
       }
     }
+  }
+
+  void share_meta(const MetaTensor& meta_tensor) override {
+    share_dims(meta_tensor);
+    set_dtype(meta_tensor.dtype());
+    // VarDesc doesn't contains layout, so we cannot share layout
+    // set_layout(meta_tensor.layout());
+
+    // special case: share lod of LoDTensor
+    share_lod(meta_tensor);
   }
 
  private:
@@ -288,7 +297,8 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   VLOG(3) << "BuildInferMetaContext: op kernel signature - " << signature;
 
   // 2. build infermeta context
-  phi::InferMetaContext infer_meta_context(ctx->IsRuntime());
+  phi::InferMetaContext infer_meta_context(
+      {ctx->IsRuntime(), ctx->IsRunMKLDNNKernel()});
 
   auto& input_names = std::get<0>(signature.args);
   auto& attr_names = std::get<1>(signature.args);
@@ -307,22 +317,25 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
   // TODO(chenweihang): support multiple inputs and outputs later
   phi::InferMetaContext infer_mete_context;
   for (auto& in_name : input_names) {
-    if (ctx->HasInput(in_name)) {
-      infer_meta_context.EmplaceBackInput(std::make_shared<CompatMetaTensor>(
-          ctx->GetInputVarPtrs(in_name)[0], ctx->IsRuntime()));
+    if (ctx->HasInputs(in_name)) {
+      auto input_var = ctx->GetInputVarPtrs(in_name);
+      if (input_var.size() == 1) {
+        infer_meta_context.EmplaceBackInput(
+            std::make_shared<CompatMetaTensor>(input_var[0], ctx->IsRuntime()));
+      } else {
+        paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> inputs;
+        inputs.reserve(input_var.size());
+        for (const auto& in : input_var) {
+          inputs.push_back(
+              std::make_shared<CompatMetaTensor>(in, ctx->IsRuntime()));
+        }
+        infer_meta_context.EmplaceBackInputs(std::move(inputs));
+      }
     } else {
       infer_meta_context.EmplaceBackInput({nullptr});
     }
   }
 
-  for (auto& out_name : output_names) {
-    if (ctx->HasOutput(out_name)) {
-      infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
-          ctx->GetOutputVarPtrs(out_name)[0], ctx->IsRuntime()));
-    } else {
-      infer_meta_context.EmplaceBackOutput({nullptr});
-    }
-  }
   auto attr_reader = ctx->Attrs();
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto attr_name = attr_names[i];
@@ -340,24 +353,28 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           }
           if (infershape_inputs.size() != 1) {
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePtenScalarArrayFromVarList(vars)));
+                std::move(experimental::MakePhiScalarArrayFromVarList(vars)));
           } else {
             infer_meta_context.EmplaceBackAttr(
-                std::move(experimental::MakePtenScalarArrayFromVar(*vars[0])));
+                std::move(experimental::MakePhiScalarArrayFromVar(*vars[0])));
           }
         } else {
           // If is not in runtime, we will set default value(-1) for ScalarArray
-          int64_t num_ele = 1;
           std::vector<VarDesc*> vars;
           vars.reserve(infershape_inputs.size());
-          for (size_t i = 0; i < infershape_inputs.size(); i++) {
+          for (size_t i = 0; i < infershape_inputs.size(); ++i) {
             vars.push_back(BOOST_GET_CONST(VarDesc*, infershape_inputs[i]));
           }
-          for (auto& var : vars) {
-            const auto& tensor_dims = var->GetShape();
+
+          int64_t num_ele = 0;
+          if (vars.size() == 1) {
+            num_ele = 1;
+            const auto& tensor_dims = vars[0]->GetShape();
             for (size_t i = 0; i < tensor_dims.size(); ++i) {
               num_ele *= tensor_dims[i];
             }
+          } else {
+            num_ele = vars.size();
           }
           phi::ScalarArray tensor_attr(std::vector<int32_t>(num_ele, -1));
           tensor_attr.SetFromTensor(true);
@@ -369,59 +386,142 @@ phi::InferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             std::type_index(typeid(std::vector<int32_t>))) {
           infer_meta_context.EmplaceBackAttr(std::move(
               phi::ScalarArray(BOOST_GET_CONST(std::vector<int32_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int64_t>))) {
+          infer_meta_context.EmplaceBackAttr(std::move(
+              phi::ScalarArray(BOOST_GET_CONST(std::vector<int64_t>, attr))));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int))) {
+          infer_meta_context.EmplaceBackAttr(
+              phi::ScalarArray({BOOST_GET_CONST(int, attr)}));
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported cast op attribute `%s` to ScalarArray when "
-              "construct KernelContext.",
+              "construct InferMetaContext.",
               attr_name));
         }
       }
-
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(phi::Scalar))) {
+      if (ctx->HasAttr(attr_name)) {
+        // TODO(chentianyu03): support other attrs later
+        auto& attr = attr_reader.GetAttr(attr_name);
+        if (std::type_index(attr.type()) == std::type_index(typeid(float))) {
+          infer_meta_context.EmplaceBackAttr(
+              phi::Scalar(BOOST_GET_CONST(float, attr)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::string))) {
+          infer_meta_context.EmplaceBackAttr(
+              phi::Scalar(BOOST_GET_CONST(std::string, attr)));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(int))) {
+          infer_meta_context.EmplaceBackAttr(
+              phi::Scalar(BOOST_GET_CONST(int, attr)));
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported cast op attribute `%s` to Scalar when construct "
+              "InferMetaContext.",
+              attr_name));
+        }
+      } else if (ctx->HasInput(attr_name)) {
+        const auto& infershape_input = ctx->GetInputVarPtrs(attr_name);
+        if (infershape_input.size() == 1) {
+          if (ctx->IsRuntime()) {
+            Variable* var = BOOST_GET_CONST(Variable*, infershape_input[0]);
+            infer_meta_context.EmplaceBackAttr(
+                std::move(experimental::MakePhiScalarFromVar(*var)));
+          } else {
+            phi::Scalar tensor_scalar(-1);
+            tensor_scalar.SetFromTensor(true);
+            infer_meta_context.EmplaceBackAttr(std::move(tensor_scalar));
+          }
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Invalid input.size() when cast op attribute `%s` to Scalar, "
+              "expected 1, but actually is %d .",
+              attr_name, infershape_input.size()));
+        }
+      }
     } else if (ctx->HasAttr(attr_name)) {
       // Emplace Back Attr according to the type of attr.
       auto& attr = attr_reader.GetAttr(attr_name);
-      if (std::type_index(attr.type()) == std::type_index(typeid(bool))) {
+      if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
-      } else if (std::type_index(attr.type()) == std::type_index(typeid(int))) {
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int, attr));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(int64_t))) {
+      } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
-      } else if (std::type_index(attr.type()) ==
-                 std::type_index(typeid(float))) {
+      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(float, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
         infer_meta_context.EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<bool>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<bool>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<int>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
-        infer_meta_context.EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<int64_t>, attr));
-      } else if (std::type_index(attr.type()) ==
+        if (std::type_index(attr.type()) ==
+            std::type_index(typeid(std::vector<int>))) {
+          // Emplace Back Attr according to the type of Phi_Kernel args.
+          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
+                                                       vector_int_attr.end());
+          infer_meta_context.EmplaceBackAttr(vector_int64_attr);
+        } else {
+          infer_meta_context.EmplaceBackAttr(
+              BOOST_GET_CONST(std::vector<int64_t>, attr));
+        }
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<float>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<float>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<double>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<double>, attr));
-      } else if (std::type_index(attr.type()) ==
+      } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<std::string>))) {
         infer_meta_context.EmplaceBackAttr(
             BOOST_GET_CONST(std::vector<std::string>, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(phi::DataType))) {
+        auto data_type = paddle::framework::TransToPhiDataType(
+            static_cast<framework::proto::VarType::Type>(
+                BOOST_GET_CONST(int, attr)));
+        infer_meta_context.EmplaceBackAttr(data_type);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported attribute type is received when call "
             "InferShapeFunctor."));
       }
+    } else {
+      // do nothing
+    }
+  }
+
+  for (auto& out_name : output_names) {
+    if (ctx->HasOutputs(out_name)) {
+      auto output_var = ctx->GetOutputVarPtrs(out_name);
+      if (output_var.size() == 1) {
+        infer_meta_context.EmplaceBackOutput(std::make_shared<CompatMetaTensor>(
+            output_var[0], ctx->IsRuntime()));
+      } else {
+        paddle::SmallVector<std::shared_ptr<phi::MetaTensor>> outputs;
+        outputs.reserve(output_var.size());
+        for (const auto& out : output_var) {
+          outputs.emplace_back(
+              std::make_shared<CompatMetaTensor>(out, ctx->IsRuntime()));
+        }
+        infer_meta_context.EmplaceBackOutputs(std::move(outputs));
+      }
+    } else {
+      infer_meta_context.EmplaceBackOutput({nullptr});
     }
   }
 
