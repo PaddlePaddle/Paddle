@@ -168,6 +168,33 @@ void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16, int ipu_replica_num,
   Update();
 }
 
+void AnalysisConfig::EnableONNXRuntime() {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  use_onnxruntime_ = true;
+#else
+  LOG(ERROR) << "Please compile with onnxruntime to EnableONNXRuntime()";
+  use_onnxruntime_ = false;
+#endif
+
+  Update();
+}
+
+void AnalysisConfig::DisableONNXRuntime() {
+  use_onnxruntime_ = false;
+  Update();
+}
+
+void AnalysisConfig::EnableORTOptimization() {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  enable_ort_optimization_ = true;
+#else
+  LOG(ERROR) << "Please compile with onnxruntime to EnableORTOptimization()";
+  enable_ort_optimization_ = false;
+#endif
+
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
