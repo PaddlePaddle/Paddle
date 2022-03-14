@@ -54,8 +54,9 @@ def get_compat_kernels_info():
                     content += line
                 if (registry and ";" in line):
                     data = content.replace("\n", "").replace(
-                        " ", "").strip("return").strip(
-                            "KernelSignature(").strip("\);").replace("\"", "")
+                        " ",
+                        "").strip("return").strip("KernelSignature(").strip(
+                            "\);").replace("\"", "").replace("\\", "")
                     registry = False
                     name, registry_info = parse_compat_registry(data)
 
