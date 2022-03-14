@@ -110,7 +110,7 @@ void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
   }
 }
 
-TensorBase* MetaTensor::get_tensor() const { return tensor_; }
+TensorBase* MetaTensor::tensor() const { return tensor_; }
 
 void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   bool is_dense_tensor = phi::DenseTensor::classof(tensor_);
@@ -118,7 +118,7 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   if (is_dense_tensor || is_selected_rows) {
     set_dims(meta_tensor.dims());
     if (is_selected_rows) {
-      const auto in_tensor_base = meta_tensor.get_tensor();
+      const auto in_tensor_base = meta_tensor.tensor();
       PADDLE_ENFORCE_EQ(
           phi::SelectedRows::classof(in_tensor_base),
           true,
