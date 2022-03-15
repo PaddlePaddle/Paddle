@@ -585,14 +585,20 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
   auto &step = *pstep;
   auto &slicelength = *pslicelength;
   const framework::DDim &srcDDim = self.dims();
-  if (dim < 0 || dim >= srcDDim.size()) {
-    throw py::index_error();
-  }
+  PADDLE_ENFORCE(
+      0 <= dim && dim < srcDDim.size(),
+      platform::errors::OutOfRange("The dim %d of slice is out of bounds, it "
+                                   "shound be in the range of [0, %d).",
+                                   dim, srcDDim.size()));
+
   if (py::isinstance<py::slice>(obj)) {
     size_t lstart, lstop, lstep, lslicelength;
     py::slice s = static_cast<py::slice>(obj);
     if (!s.compute(srcDDim[dim], &lstart, &lstop, &lstep, &lslicelength)) {
-      throw py::index_error();
+      PADDLE_THROW(platform::errors::OutOfRange(
+          "Slice on dim: %d is error, please check the validity of tensor "
+          "dims or slice item.",
+          dim));
     }
     start = static_cast<int64_t>(lstart);
     stop = static_cast<int64_t>(lstop);
@@ -600,15 +606,19 @@ inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
     slicelength = static_cast<int64_t>(lslicelength);
   } else if (py::isinstance<py::int_>(obj)) {
     start = static_cast<int64_t>(static_cast<py::int_>(obj));
-    if (std::abs(start) >= srcDDim[dim]) {
-      throw py::index_error();
-    }
+    PADDLE_ENFORCE(
+        std::abs(start) < srcDDim[dim],
+        platform::errors::OutOfRange("The start %d of slice is out of bounds, "
+                                     "it shound be in the range of (%d, %d).",
+                                     start, -srcDDim[dim], srcDDim[dim]));
     start = (start >= 0) ? start : srcDDim[dim] - start;
     stop = start + 1;
     step = 1;
     slicelength = 1;
   } else {
-    throw py::index_error();
+    PADDLE_THROW(
+        platform::errors::OutOfRange("Index object error, the index object for "
+                                     "slice only supports slice(::) and int."));
   }
 }
 

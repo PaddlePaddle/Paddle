@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -1088,3 +1089,5 @@ void YoloBoxInferMeta(const MetaTensor& x,
 }
 
 }  // namespace phi
+
+PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
