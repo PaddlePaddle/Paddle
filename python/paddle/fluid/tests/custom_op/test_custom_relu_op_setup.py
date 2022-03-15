@@ -21,6 +21,7 @@ import paddle.static as static
 import subprocess
 import numpy as np
 from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.fluid.framework import _test_eager_guard
 
 
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
@@ -216,7 +217,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         "custom op out: {},\n paddle api out: {}".format(
                             out, pd_out))
 
-    def test_dynamic(self):
+    def func_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 if device == 'cpu' and dtype == 'float16':
@@ -235,6 +236,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         np.array_equal(x_grad, pd_x_grad),
                         "custom op x grad: {},\n paddle api x grad: {}".format(
                             x_grad, pd_x_grad))
+
+    def test_dynamic(self):
+        with _test_eager_guard():
+            self.func_dynamic()
+        self.func_dynamic()
 
     def test_static_save_and_load_inference_model(self):
         paddle.enable_static()

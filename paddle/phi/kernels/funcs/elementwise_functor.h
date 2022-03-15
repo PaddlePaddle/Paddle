@@ -159,6 +159,263 @@ struct DivGradYFunctor<ComplexType<T>> {
     return -a * out_div_c_conj;
   }
 };
+// Fmin
+template <typename T>
+struct FMinFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return std::fmin(a, b);
+  }
+};
+
+template <>
+struct FMinFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return static_cast<dtype::float16>(result);
+  }
+};
+
+template <>
+struct FMinFunctor<int> {
+  inline HOSTDEVICE int operator()(const int a, const int b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return std::lrint(result);
+  }
+};
+
+template <>
+struct FMinFunctor<int64_t> {
+  inline HOSTDEVICE int64_t operator()(const int64_t a, const int64_t b) const {
+    double double_a = static_cast<double>(a);
+    double double_b = static_cast<double>(b);
+    auto result = std::fmin(double_a, double_b);
+    return std::llrint(result);
+  }
+};
+
+// Fmax
+template <typename T>
+struct FMaxFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return std::fmax(a, b);
+  }
+};
+
+template <>
+struct FMaxFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return static_cast<dtype::float16>(result);
+  }
+};
+
+template <>
+struct FMaxFunctor<int> {
+  inline HOSTDEVICE int operator()(const int a, const int b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return std::lrint(result);
+  }
+};
+
+template <>
+struct FMaxFunctor<int64_t> {
+  inline HOSTDEVICE int64_t operator()(const int64_t a, const int64_t b) const {
+    double double_a = static_cast<double>(a);
+    double double_b = static_cast<double>(b);
+    auto result = std::fmax(double_a, double_b);
+    return std::llrint(result);
+  }
+};
+
+template <typename T>
+struct FMaxGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>((x >= y) || isnan(y));
+  }
+};
+
+template <>
+struct FMaxGradDx<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return dout * static_cast<dtype::float16>((x >= y) || dtype::isnan(y));
+  }
+};
+
+template <>
+struct FMaxGradDx<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>((x >= y));
+  }
+};
+
+template <>
+struct FMaxGradDx<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x,
+                                int64_t y,
+                                int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>((x >= y));
+  }
+};
+
+template <typename T>
+struct FMaxGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(!((x >= y) || isnan(y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return dout * static_cast<dtype::float16>(!((x >= y) || dtype::isnan(y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x,
+                                int64_t y,
+                                int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>(!((x >= y)));
+  }
+};
+
+template <>
+struct FMaxGradDy<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>(!((x >= y)));
+  }
+};
+
+template <typename T>
+struct FMinGradDx {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>((x <= y) || isnan(y));
+  }
+};
+
+template <>
+struct FMinGradDx<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return dout * static_cast<dtype::float16>((x <= y) || dtype::isnan(y));
+  }
+};
+
+template <>
+struct FMinGradDx<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>((x <= y));
+  }
+};
+
+template <>
+struct FMinGradDx<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x,
+                                int64_t y,
+                                int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>((x <= y));
+  }
+};
+
+template <typename T>
+struct FMinGradDy {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return dout * static_cast<T>(!((x <= y) || isnan(y)));
+  }
+};
+
+template <>
+struct FMinGradDy<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    return dout * static_cast<dtype::float16>(!((x <= y) || dtype::isnan(y)));
+  }
+};
+
+template <>
+struct FMinGradDy<int> {
+  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+    return dout * static_cast<int>(!((x <= y)));
+  }
+};
+
+template <>
+struct FMinGradDy<int64_t> {
+  HOSTDEVICE int64_t operator()(int64_t x,
+                                int64_t y,
+                                int64_t out,
+                                int64_t dout) const {
+    return dout * static_cast<int64_t>(!((x <= y)));
+  }
+};
+
+template <typename T>
+struct MultiplyGradFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const { return a * b; }
+};
+template <typename T>
+struct MultiplyGradFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
+                                              const ComplexType<T> b) const {
+    ComplexType<T> b_conj(b.real, -b.imag);
+    return a * b_conj;
+  }
+};
+
+template <typename InT, typename OutT>
+struct MultiplyGradXYFunctor {
+  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT a,
+                                                   const InT b,
+                                                   const InT c) {
+    phi::Array<OutT, 2> outs;
+    // dx = dout * y
+    outs[0] = a * b;
+    // dy = dout * x
+    outs[1] = a * c;
+    return outs;
+  }
+};
+
+template <typename InT, typename OutT>
+struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
+  inline HOSTDEVICE phi::Array<ComplexType<OutT>, 2> operator()(
+      const ComplexType<InT> a,
+      const ComplexType<InT> b,
+      const ComplexType<InT> c) {
+    phi::Array<ComplexType<OutT>, 2> outs;
+    // dx = dout * y
+    ComplexType<InT> b_conj(b.real, -b.imag);
+    outs[0] = a * b_conj;
+    // dy = dout * x
+    ComplexType<InT> c_conj(c.real, -c.imag);
+    outs[1] = a * c_conj;
+    return outs;
+  }
+};
 
 }  // namespace funcs
 }  // namespace phi

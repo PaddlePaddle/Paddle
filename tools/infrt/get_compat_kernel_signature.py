@@ -16,6 +16,8 @@ import os
 import re
 import json
 
+skip_list = []
+
 
 def parse_compat_registry(kernel_info):
     name, inputs_str, attrs_str, outputs_str = kernel_info.split(",{")
@@ -42,6 +44,8 @@ def get_compat_kernels_info():
             compat_files.remove(file_)
 
     for file_ in compat_files:
+        if file_ in skip_list:
+            continue
         with open("../../paddle/phi/ops/compat/" + file_) as in_file:
             txt = in_file.readlines()
             content = ""
