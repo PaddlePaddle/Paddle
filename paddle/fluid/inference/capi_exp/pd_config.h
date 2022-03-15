@@ -203,7 +203,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableORTOptimization(
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     __pd_keep PD_Config* pd_config, int32_t l3_workspace_size, PD_Bool locked,
     PD_Bool autotune, const char* autotune_file, const char* precision,
-    PD_Bool adaptive_seqlen);
+    PD_Bool adaptive_seqlen, PD_Bool multi_stream);
 ///
 /// \brief Turn on NPU.
 ///
