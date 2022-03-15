@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reduce_prod_kernel.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"

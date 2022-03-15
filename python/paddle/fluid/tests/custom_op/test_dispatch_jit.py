@@ -19,7 +19,7 @@ import numpy as np
 from paddle.utils.cpp_extension import load, get_build_directory
 from utils import paddle_includes, extra_cc_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-
+from paddle.fluid.framework import _test_eager_guard
 # Because Windows don't use docker, the shared lib already exists in the 
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\dispatch_op\\dispatch_op.pyd'.format(get_build_directory())
@@ -39,7 +39,7 @@ class TestJitDispatch(unittest.TestCase):
     def setUp(self):
         paddle.set_device('cpu')
 
-    def run_dispatch_test(self, func, dtype):
+    def run_dispatch_test_impl(self, func, dtype):
         np_x = np.ones([2, 2]).astype(dtype)
         x = paddle.to_tensor(np_x)
         out = func(x)
@@ -49,6 +49,11 @@ class TestJitDispatch(unittest.TestCase):
         self.assertTrue(
             np.array_equal(np_x, np_out),
             "custom op x: {},\n custom op out: {}".format(np_x, np_out))
+
+    def run_dispatch_test(self, func, dtype):
+        with _test_eager_guard():
+            self.run_dispatch_test_impl(func, dtype)
+        self.run_dispatch_test_impl(func, dtype)
 
     def test_dispatch_integer(self):
         dtypes = ["int32", "int64", "int8", "uint8", "int16"]
