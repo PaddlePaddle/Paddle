@@ -44,6 +44,11 @@ void HeterPs::build_ps(int num, FeatureKey* h_keys, FeatureValue* h_vals,
   comm_->build_ps(num, h_keys, h_vals, len, chunk_size, stream_num);
 }
 
+void HeterPs::build_ps(int num, FeatureKey* h_keys, char* pool,
+                       size_t len, size_t feature_value_size, size_t chunk_size, int stream_num) {
+  comm_->build_ps(num, h_keys, pool, len, feature_value_size, chunk_size, stream_num);
+}
+
 int HeterPs::get_index_by_devid(int devid) {
   return comm_->get_index_by_devid(devid);
 }
@@ -62,6 +67,10 @@ void HeterPs::set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                                      const std::vector<ncclComm_t>& inter_comms,
                                      int comm_size) {
   comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size);
+}
+
+void HeterPs::set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
+  comm_->set_multi_mf_dim(multi_mf_dim, max_mf_dim);
 }
 
 }  // end namespace framework

@@ -65,6 +65,12 @@ class PSGPUWrapper {
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
+                  const std::vector<int>& slot_dim,
+                  const int hidden_size);
+  void PullSparse(const paddle::platform::Place& place, const int table_id,
+                  const std::vector<const uint64_t*>& keys,
+                  const std::vector<float*>& values,
+                  const std::vector<int64_t>& slot_lengths,
                   const int hidden_size);
   void PushSparseGrad(const paddle::platform::Place& place, const int table_id,
                       const std::vector<const uint64_t*>& keys,
@@ -79,13 +85,23 @@ class PSGPUWrapper {
                    const FeatureValue* total_values_gpu, const int64_t* gpu_len,
                    const int slot_num, const int hidden_size,
                    const int64_t total_length);
-
+  void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
+                   const std::vector<float*>& values,
+                   const FeatureValue* total_values_gpu, const int64_t* gpu_len,
+                   const int slot_num, const int hidden_size,
+                   const int64_t total_length, int* gpu_dim);
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
                    FeaturePushValue* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
                    const int hidden_size, const int64_t total_length,
                    const int batch_size);
+  void CopyForPush(const paddle::platform::Place& place,
+                   const std::vector<const float*>& grad_values,
+                   FeaturePushValue* total_grad_values_gpu,
+                   const std::vector<int64_t>& slot_lengths,
+                   const uint64_t total_length, const int batch_size,
+                   size_t grad_value_size);
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
@@ -323,6 +339,12 @@ class PSGPUWrapper {
   int max_mf_dim_{0};
   size_t val_type_size_{0};
   size_t grad_type_size_{0};
+
+  double time_1 = 0.0;
+  double time_2 = 0.0;
+  double time_3 = 0.0;
+  double time_4 = 0.0;
+
   int multi_node_{0};
   int node_size_;
   uint64_t table_id_;
