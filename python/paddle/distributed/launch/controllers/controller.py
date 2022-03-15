@@ -16,9 +16,9 @@ import sys
 import os
 import signal
 
-from paddle.distributed.run.job import Job
-from paddle.distributed.run.job import Pod
-from paddle.distributed.run.job import Container
+from paddle.distributed.launch.job import Job
+from paddle.distributed.launch.job import Pod
+from paddle.distributed.launch.job import Container
 
 from .master import Master
 
@@ -39,7 +39,7 @@ class ControllerBase(object):
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
 
-        self.job = Job(np=self.ctx.args.np,
+        self.job = Job(nnodes=self.ctx.args.nnodes,
                        mode=self.ctx.args.mode,
                        id=self.ctx.args.id)
         self.pod = Pod()
@@ -67,10 +67,10 @@ class ControllerBase(object):
         if status == self.ctx.status.COMPLETED:
             self.ctx.logger.info("Pod {}".format(status))
         elif status == self.ctx.status.FAILED:
+            fc = self.pod.failed_container()
             self.ctx.logger.info("Pod {}".format(status))
-            self.ctx.logger.error("Container failed !!!\n{}".format(
-                self.pod.failed_container()))
-            self.pod.tail()
+            self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
+            fc[0].tail()
             self.pod.stop()
 
     def stop(self, sigint=None):

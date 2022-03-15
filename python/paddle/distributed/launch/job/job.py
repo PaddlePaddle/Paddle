@@ -20,7 +20,7 @@ class JobMode:
 
 
 class Job(object):
-    def __init__(self, id='default', mode=JobMode.COLLECTIVE, np="1"):
+    def __init__(self, id='default', mode=JobMode.COLLECTIVE, nnodes="1"):
         self._mode = mode
         self._id = id
 
@@ -29,7 +29,7 @@ class Job(object):
         self._replicas_max = self._replicas
         self._elastic = False
 
-        self.set_replicas(str(np))
+        self.set_replicas(str(nnodes))
 
     def __str__(self):
         return "Job: {}, mode {}, replicas {}[{}:{}], elastic {}".format(
@@ -64,8 +64,8 @@ class Job(object):
     def replicas(self, replicas):
         self._replicas = replicas
 
-    def set_replicas(self, np: str):
-        np = str(np) if np else '1'
+    def set_replicas(self, nnodes: str):
+        np = str(nnodes) if nnodes else '1'
 
         if ':' in np:
             nps = np.split(':')

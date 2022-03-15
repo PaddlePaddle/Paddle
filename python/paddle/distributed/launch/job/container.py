@@ -13,12 +13,11 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from paddle.distributed.run.utils.process_context import ProcessContext
+from paddle.distributed.launch.utils.process_context import ProcessContext
 
 from .status import Status
 
 import os, copy, sys
-import time
 
 
 class Container(object):
@@ -90,9 +89,7 @@ class Container(object):
         except:
             return None
 
-    def start(self, timeout=-1):
-        end = time.time() + timeout
-
+    def start(self):
         if self._proc and self._proc.alive():
             return True
 
@@ -105,14 +102,6 @@ class Container(object):
         self._proc = ProcessContext(
             self._entrypoint, env=self._env, out=self._stdout, err=self._stderr)
         self._proc.start()
-
-        while timeout > 0 and time.time() < end:
-            if self._proc.alive():
-                time.sleep(0.1)
-                continue
-            if self._proc.exit_code() == 0:
-                return True
-            return False
 
     def terminate(self, force=False):
         if self._log_handler:

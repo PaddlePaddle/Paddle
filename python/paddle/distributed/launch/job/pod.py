@@ -34,7 +34,7 @@ class PodSepc(object):
         #self.status: Status = None
 
         self._rank = -1
-        self._init_timeout = 120  # 2 min timeout for each init container
+        self._init_timeout = None
         self._restart = -1
         self._replicas = 0  # number of containers
         self._exit_code = 0
@@ -50,10 +50,11 @@ class Pod(PodSepc):
                                                         self.status())
 
     def failed_container(self):
+        cs = []
         for c in self._containers:
             if c.status() == Status.FAILED:
-                return c
-        return None
+                cs.append(c)
+        return cs
 
     @property
     def name(self):
@@ -103,8 +104,10 @@ class Pod(PodSepc):
         return 0
 
     def deploy(self):
+        # init container should stop before run containers
         for i in self._init_containers:
-            i.start(self._init_timeout)
+            i.start()
+            i.wait(self._init_timeout)
 
         for c in self._containers:
             c.start()
@@ -147,19 +150,13 @@ class Pod(PodSepc):
 
     def logs(self, idx=None):
         if idx is None:
-            if self.failed_container():
-                self.failed_container().logs()
-            else:
-                self._containers[0].logs()
+            self._containers[0].logs()
         else:
             self._containers[idx].logs()
 
     def tail(self, idx=None):
         if idx is None:
-            if self.failed_container():
-                self.failed_container().tail()
-            else:
-                self._containers[0].tail()
+            self._containers[0].tail()
         else:
             self._containers[idx].tail()
 

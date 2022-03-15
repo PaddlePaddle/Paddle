@@ -62,21 +62,18 @@ class Collective_Test(unittest.TestCase):
         write_file(pyname, colpyfile)
 
     def pdrun(self, args, env=None):
-        cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.run"]
+        cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"]
         if args:
             cmd.extend(args.split(" "))
         cmd.extend([pyname])
         proc = subprocess.Popen(cmd, env)
         return proc
 
-    '''
     def test_collective_1(self):
         args = "--id test1"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
-
-    '''
 
     def test_collective_2(self):
         if os.path.exists('./log'):
@@ -113,14 +110,13 @@ class PS_Test(unittest.TestCase):
         write_file(pyname, pspyfile)
 
     def pdrun(self, args, env=None):
-        cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.run"]
+        cmd = [sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"]
         if args:
             cmd.extend(args.split(" "))
         cmd.extend([pyname])
         proc = subprocess.Popen(cmd, env)
         return proc
 
-    '''
     def test_ps_1(self):
         args = "--mode ps"
         p = self.pdrun(args)
@@ -138,7 +134,6 @@ class PS_Test(unittest.TestCase):
 
         c = get_files('log', 'ps2')
         self.assertTrue(len(c) == 5)
-    '''
 
     def test_ps_3(self):
         if os.path.exists('./log'):

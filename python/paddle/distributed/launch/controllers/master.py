@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.run.utils.kv_client import KVClient
-from paddle.distributed.run.utils.kv_server import KVServer
+from paddle.distributed.launch.utils.kv_client import KVClient
+from paddle.distributed.launch.utils.kv_server import KVServer
 
 import time
 import sys
@@ -84,7 +84,7 @@ class HTTPMaster(Master):
 
             print("Copy the following command to other nodes to run.")
             cmd = [
-                sys.executable.split('/')[-1], "-m", "paddle.distributed.run"
+                sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"
             ]
             cmd.extend(["--master", self.endpoint])
             cmd.extend(sys.argv[1:])
@@ -130,7 +130,7 @@ class HTTPMaster(Master):
                 self.ctx.logger.warning("master not ready")
                 time.sleep(0.1)
 
-        # 'aaaaaa' make suer main pod (master server) as rank 0
+        # 'aaaaaa' make sure main pod (master server) as rank 0
         ky = 'aaaaaa' if rank < 0 and self.role == Master.MAIN else key
         k = "{}/{}/{}".format(prefix, ky, rank)
 

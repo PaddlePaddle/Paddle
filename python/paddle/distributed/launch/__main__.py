@@ -18,11 +18,19 @@ from . import controllers
 # initialize the context to run
 ctx = Context()
 
-# initialize the selected controller
-c = controllers.init(ctx)
+if ctx.is_legacy_mode():
 
-# run the pods
-c.run()
+    # legacy mode
+    from paddle.distributed.fleet import launch
+    launch.launch()
 
-# manager or just wait pod
-c.finalize()
+else:
+
+    # initialize the selected controller
+    c = controllers.init(ctx)
+
+    # run the pods
+    c.run()
+
+    # manager or just wait pod
+    c.finalize()
