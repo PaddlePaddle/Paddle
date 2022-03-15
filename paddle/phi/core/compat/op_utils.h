@@ -37,15 +37,34 @@ const std::unordered_set<std::string> standard_kernel_suffixs({
  * after 2.0, and can no longer be occupied by the previously abandoned ops.
  * They are marked here uniformly.
  */
-const std::unordered_set<std::string> deprecated_op_names(
-    {"diag",      "flatten",      "flatten_grad",
-     "isinf",     "isnan",        "isfinite",
-     "matmul",    "matmul_grad",  "matmul_grad_grad",
-     "mean",      "mean_grad",    "max",
-     "reshape",   "reshape_grad", "expand",
-     "expand_as", "expand_grad",  "expand_as_grad",
-     "sum",       "sum_grad",     "top_k",
-     "top_k_grad"});
+const std::unordered_set<std::string> deprecated_op_names({"diag",
+                                                           "flatten",
+                                                           "flatten_grad",
+                                                           "isinf",
+                                                           "isnan",
+                                                           "isfinite",
+                                                           "matmul",
+                                                           "matmul_grad",
+                                                           "matmul_grad_grad",
+                                                           "mean",
+                                                           "mean_grad",
+                                                           "max",
+                                                           "max_grad",
+                                                           "min",
+                                                           "min_grad",
+                                                           "any",
+                                                           "all",
+                                                           "reshape",
+                                                           "reshape_grad",
+                                                           "expand",
+                                                           "expand_as",
+                                                           "expand_grad",
+                                                           "expand_as_grad",
+                                                           "sum",
+                                                           "one_hot",
+                                                           "sum_grad",
+                                                           "top_k",
+                                                           "top_k_grad"});
 
 class DefaultKernelSignatureMap {
  public:
