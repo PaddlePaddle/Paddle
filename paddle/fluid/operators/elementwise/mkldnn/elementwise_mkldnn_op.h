@@ -32,6 +32,45 @@ using dnnl::stream;
 
 template <typename T, dnnl::algorithm BINARY_OP>
 class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
+ private:
+  dnnl::post_ops get_post_ops(const framework::ExecutionContext& ctx) const {
+    dnnl::post_ops post_operations;
+    if (ctx.HasAttr("activation_type")) {
+      const float scale = ctx.HasAttr("activation_scale")
+                              ? ctx.Attr<float>("activation_scale")
+                              : 1.0f;
+      const float alpha = ctx.HasAttr("activation_alpha")
+                              ? ctx.Attr<float>("activation_alpha")
+                              : 0.0f;
+      const float beta = ctx.HasAttr("activation_beta")
+                             ? ctx.Attr<float>("activation_beta")
+                             : 0.0f;
+
+      static std::unordered_map<std::string, dnnl::algorithm> algo_map = {
+          {"relu", dnnl::algorithm::eltwise_relu},
+          {"tanh", dnnl::algorithm::eltwise_tanh},
+          {"leaky_relu", dnnl::algorithm::eltwise_relu},
+          {"swish", dnnl::algorithm::eltwise_swish},
+          {"hardswish", dnnl::algorithm::eltwise_hardswish},
+          {"sqrt", dnnl::algorithm::eltwise_sqrt},
+          {"abs", dnnl::algorithm::eltwise_abs},
+          {"clip", dnnl::algorithm::eltwise_clip},
+          {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+          {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+          {"sigmoid", dnnl::algorithm::eltwise_logistic}};
+
+      const auto& activation_type =
+          algo_map.find(ctx.Attr<std::string>("activation_type"));
+
+      if (activation_type != algo_map.end()) {
+        post_operations.append_eltwise(scale, activation_type->second, alpha,
+                                       beta);
+      }
+    }
+    return post_operations;
+  }
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto& dev_ctx =
@@ -47,9 +86,9 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     float scale_o = ctx.Attr<float>("Scale_out");
     int axis = ctx.Attr<int>("axis");
 
-    platform::BinaryMKLDNNHandler<T> handler(BINARY_OP, axis, mkldnn_engine,
-                                             ctx.GetPlace(), x, y, z, scale_x,
-                                             scale_y, scale_o);
+    platform::BinaryMKLDNNHandler<T> handler(
+        BINARY_OP, axis, mkldnn_engine, ctx.GetPlace(), x, y, z, scale_x,
+        scale_y, scale_o, get_post_ops(ctx));
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
