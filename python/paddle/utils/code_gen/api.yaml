@@ -150,6 +150,15 @@
     func : reshape
   inplace : (x -> out)
 
+- api : relu
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : relu
+  inplace : (x -> out)
+
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
   output : Tensor
@@ -195,6 +204,15 @@
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
 
+
+- api : one_hot
+  args : (Tensor x, Scalar num_classes)
+  output : Tensor
+  infer_meta :
+    func : OneHotInferMeta
+  kernel :
+    func : one_hot
+    
 - api : digamma
   args : (Tensor x)
   output : Tensor

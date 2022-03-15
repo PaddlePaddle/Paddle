@@ -19,6 +19,8 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -459,6 +461,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
     VLOG(6) << "Running GradNode:" << node->name();
     ready_queue.pop();
 
+    paddle::platform::RecordEvent node_record_event(
+        std::string(typeid(*node).name()) + " grad_node",
+        paddle::platform::TracerEventType::Operator, 1);
+
     // Run node: This is where Hook happens
     PADDLE_ENFORCE(
         node_input_buffers_dict.count(node),
@@ -597,6 +603,8 @@ void Backward(
     const std::vector<paddle::experimental::Tensor>& grad_tensors,
     bool retain_graph) {
   VLOG(6) << "Run in Backward";
+  paddle::platform::RecordEvent backward_record_event(
+      "backward", paddle::platform::TracerEventType::Operator, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
 }
 
