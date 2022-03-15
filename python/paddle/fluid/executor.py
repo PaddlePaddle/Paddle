@@ -394,16 +394,8 @@ def _is_enable_standalone_executor():
     Whether to use experimental executor `StandaloneExecutor`.
     """
     flag = False
-    # NOTE(zhiqiu): enable STANDALONE_EXECUTOR on windows platform by default
-    # It should be enabled on all platform in the future.
 
-    import platform
-    sysstr = platform.system().lower()
-    if sysstr == 'windows':
-        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', 1)
-    else:
-        env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
-
+    env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', '1')
     if env_val in [1, '1', True, 'True', 'true']:
         flag = True
         warnings.warn("STANDALONE_EXECUTOR is enabled.")
