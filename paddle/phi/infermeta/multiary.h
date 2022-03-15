@@ -70,6 +70,8 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,
                         paddle::optional<const MetaTensor&> rois_num,
@@ -83,7 +85,5 @@ void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
                     MetaTensor* out);
-
-void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
 }  // namespace phi

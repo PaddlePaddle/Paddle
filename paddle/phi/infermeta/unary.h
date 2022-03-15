@@ -98,6 +98,8 @@ void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
+
 void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
@@ -137,6 +139,8 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* xshape,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
+
+void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void ShardIndexInferMeta(const MetaTensor& in,
                          int index_num,
@@ -205,9 +209,5 @@ void UnfoldInferMeta(const MetaTensor& x,
                      MetaConfig config = MetaConfig());
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
-
-void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
-
-void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
 
 }  // namespace phi
