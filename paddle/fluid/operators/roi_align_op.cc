@@ -26,79 +26,6 @@ class ROIAlignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound("Input(X) of ROIAlignOp "
-                                                 "is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("ROIs"), true,
-                      platform::errors::NotFound("Input(ROIs) of ROIAlignOp "
-                                                 "is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound("Output(Out) of ROIAlignOp "
-                                                 "is not found."));
-    auto input_dims = ctx->GetInputDim("X");
-    auto rois_dims = ctx->GetInputDim("ROIs");
-
-    if (ctx->HasInput("RoisNum")) {
-      auto rois_num_dims = ctx->GetInputDim("RoisNum");
-      PADDLE_ENFORCE_EQ(
-          rois_num_dims.size(), 1,
-          platform::errors::InvalidArgument("The size of RoisNum should be 1"
-                                            ", but received size = %d",
-                                            rois_num_dims.size()));
-    }
-    PADDLE_ENFORCE_EQ(
-        input_dims.size(), 4,
-        platform::errors::InvalidArgument(
-            "The format of Input(X) in"
-            "RoIAlignOp is NCHW. And the rank of input must be 4. "
-            "But received rank = %d",
-            input_dims.size()));
-    PADDLE_ENFORCE_EQ(rois_dims.size(), 2, platform::errors::InvalidArgument(
-                                               "The rank of Input(ROIs) "
-                                               "in RoIAlignOp should be 2. "
-                                               "But the rank of RoIs is %d",
-                                               rois_dims.size()));
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(rois_dims[1], 4,
-                        platform::errors::InvalidArgument(
-                            "The second dimension "
-                            "of Input(ROIs) should be 4. But received the "
-                            "dimension = %d",
-                            rois_dims[1]));
-    }
-    int pooled_height = ctx->Attrs().Get<int>("pooled_height");
-    int pooled_width = ctx->Attrs().Get<int>("pooled_width");
-    float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
-
-    PADDLE_ENFORCE_GT(pooled_height, 0,
-                      platform::errors::InvalidArgument(
-                          "The 'pooled_height' attribute in RoIAlignOp is "
-                          "invalid. The height must be greater than 0. But "
-                          "received 'pooled_height' = %d",
-                          pooled_height));
-    PADDLE_ENFORCE_GT(pooled_width, 0,
-                      platform::errors::InvalidArgument(
-                          "The 'pooled_width' attribute in RoIAlignOp is "
-                          "invalid. The width must be greater than 0. But "
-                          "received 'pooled_width' = %d",
-                          pooled_width));
-    PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
-                      platform::errors::InvalidArgument(
-                          "The 'spatial_scale' attribute in RoIAlignOp is "
-                          "invalid. The scale must be greater than 0. But "
-                          "received 'spatial_scale' = %f",
-                          spatial_scale));
-
-    auto out_dims = input_dims;
-    out_dims[0] = rois_dims[0];
-    out_dims[1] = input_dims[1];
-    out_dims[2] = pooled_height;
-    out_dims[3] = pooled_width;
-
-    ctx->SetOutputDim("Out", out_dims);
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -229,7 +156,8 @@ DECLARE_INFER_SHAPE_FUNCTOR(roi_align, RoiAlignInferShapeFunctor,
 
 REGISTER_OPERATOR(roi_align, ops::ROIAlignOp, ops::ROIAlignOpMaker,
                   ops::ROIAlignGradMaker<paddle::framework::OpDesc>,
-                  ops::ROIAlignGradMaker<paddle::imperative::OpBase>);
+                  ops::ROIAlignGradMaker<paddle::imperative::OpBase>,
+                  RoiAlignInferShapeFunctor);
 REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp,
                   ops::RoiAlignGradNoNeedBufVarsInferer);
 
