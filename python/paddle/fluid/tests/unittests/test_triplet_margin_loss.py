@@ -19,7 +19,7 @@ import unittest
 
 
 
-def call_TripletMaginLoss_layer(input,
+def call_TripletMarginLoss_layer(input,
                     positive,
                     negative,
                     p = 2,
@@ -33,7 +33,7 @@ def call_TripletMaginLoss_layer(input,
     return res
 
 
-def call_TripletMaginLoss_functional(input,
+def call_TripletMarginLoss_functional(input,
                         positive,
                         negative,
                         p = 2,
@@ -71,10 +71,10 @@ def test_static(place,
 
 
         if functional:
-            res = call_TripletMaginLoss_functional(input=input,positive=positive,negative=negative,p=p,eps=eps,
+            res = call_TripletMarginLoss_functional(input=input,positive=positive,negative=negative,p=p,eps=eps,
         margin=margin,swap=swap,reduction=reduction)
         else:
-            res = call_TripletMaginLoss_layer(input=input,positive=positive,negative=negative,p=p,eps=eps,
+            res = call_TripletMarginLoss_layer(input=input,positive=positive,negative=negative,p=p,eps=eps,
         margin=margin,swap=swap,reduction=reduction)
 
         exe = paddle.static.Executor(place)
@@ -97,10 +97,10 @@ def test_dygraph(place,
     negative = paddle.to_tensor(negative)
 
     if functional:
-        dy_res = call_TripletMaginLoss_functional(input=input,positive=positive,negative=negative,p=p,eps=eps,
+        dy_res = call_TripletMarginLoss_functional(input=input,positive=positive,negative=negative,p=p,eps=eps,
         margin=margin,swap=swap,reduction=reduction)
     else:
-        dy_res = call_TripletMaginLoss_layer(input=input,positive=positive,negative=negative,p=p,eps=eps,
+        dy_res = call_TripletMarginLoss_layer(input=input,positive=positive,negative=negative,p=p,eps=eps,
         margin=margin,swap=swap,reduction=reduction)
     dy_result = dy_res.numpy()
     paddle.enable_static()
