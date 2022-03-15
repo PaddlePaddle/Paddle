@@ -15,12 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/operators/set_value_op.h"
 #include "paddle/fluid/operators/svd_helper.h"
-#include "paddle/fluid/operators/triangular_solve_op.h"
 #include "paddle/fluid/operators/tril_triu_op.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/math_kernel.h"
+#include "paddle/phi/kernels/triangular_solve_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -555,6 +556,11 @@ class LUGradKernel : public framework::OpKernel<T> {
 
     framework::Tensor Pmat;
     Unpack_Pivot<DeviceContext, T>(dev_ctx, *P, &Pmat, m, k);
+
+    using Context =
+        typename framework::ConvertToPhiContext<DeviceContext>::TYPE;
+    auto& phi_dev_ctx = static_cast<const Context&>(dev_ctx);
+
     if (m <= n) {
       if (k < n) {
         framework::Tensor U_complement, U_grad_complement, phi_complement,
@@ -605,8 +611,9 @@ class LUGradKernel : public framework::OpKernel<T> {
       framework::Tensor psi_principal, phi_mH, psi_tmp;
       Tensor_Conj<DeviceContext, T>(dev_ctx, phi, &phi_mH);
       phi_mH = helper.Transpose(phi_mH);
-      triangular_solve<DeviceContext, T>(dev_ctx, U_narrow, phi_mH,
-                                         &psi_principal, true, false, false);
+
+      phi::TriangularSolveKernel<T, Context>(
+          phi_dev_ctx, U_narrow, phi_mH, true, false, false, &psi_principal);
 
       Tensor_Conj<DeviceContext, T>(dev_ctx, psi_principal, &psi_principal);
       psi_principal = helper.Transpose(psi_principal);
@@ -620,8 +627,9 @@ class LUGradKernel : public framework::OpKernel<T> {
       SetValueCompute_dispatch<DeviceContext, T>(ctx, &psi, &psi_principal,
                                                  &psi, axes, &slice_starts,
                                                  &slice_ends, valuedims, xrank);
-      triangular_solve<DeviceContext, T>(dev_ctx, L_narrow_mH, psi, &psi_tmp,
-                                         true, false, true);
+
+      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, L_narrow_mH, psi,
+                                             true, false, true, &psi_tmp);
 
       auto mat_dim_p =
           phi::funcs::CreateMatrixDescriptor(Pmat.dims(), 0, false);
@@ -672,8 +680,10 @@ class LUGradKernel : public framework::OpKernel<T> {
                                                  &psi, axes, &slice_starts,
                                                  &slice_ends, valuedims, xrank);
       framework::Tensor psi_principal, phi_mH, psi_tmp, U_narrow_mH;
-      triangular_solve<DeviceContext, T>(dev_ctx, L_narrow_mH, phi,
-                                         &psi_principal, true, false, true);
+
+      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, L_narrow_mH, phi,
+                                             true, false, true, &psi_principal);
+
       slice_starts[0] = 0;
       slice_starts[1] = 0;
       slice_ends[0] = k;
@@ -695,8 +705,8 @@ class LUGradKernel : public framework::OpKernel<T> {
       psi_tmp = helper.Transpose(psi_tmp);
 
       Tensor_Conj<DeviceContext, T>(dev_ctx, U_narrow, &U_narrow_mH);
-      triangular_solve<DeviceContext, T>(dev_ctx, U_narrow_mH, psi_tmp, &psi,
-                                         true, false, false);
+      phi::TriangularSolveKernel<T, Context>(phi_dev_ctx, U_narrow_mH, psi_tmp,
+                                             true, false, false, &psi);
       *dx = helper.Transpose(psi);
     }
   }
