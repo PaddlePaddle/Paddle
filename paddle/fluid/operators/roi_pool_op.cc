@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/roi_pool_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -216,11 +216,7 @@ REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
                   ops::ROIPoolGradMaker<paddle::framework::OpDesc>,
                   ops::ROIPoolGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
-REGISTER_OP_CPU_KERNEL(
-    roi_pool_grad,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int>);
+
 REGISTER_OP_VERSION(roi_pool)
     .AddCheckpoint(
         R"ROC(

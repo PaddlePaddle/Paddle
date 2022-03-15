@@ -23,6 +23,15 @@ KernelSignature RoiPoolOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"Out", "Argmax"});
 }
 
+KernelSignature RoiPoolOpGradArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("roi_pool_grad",
+                         {"X", "ROIs", "RoisNum", "Argmax", GradVarName("Out")},
+                         {"pooled_height", "pooled_width", "spatial_scale"},
+                         {GradVarName("X")});
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(roi_pool, phi::RoiPoolOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(roi_pool_grad, phi::RoiPoolOpGradArgumentMapping);
