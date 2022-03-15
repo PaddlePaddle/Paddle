@@ -15,8 +15,8 @@
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -30,26 +30,22 @@ void IndexSelectGradKernel(const Context& ctx,
   if (dim < 0) {
     dim += out_grad.dims().size();
   }
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
+  const auto& index_type = index.dtype();
 
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT32 ||
-      index_type == paddle::framework::proto::VarType::INT64;
+      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     phi::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        paddle::framework::DataTypeToString(index_type),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT32),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT64)));
+                        index_type,
+                        phi::DataType::INT32,
+                        phi::DataType::INT64));
 
-  if (index_type == paddle::framework::proto::VarType::INT32) {
+  if (index_type == phi::DataType::INT32) {
     IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
-  } else if (index_type == paddle::framework::proto::VarType::INT64) {
+  } else if (index_type == phi::DataType::INT64) {
     IndexSelectGradInner<Context, T, int64_t>(
         ctx, out_grad, index, x_grad, dim);
   }

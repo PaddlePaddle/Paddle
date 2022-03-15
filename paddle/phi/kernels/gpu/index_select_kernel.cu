@@ -17,8 +17,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
@@ -57,22 +56,18 @@ void IndexSelectKernel(const Context& ctx,
   int64_t stride = stride_dim[dim];
   int64_t size = output_dim[dim];
   int64_t delta = input_dim[dim] - size;
+  const auto& index_type = index.dtype();
 
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT64 ||
-      index_type == paddle::framework::proto::VarType::INT32;
+      index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     phi::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        paddle::framework::DataTypeToString(index_type),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT32),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT64)));
+                        index_type,
+                        phi::DataType::INT32,
+                        phi::DataType::INT64));
 
   auto* in_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(output);
@@ -80,7 +75,7 @@ void IndexSelectKernel(const Context& ctx,
   int64_t numel = output->numel();
   auto stream = ctx.stream();
 
-  if (index_type == paddle::framework::proto::VarType::INT64) {
+  if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     index_select_cuda_kernel<T, int64_t><<<
         (numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
