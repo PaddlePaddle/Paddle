@@ -28,37 +28,32 @@ namespace paddle {
 namespace distributed {
 
 #ifdef PADDLE_WITH_HETERPS
-pthread_rwlock_t *CompleteGraphSampler::export_rw_lock() { return rw_lock; }
-std::vector<GpuPsCommGraph> CompleteGraphSampler::fetch_sample_res() {
-  return sample_res;
-}
-void CompleteGraphSampler::start_graph_sampling() {
+
+int CompleteGraphSampler::run_graph_sampling() {
+  pthread_rwlock_t *rw_lock = graph_table->rw_lock.get();
   pthread_rwlock_rdlock(rw_lock);
-  // std::uniform_int_distribution<int> distrib(0, n - 1);
-  // int rand_int = distrib(*rng);
-  // std::vector<GpuPsGraphNode> sample_nodes;
-  // std::vector<std::vector<int64_t>> sample_neighbors;
-  //  std::vector<GpuPsCommGraph> sample_res;
+  std::cout << "in graph sampling" << std::endl;
   sample_nodes.clear();
   sample_neighbors.clear();
   sample_res.clear();
   sample_nodes.resize(gpu_num);
   sample_neighbors.resize(gpu_num);
   sample_res.resize(gpu_num);
-  std::vector<std::vector<std::vector<GpuPsGraphNode>>> sample_nodes_ex(
-      graph_table->task_pool_size_);
+  std::vector<std::vector<std::vector<paddle::framework::GpuPsGraphNode>>>
+      sample_nodes_ex(graph_table->task_pool_size_);
   std::vector<std::vector<std::vector<int64_t>>> sample_neighbors_ex(
       graph_table->task_pool_size_);
   for (int i = 0; i < graph_table->task_pool_size_; i++) {
-    sample_nodes_ex.resize(gpu_num);
-    sample_neighbors_ex.resize(gpu_num);
+    sample_nodes_ex[i].resize(gpu_num);
+    sample_neighbors_ex[i].resize(gpu_num);
   }
   std::vector<std::future<int>> tasks;
   for (size_t i = 0; i < graph_table->shards.size(); ++i) {
     tasks.push_back(
         graph_table->_shards_task_pool[i % graph_table->task_pool_size_]
             ->enqueue([&, i, this]() -> int {
-              GpuPsGraphNode node;
+              if (this->status == GraphSamplerStatus::terminating) return 0;
+              paddle::framework::GpuPsGraphNode node;
               std::vector<Node *> &v =
                   this->graph_table->shards[i]->get_bucket();
               size_t ind = i % this->graph_table->task_pool_size_;
@@ -82,14 +77,13 @@ void CompleteGraphSampler::start_graph_sampling() {
     tasks.push_back(
         graph_table->_shards_task_pool[i % graph_table->task_pool_size_]
             ->enqueue([&, i, this]() -> int {
+              if (this->status == GraphSamplerStatus::terminating) return 0;
               int total_offset = 0;
               size_t ind = i % this->graph_table->task_pool_size_;
               for (int j = 0; j < this->graph_table->task_pool_size_; j++) {
                 for (size_t k = 0; k < sample_nodes_ex[j][ind].size(); k++) {
                   sample_nodes[ind].push_back(sample_nodes_ex[j][ind][k]);
                   sample_nodes[ind].back().neighbor_offset += total_offset;
-                  // neighbor_offset[i].push_back(total_offset +
-                  // neighbor_offset_ex[j][i][k]);
                 }
                 size_t neighbor_size = sample_neighbors_ex[j][ind].size();
                 total_offset += neighbor_size;
@@ -103,8 +97,10 @@ void CompleteGraphSampler::start_graph_sampling() {
   }
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
 
-  // int64_t total_neighbors =
-  // std::accumulate(shard_neighbor_size.begin(),shard_neighbor_size.end(),0);
+  if (this->status == GraphSamplerStatus::terminating) {
+    pthread_rwlock_unlock(rw_lock);
+    return 0;
+  }
   for (size_t i = 0; i < gpu_num; i++) {
     sample_res[i].node_list = sample_nodes[i].data();
     sample_res[i].neighbor_list = sample_neighbors[i].data();
@@ -112,6 +108,11 @@ void CompleteGraphSampler::start_graph_sampling() {
     sample_res[i].neighbor_size = sample_neighbors[i].size();
   }
   pthread_rwlock_unlock(rw_lock);
+  if (this->status == GraphSamplerStatus::terminating) {
+    return 0;
+  }
+  callback(sample_res);
+  return 0;
 }
 void CompleteGraphSampler::init(size_t gpu_num, GraphTable *graph_table,
                                 std::vector<std::string> args) {
@@ -119,153 +120,193 @@ void CompleteGraphSampler::init(size_t gpu_num, GraphTable *graph_table,
   this->graph_table = graph_table;
 }
 
-pthread_rwlock_t *BasicBfsGraphSampler::export_rw_lock() { return rw_lock; }
-
-void BasicBfsGraphSampler::start_graph_sampling() {
+int BasicBfsGraphSampler::run_graph_sampling() {
+  pthread_rwlock_t *rw_lock = graph_table->rw_lock.get();
   pthread_rwlock_rdlock(rw_lock);
-  //   int node_num_for_each_shard, edge_num_for_each_node;
-  // std::vector<std::unordered_map<int64_t,vector<int64_t>> sample_neighbors;
-  for (size_t i = 0; i < sample_neighbors.size(); i++) {
-    sample_neighbors_map[i].clear();
-  }
-  sample_neighbors_map.clear();
-  std::vector<int> nodes_left(graph_table->task_pool_size_,
-                              node_num_for_each_shard);
-  std::promise<int> prom;
-  std::future<int> fut = prom.get_future();
-  sample_neighbors.resize(graph_table->task_pool_size_);
-  int task_size = 0;
-  std::vector<std::future<int>> tasks;
-  int init_size = 0;
-  //__sync_fetch_and_add
-  std::function<int(int, int64_t)> bfs = [&, this](int i, int id) -> int {
-    if (nodes_left[i] > 0) {
-      nodes_left[i]--;
-      auto iter = sample_neighbors_map[i].find(id);
-      if (iter != sample_neighbors_map[i].end()) {
-        std::vector<int64_t> neighbor_list;
-        Node *node = graph_table->shards[i]->find_node(id);
-        if (node != NULL) {
-          size_t edge_fetch_size = std::min(
-              (size_t) this->edge_num_for_each_node, node->get_neighbor_size());
-          for (size_t k = 0; k < edge_fetch_size; k++) {
-            int64_t neighbor_id = node->get_neighbor_id(k);
-            int node_location = neighbor_id % this->graph_table->shard_num %
-                                this->graph_table->task_pool_size_;
-            __sync_add_and_fetch(&task_size, 1);
-            graph_table->_shards_task_pool[node_location]->enqueue(
-                bfs, node_location, neighbor_id);
-            iter->second.push_back(neighbor_id);
+  while (rounds > 0 && status == GraphSamplerStatus::running) {
+    for (size_t i = 0; i < sample_neighbors_map.size(); i++) {
+      sample_neighbors_map[i].clear();
+    }
+    sample_neighbors_map.clear();
+    std::vector<int> nodes_left(graph_table->shards.size(),
+                                node_num_for_each_shard);
+    std::promise<int> prom;
+    std::future<int> fut = prom.get_future();
+    sample_neighbors_map.resize(graph_table->task_pool_size_);
+    int task_size = 0;
+    std::vector<std::future<int>> tasks;
+    int init_size = 0;
+    //__sync_fetch_and_add
+    std::function<int(int, int64_t)> bfs = [&, this](int i, int id) -> int {
+      VLOG(0) << "in bfs " << i << " " << id;
+      if (this->status == GraphSamplerStatus::terminating) {
+        int task_left = __sync_sub_and_fetch(&task_size, 1);
+        if (task_left == 0) {
+          prom.set_value(0);
+        }
+        return 0;
+      }
+      size_t ind = i % this->graph_table->task_pool_size_;
+      if (nodes_left[i] > 0) {
+        nodes_left[i]--;
+        auto iter = sample_neighbors_map[ind].find(id);
+        if (iter == sample_neighbors_map[ind].end()) {
+          sample_neighbors_map[ind][id] = std::vector<int64_t>();
+          iter = sample_neighbors_map[ind].find(id);
+          Node *node = graph_table->shards[i]->find_node(id);
+          if (node != NULL) {
+            size_t edge_fetch_size =
+                std::min((size_t) this->edge_num_for_each_node,
+                         node->get_neighbor_size());
+            for (size_t k = 0; k < edge_fetch_size; k++) {
+              int64_t neighbor_id = node->get_neighbor_id(k);
+              int node_location = neighbor_id % this->graph_table->shard_num %
+                                  this->graph_table->task_pool_size_;
+              __sync_add_and_fetch(&task_size, 1);
+              graph_table->_shards_task_pool[node_location]->enqueue(
+                  bfs, neighbor_id % this->graph_table->shard_num, neighbor_id);
+              iter->second.push_back(neighbor_id);
+            }
           }
         }
       }
-    }
-    int task_left = __sync_sub_and_fetch(&task_size, 1);
-    if (task_left == 0) {
-      prom.set_value(0);
-    }
-    return 0;
-  };
-  for (size_t i = 0; i < graph_table->shards.size(); ++i) {
-    std::vector<Node *> &v = graph_table->shards[i]->get_bucket();
-    if (v.size() > 0) {
-      init_size++;
-      __sync_add_and_fetch(&task_size, 1);
-      int64_t id = v[0]->get_id();
-      graph_table->_shards_task_pool[i % graph_table->task_pool_size_]->enqueue(
-          bfs, i % graph_table->task_pool_size_, id);
-    }  // if
-  }
-  if (init_size == 0) {
-    prom.set_value(0);
-  }
-  fut.get();
-
-  sample_nodes.clear();
-  sample_neighbors.clear();
-  sample_res.clear();
-  sample_nodes.resize(gpu_num);
-  sample_neighbors.resize(gpu_num);
-  sample_res.resize(gpu_num);
-  std::vector<std::vector<std::vector<GpuPsGraphNode>>> sample_nodes_ex(
-      graph_table->task_pool_size_);
-  std::vector<std::vector<std::vector<int64_t>>> sample_neighbors_ex(
-      graph_table->task_pool_size_);
-  for (int i = 0; i < graph_table->task_pool_size_; i++) {
-    sample_nodes_ex.resize(gpu_num);
-    sample_neighbors_ex.resize(gpu_num);
-  }
-  tasks.clear();
-  for (size_t i = 0; i < (size_t)graph_table->task_pool_size_; ++i) {
-    tasks.push_back(graph_table->_shards_task_pool[i]->enqueue([&, i,
-                                                                this]() -> int {
-      GpuPsGraphNode node;
-      auto iter = sample_neighbors_map[i].begin();
-      size_t ind = i;
-      for (; iter != sample_neighbors_map[i].end(); iter++) {
-        size_t location = iter->first % this->gpu_num;
-        node.node_id = iter->first;
-        node.neighbor_size = iter->second.size();
-        node.neighbor_offset = (int)sample_neighbors_ex[ind][location].size();
-        sample_nodes_ex[ind][location].emplace_back(node);
-        for (auto k : iter->second)
-          sample_neighbors_ex[ind][location].push_back(k);
+      int task_left = __sync_sub_and_fetch(&task_size, 1);
+      if (task_left == 0) {
+        prom.set_value(0);
       }
       return 0;
-    }));
-  }
-
-  for (size_t i = 0; i < tasks.size(); i++) {
-    tasks[i].get();
-    sample_neighbors_map[i].clear();
-  }
-  tasks.clear();
-  for (size_t i = 0; i < gpu_num; i++) {
-    tasks.push_back(
+    };
+    for (size_t i = 0; i < graph_table->shards.size(); ++i) {
+      std::vector<Node *> &v = graph_table->shards[i]->get_bucket();
+      if (v.size() > 0) {
+        init_size++;
+        __sync_add_and_fetch(&task_size, 1);
+        int64_t id = v[0]->get_id();
         graph_table->_shards_task_pool[i % graph_table->task_pool_size_]
-            ->enqueue([&, i, this]() -> int {
-              int total_offset = 0;
-              size_t ind = i % graph_table->task_pool_size_;
-              for (int j = 0; j < this->graph_table->task_pool_size_; j++) {
-                for (size_t k = 0; k < sample_nodes_ex[j][ind].size(); k++) {
-                  sample_nodes[i].push_back(sample_nodes_ex[j][ind][k]);
-                  sample_nodes[i].back().neighbor_offset += total_offset;
-                  // neighbor_offset[i].push_back(total_offset +
-                  // neighbor_offset_ex[j][i][k]);
-                }
-                size_t neighbor_size = sample_neighbors_ex[j][ind].size();
-                total_offset += neighbor_size;
-                for (size_t k = 0; k < neighbor_size; k++) {
-                  sample_neighbors[ind].push_back(
-                      sample_neighbors_ex[j][ind][k]);
-                }
-              }
+            ->enqueue(bfs, i, id);
+      }  // if
+    }
+    if (init_size == 0) {
+      prom.set_value(0);
+    }
+    fut.get();
+    if (this->status == GraphSamplerStatus::terminating) {
+      pthread_rwlock_unlock(rw_lock);
+      return 0;
+    }
+    std::cout << "bfs over" << std::endl;
+    sample_nodes.clear();
+    sample_neighbors.clear();
+    sample_res.clear();
+    sample_nodes.resize(gpu_num);
+    sample_neighbors.resize(gpu_num);
+    sample_res.resize(gpu_num);
+    std::vector<std::vector<std::vector<paddle::framework::GpuPsGraphNode>>>
+        sample_nodes_ex(graph_table->task_pool_size_);
+    std::vector<std::vector<std::vector<int64_t>>> sample_neighbors_ex(
+        graph_table->task_pool_size_);
+    for (int i = 0; i < graph_table->task_pool_size_; i++) {
+      sample_nodes_ex[i].resize(gpu_num);
+      sample_neighbors_ex[i].resize(gpu_num);
+    }
+    tasks.clear();
+    for (size_t i = 0; i < (size_t)graph_table->task_pool_size_; ++i) {
+      tasks.push_back(
+          graph_table->_shards_task_pool[i]->enqueue([&, i, this]() -> int {
+            if (this->status == GraphSamplerStatus::terminating) {
               return 0;
-            }));
-  }
-  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+            }
+            paddle::framework::GpuPsGraphNode node;
+            auto iter = sample_neighbors_map[i].begin();
+            size_t ind = i;
+            for (; iter != sample_neighbors_map[i].end(); iter++) {
+              size_t location = iter->first % this->gpu_num;
+              node.node_id = iter->first;
+              node.neighbor_size = iter->second.size();
+              node.neighbor_offset =
+                  (int)sample_neighbors_ex[ind][location].size();
+              sample_nodes_ex[ind][location].emplace_back(node);
+              for (auto k : iter->second)
+                sample_neighbors_ex[ind][location].push_back(k);
+            }
+            return 0;
+          }));
+    }
 
-  // int64_t total_neighbors =
-  // std::accumulate(shard_neighbor_size.begin(),shard_neighbor_size.end(),0);
-  for (size_t i = 0; i < gpu_num; i++) {
-    sample_res[i].node_list = sample_nodes[i].data();
-    sample_res[i].neighbor_list = sample_neighbors[i].data();
-    sample_res[i].node_size = sample_nodes[i].size();
-    sample_res[i].neighbor_size = sample_neighbors[i].size();
+    for (size_t i = 0; i < tasks.size(); i++) {
+      tasks[i].get();
+      sample_neighbors_map[i].clear();
+    }
+    tasks.clear();
+    if (this->status == GraphSamplerStatus::terminating) {
+      pthread_rwlock_unlock(rw_lock);
+      return 0;
+    }
+    for (size_t i = 0; i < gpu_num; i++) {
+      tasks.push_back(
+          graph_table->_shards_task_pool[i % graph_table->task_pool_size_]
+              ->enqueue([&, i, this]() -> int {
+                if (this->status == GraphSamplerStatus::terminating) {
+                  pthread_rwlock_unlock(rw_lock);
+                  return 0;
+                }
+                int total_offset = 0;
+                size_t ind = i % graph_table->task_pool_size_;
+                for (int j = 0; j < this->graph_table->task_pool_size_; j++) {
+                  for (size_t k = 0; k < sample_nodes_ex[j][ind].size(); k++) {
+                    sample_nodes[i].push_back(sample_nodes_ex[j][ind][k]);
+                    sample_nodes[i].back().neighbor_offset += total_offset;
+                    // neighbor_offset[i].push_back(total_offset +
+                    // neighbor_offset_ex[j][i][k]);
+                  }
+                  size_t neighbor_size = sample_neighbors_ex[j][ind].size();
+                  total_offset += neighbor_size;
+                  for (size_t k = 0; k < neighbor_size; k++) {
+                    sample_neighbors[ind].push_back(
+                        sample_neighbors_ex[j][ind][k]);
+                  }
+                }
+                return 0;
+              }));
+    }
+    for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+    if (this->status == GraphSamplerStatus::terminating) {
+      pthread_rwlock_unlock(rw_lock);
+      return 0;
+    }
+    // int64_t total_neighbors =
+    // std::accumulate(shard_neighbor_size.begin(),shard_neighbor_size.end(),0);
+    for (size_t i = 0; i < gpu_num; i++) {
+      sample_res[i].node_list = sample_nodes[i].data();
+      sample_res[i].neighbor_list = sample_neighbors[i].data();
+      sample_res[i].node_size = sample_nodes[i].size();
+      sample_res[i].neighbor_size = sample_neighbors[i].size();
+    }
+    pthread_rwlock_unlock(rw_lock);
+    if (this->status == GraphSamplerStatus::terminating) {
+      return 0;
+    }
+    callback(sample_res);
+    rounds--;
+    if (rounds > 0) {
+      for (int i = 0;
+           i < interval && this->status == GraphSamplerStatus::running; i++) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
+    }
   }
-  pthread_rwlock_unlock(rw_lock);
+  return 0;
 }
-
 void BasicBfsGraphSampler::init(size_t gpu_num, GraphTable *graph_table,
                                 std::vector<std::string> args) {
   this->gpu_num = gpu_num;
   this->graph_table = graph_table;
-  node_num_for_each_shard = args.size() > 0 ? std::stoi(args[0]) : 100;
-  edge_num_for_each_node = args.size() > 1 ? std::stoi(args[1]) : 100;
+  node_num_for_each_shard = args.size() > 0 ? std::stoi(args[0]) : 10;
+  edge_num_for_each_node = args.size() > 1 ? std::stoi(args[1]) : 10;
+  rounds = args.size() > 2 ? std::stoi(args[2]) : 1;
+  interval = args.size() > 3 ? std::stoi(args[3]) : 60;
 }
-// virtual pthread_rwlock_t * export_rw_lock();
-// virtual void start_graph_sampling();
-// virtual void init(GraphTable *graph_table, std::vector<std::string> args);
+
 #endif
 
 std::vector<Node *> GraphShard::get_batch(int start, int end, int step) {
@@ -517,6 +558,9 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
 }
 
 int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
+#ifdef PADDLE_WITH_HETERPS
+  if (gpups_mode) pthread_rwlock_rdlock(rw_lock.get());
+#endif
   auto paths = paddle::string::split_string<std::string>(path, ";");
   int64_t count = 0;
   std::string sample_type = "random";
@@ -592,6 +636,13 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
   /*-----------------------
   relocate the duplicate nodes to make them distributed evenly among threads.
 */
+  if (!use_duplicate_nodes) {
+#ifdef PADDLE_WITH_HETERPS
+    if (gpups_mode) pthread_rwlock_unlock(rw_lock.get());
+#endif
+
+    return 0;
+  }
   for (auto &shard : extra_shards) {
     auto bucket = shard->get_bucket();
     for (size_t i = 0; i < bucket.size(); i++) {
@@ -665,6 +716,9 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
     delete extra_shards[i];
     extra_shards[i] = extra_shards_copy[i];
   }
+#ifdef PADDLE_WITH_HETERPS
+  if (gpups_mode) pthread_rwlock_unlock(rw_lock.get());
+#endif
   return 0;
 }
 
@@ -1036,6 +1090,7 @@ int32_t GraphTable::initialize(const TableParameter &config,
 }
 int32_t GraphTable::initialize(const GraphParameter &graph) {
   if (graph.gpups_mode()) {
+    gpups_mode = true;
     if (shard_num == 0) {
       shard_num = graph.gpups_mode_shard_num();
       server_num = 1;
@@ -1045,6 +1100,8 @@ int32_t GraphTable::initialize(const GraphParameter &graph) {
         CREATE_PSCORE_CLASS(GraphSampler, graph.gpups_graph_sample_class());
     auto slices =
         string::split_string<std::string>(graph.gpups_graph_sample_args(), ",");
+    std::cout << "slices" << std::endl;
+    for (auto x : slices) std::cout << x << std::endl;
     sampler->init(graph.gpu_num(), this, slices);
     graph_sampler.reset(sampler);
   }

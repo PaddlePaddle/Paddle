@@ -38,12 +38,16 @@
 #include <vector>
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/common_table.h"
+#include "paddle/fluid/distributed/ps/table/graph/class_macro.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
 #ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 //#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
+//#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
+/*
 struct GpuPsGraphNode {
   int64_t node_id;
   int neighbor_size, neighbor_offset;
@@ -65,6 +69,7 @@ struct GpuPsCommGraph {
         neighbor_size(neighbor_size_),
         node_size(node_size_) {}
 };
+*/
 #endif
 namespace paddle {
 namespace distributed {
@@ -324,7 +329,7 @@ class ScaledLRU {
       node_size += lru_pool[i].node_size - lru_pool[i].remove_count;
     }
 
-    if (node_size <= size_t(1.1 * size_limit) + 1) return 0;
+    if ((size_t)node_size <= size_t(1.1 * size_limit) + 1) return 0;
     if (pthread_rwlock_wrlock(&rwlock) == 0) {
       // VLOG(0)<"in shrink\n";
       global_count = 0;
@@ -332,7 +337,7 @@ class ScaledLRU {
         global_count += lru_pool[i].node_size - lru_pool[i].remove_count;
       }
       // VLOG(0)<<"global_count "<<global_count<<"\n";
-      if (global_count > size_limit) {
+      if ((size_t)global_count > size_limit) {
         size_t remove = global_count - size_limit;
         for (size_t i = 0; i < lru_pool.size(); i++) {
           lru_pool[i].total_diff = 0;
@@ -377,13 +382,55 @@ class ScaledLRU {
 };
 
 #ifdef PADDLE_WITH_HETERPS
+enum GraphSamplerStatus { waiting = 0, running = 1, terminating = 2 };
 class GraphTable;
 class GraphSampler {
  public:
-  virtual pthread_rwlock_t *export_rw_lock() = 0;
-  virtual void start_graph_sampling() = 0;
+  GraphSampler() {
+    status = GraphSamplerStatus::waiting;
+    thread_pool.reset(new ::ThreadPool(1));
+    callback = [](std::vector<paddle::framework::GpuPsCommGraph> &res) {
+      return;
+    };
+  }
+  virtual int run_graph_sampling() = 0;
+  virtual int start_graph_sampling() {
+    if (status != GraphSamplerStatus::waiting) {
+      return -1;
+    }
+    std::promise<int> prom;
+    std::future<int> fut = prom.get_future();
+    graph_sample_task_over = thread_pool->enqueue([&prom, this]() {
+      prom.set_value(0);
+      status = GraphSamplerStatus::running;
+      return run_graph_sampling();
+    });
+    return fut.get();
+  }
   virtual void init(size_t gpu_num, GraphTable *graph_table,
                     std::vector<std::string> args) = 0;
+  virtual void set_graph_sample_callback(
+      std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
+          callback) {
+    this->callback = callback;
+  }
+
+  virtual int end_graph_sampling() {
+    if (status == GraphSamplerStatus::running) {
+      status = GraphSamplerStatus::terminating;
+      return graph_sample_task_over.get();
+    }
+    return -1;
+  }
+  virtual GraphSamplerStatus get_graph_sampler_status() { return status; }
+
+ protected:
+  std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
+      callback;
+  std::shared_ptr<::ThreadPool> thread_pool;
+  GraphSamplerStatus status;
+  std::future<int> graph_sample_task_over;
+  std::vector<paddle::framework::GpuPsCommGraph> sample_res;
 };
 #endif
 
@@ -392,6 +439,10 @@ class GraphTable : public SparseTable {
   GraphTable() {
     use_cache = false;
     shard_num = 0;
+#ifdef PADDLE_WITH_HETERPS
+    gpups_mode = false;
+#endif
+    rw_lock.reset(new pthread_rwlock_t());
   }
   virtual ~GraphTable();
   virtual int32_t pull_graph_list(int start, int size,
@@ -486,10 +537,18 @@ class GraphTable : public SparseTable {
   }
 #ifdef PADDLE_WITH_HETERPS
   virtual int32_t start_graph_sampling() {
-    graph_sampler->start_graph_sampling();
+    return this->graph_sampler->start_graph_sampling();
+  }
+  virtual int32_t end_graph_sampling() {
+    return this->graph_sampler->end_graph_sampling();
+  }
+  virtual int32_t set_graph_sample_callback(
+      std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
+          callback) {
+    graph_sampler->set_graph_sample_callback(callback);
     return 0;
   }
-  virtual GraphSampler *get_graph_sampler() { return graph_sampler.get(); }
+// virtual GraphSampler *get_graph_sampler() { return graph_sampler.get(); }
 #endif
  protected:
   std::vector<GraphShard *> shards, extra_shards;
@@ -511,10 +570,13 @@ class GraphTable : public SparseTable {
   std::unordered_map<int64_t, size_t> extra_nodes_to_thread_index;
   bool use_cache, use_duplicate_nodes;
   mutable std::mutex mutex_;
+  std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS
+  // paddle::framework::GpuPsGraphTable gpu_graph_table;
+  bool gpups_mode;
+  // std::shared_ptr<::ThreadPool> graph_sample_pool;
   std::shared_ptr<GraphSampler> graph_sampler;
-  friend class CompleteGraphSampler;
-  friend class BasicBfsGraphSampler;
+  REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
 #endif
 };
 
@@ -522,42 +584,39 @@ class GraphTable : public SparseTable {
 REGISTER_PSCORE_REGISTERER(GraphSampler);
 class CompleteGraphSampler : public GraphSampler {
  public:
-  CompleteGraphSampler() { rw_lock = new pthread_rwlock_t(); }
-  ~CompleteGraphSampler() { delete rw_lock; }
-  virtual pthread_rwlock_t *export_rw_lock();
-  virtual void start_graph_sampling();
+  CompleteGraphSampler() {}
+  ~CompleteGraphSampler() {}
+  // virtual pthread_rwlock_t *export_rw_lock();
+  virtual int run_graph_sampling();
   virtual void init(size_t gpu_num, GraphTable *graph_table,
                     std::vector<std::string> args_);
-  virtual std::vector<GpuPsCommGraph> fetch_sample_res();
 
  protected:
-  pthread_rwlock_t *rw_lock;
   GraphTable *graph_table;
-  std::vector<std::vector<GpuPsGraphNode>> sample_nodes;
+  std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
   std::vector<std::vector<int64_t>> sample_neighbors;
-  std::vector<GpuPsCommGraph> sample_res;
+  // std::vector<GpuPsCommGraph> sample_res;
   // std::shared_ptr<std::mt19937_64> random;
   int gpu_num;
 };
 
 class BasicBfsGraphSampler : public GraphSampler {
  public:
-  BasicBfsGraphSampler() { rw_lock = new pthread_rwlock_t(); }
-  ~BasicBfsGraphSampler() { delete rw_lock; }
-  virtual pthread_rwlock_t *export_rw_lock();
-  virtual void start_graph_sampling();
+  BasicBfsGraphSampler() {}
+  ~BasicBfsGraphSampler() {}
+  // virtual pthread_rwlock_t *export_rw_lock();
+  virtual int run_graph_sampling();
   virtual void init(size_t gpu_num, GraphTable *graph_table,
                     std::vector<std::string> args_);
 
  protected:
-  pthread_rwlock_t *rw_lock;
   GraphTable *graph_table;
-  std::vector<std::vector<GpuPsGraphNode>> sample_nodes;
+  // std::vector<std::vector<GpuPsGraphNode>> sample_nodes;
+  std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
   std::vector<std::vector<int64_t>> sample_neighbors;
-  std::vector<GpuPsCommGraph> sample_res;
-  // std::shared_ptr<std::mt19937_64> random;
   size_t gpu_num;
   int node_num_for_each_shard, edge_num_for_each_node;
+  int rounds, interval;
   std::vector<std::unordered_map<int64_t, std::vector<int64_t>>>
       sample_neighbors_map;
 };
