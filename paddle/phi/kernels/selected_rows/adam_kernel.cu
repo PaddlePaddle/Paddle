@@ -283,4 +283,5 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    ALL_LAYOUT,
                    phi::sr::AdamDenseParamSparseGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
