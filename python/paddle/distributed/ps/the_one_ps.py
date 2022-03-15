@@ -15,7 +15,8 @@
 import warnings
 
 import os
-from paddle.distributed.fleet.proto import ps_pb2
+#from paddle.distributed.fleet.proto import ps_pb2
+import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle.fluid import core
@@ -70,15 +71,28 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
             break
 
     fea_dim = accessor_proto.fea_dim
-    if fea_dim != embedding_dim:
-        raise ValueError(
-            "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".
-            format(embedding_dim, fea_dim))
+    if accessor_proto.accessor_class == "SparseAccessor":
+        if fea_dim != embedding_dim + 2:
+            raise ValueError(
+                "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".
+                format(embedding_dim + 2, fea_dim))
+    else:
+        if fea_dim != embedding_dim:
+            raise ValueError(
+                "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".
+                format(embedding_dim, fea_dim))
+
     embedx_dim = accessor_proto.embedx_dim
-    if embedx_dim != embedding_dim - 3:
-        raise ValueError(
-            "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".
-            format(embedding_dim - 3, embedx_dim))
+    if accessor_proto.accessor_class == "SparseAccessor":
+        if embedx_dim != embedding_dim - 1:
+            raise ValueError(
+                "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".
+                format(embedding_dim - 1, embedx_dim))
+    else:
+        if embedx_dim != embedding_dim - 3:
+            raise ValueError(
+                "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".
+                format(embedding_dim - 3, embedx_dim))
 
 
 class Service:
@@ -120,11 +134,17 @@ class Accessor:
                 break
 
         if not accessor_proto.HasField("accessor_class"):
-            accessor_proto.accessor_class = "CtrCommonAccessor"
+            accessor_proto.accessor_class = "SparseAccessor"
         if not accessor_proto.HasField("fea_dim"):
-            accessor_proto.fea_dim = embedding_dim + 2
+            if accessor_proto.accessor_class == "SparseAccessor":
+                accessor_proto.fea_dim = embedding_dim + 2
+            else:
+                accessor_proto.fea_dim = embedding_dim
         if not accessor_proto.HasField("embedx_dim"):
-            accessor_proto.embedx_dim = embedding_dim - 1
+            if accessor_proto.accessor_class == "SparseAccessor":
+                accessor_proto.embedx_dim = embedding_dim - 1
+            else:
+                accessor_proto.embedx_dim = embedding_dim - 3
         if not accessor_proto.HasField("embedx_threshold"):
             accessor_proto.embedx_threshold = 0
 

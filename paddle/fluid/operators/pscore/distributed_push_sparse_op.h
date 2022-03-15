@@ -32,6 +32,8 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto padding_idx = context.Attr<int64_t>("padding_idx");
     auto table_id = context.Attr<int>("table_id");
     auto emb_dim = context.Attr<int>("size");
+    auto use_cvm_op = context.Attr<bool>("use_cvm_op");
+    std::cout << "debug zcb use_cvm_op: " << use_cvm_op << "\n";
 
     auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
     auto shows = context.Input<framework::LoDTensor>("Shows");
@@ -46,7 +48,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       fleet->PushSparseFromTensorAsync(static_cast<uint64_t>(table_id), emb_dim,
                                        static_cast<uint64_t>(padding_idx),
                                        context.GetPlace(), &inputs, shows, clks,
-                                       &outputs);
+                                       &outputs, use_cvm_op);
     } else {
       auto inputs_variable = context.MultiInputVar("Ids");
       auto outputs_variable = context.MultiOutputVar("Outputs");

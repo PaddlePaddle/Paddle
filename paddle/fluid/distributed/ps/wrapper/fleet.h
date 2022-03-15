@@ -171,7 +171,8 @@ class FleetWrapper {
                                  std::vector<const LoDTensor*>* inputs,
                                  const LoDTensor* shows,
                                  const LoDTensor* clicks,
-                                 std::vector<LoDTensor*>* outputs);
+                                 std::vector<LoDTensor*>* outputs,
+                                 bool use_cvm_op = false);
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
   // Param<Out>: push_values, push_sparse_status

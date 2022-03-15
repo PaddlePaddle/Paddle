@@ -520,7 +520,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
     const uint64_t table_id, int fea_dim, uint64_t padding_id,
     platform::Place place, std::vector<const LoDTensor*>* inputs,
     const LoDTensor* shows, const LoDTensor* clks,
-    std::vector<LoDTensor*>* outputs) {
+    std::vector<LoDTensor*>* outputs, bool use_cvm_op) {
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto* input : *inputs) {
@@ -568,7 +568,11 @@ void FleetWrapper::PushSparseFromTensorAsync(
       Eigen::Map<
           Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
           g_mat(g, g_tensor->numel() / fea_dim, fea_dim);
-      g_mat.rightCols(fea_dim - 2) *= batch_size;  // make sure use cvm op
+      if (use_cvm_op) {
+        g_mat.rightCols(fea_dim - 2) *= batch_size;
+      } else {
+        g_mat.rightCols(fea_dim) *= batch_size;
+      }
     }
 
     const framework::LoDTensor* tensor = inputs->at(index);
@@ -585,19 +589,24 @@ void FleetWrapper::PushSparseFromTensorAsync(
             continue;
           }
           push_keys.emplace_back(real_id);
-          push_values.emplace_back(fea_dim + 1);
-          // slot show clk grad... consistent with CtrCommonPushValue defined in
-          // ctr_accessor.h
-          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-          // push_values.back()[1] =
-          //    (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-          // push_values.back()[2] =
-          //    (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
-
-          float* data = push_values.back().data() + 1;
-
-          memcpy(data, g + output_len, sizeof(float) * fea_dim);
-
+          if (use_cvm_op) {
+            push_values.emplace_back(fea_dim + 1);
+            push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+            float* data = push_values.back().data() + 1;
+            memcpy(data, g + output_len, sizeof(float) * fea_dim);
+          } else {
+            push_values.emplace_back(fea_dim + 3);
+            // slot show clk grad... consistent with CtrCommonPushValue defined
+            // in
+            // ctr_accessor.h
+            push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+            push_values.back()[1] =
+                (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+            push_values.back()[2] =
+                (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+            float* data = push_values.back().data() + 3;
+            memcpy(data, g + output_len, sizeof(float) * fea_dim);
+          }
           ++input_idx;
         }
       }
@@ -608,19 +617,23 @@ void FleetWrapper::PushSparseFromTensorAsync(
           continue;
         }
         push_keys.emplace_back(real_id);
-        push_values.emplace_back(fea_dim + 1);
-        // slot show clk grad... consistent with CtrCommonPushValue defined in
-        // ctr_accessor.h
-        push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
-        // push_values.back()[1] =
-        //     (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
-        // push_values.back()[2] =
-        //     (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
-
-        float* data = push_values.back().data() + 1;
-
-        memcpy(data, g + output_len, sizeof(float) * fea_dim);
-
+        if (use_cvm_op) {
+          push_values.emplace_back(fea_dim + 1);
+          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+          float* data = push_values.back().data() + 1;
+          memcpy(data, g + output_len, sizeof(float) * fea_dim);
+        } else {
+          push_values.emplace_back(fea_dim + 3);
+          // slot show clk grad... consistent with CtrCommonPushValue defined in
+          // ctr_accessor.h
+          push_values.back()[0] = 2;  // TODO(zhaocaibei123): slot
+          push_values.back()[1] =
+              (i >= show_size ? 1 : static_cast<float>(show_tensor[i]));
+          push_values.back()[2] =
+              (i >= clk_size ? 0 : static_cast<float>(clk_tensor[i]));
+          float* data = push_values.back().data() + 3;
+          memcpy(data, g + output_len, sizeof(float) * fea_dim);
+        }
         ++input_idx;
       }
     }
@@ -767,6 +780,10 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
 }
 
 void FleetWrapper::ClientFlush() {
+  if (worker_ptr_.get() == nullptr) {
+    VLOG(0) << "worker_ptr null, do nothing";
+    return;
+  }
   auto ret = worker_ptr_->flush();
   ret.wait();
   int32_t err_code = ret.get();
