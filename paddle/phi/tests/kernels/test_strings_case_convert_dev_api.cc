@@ -67,9 +67,9 @@ TEST(DEV_API, strings_cast_convert) {
 
   // 3. test API, ascii encoding
   auto dense_lower_out = phi::strings::StringLower(
-      *(static_cast<phi::CPUContext*>(dev_ctx)), "", dense_x);
+      *(static_cast<phi::CPUContext*>(dev_ctx)), false, dense_x);
   auto dense_upper_out = phi::strings::StringUpper(
-      *(static_cast<phi::CPUContext*>(dev_ctx)), "", dense_x);
+      *(static_cast<phi::CPUContext*>(dev_ctx)), false, dense_x);
 
   // 4. check results
   ASSERT_EQ(dense_lower_out.numel(), 2);
@@ -109,9 +109,9 @@ TEST(DEV_API, strings_cast_convert_utf8) {
 
   // 3. test API, ascii encoding
   auto dense_lower_out = phi::strings::StringLower(
-      *(static_cast<phi::CPUContext*>(dev_ctx)), "utf-8", dense_x);
+      *(static_cast<phi::CPUContext*>(dev_ctx)), true, dense_x);
   auto dense_upper_out = phi::strings::StringUpper(
-      *(static_cast<phi::CPUContext*>(dev_ctx)), "utf-8", dense_x);
+      *(static_cast<phi::CPUContext*>(dev_ctx)), true, dense_x);
 
   // 4. check results
   ASSERT_EQ(dense_lower_out.numel(), 1);

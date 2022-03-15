@@ -97,7 +97,7 @@ PADDLE_API Tensor empty_like(const Tensor& x, Backend place) {
   return out;
 }
 
-PADDLE_API Tensor lower(const Tensor& x, const std::string& encoding) {
+PADDLE_API Tensor lower(const Tensor& x, bool use_utf8_encoding) {
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::ALL_LAYOUT;
   DataType kernel_data_type = DataType::STRING;
@@ -128,15 +128,15 @@ PADDLE_API Tensor lower(const Tensor& x, const std::string& encoding) {
 
   using kernel_signature = void (*)(const phi::DeviceContext&,
                                     const phi::StringTensor&,
-                                    const std::string&,
+                                    bool,
                                     phi::StringTensor*);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)(*dev_ctx, *strings_x, encoding, strings_out);
+  (*kernel_fn)(*dev_ctx, *strings_x, use_utf8_encoding, strings_out);
 
   return out;
 }
 
-PADDLE_API Tensor upper(const Tensor& x, const std::string& encoding) {
+PADDLE_API Tensor upper(const Tensor& x, bool use_utf8_encoding) {
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::ALL_LAYOUT;
   DataType kernel_data_type = DataType::STRING;
@@ -167,10 +167,10 @@ PADDLE_API Tensor upper(const Tensor& x, const std::string& encoding) {
 
   using kernel_signature = void (*)(const phi::DeviceContext&,
                                     const phi::StringTensor&,
-                                    const std::string&,
+                                    bool,
                                     phi::StringTensor*);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)(*dev_ctx, *strings_x, encoding, strings_out);
+  (*kernel_fn)(*dev_ctx, *strings_x, use_utf8_encoding, strings_out);
 
   return out;
 }

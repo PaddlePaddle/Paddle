@@ -23,21 +23,21 @@ namespace strings {
 template <typename ContextT>
 void StringLowerKernel(const ContextT& dev_ctx,
                        const StringTensor& x,
-                       const std::string& encoding,
+                       bool use_utf8_encoding,
                        StringTensor* out) {
   StringCaseConvertKernel<AsciiCaseConverter<ContextT, AsciiToLower>,
                           UTF8CaseConverter<ContextT, UTF8ToLower>,
-                          ContextT>()(dev_ctx, x, encoding, out);
+                          ContextT>()(dev_ctx, x, use_utf8_encoding, out);
 }
 
 template <typename ContextT>
 void StringUpperKernel(const ContextT& dev_ctx,
                        const StringTensor& x,
-                       const std::string& encoding,
+                       bool use_utf8_encoding,
                        StringTensor* out) {
   StringCaseConvertKernel<AsciiCaseConverter<ContextT, AsciiToUpper>,
                           UTF8CaseConverter<ContextT, UTF8ToUpper>,
-                          ContextT>()(dev_ctx, x, encoding, out);
+                          ContextT>()(dev_ctx, x, use_utf8_encoding, out);
 }
 
 }  // namespace strings

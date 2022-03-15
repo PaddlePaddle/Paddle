@@ -28,9 +28,9 @@ PADDLE_API Tensor empty(const ScalarArray& shape, Backend place = Backend::CPU);
 PADDLE_API Tensor empty_like(const Tensor& x,
                              Backend place = Backend::UNDEFINED);
 
-PADDLE_API Tensor lower(const Tensor& x, const std::string& encoding);
+PADDLE_API Tensor lower(const Tensor& x, bool use_utf8_encoding);
 
-PADDLE_API Tensor upper(const Tensor& x, const std::string& encoding);
+PADDLE_API Tensor upper(const Tensor& x, bool use_utf8_encoding);
 
 }  // namespace strings
 }  // namespace experimental

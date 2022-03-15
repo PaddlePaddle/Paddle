@@ -62,8 +62,8 @@ TEST(API, case_convert) {
       strs[1].begin(), strs[1].end(), expected_results[3].begin(), ::toupper);
   // 3. test API, ascii encoding
   paddle::experimental::Tensor x(cpu_strings_x);
-  auto lower_out = paddle::experimental::strings::lower(x, "");
-  auto upper_out = paddle::experimental::strings::upper(x, "");
+  auto lower_out = paddle::experimental::strings::lower(x, false);
+  auto upper_out = paddle::experimental::strings::upper(x, false);
 
   auto lower_tensor =
       std::dynamic_pointer_cast<phi::StringTensor>(lower_out.impl());
@@ -110,8 +110,8 @@ TEST(API, case_convert_utf8) {
                                     "ÓÓSSCHLOËËÓÓSSCHLOËËÓÓSSCHLOËË"};
   // 3. test API, ascii encoding
   paddle::experimental::Tensor x(cpu_strings_x);
-  auto lower_out = paddle::experimental::strings::lower(x, "utf-8");
-  auto upper_out = paddle::experimental::strings::upper(x, "utf-8");
+  auto lower_out = paddle::experimental::strings::lower(x, true);
+  auto upper_out = paddle::experimental::strings::upper(x, true);
 
   auto lower_tensor =
       std::dynamic_pointer_cast<phi::StringTensor>(lower_out.impl());

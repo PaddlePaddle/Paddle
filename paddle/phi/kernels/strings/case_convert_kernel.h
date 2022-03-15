@@ -25,32 +25,32 @@ namespace strings {
 template <typename ContextT>
 void StringLowerKernel(const ContextT& dev_ctx,
                        const StringTensor& x,
-                       const std::string& encoding,
+                       bool use_utf8_encoding,
                        StringTensor* out);
 
 template <typename ContextT>
 void StringUpperKernel(const ContextT& dev_ctx,
                        const StringTensor& x,
-                       const std::string& encoding,
+                       bool use_utf8_encoding,
                        StringTensor* out);
 
 template <typename ContextT>
 StringTensor StringLower(const ContextT& dev_ctx,
-                         const std::string& encoding,
+                         bool use_utf8_encoding,
                          const StringTensor& x) {
   auto out_meta = UnchangedInferMeta(x.meta());
   auto string_out = phi::strings::Empty<ContextT>(dev_ctx, std::move(out_meta));
-  StringLowerKernel(dev_ctx, x, encoding, &string_out);
+  StringLowerKernel(dev_ctx, x, use_utf8_encoding, &string_out);
   return string_out;
 }
 
 template <typename ContextT>
 StringTensor StringUpper(const ContextT& dev_ctx,
-                         const std::string& encoding,
+                         bool use_utf8_encoding,
                          const StringTensor& x) {
   auto out_meta = UnchangedInferMeta(x.meta());
   auto string_out = phi::strings::Empty<ContextT>(dev_ctx, std::move(out_meta));
-  StringUpperKernel(dev_ctx, x, encoding, &string_out);
+  StringUpperKernel(dev_ctx, x, use_utf8_encoding, &string_out);
   return string_out;
 }
 
@@ -58,14 +58,14 @@ template <typename AsciiCoverter, typename UTF8Converter, typename ContextT>
 struct StringCaseConvertKernel {
   void operator()(const ContextT& dev_ctx,
                   const StringTensor& x,
-                  const std::string& encoding,
+                  bool use_utf8_encoding,
                   StringTensor* out) {
     AsciiCoverter ascii_converter;
     UTF8Converter utf8_converter;
     const pstring* in_ptr = x.data();
     pstring* out_ptr = dev_ctx.template Alloc<pstring>(out);
     auto num = x.numel();
-    if (encoding.empty()) {
+    if (!use_utf8_encoding) {
       ascii_converter(dev_ctx, in_ptr, out_ptr, num);
     } else {
       utf8_converter(dev_ctx, in_ptr, out_ptr, num);

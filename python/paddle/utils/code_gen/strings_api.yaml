@@ -1,0 +1,31 @@
+- api : empty
+  args : (ScalarArray shape, Backend backend)
+  output : Tensor(out@StringTensor)
+  infer_meta :
+    func : CreateInferMeta
+  kernel :
+    func : strings_empty
+
+- api : empty_like
+  args : (Tensor x, Backend backend)
+  output : Tensor(out@StringTensor)
+  infer_meta :
+    func : CreateLikeInferMeta
+  kernel :
+    func : strings_empty_like
+
+- api : lower
+  args : (Tensor x, bool use_utf8_encoding)
+  output : Tensor(out@StringTensor)
+  infer_meta :
+    func : CreateLikeInferMeta
+  kernel :
+    func : strings_lower
+
+- api : upper
+  args : (Tensor x, bool use_utf8_encoding)
+  output : Tensor(out@StringTensor)
+  infer_meta :
+    func : CreateLikeInferMeta
+  kernel :
+    func : strings_upper
