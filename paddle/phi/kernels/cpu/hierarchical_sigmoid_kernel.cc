@@ -21,7 +21,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function_impl.h"
 
 namespace phi {
 
@@ -38,9 +38,9 @@ void HierarchicalSigmoidKernel(const Context& ctx,
                                int num_classes,
                                bool remote_prefetch,
                                int trainer_id,
-                               std::vector<int64_t> height_sections,
-                               std::vector<std::string> epmap,
-                               std::vector<std::string> table_names,
+                               const std::vector<int64_t>& height_sections,
+                               const std::vector<std::string>& epmap,
+                               const std::vector<std::string>& table_names,
                                bool is_sparse,
                                DenseTensor* out,
                                DenseTensor* pre_out,
@@ -62,10 +62,10 @@ void HierarchicalSigmoidKernel(const Context& ctx,
   auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
   // Not all class(leaf) nodes' path lengths equal code_length, thus init as
   // 0s can avoid out of path's loss.
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   zero(ctx, pre_out, static_cast<T>(0.0));
   auto& place = *ctx.eigen_device();
-  phi::funcs::RowwiseSum<Context, T> row_sum;
+  funcs::RowwiseSum<Context, T> row_sum;
 
   std::unique_ptr<math::MatrixBitCodeFunctor<T>> bit_code;
   if (!is_custom) {

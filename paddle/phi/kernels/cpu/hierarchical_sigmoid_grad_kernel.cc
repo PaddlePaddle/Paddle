@@ -38,14 +38,14 @@ void HierarchicalSigmoidGradKernel(const Context& ctx,
                                    int num_classes,
                                    bool remote_prefetch,
                                    int trainer_id,
-                                   std::vector<int64_t> height_sections,
-                                   std::vector<std::string> epmap,
-                                   std::vector<std::string> table_names,
+                                   const std::vector<int64_t>& height_sections,
+                                   const std::vector<std::string>& epmap,
+                                   const std::vector<std::string>& table_names,
                                    bool is_sparse,
                                    DenseTensor* x_grad,
                                    DenseTensor* w_grad,
                                    DenseTensor* bias_grad) {
-  phi::funcs::SetConstant<Context, T> zero;
+  funcs::SetConstant<Context, T> zero;
   DenseTensor pre_out_grad;
 
   pre_out_grad.Resize(pre_out.dims());
@@ -69,7 +69,7 @@ void HierarchicalSigmoidGradKernel(const Context& ctx,
 
   // softrelu derivative
 
-  auto blas = phi::funcs::GetBlas<Context, T>(ctx);
+  auto blas = funcs::GetBlas<Context, T>(ctx);
 
   auto* pre_out_grad_data = pre_out_grad.data<T>();
   auto* pre_out_data = pre_out.template data<T>();
