@@ -118,8 +118,7 @@ void TestMaxPoolBase(const std::vector<int>& indices,
     }
   }
 
-  // test gpu
-  /*
+// test gpu
 #if defined(PADDLE_WITH_CUDA)
   phi::GPUContext dev_ctx_gpu;
   dev_ctx_gpu.PartialInitWithoutAllocator();
@@ -152,13 +151,12 @@ void TestMaxPoolBase(const std::vector<int>& indices,
   DenseTensor d_rulebook = phi::Empty(
       dev_ctx_gpu, DenseTensorMeta(DataType::INT32, {1}, DataLayout::NCHW));
   SparseCooTensor d_out = sparse::MaxPool<T>(dev_ctx_gpu,
-                                            d_x_tensor,
-                                            kernel_sizes,
-                                            paddings,
-                                            dilations,
-                                            strides,
-                                            subm,
-                                            &d_rulebook);
+                                             d_x_tensor,
+                                             kernel_sizes,
+                                             paddings,
+                                             dilations,
+                                             strides,
+                                             &d_rulebook);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
   ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, d_out.nnz());
@@ -194,24 +192,19 @@ void TestMaxPoolBase(const std::vector<int>& indices,
   f_verify(h_features_tensor.data<T>(), correct_out_features);
 
   if (backward) {
-    //std::vector<DenseTensor> grads = sparse::MaxPoolGrad<T>(dev_ctx_gpu,
-    //                                                       d_x_tensor,
-    //                                                       d_rulebook,
-    //                                                       d_out,
-    //                                                       kernel_sizes,
-    //                                                       paddings,
-    //                                                       dilations,
-    //                                                       strides,
-    //                                                       subm);
-    //DenseTensor h_features_grad = phi::Empty(
-    //    dev_ctx_cpu,
-    //    DenseTensorMeta(grads[0].dtype(), grads[0].dims(),
-grads[0].layout()));
-    //phi::Copy(dev_ctx_gpu, grads[0], phi::CPUPlace(), true, &h_features_grad);
-    //f_verify(h_features_grad.data<T>(), features_grad);
+    DenseTensor x_grad = sparse::MaxPoolGrad<T>(dev_ctx_gpu,
+                                                d_x_tensor,
+                                                d_rulebook,
+                                                d_out,
+                                                d_out.non_zero_elements(),
+                                                kernel_sizes);
+    DenseTensor h_features_grad = phi::Empty(
+        dev_ctx_cpu,
+        DenseTensorMeta(x_grad.dtype(), x_grad.dims(), x_grad.layout()));
+    phi::Copy(dev_ctx_gpu, x_grad, phi::CPUPlace(), true, &h_features_grad);
+    f_verify(h_features_grad.data<T>(), features_grad);
   }
 #endif
-  */
 }
 
 void TestMaxPool(const std::vector<int>& indices,
