@@ -40,15 +40,28 @@ const std::unordered_set<std::string> standard_kernel_suffixs({
 const std::unordered_set<std::string> deprecated_op_names({"diag",
                                                            "flatten",
                                                            "flatten_grad",
+                                                           "isinf",
+                                                           "isnan",
+                                                           "isfinite",
                                                            "matmul",
                                                            "matmul_grad",
                                                            "matmul_grad_grad",
                                                            "mean",
+                                                           "max",
+                                                           "min",
+                                                           "any",
+                                                           "all",
                                                            "reshape",
                                                            "reshape_grad",
                                                            "expand",
+                                                           "expand_as",
                                                            "expand_grad",
-                                                           "sum"});
+                                                           "expand_as_grad",
+                                                           "sum",
+                                                           "one_hot",
+                                                           "sum_grad",
+                                                           "top_k",
+                                                           "top_k_grad"});
 
 class DefaultKernelSignatureMap {
  public:
@@ -166,7 +179,7 @@ struct ArgumentMappingFnRegistrar {
 };
 
 #define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)                \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
       PD_REGISTER_base_kernel_name_ns_check_##op_type,                         \
       "PD_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
   static const ::phi::BaseKernelNameRegistrar                                  \
@@ -174,7 +187,7 @@ struct ArgumentMappingFnRegistrar {
   int TouchBaseKernelNameSymbol_##op_type() { return 0; }
 
 #define PD_DECLARE_BASE_KERNEL_NAME(op_type)                              \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
       PD_DECLARE_ai_name_ns_check_##op_type,                              \
       "PD_DECLARE_BASE_KERNEL_NAME must be called in global namespace."); \
   extern int TouchBaseKernelNameSymbol_##op_type();                       \
@@ -182,7 +195,7 @@ struct ArgumentMappingFnRegistrar {
       TouchBaseKernelNameSymbol_##op_type()
 
 #define PD_REGISTER_ARG_MAPPING_FN(op_type, arg_mapping_fn)              \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
       PD_REGISTER_arg_map_fn_ns_check_##op_type,                         \
       "PD_REGISTER_ARG_MAPPING_FN must be called in global namespace."); \
   static const ::phi::ArgumentMappingFnRegistrar                         \
@@ -190,7 +203,7 @@ struct ArgumentMappingFnRegistrar {
   int TouchArgumentMappingFnSymbol_##op_type() { return 0; }
 
 #define PD_DECLARE_ARG_MAPPING_FN(op_type)                              \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \
       PD_DECLARE_arg_map_fn_ns_check_##op_type,                         \
       "PD_DECLARE_ARG_MAPPING_FN must be called in global namespace."); \
   extern int TouchArgumentMappingFnSymbol_##op_type();                  \

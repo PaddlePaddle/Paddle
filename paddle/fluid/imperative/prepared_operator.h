@@ -264,14 +264,23 @@ void BuildDygraphPhiKernelContext(
 
     size_t start_idx = (i == 0 ? 0 : kernel_ctx->InputRangeAt(i - 1).second);
 
-    if ((it == ins.end()) &&
-        (input_defs[i].type_index ==
-         std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
-      kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
-      auto end_idx = start_idx + 1;
-      kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
-      continue;
+    if (it == ins.end()) {
+      if (LIKELY(input_defs[i].type_index ==
+                 std::type_index(
+                     typeid(paddle::optional<const phi::DenseTensor&>)))) {
+        kernel_ctx->EmplaceBackInputWithoutSetRange(nullptr);
+        auto end_idx = start_idx + 1;
+        kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
+        continue;
+      } else {
+        PADDLE_THROW(phi::errors::NotFound(
+            "Can not find input variable '%s' for %s OP, please check whether "
+            "the name setting in OpArgumentMapping is consistent with that in "
+            "OpMaker.",
+            input_names[i], pt_kernel_signature.name));
+      }
     }
+
     auto ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
 
@@ -314,21 +323,25 @@ void BuildDygraphPhiKernelContext(
 
       phi::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset]->MutableVar();
-      if (var->template IsType<phi::DenseTensor>()) {
-        tensor_out = var->template GetMutable<phi::DenseTensor>();
-      } else if (var->template IsType<phi::SelectedRows>()) {
-        tensor_out = var->template GetMutable<phi::SelectedRows>();
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported output `%s` type when call pt kernel.",
-            framework::ToTypeName(var->Type())));
+      if (var) {
+        if (var->template IsType<phi::DenseTensor>()) {
+          tensor_out = var->template GetMutable<phi::DenseTensor>();
+        } else if (var->template IsType<phi::SelectedRows>()) {
+          tensor_out = var->template GetMutable<phi::SelectedRows>();
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported output `%s` type when call pt kernel.",
+              framework::ToTypeName(var->Type())));
+        }
       }
+
       kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
   }
 
   for (size_t i = 0; i < attr_names.size(); ++i) {
+    VLOG(1) << "############## attr_name: " << i << " : " << attr_names[i];
     if (attr_defs[i].type_index == std::type_index(typeid(phi::ScalarArray))) {
       if (attrs.find(attr_names[i]) !=
           attrs.end()) {  // shape is in the attribute
@@ -406,8 +419,74 @@ void BuildDygraphPhiKernelContext(
             experimental::MakePhiScalarFromVar(ins_vector[0]->Var())));
       }
 
+    } else if (ins.find(attr_names[i]) != ins.end()) {
+      // deal tensor attr here
+      auto& ins_vector = ins.at(attr_names[i]);
+      auto tensor_attr =
+          experimental::MakePhiScalarFromVar(ins_vector[0]->Var());
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+        int val = tensor_attr.template to<int>();
+        kernel_ctx->EmplaceBackAttr(val);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented("only support int here"));
+      }
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(std::vector<phi::Scalar>))) {
+      auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
+      if (std::type_index(attr.type()) ==
+          std::type_index(typeid(std::vector<int32_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<float>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<double>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<bool>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<bool>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` to vector<Scalar> when "
+            "construct KernelContext.",
+            attr_names[i]));
+      }
     } else {
       // TODO(chenweihang): support other attrs later
+
       auto& attr = GetAttr(attrs, default_attrs, attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
@@ -429,7 +508,11 @@ void BuildDygraphPhiKernelContext(
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
         if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int>))) {
+            std::type_index(typeid(std::vector<int64_t>))) {
+          kernel_ctx->EmplaceBackAttr(
+              BOOST_GET_CONST(std::vector<int64_t>, attr));
+        } else if (std::type_index(attr.type()) ==
+                   std::type_index(typeid(std::vector<int>))) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
           const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),

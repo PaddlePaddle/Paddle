@@ -1,4 +1,5 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -92,6 +93,9 @@ class GPUContext : public DeviceContext {
 
   /*! \brief  Return cublas handle in the device context. */
   blasHandle_t cublas_handle() const;
+
+  /*! \brief  Return cublasLt handle in the device context. */
+  blasLtHandle_t cublaslt_handle() const;
 
   /*! \brief  Return cusolver handle in the device context. */
   solverHandle_t cusolver_dn_handle() const;
@@ -192,6 +196,8 @@ class GPUContext : public DeviceContext {
   void SetEigenDevice(Eigen::GpuDevice*);
 
   void SetBlasHandle(blasHandle_t);
+
+  void SetBlasLtHandle(blasLtHandle_t);
 
   void SetDnnHandle(dnnHandle_t);
 

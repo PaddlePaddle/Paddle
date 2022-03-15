@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <llvm/Support/CommandLine.h>
-
+#include <mlir/Pass/PassManager.h>
 #include <iostream>
 #include <string>
 
@@ -29,6 +29,9 @@
 #include "paddle/infrt/kernel/tensor_shape_kernels.h"
 #include "paddle/infrt/kernel/test_kernels.h"
 #ifdef INFRT_WITH_PHI
+#include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
+#include "paddle/infrt/dialect/phi/pass/phi_op_cvt_pass.h"
+#include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launchers.h"
 #include "paddle/infrt/kernel/phi/registry.h"
 #endif
 
@@ -58,6 +61,7 @@ int main(int argc, char** argv) {
   kernel::RegisterControlFlowKernels(&registry);
 #ifdef INFRT_WITH_PHI
   kernel::RegisterPhiKernels(&registry);
+  kernel::RegisterInferShapeLaunchers(&registry);
 #endif
 
   // load extra shared library
@@ -77,6 +81,24 @@ int main(int argc, char** argv) {
       llvm::outs() << "Symbol \"RegisterKernels\" not found in \"" << lib_path
                    << "\". Skip.\n";
     }
+  }
+
+  context->loadAllAvailableDialects();
+  mlir::PassManager pm(context);
+
+#ifdef INFRT_WITH_PHI
+  mlir::OpPassManager& phi_pass_manager = pm.nest<mlir::FuncOp>();
+
+  std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
+                                             infrt::PrecisionType::FLOAT32,
+                                             infrt::LayoutType::NCHW}};
+  phi_pass_manager.addPass(infrt::createPhiOpCvtPass(valid_places));
+  phi_pass_manager.addPass(infrt::createInfrtOpFusePass());
+#endif
+
+  if (mlir::failed(pm.run(*module))) {
+    std::cout << "\npass failed!\n" << std::endl;
+    return 4;
   }
 
   host_context::TestMlir(module.get(), &registry);
