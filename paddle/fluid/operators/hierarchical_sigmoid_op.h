@@ -23,10 +23,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/clip_op.h"
 #include "paddle/fluid/operators/math/matrix_bit_code.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/impl/clip_kernel_impl.h"
 
 namespace paddle {
 namespace operators {
@@ -108,7 +108,7 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     Transform<DeviceContext> trans;
     trans(ctx.template device_context<DeviceContext>(), pre_out_data,
           pre_out_data + pre_out->numel(), pre_out_data,
-          ClipFunctor<T>(static_cast<T>(-40.0), static_cast<T>(40.0)));
+          phi::ClipFunctor<T>(static_cast<T>(-40.0), static_cast<T>(40.0)));
     bit_code->Sum(*pre_out, out, static_cast<T>(-1));
     // use softrelu to calculate cross entropy
     pre_out_mat.device(place) = (static_cast<T>(1.0) + pre_out_mat.exp()).log();
