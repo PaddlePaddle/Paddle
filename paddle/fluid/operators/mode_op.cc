@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/mode_op.h"
 #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -141,15 +141,4 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(mode, ops::ModeOp, ops::ModeOpMaker,
                   ops::ModeGradOpMaker<paddle::framework::OpDesc>,
                   ops::ModeGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(mode,
-                       ops::ModeCPUKernel<paddle::platform::CPUPlace, float>,
-                       ops::ModeCPUKernel<paddle::platform::CPUPlace, double>,
-                       ops::ModeCPUKernel<paddle::platform::CPUPlace, int32_t>,
-                       ops::ModeCPUKernel<paddle::platform::CPUPlace, int64_t>);
-
 REGISTER_OPERATOR(mode_grad, ops::ModeOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    mode_grad, ops::ModeGradCPUKernel<paddle::platform::CPUPlace, float>,
-    ops::ModeGradCPUKernel<paddle::platform::CPUPlace, double>,
-    ops::ModeGradCPUKernel<paddle::platform::CPUPlace, int32_t>,
-    ops::ModeGradCPUKernel<paddle::platform::CPUPlace, int64_t>);
