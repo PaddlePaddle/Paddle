@@ -43,8 +43,8 @@ namespace phi {
 ::phi::DenseTensor CreateGPUDenseTensor(
     const ::phi::GPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
-    host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::LayoutType> layout,
     host_context::Attribute<::infrt::PrecisionType> precision) {
   return ::phi::DenseTensor(
       const_cast<::phi::Allocator*>(&context.GetAllocator()),
