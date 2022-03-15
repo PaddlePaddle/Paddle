@@ -13,13 +13,12 @@
 // limitations under the License.
 
 #include "paddle/infrt/host_context/paddle_mlir.h"
-#include "paddle/infrt/dialect/basic_kernels.h"
-#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd_ops_info.h"
 
 MLIRModelGenImpl::MLIRModelGenImpl()
     : context_(infrt::Global::getMLIRContext()), builder_(context_) {
-  context_->allowUnregisteredDialects();
   context_->getOrLoadDialect<mlir::StandardOpsDialect>();
   context_->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context_->getOrLoadDialect<infrt::dt::DTDialect>();
@@ -173,7 +172,11 @@ void MLIRModelGenImpl::UpdateModelParams(
       ConvertDataType(var_desc.type().lod_tensor().tensor().data_type(),
                       builder_,
                       &precision_);
-      mlir::Type type_ = mlir::RankedTensorType::get(dims, precision_);
+      mlir::Type type_ =
+          infrt::DenseTensorType::get(context_,
+                                      infrt::TargetType::CPU,
+                                      infrt::PrecisionType::FLOAT32,
+                                      infrt::LayoutType::NCHW);
       auto op = builder_.create<infrt::dt::TensorMapGetTensorOp>(
           mlir::UnknownLoc::get(context_), type_, map, name);
       params_map_.insert(std::pair<std::string, mlir::Value>(
@@ -200,12 +203,11 @@ void MLIRModelGenImpl::UpdateModelOutputs(
         llvm::SmallVector<mlir::Type, 4> resultTypes;
         llvm::SmallVector<mlir::NamedAttribute, 4> attrs;
 
-        mlir::OperationState state(
-            loc,
-            ::infrt::dialect::ReturnOp::getOperationName(),
-            operands,
-            resultTypes,
-            attrs);
+        mlir::OperationState state(loc,
+                                   ::infrt::ReturnOp::getOperationName(),
+                                   operands,
+                                   resultTypes,
+                                   attrs);
         builder_.createOperation(state);
       }
     }
