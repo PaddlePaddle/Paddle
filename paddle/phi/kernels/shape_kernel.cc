@@ -13,12 +13,43 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/shape_kernel.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/shape_kernel_impl.h"
 
+namespace phi {
+
+template <typename T, typename Context>
+void ShapeKernel(const Context& ctx,
+                 const DenseTensor& input,
+                 DenseTensor* out) {
+  auto in_var = &input;
+  phi::DDim in_dims;
+  in_dims = in_var->dims();
+  auto out_t = out;
+  out_t->Resize({in_dims.size()});
+  auto out_data = ctx.template HostAlloc<int32_t>(out_t);
+  for (int i = 0; i < in_dims.size(); ++i) {
+    out_data[i] = in_dims[i];
+  }
+}
+
+}  // namespace phi
+
+PD_REGISTER_KERNEL(shape,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ShapeKernel,
+                   bool,
+                   int,
+                   int8_t,
+                   uint8_t,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(shape,
                    GPU,
                    ALL_LAYOUT,
@@ -33,3 +64,4 @@ PD_REGISTER_KERNEL(shape,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    phi::dtype::float16) {}
+#endif
