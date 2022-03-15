@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,6 @@ import paddle
 import numpy as np
 import paddle.nn as nn
 import paddle.utils as utils
-import paddle.fluid as fluid
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.distributed.auto_parallel as auto
@@ -102,6 +101,32 @@ class MLPLayer(nn.Layer):
         return out
 
 
+def loop_cond(i, loop_len, input_array):
+    return i < loop_len
+
+
+def loop_body(i, loop_len, input_array):
+    pre_input = paddle.tensor.array_read(array=input_array, i=i)
+    mlp_while0 = MLPLayer(
+        hidden_size=hidden_size,
+        intermediate_size=4 * hidden_size,
+        dropout_ratio=0.1,
+        initializer_range=0.02)
+
+    mlp_while1 = MLPLayer(
+        hidden_size=hidden_size,
+        intermediate_size=4 * hidden_size,
+        dropout_ratio=0.1,
+        initializer_range=0.02)
+
+    output = mlp_while0(pre_input)
+    cur_pred = mlp_while1(output)
+    # 更新循环条件
+    i = paddle.increment(x=i, value=1)
+    paddle.tensor.array_write(cur_pred, array=input_array, i=i)
+    return i, loop_len, input_array
+
+
 def get_program():
     dist_strategy = fleet.DistributedStrategy()
     dist_strategy.semi_auto = True
@@ -109,13 +134,12 @@ def get_program():
 
     train_program = static.Program()
     start_program = static.Program()
-    with fluid.program_guard(train_program, start_program):
+    with static.program_guard(train_program, start_program):
 
         # 循环计数器
-        i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+        i = paddle.full(shape=[1], fill_value=0, dtype='int64')
         # 循环次数
-        loop_len = fluid.layers.fill_constant(
-            shape=[1], dtype='int64', value=epoch_num)
+        loop_len = paddle.full(shape=[1], fill_value=epoch_num, dtype='int64')
 
         # input
         input = static.data(
@@ -151,33 +175,12 @@ def get_program():
             initializer_range=0.02)
         pred = mlp_start(input)
 
-        input_array = fluid.layers.array_write(pred, i)
-        cond = fluid.layers.less_than(x=i, y=loop_len)
-        while_op = fluid.layers.While(cond=cond)
-        with while_op.block():
-            pre_input = fluid.layers.array_read(array=input_array, i=i)
-            mlp_while0 = MLPLayer(
-                hidden_size=hidden_size,
-                intermediate_size=4 * hidden_size,
-                dropout_ratio=0.1,
-                initializer_range=0.02)
-
-            mlp_while1 = MLPLayer(
-                hidden_size=hidden_size,
-                intermediate_size=4 * hidden_size,
-                dropout_ratio=0.1,
-                initializer_range=0.02)
-
-            output = mlp_while0(pre_input)
-
-            cur_pred = mlp_while1(output)
-
-            # 更新循环条件
-            i = fluid.layers.increment(x=i, value=1, in_place=True)
-            fluid.layers.array_write(cur_pred, array=input_array, i=i)
-            fluid.layers.less_than(x=i, y=loop_len, cond=cond)
-
-        end_pred = fluid.layers.array_read(array=input_array, i=i)
+        input_array = paddle.tensor.array_write(pred, i)
+        i, loop_len, input_array = static.nn.while_loop(
+            cond=loop_cond,
+            body=loop_body,
+            loop_vars=[i, loop_len, input_array])
+        end_pred = paddle.tensor.array_read(array=input_array, i=i)
 
         mlp_end = MLPLayer(
             hidden_size=hidden_size,
@@ -199,7 +202,7 @@ class TestMLP(unittest.TestCase):
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
             train_program)
-        # print_program_with_dist_attr(complete_train_program, dist_context)
+        print_program_with_dist_attr(complete_train_program, dist_context)
 
 
 if __name__ == "__main__":
