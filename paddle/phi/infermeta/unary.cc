@@ -1631,84 +1631,6 @@ void UnfoldInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
-void OneHotRawInferMeta(const MetaTensor& x,
-                        int32_t depth,
-                        DataType dtype,
-                        bool allow_out_of_range,
-                        MetaTensor* out) {
-  auto x_dims = x.dims();
-  PADDLE_ENFORCE_GE(
-      axis,
-      -x_dims.size(),
-      phi::errors::InvalidArgument("'axis'(%d) must be greater than or equal to"
-                                   " -Rank(X)(%d).",
-                                   axis,
-                                   -x_dims.size()));
-  PADDLE_ENFORCE_LT(axis,
-                    x_dims.size(),
-                    phi::errors::InvalidArgument(
-                        "'axis'(%d) must be less than Rank(X)(%d) of Input(X).",
-                        axis,
-                        x_dims.size()));
-
-  PADDLE_ENFORCE_EQ(
-      (dtype < 0 || dtype == 2 || dtype == 3),
-      true,
-      phi::errors::InvalidArgument(
-          "The attribute of dtype in argmin/argmax must be [%s] or [%s], but "
-          "received [%s]",
-          paddle::framework::DataTypeToString(
-              paddle::framework::proto::VarType::INT32),
-          paddle::framework::DataTypeToString(
-              paddle::framework::proto::VarType::INT64),
-          paddle::framework::DataTypeToString(
-              static_cast<paddle::framework::proto::VarType::Type>(dtype))));
-
-  auto x_rank = x_dims.size();
-  if (axis < 0) axis += x_rank;
-  if (config.is_runtime) {
-    if (dtype == paddle::framework::proto::VarType::INT32) {
-      int64_t all_element_num = 0;
-      if (flatten) {
-        all_element_num = phi::product(x_dims);
-
-      } else {
-        all_element_num = x_dims[axis];
-      }
-      PADDLE_ENFORCE_LE(
-          all_element_num,
-          INT_MAX,
-          phi::errors::InvalidArgument(
-              "The element num of the argmin/argmax input at axis is "
-              "%d, is larger than int32 maximum value:%d, you must "
-              "set the dtype of argmin/argmax to 'int64'.",
-              all_element_num,
-              INT_MAX));
-    }
-  }
-  std::vector<int64_t> vec;
-  if (flatten) {
-    vec.emplace_back(static_cast<int64_t>(1));
-  } else {
-    for (int64_t i = 0; i < axis; i++) vec.emplace_back(x_dims[i]);
-    if (keepdims) {
-      vec.emplace_back(static_cast<int64_t>(1));
-    }
-    for (int64_t i = axis + 1; i < x_rank; i++) vec.emplace_back(x_dims[i]);
-  }
-  out->set_dims(phi::make_ddim(vec));
-  if (dtype == 2) {
-    out->set_dtype(DataType::INT32);
-  } else if (dtype == 3) {
-    out->set_dtype(DataType::INT64);
-  }
-}
-
-void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
-  out->set_dtype(DataType::INT64);
-  out->set_dims({1});
-}
-
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const ScalarArray& axes,
                         MetaTensor* xshape,
@@ -1744,65 +1666,13 @@ void UnsqueezeInferMeta(const MetaTensor& x,
   xshape->set_dtype(x.dtype());
 }
 
-void PadInferMeta(const MetaTensor& input,
-                  const std::vector<int>& paddings,
-                  float pad_value,
-                  MetaTensor* out,
-                  MetaConfig config) {
-  auto x_dim = input.dims();
-  PADDLE_ENFORCE_EQ(
-      static_cast<int>(paddings.size()),
-      x_dim.size() * 2,
-      phi::errors::InvalidArgument(
-          "Size of 'paddings' dimension should be equal to 2 * size of "
-          "Input(X)'s dimension, but received (size of 'paddings' dimension "
-          "is) %d vs (2 * size of Input(X)'s dimension is) %d.",
-          static_cast<int>(paddings.size()),
-          x_dim.size() * 2));
-  for (size_t i = 0; i < paddings.size(); ++i) {
-    PADDLE_ENFORCE_GE(paddings[i],
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The element of 'paddings' should >= 0, but "
-                          "received %d for index %d.",
-                          paddings[i],
-                          static_cast<int>(i)));
-  }
-  std::vector<int64_t> out_dims(x_dim.size());
-  for (int i = 0; i < x_dim.size(); ++i) {
-    if ((!config.is_runtime) && (x_dim[i] == -1)) {
-      out_dims[i] = -1;
-    } else {
-      out_dims[i] = x_dim[i] + paddings[i * 2] + paddings[i * 2 + 1];
-    }
-  }
-  out->set_dims(phi::make_ddim(out_dims));
-  if (out_dims[0] == x_dim[0]) {
-    // Only pass LoD when the first dimension is equal between
-    // output and input.
-    out->share_lod(input);
-  }
-  out->set_dtype(input.dtype());
-}
-
-void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(DataType::BOOL);
-}
-
-void PixelShuffleInferMeta(const MetaTensor& x,
-                           int upscale_factor,
-                           const std::string& data_format,
-                           MetaTensor* out) {
-  auto input_dims = x.dims();
-  PADDLE_ENFORCE_EQ(input_dims.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "Input should be a 4-D tensor of format [N, C, H, W] "
-                        "or [N, H, W, C], but got %u.",
-                        input_dims.size()));
-
-  const bool channel_last = (data_format == "NHWC");
+void OneHotRawInferMeta(const MetaTensor& x,
+                        int32_t depth,
+                        DataType dtype,
+                        bool allow_out_of_range,
+                        MetaTensor* out) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_GE(
       x_dims.size(),
       1,
       phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
