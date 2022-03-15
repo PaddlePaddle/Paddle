@@ -14,7 +14,6 @@ cc_test(test_concat_dev_api SRCS test_concat_dev_api.cc DEPS phi phi_api_utils)
 cc_test(test_split_dev_api SRCS test_split_dev_api.cc DEPS phi phi_api_utils)
 cc_test(test_sparse_utils_dev_api SRCS test_sparse_utils_dev_api.cc DEPS phi phi_api_utils)
 cc_test(test_sparse_conv3d_dev_api SRCS test_sparse_conv3d_dev_api.cc DEPS phi phi_api_utils)
-cc_test(test_sparse_pool_dev_api SRCS test_sparse_pool_dev_api.cc DEPS phi phi_api_utils)
 
 cc_test(test_math_function SRCS test_math_function.cc DEPS math_function)
 if(WITH_GPU)
