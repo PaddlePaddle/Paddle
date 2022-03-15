@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -86,11 +86,6 @@ class StringTensor : public TensorBase,
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
   DataLayout layout() const noexcept override { return DataLayout::STRING; }
-
-  /// \brief Sets the meta information of the tensor. Only when the original
-  /// attribute of Tensor is incomplete, can it be reset.
-  /// \param meta The meta information of the tensor.
-  void set_meta(StringTensorMeta&& meta);
 
   void set_meta(const StringTensorMeta& meta);
 

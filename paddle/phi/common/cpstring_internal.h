@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -136,8 +136,6 @@ typedef struct PD_PString_Small {  // NOLINT
 
 typedef struct PD_PString {  // NOLINT
   union {
-    // small conflicts with '#define small char' in RpcNdr.h for MSVC, so we use
-    // smll instead.
     PD_PString_Small smll;
     PD_PString_Large large;
     PD_PString_Offset offset;
@@ -146,19 +144,11 @@ typedef struct PD_PString {  // NOLINT
   } u;
 } PD_PString;
 
-// TODO(dero): Fix for OSS, and add C only build test.
-// _Static_assert(CHAR_BIT == 8);
-// _Static_assert(sizeof(PD_PString) == 24);
-
 HOSTDEVICE static inline PD_PString_Type PD_PString_GetType(
     const PD_PString *str) {
   return (PD_PString_Type)(str->u.raw.raw[0] & PD_PSTR_TYPE_MASK);  // NOLINT
 }
 
-// XXX(dero): For the big-endian case, this function could potentially be more
-// performant and readable by always storing the string size as little-endian
-// and always byte-swapping on big endian, resulting in a simple 'bswap'+'shr'
-// (for architectures that have a bswap op).
 HOSTDEVICE static inline size_t PD_PString_ToActualSizeT(size_t size) {
 #if PD_PSTRING_LITTLE_ENDIAN
   return size >> 2;
@@ -329,8 +319,6 @@ HOSTDEVICE static inline char *PD_PString_ResizeUninitialized(PD_PString *str,
     if (curr_type == PD_PSTR_LARGE) {
       PD_Free((void *)curr_ptr, str->u.large.cap + 1);  // NOLINT
     }
-
-    // We do not clear out the newly excluded region.
 
     return str->u.smll.str;
   }

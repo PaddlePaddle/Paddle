@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -82,14 +82,6 @@ dtype::pstring* StringTensor::data() {
           "The storage must be valid when call the mutable data function."));
   return reinterpret_cast<dtype::pstring*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
-}
-
-void StringTensor::set_meta(StringTensorMeta&& meta) {
-  PADDLE_ENFORCE(!meta_.valid(),
-                 paddle::platform::errors::InvalidArgument(
-                     "Only when the original attribute of Tensor is "
-                     "incomplete, can it be reset."));
-  meta_ = std::move(meta);
 }
 
 void StringTensor::set_meta(const StringTensorMeta& meta) {

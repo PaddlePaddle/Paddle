@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -67,17 +67,24 @@ TEST(string_tensor, ctor) {
   CHECK_EQ(tensor_1.data()[1], pshort_str);
 
   // Test Copy Assignment
-  StringTensor tensor_2 = tensor_1;
+  StringTensor tensor_2(alloc, meta);
+  tensor_2 = tensor_1;
   CHECK_EQ(tensor_2.data()[0], plong_str);
   CHECK_EQ(tensor_2.data()[1], pshort_str);
 
   // Test Move Assignment
-  StringTensor tensor_3 = std::move(tensor_1);
+  StringTensor tensor_3(alloc, meta);
+  tensor_3 = std::move(tensor_1);
   CHECK_EQ(tensor_3.data()[0], plong_str);
   CHECK_EQ(tensor_3.data()[1], pshort_str);
+}
 
-  tensor_2.set_meta(meta);
-  check_string_tensor(tensor_2, meta);
+TEST(pstring, dtype) {
+  pstring long_str = "A large pstring whose length is longer than 22.";
+  pstring short_str = "A short pstring.";
+  // Test pstring assignment
+  long_str = short_str;
+  CHECK_EQ(long_str, short_str);
 }
 
 }  // namespace tests
