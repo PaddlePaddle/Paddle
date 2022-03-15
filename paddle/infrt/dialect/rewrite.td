@@ -1,7 +1,7 @@
 #ifndef INFRT_REWRITE
 #define INFRT_REWRITE
 
-include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "paddle/infrt/dialect/pd_ops.td"
 include "paddle/infrt/dialect/pd_extra_ops.td"

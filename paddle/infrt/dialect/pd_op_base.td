@@ -6,7 +6,7 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "paddle/infrt/dialect/infrt/infrt_ops_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
 
 def PD_Dialect : Dialect {
   let name = "pd";
