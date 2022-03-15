@@ -50,7 +50,7 @@ inline bool CheckMatrixInvertible(const Context& dev_ctx,
                                   const DenseTensor* det) {
   auto numel = det->numel();
 
-  DenseTensor dev_tensor = phi::Empty<T, Context>(dev_ctx, {1});
+  DenseTensor dev_tensor = phi::Empty<bool, Context>(dev_ctx, {1});
 
   // set false
   phi::funcs::SetConstant<Context, bool> zero;
@@ -58,7 +58,7 @@ inline bool CheckMatrixInvertible(const Context& dev_ctx,
 
   // find whether zero
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-  FoundZeroFunctor<T> functor(det->data<T>(), numel, data);
+  FoundZeroFunctor<T> functor(det->data<T>(), numel, dev_tensor.data<bool>());
   for_range(functor);
 
   // copy to host

@@ -21,7 +21,7 @@ KernelSignature DeterminantGradOpArgumentMapping(
   return KernelSignature("determinant_grad",
                          {"Input", "Out", GradVarName("Out")},
                          {},
-                         {GradVarName("X")});
+                         {GradVarName("Input")});
 }
 
 }  // namespace phi
