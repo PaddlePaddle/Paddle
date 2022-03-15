@@ -111,6 +111,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
   try
   {
     %s
+    %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
     tstate = PyEval_SaveThread();
@@ -171,8 +172,17 @@ std::string GenerateOpFunctionsBody(
   std::string py_arg = "";
   int arg_idx = 0;
   int input_args_num = 0;
+  std::string pythonc_record_str = "";
   std::string ins_cast_str = "";
   std::string view_strategy_str = "";
+  // Add python_c event record
+  std::string event_name = op_type + " pybind_imperative_func";
+  const char* PYTHONC_RECORD_TEMPLATE =
+      "paddle::platform::RecordEvent pythonc_record_event(\"%s\", "
+      "paddle::platform::TracerEventType::Operator, 1);\n";
+  pythonc_record_str =
+      paddle::string::Sprintf(PYTHONC_RECORD_TEMPLATE, event_name);
+
   for (auto& input : op_proto->inputs()) {
     auto& in_name = input.name();
     // skip those dispensable inputs, like ResidualData in conv2d
@@ -300,8 +310,8 @@ std::string GenerateOpFunctionsBody(
 
   // generate op funtcion body
   auto op_function_str = paddle::string::Sprintf(
-      OP_FUNCTION_TEMPLATE, func_name, ins_cast_str, op_type, input_args_num,
-      call_api_str, return_str);
+      OP_FUNCTION_TEMPLATE, func_name, pythonc_record_str, ins_cast_str,
+      op_type, input_args_num, call_api_str, return_str);
 
   return op_function_str;
 }
