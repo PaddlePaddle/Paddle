@@ -2064,7 +2064,6 @@ static std::string GenerateGradNodeCCContents(
   }
 
   const char* BWD_RETURN_TEMPLATE =
-      "  VLOG(1) << \"Run in GradNode, create_graph is: \" << create_graph; \n"
       "  std::vector<std::vector<paddle::experimental::Tensor>> hooked_grads = "
       "GradNode%s::ApplyGradientHooks(grads);\n"
       "  std::vector<std::vector<paddle::experimental::Tensor>> outputs(%d);\n"
@@ -2078,7 +2077,7 @@ static std::string GenerateGradNodeCCContents(
   const char* GRAD_FUNCTION_TEMPLATE =
       "std::vector<std::vector<paddle::experimental::Tensor>> "
       "GradNode%s::operator()(const "
-      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, const "
+      "std::vector<std::vector<paddle::experimental::Tensor>>& grads, "
       "bool create_graph) {\n%s\n}";
   std::string grad_function_str = paddle::string::Sprintf(
       GRAD_FUNCTION_TEMPLATE, fwd_op_type, generated_grad_function_body);
