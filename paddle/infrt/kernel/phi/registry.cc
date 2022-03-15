@@ -34,17 +34,23 @@ namespace kernel {
 void RegisterPhiKernels(host_context::KernelRegistry* registry) {
   registry->AddKernel("phi_dt.create_context.cpu",
                       INFRT_KERNEL(infrt::kernel::phi::CreateCPUContext));
-  registry->AddKernel("phi_dt.create_dense_tensor.cpu",
-                      INFRT_KERNEL(infrt::kernel::phi::CreateDenseTensor));
-  registry->AddKernel("phi_dt.fill_dense_tensor.f32",
-                      INFRT_KERNEL(infrt::kernel::phi::FillDenseTensorF32));
+  registry->AddKernelWithAttrs(
+      "phi_dt.create_dense_tensor.cpu",
+      INFRT_KERNEL(infrt::kernel::phi::CreateDenseTensor),
+      {"dims", "lod", "layout", "precision"});
+  registry->AddKernelWithAttrs(
+      "phi_dt.fill_dense_tensor.f32",
+      INFRT_KERNEL(infrt::kernel::phi::FillDenseTensorF32),
+      {"value"});
   registry->AddKernel("phi_dt.print_tensor",
                       INFRT_KERNEL(infrt::kernel::phi::PrintDenseTensor));
 
   registry->AddKernel("phi_dt.create_context.gpu",
                       INFRT_KERNEL(infrt::kernel::phi::CreateGPUContext));
-  registry->AddKernel("phi_dt.create_dense_tensor.gpu",
-                      INFRT_KERNEL(infrt::kernel::phi::CreateGPUDenseTensor));
+  registry->AddKernelWithAttrs(
+      "phi_dt.create_dense_tensor.gpu",
+      INFRT_KERNEL(infrt::kernel::phi::CreateGPUDenseTensor),
+      {"dims", "lod", "layout", "precision"});
 }
 
 }  // namespace kernel
