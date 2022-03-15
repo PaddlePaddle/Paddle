@@ -50,7 +50,7 @@ class EagerScaleTestCase(unittest.TestCase):
             data_eager.retain_grads()
 
             out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
-            self.assertFalse(data_eager.grad._is_initialized())
+            self.assertIsNone(data_eager.grad)
             out_eager.backward(grad_eager, False)
             self.assertTrue(data_eager.grad._is_initialized())
             self.assertTrue(np.array_equal(data_eager.grad.numpy(), input_data))
@@ -72,7 +72,7 @@ class EagerScaleTestCase(unittest.TestCase):
             data_eager.retain_grads()
 
             out_eager = core.eager.scale(data_eager, 1.0, 0.9, True, True)
-            self.assertFalse(data_eager.grad._is_initialized())
+            self.assertIsNone(data_eager.grad)
             with self.assertRaisesRegexp(
                     AssertionError,
                     "The type of grad_tensor must be paddle.Tensor"):
@@ -632,13 +632,13 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             tensor2.persistable = True
             tensor2.stop_gradient = False
             if core.is_compiled_with_cuda():
-                tensor3 = tensor2._copy_to(True, core.CUDAPlace(0))
+                tensor3 = tensor2._copy_to(core.CUDAPlace(0), True)
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
                 self.assertTrue(tensor3.persistable, True)
                 self.assertTrue(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_gpu_place())
             else:
-                tensor3 = tensor2._copy_to(True, core.CPUPlace())
+                tensor3 = tensor2._copy_to(core.CPUPlace(), True)
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
                 self.assertTrue(tensor3.persistable, True)
                 self.assertTrue(tensor3.stop_gradient, True)

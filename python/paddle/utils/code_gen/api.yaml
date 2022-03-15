@@ -158,6 +158,7 @@
     param : [x]
   kernel :
     func : scale, scale_sr
+  inplace : (x -> out)
 
 - api : sign
   args : (Tensor x)
