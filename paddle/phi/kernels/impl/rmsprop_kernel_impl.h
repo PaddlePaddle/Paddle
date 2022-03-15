@@ -16,11 +16,12 @@
 
 #include <math.h>
 
+#include "paddle/phi/kernels/rmsprop_kernel.h"
+
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/rmsprop_kernel.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 

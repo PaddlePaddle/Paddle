@@ -862,8 +862,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
         return output, model.parameters()
 
     def _get_places(self):
-        # places = ['cpu']
-        places = []
+        places = ['cpu']
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
         return places

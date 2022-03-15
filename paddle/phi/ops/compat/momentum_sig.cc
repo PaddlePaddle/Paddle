@@ -40,7 +40,6 @@ KernelSignature MomentumOpArgumentMapping(const ArgumentMappingContext& ctx) {
          "rescale_grad"},
         {"ParamOut", "VelocityOut", "MasterParamOut"});
   }
-  LOG(ERROR) << "not found";
 
   return KernelSignature("unregistered", {}, {}, {});
 }
