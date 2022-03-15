@@ -276,6 +276,7 @@ class TestBitwiseXorBool(TestBitwiseXor):
 class TestBitwiseNot(OpTest):
     def setUp(self):
         self.op_type = "bitwise_not"
+        self.python_api = paddle.bitwise_not
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -288,7 +289,7 @@ class TestBitwiseNot(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         pass
@@ -351,4 +352,5 @@ class TestBitwiseNotBool(TestBitwiseNot):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

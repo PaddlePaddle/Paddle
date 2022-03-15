@@ -53,6 +53,7 @@ class TestSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "softmax"
+        self.python_api = paddle.nn.functional.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -81,9 +82,13 @@ class TestSoftmaxOp(OpTest):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
+                place,
+                atol=1e-5,
+                check_dygraph=(self.use_mkldnn == False),
+                check_eager=False)
         else:
-            self.check_output(check_dygraph=(self.use_mkldnn == False))
+            self.check_output(
+                check_dygraph=(self.use_mkldnn == False), check_eager=False)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode

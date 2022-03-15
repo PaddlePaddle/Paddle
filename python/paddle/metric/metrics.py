@@ -798,8 +798,12 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             total = _varbase_creator(dtype="int32")
 
         topk_out, topk_indices = paddle.topk(input, k=k)
+        if _in_eager_mode:
+            _acc = _C_ops.final_state_accuracy(topk_out, topk_indices, label)
+            return _acc
         _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label, correct,
                                      total)
+
         return _acc
 
     helper = LayerHelper("accuracy", **locals())

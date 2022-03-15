@@ -21,6 +21,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestUnfoldOp(OpTest):
@@ -37,6 +38,7 @@ class TestUnfoldOp(OpTest):
         self.strides = [1, 1]
         self.paddings = [1, 1, 1, 1]
         self.dilations = [1, 1]
+        self.python_api = paddle.nn.functional.unfold
         input_shape = [
             self.batch_size, self.input_channels, self.input_height,
             self.input_width
@@ -95,10 +97,10 @@ class TestUnfoldOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Y', check_eager=True)
 
 
 class TestUnfoldAPI(TestUnfoldOp):
@@ -122,9 +124,18 @@ class TestUnfoldAPI(TestUnfoldOp):
                 result = m(input)
                 self.assertTrue(np.allclose(result.numpy(), self.outputs['Y']))
 
+                with _test_eager_guard():
+                    input = fluid.dygraph.to_variable(self.inputs['X'])
+                    m = paddle.nn.Unfold(**self.attrs)
+                    m.eval()
+                    result = m(input)
+                    self.assertTrue(
+                        np.allclose(result.numpy(), self.outputs['Y']))
+
     def test_info(self):
         str(paddle.nn.Unfold(**self.attrs))
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

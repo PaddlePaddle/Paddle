@@ -17,6 +17,7 @@ from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..static import Variable
 from ..framework import VarBase as Tensor
+from paddle.fluid.framework import _in_eager_mode
 
 # TODO: define logic functions of a tensor  
 from ..fluid.layers import is_empty  # noqa: F401
@@ -452,6 +453,8 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
         if binary_op:
             return op(x, y)
         else:
+            if _in_eager_mode():
+                return _C_op.final_state_bitewise_not(x)
             return op(x)
 
     check_variable_and_dtype(

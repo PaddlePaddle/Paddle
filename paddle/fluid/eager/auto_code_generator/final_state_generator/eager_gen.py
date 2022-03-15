@@ -28,6 +28,7 @@ namespace = ""
 yaml_types_mapping = {
     'int' : 'int', 'int32' : 'int32_t', 'int64' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
+    'str' : 'std::string', \
     'Backend' : 'paddle::experimental::Backend', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
@@ -235,7 +236,7 @@ def ParseYamlReturns(string):
         else:
             ret_type = ret.strip()
 
-        assert ret_type in yaml_types_mapping.keys()
+        assert ret_type in yaml_types_mapping.keys(), ret_type
         ret_type = yaml_types_mapping[ret_type]
 
         assert "Tensor" in ret_type
@@ -426,7 +427,7 @@ def SlotNameMatching(backward_inputs_list, backward_returns_list,
                     backward_input_type, False, backward_input_pos
                 ]
             else:
-                assert False
+                assert False, backward_input_name
 
     for backward_output in backward_returns_list:
         backward_output_name = backward_output[0]
@@ -435,7 +436,8 @@ def SlotNameMatching(backward_inputs_list, backward_returns_list,
 
         backward_fwd_name = FindForwardName(backward_output_name)
         assert backward_fwd_name is not None
-        assert backward_fwd_name in forward_inputs_position_map.keys()
+        assert backward_fwd_name in forward_inputs_position_map.keys(
+        ), backward_fwd_name
 
         matched_forward_input_type = forward_inputs_position_map[
             backward_fwd_name][0]
@@ -684,10 +686,10 @@ def GenerateNodeCreationCodes(
         else:
             # Tuple api_result
             if IsPlainTensorType(rtype):
-                output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);"
+                output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));"
             else:
                 assert IsVectorTensorType(rtype)
-                output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);\n"
+                output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));\n"
                 output_autograd_meta += f"    std::vector<egr::AutogradMeta*>* {output_autograd_meta_name} = &{output_autograd_meta_vec_name};"
 
         outputs_autograd_meta_list.append(output_autograd_meta)
@@ -1198,7 +1200,7 @@ if __name__ == "__main__":
             print("Generated Backward Grad Output Map: ",
                   backward_grad_output_map)
 
-            # Backward Validation Check
+            # Backward Validation Check            
             BackwardValidationCheck(backward_fwd_input_map,
                                     backward_grad_input_map,
                                     backward_attrs_list)

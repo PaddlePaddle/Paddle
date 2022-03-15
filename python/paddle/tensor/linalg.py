@@ -14,7 +14,7 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..framework import _varbase_creator, _dygraph_tracer
+from ..framework import _varbase_creator, _dygraph_tracer, _in_eager_mode
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
 
@@ -1205,6 +1205,8 @@ def cholesky(x, upper=False, name=None):
 
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_cholesky(x, upper)
         return _C_ops.cholesky(x, "upper", upper)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
@@ -2734,6 +2736,8 @@ def cholesky_solve(x, y, upper=False, name=None):
         # [-2.5, -7, 9.5]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_cholesky_solve(x, y, upper)
         return _C_ops.cholesky_solve(x, y, 'upper', upper)
 
     helper = LayerHelper("cholesky_solve", **locals())

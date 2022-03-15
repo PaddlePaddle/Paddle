@@ -109,6 +109,7 @@ class TestCholeskySolveOp(OpTest):
 
     def setUp(self):
         self.op_type = "cholesky_solve"
+        self.python_api = paddle.linalg.cholesky_solve
         self.config()
 
         if self.upper:
@@ -125,137 +126,134 @@ class TestCholeskySolveOp(OpTest):
         self.outputs = {'Out': self.output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
-    def test_check_grad_normal(self):
-        self.check_grad(['Y'], 'Out', max_relative_error=0.01)
+    # def test_check_grad_normal(self):
+    #     self.check_grad(['Y'], 'Out', max_relative_error=0.01, check_eager=True)
 
+    # # 3D(broadcast) + 3D, upper=True
+    # class TestCholeskySolveOp3(TestCholeskySolveOp):
+    #     """
+    #     case 3
+    #     """
 
-# 3D(broadcast) + 3D, upper=True
-class TestCholeskySolveOp3(TestCholeskySolveOp):
-    """
-    case 3
-    """
+    #     def config(self):
+    #         self.y_shape = [1, 10, 10]
+    #         self.x_shape = [2, 10, 5]
+    #         self.upper = True
+    #         self.dtype = np.float64
 
-    def config(self):
-        self.y_shape = [1, 10, 10]
-        self.x_shape = [2, 10, 5]
-        self.upper = True
-        self.dtype = np.float64
+    # class TestCholeskySolveAPI(unittest.TestCase):
+    #     def setUp(self):
+    #         np.random.seed(2021)
+    #         self.place = [paddle.CPUPlace()]
+    #         # self.place = [paddle.CUDAPlace(0)]
+    #         self.dtype = "float64"
+    #         self.upper = True
+    #         if core.is_compiled_with_cuda():
+    #             self.place.append(paddle.CUDAPlace(0))
 
+    #     def check_static_result(self, place):
+    #         paddle.enable_static()
+    #         with fluid.program_guard(fluid.Program(), fluid.Program()):
+    #             x = fluid.data(name="x", shape=[10, 2], dtype=self.dtype)
+    #             y = fluid.data(name="y", shape=[10, 10], dtype=self.dtype)
+    #             z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
 
-class TestCholeskySolveAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2021)
-        self.place = [paddle.CPUPlace()]
-        # self.place = [paddle.CUDAPlace(0)]
-        self.dtype = "float64"
-        self.upper = True
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+    #             x_np = np.random.random([10, 2]).astype(self.dtype)
+    #             y_np = np.random.random([10, 10]).astype(self.dtype)
+    #             if self.upper:
+    #                 umat = np.triu(y_np)
+    #             else:
+    #                 umat = np.tril(y_np)
+    #             z_np = cholesky_solution(umat, x_np, upper=self.upper)
+    #             z2_np = scipy_cholesky_solution(umat, x_np, upper=self.upper)
 
-    def check_static_result(self, place):
-        paddle.enable_static()
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = fluid.data(name="x", shape=[10, 2], dtype=self.dtype)
-            y = fluid.data(name="y", shape=[10, 10], dtype=self.dtype)
-            z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
+    #             exe = fluid.Executor(place)
+    #             fetches = exe.run(fluid.default_main_program(),
+    #                               feed={"x": x_np,
+    #                                     "y": umat},
+    #                               fetch_list=[z])
+    #             self.assertTrue(np.allclose(fetches[0], z_np))
 
-            x_np = np.random.random([10, 2]).astype(self.dtype)
-            y_np = np.random.random([10, 10]).astype(self.dtype)
-            if self.upper:
-                umat = np.triu(y_np)
-            else:
-                umat = np.tril(y_np)
-            z_np = cholesky_solution(umat, x_np, upper=self.upper)
-            z2_np = scipy_cholesky_solution(umat, x_np, upper=self.upper)
+    #     def test_static(self):
+    #         for place in self.place:
+    #             self.check_static_result(place=place)
 
-            exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"x": x_np,
-                                    "y": umat},
-                              fetch_list=[z])
-            self.assertTrue(np.allclose(fetches[0], z_np))
+    #     def test_dygraph(self):
+    #         def run(place):
+    #             paddle.disable_static(place)
+    #             x_np = np.random.random([20, 2]).astype(self.dtype)
+    #             y_np = np.random.random([20, 20]).astype(self.dtype)
+    #             z_np = scipy_cholesky_solution(y_np, x_np, upper=self.upper)
 
-    def test_static(self):
-        for place in self.place:
-            self.check_static_result(place=place)
+    #             x = paddle.to_tensor(x_np)
+    #             y = paddle.to_tensor(y_np)
+    #             z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
 
-    def test_dygraph(self):
-        def run(place):
-            paddle.disable_static(place)
-            x_np = np.random.random([20, 2]).astype(self.dtype)
-            y_np = np.random.random([20, 20]).astype(self.dtype)
-            z_np = scipy_cholesky_solution(y_np, x_np, upper=self.upper)
+    #             self.assertTrue(np.allclose(z_np, z.numpy()))
+    #             self.assertEqual(z_np.shape, z.numpy().shape)
+    #             paddle.enable_static()
 
-            x = paddle.to_tensor(x_np)
-            y = paddle.to_tensor(y_np)
-            z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
+    #         for idx, place in enumerate(self.place):
+    #             run(place)
 
-            self.assertTrue(np.allclose(z_np, z.numpy()))
-            self.assertEqual(z_np.shape, z.numpy().shape)
-            paddle.enable_static()
+    #     def test_boardcast(self):
+    #         def run(place):
+    #             paddle.disable_static()
+    #             x_np = np.random.random([1, 30, 2]).astype(self.dtype)
+    #             y_np = np.random.random([2, 30, 30]).astype(self.dtype)
+    #             nx_np = np.concatenate((x_np, x_np), axis=0)
 
-        for idx, place in enumerate(self.place):
-            run(place)
+    #             z_sci = scipy_cholesky_solution_batch(y_np, nx_np, upper=self.upper)
 
-    def test_boardcast(self):
-        def run(place):
-            paddle.disable_static()
-            x_np = np.random.random([1, 30, 2]).astype(self.dtype)
-            y_np = np.random.random([2, 30, 30]).astype(self.dtype)
-            nx_np = np.concatenate((x_np, x_np), axis=0)
+    #             x = paddle.to_tensor(x_np)
+    #             y = paddle.to_tensor(y_np)
+    #             z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
+    #             self.assertEqual(z_sci.shape, z.numpy().shape)
+    #             self.assertTrue(np.allclose(z_sci, z.numpy()))
 
-            z_sci = scipy_cholesky_solution_batch(y_np, nx_np, upper=self.upper)
+    #         for idx, place in enumerate(self.place):
+    #             run(place)
 
-            x = paddle.to_tensor(x_np)
-            y = paddle.to_tensor(y_np)
-            z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
-            self.assertEqual(z_sci.shape, z.numpy().shape)
-            self.assertTrue(np.allclose(z_sci, z.numpy()))
+    # class TestCholeskySolveOpError(unittest.TestCase):
+    #     def test_errors(self):
+    #         paddle.enable_static()
+    #         with program_guard(Program(), Program()):
+    #             # The input type of solve_op must be Variable.
+    #             x1 = fluid.create_lod_tensor(
+    #                 np.array([[-1]]), [[1]], fluid.CPUPlace())
+    #             y1 = fluid.create_lod_tensor(
+    #                 np.array([[-1]]), [[1]], fluid.CPUPlace())
+    #             self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x1, y1)
 
-        for idx, place in enumerate(self.place):
-            run(place)
+    #             # The data type of input must be float32 or float64.        
+    #             x2 = fluid.data(name="x2", shape=[30, 30], dtype="bool")
+    #             y2 = fluid.data(name="y2", shape=[30, 10], dtype="bool")
+    #             self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x2, y2)
 
+    #             x3 = fluid.data(name="x3", shape=[30, 30], dtype="int32")
+    #             y3 = fluid.data(name="y3", shape=[30, 10], dtype="int32")
+    #             self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x3, y3)
 
-class TestCholeskySolveOpError(unittest.TestCase):
-    def test_errors(self):
-        paddle.enable_static()
-        with program_guard(Program(), Program()):
-            # The input type of solve_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            y1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x1, y1)
+    #             x4 = fluid.data(name="x4", shape=[30, 30], dtype="float16")
+    #             y4 = fluid.data(name="y4", shape=[30, 10], dtype="float16")
+    #             self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x4, y4)
 
-            # The data type of input must be float32 or float64.        
-            x2 = fluid.data(name="x2", shape=[30, 30], dtype="bool")
-            y2 = fluid.data(name="y2", shape=[30, 10], dtype="bool")
-            self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x2, y2)
+    #             # The number of dimensions of input'X must be >= 2.
+    #             x5 = fluid.data(name="x5", shape=[30], dtype="float64")
+    #             y5 = fluid.data(name="y5", shape=[30, 30], dtype="float64")
+    #             self.assertRaises(ValueError, paddle.linalg.cholesky_solve, x5, y5)
 
-            x3 = fluid.data(name="x3", shape=[30, 30], dtype="int32")
-            y3 = fluid.data(name="y3", shape=[30, 10], dtype="int32")
-            self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x3, y3)
+    #             # The number of dimensions of input'Y must be >= 2.
+    #             x6 = fluid.data(name="x6", shape=[30, 30], dtype="float64")
+    #             y6 = fluid.data(name="y6", shape=[30], dtype="float64")
+    #             self.assertRaises(ValueError, paddle.linalg.cholesky_solve, x6, y6)
 
-            x4 = fluid.data(name="x4", shape=[30, 30], dtype="float16")
-            y4 = fluid.data(name="y4", shape=[30, 10], dtype="float16")
-            self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x4, y4)
-
-            # The number of dimensions of input'X must be >= 2.
-            x5 = fluid.data(name="x5", shape=[30], dtype="float64")
-            y5 = fluid.data(name="y5", shape=[30, 30], dtype="float64")
-            self.assertRaises(ValueError, paddle.linalg.cholesky_solve, x5, y5)
-
-            # The number of dimensions of input'Y must be >= 2.
-            x6 = fluid.data(name="x6", shape=[30, 30], dtype="float64")
-            y6 = fluid.data(name="y6", shape=[30], dtype="float64")
-            self.assertRaises(ValueError, paddle.linalg.cholesky_solve, x6, y6)
-
-            # The inner-most 2 dimensions of input'X should be equal to each other
-            x7 = fluid.data(name="x7", shape=[2, 3, 4], dtype="float64")
-            y7 = fluid.data(name="y7", shape=[2, 4, 3], dtype="float64")
-            self.assertRaises(ValueError, paddle.linalg.cholesky_solve, x7, y7)
+    #             # The inner-most 2 dimensions of input'X should be equal to each other
+    #             x7 = fluid.data(name="x7", shape=[2, 3, 4], dtype="float64")
+    #             y7 = fluid.data(name="y7", shape=[2, 4, 3], dtype="float64")
+    #             self.assertRaises(ValueError, paddle.linalg.cholesky_solve, x7, y7)
 
 
 if __name__ == "__main__":

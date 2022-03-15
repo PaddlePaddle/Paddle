@@ -561,6 +561,8 @@ def relu(x, name=None):
     """
 
     if in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_relu(x)
         return _C_ops.relu(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
@@ -954,6 +956,8 @@ def softmax(x, axis=-1, dtype=None, name=None):
     if in_dynamic_mode():
         outs_cast = x if dtype is None \
             else _C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
+        if _in_eager_mode():
+            return _C_ops.final_state_softmax(outs_cast, axis)
         return _C_ops.softmax(outs_cast, 'axis', axis, 'use_cudnn', use_cudnn)
 
     if dtype is None:

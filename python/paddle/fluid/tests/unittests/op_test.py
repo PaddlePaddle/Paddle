@@ -545,7 +545,8 @@ class OpTest(unittest.TestCase):
             v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
-            return fluid.dygraph.base.to_variable(value)
+            print("init her")
+            return paddle.to_tensor(value)
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
         """Get LoD input data whose batch size is 1.

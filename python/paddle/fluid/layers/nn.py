@@ -14827,6 +14827,11 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "Unexpected type of paddings, it should be either an integer or a list"
             "of 2 or 4 integers")
 
+    if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_op.final_state_unfold(x, kernel_sizes, strdides, paddings,
+                                            dilations)
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="unfold",

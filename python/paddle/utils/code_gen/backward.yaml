@@ -112,55 +112,56 @@
 #     func : maxout_grad
 
 
-# - backward_api : put_along_axis_grad
-#   forward : put_along_axis (Tensor x, Tensor index, Tensor value, int axis, string reduce) -> Tensor(out)
-#   args : (Tensor x, Tensor index, Tensor out_grad, int axis, string reduce)
-#   output : Tensor(x_grad), Tensor(value_grad)
-#   infer_meta :
-#     func : GeneralBinaryGradInferMeta
-#     param : [x, valule]
-#   kernel :
-#     func : put_along_axis_grad
+# output is optional 如何处理
+- backward_api : put_along_axis_grad
+  forward : put_along_axis (Tensor x, Tensor index, Tensor value, int axis, str reduce) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor out_grad, int axis, str reduce)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, index]
+  kernel :
+    func : put_along_axis_grad
 
-# - backward_api : take_along_axis_grad
-#   forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)
-#   args : (Tensor x, Tensor index, Tensor out_grad, int axis)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : take_along_axis_grad
+- backward_api : take_along_axis_grad
+  forward : take_along_axis (Tensor x, Tensor index, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : take_along_axis_grad
 
-# - backward_api : maxtrix_power_grad
-#   forward : maxtrix_power (Tensor x, int n) -> Tensor(out)
-#   args : (Tensor x, Tensor out, Tensor out_grad, int n)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : maxtrix_power_grad
+- backward_api : matrix_power_grad
+  forward : matrix_power (Tensor x, int n) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int n)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : matrix_power_grad
   
-# - backward_api : eigh_grad
-#   forward : eigh (Tensor x, string uplo) -> Tensor(out_w), Tensor(out_v)
-#   args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [out_v]
-#   kernel :
-#     func : eigh_grad
+- backward_api : eigh_grad
+  forward : eigh (Tensor x, str uplo) -> Tensor(out_w), Tensor(out_v)
+  args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_v]
+  kernel :
+    func : eigh_grad
 
-# - backward_api : segment_pool_grad
-#   forward : segment_pool (Tensor x, Tensor segment_ids, string pooltype) -> Tensor(out), Tensor(summed_ids)
-#   args : (Tensor x, Tensor segment_ids, Tensor out, Tensor summed_ids, Tenosr out_grad, string pooltype)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : segment_pool_grad
+- backward_api : segment_pool_grad
+  forward : segment_pool (Tensor x, Tensor segment_ids, str pooltype) -> Tensor(out), Tensor(summed_ids)
+  args : (Tensor x, Tensor segment_ids, Tensor out, Tensor summed_ids, Tensor out_grad, str pooltype)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : segment_pool_grad
 
 - backward_api : cos_grad
   forward : cos (Tensor x) -> Tensor(out)
@@ -282,19 +283,19 @@
   kernel :
     func : relu_grad
 
-# - backward_api : argsort_grad
-#   forward : argsort (Tensor x, int axis, bool descending) -> Tensor(out), tensor(indices)
-#   args : (Tensor indices, Tensor x, Tensor out_grad, int axis, bool descending)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : argsort_grad
+- backward_api : argsort_grad
+  forward : argsort (Tensor x, int axis, bool descending) -> Tensor(out), Tensor(indices)
+  args : (Tensor indices, Tensor x, Tensor out_grad, int axis, bool descending)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : argsort_grad
 
 
 # - backward_api : batch_norm_grad
-#   forward : batch_norm (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, string data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+#   forward : batch_norm (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
 #   args : (Tensor indices, Tensor x, Tensor out_grad, int axis, bool descending)
 #   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
 #   infer_meta :
@@ -312,6 +313,7 @@
 #     param : [x, y, weight, bias]
 #   kernel :
 #     func : bilinear_tensor_product_grad
+#   optional : bias
 
 # - backward_api : broadcast_tensor_grad
 #   forward : broadcast_tensors (Tensor[] x) -> Tensor [] (out)
@@ -344,8 +346,8 @@
     func : cholesky_solve_grad
 
 # - backward_api : dropout_grad
-#   forward : dropout (Tensor x, Tensor seed_tensor, float p, bool is_test, string mode, int seed, bool fix_seed) -> Tensor(out), Tensor(mask)
-#   args : (Tensor mask, Tensor out_grad, float p, bool is_test, string mode)
+#   forward : dropout (Tensor x, Tensor seed_tensor, float p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(mask)
+#   args : (Tensor mask, Tensor out_grad, float p, bool is_test, str mode)
 #   output : Tensor(x_grad)
 #   infer_meta :
 #     func : UnchangedInferMeta
@@ -354,25 +356,25 @@
 #     func : dropout_grad
 
 
-# - backward_api : erf_grad
-#   forward : erf (Tensor x) -> Tensor(out)
-#   args : (Tensor x, Tensor out, Tensor out_grad)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : erf_grad
+- backward_api : erf_grad
+  forward : erf (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : erf_grad
   
-# - backward_api : erfinv_grad
-#   forward : erf (Tensor x) -> Tensor(out)
-#   args : (Tensor out, Tensor out_grad)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : ErfinvGradInferMeta
-#     param : [out]
-#   kernel :
-#     func : erfinv_grad
+- backward_api : erfinv_grad
+  forward : erf (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : erfinv_grad
 
 # - backward_api : expand_as_grad
 #   forward : expand_as (Tensor x, Tensor y, int[] target_shape) -> Tensor(out)
@@ -395,11 +397,11 @@
 #     func : expand_grad
 
 # - backward_api : graph_send_recv_grad
-#   forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, string pool_type) -> Tensor(out), Tensor(dst_count)
-#   args : (Tensor out_grad, Tensor x, Tensor out, Tensor src_index, Tensor dst_index, Tensor dst_count, string pool_type)
+#   forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str pool_type) -> Tensor(out), Tensor(dst_count)
+#   args : (Tensor out_grad, Tensor x, Tensor out, Tensor src_index, Tensor dst_index, Tensor dst_count, str pool_type)
 #   output : Tensor(x_grad)
 #   infer_meta :
-#     func : UnchangedGradInferMeta
+#     func : UnchangedInferMeta
 #     param : [x]
 #   kernel :
 #     func : graph_send_recv_grad
@@ -407,22 +409,22 @@
 # - backward_api : label_smooth_grad
 #   forward : label_smooth (Tensor label, Tensor prior_dist, float epsilon) -> Tensor(out)
 #   args : (Tensor out_grad, float epsilon)
-#   output : Tensor(x_grad)
+#   output : Tensor(label_grad)
 #   infer_meta :
-#     func : XXXXInferMeta
-#     param : [x]
+#     func : UnchangedInferMeta
+#     param : [out_grad]
 #   kernel :
 #     func : label_smooth_grad
   
-# - backward_api : log_loss_grad
-#   forward : log_loss (Tensor input, Tensor label, float epsilon) -> Tensor(out)
-#   args : (Tensor input, Tensor label, Tensor out_grad, float epsilon)
-#   output : Tensor(input_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : log_loss_grad
+- backward_api : log_loss_grad
+  forward : log_loss (Tensor input, Tensor label, float epsilon) -> Tensor(out)
+  args : (Tensor input, Tensor label, Tensor out_grad, float epsilon)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : log_loss_grad
 
 # - backward_api : masked_selecte_grad
 #   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
@@ -445,8 +447,8 @@
 #     func : multi_dot_grad
 
 # - backward_api : nll_loss_grad
-#   forward : nll_loss (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, string reduction) -> Tensor(out), Tensor(total_weight)
-#   args : (Tensor x, Tensor label, Tensor total_weight, Tensor weight, Tensor out_grad, int64_t ignore_index, string reduction)
+#   forward : nll_loss (Tensor x, Tensor label, Tensor weight, int64 ignore_index, str reduction) -> Tensor(out), Tensor(total_weight)
+#   args : (Tensor x, Tensor label, Tensor total_weight, Tensor weight, Tensor out_grad, int64 ignore_index, str reduction)
 #   output : Tensor[] (x_grad)
 #   infer_meta :
 #     func : UnchangedInferMeta
@@ -465,8 +467,8 @@
 #     func : pad_grad
 
 # - backward_api : pixel_shuffle_grad
-#   forward : pixel_shuffle (Tensor x, int upscale_factor, string data_format) -> Tensor(out)
-#   args : (Tensor out_grad, int upscale_factor, string data_format)
+#   forward : pixel_shuffle (Tensor x, int upscale_factor, str data_format) -> Tensor(out)
+#   args : (Tensor out_grad, int upscale_factor, str data_format)
 #   output : Tensor(x_grad)
 #   infer_meta :
 #     func : XXXXXInferMeta
@@ -493,36 +495,37 @@
 #     param : [x]
 #   kernel :
 #     func : psroi_pool_grad
+#   optional : rois_num
 
-# - backward_api : selu_grad
-#   forward : selu (Tensor x, float scale, float alpha) -> Tensor(out)
-#   args : (Tensor out, Tensor out_grad, float scale, float alpha)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : XXXXXInferMeta
-#     param : [x]
-#   kernel :
-#     func : selu_grad
+- backward_api : selu_grad
+  forward : selu (Tensor x, float scale, float alpha) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float scale, float alpha)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : selu_grad
 
-# - backward_api : sigmoid_cross_entropy_with_logits_grad
-#   forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, bool normalize, int ignore_index) -> Tensor(out)
-#   args : (Tensor x, Tensor label, Tensor out_grad, bool normalize, int ingore_index)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : sigmoid_cross_entropy_with_logits_grad
+- backward_api : sigmoid_cross_entropy_with_logits_grad
+  forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, bool normalize, int ignore_index) -> Tensor(out)
+  args : (Tensor x, Tensor label, Tensor out_grad, bool normalize, int ignore_index)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : sigmoid_cross_entropy_with_logits_grad
 
-# - backward_api : tile_grad
-#   forward : tile (Tensor x, ScalarArray repeat_times) -> Tensor(out)
-#   args : (Tensor x, Tensor out_grad, ScalarArray repeat_times)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : tile_grad
+- backward_api : tile_grad
+  forward : tile (Tensor x, ScalarArray repeat_times) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, ScalarArray repeat_times)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : tile_grad
 
 # # forward backward type not match
 # - backward_api : top_k_grad 
@@ -536,25 +539,25 @@
 #     func : top_k_grad
 
 
-# - backward_api : trace_grad 
-#   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
-#   args : (Tensor out_grad, Tensor x, int offset, int axis1, int axis2)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : trace_grad
+- backward_api : trace_grad 
+  forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int offset, int axis1, int axis2)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : trace_grad
 
-# - backward_api : unfold_grad 
-#   forward : unfold (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
-#   args : (Tensor x, Tensor out_grad, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
-#   output : Tensor(x_grad)
-#   infer_meta :
-#     func : UnchangedInferMeta
-#     param : [x]
-#   kernel :
-#     func : unfold_grad
+- backward_api : unfold_grad 
+  forward : unfold (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : unfold_grad
 
 # - backward_api : where_index_grad 
 #   forward : where_index (Tensor condition) -> Tensor(out)
@@ -564,4 +567,4 @@
 #     func : UnchangedInferMeta
 #     param : [x]
 #   kernel :
-#     func : trace_grad
+#     func : where_index_grad

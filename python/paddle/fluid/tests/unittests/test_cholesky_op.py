@@ -36,6 +36,7 @@ from decorator_helper import prog_scope
 class TestCholeskyOp(OpTest):
     def setUp(self):
         self.op_type = "cholesky"
+        self.python_api = paddle.linalg.cholesky
         self._input_shape = (2, 32, 32)
         self._upper = True
         self.init_config()
@@ -54,7 +55,7 @@ class TestCholeskyOp(OpTest):
         self.outputs = {"Out": output_data}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         places = [fluid.CPUPlace()]

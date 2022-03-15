@@ -26,6 +26,7 @@ from paddle.fluid import Program, program_guard
 class BaseTestCase(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_min'
+        self.python_api = paddle.argmin
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
         self.axis = 0
@@ -41,12 +42,13 @@ class BaseTestCase(OpTest):
             self.outputs = {'Out': np.argmax(self.x, axis=self.axis)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestCase0(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.argmax
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
         self.axis = 0
@@ -63,6 +65,7 @@ class TestCase1(BaseTestCase):
 class TestCase2(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.argmax
         self.dims = (3, 4)
         self.dtype = 'int64'
         self.axis = 0
@@ -71,6 +74,7 @@ class TestCase2(BaseTestCase):
 class TestCase2_1(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.argmax
         self.dims = (3, 4)
         self.dtype = 'int64'
         self.axis = -1
@@ -95,6 +99,7 @@ class TestCase4(BaseTestCase):
 class TestCase3_(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.argmax
         self.dims = (3, )
         self.axis = 0
 
@@ -152,6 +157,7 @@ class BaseTestComplex1_2(OpTest):
 class BaseTestComplex2_1(OpTest):
     def initTestCase(self):
         self.op_type = 'arg_max'
+        self.python_api = paddle.argmax
         self.dims = (4, 5, 6)
         self.dtype = 'int32'
         self.axis = 2
@@ -202,4 +208,5 @@ class BaseTestComplex2_2(OpTest):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

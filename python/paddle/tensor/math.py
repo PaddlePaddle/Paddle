@@ -2853,6 +2853,8 @@ def tanh(x, name=None):
             # [-0.37994896 -0.19737532  0.09966799  0.29131261]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_tanh( x )
         return _C_ops.tanh(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'tanh')

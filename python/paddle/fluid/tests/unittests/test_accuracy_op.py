@@ -25,6 +25,7 @@ from paddle.fluid import compiler, Program, program_guard
 class TestAccuracyOp(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
+        self.python_api = paddle.metric.accuracy
         self.dtype = np.float32
         self.init_dtype()
         n = 8192
@@ -48,7 +49,7 @@ class TestAccuracyOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
 
 class TestAccuracyOpFp16(TestAccuracyOp):
@@ -128,4 +129,5 @@ class TestAccuracyAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

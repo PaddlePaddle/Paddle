@@ -23,7 +23,7 @@ import six
 import paddle.fluid.core as core
 
 from paddle.fluid import ParamAttr
-from paddle.fluid.framework import Program, grad_var_name
+from paddle.fluid.framework import Program, grad_var_name, _test_eager_guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
 
@@ -421,6 +421,16 @@ class TestArgsortImperative(unittest.TestCase):
         expect2 = np.argsort(-self.input_data, axis=self.axis)
         self.assertEqual((expect2 == out2.numpy()).all(), True)
 
+        with _test_eager_guard():
+            var_x = paddle.to_tensor(self.input_data)
+            out = paddle.argsort(var_x, axis=self.axis)
+            expect = np.argsort(self.input_data, axis=self.axis)
+            self.assertEqual((expect == out.numpy()).all(), True)
+
+            out2 = paddle.argsort(var_x, axis=self.axis, descending=True)
+            expect2 = np.argsort(-self.input_data, axis=self.axis)
+            self.assertEqual((expect2 == out2.numpy()).all(), True)
+
         paddle.enable_static()
 
 
@@ -443,4 +453,5 @@ class TestArgsortImperative4(TestArgsortImperative):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
