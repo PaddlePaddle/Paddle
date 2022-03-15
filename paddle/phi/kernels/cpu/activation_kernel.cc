@@ -27,6 +27,33 @@ namespace phi {
     ActivationImpl<T, Context, functor_class>(dev_ctx, x, out, functor); \
   }
 
+#define DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(name, functor_class, attr)     \
+  template <typename T, typename Context>                                   \
+  void name##Kernel(const Context& dev_ctx,                                 \
+                    const DenseTensor& x,                                   \
+                    float attr,                                             \
+                    DenseTensor* out) {                                     \
+    functor_class<T> functor;                                               \
+    auto attrs = functor.GetAttrs();                                        \
+    *(attrs[0].second) = attr;                                              \
+    ActivationImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
+  }
+
+#define DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(                               \
+    name, functor_class, attr1, attr2)                                      \
+  template <typename T, typename Context>                                   \
+  void name##Kernel(const Context& dev_ctx,                                 \
+                    const DenseTensor& x,                                   \
+                    float attr1,                                            \
+                    float attr2,                                            \
+                    DenseTensor* out) {                                     \
+    functor_class<T> functor;                                               \
+    auto attrs = functor.GetAttrs();                                        \
+    *(attrs[0].second) = attr1;                                             \
+    *(attrs[1].second) = attr2;                                             \
+    ActivationImpl<T, Context, functor_class<T>>(dev_ctx, x, out, functor); \
+  }
+
 DEFINE_CPU_ACTIVATION_KERNEL(Sin, funcs::SinFunctor<T>)
 DEFINE_CPU_ACTIVATION_KERNEL(Cos, funcs::CosFunctor<T>)
 DEFINE_CPU_ACTIVATION_KERNEL(Tan, funcs::TanFunctor<T>)
@@ -39,17 +66,31 @@ DEFINE_CPU_ACTIVATION_KERNEL(Asinh, funcs::AsinhFunctor<T>)
 DEFINE_CPU_ACTIVATION_KERNEL(Acosh, funcs::AcoshFunctor<T>)
 DEFINE_CPU_ACTIVATION_KERNEL(Atanh, funcs::AtanhFunctor<T>)
 DEFINE_CPU_ACTIVATION_KERNEL(Relu, funcs::ReluCPUFunctor<T>)
+DEFINE_CPU_ACTIVATION_KERNEL(Tanh, funcs::TanhFunctor<T>)
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, funcs::LeakyReluFunctor, alpha)
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
+                                     funcs::ThresholdedReluFunctor,
+                                     threshold)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, funcs::BReluFunctor, t_min, t_max)
 
 }  // namespace phi
-PD_REGISTER_KERNEL(sin, CPU, ALL_LAYOUT, phi::SinKernel, float, double) {}
-PD_REGISTER_KERNEL(cos, CPU, ALL_LAYOUT, phi::CosKernel, float, double) {}
-PD_REGISTER_KERNEL(tan, CPU, ALL_LAYOUT, phi::TanKernel, float, double) {}
-PD_REGISTER_KERNEL(acos, CPU, ALL_LAYOUT, phi::AcosKernel, float, double) {}
-PD_REGISTER_KERNEL(asin, CPU, ALL_LAYOUT, phi::AsinKernel, float, double) {}
-PD_REGISTER_KERNEL(atan, CPU, ALL_LAYOUT, phi::AtanKernel, float, double) {}
-PD_REGISTER_KERNEL(sinh, CPU, ALL_LAYOUT, phi::SinhKernel, float, double) {}
-PD_REGISTER_KERNEL(cosh, CPU, ALL_LAYOUT, phi::CoshKernel, float, double) {}
-PD_REGISTER_KERNEL(asinh, CPU, ALL_LAYOUT, phi::AsinhKernel, float, double) {}
-PD_REGISTER_KERNEL(acosh, CPU, ALL_LAYOUT, phi::AcoshKernel, float, double) {}
-PD_REGISTER_KERNEL(atanh, CPU, ALL_LAYOUT, phi::AtanhKernel, float, double) {}
 PD_REGISTER_KERNEL(relu, CPU, ALL_LAYOUT, phi::ReluKernel, float, double) {}
+
+#define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
+  PD_REGISTER_KERNEL(name, CPU, ALL_LAYOUT, phi::func##Kernel, float, double) {}
+
+PD_REGISTER_ACTIVATION_KERNEL(sin, Sin)
+PD_REGISTER_ACTIVATION_KERNEL(cos, Cos)
+PD_REGISTER_ACTIVATION_KERNEL(tan, Tan)
+PD_REGISTER_ACTIVATION_KERNEL(acos, Acos)
+PD_REGISTER_ACTIVATION_KERNEL(asin, Asin)
+PD_REGISTER_ACTIVATION_KERNEL(atan, Atan)
+PD_REGISTER_ACTIVATION_KERNEL(sinh, Sinh)
+PD_REGISTER_ACTIVATION_KERNEL(cosh, Cosh)
+PD_REGISTER_ACTIVATION_KERNEL(asinh, Asinh)
+PD_REGISTER_ACTIVATION_KERNEL(acosh, Acosh)
+PD_REGISTER_ACTIVATION_KERNEL(atanh, Atanh)
+PD_REGISTER_ACTIVATION_KERNEL(tanh, Tanh)
+PD_REGISTER_ACTIVATION_KERNEL(brelu, BRelu)
+PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyRelu)
+PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedRelu)
