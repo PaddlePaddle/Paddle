@@ -357,7 +357,8 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names,
                                 *global_block, &scope);
-    //for (auto & name: param_grad_names) VLOG(3) << "GRAD_PARAM_NAME:" << name;
+    // for (auto & name: param_grad_names) VLOG(3) << "GRAD_PARAM_NAME:" <<
+    // name;
     details::ShareVarsFromScope(param_grad_vars, param_grad_names,
                                 *global_block, &scope);
 
