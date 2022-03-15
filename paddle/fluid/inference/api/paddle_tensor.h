@@ -181,10 +181,10 @@ class PD_INFER_DECL Tensor {
   int device_;
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
-  std::vector<int64_t> shape_;
   bool is_ort_tensor_{false};
+  std::vector<int64_t> shape_;
   std::weak_ptr<Ort::IoBinding> binding_;
-  int idx_;
+  int idx_{-1};
 
   void SetOrtMark(bool is_ort_tensor);
 

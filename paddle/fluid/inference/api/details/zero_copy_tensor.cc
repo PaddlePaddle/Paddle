@@ -133,6 +133,11 @@ T *Tensor::data(PlaceType *place, int *size) const {
 }
 
 DataType Tensor::type() const {
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  if (is_ort_tensor_) {
+    return dtype_;
+  }
+#endif
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   auto type = paddle::framework::TransToProtoVarType(tensor->dtype());
   if (type == paddle::framework::proto::VarType::FP32) {
@@ -513,12 +518,7 @@ template PD_INFER_DECL uint8_t *Tensor::mutable_data<uint8_t>(PlaceType place);
 template PD_INFER_DECL int8_t *Tensor::mutable_data<int8_t>(PlaceType place);
 template PD_INFER_DECL float16 *Tensor::mutable_data<float16>(PlaceType place);
 
-Tensor::Tensor(void *scope) : scope_{scope} {
-  PADDLE_ENFORCE_NOT_NULL(scope_,
-                          paddle::platform::errors::PreconditionNotMet(
-                              "The `scope` can not be nullptr. It should be "
-                              "set to the pointer of scope."));
-}
+Tensor::Tensor(void *scope) : scope_{scope} {}
 
 template <typename T>
 void *Tensor::FindTensor() const {
@@ -540,7 +540,20 @@ std::vector<int> Tensor::shape() const {
 #ifdef PADDLE_WITH_ONNXRUNTIME
   if (is_ort_tensor_) {
     std::vector<int> shape;
-    shape.assign(shape_.begin(), shape_.end());
+    // input handle
+    if (idx_ < 0) {
+      shape.assign(shape_.begin(), shape_.end());
+    } else {  // output handle
+      auto binding = binding_.lock();
+      PADDLE_ENFORCE_NOT_NULL(binding,
+                              paddle::platform::errors::PreconditionNotMet(
+                                  "output tensor [%s] no binding ptr", name_));
+      std::vector<Ort::Value> outputs = binding->GetOutputValues();
+      Ort::Value &value = outputs[idx_];
+      auto info = value.GetTensorTypeAndShapeInfo();
+      auto ort_shape = info.GetShape();
+      shape.assign(ort_shape.begin(), ort_shape.end());
+    }
     return shape;
   }
 #endif

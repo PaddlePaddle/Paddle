@@ -25,11 +25,7 @@
 #include <vector>
 
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
@@ -44,6 +40,26 @@
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
+
+paddle_infer::DataType ConvertONNXType(ONNXTensorElementDataType type) {
+  switch (type) {
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
+      return paddle_infer::DataType::FLOAT32;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
+      return paddle_infer::DataType::FLOAT16;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:
+      return paddle_infer::DataType::INT8;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
+      return paddle_infer::DataType::INT32;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:
+      return paddle_infer::DataType::INT64;
+    case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8:
+      return paddle_infer::DataType::UINT8;
+    default:
+      LOG(ERROR) << "unsupported ONNX Tensor Type: " << static_cast<int>(type);
+      return paddle_infer::DataType::FLOAT32;
+  }
+}
 
 bool CheckConvertToONNX(const AnalysisConfig &config) {
   if (!config.model_dir().empty()) {
@@ -72,8 +88,6 @@ bool ONNXRuntimePredictor::Init() {
   } else {
     place_ = paddle::platform::CPUPlace();
   }
-  scope_.reset(new paddle::framework::Scope());
-  sub_scope_ = &scope_->NewScope();
 
   std::string onnx_proto;
   paddle2onnx::Export(config_.prog_file(), config_.params_file(), &onnx_proto,
@@ -195,29 +209,26 @@ std::vector<std::string> ONNXRuntimePredictor::GetOutputNames() {
   return output_names;
 }
 
-int ONNXRuntimePredictor::GetIndexByName(const std::string &name,
-                                         bool is_input) {
+bool ONNXRuntimePredictor::FindONNXDesc(const std::string &name,
+                                        bool is_input) {
   if (is_input) {
-    int size = input_desc_.size();
-    for (int i = 0; i < size; ++i)
-      if (input_desc_[i].name == name) return i;
+    for (auto i : input_desc_)
+      if (i.name == name) return true;
   } else {
-    int size = output_desc_.size();
-    for (int i = 0; i < size; ++i)
-      if (output_desc_[i].name == name) return i;
+    for (auto i : output_desc_)
+      if (i.name == name) return true;
   }
-  return -1;
+  return false;
 }
 
 std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
     const std::string &name) {
-  PADDLE_ENFORCE_GE(GetIndexByName(name, true), 0,
+  PADDLE_ENFORCE_EQ(FindONNXDesc(name, true), true,
                     platform::errors::PreconditionNotMet(
                         "The in variable named %s is not found in the "
                         "ONNXPredictor.",
                         name));
-  std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(scope_.get())));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr));
   res->input_or_output_ = true;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -233,13 +244,12 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
 
 std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
     const std::string &name) {
-  int idx = GetIndexByName(name, false);
-  PADDLE_ENFORCE_GE(idx, 0, platform::errors::PreconditionNotMet(
-                                "The out variable named %s is not found in the "
-                                "ONNXPredictor.",
-                                name));
-  std::unique_ptr<ZeroCopyTensor> res(
-      new ZeroCopyTensor(static_cast<void *>(scope_.get())));
+  PADDLE_ENFORCE_EQ(FindONNXDesc(name, false), true,
+                    platform::errors::PreconditionNotMet(
+                        "The out variable named %s is not found in the "
+                        "ONNXPredictor.",
+                        name));
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(nullptr));
   res->input_or_output_ = false;
   res->SetName(name);
   if (platform::is_cpu_place(place_)) {
@@ -250,7 +260,13 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
   }
   res->SetOrtMark(true);
   res->SetOrtBinding(binding_);
-  res->idx_ = idx;
+  int size = output_desc_.size();
+  for (int i = 0; i < size; ++i)
+    if (output_desc_[i].name == name) {
+      res->idx_ = i;
+      res->dtype_ = ConvertONNXType(output_desc_[i].dtype);
+      break;
+    }
   return res;
 }
 
@@ -285,9 +301,6 @@ ONNXRuntimePredictor::~ONNXRuntimePredictor() {
   binding_->ClearBoundInputs();
   binding_->ClearBoundOutputs();
 
-  if (sub_scope_) {
-    scope_->DeleteScope(sub_scope_);
-  }
   memory::Release(place_);
 }
 

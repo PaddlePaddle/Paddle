@@ -177,19 +177,17 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   std::unique_ptr<PaddlePredictor> Clone() override;
 
-  std::shared_ptr<framework::Scope> scope_;
-
  private:
   ///
-  /// \brief get the position of input or output.
+  /// \brief Whether to find in/out by name.
   ///
   /// \param[in] name input or output name
   ///
   /// \param[in] is_input input(true) or output(false)
   ///
-  /// \return the position of input or output
+  /// \return Whether to find by name
   ///
-  int GetIndexByName(const std::string &name, bool is_input);
+  bool FindONNXDesc(const std::string &name, bool is_input);
 
  private:
   AnalysisConfig config_;
@@ -200,7 +198,6 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   std::shared_ptr<Ort::IoBinding> binding_;
 
   platform::Place place_;
-  framework::Scope *sub_scope_{nullptr};
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
   int predictor_id_;
