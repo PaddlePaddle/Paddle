@@ -23,6 +23,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T>
 class GatherOpXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
