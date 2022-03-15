@@ -181,26 +181,15 @@ class ONNXRuntimePredictor : public PaddlePredictor {
 
  private:
   ///
-  /// \brief get the Ort Value(input Tensor).
+  /// \brief get the position of input or output.
   ///
-  /// \param[in] desc ONNXDesce(name、shape、dtype)
+  /// \param[in] name input or output name
   ///
-  /// \param[in] device_name "cpu" or "gpu" of device
+  /// \param[in] is_input input(true) or output(false)
   ///
-  /// \return get a Ort::Value
+  /// \return the position of input or output
   ///
-  Ort::Value GetOrtValue(const ONNXDesc &desc, const char *device_name);
-
-  ///
-  /// \brief Ort::Value to Paddle::ZeroCopyTensor.
-  ///
-  /// \param[in] value Ort::Value(output Tensor)
-  ///
-  /// \param[in] desc a ONNXDesce(name、shape、dtype)
-  ///
-  /// \return get a Ort::Value
-  ///
-  void AsTensor(const Ort::Value &value, const ONNXDesc &desc);
+  int GetIndexByName(const std::string &name, bool is_input);
 
  private:
   AnalysisConfig config_;
@@ -208,6 +197,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   // ONNXRuntime
   Ort::Env env_;
   Ort::Session session_{nullptr};
+  std::shared_ptr<Ort::IoBinding> binding_;
 
   platform::Place place_;
   framework::Scope *sub_scope_{nullptr};

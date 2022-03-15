@@ -45,27 +45,6 @@
 
 namespace paddle {
 
-framework::proto::VarType::Type ConvertONNXType(
-    ONNXTensorElementDataType type) {
-  switch (type) {
-    case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
-      return framework::proto::VarType::FP32;
-    // case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16:
-    //   return DataType::FP16;
-    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:
-      return framework::proto::VarType::INT8;
-    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
-      return framework::proto::VarType::INT32;
-    case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:
-      return framework::proto::VarType::INT64;
-    case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8:
-      return framework::proto::VarType::UINT8;
-    default:
-      LOG(ERROR) << "unsupported ONNX Tensor Type: " << static_cast<int>(type);
-      return framework::proto::VarType::FP32;
-  }
-}
-
 bool CheckConvertToONNX(const AnalysisConfig &config) {
   if (!config.model_dir().empty()) {
     LOG(ERROR) << "Paddle2ONNX not support model_dir config";
@@ -87,6 +66,7 @@ bool ONNXRuntimePredictor::Init() {
   VLOG(3) << "ONNXRuntime Predictor::init()";
 
   // Now ONNXRuntime only suuport CPU
+  const char *device_name = config_.use_gpu() ? "Cuda" : "Cpu";
   if (config_.use_gpu()) {
     place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
   } else {
@@ -125,13 +105,12 @@ bool ONNXRuntimePredictor::Init() {
                "generated.";
   }
   session_ = {env_, onnx_proto.data(), onnx_proto.size(), session_options};
+  binding_ = std::make_shared<Ort::IoBinding>(session_);
 
-  auto memory_info =
-      Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+  Ort::MemoryInfo memory_info(device_name, OrtDeviceAllocator,
+                              place_.GetDeviceId(), OrtMemTypeDefault);
   Ort::Allocator allocator(session_, memory_info);
 
-  framework::proto::VarType::Type proto_type =
-      framework::proto::VarType::LOD_TENSOR;
   size_t n_inputs = session_.GetInputCount();
   for (size_t i = 0; i < n_inputs; ++i) {
     auto input_name = session_.GetInputName(i, allocator);
@@ -141,8 +120,6 @@ bool ONNXRuntimePredictor::Init() {
     ONNXTensorElementDataType data_type =
         type_info.GetTensorTypeAndShapeInfo().GetElementType();
     input_desc_.emplace_back(ONNXDesc{input_name, shape, data_type});
-    auto *ptr = scope_->Var(input_name);
-    framework::InitializeVariable(ptr, proto_type);
     allocator.Free(input_name);
   }
 
@@ -155,11 +132,13 @@ bool ONNXRuntimePredictor::Init() {
     ONNXTensorElementDataType data_type =
         type_info.GetTensorTypeAndShapeInfo().GetElementType();
     output_desc_.emplace_back(ONNXDesc{output_name, shape, data_type});
-    auto *ptr = scope_->Var(output_name);
-    framework::InitializeVariable(ptr, proto_type);
+
+    Ort::MemoryInfo out_memory_info(device_name, OrtDeviceAllocator,
+                                    place_.GetDeviceId(), OrtMemTypeDefault);
+    binding_->BindOutput(output_name, out_memory_info);
+
     allocator.Free(output_name);
   }
-
   return true;
 }
 
@@ -216,13 +195,27 @@ std::vector<std::string> ONNXRuntimePredictor::GetOutputNames() {
   return output_names;
 }
 
+int ONNXRuntimePredictor::GetIndexByName(const std::string &name,
+                                         bool is_input) {
+  if (is_input) {
+    int size = input_desc_.size();
+    for (int i = 0; i < size; ++i)
+      if (input_desc_[i].name == name) return i;
+  } else {
+    int size = output_desc_.size();
+    for (int i = 0; i < size; ++i)
+      if (output_desc_[i].name == name) return i;
+  }
+  return -1;
+}
+
 std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
     const std::string &name) {
-  PADDLE_ENFORCE_NOT_NULL(scope_->FindVar(name),
-                          platform::errors::PreconditionNotMet(
-                              "The in variable named %s is not found in the "
-                              "scope of the ONNXPredictor.",
-                              name));
+  PADDLE_ENFORCE_GE(GetIndexByName(name, true), 0,
+                    platform::errors::PreconditionNotMet(
+                        "The in variable named %s is not found in the "
+                        "ONNXPredictor.",
+                        name));
   std::unique_ptr<ZeroCopyTensor> res(
       new ZeroCopyTensor(static_cast<void *>(scope_.get())));
   res->input_or_output_ = true;
@@ -233,16 +226,18 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetInputTensor(
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
+  res->SetOrtMark(true);
+  res->SetOrtBinding(binding_);
   return res;
 }
 
 std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
     const std::string &name) {
-  PADDLE_ENFORCE_NOT_NULL(scope_->FindVar(name),
-                          platform::errors::PreconditionNotMet(
-                              "The out variable named %s is not found in the "
-                              "scope of the ONNXPredictor.",
-                              name));
+  int idx = GetIndexByName(name, false);
+  PADDLE_ENFORCE_GE(idx, 0, platform::errors::PreconditionNotMet(
+                                "The out variable named %s is not found in the "
+                                "ONNXPredictor.",
+                                name));
   std::unique_ptr<ZeroCopyTensor> res(
       new ZeroCopyTensor(static_cast<void *>(scope_.get())));
   res->input_or_output_ = false;
@@ -253,44 +248,10 @@ std::unique_ptr<ZeroCopyTensor> ONNXRuntimePredictor::GetOutputTensor(
     auto gpu_place = place_;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
+  res->SetOrtMark(true);
+  res->SetOrtBinding(binding_);
+  res->idx_ = idx;
   return res;
-}
-
-Ort::Value ONNXRuntimePredictor::GetOrtValue(const ONNXDesc &desc,
-                                             const char *device_name) {
-  Ort::MemoryInfo memory_info(device_name, OrtDeviceAllocator,
-                              place_.GetDeviceId(), OrtMemTypeDefault);
-  auto *var = scope_->FindVar(desc.name);
-  auto *tensor = var->GetMutable<framework::LoDTensor>();
-  size_t size =
-      tensor->numel() *
-      framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype()));
-  std::vector<int64_t> shape = phi::vectorize<int64_t>(tensor->dims());
-  return Ort::Value::CreateTensor(memory_info,
-                                  static_cast<void *>(tensor->data()), size,
-                                  shape.data(), shape.size(), desc.dtype);
-}
-
-void ONNXRuntimePredictor::AsTensor(const Ort::Value &value,
-                                    const ONNXDesc &desc) {
-  auto info = value.GetTensorTypeAndShapeInfo();
-
-  auto *var = scope_->FindVar(desc.name);
-  auto *tensor = var->GetMutable<framework::LoDTensor>();
-  tensor->Resize(phi::make_ddim(info.GetShape()));
-  auto dtype = ConvertONNXType(info.GetElementType());
-  auto *ptr = tensor->mutable_data(place_, dtype);
-
-  if (platform::is_cpu_place(place_)) {
-    std::memcpy(ptr, const_cast<void *>(value.GetTensorData<void>()),
-                tensor->numel() * framework::SizeOfType(dtype));
-  } else {
-    auto src_place = place_;
-    auto dst_place = place_;
-    memory::Copy(dst_place, ptr, src_place,
-                 const_cast<void *>(value.GetTensorData<void>()),
-                 tensor->numel() * framework::SizeOfType(dtype));
-  }
 }
 
 bool ONNXRuntimePredictor::Run(const std::vector<PaddleTensor> &inputs,
@@ -302,31 +263,7 @@ bool ONNXRuntimePredictor::Run(const std::vector<PaddleTensor> &inputs,
 
 bool ONNXRuntimePredictor::ZeroCopyRun() {
   try {
-    Ort::IoBinding binding(session_);
-    std::vector<Ort::Value> inputs;
-    std::vector<Ort::Value> outputs;
-    Ort::RunOptions options;
-
-    inputs.reserve(input_desc_.size());
-    const char *device_name = config_.use_gpu() ? "Cuda" : "Cpu";
-    for (auto desc : input_desc_) {
-      inputs.push_back(GetOrtValue(desc, device_name));
-      binding.BindInput(desc.name.c_str(), inputs.back());
-    }
-
-    // TODO(heliqi): Optimization —— move to  Init()
-    for (auto desc : output_desc_) {
-      Ort::MemoryInfo memory_info(device_name, OrtDeviceAllocator,
-                                  place_.GetDeviceId(), OrtMemTypeDefault);
-      binding.BindOutput(desc.name.c_str(), memory_info);
-    }
-
-    session_.Run({}, binding);
-
-    outputs = binding.GetOutputValues();
-    for (size_t i = 0; i < output_desc_.size(); ++i) {
-      AsTensor(outputs[i], output_desc_[i]);
-    }
+    session_.Run({}, *(binding_.get()));
   } catch (const std::exception &e) {
     LOG(ERROR) << e.what();
     return false;
@@ -345,6 +282,9 @@ uint64_t ONNXRuntimePredictor::TryShrinkMemory() {
 }
 
 ONNXRuntimePredictor::~ONNXRuntimePredictor() {
+  binding_->ClearBoundInputs();
+  binding_->ClearBoundOutputs();
+
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
