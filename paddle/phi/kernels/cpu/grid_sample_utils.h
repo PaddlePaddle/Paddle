@@ -103,10 +103,14 @@ void AllNeigbors(const CPUContext& ctx,
   const int out_h = grid_x->dims()[1];
   const int out_w = grid_x->dims()[2];
   // calculate coords of 4 corner points
-  x_w->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
-  x_e->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
-  y_n->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
-  y_s->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  x_w->Resize({n, out_h, out_w});
+  x_e->Resize({n, out_h, out_w});
+  y_n->Resize({n, out_h, out_w});
+  y_s->Resize({n, out_h, out_w});
+  ctx.Alloc<T>(x_w);
+  ctx.Alloc<T>(x_e);
+  ctx.Alloc<T>(y_n);
+  ctx.Alloc<T>(y_s);
   auto x_w_t = EigenTensor<T, 3>::From(*x_w);
   auto x_e_t = EigenTensor<T, 3>::From(*x_e);
   auto y_n_t = EigenTensor<T, 3>::From(*y_n);
@@ -121,10 +125,14 @@ void AllNeigbors(const CPUContext& ctx,
   y_s_t.device(place) = y_n_t + static_cast<T>(1);
 
   // calculate distances to 4 sides
-  d_w->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
-  d_e->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
-  d_n->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
-  d_s->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  d_w->Resize({n, out_h, out_w});
+  d_e->Resize({n, out_h, out_w});
+  d_n->Resize({n, out_h, out_w});
+  d_s->Resize({n, out_h, out_w});
+  ctx.Alloc<T>(d_w);
+  ctx.Alloc<T>(d_e);
+  ctx.Alloc<T>(d_n);
+  ctx.Alloc<T>(d_s);
   auto d_w_t = EigenTensor<T, 3>::From(*d_w);
   auto d_e_t = EigenTensor<T, 3>::From(*d_e);
   auto d_n_t = EigenTensor<T, 3>::From(*d_n);
@@ -135,10 +143,14 @@ void AllNeigbors(const CPUContext& ctx,
   d_s_t.device(place) = y_s_t - grid_y_t;
 
   // calc 4 corner points value
-  v_wn->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
-  v_en->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
-  v_ws->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
-  v_es->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
+  v_wn->Resize({n, c, out_h, out_w});
+  v_en->Resize({n, c, out_h, out_w});
+  v_ws->Resize({n, c, out_h, out_w});
+  v_es->Resize({n, c, out_h, out_w});
+  ctx.Alloc<T>(v_wn);
+  ctx.Alloc<T>(v_en);
+  ctx.Alloc<T>(v_ws);
+  ctx.Alloc<T>(v_es);
   GetGridPointValue<T>(input, v_wn, *x_w, *y_n);
   GetGridPointValue<T>(input, v_en, *x_e, *y_n);
   GetGridPointValue<T>(input, v_ws, *x_w, *y_s);

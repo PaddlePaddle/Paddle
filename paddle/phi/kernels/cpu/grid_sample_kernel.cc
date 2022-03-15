@@ -69,8 +69,10 @@ static void CalcGridLocations(const CPUContext& ctx,
   const int out_w = grid.dims()[2];
 
   // split grid with shape (n, h, w, 2) into (x, y) by the 3rd Dim
-  T* grid_x_data = grid_x->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
-  T* grid_y_data = grid_y->mutable_data<T>({n, out_h, out_w}, ctx.GetPlace());
+  grid_x->Resize({n, out_h, out_w});
+  grid_y->Resize({n, out_h, out_w});
+  T* grid_x_data = ctx.Alloc<T>(grid_x);
+  T* grid_y_data = ctx.Alloc<T>(grid_y);
   const T* grid_data = grid.data<T>();
   for (int i = 0; i < n * out_h * out_w; i++) {
     grid_x_data[i] = grid_data[2 * i];
