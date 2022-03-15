@@ -198,7 +198,7 @@ if [ ${HAS_BOOST_GET} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 6836917 47554610 22561442
 fi
 
-# infrt needs to temporarily use LOG(FATAL) during the debugging period, and will replace it with standard error format in the future
+# infrt needs to temporarily use LOG(FATAL) during the debugging period, and will replace it with standard error format in the future.
 NO_INFRT_FILES=`git diff --name-only upstream/develop | grep -v "tools/\|paddle/infrt/" || true`
 HAS_LOG_FATAL=`git diff -U0 upstream/$BRANCH $NO_INFRT_FILES |grep "^+" |grep -o -m 1 "LOG(FATAL)" || true`
 if [ ${HAS_LOG_FATAL} ] && [ "${GIT_PR_ID}" != "" ]; then
