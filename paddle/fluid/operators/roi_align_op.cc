@@ -9,8 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/roi_align_op.h"
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -227,11 +227,6 @@ REGISTER_OPERATOR(roi_align, ops::ROIAlignOp, ops::ROIAlignOpMaker,
 REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp,
                   ops::RoiAlignGradNoNeedBufVarsInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    roi_align_grad,
-    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_VERSION(roi_align)
     .AddCheckpoint(
         R"ROC(
