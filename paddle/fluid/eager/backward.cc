@@ -127,7 +127,7 @@ void UpdateGraphInfo(
       }
     }
     if (!potential_startup_nodes_to_be_erased.empty()) {
-      for (auto node : *potential_startup_nodes_to_be_erased) {
+      for (auto node : potential_startup_nodes_to_be_erased) {
         VLOG(6) << "Erase nodes in potential_startup_nodes_to_be_erased";
         potential_startup_nodes->erase(node);
       }
