@@ -45,16 +45,22 @@ void AddmmInferMeta(const MetaTensor& input,
                     float beta,
                     MetaTensor* out);
 
-void GatherNdGradInferMeta(const MetaTensor& x,
-                           const MetaTensor& index,
-                           const MetaTensor& out_grad,
-                           MetaTensor* x_grad);
+void GraphSendRecvInferMeta(const MetaTensor& x,
+                            const MetaTensor& src_index,
+                            const MetaTensor& dst_index,
+                            const std::string& pool_type,
+                            MetaTensor* out,
+                            MetaTensor* dst_count);
 
-void ScatterInferMeta(const MetaTensor& x,
-                      const MetaTensor& index,
-                      const MetaTensor& updates,
-                      bool overwrite,
-                      MetaTensor* out);
+void LerpInferMeta(const MetaTensor& x,
+                   const MetaTensor& y,
+                   const MetaTensor& weight,
+                   MetaTensor* out);
+
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       MetaTensor* out);
 
 void NllLossRawInferMeta(const MetaTensor& input,
                          const MetaTensor& label,
@@ -64,6 +70,12 @@ void NllLossRawInferMeta(const MetaTensor& input,
                          MetaTensor* out,
                          MetaTensor* total_weight,
                          MetaConfig config = MetaConfig());
+
+void ScatterInferMeta(const MetaTensor& x,
+                      const MetaTensor& index,
+                      const MetaTensor& updates,
+                      bool overwrite,
+                      MetaTensor* out);
 
 void ScatterNdAddInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
@@ -78,20 +90,4 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
 
-void LerpInferMeta(const MetaTensor& x,
-                   const MetaTensor& y,
-                   const MetaTensor& weight,
-                   MetaTensor* out);
-
-void LinspaceInferMeta(const MetaTensor& start,
-                       const MetaTensor& stop,
-                       const MetaTensor& number,
-                       MetaTensor* out);
-
-void GraphSendRecvInferMeta(const MetaTensor& x,
-                            const MetaTensor& src_index,
-                            const MetaTensor& dst_index,
-                            const std::string& pool_type,
-                            MetaTensor* out,
-                            MetaTensor* dst_count);
 }  // namespace phi

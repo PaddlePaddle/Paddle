@@ -42,6 +42,7 @@ from .. import compat as cpt
 from .lr import LRScheduler
 import copy
 from paddle import _C_ops
+from paddle.fluid.framework import _in_eager_mode
 
 __all__ = []
 
@@ -1108,7 +1109,13 @@ class Optimizer(object):
                 for p in param_group['params']:
                     if not p.stop_gradient:
                         param_list.append(p)
-        core.clear_gradients(param_list, set_to_zero)
+
+        if _in_eager_mode():
+            for p in param_list:
+                clear_func = p._zero_grads if set_to_zero else p.clear_gradient
+                clear_func()
+        else:
+            core.clear_gradients(param_list, set_to_zero)
 
     @imperative_base.no_grad
     def minimize(self,

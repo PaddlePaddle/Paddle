@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
-#include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -46,10 +44,16 @@ void Conv3dKernel(const Context& dev_ctx,
   const auto& kernel_dims = kernel.dims();
   int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   DDim out_dims = {1, 1, 1, 1, 1};
-  GetOutShape(x_dims, kernel_dims, paddings, dilations, strides, &out_dims);
+  phi::funcs::sparse::GetOutShape(
+      x_dims, kernel_dims, paddings, dilations, strides, &out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
 
+  std::vector<int> subm_paddings(paddings), subm_strides(strides);
+  if (subm) {
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
+  }
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
   // 1. product rulebook
@@ -60,9 +64,9 @@ void Conv3dKernel(const Context& dev_ctx,
   ProductRuleBook<T, Context>(dev_ctx,
                               x,
                               kernel,
-                              paddings,
+                              subm_paddings,
                               dilations,
-                              strides,
+                              subm_strides,
                               out_dims,
                               subm,
                               rulebook,

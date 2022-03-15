@@ -30,7 +30,10 @@ void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         MetaTensor* dweight,
                                         MetaTensor* dbias);
 
-void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
+void GatherNdGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& index,
+                           const MetaTensor& out_grad,
+                           MetaTensor* x_grad);
 
 void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
@@ -44,10 +47,22 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
                                  MetaTensor* dy,
                                  MetaTensor* dz);
 
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx);
+
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
                                 int axis,
                                 MetaTensor* dx);
+
+void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& mask,
+                                   const MetaTensor& dout,
+                                   const std::vector<int>& kernel_size,
+                                   const std::vector<int>& strides,
+                                   const std::vector<int>& paddings,
+                                   bool global_pooling,
+                                   bool adaptive,
+                                   MetaTensor* dx);
 
 void PsroiPoolGradInferMeta(const MetaTensor& x,
                             const MetaTensor& rois,
@@ -58,6 +73,21 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
                             int output_channels,
                             float spatial_scale,
                             MetaTensor* dx);
+
+void PoolGradInferMeta(const MetaTensor& x,
+                       const MetaTensor& out,
+                       const MetaTensor& dout,
+                       const std::vector<int>& kernel_size,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       bool ceil_mode,
+                       bool exclusive,
+                       const std::string& data_format,
+                       const std::string& pooling_type,
+                       bool global_pooling,
+                       bool adaptive,
+                       const std::string& padding_algorithm,
+                       MetaTensor* dx);
 
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,

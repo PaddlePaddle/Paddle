@@ -9,7 +9,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/kldiv_loss_op.h"
 #include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
@@ -177,10 +176,3 @@ REGISTER_OPERATOR(kldiv_loss, ops::KLDivLossOp, ops::KLDivLossOpMaker,
                   ops::KLDivLossOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad,
                   ops::KLDivLossGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    kldiv_loss, ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    kldiv_loss_grad,
-    ops::KLDivLossGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::KLDivLossGradKernel<paddle::platform::CPUDeviceContext, double>);
