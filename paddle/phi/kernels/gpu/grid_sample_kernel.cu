@@ -17,24 +17,14 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpu/grid_sample_utils.h"
 
 namespace phi {
 
-enum class Mode {
-  bilinear,
-  nearest,
-};
-
-enum class PaddingMode { zeros, border, reflect };
-
-static __forceinline__ __device__ bool in_bounds(int h, int w, int H, int W) {
-  return h >= 0 && h < H && w >= 0 && w < W;
-}
-
 template <typename T>
-static __forceinline__ __device__ T _unnormalize(T coord,
-                                                 int size,
-                                                 bool align_corners) {
+static __forceinline__ __device__ T Unnormalize(T coord,
+                                                int size,
+                                                bool align_corners) {
   if (align_corners) {
     return ((coord + 1.f) / 2) * (size - 1);
   } else {
@@ -43,14 +33,14 @@ static __forceinline__ __device__ T _unnormalize(T coord,
 }
 
 template <typename T>
-static __forceinline__ __device__ T clip_indexes(T in, int max_value) {
+static __forceinline__ __device__ T ClipIndexes(T in, int max_value) {
   return min(static_cast<T>(max_value), max(in, static_cast<T>(0)));
 }
 
 template <typename T>
-static __forceinline__ __device__ T reflect_indexes(T in,
-                                                    int twice_low,
-                                                    int twice_high) {
+static __forceinline__ __device__ T ReflectIndexes(T in,
+                                                   int twice_low,
+                                                   int twice_high) {
   if (twice_low == twice_high) {
     return static_cast<T>(0);
   }
@@ -67,20 +57,20 @@ static __forceinline__ __device__ T reflect_indexes(T in,
 }
 
 template <typename T>
-static __forceinline__ __device__ T compute_positions(T coord,
-                                                      int size,
-                                                      PaddingMode padding_mode,
-                                                      bool align_corners) {
-  coord = _unnormalize<T>(coord, size, align_corners);
+static __forceinline__ __device__ T ComputePositions(T coord,
+                                                     int size,
+                                                     PaddingMode padding_mode,
+                                                     bool align_corners) {
+  coord = Unnormalize<T>(coord, size, align_corners);
   if (padding_mode == PaddingMode::border) {
-    coord = clip_indexes(coord, size - 1);
+    coord = ClipIndexes(coord, size - 1);
   } else if (padding_mode == PaddingMode::reflect) {
     if (align_corners) {
-      coord = reflect_indexes(coord, 0, 2 * (size - 1));
+      coord = ReflectIndexes(coord, 0, 2 * (size - 1));
     } else {
-      coord = reflect_indexes(coord, -1, 2 * size - 1);
+      coord = ReflectIndexes(coord, -1, 2 * size - 1);
     }
-    coord = clip_indexes(coord, size - 1);
+    coord = ClipIndexes(coord, size - 1);
   }
   return coord;
 }
@@ -121,8 +111,8 @@ __global__ void GridSampleCudaKernel(const int nthreads,
     T ix = grid[grid_offset];
     T iy = grid[grid_offset + grid_sCoor];
 
-    ix = compute_positions(ix, in_w, padding_mode, align_corners);
-    iy = compute_positions(iy, in_h, padding_mode, align_corners);
+    ix = ComputePositions(ix, in_w, padding_mode, align_corners);
+    iy = ComputePositions(iy, in_h, padding_mode, align_corners);
     if (mode == Mode::bilinear) {
       int ix_nw = static_cast<int>(floor(ix));
       int iy_nw = static_cast<int>(floor(iy));
@@ -144,19 +134,19 @@ __global__ void GridSampleCudaKernel(const int nthreads,
       for (int c = 0; c < out_c;
            ++c, inp_offset_NC += inp_sC, out_ptr_NCHW += out_sC) {
         *out_ptr_NCHW = static_cast<T>(0);
-        if (in_bounds(iy_nw, ix_nw, in_h, in_w)) {
+        if (InBounds(iy_nw, ix_nw, in_h, in_w)) {
           *out_ptr_NCHW +=
               input[inp_offset_NC + iy_nw * inp_sH + ix_nw * inp_sW] * nw;
         }
-        if (in_bounds(iy_ne, ix_ne, in_h, in_w)) {
+        if (InBounds(iy_ne, ix_ne, in_h, in_w)) {
           *out_ptr_NCHW +=
               input[inp_offset_NC + iy_ne * inp_sH + ix_ne * inp_sW] * ne;
         }
-        if (in_bounds(iy_sw, ix_sw, in_h, in_w)) {
+        if (InBounds(iy_sw, ix_sw, in_h, in_w)) {
           *out_ptr_NCHW +=
               input[inp_offset_NC + iy_sw * inp_sH + ix_sw * inp_sW] * sw;
         }
-        if (in_bounds(iy_se, ix_se, in_h, in_w)) {
+        if (InBounds(iy_se, ix_se, in_h, in_w)) {
           *out_ptr_NCHW +=
               input[inp_offset_NC + iy_se * inp_sH + ix_se * inp_sW] * se;
         }
@@ -168,7 +158,7 @@ __global__ void GridSampleCudaKernel(const int nthreads,
       auto out_ptr_NCHW = output + n * out_sN + h * out_sH + w * out_sW;
       for (int c = 0; c < out_c;
            ++c, inp_offset_NC += inp_sC, out_ptr_NCHW += out_sC) {
-        if (in_bounds(iy_nearest, ix_nearest, in_h, in_w)) {
+        if (InBounds(iy_nearest, ix_nearest, in_h, in_w)) {
           *out_ptr_NCHW =
               input[inp_offset_NC + iy_nearest * inp_sH + ix_nearest * inp_sW];
         } else {

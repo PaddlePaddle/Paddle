@@ -24,9 +24,20 @@ KernelSignature GridSamplerOpArgumentMapping(
                          {"Output"});
 }
 
+KernelSignature GridSamplerGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("grid_sample_grad",
+                         {"X", "Grid", GradVarName("Output")},
+                         {"mode", "padding_mode", "align_corners"},
+                         {GradVarName("X"), GradVarName("Grid")});
+}
+
 }  // namespace phi
 
 // use Python API name as kernel name
 PD_REGISTER_BASE_KERNEL_NAME(grid_sampler, grid_sample);
+PD_REGISTER_BASE_KERNEL_NAME(grid_sampler_grad, grid_sample_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(grid_sampler, phi::GridSamplerOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(grid_sampler_grad,
+                           phi::GridSamplerGradOpArgumentMapping);
