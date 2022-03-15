@@ -316,9 +316,10 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
             res_set_outsize = paddle.incubate.graph_send_recv(
                 x, src_index, dst_index, "sum", out_size)
 
-            np_res = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
-            np_res_set_outsize = np.array(
+            np_res = np.array(
                 [[0, 2, 3], [1, 6, 8], [0, 0, 0]], dtype="float32")
+            np_res_set_outsize = np.array(
+                [[0, 2, 3], [1, 6, 8]], dtype="float32")
 
             self.assertTrue(
                 np.allclose(
