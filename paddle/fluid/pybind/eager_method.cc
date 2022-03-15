@@ -214,8 +214,8 @@ static PyObject* tensor_method__is_initialized(TensorObject* self,
 static PyObject* tensor_method__copy_to(TensorObject* self, PyObject* args,
                                         PyObject* kwargs) {
   EAGER_TRY
-  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
-  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 1), 1);
+  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
+  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   auto cp_tensor =
       self->tensor.copy_to(phi::TransToPhiBackend(place), blocking);
   egr::EagerUtils::autograd_meta(&cp_tensor)->SetStopGradient(true);

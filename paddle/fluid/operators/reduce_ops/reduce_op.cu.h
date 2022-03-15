@@ -36,9 +36,9 @@ void TensorReduceImpl(const platform::CUDADeviceContext& dev_ctx,
                       gpuStream_t stream) {
   y->mutable_data<Ty>(x.place());
 
-  phi::funcs::TensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
+  phi::funcs::ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
       static_cast<const phi::GPUContext&>(dev_ctx), x, y, transform,
-      origin_reduce_dims, stream);
+      origin_reduce_dims);
 }
 
 }  // namespace operators

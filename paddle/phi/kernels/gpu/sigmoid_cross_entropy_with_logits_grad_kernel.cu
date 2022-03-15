@@ -69,17 +69,12 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(counts_tensor);
   counts_tensor->Resize(in_grad->dims());
 
-  int limit = in_grad->numel();
-  int blocks = NumBlocks(limit);
-  int threads = kNumCUDAThreads;
   std::vector<const DenseTensor *> ins = {&x, &label, &out_grad};
   std::vector<DenseTensor *> outs = {in_grad, counts_tensor};
   auto functor = SigmoidBwdFunctor<T>(ignore_index);
-  constexpr int Size = 2;
-  phi::funcs::ElementwiseKernel<T, decltype(functor), Size>(
+  phi::funcs::ElementwiseKernel<T, decltype(functor), 2>(
       dev_ctx, ins, &outs, functor);
   if (normalize) {
-    T *counts = dev_ctx.template Alloc<T>(counts_tensor);
     DenseTensor *norm_tensor = new DenseTensor();
     norm_tensor->Resize({sizeof(T)});
     dev_ctx.template Alloc<T>(norm_tensor);
@@ -89,13 +84,8 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
       reduce_dim.push_back(i);
     }
 
-    funcs::TensorReduceImpl<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
-        dev_ctx,
-        *counts_tensor,
-        norm_tensor,
-        NonzeroFunctor<T>(),
-        reduce_dim,
-        dev_ctx.stream());
+    funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
+        dev_ctx, *counts_tensor, norm_tensor, NonzeroFunctor<T>(), reduce_dim);
     T *norm = dev_ctx.template Alloc<T>(norm_tensor);
     auto norm_cpu_mem = paddle::memory::Alloc(phi::CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
@@ -105,6 +95,7 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
                          norm,
                          sizeof(T),
                          dev_ctx.stream());
+    dev_ctx.Wait();
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
 
@@ -112,8 +103,10 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
     std::vector<DenseTensor *> div_outs = {in_grad};
     auto div_functor = DivFunctor<T>(*norm_cpu_ptr);
     phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs, div_functor);
+
     delete norm_tensor;
   }
+  delete counts_tensor;
 }
 
 }  // namespace phi

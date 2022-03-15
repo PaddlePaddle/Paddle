@@ -20,6 +20,10 @@ limitations under the License. */
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 namespace paddle {
+class CustomOpKernelContext;
+namespace framework {
+class Scope;
+}
 namespace pybind {
 
 typedef struct {
@@ -36,6 +40,8 @@ int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
+paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
+                                                              ssize_t arg_pos);
 paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos);
@@ -48,6 +54,7 @@ std::vector<framework::LoDTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
+
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
 PyObject* ToPyObject(bool value);
@@ -178,6 +185,10 @@ std::vector<paddle::experimental::Tensor*> GetTensorPtrListFromArgs(
     ssize_t arg_idx, bool dispensable = false);
 
 // end of Slice related methods
+
+std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
+    const std::string& op_type, const std::string& arg_name, PyObject* args,
+    ssize_t arg_idx, bool dispensable);
 
 }  // namespace pybind
 }  // namespace paddle

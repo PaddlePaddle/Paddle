@@ -295,6 +295,8 @@ class ExecutionContext {
 
   virtual bool HasInput(const std::string& name) const;
 
+  virtual bool HasInputs(const std::string& name) const;
+
   virtual bool HasOutput(const std::string& name) const;
 
   virtual size_t InputSize(const std::string& name) const {
@@ -449,7 +451,7 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
       : ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
-    return ctx_.HasInput(name);
+    return ctx_.HasInputs(name);
   }
 
   bool HasOutput(const std::string& name) const override {

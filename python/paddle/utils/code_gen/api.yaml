@@ -124,7 +124,7 @@
   args : (Tensor x, int64[] axis={}, bool keep_dim=false)
   output : Tensor
   infer_meta :
-    func : MeanInferMeta
+    func : ReduceInferMeta
   kernel :
     func : mean
 
@@ -150,6 +150,15 @@
     func : reshape
   inplace : (x -> out)
 
+- api : relu
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : relu
+  inplace : (x -> out)
+
 - api : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
   output : Tensor
@@ -158,6 +167,7 @@
     param : [x]
   kernel :
     func : scale, scale_sr
+  inplace : (x -> out)
 
 - api : sign
   args : (Tensor x)

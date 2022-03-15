@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/kron_op.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
