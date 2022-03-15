@@ -2,7 +2,8 @@
 #define PHI_BASE
 
 include "mlir/IR/OpBase.td"
-include "paddle/infrt/dialect/infrt_base.td"
+include "paddle/infrt/dialect/infrt/ir/infrt_base.td"
+include "mlir/Interfaces/InferTypeOpInterface.td"
 
 def PHI_Dialect : Dialect {
   let name = "phi";

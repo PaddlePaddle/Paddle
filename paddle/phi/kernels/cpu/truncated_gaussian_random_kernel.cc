@@ -27,7 +27,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
-                                   const ScalarArray& shape,
+                                   const std::vector<int>& shape,
                                    float mean,
                                    float std,
                                    int seed,
@@ -37,8 +37,13 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   T* data = dev_ctx.template Alloc<T>(tensor);
 
-  std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
-                                         1.0);
+  auto normal_cdf = [](float x) {
+    return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
+  };
+  float a_normal_cdf = normal_cdf((-2.0 - mean) / std);
+  float b_normal_cdf = normal_cdf((2.0 - mean) / std);
+  std::uniform_real_distribution<float> dist(2.0 * a_normal_cdf - 1.0,
+                                             2.0 * b_normal_cdf - 1.0);
   TruncatedNormal<T> truncated_normal(mean, std);
   int64_t size = tensor->numel();
 

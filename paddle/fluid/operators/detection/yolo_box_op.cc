@@ -9,7 +9,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/operators/detection/yolo_box_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -240,8 +239,6 @@ REGISTER_OPERATOR(
     yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(yolo_box, ops::YoloBoxKernel<float>,
-                       ops::YoloBoxKernel<double>);
 
 REGISTER_OP_VERSION(yolo_box)
     .AddCheckpoint(
