@@ -67,15 +67,15 @@ void ModeGradKernel(const Context& dev_ctx,
                         x_grad_data);
     } else {
       DenseTensor out_grad_tmp;
-      out_grad_tmp.Resize(out_dims);
       dev_ctx.template Alloc<T>(&out_grad_tmp);
-
       DenseTensor indices_tmp;
-      indices_tmp.Resize(out_dims);
       dev_ctx.template Alloc<int64_t>(&indices_tmp);
 
       phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, &out_grad_tmp);
       phi::Copy(dev_ctx, indices, dev_ctx.GetPlace(), false, &indices_tmp);
+
+      out_grad_tmp.Resize(out_dims);
+      indices_tmp.Resize(out_dims);
 
       funcs::ModeAssign(input_height,
                         input_width,
@@ -120,16 +120,15 @@ void ModeGradKernel(const Context& dev_ctx,
           ndims, dev_ctx, indices, &trans_ind, trans_axis);
     } else {
       DenseTensor out_grad_tmp;
-      out_grad_tmp.Resize(out_dims);
       dev_ctx.template Alloc<T>(&out_grad_tmp);
 
       DenseTensor indices_tmp;
-      indices_tmp.Resize(out_dims);
       dev_ctx.template Alloc<int64_t>(&indices_tmp);
 
       phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, &out_grad_tmp);
       phi::Copy(dev_ctx, indices, dev_ctx.GetPlace(), false, &indices_tmp);
-
+      out_grad_tmp.Resize(out_dims);
+      indices_tmp.Resize(out_dims);
       // Do transpose
       funcs::TransCompute<CPUContext, T>(
           ndims, dev_ctx, out_grad_tmp, &trans_dO, trans_axis);
