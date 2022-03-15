@@ -188,16 +188,14 @@ static void ParseIndexingSlice(
       int start = static_cast<int>(PyLong_AsLong(slice_item));
       auto s_t = start;
       start = start < 0 ? start + dim_len : start;
-      if (start >= dim_len || start < 0) {
-        std::string str_error_message =
-            "The starting index " + std::to_string(s_t) +
-            " of slice is out of bounds in tensor " + std::to_string(dim) +
-            "-th axis, it shound be in the range of [" +
-            std::to_string(-dim_len) + ", " + std::to_string(dim_len) + ")";
-        // py::index_error is corresponding to IndexError in Python
-        // Used to indicate out of bounds access in __getitem__, __setitem__
-        throw py::index_error(str_error_message);
-      }
+
+      PADDLE_ENFORCE(
+          0 <= start && start < dim_len,
+          platform::errors::OutOfRange("The starting index %d of slice is out "
+                                       "of bounds in tensor %d-th axis, it "
+                                       "shound be in the range of [%d, %d).",
+                                       s_t, dim, -dim_len, dim_len));
+
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
       slice_ends->push_back(start + 1);
