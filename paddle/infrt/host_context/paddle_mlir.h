@@ -25,10 +25,10 @@
 #include "mlir/IR/MLIRContext.h"
 #include "paddle/infrt/common/global.h"
 #include "paddle/infrt/common/string.h"
-#include "paddle/infrt/dialect/basic_kernels.h"
 #include "paddle/infrt/dialect/dense_tensor.h"
-#include "paddle/infrt/dialect/infrt_base.h"
-#include "paddle/infrt/dialect/init_infrt_dialects.h"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+
+#include "paddle/infrt/dialect/init_dialects.h"
 #include "paddle/infrt/dialect/pd_ops.h"
 #include "paddle/infrt/dialect/tensor_shape.h"
 #include "paddle/infrt/paddle/model_parser.h"
