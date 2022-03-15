@@ -38,8 +38,9 @@ template <typename ContextT>
 StringTensor StringLower(const ContextT& dev_ctx,
                          bool use_utf8_encoding,
                          const StringTensor& x) {
-  auto out_meta = UnchangedInferMeta(x.meta());
-  auto string_out = phi::strings::Empty<ContextT>(dev_ctx, std::move(out_meta));
+  StringTensor string_out;
+  MetaTensor meta_out(&string_out);
+  UnchangedInferMeta(x.meta(), &meta_out);
   StringLowerKernel(dev_ctx, x, use_utf8_encoding, &string_out);
   return string_out;
 }
@@ -48,8 +49,9 @@ template <typename ContextT>
 StringTensor StringUpper(const ContextT& dev_ctx,
                          bool use_utf8_encoding,
                          const StringTensor& x) {
-  auto out_meta = UnchangedInferMeta(x.meta());
-  auto string_out = phi::strings::Empty<ContextT>(dev_ctx, std::move(out_meta));
+  StringTensor string_out;
+  MetaTensor meta_out(&string_out);
+  UnchangedInferMeta(x.meta(), &meta_out);
   StringUpperKernel(dev_ctx, x, use_utf8_encoding, &string_out);
   return string_out;
 }

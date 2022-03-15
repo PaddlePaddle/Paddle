@@ -49,16 +49,18 @@ StringTensor Empty(const Context& dev_ctx) {
 
 template <typename Context>
 StringTensor Empty(const Context& dev_ctx, const ScalarArray& shape) {
-  auto out_meta = phi::strings::CreateInferMeta(shape);
-  auto string_out = Empty<Context>(dev_ctx, std::move(out_meta));
+  StringTensor string_out;
+  MetaTensor meta_out(&string_out);
+  phi::strings::CreateInferMeta(shape, &meta_out);
   EmptyKernel<Context>(dev_ctx, shape, &string_out);
   return string_out;
 }
 
 template <typename Context>
 StringTensor EmptyLike(const Context& dev_ctx, const StringTensor& x) {
-  auto out_meta = phi::strings::UnchangedInferMeta(x.meta());
-  auto string_out = Empty<Context>(dev_ctx, std::move(out_meta));
+  StringTensor string_out;
+  MetaTensor meta_out(&string_out);
+  phi::strings::UnchangedInferMeta(x.meta(), &meta_out);
   EmptyLikeKernel<Context>(dev_ctx, &string_out);
   return string_out;
 }

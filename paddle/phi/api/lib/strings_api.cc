@@ -30,8 +30,8 @@ namespace strings {
 
 PADDLE_API Tensor empty(const ScalarArray& shape, Backend place) {
   Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::ALL_LAYOUT;
-  DataType kernel_data_type = DataType::STRING;
+  DataLayout kernel_layout = DataLayout::PSTRING;
+  DataType kernel_data_type = DataType::PSTRING;
 
   kernel_backend = ParseBackend(place);
   // 1. Get kernel signature and kernel
@@ -61,8 +61,8 @@ PADDLE_API Tensor empty(const ScalarArray& shape, Backend place) {
 
 PADDLE_API Tensor empty_like(const Tensor& x, Backend place) {
   Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::ALL_LAYOUT;
-  DataType kernel_data_type = DataType::STRING;
+  DataLayout kernel_layout = DataLayout::PSTRING;
+  DataType kernel_data_type = DataType::PSTRING;
 
   kernel_backend = ParseBackendWithInputOrder(place, x);
   if (kernel_backend == Backend::UNDEFINED) {
@@ -99,8 +99,8 @@ PADDLE_API Tensor empty_like(const Tensor& x, Backend place) {
 
 PADDLE_API Tensor lower(const Tensor& x, bool use_utf8_encoding) {
   Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::ALL_LAYOUT;
-  DataType kernel_data_type = DataType::STRING;
+  DataLayout kernel_layout = DataLayout::PSTRING;
+  DataType kernel_data_type = DataType::PSTRING;
 
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
@@ -138,8 +138,8 @@ PADDLE_API Tensor lower(const Tensor& x, bool use_utf8_encoding) {
 
 PADDLE_API Tensor upper(const Tensor& x, bool use_utf8_encoding) {
   Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::ALL_LAYOUT;
-  DataType kernel_data_type = DataType::STRING;
+  DataLayout kernel_layout = DataLayout::PSTRING;
+  DataType kernel_data_type = DataType::PSTRING;
 
   auto kernel_key_set = ParseKernelKeyByInputArgs(x);
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();

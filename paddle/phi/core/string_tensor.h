@@ -51,6 +51,7 @@ class StringTensor : public TensorBase,
 
   StringTensor(const StringTensor& other);
 
+  StringTensor();
   /// \brief StringTensor shallow copy assignment.
   StringTensor& operator=(const StringTensor& other);
 
@@ -81,11 +82,11 @@ class StringTensor : public TensorBase,
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType dtype() const noexcept override { return DataType::STRING; }
+  DataType dtype() const noexcept override { return DataType::PSTRING; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept override { return DataLayout::STRING; }
+  DataLayout layout() const noexcept override { return DataLayout::PSTRING; }
 
   void set_meta(const StringTensorMeta& meta);
 

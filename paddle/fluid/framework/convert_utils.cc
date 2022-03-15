@@ -81,7 +81,7 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
       return paddle::framework::proto::VarType::BF16;
     case DataType::BOOL:
       return paddle::framework::proto::VarType::BOOL;
-    case DataType::STRING:
+    case DataType::PSTRING:
       return paddle::framework::proto::VarType::RAW;
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(

@@ -64,8 +64,8 @@ TEST(DataType, OStream) {
   oss << phi::DataType::COMPLEX128;
   EXPECT_EQ(oss.str(), "complex128");
   oss.str("");
-  oss << phi::DataType::STRING;
-  EXPECT_EQ(oss.str(), "string");
+  oss << phi::DataType::PSTRING;
+  EXPECT_EQ(oss.str(), "pstring");
   oss.str("");
   try {
     oss << phi::DataType::NUM_DATA_TYPES;

@@ -23,7 +23,9 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 // Common InferMeta Functions of StringTensor for unary operators:
-StringTensorMeta UnchangedInferMeta(const StringTensorMeta& x_meta);
+void UnchangedInferMeta(const StringTensorMeta& x_meta, MetaTensor* out);
+
+void CreateLikeInferMeta(const MetaTensor& x, MetaTensor* out);
 
 }  // namespace strings
 }  // namespace phi

@@ -47,7 +47,7 @@ enum class DataType {
   FLOAT64,
   COMPLEX64,
   COMPLEX128,
-  STRING,
+  PSTRING,
   NUM_DATA_TYPES,
   // See Note [ Why we need ALL in baisc kernel key member? ]
   ALL_DTYPE = UNDEFINED,
@@ -75,7 +75,7 @@ inline size_t SizeOf(DataType data_type) {
       return 8;
     case DataType::COMPLEX128:
       return 16;
-    case DataType::STRING:
+    case DataType::PSTRING:
       return 24;
     case DataType::UNDEFINED:
       return 0;
@@ -103,7 +103,7 @@ inline size_t SizeOf(DataType data_type) {
   _(double, DataType::FLOAT64)        \
   _(complex64, DataType::COMPLEX64)   \
   _(complex128, DataType::COMPLEX128) \
-  _(pstring, DataType::STRING)
+  _(pstring, DataType::PSTRING)
 
 template <DataType T>
 struct DataTypeToCppType;
@@ -181,8 +181,8 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
     case DataType::COMPLEX128:
       os << "complex128";
       break;
-    case DataType::STRING:
-      os << "string";
+    case DataType::PSTRING:
+      os << "pstring";
       break;
     default:
       PD_THROW("Invalid enum data type `", static_cast<int>(dtype), "`.");

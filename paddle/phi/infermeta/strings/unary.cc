@@ -19,8 +19,16 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 
-StringTensorMeta UnchangedInferMeta(const StringTensorMeta& x_meta) {
-  return x_meta;
+void UnchangedInferMeta(const StringTensorMeta& x_meta, MetaTensor* out) {
+  out->set_dims(x_meta.dims);
+  out->set_dtype(DataType::PSTRING);
+  out->set_layout(DataLayout::ALL_LAYOUT);
+}
+
+void CreateLikeInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 }  // namespace strings

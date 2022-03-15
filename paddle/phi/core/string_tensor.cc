@@ -17,6 +17,8 @@ limitations under the License. */
 
 namespace phi {
 
+StringTensor::StringTensor() { meta_.offset = 0; }
+
 StringTensor::StringTensor(Allocator* a, const StringTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {
   init_holder();

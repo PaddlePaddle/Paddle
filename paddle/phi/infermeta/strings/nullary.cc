@@ -16,13 +16,17 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 
-StringTensorMeta CreateInferMeta(const std::vector<int64_t>& shape) {
+void CreateInferMeta(const std::vector<int64_t>& shape, MetaTensor* out) {
   const auto& out_dims = phi::make_ddim(shape);
-  return StringTensorMeta(out_dims);
+  out->set_dims(out_dims);
+  out->set_dtype(DataType::PSTRING);
+  out->set_layout(DataLayout::PSTRING);
 }
-StringTensorMeta CreateInferMeta(const ScalarArray& shape) {
+void CreateInferMeta(const ScalarArray& shape, MetaTensor* out) {
   const auto& out_dims = phi::make_ddim(shape.GetData());
-  return StringTensorMeta(out_dims);
+  out->set_dims(out_dims);
+  out->set_dtype(DataType::PSTRING);
+  out->set_layout(DataLayout::PSTRING);
 }
 
 }  // namespace strings
