@@ -114,7 +114,8 @@ void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
                     const std::string& mode,
                     const std::string& data_format,
-                    MetaTensor* out);
+                    MetaTensor* out,
+                    MetaConfig config);
 
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,

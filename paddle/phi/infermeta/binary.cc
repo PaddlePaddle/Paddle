@@ -647,7 +647,8 @@ void PReluInferMeta(const MetaTensor& x,
                     const MetaTensor& alpha,
                     const std::string& mode,
                     const std::string& data_format,
-                    MetaTensor* out) {
+                    MetaTensor* out,
+                    MetaConfig config) {
   auto x_dim = x.dims();
   if (mode == "all") {
     PADDLE_ENFORCE_EQ(phi::product(alpha.dims()),
@@ -671,7 +672,7 @@ void PReluInferMeta(const MetaTensor& x,
                           "For mode 'channel', data_format must be one of "
                           "NCHW and NHWC. But recevied data_format: %s",
                           data_format));
-    if (data_format == "NCHW") {
+    if (data_format == "NCHW" || config.is_run_mkldnn_kernel) {
       PADDLE_ENFORCE_EQ(product(alpha.dims()) == x_dim[1],
                         true,
                         phi::errors::InvalidArgument(
