@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/reduce_min_grad_kernel.h"
+#include "paddle/phi/kernels/reduce_max_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/reduce_min_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/reduce_max_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(max_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ReduceMinGradKernel,
+                   phi::ReduceMaxGradKernel,
                    float,
                    double,
                    int,

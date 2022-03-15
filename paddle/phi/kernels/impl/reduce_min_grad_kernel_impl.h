@@ -31,16 +31,16 @@ void ReduceMinGradKernel(const Context& dev_ctx,
                          DataType in_dtype,
                          DataType out_dtype,
                          DenseTensor* x_grad) {
-  ReduceGradKernel<Context, T, funcs::MaxOrMinGradFunctor, true>(dev_ctx,
-                                                                 x,
-                                                                 out_grad,
-                                                                 paddle::none,
-                                                                 dims,
-                                                                 keep_dim,
-                                                                 reduce_all,
-                                                                 in_dtype,
-                                                                 out_dtype,
-                                                                 x_grad);
+  ReduceGradKernel<Context, T, funcs::MaxOrMinGradFunctor>(dev_ctx,
+                                                           x,
+                                                           out_grad,
+                                                           paddle::none,
+                                                           dims,
+                                                           keep_dim,
+                                                           reduce_all,
+                                                           in_dtype,
+                                                           out_dtype,
+                                                           x_grad);
 }
 
 }  // namespace phi
