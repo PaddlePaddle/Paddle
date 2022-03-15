@@ -752,6 +752,22 @@ PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops, "",
                               "It controls the cinn op subset to be not used.");
 #endif
 
+/**
+ * Performance related FLAGS
+ * Name: FLAGS_no_data_format_transform
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_no_data_format_transform would make no data format
+ * transformation when calculating conv and batch_norm op.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    no_data_format_transform, false,
+    "Whether to transpose the tensor from NHWC to NCHW "
+    "first when computing the conv and batch_norm op. If "
+    "it is true, the transformation would not be performed. "
+    "If it is false, whether the transformation is performed is "
+    "determined by the framework itself automatically.");
+
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");

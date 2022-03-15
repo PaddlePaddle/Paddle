@@ -56,8 +56,7 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormAct(
   auto *x = gpd.mutable_pattern()
                 ->NewNode("bn_act/x")
                 ->AsInput()
-                ->assert_is_op_input("batch_norm", "X")
-                ->assert_var_dtype(proto::VarType::FP16);
+                ->assert_is_op_input("batch_norm", "X");
   patterns::BatchNormAct bn_act_pattern(gpd.mutable_pattern(), "bn_act");
 
   bn_act_pattern(x, act_types);
