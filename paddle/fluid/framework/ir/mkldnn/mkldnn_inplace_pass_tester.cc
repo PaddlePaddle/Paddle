@@ -25,11 +25,11 @@ USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
-USE_OP(leaky_relu);
+USE_OP_ITSELF(leaky_relu);
 USE_OP_DEVICE_KERNEL(leaky_relu, MKLDNN);
 USE_OP(gelu);
 USE_OP_ITSELF(relu);
-USE_OP(tanh);
+USE_OP_ITSELF(tanh);
 USE_OP_DEVICE_KERNEL(tanh, MKLDNN);
 
 namespace paddle {

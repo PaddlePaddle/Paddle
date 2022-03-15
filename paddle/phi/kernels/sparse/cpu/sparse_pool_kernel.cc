@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/sparse_pool_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/kernels/funcs/sparse/convolution.h"
 #include "paddle/phi/kernels/sparse/cpu/convolution.h"
 
 namespace phi {
@@ -37,7 +38,8 @@ void MaxPoolKernel(const Context& dev_ctx,
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   DDim out_dims = {1, 1, 1, 1, 1};
-  GetOutShape(x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
+  phi::funcs::sparse::GetOutShape(
+      x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
   const int in_channels = kernel_sizes[3];
 
   DenseTensorMeta counter_meta(

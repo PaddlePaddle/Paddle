@@ -30,6 +30,8 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
+using Dims4D = phi::funcs::sparse::Dims4D;
+
 // TODO(zhangkaihuo): After the GatherCUDAKernel is migrated to phi, replace
 // this kernel with phi::GatherCUDAKernel;
 // Vectorization can be used to improve read and write bandwidth
@@ -193,7 +195,8 @@ __global__ void UpdateIndexKernel(const int* unique_keys,
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     const int index = unique_keys[i];
     int batch, x, y, z;
-    IndexToPoint<Dims4D>(index, out_dims, &batch, &x, &y, &z);
+    phi::funcs::sparse::IndexToPoint<Dims4D>(
+        index, out_dims, &batch, &x, &y, &z);
     // get out indices
     out_indices[i] = batch;
     out_indices[i + non_zero_num] = z;
@@ -245,8 +248,8 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
                                       const Dims4D strides,
                                       const bool subm,
                                       T* rulebook,
-                                      T* counter,
-                                      T* in_indexs) {
+                                      int* counter,
+                                      int* in_indexs) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   extern __shared__ int counter_buf[];  // kernel_size
   const int kernel_size = kernel_dims[3] * kernel_dims[2] * kernel_dims[1];
@@ -269,23 +272,23 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
           int in_i = -1, out_index = -1, kernel_i = -1;
-          if (Check(x_dims,
-                    kernel_dims,
-                    paddings,
-                    dilations,
-                    strides,
-                    in_x,
-                    in_y,
-                    in_z,
-                    kx,
-                    ky,
-                    kz)) {
+          if (phi::funcs::sparse::Check(x_dims,
+                                        kernel_dims,
+                                        paddings,
+                                        dilations,
+                                        strides,
+                                        in_x,
+                                        in_y,
+                                        in_z,
+                                        kx,
+                                        ky,
+                                        kz)) {
             int out_z = (in_z + paddings[1] - kz * dilations[1]) / strides[1];
             int out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
             int out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             in_i = i;
-            out_index =
-                PointToIndex<Dims4D>(batch, out_x, out_y, out_z, out_dims);
+            out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
+                batch, out_x, out_y, out_z, out_dims);
             atomicAdd(&counter_buf[kernel_index], 1);
             kernel_i = kernel_index;
           }

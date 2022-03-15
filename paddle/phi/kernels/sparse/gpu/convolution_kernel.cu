@@ -50,7 +50,8 @@ void Conv3dKernel(const Context& dev_ctx,
   for (int i = 0; i < kernel_dims.size(); i++) {
     kernel_sizes[i] = kernel_dims[i];
   }
-  GetOutShape(x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
+  phi::funcs::sparse::GetOutShape(
+      x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
   const int in_channels = kernel_dims[3];
   const int out_channels = kernel_dims[4];
   std::vector<int> offsets(kernel_size + 1), h_counter(kernel_size);
@@ -71,11 +72,8 @@ void Conv3dKernel(const Context& dev_ctx,
 
   std::vector<int> subm_paddings(paddings), subm_strides(strides);
   if (subm) {
-    auto kernel_dims = kernel.dims();
-    for (int i = 0; i < paddings.size(); i++) {
-      subm_paddings[i] = kernel_dims[i] / 2;
-      subm_strides[i] = 1;
-    }
+    phi::funcs::sparse::ResetSubmKernelSizeAndStrides(
+        kernel.dims(), &subm_paddings, &subm_strides);
   }
 
   int n = ProductRuleBook<T, Context>(dev_ctx,

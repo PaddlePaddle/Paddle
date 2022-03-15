@@ -94,30 +94,15 @@ void Conv3dGradKernel(const Context& dev_ctx,
   offsets[kernel_size] = offset;
 
   if (subm) {
-    blas.GEMM(CblasTrans,
-              CblasNoTrans,
-              x.non_zero_elements().dims()[1],
-              out_grad.dims()[1],
-              x.non_zero_elements().dims()[0],
-              static_cast<T>(1),
-              x.non_zero_elements().data<T>(),
-              out_grad.data<T>(),
-              static_cast<T>(0),
-              d_kernel_ptr + half_kernel_size * in_channels * out_channels);
-
-    // call gemm: d_x = out_grad * transpose(kernel)
-    // (n, out_channels) * (out_channels, in_channels)
-    T* x_grad_ptr = x_grad->data<T>();
-    blas.GEMM(CblasNoTrans,
-              CblasTrans,
-              out_grad.dims()[0],
-              in_channels,
-              out_grad.dims()[1],
-              static_cast<T>(1),
-              out_grad.data<T>(),
-              kernel.data<T>() + half_kernel_size * in_channels * out_channels,
-              static_cast<T>(0),
-              x_grad_ptr);
+    phi::funcs::sparse::SubmPreProcess<T, Context>(dev_ctx,
+                                                   x,
+                                                   kernel,
+                                                   out_grad,
+                                                   in_channels,
+                                                   out_channels,
+                                                   half_kernel_size,
+                                                   kernel_grad,
+                                                   x_grad);
     if (max_count == 0) {
       return;
     }

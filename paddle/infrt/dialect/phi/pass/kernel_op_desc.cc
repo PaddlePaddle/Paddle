@@ -80,7 +80,7 @@ std::vector<PhiKernelDesc> getCandidateKernels(
   phi::KernelKeyMap kernel_key_map =
       phi::KernelFactory::Instance().SelectKernelMap(name);
   for (Place place : valid_palces) {
-    phi::KernelKey kernel_key = cvtPlace2Phi(place);
+    phi::KernelKey kernel_key = ConvertPlaceToPhi(place);
     if (kernel_key_map.find(kernel_key) == kernel_key_map.end()) {
       kernel_key = phi::KernelKey(kernel_key.backend(),
                                   phi::DataLayout::ALL_LAYOUT,
@@ -97,10 +97,10 @@ std::vector<PhiKernelDesc> getCandidateKernels(
     const paddle::SmallVector<phi::TensorArgDef>& output_arg =
         args_def.output_defs();
     for (auto tensor_arg : input_arg) {
-      phi_kernel_desc.inputsType.emplace_back(cvtPlaceFromPhi(tensor_arg));
+      phi_kernel_desc.inputsType.emplace_back(ConvertPlaceFromPhi(tensor_arg));
     }
     for (auto tensor_arg : output_arg) {
-      phi_kernel_desc.outputsType.emplace_back(cvtPlaceFromPhi(tensor_arg));
+      phi_kernel_desc.outputsType.emplace_back(ConvertPlaceFromPhi(tensor_arg));
     }
     candidate_kernels.emplace_back(phi_kernel_desc);
   }
