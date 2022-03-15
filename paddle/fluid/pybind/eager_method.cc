@@ -692,7 +692,7 @@ static PyObject* tensor__inplace_version(TensorObject* self, PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
   uint32_t inplace_version = self->tensor.current_inplace_version();
-  return ToPyObject(static_cast<int>(inplace_version));
+  return ToPyObject(inplace_version);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

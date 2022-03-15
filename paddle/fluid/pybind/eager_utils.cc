@@ -401,6 +401,8 @@ PyObject* ToPyObject(bool value) {
 
 PyObject* ToPyObject(int value) { return PyLong_FromLong(value); }
 
+PyObject* ToPyObject(uint32_t value) { return PyLong_FromUnsignedLong(value); }
+
 PyObject* ToPyObject(int64_t value) { return PyLong_FromLongLong(value); }
 
 PyObject* ToPyObject(float value) { return PyLong_FromDouble(value); }

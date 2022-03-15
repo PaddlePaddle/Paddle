@@ -998,7 +998,6 @@ static std::string GenerateGradNodeCreationContent(
   // then generate: "egr::AutogradMeta* p_autograd_out =
   // egr::EagerUtils::autograd_meta("op_proto->outputs()[0].name()")"
   std::string get_input_autograd_meta_str = "  // Prepare Autograd Meta \n";
-  // output autograd_meta should be got after run TraceOP.
   std::string get_output_autograd_meta_str = "";
   // If single output slotname and not duplicable,
   // then generate: "egr::AutogradMeta* p_autograd_out =
@@ -1007,6 +1006,7 @@ static std::string GenerateGradNodeCreationContent(
     const std::string& output_name = output.name();
     const std::string& output_autograd_name = "p_autograd_" + output_name;
 
+    // output autograd_meta should be got after running TraceOP.
     if (output.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
           "  std::vector<egr::AutogradMeta*> %s = "
@@ -1014,6 +1014,8 @@ static std::string GenerateGradNodeCreationContent(
       get_output_autograd_meta_str += paddle::string::Sprintf(
           GET_MULTI_AUTOGRAD_META_TEMPLATE, output_autograd_name, output_name);
     } else {
+      // In inplace op, the case where output is duplicable is not considered.
+      // Replace output directly with input in inplace op.
       if (!inplace_map.empty() && inplace_map.count(output_name)) {
         auto inplace_input_name = inplace_map[output_name];
         const std::string& inplace_input_autograd_name =
@@ -1035,6 +1037,8 @@ static std::string GenerateGradNodeCreationContent(
   }
   VLOG(6) << "Generated outputs autograd_meta";
 
+  // input autograd_meta should be got before running TraceOP (for checking
+  // inplace).
   for (const proto::OpProto::Var& input : in_vars) {
     const std::string& input_name = input.name();
     const std::string& input_autograd_name = "p_autograd_" + input_name;
@@ -1063,6 +1067,8 @@ static std::string GenerateGradNodeCreationContent(
   }
   VLOG(6) << "Generated inputs autograd_meta";
 
+  // check inplace input to avoid inplace operations on leaf nodes with
+  // stop_gradient=False.
   std::string check_inplace_str = "";
   if (!inplace_map.empty()) {
     const char* CHECKING_INPLACE_TEMPLATE =
@@ -1078,6 +1084,8 @@ static std::string GenerateGradNodeCreationContent(
   }
 
   std::string prepare_autograd_meta_str = "";
+  // only generate input autograd_meta in temporary.
+  // output autograd_meta will be generated after running TraceOP.
   prepare_autograd_meta_str += get_input_autograd_meta_str;
   prepare_autograd_meta_str += "\n";
 
@@ -1122,6 +1130,7 @@ static std::string GenerateGradNodeCreationContent(
       }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
           "    grad_node->SetTensorWrapper%s(%s, %s);\n";
+      // Replace output directly with input in inplace op.
       if (!inplace_map.empty() && inplace_map.count(tensor_wrapper_name)) {
         auto inplace_input_name = inplace_map[tensor_wrapper_name];
         grad_node_creation_str += paddle::string::Sprintf(
@@ -1149,20 +1158,15 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    VLOG(3) << \"yoki: input meta grad: \";\n"
-          "    egr::EagerUtils::yoki_grad_node_name(%s);\n"
           "    grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_autograd_name,
-          input_position);
+          SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE =
-          "    if(%s) grad_node->AddEdges(%s, %d);\n"
-          "    VLOG(3) << \"yoki: input meta grad2: \";\n"
-          "    egr::EagerUtils::yoki_grad_node_name(%s);\n";
-      grad_node_creation_str += paddle::string::Sprintf(
-          ADD_EDGES_TEMPLATE, input_autograd_name, input_autograd_name,
-          input_position, input_autograd_name);
+          "    if(%s) grad_node->AddEdges(%s, %d);\n";
+      grad_node_creation_str +=
+          paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
+                                  input_autograd_name, input_position);
     } else {
       compute_require_grad_args += ", &" + input_autograd_name;
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
@@ -1184,6 +1188,7 @@ static std::string GenerateGradNodeCreationContent(
   std::string pass_stop_gradient_args = "false";
   for (const proto::OpProto::Var& output : out_vars) {
     const std::string& output_name = output.name();
+    // Replace output directly with input in inplace op.
     if (!inplace_map.empty() && inplace_map.count(output_name)) {
       auto inplace_input_name = inplace_map[output_name];
       const std::string& inplace_input_autograd_name =
@@ -1193,42 +1198,30 @@ static std::string GenerateGradNodeCreationContent(
       // Intermediate Tensor does not require SetHistory, nor RetainGrad
       pass_stop_gradient_args += ", " + inplace_input_autograd_name;
       const char* SET_OUT_RANK_TEMPLATE =
-          "    VLOG(3) << \"yoki: inplace meta grad3: \";\n"
-          "    egr::EagerUtils::yoki_grad_node_name(%s);\n"
           "    egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
-          SET_OUT_RANK_TEMPLATE, inplace_input_autograd_name,
-          inplace_input_autograd_name, output_position);
+          SET_OUT_RANK_TEMPLATE, inplace_input_autograd_name, output_position);
 
       // Intermediate Tensor does not require SetHistory
       if (!output.intermediate()) {
         const char* SET_HISTORY_TEMPLATE =
-            "    VLOG(3) << \"yoki: inplace meta grad4: \";\n"
-            "    egr::EagerUtils::yoki_grad_node_name(%s);\n"
-            "    egr::EagerUtils::SetHistory(%s, grad_node);\n"
-            "    VLOG(3) << \"yoki: inplace meta grad5: \";\n"
-            "    egr::EagerUtils::yoki_grad_node_name(%s);\n";
+            "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
         grad_node_creation_str += paddle::string::Sprintf(
-            SET_HISTORY_TEMPLATE, inplace_input_autograd_name,
-            inplace_input_autograd_name, inplace_input_autograd_name);
+            SET_HISTORY_TEMPLATE, inplace_input_autograd_name);
       }
       const char* SET_GRAD_IN_META_TEMPLATE =
-          "    grad_node->SetGradInMeta(%s, %d);\n"
-          "    VLOG(3) << \"yoki: inplace meta grad6: \";\n"
-          "    egr::EagerUtils::yoki_grad_node_name(%s);\n";
-      grad_node_creation_str += paddle::string::Sprintf(
-          SET_GRAD_IN_META_TEMPLATE, inplace_input_autograd_name,
-          output_position, inplace_input_autograd_name);
+          "    grad_node->SetGradInMeta(%s, %d);\n";
+      grad_node_creation_str +=
+          paddle::string::Sprintf(SET_GRAD_IN_META_TEMPLATE,
+                                  inplace_input_autograd_name, output_position);
 
       // Intermediate Tensor does not require CheckAndRetainGrad
       if (!output.intermediate()) {
         VLOG(6) << "Generated Call RetainGradForTensor";
         const char* RETAIN_GRAD_TEMPLATE =
-            "    VLOG(3) << \"yoki: in %s ptr final: \" << &%s;\n"
             "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
         grad_node_creation_str +=
-            paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, inplace_input_name,
-                                    inplace_input_name, inplace_input_name);
+            paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, inplace_input_name);
       }
     } else {
       const std::string& output_autograd_name = "p_autograd_" + output_name;
@@ -1258,32 +1251,21 @@ static std::string GenerateGradNodeCreationContent(
       } else {
         pass_stop_gradient_args += ", " + output_autograd_name;
         const char* SET_OUT_RANK_TEMPLATE =
-            "    VLOG(3) << \"yoki: inplace meta grad7: \";\n"
-            "    egr::EagerUtils::yoki_grad_node_name(%s);\n"
             "    egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
-        grad_node_creation_str +=
-            paddle::string::Sprintf(SET_OUT_RANK_TEMPLATE, output_autograd_name,
-                                    output_autograd_name, output_position);
+        grad_node_creation_str += paddle::string::Sprintf(
+            SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
         // Intermediate Tensor does not require SetHistory
         if (!output.intermediate()) {
           const char* SET_HISTORY_TEMPLATE =
-              "    VLOG(3) << \"yoki: inplace meta grad8: \";\n"
-              "    egr::EagerUtils::yoki_grad_node_name(%s);\n"
-              "    egr::EagerUtils::SetHistory(%s, grad_node);\n"
-              "    VLOG(3) << \"yoki: inplace meta grad9: \";\n"
-              "    egr::EagerUtils::yoki_grad_node_name(%s);\n";
+              "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
           grad_node_creation_str += paddle::string::Sprintf(
-              SET_HISTORY_TEMPLATE, output_autograd_name, output_autograd_name,
-              output_autograd_name);
+              SET_HISTORY_TEMPLATE, output_autograd_name);
         }
         const char* SET_GRAD_IN_META_TEMPLATE =
-            "    grad_node->SetGradInMeta(%s, %d);\n"
-            "    VLOG(3) << \"yoki: inplace meta grad10: \";\n"
-            "    egr::EagerUtils::yoki_grad_node_name(%s);\n";
+            "    grad_node->SetGradInMeta(%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
-            SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position,
-            output_autograd_name);
+            SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
       }
 
       // Intermediate Tensor does not require CheckAndRetainGrad
@@ -1299,6 +1281,11 @@ static std::string GenerateGradNodeCreationContent(
   VLOG(6) << "Generated SetGradIn/OutMeta";
 
   // [Generation] GradNode Creation
+  // After getting require_any_grad, firstly use CheckInplace method for inplace
+  // op.
+  // Then execute TraceOp and generate output autograd_meta.
+  // Finally, Construct GradNode. (Replace output directly with input in inplace
+  // op.)
   const char* GRAD_NODE_CREATION_TEMPLATE =
       "  %s"
       "  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(%s);\n\n"
@@ -1404,6 +1391,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
       core_ops_args_type_info[op_type][input_position] = "list";
     } else {
+      // inplace tensor can't be const
       const char* FWD_INS_ARG_TEMPLATE;
       bool flag_find_input_name = false;
       if (!inplace_map.empty()) {
@@ -1521,6 +1509,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       core_ops_args_info[op_type].push_back(output_var_name);
 
     } else if (!inplace_map.empty() && inplace_map.count(output_name)) {
+      // In inplace op, replace the output with the input directly.
       PADDLE_ENFORCE_NE(
           inplace_map[output_name], "",
           paddle::platform::errors::InvalidArgument(
@@ -1531,6 +1520,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       outs_contents_str += paddle::string::Sprintf(
           FWD_OUTS_CONTENT_TEMPLATE, output_name, inplace_input_name);
 
+      // inplace_map used in TraceOp.
       const char* INPLACE_MAPPING_TEMPLATE = R"({"%s", "%s"},)";
       inplace_mapping_str += paddle::string::Sprintf(
           INPLACE_MAPPING_TEMPLATE, inplace_input_name, output_name);
@@ -1595,6 +1585,11 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   dygraph_function_args_str +=
       ", const paddle::framework::AttributeMap& attr_map";
 
+  /* --------- Generate TraceOp ----- */
+  // TraceOp should be run after compute require_any_grad. (for checking
+  // inplace)
+  // `trace_op_body_str` will be passed as a parameter to
+  // `GenerateGradNodeCreationContent`.
   std::string trace_op_body_str = "";
   // [Generation] Get TraceOp
   const char* FWD_TRACE_OP_TEMPLATE =
@@ -1674,30 +1669,17 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         }
       } else {
         if (!inplace_map.empty() && inplace_map.count(output_name)) {
+          // Modify meta info of inplace tensor.
+          // Bump inplace version of inplace tensor.
           auto inplace_input_name = inplace_map[output_name];
           const char* FWD_OUT_TENSOR_TEMPLATE =
-              "  uint32_t tmp_inplace_version = %s.current_inplace_version();\n"
-              "  VLOG(3) << \" yoki: in %s ptr1: \" << &%s;\n"
               "  egr::EagerUtils::ModifyInplaceInput(outs[\"%s\"][0], &%s);\n"
-              "  VLOG(3) << \" yoki: in %s ptr2: \" << &%s;\n"
-              "  VLOG(6) << \"yoki: before set_inplace_version: \" << "
-              "%s.current_inplace_version();\n"
-              "  %s.set_inplace_version(tmp_inplace_version);\n"
-              "  VLOG(6) << \"yoki: after set_inplace_version: \" << "
-              "%s.current_inplace_version();\n"
-              "  VLOG(6) << \"Modify Inplace input tensor (\" << %s.name() << "
-              "\").\";\n"
               "  %s.bump_inplace_version();\n"
-              "  VLOG(6) << \"yoki: before bump_inplace_version: \" << "
-              "%s.current_inplace_version();\n"
               "  VLOG(3) << \"Tensor(\" << %s.name() << \") uses Inplace "
               "Strategy.\";\n";
           out_tensor_str = paddle::string::Sprintf(
-              FWD_OUT_TENSOR_TEMPLATE, inplace_input_name, inplace_input_name,
-              inplace_input_name, output_name, inplace_input_name,
-              inplace_input_name, inplace_input_name, inplace_input_name,
-              inplace_input_name, inplace_input_name, inplace_input_name,
-              inplace_input_name, inplace_input_name, inplace_input_name);
+              FWD_OUT_TENSOR_TEMPLATE, output_name, inplace_input_name,
+              inplace_input_name, inplace_input_name);
         } else {
           const char* FWD_OUT_TENSOR_TEMPLATE =
               "  paddle::experimental::Tensor %s;\n"
@@ -1711,6 +1693,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     }
 
     if (!inplace_map.empty() && inplace_map.count(output_name)) {
+      // Replace output directly with input in inplace op.
       return_contents[return_position] = inplace_map[output_name];
     } else {
       return_contents[return_position] = output_varname;
@@ -1719,6 +1702,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   }
   trace_op_body_str += "\n";
   VLOG(6) << "Converted Output VarBase to EagerVariable(s)";
+  /* ------ END Generate TraceOp ----- */
 
   // [Generation] Handle core_ops_returns_info
   // avoid inplace op changing core_ops_returns_info
@@ -1728,6 +1712,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
 
   // [Generation] ComputeRequireGrad -> GradNodeCreation
   if (!bwd_info.GenerateForwardOnly()) {
+    // If GradNode needs to be generated, pass `trace_op_body_str`
+    // into `GenerateGradNodeCreationContent`.
     std::string grad_node_creation_body_str = GenerateGradNodeCreationContent(
         fwd_info, bwd_info, trace_op_body_str, inplace_map);
     generated_function_body += grad_node_creation_body_str;
@@ -1736,6 +1722,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     // [Generation] Call RetainGradForTensor
     VLOG(6) << "Generated GradNode Creation codes";
   } else {
+    // If GradNode doesn't need to be generated, generate TraceOP directly.
     generated_function_body += trace_op_body_str;
   }
 
@@ -1787,6 +1774,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   if (inplace_map.empty()) {
     function_name = op_type + "_dygraph_function";
   } else {
+    // change function_name for inplace op.
     function_name = op_type + "__dygraph_function";
   }
 
@@ -2568,6 +2556,9 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
     auto& infer_inplace =
         paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
     std::map<std::string, std::string> inplace_map;
+    // Inplace Function Generator.
+    // `sum` op has duplicate input. Don't consider adding inplace strategy
+    // for `sum` in temporary.
     if (op_type != "sum" && infer_inplace) {
       auto in_to_outs = infer_inplace(true);
       for (auto& inplace_pair : in_to_outs) {

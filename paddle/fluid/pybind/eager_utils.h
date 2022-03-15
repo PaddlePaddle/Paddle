@@ -49,6 +49,7 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
 PyObject* ToPyObject(int value);
+PyObject* ToPyObject(uint32_t value);
 PyObject* ToPyObject(bool value);
 PyObject* ToPyObject(int64_t value);
 PyObject* ToPyObject(float value);
