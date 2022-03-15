@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
+#include "paddle/phi/kernels/reduce_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,6 +20,9 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/reduce_grad.h"
+#include "paddle/phi/kernels/impl/reduce_max_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/reduce_min_grad_kernel_impl.h"
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -106,6 +109,28 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                                                             x_grad);
 }
 
+template <typename T, typename Context>
+void ReduceMeanGradKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& out_grad,
+                          const std::vector<int64_t>& dims,
+                          bool keep_dim,
+                          bool reduce_all,
+                          DataType in_dtype,
+                          DataType out_dtype,
+                          DenseTensor* x_grad) {
+  ReduceGradKernel<Context, T, funcs::MeanGradFunctor, true>(dev_ctx,
+                                                             x,
+                                                             out_grad,
+                                                             paddle::none,
+                                                             dims,
+                                                             keep_dim,
+                                                             reduce_all,
+                                                             in_dtype,
+                                                             out_dtype,
+                                                             x_grad);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(sum_grad,
@@ -120,3 +145,29 @@ PD_REGISTER_KERNEL(sum_grad,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(mean_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ReduceMeanGradKernel,
+                   bool,
+                   float,
+                   double) {}
+
+PD_REGISTER_KERNEL(max_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ReduceMaxGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(min_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ReduceMinGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
