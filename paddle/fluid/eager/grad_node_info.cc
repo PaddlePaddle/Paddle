@@ -39,19 +39,16 @@ GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
   VLOG(6) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
+  adj_edges_.resize(bwd_out_slot_num);
 }
 
 void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
   PADDLE_ENFORCE_LT(
-      slot_id, bwd_out_meta_.size(),
+      slot_id, adj_edges_.size(),
       paddle::platform::errors::InvalidArgument(
           "Given slot id is out of range of adj_edges outter size, "
           "adj_edges is designed to has the same size of grad "
           "inputs's slot num."));
-  auto& out_meta = bwd_out_meta_[slot_id];
-  if (out_meta.size() == 0) {
-    out_meta.resize(metas->size());
-  }
 
   for (size_t i = 0; i < metas->size(); i++) {
     const auto& meta = (*metas)[i];
@@ -60,23 +57,24 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
     // its pre-ops
     if (meta && !meta->StopGradient()) {
       auto node = meta->GetMutableGradNode();
-      if (!node) {
+      if (!node || node.get()) {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
       }
 
-      out_meta[i].SetEdge(
-          Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
+      adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
+                                       meta->OutRankInfo());
     }
   }
 }
 
 void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
   PADDLE_ENFORCE_LT(
-      slot_id, bwd_out_meta_.size(),
+      slot_id, adj_edges_.size(),
       paddle::platform::errors::InvalidArgument(
           "Given slot id is out of range of adj_edges outter size, "
           "adj_edges is designed to has the same size of grad "
           "inputs's slot num."));
+
   if (meta && !meta->StopGradient()) {
     auto node = meta->GetMutableGradNode();
     if (!node) {
@@ -85,11 +83,8 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
     VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
             << this->name() << " to " << meta->GetMutableGradNode()->name();
 
-    auto& out_meta = bwd_out_meta_[slot_id];
-    if (out_meta.size() == 0) {
-      out_meta.resize(1);
-    }
-    out_meta[0].SetEdge(Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
+    adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
+                                     meta->OutRankInfo());
   }
 }
 
@@ -112,7 +107,6 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
           "inputs."));
   auto& metas = bwd_in_meta_.at(slot_rank);
   if (metas.size() == 0) {
-    VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
     metas.resize(1);
   }
 
@@ -145,7 +139,10 @@ void GradNodeBase::SetGradInMeta(
           "inputs."));
   auto& metas = bwd_in_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
-  metas.resize(slot_size);
+  if (metas.size() < slot_size) {
+    VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
+    metas.resize(slot_size);
+  }
   for (size_t i = 0; i < slot_size; i++) {
     auto& meta = metas[i];
     const auto& fwd_out_tensor = fwd_out[i];
@@ -187,7 +184,9 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
           "backward outputs."));
   auto& metas = bwd_out_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
-  metas.resize(1);
+  if (metas.size() == 0) {
+    metas.resize(1);
+  }
   auto& meta = metas[0];
   if (fwd_in_meta) {
     meta.SetStopGradient(fwd_in_meta->StopGradient());
@@ -217,7 +216,9 @@ void GradNodeBase::SetGradOutMeta(
           "backward outputs."));
   auto& metas = bwd_out_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
-  metas.resize(slot_size);
+  if (metas.size() < slot_size) {
+    metas.resize(slot_size);
+  }
   for (size_t i = 0; i < slot_size; i++) {
     const auto& fwd_in_tensor = fwd_in[i];
     auto& meta = metas[i];
@@ -256,6 +257,10 @@ int64_t GradNodeBase::RegisterGradientHook(
   gradient_hooks_.emplace(next_hook_id_,
                           std::make_tuple(slot_id, rank, std::move(hook)));
   return next_hook_id_++;
+}
+
+const std::vector<std::vector<Edge>>& GradNodeBase::GetEdges() const {
+  return adj_edges_;
 }
 
 std::vector<std::vector<paddle::experimental::Tensor>>
