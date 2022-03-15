@@ -392,27 +392,29 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
             # make broadcast
             step = multiply, [var1, var2], var2
             plan.add_step(step)
-        # In case no dimensions to join, turn into a dot
-        elif j1 + j2 == 0:
-            if k == 1:
-                step = unsqueeze, [var1], var1, [-2]
-                plan.add_step(step)
-                step = unsqueeze, [var2], var2, [-1]
-                plan.add_step(step)
-                step = matmul, [var1, var2], var2
-                plan.add_step(step)
-                step = squeeze, [var2], var2, [-1, -2]
-                plan.add_step(step)
-            elif not-1 in np.concatenate((op1_vshape[K], op2_vshape[K])):
-                assert all(op1_vshape[K] == op2_vshape[K])
-                for var in var1, var2:
-                    step = reshape, [var], var, list(op1_vshape[
-                        I]) + [1] + [np.prod(op1_vshape[K])]
-                    plan.add_step(step)
-                step = matmul, [var1, var2], var2, False, True
-                plan.add_step(step)
-                step = squeeze, [var2], var2, [-1, -2]
-                plan.add_step(step)
+        # Contract and no join, turn into a dot
+        elif j1 + j2 == 0 and k == 1:
+            step = unsqueeze, [var1], var1, [-2]
+            plan.add_step(step)
+            step = unsqueeze, [var2], var2, [-1]
+            plan.add_step(step)
+            step = matmul, [var1, var2], var2
+            plan.add_step(step)
+            step = squeeze, [var2], var2, [-1, -2]
+            plan.add_step(step)
+        elif j1 + j2 == 0 and not-1 in np.concatenate(
+            (op1_vshape[K], op2_vshape[K])):
+            assert all(op1_vshape[K] == op2_vshape[K])
+            step = reshape, [var1], var1, list(op1_vshape[
+                I]) + [1] + [np.prod(op1_vshape[K])]
+            plan.add_step(step)
+            step = reshape, [var2], var2, list(op2_vshape[
+                I]) + [1] + [np.prod(op2_vshape[K])]
+            plan.add_step(step)
+            step = matmul, [var1, var2], var2, False, True
+            plan.add_step(step)
+            step = squeeze, [var2], var2, [-1, -2]
+            plan.add_step(step)
         else:
             step = multiply, [var1, var2], var2
             plan.add_step(step)

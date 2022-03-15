@@ -414,21 +414,30 @@ class TestNumpyTests(unittest.TestCase):
                 name='c', shape=[None, None, 2, None], dtype='float')
             d = paddle.static.data(
                 name='d', shape=[None, None, 5], dtype='float')
+            e = paddle.static.data(
+                name='e', shape=[None, 2, None], dtype='float')
 
             outs = []
             outs.append(paddle.einsum("ibnd,jbnd->bnij", a, b))
             outs.append(paddle.einsum('...ik, ...j', c, d))
+            outs.append(paddle.einsum('...kj, ...ik', d, e))
+            outs.append(paddle.einsum('ijk..., ikj', c, e))
+            outs.append(paddle.einsum('ijk..., ikj->...ij', c, e))
         exe = fluid.Executor(self.place)
         exe.run(startup)
         a = np.arange(72).reshape(3, 2, 3, 4).astype('float')
         b = np.arange(48).reshape(2, 2, 3, 4).astype('float')
         c = np.arange(48).reshape(2, 3, 2, 4).astype('float')
         d = np.arange(30).reshape(2, 3, 5).astype('float')
-        feeds = {'a': a, 'b': b, 'c': c, 'd': d}
+        e = np.arange(12).reshape(2, 2, 3).astype('float')
+        feeds = {'a': a, 'b': b, 'c': c, 'd': d, 'e': e}
         actual = exe.run(main, feed=feeds, fetch_list=[outs])
         expect = []
         expect.append(np.einsum("ibnd,jbnd->bnij", a, b))
         expect.append(np.einsum('...ik, ...j', c, d))
+        expect.append(np.einsum('...kj, ...ik', d, e))
+        expect.append(np.einsum('ijk..., ikj', c, e))
+        expect.append(np.einsum('ijk..., ikj->...ij', c, e))
         for a, e in zip(actual, expect):
             self.check_output_equal(a, e)
 
