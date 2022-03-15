@@ -248,7 +248,7 @@ def ParseYamlReturns(string):
         else:
             ret_type = ret.strip()
 
-        assert ret_type in yaml_types_mapping.keys(), f"The return type {arg_type} in yaml config is not supported in yaml_types_mapping."
+        assert ret_type in yaml_types_mapping.keys(), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
         ret_type = yaml_types_mapping[ret_type]
 
         assert "Tensor" in ret_type
