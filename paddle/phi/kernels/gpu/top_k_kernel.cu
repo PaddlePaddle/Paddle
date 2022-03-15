@@ -78,15 +78,16 @@ void TopkKernel(const Context& dev_ctx,
     // The conclusion is drawn from the data through multiple sets of
     // statistics
     if (input_width >= 128 && k >= input_width * 0.75) {
-      if (ops::SortTopk<T>(
-              paddle::platform::CUDADeviceContext(dev_ctx.GetPlace()),
-              input,
-              input_width,
-              input_height,
-              k,
-              out,
-              indices,
-              largest)) {
+      auto* ctx = reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
+          &dev_ctx);
+      if (ops::SortTopk<T>(*ctx,
+                           input,
+                           input_width,
+                           input_height,
+                           k,
+                           out,
+                           indices,
+                           largest)) {
         // Successed, return.
         return;
       } else {
@@ -181,15 +182,16 @@ void TopkKernel(const Context& dev_ctx,
     // The conclusion is drawn from the data through multiple sets of
     // statistics
     if (input_width >= 128 && k >= input_width * 0.75) {
-      if (ops::SortTopk<T>(
-              paddle::platform::CUDADeviceContext(dev_ctx.GetPlace()),
-              &trans_input,
-              input_width,
-              input_height,
-              k,
-              &trans_out,
-              &trans_ind,
-              largest)) {
+      auto* ctx = reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
+          &dev_ctx);
+      if (ops::SortTopk<T>(*ctx,
+                           &trans_input,
+                           input_width,
+                           input_height,
+                           k,
+                           &trans_out,
+                           &trans_ind,
+                           largest)) {
         // last step, tranpose back the indices and output
         funcs::TransCompute<phi::GPUContext, int64_t>(
             ndims, dev_ctx, trans_ind, indices, trans);

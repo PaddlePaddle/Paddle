@@ -79,9 +79,41 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
                         const DenseTensor& x,                       \
                         const DenseTensor& dout,                    \
                         DenseTensor* dx) {                          \
-    functor_class functor;                                          \
-    ActivationGradGPUImpl<T, Context, functor_class>(               \
+    funcs::functor_class<T> functor;                                \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(     \
         dev_ctx, &x, nullptr, &dout, dx, functor);                  \
+  }
+
+#define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(         \
+    name, functor_class, attr)                                  \
+  template <typename T, typename Context>                       \
+  void name##GradKernel(const Context& dev_ctx,                 \
+                        const DenseTensor& x,                   \
+                        const DenseTensor& dout,                \
+                        float attr,                             \
+                        DenseTensor* dx) {                      \
+    funcs::functor_class<T> functor;                            \
+    auto attrs = functor.GetAttrs();                            \
+    *(attrs[0].second) = attr;                                  \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, &x, nullptr, &dout, dx, functor);              \
+  }
+
+#define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DepX(         \
+    name, functor_class, attr1, attr2)                          \
+  template <typename T, typename Context>                       \
+  void name##GradKernel(const Context& dev_ctx,                 \
+                        const DenseTensor& x,                   \
+                        const DenseTensor& dout,                \
+                        float attr1,                            \
+                        float attr2,                            \
+                        DenseTensor* dx) {                      \
+    funcs::functor_class<T> functor;                            \
+    auto attrs = functor.GetAttrs();                            \
+    *(attrs[0].second) = attr1;                                 \
+    *(attrs[1].second) = attr2;                                 \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, &x, nullptr, &dout, dx, functor);              \
   }
 
 #define DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepOut(name, functor_class) \
@@ -90,102 +122,54 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
                         const DenseTensor& out,                       \
                         const DenseTensor& dout,                      \
                         DenseTensor* dx) {                            \
-    functor_class functor;                                            \
-    ActivationGradGPUImpl<T, Context, functor_class>(                 \
+    funcs::functor_class<T> functor;                                  \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(       \
         dev_ctx, nullptr, &out, &dout, dx, functor);                  \
   }
 
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepOut(Relu, funcs::CudaReluGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Cos, funcs::CudaCosGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Tan, funcs::CudaTanGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acos, funcs::CudaAcosGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Sin, funcs::CudaSinGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asin, funcs::CudaAsinGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atan, funcs::CudaAtanGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Sinh, funcs::CudaSinhGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Cosh, funcs::CudaCoshGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asinh, funcs::CudaAsinhGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acosh, funcs::CudaAcoshGradFunctor<T>);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, funcs::CudaAtanhGradFunctor<T>);
+#define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepOut(       \
+    name, functor_class, attr)                                  \
+  template <typename T, typename Context>                       \
+  void name##GradKernel(const Context& dev_ctx,                 \
+                        const DenseTensor& out,                 \
+                        const DenseTensor& dout,                \
+                        float attr,                             \
+                        DenseTensor* dx) {                      \
+    funcs::functor_class<T> functor;                            \
+    auto attrs = functor.GetAttrs();                            \
+    *(attrs[0].second) = attr;                                  \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>( \
+        dev_ctx, nullptr, &out, &dout, dx, functor);            \
+  }
+
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepOut(Relu, CudaReluGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepOut(Tanh, CudaTanhGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Cos, CudaCosGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Tan, CudaTanGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acos, CudaAcosGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Sin, CudaSinGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asin, CudaAsinGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atan, CudaAtanGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Sinh, CudaSinhGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Cosh, CudaCoshGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asinh, CudaAsinhGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acosh, CudaAcoshGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, CudaAtanhGradFunctor);
+
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(LeakyRelu,
+                                               CudaLeakyReluGradFunctor,
+                                               alpha);
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(ThresholdedRelu,
+                                               CudaThresholdedReluGradFunctor,
+                                               threshold);
+
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DepX(BRelu,
+                                               CudaBReluGradFunctor,
+                                               t_min,
+                                               t_max);
 
 }  // namespace phi
-PD_REGISTER_KERNEL(cos_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CosGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(tan_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::TanGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(acos_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AcosGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(sin_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SinGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(asin_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AsinGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(atan_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AtanGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(sinh_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SinhGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(cosh_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CoshGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(asinh_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AsinhGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(acosh_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AcoshGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(atanh_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AtanhGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(relu_grad,
                    GPU,
@@ -219,3 +203,34 @@ PD_REGISTER_KERNEL(relu_double_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #endif
+
+#define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
+  PD_REGISTER_KERNEL(name,                             \
+                     GPU,                              \
+                     ALL_LAYOUT,                       \
+                     phi::func,                        \
+                     float,                            \
+                     double,                           \
+                     phi::dtype::float16,              \
+                     phi::dtype::bfloat16) {}
+
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(sin_grad, SinGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(cos_grad, CosGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(tan_grad, TanGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(acos_grad, AcosGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(asin_grad, AsinGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(atan_grad, AtanGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(sinh_grad, SinhGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(cosh_grad, CoshGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(asinh_grad, AsinhGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(acosh_grad, AcoshGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(atanh_grad, AtanhGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_grad, TanhGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_double_grad, TanhDoubleGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_triple_grad, TanhTripleGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(brelu_grad, BReluGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_double_grad,
+                                   LeakyReluDoubleGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(thresholded_relu_grad,
+                                   ThresholdedReluGradKernel)
