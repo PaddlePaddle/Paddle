@@ -33,15 +33,16 @@ void RollGradKernel(const Context& dev_ctx,
   auto shifts_data = shifts.GetData();
   size_t nums = shifts_data.size();
   DDim input_dim = out_grad.dims();
+  auto dims = axis;
 
   // axis = none, reshape to 1-D tensor
-  if (axis.size() == 0) {
-    axis.push_back(0l);
+  if (dims.size() == 0) {
+    dims.push_back(0l);
     input_dim = phi::Dim<1>(out_vec.size());
   }
 
   for (size_t i = 0; i < nums; i++) {
-    ShiftAlongDim(out_vec.data(), input_dim, axis[i], 0 - shifts_data[i]);
+    ShiftAlongDim(out_vec.data(), input_dim, dims[i], 0 - shifts_data[i]);
   }
 
   dev_ctx.template Alloc<T>(x_grad);
