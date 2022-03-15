@@ -304,9 +304,8 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
                 "two value is\
                 {}\n{}, check diff!".format(np_res, ret_res))
 
-    def test_set_outsize(self):
-        device = paddle.CPUPlace()
-        with paddle.fluid.dygraph.guard(device):
+    def test_set_outsize_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
             x = paddle.to_tensor(
                 np.array([[0, 2, 3], [1, 4, 5], [2, 6, 6]]), dtype="float32")
             src_index = paddle.to_tensor(np.array([0, 0, 1]), dtype="int32")
@@ -320,6 +319,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
             np_res = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
             np_res_set_outsize = np.array(
                 [[0, 2, 3], [1, 6, 8], [0, 0, 0]], dtype="float32")
+
             self.assertTrue(
                 np.allclose(
                     np_res, res, atol=1e-6),
