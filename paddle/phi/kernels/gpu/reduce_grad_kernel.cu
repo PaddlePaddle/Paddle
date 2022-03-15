@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/gpu/reduce_grad.h"
 #include "paddle/phi/kernels/impl/reduce_max_grad_kernel_impl.h"
 #include "paddle/phi/kernels/impl/reduce_min_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/reduce_prod_grad_kernel_impl.h"
 
 namespace phi {
 
@@ -89,6 +90,15 @@ PD_REGISTER_KERNEL(mean_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(prod_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ReduceProdGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(max_grad,
                    GPU,

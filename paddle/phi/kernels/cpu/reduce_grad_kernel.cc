@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/impl/reduce_grad.h"
 #include "paddle/phi/kernels/impl/reduce_max_grad_kernel_impl.h"
 #include "paddle/phi/kernels/impl/reduce_min_grad_kernel_impl.h"
-
+#include "paddle/phi/kernels/impl/reduce_prod_grad_kernel_impl.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -153,6 +153,15 @@ PD_REGISTER_KERNEL(mean_grad,
                    bool,
                    float,
                    double) {}
+
+PD_REGISTER_KERNEL(prod_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ReduceProdGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(max_grad,
                    CPU,
