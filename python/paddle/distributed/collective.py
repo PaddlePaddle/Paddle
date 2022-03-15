@@ -294,12 +294,17 @@ def _init_parallel_env(rank=None,
     master_port = os.getenv("MASTER_PORT", None)
     if not master_addr or not master_port:
         endpoints = os.getenv("PADDLE_MASTER", None)
+        if endpoints is None:
+            endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", None)
         if not endpoints:
             raise ValueError(
                 "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
                 "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
                 "and 'export MASTER_ADDR=54612'. Or you can start your training"
-                "with paddle.distributed.run module.")
+                "with paddle.distributed.run or "
+                "paddle.distributed.luanch module.")
+        if ',' in endpoints:
+            endpoints = endpoints.split(',')[0]
         master_addr, master_port = endpoints.split(":")
 
     master_port = int(master_port)
