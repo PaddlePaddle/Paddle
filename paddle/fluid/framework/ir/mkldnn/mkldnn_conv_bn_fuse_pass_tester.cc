@@ -34,7 +34,7 @@ USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP_ITSELF(gelu);
 USE_OP_DEVICE_KERNEL(gelu, MKLDNN);
-
+PD_DECLARE_ARG_MAPPING_FN(gelu);
 namespace paddle {
 namespace framework {
 namespace ir {
