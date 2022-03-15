@@ -206,7 +206,7 @@ _op_real_in_out_name = {
     "cumsum": [["X"], ["Out"]],
     "expand_v2": [["X"], ["Out"]],
     "fill_any_like": [["X"], ["Out"]],
-    "fill_constant": [["X"], ["Out"]],
+    "fill_constant": [[], ["Out"]],
     "gelu": [["X"], ["Out"]],
     "instance_norm": [["X"], ["Out"]],
     "lookup_table": [["W", "Ids"], ["Out"]],
