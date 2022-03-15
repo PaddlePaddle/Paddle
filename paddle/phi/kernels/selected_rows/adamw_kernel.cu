@@ -102,7 +102,8 @@ __global__ void SparseAdamWCUDAKernelREG(MT beta1,
   }
 }
 
-xtemplate<typename T, typename Context> void AdamwDenseParamSparseGradKernel(
+template <typename T, typename Context>
+void AdamwDenseParamSparseGradKernel(
     const Context& dev_ctx,
     const DenseTensor& param,
     const SelectedRows& grad,
