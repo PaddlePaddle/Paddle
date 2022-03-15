@@ -1098,7 +1098,7 @@ static std::string GenerateGradNodeCreationContent(
   size_t bwd_in_slot_num = out_vars.size();
   size_t bwd_out_slot_num = in_vars.size();
   const char* GRAD_OP_NODE_TEMPLATE =
-      "    auto grad_node = std::make_shared<GradNode%s>(%d, %d);\n";
+      "      auto grad_node = std::make_shared<GradNode%s>(%d, %d);\n";
   grad_node_creation_str += "    // Create GradOpNode\n";
   grad_node_creation_str += paddle::string::Sprintf(
       GRAD_OP_NODE_TEMPLATE, op_type, bwd_in_slot_num, bwd_out_slot_num);
@@ -1107,14 +1107,14 @@ static std::string GenerateGradNodeCreationContent(
   VLOG(6) << "Generated GradOpNode construction";
 
   // [GradOpNode] Set Attrs
-  grad_node_creation_str += "    // Set Attributes\n";
-  grad_node_creation_str += "    grad_node->SetAttrMap(std::move(attrs));\n";
+  grad_node_creation_str += "      // Set Attributes\n";
+  grad_node_creation_str += "      grad_node->SetAttrMap(std::move(attrs));\n";
   grad_node_creation_str +=
-      "    grad_node->SetDefaultAttrMap(std::move(default_attrs));\n";
+      "      grad_node->SetDefaultAttrMap(std::move(default_attrs));\n";
   grad_node_creation_str += "\n";
 
   // [GradOpNode] Set TensorWrappers
-  grad_node_creation_str += "    // Set Tensor Wrappers\n";
+  grad_node_creation_str += "      // Set Tensor Wrappers\n";
   for (const auto& iter : op_base_infos) {
     const std::map<std::string, std::string>& grad_ins_fwd_slotname_map =
         iter.GetGradInsFwdSlotnameMap();
@@ -1126,7 +1126,7 @@ static std::string GenerateGradNodeCreationContent(
         full_reserved = "true";
       }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "    grad_node->SetTensorWrapper%s(%s, %s);\n";
+          "      grad_node->SetTensorWrapper%s(%s, %s);\n";
       // Replace output directly with input in inplace op.
       if (!inplace_map.empty() && inplace_map.count(tensor_wrapper_name)) {
         auto inplace_input_name = inplace_map[tensor_wrapper_name];
@@ -1155,12 +1155,12 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    grad_node->SetGradOutMeta(%s, %d);\n";
+          "      grad_node->SetGradOutMeta(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
       const char* ADD_EDGES_TEMPLATE =
-          "    if(%s) grad_node->AddEdges(%s, %d);\n";
+          "      if(%s) grad_node->AddEdges(%s, %d);\n";
       grad_node_creation_str +=
           paddle::string::Sprintf(ADD_EDGES_TEMPLATE, input_autograd_name,
                                   input_autograd_name, input_position);
@@ -1169,11 +1169,11 @@ static std::string GenerateGradNodeCreationContent(
       size_t input_position = fwd_inputs_name_pos_map.at(input_name);
 
       const char* SET_GRAD_OUT_META_TEMPLATE =
-          "    grad_node->SetGradOutMeta(&%s, %d);\n";
+          "      grad_node->SetGradOutMeta(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_GRAD_OUT_META_TEMPLATE, input_autograd_name, input_position);
 
-      const char* ADD_EDGES_TEMPLATE = "    grad_node->AddEdges(&%s, %d);\n";
+      const char* ADD_EDGES_TEMPLATE = "      grad_node->AddEdges(&%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           ADD_EDGES_TEMPLATE, input_autograd_name, input_position);
     }
@@ -1195,19 +1195,19 @@ static std::string GenerateGradNodeCreationContent(
       // Intermediate Tensor does not require SetHistory, nor RetainGrad
       pass_stop_gradient_args += ", " + inplace_input_autograd_name;
       const char* SET_OUT_RANK_TEMPLATE =
-          "    egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
+          "      egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
       grad_node_creation_str += paddle::string::Sprintf(
           SET_OUT_RANK_TEMPLATE, inplace_input_autograd_name, output_position);
 
       // Intermediate Tensor does not require SetHistory
       if (!output.intermediate()) {
         const char* SET_HISTORY_TEMPLATE =
-            "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
+            "      egr::EagerUtils::SetHistory(%s, grad_node);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_HISTORY_TEMPLATE, inplace_input_autograd_name);
       }
       const char* SET_GRAD_IN_META_TEMPLATE =
-          "    grad_node->SetGradInMeta(%s, %d);\n";
+          "      grad_node->SetGradInMeta(%s, %d);\n";
       grad_node_creation_str +=
           paddle::string::Sprintf(SET_GRAD_IN_META_TEMPLATE,
                                   inplace_input_autograd_name, output_position);
@@ -1216,7 +1216,7 @@ static std::string GenerateGradNodeCreationContent(
       if (!output.intermediate()) {
         VLOG(6) << "Generated Call RetainGradForTensor";
         const char* RETAIN_GRAD_TEMPLATE =
-            "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+            "      egr::EagerUtils::CheckAndRetainGrad(%s);\n";
         grad_node_creation_str +=
             paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, inplace_input_name);
       }
@@ -1229,38 +1229,38 @@ static std::string GenerateGradNodeCreationContent(
       if (output.duplicable()) {
         pass_stop_gradient_args += ", &" + output_autograd_name;
         const char* SET_OUT_RANK_TEMPLATE =
-            "    egr::EagerUtils::SetOutRankWithSlot(&%s, %d);\n";
+            "      egr::EagerUtils::SetOutRankWithSlot(&%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
         // Intermediate Tensor does not require SetHistory
         if (!output.intermediate()) {
           const char* SET_HISTORY_TEMPLATE =
-              "    egr::EagerUtils::SetHistory(&%s, grad_node);\n";
+              "      egr::EagerUtils::SetHistory(&%s, grad_node);\n";
           grad_node_creation_str += paddle::string::Sprintf(
               SET_HISTORY_TEMPLATE, output_autograd_name);
         }
         const char* SET_GRAD_IN_META_TEMPLATE =
-            "    grad_node->SetGradInMeta(&%s, %d);\n";
+            "      grad_node->SetGradInMeta(&%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
 
       } else {
         pass_stop_gradient_args += ", " + output_autograd_name;
         const char* SET_OUT_RANK_TEMPLATE =
-            "    egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
+            "      egr::EagerUtils::SetOutRankWithSlot(%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
         // Intermediate Tensor does not require SetHistory
         if (!output.intermediate()) {
           const char* SET_HISTORY_TEMPLATE =
-              "    egr::EagerUtils::SetHistory(%s, grad_node);\n";
+              "      egr::EagerUtils::SetHistory(%s, grad_node);\n";
           grad_node_creation_str += paddle::string::Sprintf(
               SET_HISTORY_TEMPLATE, output_autograd_name);
         }
         const char* SET_GRAD_IN_META_TEMPLATE =
-            "    grad_node->SetGradInMeta(%s, %d);\n";
+            "      grad_node->SetGradInMeta(%s, %d);\n";
         grad_node_creation_str += paddle::string::Sprintf(
             SET_GRAD_IN_META_TEMPLATE, output_autograd_name, output_position);
       }
@@ -1269,7 +1269,7 @@ static std::string GenerateGradNodeCreationContent(
       if (!output.intermediate()) {
         VLOG(6) << "Generated Call RetainGradForTensor";
         const char* RETAIN_GRAD_TEMPLATE =
-            "    egr::EagerUtils::CheckAndRetainGrad(%s);\n";
+            "      egr::EagerUtils::CheckAndRetainGrad(%s);\n";
         grad_node_creation_str +=
             paddle::string::Sprintf(RETAIN_GRAD_TEMPLATE, output_name);
       }
@@ -1283,21 +1283,28 @@ static std::string GenerateGradNodeCreationContent(
   // Then execute TraceOp and generate output autograd_meta.
   // Finally, Construct GradNode. (Replace output directly with input in inplace
   // op.)
+  // Add event record
+  std::string event_name = op_type + " node_creation";
   const char* GRAD_NODE_CREATION_TEMPLATE =
       "  %s"
       "  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(%s);\n\n"
       "%s\n"
       "%s"
-      "%s"
-      "  if(require_any_grad) {\n"
-      "    VLOG(6) << \" Construct Grad for %s \"; \n"
-      "    egr::EagerUtils::PassStopGradient(%s);\n"
-      "%s\n  }";
+      "  {\n"
+      "    paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
+      "paddle::platform::TracerEventType::Operator, 1);\n"
+      "  %s"
+      "    if(require_any_grad) {\n"
+      "      VLOG(6) << \" Construct Grad for %s \"; \n"
+      "      egr::EagerUtils::PassStopGradient(%s);\n"
+      "  %s\n"
+      "    }\n"
+      "  }";
   std::string grad_node_creation_body_str = paddle::string::Sprintf(
       GRAD_NODE_CREATION_TEMPLATE, prepare_autograd_meta_str,
       compute_require_grad_args, check_inplace_str, trace_op_body_str,
-      get_output_autograd_meta_str, op_type, pass_stop_gradient_args,
-      grad_node_creation_str);
+      event_name, get_output_autograd_meta_str, op_type,
+      pass_stop_gradient_args, grad_node_creation_str);
 
   return grad_node_creation_body_str;
 }
@@ -1714,18 +1721,6 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     // into `GenerateGradNodeCreationContent`.
     std::string grad_node_creation_body_str = GenerateGradNodeCreationContent(
         fwd_info, bwd_info, trace_op_body_str, inplace_map);
-
-    // Add event record
-    std::string event_name = op_type + " node_creation";
-    const char* NODE_CREATION_TEMPLATE =
-        "{\n"
-        "   paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
-        "paddle::platform::TracerEventType::Operator, 1);\n"
-        "   %s\n"
-        "}";
-
-    grad_node_creation_body_str = paddle::string::Sprintf(
-        NODE_CREATION_TEMPLATE, event_name, grad_node_creation_body_str);
 
     generated_function_body += grad_node_creation_body_str;
     generated_function_body += "\n";
