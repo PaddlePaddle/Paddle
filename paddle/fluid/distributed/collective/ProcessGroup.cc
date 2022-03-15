@@ -18,39 +18,6 @@
 namespace paddle {
 namespace distributed {
 
-std::string commTypeToString(CommType commType) {
-  switch (commType) {
-    case CommType::BROADCAST:
-      return "BROADCAST";
-    case CommType::ALLREDUCE:
-      return "ALLREDUCE";
-    case CommType::ALLREDUCE_SPARSE:
-      return "ALLREDUCE_SPARSE";
-    case CommType::REDUCE:
-      return "REDUCE";
-    case CommType::ALLGATHER:
-      return "ALLGATHER";
-    case CommType::GATHER:
-      return "GATHER";
-    case CommType::SCATTER:
-      return "SCATTER";
-    case CommType::REDUCE_SCATTER:
-      return "REDUCE_SCATTER";
-    case CommType::ALLTOALL:
-      return "ALLTOALL";
-    case CommType::SEND:
-      return "SEND";
-    case CommType::RECV:
-      return "RECV";
-    case CommType::BARRIER:
-      return "BARRIER";
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unknown communication type (CommType)."));
-  }
-  return "UNKNOWN";
-}
-
 ProcessGroup::Task::Task(int rank, const CommType comm_type)
     : rank_(rank), comm_type_(comm_type) {}
 

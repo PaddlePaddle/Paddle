@@ -35,13 +35,15 @@ class ProcessGroupGloo : public ProcessGroup {
   class GlooTask : public ProcessGroup::Task,
                    public std::enable_shared_from_this<GlooTask> {
    public:
-    explicit GlooTask(int rank, const std::vector<Tensor>& input_tensors,
-                      CommType comm_type);
+    explicit GlooTask(int rank, CommType comm_type);
 
     ~GlooTask() = default;
 
     virtual void Run() = 0;
-    bool Wait(std::chrono::milliseconds timeout) override { return true; }
+    bool Wait(
+        std::chrono::milliseconds timeout = kProcessGroupNoTimeout) override {
+      return true;
+    }
     bool IsCompleted() override { return true; }
     void Synchronize() override {}
 
@@ -59,13 +61,6 @@ class ProcessGroupGloo : public ProcessGroup {
     std::vector<char> get(const std::string& key) override {
       auto value = _store->get(key);
       return std::vector<char>(value.begin(), value.end());
-    }
-
-    void wait(const std::vector<std::string>& keys) override {
-      VLOG(3) << "GlooStore::wait";
-      for (auto& key : keys) {
-        _store->wait(key);
-      }
     }
 
     void set(const std::string& key, const std::vector<char>& value) override {
