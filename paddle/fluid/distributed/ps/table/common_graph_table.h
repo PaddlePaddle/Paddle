@@ -45,31 +45,6 @@
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
-//#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
-//#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
-/*
-struct GpuPsGraphNode {
-  int64_t node_id;
-  int neighbor_size, neighbor_offset;
-  // this node's neighbor is stored on [neighbor_offset,neighbor_offset +
-  // neighbor_size) of int64_t *neighbor_list;
-};
-
-struct GpuPsCommGraph {
-  int64_t *neighbor_list;
-  GpuPsGraphNode *node_list;
-  int neighbor_size, node_size;
-  // the size of neighbor array and graph_node_list array
-  GpuPsCommGraph()
-      : neighbor_list(NULL), node_list(NULL), neighbor_size(0), node_size(0) {}
-  GpuPsCommGraph(int64_t *neighbor_list_, GpuPsGraphNode *node_list_,
-                 int neighbor_size_, int node_size_)
-      : neighbor_list(neighbor_list_),
-        node_list(node_list_),
-        neighbor_size(neighbor_size_),
-        node_size(node_size_) {}
-};
-*/
 #endif
 namespace paddle {
 namespace distributed {
