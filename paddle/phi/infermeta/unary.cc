@@ -304,21 +304,13 @@ void DiagonalInferMeta(const MetaTensor& input,
   out->set_dims(phi::make_ddim(out_dims));
 }
 
-void DropoutInferMeta(const MetaTensor& x,
-                      paddle::optional<const MetaTensor&> seed_tensor,
-                      float p,
-                      bool is_test,
-                      const std::string& mode,
-                      int seed,
-                      bool fix_seed,
-                      MetaTensor* out,
-                      MetaTensor* mask) {
+void DropoutInferMeta(const MetaTensor& x, MetaTensor* out, MetaTensor* mask) {
   auto x_dims = x.dims();
   out->set_dims(x_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
 
-  if (is_test == false) {
+  if (mask != nullptr) {
     mask->set_dims(x_dims);
   }
 }
@@ -409,6 +401,26 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             int axis,
                             MetaTensor* out) {
   UnchangedInferMetaCheckAxis(x, axis, out);
+}
+
+void HistogramInferMeta(
+    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out) {
+  PADDLE_ENFORCE_GE(bins,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The bins should be greater than or equal to 1."
+                        "But received nbins is %d",
+                        bins));
+  PADDLE_ENFORCE_GE(
+      max,
+      min,
+      phi::errors::InvalidArgument("max must be larger or equal to min."
+                                   "But received max is %d, min is %d",
+                                   max,
+                                   min));
+
+  out->set_dims({bins});
+  out->share_lod(input);
 }
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {

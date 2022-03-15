@@ -45,6 +45,7 @@ using ConstEigenVectorArrayMap =
 class BatchNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -110,24 +111,6 @@ class BatchNormOpInferVarType
     static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Y"}};
     return m;
   }
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
-};
-
-template <typename DeviceContext, typename T>
-class BatchNormDoubleGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override;
 };
 
 }  // namespace operators
