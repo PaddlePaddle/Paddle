@@ -145,7 +145,7 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
                             const MetaTensor& src_index,
                             const MetaTensor& dst_index,
                             const std::string& pool_type,
-                            const int64_t& out_size,
+                            int64_t out_size,
                             MetaTensor* out,
                             MetaTensor* dst_count) {
   auto src_index_dims = src_index.dims();
@@ -191,12 +191,11 @@ void GraphSendRecvInferMeta(const MetaTensor& x,
   if (out_size <= -1) {
     out->set_dims(dims);
   } else {
-    // std::vector<int64_t> dims_ = phi::vectorize(dims);
-    // if (dims_.size() > 0) {
-    //  dims_[0] = out_size;
-    //}
-    // out->set_dims(phi::make_ddim(dims_));
-    out->set_dims({out_size, dims[1]});
+    std::vector<int64_t> dims_ = phi::vectorize(dims);
+    if (dims_.size() > 0) {
+      dims_[0] = out_size;
+    }
+    out->set_dims(phi::make_ddim(dims_));
   }
   out->set_dtype(x.dtype());
 
