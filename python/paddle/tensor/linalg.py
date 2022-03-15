@@ -2993,7 +2993,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     return solution, residuals, rank, singular_values
 
 
-def corrcoef(x, rowvar=True, ddof=True, name=None):
+def corrcoef(x, rowvar=True, ddof=False, name=None):
     """
     Return Pearson product-moment correlation coefficients.
 
@@ -3035,10 +3035,8 @@ def corrcoef(x, rowvar=True, ddof=True, name=None):
     """
 
     if ddof is not False:
-        warnings.warn(
-            'ddof have no effect and are deprecated',
-            DeprecationWarning,
-            stacklevel=3)
+        warnings.warn('ddof have no effect and are deprecated',
+                      DeprecationWarning)
     c = cov(x, rowvar)
     try:
         d = paddle.diag(c)
@@ -3047,11 +3045,18 @@ def corrcoef(x, rowvar=True, ddof=True, name=None):
         # nan if incorrect value (nan, inf, 0), 1 otherwise
         return c / c
 
+    if paddle.is_complex(d):
+        d = d.real()
     stddev = paddle.sqrt(d)
     c /= stddev[:, None]
     c /= stddev[None, :]
 
     # Clip to [-1, 1].  This does not guarantee
-    c = paddle.clip(c, -1, 1)
+    if paddle.is_complex(c):
+        c_real = paddle.clip(c.real(), -1, 1)
+        c_imag = paddle.clip(c.imag(), -1, 1)
+        return paddle.complex(c_real, c_imag)
+    else:
+        c = paddle.clip(c, -1, 1)
 
     return c

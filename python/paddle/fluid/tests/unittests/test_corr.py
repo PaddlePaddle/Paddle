@@ -20,11 +20,11 @@ import paddle
 import warnings
 
 
-def numpy_corr(np_arr, rowvar=True, ddof=1):
+def numpy_corr(np_arr, rowvar=True, ddof=0):
     return np.corrcoef(np_arr, rowvar=rowvar, ddof=int(ddof))
 
 
-class Cov_Test(unittest.TestCase):
+class Corr_Test(unittest.TestCase):
     def setUp(self):
         self.shape = [20, 10]
 
@@ -42,8 +42,8 @@ class Cov_Test(unittest.TestCase):
             for dtype in typelist:
                 np_arr = np.random.rand(*self.shape).astype(dtype)
                 tensor = paddle.to_tensor(np_arr, place=p)
-                corr = paddle.linalg.corrcoef(tensor, ddof=True)
-                np_corr = numpy_corr(np_arr, rowvar=True, ddof=1)
+                corr = paddle.linalg.corrcoef(tensor, ddof=False)
+                np_corr = numpy_corr(np_arr, rowvar=True, ddof=0)
                 self.assertTrue(np.allclose(np_corr, corr.numpy()))
 
     def test_tensor_corr_rowvar(self):
@@ -61,8 +61,8 @@ class Cov_Test(unittest.TestCase):
             for dtype in typelist:
                 np_arr = np.random.rand(*self.shape).astype(dtype)
                 tensor = paddle.to_tensor(np_arr, place=p)
-                corr = paddle.linalg.corrcoef(tensor, rowvar=False, ddof=True)
-                np_corr = numpy_corr(np_arr, rowvar=False, ddof=1)
+                corr = paddle.linalg.corrcoef(tensor, rowvar=False, ddof=False)
+                np_corr = numpy_corr(np_arr, rowvar=False, ddof=0)
                 self.assertTrue(np.allclose(np_corr, corr.numpy()))
 
     def test_tensor_corr_ddof(self):
@@ -80,18 +80,18 @@ class Cov_Test(unittest.TestCase):
             for dtype in typelist:
                 np_arr = np.random.rand(*self.shape).astype(dtype)
                 tensor = paddle.to_tensor(np_arr, place=p)
-                corr = paddle.linalg.corrcoef(tensor, ddof=False)
-                np_corr = numpy_corr(np_arr, rowvar=True, ddof=0)
+                corr = paddle.linalg.corrcoef(tensor, ddof=True)
+                np_corr = numpy_corr(np_arr, rowvar=True, ddof=1)
                 self.assertTrue(np.allclose(np_corr, corr.numpy()))
 
 
-class Cov_Test2(Cov_Test):
+class Corr_Test2(Corr_Test):
     def setUp(self):
         self.shape = [10]
 
 
 # Input(x) only support N-D (1<=N<=2) tensor
-class Cov_Test3(unittest.TestCase):
+class Corr_Test3(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 5, 10]
 
@@ -99,12 +99,12 @@ class Cov_Test3(unittest.TestCase):
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
-            covrr = paddle.linalg.corrcoef(tensor, ddof=True)
+            covrr = paddle.linalg.corrcoef(tensor, ddof=False)
 
         self.assertRaises(ValueError, test_err)
 
 
-class Cov_Test4(unittest.TestCase):
+class Corr_Test4(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 2, 5, 10]
 
@@ -112,12 +112,12 @@ class Cov_Test4(unittest.TestCase):
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
-            corr = paddle.linalg.corrcoef(tensor, ddof=True)
+            corr = paddle.linalg.corrcoef(tensor, ddof=False)
 
         self.assertRaises(ValueError, test_err)
 
 
-class Cov_Test5(unittest.TestCase):
+class Corr_Test5(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 5, 10, 6, 7]
 
@@ -125,7 +125,7 @@ class Cov_Test5(unittest.TestCase):
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
-            corr = paddle.linalg.corrcoef(tensor, ddof=True)
+            corr = paddle.linalg.corrcoef(tensor, ddof=False)
 
         self.assertRaises(ValueError, test_err)
 
