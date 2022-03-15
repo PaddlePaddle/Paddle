@@ -136,10 +136,6 @@ void MasterDaemon::run() {
     }
 
     for (size_t i = 1; i < fds.size(); i++) {
-      VLOG(0) << "fds.size:" << fds.size();
-      VLOG(0) << "fds.size-i:" << i;
-      VLOG(0) << "fds[i].revents:" << fds[i].revents;
-
       try {
         if (fds[i].revents == 0) {
           continue;

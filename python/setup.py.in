@@ -280,6 +280,7 @@ packages=['paddle',
           'paddle.incubate.nn',
           'paddle.incubate.passes',
           'paddle.distribution',
+          'paddle.distributed.sharding',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.elastic',
@@ -299,6 +300,7 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
           'paddle.distributed.auto_parallel.operators',
+          'paddle.distributed.auto_parallel.tuner',
           'paddle.distributed.passes',
           'paddle.framework',
           'paddle.jit',
@@ -372,6 +374,7 @@ packages=['paddle',
           'paddle.device',
           'paddle.device.cuda',
           'paddle.version',
+          'paddle.profiler'
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
