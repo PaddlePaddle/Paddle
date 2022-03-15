@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void EighKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const std::string& uplo,
-                DenseTensor* out_w,
-                DenseTensor* out_v);
+KernelSignature KronGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("kron_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {},
+                         {GradVarName("X"), GradVarName("Y")});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(kron_grad, phi::KronGradOpArgumentMapping);
