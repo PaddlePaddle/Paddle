@@ -72,11 +72,13 @@ def miminize_bfgs(objective_func,
         inverse_hessian_estimate : the estimate of inverse hessian at the `position`.
     """
     I = paddle.eye(initial_position.shape[0], dtype=dtype)
-    if initial_inverse_hessian_estimate == None:
+    if initial_inverse_hessian_estimate is None:
         initial_inverse_hessian_estimate = I
     Hk = paddle.assign(initial_inverse_hessian_estimate)
-    x1 = paddle.assign(initial_position)
-    f1, g1 = _value_and_gradient(objective_func, x1)
+    xk = paddle.assign(initial_position)
+
+    value, g1 = _value_and_gradient(objective_func, xk)
+    num_func_calls = paddle.assign(1)
     if in_dygraph_mode():
 
         k = 0
@@ -84,18 +86,17 @@ def miminize_bfgs(objective_func,
             gnorm = paddle.linalg.norm(g1, p=np.inf)
             if gnorm < tolerance_grad:
                 break
-            if paddle.any(paddle.isinf(x1)):
+            if paddle.any(paddle.isinf(xk)):
                 break
 
             pk = -paddle.matmul(Hk, g1)
             
-            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=x1, pk=pk)
-            print("g2: ", g2)
-            print("g1: ", g1)
+            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk)
+            num_func_calls += ls_func_calls
             sk = alpha * pk
             yk = g2 - g1
 
-            x1 = x1 + sk
+            xk = xk + sk
             g1 = g2
 
             yk = paddle.unsqueeze(yk, 0)
@@ -112,31 +113,29 @@ def miminize_bfgs(objective_func,
                                Vk) + rhok * sk * sk.t()
             k += 1
 
-        return x1, f1, g1, Hk
+        return num_func_calls, xk, value, g1, Hk
     else:
         k = paddle.full(shape=[1], fill_value=0, dtype='int64')
         done = paddle.full(shape=[1], fill_value=False, dtype='bool')
 
-        def cond(k, x1, g1, Hk, done):
+        def cond(k, done, num_func_calls, xk, value, g1, Hk):
             gnorm = paddle.linalg.norm(g1, p=np.inf)
-            done = done | (
-                gnorm < tolerance_grad) | paddle.any(paddle.isinf(x1))
+            done = done | (gnorm < tolerance_grad) | paddle.any(paddle.isinf(xk))
             return (k < max_iters) & ~done
 
-        def body(k, x1, g1, Hk, done):
+        def body(k, done, num_func_calls, xk, value, g1, Hk):
             pk = -paddle.matmul(Hk, g1)
             
-            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=x1, pk=pk)
-            
-            x2 = x1 + alpha * pk
-            sk = x2 - x1
+            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk)
+            num_func_calls += ls_func_calls
+
+            sk = alpha * pk
             paddle.assign(paddle.linalg.norm(sk, p=np.inf) < tolerance_change, done)
-            static_print = paddle.static.Print(g2, message="g2")
-            static_print = paddle.static.Print(g1, message="g1  1")
-            yk = g2 - g1
             
-            paddle.assign(x2, x1)
-            paddle.assign(g2, g1)
+            yk = g2 - g1
+
+            xk = xk + sk
+            g1 = g2
 
             yk = paddle.unsqueeze(yk, 0)
             sk = paddle.unsqueeze(sk, 0)
@@ -148,15 +147,15 @@ def miminize_bfgs(objective_func,
 
             paddle.static.nn.cond(
                 paddle.any(paddle.isinf(rhok)), lambda: true_fn(rhok), None)
-            static_print = paddle.static.Print(rhok, message="body1 rhok")
 
             Vk_transpose = I - rhok * sk * yk.t()
             Vk = I - rhok * yk * sk.t()
             Hk = paddle.matmul(paddle.matmul(Vk_transpose, Hk),
                                Vk) + rhok * sk * sk.t()
-            paddle.assign(k + 1, k)
-            return [k, x1, g1, Hk, done]
+            
+            k += 1
+            return [k, done, num_func_calls, xk, value, g1, Hk]
 
         paddle.static.nn.while_loop(
-            cond=cond, body=body, loop_vars=[k, x1, g1, Hk, done])
-        return x1, f1, g1, Hk
+            cond=cond, body=body, loop_vars=[k, done, num_func_calls, xk, value, g1, Hk])
+        return num_func_calls, xk, value, g1, Hk

@@ -52,7 +52,7 @@ class TestBfgs(unittest.TestCase):
             return paddle.sum(
                 paddle.multiply(scale, F.square_error_cost(x, minimun)))
 
-        position = np.array([2.0, 3.0], dtype='float32')
+        position = np.array([1234.567, -345.9876], dtype='float32')
         paddle.enable_static()
         main = fluid.Program()
         startup = fluid.Program()
@@ -63,10 +63,10 @@ class TestBfgs(unittest.TestCase):
         exe = fluid.Executor()
         exe.run(startup)
         results = exe.run(main, feed={'x': position}, fetch_list=[Y])
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+        print('num_func_calls: {} \n position: {}\n value: {} \n g: {}\n H: {} \n'.format(results[0], results[1], results[2], results[3],
                                                     results[3]))
 
-        self.assertTrue(np.allclose([1.0, 2.0], results[0], rtol=1e-08))
+        self.assertTrue(np.allclose([1.0, 2.0], results[1], rtol=1e-08))
 
     def test_static_inf_minima(self):
         extream_point = paddle.to_tensor([-1, 2])
@@ -141,12 +141,12 @@ class TestBfgs(unittest.TestCase):
 
         position = paddle.to_tensor([2.0, 3.0])
         results = miminize_bfgs(func, position)
-        print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
+        print('num_func_calls: {} \n position: {}\n value: {} \n g: {}\n H: {} \n'.format(results[0], results[1], results[2], results[3],
                                                     results[3]))
 
         self.assertTrue(
             np.allclose(
-                minimun.numpy(), results[0].numpy(), rtol=1e-08))
+                minimun.numpy(), results[1].numpy(), rtol=1e-08))
 
     def test_inf_minima(self):
         extream_point = paddle.to_tensor([-1, 2])
@@ -191,4 +191,4 @@ class TestBfgs(unittest.TestCase):
 
 
 test = TestBfgs()
-test.test_static_quadratic_2d()
+test.test_quadratic_2d()
