@@ -149,6 +149,8 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/kernels/declarations.h"
+
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 """
 
 

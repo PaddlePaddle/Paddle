@@ -231,6 +231,14 @@ void UnfoldInferMeta(const MetaTensor& x,
 void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out);
+                            
+void OneHotRawInferMeta(const MetaTensor& x,
+                        int32_t depth,
+                        DataType dtype,
+                        bool allow_out_of_range,
+                        MetaTensor* out);
+
+void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
