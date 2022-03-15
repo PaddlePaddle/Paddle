@@ -19,10 +19,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EighKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const std::string& uplo,
-                DenseTensor* out_w,
-                DenseTensor* out_v);
+void SearchsortedKernel(const Context& ctx,
+                        const DenseTensor& sorted_sequence,
+                        const DenseTensor& value,
+                        bool out_int32,
+                        bool right,
+                        DenseTensor* out);
 
 }  // namespace phi

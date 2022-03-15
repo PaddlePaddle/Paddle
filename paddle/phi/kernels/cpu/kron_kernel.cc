@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/kron_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/kron_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void EighKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const std::string& uplo,
-                DenseTensor* out_w,
-                DenseTensor* out_v);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(kron,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::KronKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

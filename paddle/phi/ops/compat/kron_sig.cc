@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/searchsorted_op.h"
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+#include "paddle/phi/core/compat/op_utils.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    searchsorted, ops::SearchSortedKernel<plat::CUDADeviceContext, float>,
-    ops::SearchSortedKernel<plat::CUDADeviceContext, double>,
-    ops::SearchSortedKernel<plat::CUDADeviceContext, int>,
-    ops::SearchSortedKernel<plat::CUDADeviceContext, int64_t>);
+namespace phi {
+
+KernelSignature KronGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("kron_grad",
+                         {"X", "Y", GradVarName("Out")},
+                         {},
+                         {GradVarName("X"), GradVarName("Y")});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(kron_grad, phi::KronGradOpArgumentMapping);

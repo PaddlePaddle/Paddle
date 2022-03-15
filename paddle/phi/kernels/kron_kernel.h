@@ -19,10 +19,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EighKernel(const Context& dev_ctx,
+void KronKernel(const Context& ctx,
                 const DenseTensor& x,
-                const std::string& uplo,
-                DenseTensor* out_w,
-                DenseTensor* out_v);
+                const DenseTensor& y,
+                DenseTensor* out);
 
 }  // namespace phi

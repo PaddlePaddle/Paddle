@@ -17,9 +17,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/operators/kron_op.h"
-#include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -178,27 +176,4 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(kron, ops::KronOp, ops::KronOpMaker,
                   ops::KronGradOpMaker<paddle::framework::OpDesc>,
                   ops::KronGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    kron, ops::KronKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::KronKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::KronKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::float16>,
-    ops::KronKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::KronKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::KronKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex<float>>,
-    ops::KronKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex<double>>);
-
 REGISTER_OPERATOR(kron_grad, ops::KronGradOp);
-REGISTER_OP_CPU_KERNEL(
-    kron_grad, ops::KronGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::KronGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::KronGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::float16>,
-    ops::KronGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::KronGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::KronGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<float>>,
-    ops::KronGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::complex<double>>);
