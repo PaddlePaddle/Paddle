@@ -136,4 +136,9 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool unitriangular,
                               MetaTensor* out);
 
+void ValueCompareInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
+
 }  // namespace phi

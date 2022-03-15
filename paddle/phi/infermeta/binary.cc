@@ -813,6 +813,16 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->share_lod(y);
 }
 
+void ValueCompareInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  detail::BinarySameInputDimsCheck(x, y, config);
+
+  out->set_dims(x.dims());
+  out->set_dtype(DataType::BOOL);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
