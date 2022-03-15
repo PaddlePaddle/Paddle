@@ -606,7 +606,8 @@ __device__ __forceinline__ void Cumsum(OutT* out,
 
   __syncthreads();
   out[0] = static_cast<OutT>(temp[tidx + tidx / 32]);
-  out[1] = static_cast<OutT>(temp[tidx + stride_size + (tidx + stride_size) / 32]);
+  out[1] =
+      static_cast<OutT>(temp[tidx + stride_size + (tidx + stride_size) / 32]);
 }
 #undef SHARED_SIZE_LIMIT
 
@@ -739,13 +740,17 @@ __device__ __forceinline__ void Sort(OutT* out,
   out_index[1] = index[threadIdx.x + stride_size];
 }
 
-template<typename T1, typename T2, typename OutT, typename OpFunc>
-HOSTDEVICE __forceinline__ void OperatorTernary(OutT *out, const T1* in1, const T2* in2, OpFunc &func, int num) {
+template <typename T1, typename T2, typename OutT, typename OpFunc>
+HOSTDEVICE __forceinline__ void OperatorTernary(
+    OutT* out, const T1* in1, const T2* in2, OpFunc& func, int num) {
   func(out, in1, in2, num);
 }
 
-template<typename InT, typename OutT, typename OpFunc>
-HOSTDEVICE __forceinline__ void OperatorBinary(OutT *out, const InT* in, OpFunc &func, int num) {
+template <typename InT, typename OutT, typename OpFunc>
+HOSTDEVICE __forceinline__ void OperatorBinary(OutT* out,
+                                               const InT* in,
+                                               OpFunc& func,
+                                               int num) {
   func(out, in, num);
 }
 

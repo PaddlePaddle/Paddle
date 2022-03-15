@@ -33,15 +33,13 @@ class TestWhereIndexOp(OpTest):
 
     def init_config(self):
         input_ = np.ones((1044, 2), dtype=bool)
-        index_ = np.argwhere(input_==True)
-        index_int64 = np.array(index_, dtype = 'int64') 
-        self.inputs = {
-            'Condition': input_,
-        }
+        index_ = np.argwhere(input_ == True)
+        index_int64 = np.array(index_, dtype='int64')
+        self.inputs = {'Condition': input_, }
 
-        self.outputs = {
-            'Out': index_int64
-        }
+        self.outputs = {'Out': index_int64}
+
+
 # self.inputs = {'Condition': np.array([True, False, True]), }
 
 #self.outputs = {'Out': np.array([[0], [2]], dtype='int64')}
@@ -101,16 +99,14 @@ class TestWhereIndexOp(OpTest):
 #
 class TestRank2LargeCase(TestWhereIndexOp):
     def init_config(self):
-        input_ = np.ones((3,2), dtype=bool)
-        index_ = np.argwhere(input_==True)
-        index_int64 = np.array(index_, dtype = 'int64') 
-        self.inputs = {
-            'Condition': input_,
-        }
+        input_ = np.ones((3, 2), dtype=bool)
+        index_ = np.argwhere(input_ == True)
+        index_int64 = np.array(index_, dtype='int64')
+        self.inputs = {'Condition': input_, }
 
-        self.outputs = {
-            'Out': index_int64
-        }
+        self.outputs = {'Out': index_int64}
+
+
 #
 #
 #class TestWhereOpError(unittest.TestCase):
@@ -131,7 +127,6 @@ class TestRank2LargeCase(TestWhereIndexOp):
 #            fluid.layers.where([10])
 #
 #        self.assertRaises(TypeError, test_type)
-
 
 if __name__ == "__main__":
     unittest.main()

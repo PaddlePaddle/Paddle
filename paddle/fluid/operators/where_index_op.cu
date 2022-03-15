@@ -35,15 +35,15 @@ namespace operators {
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 namespace kps = phi::kps;
 using Mode = kps::details::ReduceMode;
-template<typename T>
-struct NonZeroFunctor{
+template <typename T>
+struct NonZeroFunctor {
   HOSTDEVICE NonZeroFunctor() {}
   HOSTDEVICE inline T operator()(const T in) {
-	  if (in) {
-	    return static_cast<T>(1.0f);
-	  } else {
-	    return static_cast<T>(0.0f);
-	  }
+    if (in) {
+      return static_cast<T>(1.0f);
+    } else {
+      return static_cast<T>(0.0f);
+    }
   }
 };
 
@@ -99,8 +99,8 @@ __device__ void GetBlockCountImpl(const InT *in, OutT *out, int num,
   kps::Reduce<OutT, 1, 1, 1, Add, Mode::kGlobalMode>(&result, &result, Add(),
                                                      true);
   if (store_fix == 0) {
-	  // first block's fix_size = 0;
-	OutT tmp = static_cast<OutT>(0.0f);
+    // first block's fix_size = 0;
+    OutT tmp = static_cast<OutT>(0.0f);
     kps::WriteData<OutT, 1, 1, 1, true>(out + store_fix, &tmp, 1);
   }
   kps::WriteData<OutT, 1, 1, 1, true>(out + store_fix + 1, &result, 1);
@@ -141,11 +141,13 @@ __device__ void CumsumImpl(const InT *in, OutT *out, OutT *pre_cumsum, int num,
   // set pre_cumsum
   kps::Init<OutT, VecSize>(&temp[0], *pre_cumsum);
   // load data to arg
-  //kps::ReadData<InT, 1, 1, 1, IsBoundary>(&arg[0], in, num);
-  kps::ReadData<InT, InT, VecSize, 1, 1, IsBoundary>(&arg[0], in, num, 1, BLOCK_NUM_X, 1);
+  // kps::ReadData<InT, 1, 1, 1, IsBoundary>(&arg[0], in, num);
+  kps::ReadData<InT, InT, VecSize, 1, 1, IsBoundary>(&arg[0], in, num, 1,
+                                                     BLOCK_NUM_X, 1);
 
-  if (threadIdx.x <= 2) 
-  printf("ffffff cumsums_0 %ld, cumsum_1 %d %ld arg_0 %ld arg_1 %ld\n", result[0], result[1], threadIdx.x, arg[0], arg[1]);
+  if (threadIdx.x <= 2)
+    printf("ffffff cumsums_0 %ld, cumsum_1 %d %ld arg_0 %ld arg_1 %ld\n",
+           result[0], result[1], threadIdx.x, arg[0], arg[1]);
   // block cumsum
   kps::Cumsum<InT, OutT, 1, Functor>(&result[0], &arg[0], func);
   // result = cumsum_result + pre_cumsum
@@ -157,9 +159,11 @@ __device__ void CumsumImpl(const InT *in, OutT *out, OutT *pre_cumsum, int num,
   __syncthreads();
   // update pre_cumsum
   *pre_cumsum = max_thread_data;
-  if (threadIdx.x <= 2) 
-  printf("ffffff cumsums_0 %ld, cumsum_1 %d %ld arg_0 %ld arg_1 %ld\n", result[0], result[1], threadIdx.x, arg[0], arg[1]);
-  kps::WriteData<OutT, OutT, VecSize, 1, 1, IsBoundary>(out, &result[0], num, 1, BLOCK_NUM_X, 1);
+  if (threadIdx.x <= 2)
+    printf("ffffff cumsums_0 %ld, cumsum_1 %d %ld arg_0 %ld arg_1 %ld\n",
+           result[0], result[1], threadIdx.x, arg[0], arg[1]);
+  kps::WriteData<OutT, OutT, VecSize, 1, 1, IsBoundary>(out, &result[0], num, 1,
+                                                        BLOCK_NUM_X, 1);
 }
 
 template <typename InT, typename OutT, typename Functor, int VecSize>
@@ -187,7 +191,7 @@ __device__ void
 SelectKernelImpl(OutT *out, const MT *mask, InT *in, Functor &func, int num,
                  int data_offset, int store_rank) {
   const int kCVecSize = 2;  // each thread cumsum 2 data
-  using IdT = int64_t;  // Set index data type
+  using IdT = int64_t;      // Set index data type
   using Add = kps::AddFunctor<IdT>;
   using Cast = NonZeroFunctor<InT>;
 
@@ -213,8 +217,10 @@ SelectKernelImpl(OutT *out, const MT *mask, InT *in, Functor &func, int num,
   kps::ElementwiseUnary<MT, IdT, VecSize, 1, 1, Cast>(&mask_idt[0],
                                                       &mask_data[0], Cast());
   // Get the num of thread only num_thread[1] has data
-  kps::Reduce<IdT, VecSize, 1, 1, Add, Mode::kLocalMode>(&num_thread[0], &mask_idt[0], Add(), true);
-  // Get cumsum_thread cumsum from 0 to num_thread cumsum_thread[0] is the thread_fix
+  kps::Reduce<IdT, VecSize, 1, 1, Add, Mode::kLocalMode>(
+      &num_thread[0], &mask_idt[0], Add(), true);
+  // Get cumsum_thread cumsum from 0 to num_thread cumsum_thread[0] is the
+  // thread_fix
   kps::Cumsum<IdT, IdT, 1, Add>(&cumsum_thread[0], &num_thread[0], Add());
   // if (MaskData) {
   //  // Load mask
@@ -228,15 +234,28 @@ SelectKernelImpl(OutT *out, const MT *mask, InT *in, Functor &func, int num,
   // Get store data(index) according to mask_idt
   kps::OperatorTernary<MT, IdT, OutT, Functor>(&store_data[0], &mask_data[0],
                                                &index_reg[0], func, VecSize);
-  int thread_fix = (static_cast<int>(cumsum_thread[0] - num_thread[0]) * store_rank);
+  int thread_fix =
+      (static_cast<int>(cumsum_thread[0] - num_thread[0]) * store_rank);
   int store_num = static_cast<int>(num_thread[0]) * store_rank;
   if (num_thread[1]) {
-	printf("asdf*** thread_id %d, cumsum_0 %d, cumsum_1 %d, thread_fix %d data_offset %d\n", threadIdx.x, (int)(cumsum_thread[0]),(int)(cumsum_thread[1]), thread_fix, data_offset);
-    printf("asdf***i %d index_reg_0 %d, index_reg_1 %d, num_thread_0 %d, num_thread_1 %d, cumsum_0 %d cumsum_1 %d\n",data_offset, (int)(index_reg[0]), (int)(index_reg[1]), (int)(num_thread[0]),(int)(num_thread[1]), (int)(cumsum_thread[0]), (int)(cumsum_thread[1]));
+    printf(
+        "asdf*** thread_id %d, cumsum_0 %d, cumsum_1 %d, thread_fix %d "
+        "data_offset %d\n",
+        threadIdx.x, (int)(cumsum_thread[0]), (int)(cumsum_thread[1]),
+        thread_fix, data_offset);
+    printf(
+        "asdf***i %d index_reg_0 %d, index_reg_1 %d, num_thread_0 %d, "
+        "num_thread_1 %d, cumsum_0 %d cumsum_1 %d\n",
+        data_offset, (int)(index_reg[0]), (int)(index_reg[1]),
+        (int)(num_thread[0]), (int)(num_thread[1]), (int)(cumsum_thread[0]),
+        (int)(cumsum_thread[1]));
 
-    printf("asdfl idx %d  cumsum_0 %d, cumsusm_1 %d store_num %d\n", threadIdx.x, (int)(cumsum_thread[0]), (int)(cumsum_thread[1]), store_num);
-    printf("asdfl num_0 %d cumsum_0 %d thread_fix %d num_1 %d cumsum_1%d\n", 
-           (int)num_thread[0],(int)(cumsum_thread[0]), thread_fix,  (int)(num_thread[1]), (int)(cumsum_thread[1]));
+    printf("asdfl idx %d  cumsum_0 %d, cumsusm_1 %d store_num %d\n",
+           threadIdx.x, (int)(cumsum_thread[0]), (int)(cumsum_thread[1]),
+           store_num);
+    printf("asdfl num_0 %d cumsum_0 %d thread_fix %d num_1 %d cumsum_1%d\n",
+           (int)num_thread[0], (int)(cumsum_thread[0]), thread_fix,
+           (int)(num_thread[1]), (int)(cumsum_thread[1]));
   }
   // }
   // thread store num data, each thread may has different num
@@ -270,7 +289,9 @@ SelectKernel(int64_t *out, const MT *mask, InT *in, InT *cumsum, Functor func,
     int idx_cumsum = repeat * GRID_NUM_X + BLOCK_ID_X;
     // niuliling todo: us ReadData API
     int block_store_offset = static_cast<int>(cumsum[idx_cumsum]);
-    if (threadIdx.x == 1) printf("LLLLLLLLL idx %d offset %d\n", idx_cumsum, block_store_offset * store_rank);
+    if (threadIdx.x == 1)
+      printf("LLLLLLLLL idx %d offset %d\n", idx_cumsum,
+             block_store_offset * store_rank);
     SelectKernelImpl<InT, MT, OutT, Functor, VecSize, MaskData, true>(
         out + block_store_offset * store_rank, mask + data_offset,
         in + data_offset, func, num, data_offset, store_rank);
@@ -452,8 +473,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
               << main_offset << std::endl;
     using int64_t = int64_t;
     int size_count_block = need_grids + 1;
-    auto count_mem =
-        memory::Alloc(dev_ctx, size_count_block * sizeof(int64_t));
+    auto count_mem = memory::Alloc(dev_ctx, size_count_block * sizeof(int64_t));
     int64_t *count_data = (int64_t *)(count_mem->ptr());
     std::cout << "asdf 1.2 count_mem after " << std::endl;
     // 1.3launch CountKernl
@@ -471,7 +491,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     std::cout << "asdf 2.1 cumsum after " << std::endl;
     // 2.2 get prefix of count_data for real out_index
     int block_c = 256;
-    int main_offset_c = size_count_block/ (2 * block_c) * (2 * block_c);
+    int main_offset_c = size_count_block / (2 * block_c) * (2 * block_c);
     std::cout << "asdf 2.2 main_offset_c " << main_offset_c << " " << std::endl;
     CumsumOneBlock<int64_t, int64_t, kps::AddFunctor<int64_t>,
                    2><<<1, block_c, 0, stream>>>(
@@ -482,8 +502,7 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     // 3.1 alloc for out
     // 3.1.1 get true_num for gpu place the last cumsum is the true_num
     memory::Copy(platform::CPUPlace(), h_stride_array + 1, dev_ctx.GetPlace(),
-                 cumsum_data + need_grids, sizeof(int64_t),
-                 dev_ctx.stream());
+                 cumsum_data + need_grids, sizeof(int64_t), dev_ctx.stream());
     std::cout << "asdf 3.1.1 Copy get total_true_num " << h_stride_array[1]
               << std::endl;
     // 3.1.2 allock for out with total_true_num
