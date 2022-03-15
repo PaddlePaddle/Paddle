@@ -587,9 +587,6 @@ class {} : public egr::GradNodeBase {{
   // TensorWrappers
   {}
 
-  // Vector of TensorWrappers
-  std::vector<egr::TensorWrapper> TensorWrappersSet;
-
   bool is_tensor_wrappers_cleared = false;
 
   // Attributes
