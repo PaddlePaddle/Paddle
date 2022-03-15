@@ -48,9 +48,9 @@ namespace phi {
     host_context::Attribute<::infrt::PrecisionType> precision) {
   return ::phi::DenseTensor(
       const_cast<::phi::Allocator*>(&context.GetAllocator()),
-      ::phi::DenseTensorMeta(cvtPrecision2Phi(precision.get()),
+      ::phi::DenseTensorMeta(ConvertPrecisionToPhi(precision.get()),
                              ::phi::make_ddim(dims.get()),
-                             cvtLayout2Phi(layout.get()),
+                             ConvertLayoutToPhi(layout.get()),
                              {}));
 }
 
@@ -67,7 +67,7 @@ void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
     // TODO(wilber): how to set the stream parameter to copy with stream.
     cudaMemcpy(a_data,
                value.get().data(),
-               sizeof(float) * values.get().size(),
+               sizeof(float) * value.get().size(),
                cudaMemcpyHostToDevice);
 #endif
   } else {

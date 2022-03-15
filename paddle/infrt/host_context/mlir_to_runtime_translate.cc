@@ -417,33 +417,6 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
     impl_->cur_op->AppendAttribute(tmp[i]);
   }
 
-  // process results
-  llvm::SmallVector<Value*, 4> res_values;
-  for (int i = 0, e = op->getNumResults(); i < e; i++) {
-    auto res = op->getResult(i);
-    if (res.getType().isa<::infrt::DenseTensorType>()) {
-      auto r = impl_->value_map.try_emplace(
-          res, ValueRef(new Value{::phi::DenseTensor()}));
-      CHECK(r.second) << "Duplicate add mlir value [" << DumpToString(res)
-                      << "]";
-      res_values.push_back(r.first->second.get());
-    } else {
-      res_values.push_back(AddValue(res));
-    }
-
-    VLOG(3) << "* op mlir res: " << DumpToString(res) << " " << GetValue(res);
-  }
-  impl_->cur_op->SetResults(res_values);
-
-#ifdef INFRT_DEBUG
-  {
-    VLOG(3) << "check result";
-    for (int i = 0; i < impl_->cur_op->frame().GetNumResults(); i++) {
-      VLOG(3) << "+ res value: " << impl_->cur_op->frame().GetResults()[i];
-    }
-  }
-#endif
-
   // process regions, we treat regions as attribute.
   auto num_regions = op->getNumRegions();
   if (num_regions > 0) {
