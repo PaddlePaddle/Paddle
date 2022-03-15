@@ -510,6 +510,10 @@ void BuildDygraphPhiKernelContext(
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int>))) {
         kernel_ctx->EmplaceBackAttr(BOOST_GET_CONST(std::vector<int>, attr));
+      } else if (attr_defs[i].type_index ==
+                 std::type_index(typeid(std::vector<std::string>))) {
+        kernel_ctx->EmplaceBackAttr(
+            BOOST_GET_CONST(std::vector<std::string>, attr));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "
