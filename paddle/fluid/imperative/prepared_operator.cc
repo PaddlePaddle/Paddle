@@ -258,7 +258,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     if (use_xpu_kp_kernel_debug) {
       VLOG(3) << "xpu_kp using debug mode ";
     }
-    bool is_xpu_kp_support = use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug;
+    bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
     if (is_xpu_kp_support) {
       expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
       kernel_iter = kernels.find(expected_kernel_key);
