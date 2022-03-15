@@ -38,6 +38,11 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
+#include "paddle/fluid/platform/profiler/event_python.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
+#include "paddle/phi/kernels/autotune/kernel_profiler.h"
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -54,6 +59,9 @@ void ConvCudnnKernel(const Context& ctx,
                      int workspace_size_MB,
                      bool exhaustive_search_t,
                      DenseTensor* output) {
+  phi::KernelProfiler profiler;
+  profiler.Start();
+
   output->mutable_data<T>(ctx.GetPlace());
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
@@ -361,32 +369,39 @@ void ConvCudnnKernel(const Context& ctx,
       },
       workspace_size);
 #else
-  for (int i = 0; i < groups; i++) {
-    workspace_handle.RunFunc(
-        [&](void* workspace_ptr) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              paddle::platform::dynload::cudnnConvolutionForward(
-                  handle,
-                  &alpha,
-                  args.idesc.desc(),
-                  input_data + i * group_offset_in,
-                  args.wdesc.desc(),
-                  filter_data + i * group_offset_filter,
-                  args.cdesc.desc(),
-                  algo,
-                  workspace_ptr,
-                  workspace_size,
-                  &beta,
-                  args.odesc.desc(),
-                  output_data + i * group_offset_out));
-        },
-        workspace_size);
+  {
+    // auto event = profiler.RecordEvent("conv_forward");
+    for (int i = 0; i < groups; i++) {
+      workspace_handle.RunFunc(
+          [&](void* workspace_ptr) {
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                paddle::platform::dynload::cudnnConvolutionForward(
+                    handle,
+                    &alpha,
+                    args.idesc.desc(),
+                    input_data + i * group_offset_in,
+                    args.wdesc.desc(),
+                    filter_data + i * group_offset_filter,
+                    args.cdesc.desc(),
+                    algo,
+                    workspace_ptr,
+                    workspace_size,
+                    &beta,
+                    args.odesc.desc(),
+                    output_data + i * group_offset_out));
+          },
+          workspace_size);
+    }
+    // event.End();
   }
 #endif
 
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);
   }
+
+  profiler.Stop();
+  // profiler.GetPerfResults();
 }
 
 template <typename T, typename Context>
