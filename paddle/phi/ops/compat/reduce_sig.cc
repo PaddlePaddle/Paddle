@@ -118,10 +118,6 @@ KernelSignature ReduceAnyOpArgumentMapping(const ArgumentMappingContext& ctx) {
 KernelSignature ReduceAllOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("X")) {
     bool reduce_all = paddle::any_cast<bool>(ctx.Attr("reduce_all"));
-    // When ctx is InferShapeArgumentMappingContext, the reduce_all is used in
-    // InferShape, so we must return the "all_raw" KernelSignature.
-    // And the InferMeta function(i.e. ReduceInferMetaBase) is accordance with
-    // the "all_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
           "all_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
