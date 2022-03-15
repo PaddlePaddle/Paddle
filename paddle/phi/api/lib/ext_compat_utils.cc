@@ -25,7 +25,7 @@ platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
   } else if (p == PlaceType::kGPU) {
     return platform::Place(platform::CUDAPlace(platform::GetCurrentDeviceId()));
   } else if (p == PlaceType::kGPUPINNED) {
-    return platform::Place(platform::GPUPinnedPlace());
+    return platform::Place(platform::CUDAPinnedPlace());
 #endif
   } else {
     PADDLE_THROW(
