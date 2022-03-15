@@ -12,10 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/shape_op.h"
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -95,9 +93,3 @@ REGISTER_OPERATOR(
     shape, ops::ShapeOp, ops::ShapeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<bool>, ops::ShapeKernel<int>,
-                       ops::ShapeKernel<int8_t>, ops::ShapeKernel<uint8_t>,
-                       ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
-                       ops::ShapeKernel<double>,
-                       ops::ShapeKernel<plat::complex<float>>,
-                       ops::ShapeKernel<plat::complex<double>>);

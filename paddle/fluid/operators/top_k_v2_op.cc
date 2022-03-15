@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/top_k_v2_op.h"
 #include <memory>
+
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -173,15 +174,3 @@ REGISTER_OPERATOR(top_k_v2, ops::TopkV2Op, ops::TopkV2OpMaker,
                   ops::TopkV2GradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(top_k_v2_grad, ops::TopkV2OpGrad);
-
-REGISTER_OP_CPU_KERNEL(top_k_v2,
-                       ops::TopkV2Kernel<paddle::platform::CPUPlace, float>,
-                       ops::TopkV2Kernel<paddle::platform::CPUPlace, double>,
-                       ops::TopkV2Kernel<paddle::platform::CPUPlace, int32_t>,
-                       ops::TopkV2Kernel<paddle::platform::CPUPlace, int64_t>)
-
-REGISTER_OP_CPU_KERNEL(
-    top_k_v2_grad, ops::TopkV2GradKernel<paddle::platform::CPUPlace, float>,
-    ops::TopkV2GradKernel<paddle::platform::CPUPlace, double>,
-    ops::TopkV2GradKernel<paddle::platform::CPUPlace, int32_t>,
-    ops::TopkV2GradKernel<paddle::platform::CPUPlace, int64_t>)

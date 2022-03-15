@@ -23,11 +23,13 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/hostdevice.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #endif
 
@@ -254,11 +256,13 @@ __global__ void DistributionKernel(size_t size,
   using SType = hiprandStatePhilox4_32_10_t;
 #endif
   size_t total_thread = GRID_NUM_X * BLOCK_NUM_X;
-  T args[kCount];
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  MT args[kCount];
   T result[kCount];
   for (size_t i = idx; i < size; i += total_thread * kCount) {
-    kps::ElementwiseRandom<SType, T, kCount, 1, DistOp>(&args[0], dist, &state);
-    kps::ElementwiseUnary<T, T, kCount, 1, 1, TransformOp>(
+    kps::ElementwiseRandom<SType, MT, kCount, 1, DistOp>(
+        &args[0], dist, &state);
+    kps::ElementwiseUnary<MT, T, kCount, 1, 1, TransformOp>(
         &result[0], &args[0], trans);
     kps::WriteData<T, T, kCount, 1, 1, true>(
         out_data + i, &result[0], size - i, 1, stride, 1);

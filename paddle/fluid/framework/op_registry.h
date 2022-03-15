@@ -286,8 +286,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
     return 0;                                                            \
   }
 
-#define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
-  REGISTER_OPERATOR(op_type, op_class, op_maker_class, \
+#define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, ...) \
+  REGISTER_OPERATOR(op_type, op_class, __VA_ARGS__, \
         paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
         paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 

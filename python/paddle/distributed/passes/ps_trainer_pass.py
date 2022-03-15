@@ -74,6 +74,8 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
+        print("pass loss program id:", id(attrs['loss'].block.program))
+        print("pass main program id:", id(main_program))
         ps_mode = attrs['ps_mode']
         if ps_mode == DistributedMode.GEO:
             send_ctx = get_geo_trainer_send_context(attrs)  # geo 模式
@@ -83,6 +85,8 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         dummys = []
         for merged_name, send in send_ctx.items():
             if send.is_sparse() and ps_mode != DistributedMode.GEO:
+                continue
+            if send.program_id() != id(attrs['loss'].block.program):
                 continue
             logger.info('merged_name, send: {}, {}'.format(merged_name, send))
             is_sparse = 1 if send.is_sparse() else 0
@@ -496,6 +500,7 @@ class DeleteOptimizesPass(PassBase):
             persistable=True)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
+        print("delete_optimizer_pass")
         attrs = pass_ctx._attrs
         optimizer_ops = get_optimize_ops(main_program)
         lr_ops = get_lr_ops(main_program)
