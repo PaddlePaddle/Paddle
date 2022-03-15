@@ -17,6 +17,12 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(copy, CPU, ALL_LAYOUT);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
+#endif
 
 namespace eager_test {
 using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
@@ -151,5 +157,50 @@ TEST(EagerVariable, Constructor) {
   CHECK_EQ(dt3_tmp_ptr[1], 10.0f);
   t4.reset();
   CHECK(t4.defined() == false);
+
+  VLOG(6) << "Check Tensor Copy_";
+  std::vector<int64_t> rows = {1, 2};
+  std::vector<int64_t> dims = {2};
+  paddle::experimental::Tensor t7(std::make_shared<phi::SelectedRows>(rows, 2));
+  std::dynamic_pointer_cast<phi::SelectedRows>(t7.impl())
+      ->mutable_value()
+      ->Resize(phi::make_ddim(dims));
+  auto* dt7_tmp_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(t7.impl())
+                          ->mutable_value()
+                          ->mutable_data<float>(paddle::platform::CPUPlace());
+  dt7_tmp_ptr[0] = 6.0f;
+  dt7_tmp_ptr[1] = 11.0f;
+
+  paddle::experimental::Tensor t8;
+  paddle::experimental::Tensor t5;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  paddle::experimental::Tensor t6;
+  paddle::experimental::Tensor t9;
+  VLOG(6) << "Check Tensor Copy_ Selected Rows";
+  t8.copy_(t7, true, paddle::platform::CUDAPlace(0));
+  t9.copy_(t8, true, paddle::platform::CPUPlace());
+  auto* dt9_tmp_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())
+                          ->value()
+                          .data<float>();
+  CHECK_EQ(dt9_tmp_ptr[0], 6.0f);
+  CHECK_EQ(dt9_tmp_ptr[1], 11.0f);
+  CHECK_EQ(std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())->height(),
+           2);
+
+  VLOG(6) << "Check Tensor Copy_ Dense Tensor";
+  t5.copy_(t3, true, paddle::platform::CUDAPlace(0));
+  t6.copy_(t5, true, paddle::platform::CPUPlace());
+  auto* dt6_tmp_ptr =
+      std::dynamic_pointer_cast<phi::DenseTensor>(t6.impl())->data<float>();
+  CHECK_EQ(dt6_tmp_ptr[0], 5.0f);
+  CHECK_EQ(dt6_tmp_ptr[1], 10.0f);
+#else
+  t5.copy_(t3, true, paddle::platform::CPUPlace());
+  auto* dt5_tmp_ptr =
+      std::dynamic_pointer_cast<phi::DenseTensor>(t5.impl())->data<float>();
+  CHECK_EQ(dt5_tmp_ptr[0], 5.0f);
+  CHECK_EQ(dt5_tmp_ptr[1], 10.0f);
+#endif
+
   VLOG(6) << "Finish";
 }
