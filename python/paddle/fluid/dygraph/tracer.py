@@ -36,7 +36,7 @@ final_state_name_mapping = {
         "out": "Out",
     },
     "pool2d": {
-        "final_op_name": "final_state_pool2d", 
+        "final_op_name": "final_state_pool2d",
         "x": "X",
         "kernel_size": "ksize",
         "out": "Out",
