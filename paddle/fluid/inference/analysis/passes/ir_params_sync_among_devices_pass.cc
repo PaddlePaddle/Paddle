@@ -124,9 +124,15 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
     reserve_cpu_weights = true;
   }
 
+  bool mixed_precision_mode =
+      argument->Has("use_gpu_fp16") && argument->use_gpu_fp16();
   std::unordered_map<std::string, std::string> var_name_op_type_map{};
-  GetVarNameToOpTypeMap(graph, &var_name_op_type_map);
-  const auto blacklist = argument->gpu_fp16_disabled_op_types();
+  std::unordered_set<std::string> blacklist{};
+  if (mixed_precision_mode) {
+    GetVarNameToOpTypeMap(graph, &var_name_op_type_map);
+    blacklist = argument->gpu_fp16_disabled_op_types();
+  }
+
   for (auto &var_name : all_vars) {
     if (std::count(repetitive_params.begin(), repetitive_params.end(),
                    var_name)) {
@@ -144,7 +150,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
 
       bool is_float = t->dtype() == paddle::experimental::DataType::FLOAT32 ||
                       t->dtype() == paddle::experimental::DataType::FLOAT64;
-      if (argument->use_gpu_fp16() &&
+      if (mixed_precision_mode &&
           !blacklist.count(var_name_op_type_map[var_name]) && is_float) {
         framework::Tensor half_tensor;
         half_tensor.set_type(paddle::experimental::DataType::FLOAT16);
