@@ -57,26 +57,27 @@ void MaxPoolKernel(const Context& dev_ctx,
                    DenseTensor* rulebook) {
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
+  const std::vector<int>& real_kernel_sizes =
+      phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
   DDim out_dims = {1, 1, 1, 1, 1};
   phi::funcs::sparse::GetOutShape(
-      x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
-  const int in_channels = kernel_sizes[3];
+      x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
+  const int in_channels = real_kernel_sizes[3];
 
   std::vector<int> offsets(kernel_size + 1), counter(kernel_size);
   DenseTensorMeta counter_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
-  DenseTensorMeta offsets_meta(
-      DataType::INT32, {kernel_size}, DataLayout::NCHW);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
-  DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(offsets_meta));
+  DenseTensor offsets_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
   DenseTensorMeta index_meta(DataType::INT32, {1}, DataLayout::NCHW);
   DenseTensor out_index = phi::Empty(dev_ctx, std::move(index_meta));
   DenseTensor unique_key = phi::Empty(dev_ctx, std::move(index_meta));
   DenseTensor unique_value = phi::Empty(dev_ctx, std::move(index_meta));
 
+  // 1. product rulebook
   int rulebook_len = ProductRuleBook<T, Context>(dev_ctx,
                                                  x,
-                                                 kernel_sizes,
+                                                 real_kernel_sizes,
                                                  paddings,
                                                  dilations,
                                                  strides,
@@ -96,18 +97,20 @@ void MaxPoolKernel(const Context& dev_ctx,
 
   T* out_features_ptr = out->mutable_non_zero_elements()->data<T>();
   const T* in_features_ptr = x.non_zero_elements().data<T>();
-  // 1. get the min elements of in_features
+  // 2. max pool
+  // 2.1 get the min elements of in_features
   const T* result =
       thrust::min_element(thrust::device,
                           in_features_ptr,
                           in_features_ptr + x.non_zero_elements().numel());
-  // 2. init the out_features with min elements
+  // 2.2 init the out_features with min elements
   T h_result;
   cudaMemcpy(&h_result, result, sizeof(T), cudaMemcpyDeviceToHost);
   thrust::fill(thrust::device,
                out_features_ptr,
                out_features_ptr + out->non_zero_elements().numel(),
                h_result);
+  // 2.3 pool
   for (int i = 0; i < kernel_size; i++) {
     if (counter[i] <= 0) {
       continue;

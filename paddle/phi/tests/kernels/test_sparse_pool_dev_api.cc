@@ -254,11 +254,10 @@ void TestMaxPool(const std::vector<int>& indices,
 }
 
 TEST(DEV_API, sparse_maxpool) {
-  const int in_channels = 1;
-  const int out_channels = 1;
-  DDim x_dims = {1, 1, 4, 4, in_channels};
-  DDim out_dims = {1, 1, 2, 2, out_channels};
-  std::vector<int> kernel_sizes = {1, 3, 3, 1, 1};
+  const int channels = 1;
+  DDim x_dims = {1, 1, 4, 4, channels};
+  DDim out_dims = {1, 1, 2, 2, channels};
+  std::vector<int> kernel_sizes = {1, 3, 3};
   std::vector<int> paddings = {0, 0, 0};
   std::vector<int> strides = {1, 1, 1};
   std::vector<int> dilations = {1, 1, 1};
@@ -271,6 +270,106 @@ TEST(DEV_API, sparse_maxpool) {
   };
   std::vector<float> out_features = {2, 2, 3, 3};
   std::vector<float> x_grad = {0, 4, 6};
+
+  TestMaxPool(indices,
+              features,
+              x_dims,
+              out_indices,
+              out_features,
+              out_dims,
+              non_zero_num,
+              kernel_sizes,
+              paddings,
+              strides,
+              dilations,
+              1e-6,
+              true,
+              x_grad);
+}
+
+TEST(DEV_API, sparse_maxpool_stride) {
+  const int channels = 1;
+  DDim x_dims = {1, 1, 4, 4, channels};
+  DDim out_dims = {1, 1, 1, 1, channels};
+  std::vector<int> kernel_sizes = {1, 3, 3};
+  std::vector<int> paddings = {0, 0, 0};
+  std::vector<int> strides = {2, 2, 2};
+  std::vector<int> dilations = {1, 1, 1};
+
+  const int non_zero_num = 3;
+  std::vector<int> indices = {0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 1, 2};
+  std::vector<float> features = {1, 2, 3};
+  std::vector<int> out_indices = {0, 0, 0, 0};
+  std::vector<float> out_features = {2};
+  std::vector<float> x_grad = {0, 2, 0};
+
+  TestMaxPool(indices,
+              features,
+              x_dims,
+              out_indices,
+              out_features,
+              out_dims,
+              non_zero_num,
+              kernel_sizes,
+              paddings,
+              strides,
+              dilations,
+              1e-6,
+              true,
+              x_grad);
+}
+
+TEST(DEV_API, sparse_maxpool_channel) {
+  const int channels = 2;
+  DDim x_dims = {1, 1, 4, 4, channels};
+  DDim out_dims = {1, 1, 2, 2, channels};
+  std::vector<int> kernel_sizes = {1, 3, 3};
+  std::vector<int> paddings = {0, 0, 0};
+  std::vector<int> strides = {1, 1, 1};
+  std::vector<int> dilations = {1, 1, 1};
+
+  const int non_zero_num = 3;
+  std::vector<int> indices = {0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 1, 2};
+  std::vector<float> features = {1, 1, 2, 2, 3, 3};
+  std::vector<int> out_indices = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1,
+  };
+  std::vector<float> out_features = {2, 2, 2, 2, 3, 3, 3, 3};
+  std::vector<float> x_grad = {0, 0, 4, 4, 6, 6};
+
+  TestMaxPool(indices,
+              features,
+              x_dims,
+              out_indices,
+              out_features,
+              out_dims,
+              non_zero_num,
+              kernel_sizes,
+              paddings,
+              strides,
+              dilations,
+              1e-6,
+              true,
+              x_grad);
+}
+
+TEST(DEV_API, sparse_maxpool3d) {
+  const int channels = 2;
+  DDim x_dims = {1, 5, 4, 4, channels};
+  DDim out_dims = {1, 3, 2, 2, channels};
+  std::vector<int> kernel_sizes = {3, 3, 3};
+  std::vector<int> paddings = {0, 0, 0};
+  std::vector<int> strides = {1, 1, 1};
+  std::vector<int> dilations = {1, 1, 1};
+
+  const int non_zero_num = 3;
+  std::vector<int> indices = {0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 1, 2};
+  std::vector<float> features = {1, 1, 2, 2, 3, 3};
+  std::vector<int> out_indices = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1,
+  };
+  std::vector<float> out_features = {2, 2, 2, 2, 3, 3, 3, 3};
+  std::vector<float> x_grad = {0, 0, 4, 4, 6, 6};
 
   TestMaxPool(indices,
               features,

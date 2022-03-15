@@ -37,19 +37,22 @@ void MaxPoolKernel(const Context& dev_ctx,
                    DenseTensor* rulebook) {
   const auto& x_dims = x.dims();
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
+  const std::vector<int>& real_kernel_sizes =
+      phi::funcs::sparse::PoolResetKernel(kernel_sizes, x_dims[4], x_dims[4]);
   DDim out_dims = {1, 1, 1, 1, 1};
   phi::funcs::sparse::GetOutShape(
-      x_dims, kernel_sizes, paddings, dilations, strides, &out_dims);
-  const int in_channels = kernel_sizes[3];
+      x_dims, real_kernel_sizes, paddings, dilations, strides, &out_dims);
+  const int in_channels = real_kernel_sizes[3];
 
   DenseTensorMeta counter_meta(
       DataType::INT32, {kernel_size}, DataLayout::NCHW);
   DenseTensor counter_per_kernel = phi::Empty(dev_ctx, std::move(counter_meta));
 
   const T* in_features_ptr = x.non_zero_elements().data<T>();
+  // 1. product rule book
   ProductRuleBook<T, Context>(dev_ctx,
                               x,
-                              kernel_sizes,
+                              real_kernel_sizes,
                               paddings,
                               dilations,
                               strides,
@@ -74,13 +77,13 @@ void MaxPoolKernel(const Context& dev_ctx,
   offsets[kernel_size] = offset;
   std::vector<bool> out_flags(out->nnz(), false);
 
+  // 2. max pool
   T* out_features_ptr = out->mutable_non_zero_elements()->data<T>();
   for (int i = 0; i < kernel_size; i++) {
     if (counter_ptr[i] <= 0) {
       continue;
     }
 
-    // pool
     for (int j = 0; j < counter_ptr[i]; j++) {
       int in_i = rulebook_ptr[rulebook_len + offsets[i] + j];
       int out_i = rulebook_ptr[rulebook_len * 2 + offsets[i] + j];

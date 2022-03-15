@@ -165,6 +165,17 @@ inline void SubmPreProcess(const Context& dev_ctx,
             x_grad_ptr);
 }
 
+inline const std::vector<int> PoolResetKernel(
+    const std::vector<int>& kernel_sizes,
+    const int in_channels,
+    const int out_channels) {
+  std::vector<int> res(kernel_sizes);
+  res.resize(5);
+  res[3] = in_channels;
+  res[4] = out_channels;
+  return res;
+}
+
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi

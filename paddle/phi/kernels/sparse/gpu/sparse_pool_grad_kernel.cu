@@ -54,7 +54,7 @@ void MaxPoolGradKernel(const Context& dev_ctx,
                        const std::vector<int>& kernel_sizes,
                        DenseTensor* x_grad) {
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  const int in_channels = kernel_sizes[3];
+  const int in_channels = x.dims()[4];
   int rulebook_len = rulebook.dims()[1];
   const int* rulebook_ptr = rulebook.data<int>();
   std::vector<int> offsets(kernel_size + 1), counter(kernel_size, 0),
