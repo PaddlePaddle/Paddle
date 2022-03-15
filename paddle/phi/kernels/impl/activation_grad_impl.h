@@ -130,4 +130,76 @@ void ReluDoubleGradKernel(const Context& dev_ctx,
       relu_double_grad_functor);
 }
 
+template <typename T, typename Context>
+void LeakyReluDoubleGradKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& ddx,
+                               float alpha,
+                               DenseTensor* ddout) {
+  funcs::LeakyReluGradGradFunctor<T> leaky_relu_double_grad_functor;
+  leaky_relu_double_grad_functor.alpha = alpha;
+  ActivationDoubleGradImpl<T, Context, funcs::LeakyReluGradGradFunctor<T>>(
+      dev_ctx,
+      &x,
+      nullptr,
+      &ddx,
+      nullptr,
+      nullptr,
+      ddout,
+      leaky_relu_double_grad_functor);
+}
+
+template <typename T, typename Context>
+void TanhDoubleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& out,
+                          const DenseTensor& ddx,
+                          const DenseTensor& dout,
+                          DenseTensor* dout_new,
+                          DenseTensor* ddout) {
+  if (dout_new) {
+    dout_new->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout_new);
+  }
+  if (ddout) {
+    ddout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(ddout);
+  }
+  funcs::TanhGradGradFunctor<T> functor;
+  functor(dev_ctx, &out, &ddx, &dout, dout_new, ddout);
+}
+
+template <typename T, typename Context>
+void TanhTripleGradKernel(const Context& dev_ctx,
+                          const DenseTensor& out,
+                          const DenseTensor& ddx,
+                          const DenseTensor& dout,
+                          const DenseTensor& d_ddout,
+                          const DenseTensor& d_dout_new,
+                          DenseTensor* d_out_new,
+                          DenseTensor* d_dout,
+                          DenseTensor* d_ddx) {
+  if (d_dout) {
+    d_dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(d_dout);
+  }
+  if (d_out_new) {
+    d_dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(d_out_new);
+  }
+  if (d_ddx) {
+    d_dout->Resize(ddx.dims());
+    dev_ctx.template Alloc<T>(d_ddx);
+  }
+  funcs::TanhTripleGradFunctor<T> functor;
+  functor(dev_ctx,
+          &out,
+          &ddx,
+          &dout,
+          &d_ddout,
+          &d_dout_new,  // input
+          d_dout,
+          d_out_new,
+          d_ddx);  // output
+}
+
 }  // namespace phi
