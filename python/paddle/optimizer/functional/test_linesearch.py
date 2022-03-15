@@ -26,23 +26,25 @@ import collections
 class TestLinesearch(unittest.TestCase):
     def test_static2(self):
         minimun = 1.2
-
+        def iner_func(a):
+            return a + 2
         def func1(x):
             j = paddle.full(shape=[1], fill_value=0, dtype='int64')
             done = paddle.full(shape=[1], fill_value=False, dtype='bool')
-
+            #a = paddle.full(shape=[1], fill_value=1, dtype='int64')
+            b = paddle.full(shape=[1], fill_value=0, dtype='int64')
             def cond(j, done):
                 #done_print = paddle.static.Print(done, message="done cond")
                 j_print = paddle.static.Print(j, message="j cond")
                 return j < 3
 
             def body(j, done):
-                j = j + 1
-                j_print = paddle.static.Print(j, message="j body")
-                y = 2 * j
-
-                def true_fn():
-                    paddle.assign(True, done)
+                j = j + a
+                a = j + 1
+                j_print = paddle.static.Print(iner_func(a), message="iner_func()")
+                
+                
+                b = paddle.assign(a)
                     #done_print = paddle.static.Print(done, message="done true_fn")
                 #paddle.static.nn.cond(j>0, true_fn, None)
                 #done_print = paddle.static.Print(done, message="done body")
@@ -331,4 +333,4 @@ class TestLinesearch(unittest.TestCase):
 
 
 test = TestLinesearch()
-test.test_static()
+test.test_static2()

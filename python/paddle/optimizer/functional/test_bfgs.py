@@ -24,13 +24,13 @@ import paddle.fluid as fluid
 
 class TestBfgs(unittest.TestCase):
     def test_static_quadratic_1d(self):
-        minimun = 1.2
+        minimun = 1.0
 
         def func(x):
             # df = 2 * (x - minimun)
             return (x - minimun)**2
 
-        position = np.array([2.0], dtype='float32')
+        position = np.array([789.9], dtype='float32')
         paddle.enable_static()
         main = fluid.Program()
         startup = fluid.Program()
@@ -123,7 +123,7 @@ class TestBfgs(unittest.TestCase):
         def func(x):
             return paddle.sum(scale.multiply(F.square_error_cost(x, minimun)))
 
-        position = paddle.to_tensor([2.0])
+        position = paddle.to_tensor([789.9])
         results = miminize_bfgs(func, position)
         print('position: {}\n g: {}\n H: {}'.format(results[0], results[2],
                                                     results[3]))
@@ -191,4 +191,4 @@ class TestBfgs(unittest.TestCase):
 
 
 test = TestBfgs()
-test.test_static_quadratic_1d()
+test.test_static_quadratic_2d()

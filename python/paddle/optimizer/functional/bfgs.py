@@ -88,14 +88,14 @@ def miminize_bfgs(objective_func,
                 break
 
             pk = -paddle.matmul(Hk, g1)
-            alpha, value, _, _ = strong_wolfe(f=objective_func, xk=x1, pk=pk)
-
-            x2 = x1 + alpha * pk
-            sk = x2 - x1
-            _, g2 = _value_and_gradient(objective_func, x2)
+            
+            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=x1, pk=pk)
+            print("g2: ", g2)
+            print("g1: ", g1)
+            sk = alpha * pk
             yk = g2 - g1
 
-            x1 = x2
+            x1 = x1 + sk
             g1 = g2
 
             yk = paddle.unsqueeze(yk, 0)
@@ -125,15 +125,16 @@ def miminize_bfgs(objective_func,
 
         def body(k, x1, g1, Hk, done):
             pk = -paddle.matmul(Hk, g1)
-            alpha, value, _, _ = strong_wolfe(f=objective_func, xk=x1, pk=pk)
+            
+            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=x1, pk=pk)
+            
             x2 = x1 + alpha * pk
             sk = x2 - x1
-            paddle.assign(
-                paddle.linalg.norm(
-                    sk, p=np.inf) < tolerance_change, done)
-            _, g2 = _value_and_gradient(objective_func, x2)
+            paddle.assign(paddle.linalg.norm(sk, p=np.inf) < tolerance_change, done)
+            static_print = paddle.static.Print(g2, message="g2")
+            static_print = paddle.static.Print(g1, message="g1  1")
             yk = g2 - g1
-
+            
             paddle.assign(x2, x1)
             paddle.assign(g2, g1)
 
