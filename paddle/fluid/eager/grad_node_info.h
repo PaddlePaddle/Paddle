@@ -44,8 +44,58 @@ namespace egr {
  * indicate which
  * input of grad this edge belong).
  * */
-class Edge;
 class AutogradMeta;
+class GradNodeBase;
+
+class Edge {
+ public:
+  // Default constructor for Edges in order to construct it for AutogradMeta
+  Edge() : in_slot_id_(0), in_rank_(0), grad_node_(nullptr) {}
+
+  // In real use cases we should create Edge from grad node and input rank which
+  // indicate which edge it is.
+  // Since we have slot design in operators we will have to locate an edge with
+  // slot
+  // and rank.
+  Edge(const std::shared_ptr<GradNodeBase>& grad_node, size_t in_slot_id,
+       size_t in_rank)
+      : in_slot_id_(in_slot_id), in_rank_(in_rank), grad_node_(grad_node) {}
+
+  Edge(const std::shared_ptr<GradNodeBase>& grad_node,
+       const std::pair</* slot_id */ size_t, /* rank */ size_t>& rank_info)
+      : in_slot_id_(rank_info.first),
+        in_rank_(rank_info.second),
+        grad_node_(grad_node) {}
+
+  GradNodeBase* GetGradNode() const { return grad_node_.get(); }
+
+  std::shared_ptr<GradNodeBase> GetMutableGradNode() const {
+    return grad_node_;
+  }
+
+  std::pair<size_t, size_t> GetEdgeRankInfo() const {
+    return std::make_pair(in_slot_id_, in_rank_);
+  }
+
+  void SetEdgeRankInfo(size_t slot_id, size_t in_rank) {
+    in_slot_id_ = slot_id;
+    in_rank_ = in_rank;
+  }
+
+  void SetEdgeRankInfo(
+      const std::pair</* slot_id */ size_t, /* rank */ size_t>& edge_rank) {
+    in_slot_id_ = edge_rank.first;
+    in_rank_ = edge_rank.second;
+  }
+
+  // Currently we use grad_node_ to identify if a edge is initialized.
+  bool IsInitialized() const { return grad_node_.get(); }
+
+ private:
+  size_t in_slot_id_;
+  size_t in_rank_;
+  std::shared_ptr<GradNodeBase> grad_node_;
+};
 
 /**
  * GradSlotMeta is used to Record Forward Tensor info to backward, since paddle
@@ -76,27 +126,19 @@ class GradSlotMeta {
     return *meta_.get();
   }
 
-  void SetEdge(const Edge& edge) { edge_ = std::make_shared<Edge>(edge); }
-  bool HasEdge() const { return edge_ && edge_.get(); }
-  const Edge& GetEdge() const {
-    if (!HasEdge()) {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "edge_ of GradSlotMeta has not been initialized yet."
-          "You're expected to check Edge availability with HasEdge()"
-          "before calling GetEdge() interface."));
-    }
-    return *edge_.get();
-  }
+  void SetEdge(Edge&& edge) { edge_ = std::move(edge); }
+  const Edge& GetEdge() const { return edge_; }
 
  private:
   bool stop_gradient_{false};
-  std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
 
   // Edges recorded the backward related node info, which indicate all edges
   // linked
   // by this Grad Node.
   // Why we need vector<vector<Edge>>: Edges is as same rank as bwd output.
-  std::shared_ptr<Edge> edge_ = nullptr;
+  Edge edge_;
+
+  std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
 };
 
 class GradNodeBase {
@@ -221,56 +263,6 @@ class GradNodeBase {
   // We handle complex to real conversion only if any complex GradIn is involved
   bool need_complex_to_real_ = false;
   int64_t next_hook_id_{0};
-};
-
-class Edge {
- public:
-  // Default constructor for Edges in order to construct it for AutogradMeta
-  Edge() : in_slot_id_(0), in_rank_(0), grad_node_(nullptr) {}
-
-  // In real use cases we should create Edge from grad node and input rank which
-  // indicate which edge it is.
-  // Since we have slot design in operators we will have to locate an edge with
-  // slot
-  // and rank.
-  Edge(const std::shared_ptr<GradNodeBase>& grad_node, size_t in_slot_id,
-       size_t in_rank)
-      : in_slot_id_(in_slot_id), in_rank_(in_rank), grad_node_(grad_node) {}
-
-  Edge(const std::shared_ptr<GradNodeBase>& grad_node,
-       const std::pair</* slot_id */ size_t, /* rank */ size_t>& rank_info)
-      : in_slot_id_(rank_info.first),
-        in_rank_(rank_info.second),
-        grad_node_(grad_node) {}
-
-  GradNodeBase* GetGradNode() const { return grad_node_.get(); }
-
-  std::shared_ptr<GradNodeBase> GetMutableGradNode() const {
-    return grad_node_;
-  }
-
-  std::pair<size_t, size_t> GetEdgeRankInfo() const {
-    return std::make_pair(in_slot_id_, in_rank_);
-  }
-
-  void SetEdgeRankInfo(size_t slot_id, size_t in_rank) {
-    in_slot_id_ = slot_id;
-    in_rank_ = in_rank;
-  }
-
-  void SetEdgeRankInfo(
-      const std::pair</* slot_id */ size_t, /* rank */ size_t>& edge_rank) {
-    in_slot_id_ = edge_rank.first;
-    in_rank_ = edge_rank.second;
-  }
-
-  // Currently we use grad_node_ to identify if a edge is initialized.
-  bool IsInitialized() const { return grad_node_.get(); }
-
- private:
-  size_t in_slot_id_;
-  size_t in_rank_;
-  std::shared_ptr<GradNodeBase> grad_node_;
 };
 
 }  // namespace egr

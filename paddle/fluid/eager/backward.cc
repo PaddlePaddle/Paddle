@@ -54,9 +54,12 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
             "We got null node when we traverse the backward graph, and this "
             "should not happened please check your code and contact us."));
     // Find and append next nodes
-    const std::vector<std::vector<Edge>>& edges = node->GetEdges();
-    for (const auto& edge_list : edges) {
-      for (const Edge& edge : edge_list) {
+
+    const auto& out_metas = node->OutputMeta();
+    for (const auto& meta_list : out_metas) {
+      for (const auto& meta : meta_list) {
+        const auto& edge = meta.GetEdge();
+
         GradNodeBase* next_node = edge.GetMutableGradNode().get();
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
@@ -177,17 +180,20 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
     // TODO(jiabin): Should we erase it or find a more efficient way.
     node_input_buffers_dict.erase(node);
 
-    const std::vector<std::vector<Edge>>& edges = node->GetEdges();
-    PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
-                   paddle::platform::errors::Fatal(
-                       "Number of edges should be either empty ( for leaf node "
-                       ") or the same as number of output grad tensors, but we "
-                       "got edges size is: %d, grad_output size is: %d",
-                       edges.size(), grad_output_tensors.size()));
+    // Prepare GradTensorHolder for next node
+    const auto& out_metas = node->OutputMeta();
 
-    for (size_t i = 0; i < edges.size(); i++) {
-      for (size_t j = 0; j < edges[i].size(); j++) {
-        const Edge& edge = edges[i][j];
+    PADDLE_ENFORCE(
+        out_metas.size() == grad_output_tensors.size() || out_metas.empty(),
+        paddle::platform::errors::Fatal(
+            "Number of edges should be either empty ( for leaf node "
+            ") or the same as number of output grad tensors, but we "
+            "got edges size is: %d, grad_output size is: %d",
+            out_metas.size(), grad_output_tensors.size()));
+
+    for (size_t i = 0; i < out_metas.size(); i++) {
+      for (size_t j = 0; j < out_metas[i].size(); j++) {
+        const Edge& edge = out_metas[i][j].GetEdge();
 
         auto edge_rank = edge.GetEdgeRankInfo();
         // Since we make edge has as same rank as bwd outputs, we indexing them

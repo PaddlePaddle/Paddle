@@ -65,10 +65,10 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
       }
 
-      adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
-                                       meta->OutRankInfo());
-      // out_meta[i].SetEdge(
-      //    Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
+      // adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
+      // meta->OutRankInfo());
+      out_meta[i].SetEdge(
+          Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
     }
   }
 }
@@ -93,10 +93,9 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
       out_meta.resize(1);
     }
 
-    adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
-                                     meta->OutRankInfo());
-    // out_meta[0].SetEdge(Edge(meta->GetMutableGradNode(),
-    // meta->OutRankInfo()));
+    // adj_edges_[slot_id].emplace_back(meta->GetMutableGradNode(),
+    // meta->OutRankInfo());
+    out_meta[0].SetEdge(Edge(meta->GetMutableGradNode(), meta->OutRankInfo()));
   }
 }
 
