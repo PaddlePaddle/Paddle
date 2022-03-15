@@ -31,6 +31,8 @@ class MetaConfig;
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 // Because functions in this file not only can infer shape, but also need
 // infer lod or other useful data.
+//
+// The InferMeta Functions in this file are arranged in alphabetic order.
 
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,

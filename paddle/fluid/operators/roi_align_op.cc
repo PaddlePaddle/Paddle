@@ -10,8 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <memory>
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -221,6 +224,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(RoiAlignGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(roi_align, RoiAlignInferShapeFunctor,
+                            PD_INFER_META(phi::RoiAlignInferMeta));
+
 REGISTER_OPERATOR(roi_align, ops::ROIAlignOp, ops::ROIAlignOpMaker,
                   ops::ROIAlignGradMaker<paddle::framework::OpDesc>,
                   ops::ROIAlignGradMaker<paddle::imperative::OpBase>);
