@@ -14,6 +14,7 @@
 
 import numpy as np
 import os
+from datetime import timedelta
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable
 from ..fluid.framework import OpProtoHolder
@@ -209,6 +210,7 @@ def _new_process_group_impl(backend, store, rank, world_size, group_name,
     if backend == "gloo":
         gloo_store = core.GlooStore(store)
 
+    pg = None
     if backend == "gloo":
         pg = core.ProcessGroupGloo(gloo_store, rank, world_size)
     elif backend == "nccl":
@@ -362,8 +364,8 @@ def _new_group(ranks=None,
                          "which is used for the default process group created "
                          "by init_parallel_env.".format(_default_group_name))
     global_group = _get_default_group()
-    global_rank = default_group.rank
-    global_ranks = default_group.ranks
+    global_rank = global_group.rank
+    global_ranks = global_group.ranks
     if ranks is None:
         ranks = global_ranks
     assert len(ranks) <= len(global_ranks), (
