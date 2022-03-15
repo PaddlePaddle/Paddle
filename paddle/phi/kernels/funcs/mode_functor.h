@@ -14,6 +14,7 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
 #include <thrust/extrema.h>
@@ -22,6 +23,8 @@
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -140,6 +143,7 @@ static void ModeAssign(const Type& input_height,
   }
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 static void GetModebySort(const phi::GPUContext& dev_ctx,
                           const DenseTensor* input_tensor,
@@ -187,6 +191,7 @@ static void GetModebySort(const phi::GPUContext& dev_ctx,
     indices_tensor_ptr[i] = static_cast<int64_t>(index);
   }
 }
+#endif
 
 }  // namespace funcs
 }  // namespace phi
