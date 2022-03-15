@@ -36,6 +36,19 @@ class TensorWrapper {
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
                          bool full_reserved = false,
                          bool no_need_buffer = false) {
+    // set inplace_version_snapshot_ according to tensor's current inplace
+    // version.
+    if (phi::DenseTensor::classof(tensor.impl().get())) {
+      phi::DenseTensor* dense_tensor =
+          static_cast<phi::DenseTensor*>(tensor.impl().get());
+      auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
+      inplace_version_snapshot_ = inplace_version_counter.CurrentVersion();
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Unrecognized tensor type for snapshoting inplace version."));
+    }
+
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
@@ -49,6 +62,7 @@ class TensorWrapper {
     }
 
     // shallow copy tensor_impl here
+    no_need_buffer_ = no_need_buffer;
     if (no_need_buffer) {
       if (phi::DenseTensor::classof(tensor.impl().get())) {
         // Only Copy Meta
@@ -86,6 +100,7 @@ class TensorWrapper {
 
     // if it's full_reserved just return the full copy of tensor
     if (full_reserved_) {
+      check_inplace_version();
       return intermidiate_tensor_;
     } else {
       std::shared_ptr<GradNodeBase> new_grad_node = grad_node;
@@ -94,13 +109,52 @@ class TensorWrapper {
       intermidiate_tensor_.set_autograd_meta(
           std::static_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
               p_ab_autograd_meta));
+      check_inplace_version();
       return intermidiate_tensor_;
+    }
+  }
+
+  void check_inplace_version() {
+    if (no_need_buffer_) {
+      VLOG(6) << "There's no need to check inplace_version because "
+                 "no_need_buffer_ is true.";
+      return;
+    }
+    if (phi::DenseTensor::classof(intermidiate_tensor_.impl().get())) {
+      phi::DenseTensor* dense_tensor =
+          static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get());
+      auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
+
+      uint32_t current_inplace_version =
+          inplace_version_counter.CurrentVersion();
+      PADDLE_ENFORCE_EQ(
+          current_inplace_version, inplace_version_snapshot_,
+          paddle::platform::errors::PermissionDenied(
+              "Tensor '%s' used in gradient computation has been "
+              "modified by an inplace operation. "
+              "Its version is %d but the expected version is %d. "
+              "Please fix your code to void calling an inplace operator "
+              "after using the Tensor which will used in gradient "
+              "computation.",
+              intermidiate_tensor_.name(), current_inplace_version,
+              inplace_version_snapshot_));
+      VLOG(6) << " The inplace_version_snapshot_ of Tensor '"
+              << intermidiate_tensor_.name() << "' is [ "
+              << inplace_version_snapshot_ << " ]";
+      VLOG(6) << " The current_inplace_version of Tensor '"
+              << intermidiate_tensor_.name() << "' is [ "
+              << current_inplace_version << " ]";
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Unrecognized tensor type for checking inplace version."));
     }
   }
 
  private:
   bool full_reserved_ = false;
+  bool no_need_buffer_ = false;
   std::pair<size_t, size_t> out_rank_info_;
   paddle::experimental::Tensor intermidiate_tensor_;
+  uint32_t inplace_version_snapshot_ = 0;
 };
 }  // namespace egr
