@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void RollKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const ScalarArray& shifts,
-                const ScalarArray& axis,
+                const std::vector<int64_t>& axis,
                 DenseTensor* out) {
   std::vector<T> out_vec;
   paddle::framework::TensorToVector(x, dev_ctx, &out_vec);
@@ -36,16 +36,14 @@ void RollKernel(const Context& dev_ctx,
   DDim input_dim = x.dims();
 
   // axis = none, reshape to 1-D tensor
-  auto axis_data = axis.GetData();
-  if (axis_data.size() == 0) {
-    axis_data.push_back(0);
+  if (axis.size() == 0) {
+    axis.push_back(0);
     input_dim = phi::Dim<1>(out_vec.size());
   }
 
   for (size_t i = 0; i < nums; i++) {
     PADDLE_ENFORCE_EQ(
-        axis_data[i] < input_dim.size() &&
-            axis_data[i] >= (0 - input_dim.size()),
+        axis[i] < input_dim.size() && axis[i] >= (0 - input_dim.size()),
         true,
         phi::errors::OutOfRange(
             "Attr(axis[%d]) is out of range, It's expected "
@@ -54,8 +52,8 @@ void RollKernel(const Context& dev_ctx,
             input_dim.size(),
             input_dim.size() - 1,
             i,
-            axis_data[i]));
-    ShiftAlongDim(out_vec.data(), input_dim, axis_data[i], shifts_data[i]);
+            axis[i]));
+    ShiftAlongDim(out_vec.data(), input_dim, axis[i], shifts_data[i]);
   }
   dev_ctx.template Alloc<T>(out);
   paddle::framework::TensorFromVector(out_vec, dev_ctx, out);

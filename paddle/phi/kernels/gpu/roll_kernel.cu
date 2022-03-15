@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/roll_kernel.h"
 
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -29,7 +28,7 @@ template <typename T, typename Context>
 void RollKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const ScalarArray& shifts,
-                const ScalarArray& axis,
+                const std::vector<int64_t>& axis,
                 DenseTensor* out) {
   auto* in_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
@@ -43,15 +42,13 @@ void RollKernel(const Context& dev_ctx,
   auto stride_dim = phi::stride(input_dim);
 
   std::vector<int64_t> strides(nums), sizes(nums);
-  auto axis_data = axis.GetData();
-  if (axis_data.size() == 0) {
+  if (axis.size() == 0) {
     strides[0] = 1;
     sizes[0] = numel;
     shifts_data[0] = (shifts_data[0] % numel + numel) % numel;
   } else {
     for (size_t i = 0; i < nums; i++) {
-      int dim =
-          axis_data[i] >= 0 ? axis_data[i] : axis_data[i] + input_dim.size();
+      int dim = axis[i] >= 0 ? axis[i] : axis[i] + input_dim.size();
       int64_t size = input_dim[dim];
 
       if (size != 0) {

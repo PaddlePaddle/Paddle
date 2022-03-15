@@ -25,7 +25,7 @@ void RollGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
                     const ScalarArray& shifts,
-                    const ScalarArray& axis,
+                    const std::vector<int64_t>& axis,
                     DenseTensor* x_grad) {
   std::vector<T> out_vec;
   paddle::framework::TensorToVector(out_grad, dev_ctx, &out_vec);
@@ -35,14 +35,13 @@ void RollGradKernel(const Context& dev_ctx,
   DDim input_dim = out_grad.dims();
 
   // axis = none, reshape to 1-D tensor
-  auto axis_data = axis.GetData();
-  if (axis_data.size() == 0) {
-    axis_data.push_back(0l);
+  if (axis.size() == 0) {
+    axis.push_back(0l);
     input_dim = phi::Dim<1>(out_vec.size());
   }
 
   for (size_t i = 0; i < nums; i++) {
-    ShiftAlongDim(out_vec.data(), input_dim, axis_data[i], 0 - shifts_data[i]);
+    ShiftAlongDim(out_vec.data(), input_dim, axis[i], 0 - shifts_data[i]);
   }
 
   dev_ctx.template Alloc<T>(x_grad);

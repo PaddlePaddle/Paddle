@@ -14,8 +14,6 @@
 
 #include "paddle/phi/kernels/roll_grad_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -30,7 +28,7 @@ void RollGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
                     const ScalarArray& shifts,
-                    const ScalarArray& axis,
+                    const std::vector<int64_t>& axis,
                     DenseTensor* x_grad) {
   auto* in_data = out_grad.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(x_grad);
@@ -43,15 +41,13 @@ void RollGradKernel(const Context& dev_ctx,
   auto stride_dim = phi::stride(input_dim);
 
   std::vector<int64_t> strides(nums), sizes(nums);
-  auto axis_data = axis.GetData();
-  if (axis_data.size() == 0) {
+  if (axis.size() == 0) {
     strides[0] = 1;
     sizes[0] = numel;
     shifts_data[0] = ((-shifts_data[0]) % numel + numel) % numel;
   } else {
     for (size_t i = 0; i < nums; i++) {
-      int dim =
-          axis_data[i] >= 0 ? axis_data[i] : axis_data[i] + input_dim.size();
+      int dim = axis[i] >= 0 ? axis[i] : axis[i] + input_dim.size();
       int64_t size = input_dim[dim];
       if (size != 0) {
         shifts_data[i] = ((-shifts_data[i]) % size + size) % size;

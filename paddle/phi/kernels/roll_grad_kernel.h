@@ -24,7 +24,7 @@ void RollGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
                     const ScalarArray& shifts,
-                    const ScalarArray& axis,
+                    const std::vector<int64_t>& axis,
                     DenseTensor* x_grad);
 
 }  // namespace phi

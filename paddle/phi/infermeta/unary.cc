@@ -1016,6 +1016,37 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   ReshapeInferMeta(x, shape, out, config);
 }
 
+void RollInferMeta(const MetaTensor& x,
+                   const ScalarArray& shifts,
+                   const std::vector<int64_t>& axis,
+                   MetaTensor* out) {
+  auto shifts_data = shifts.GetData();
+
+  if (axis.size() != 0) {
+    PADDLE_ENFORCE_EQ(
+        axis.size(),
+        shifts_data.size(),
+        phi::errors::InvalidArgument("When dims.size() != 0, dims.size() "
+                                     "should be equal to "
+                                     "shifts.size(). But received "
+                                     "dims.size() = %d, shifts.size() = %d",
+                                     axis.size(),
+                                     shifts_data.size()));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        shifts_data.size(),
+        1,
+        phi::errors::InvalidArgument("When dims.size() == 0, shifts.size() "
+                                     "should be equal to 1, But received "
+                                     "shifts.size() = %d",
+                                     shifts_data.size()));
+  }
+
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
   auto in_dim = input.dims();
   out->set_dims(phi::make_ddim({in_dim.size()}));
@@ -1676,38 +1707,6 @@ void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {
           "Input(Condition) should have number of dimension at least 1"));
   out->set_dims(phi::make_ddim({-1, rank}));
   out->set_dtype(DataType::INT64);
-}
-
-void RollInferMeta(const MetaTensor& x,
-                   const ScalarArray& shifts,
-                   const ScalarArray& axis,
-                   MetaTensor* out) {
-  auto shifts_data = shifts.GetData();
-  auto axis_data = axis.GetData();
-
-  if (axis_data.size() != 0) {
-    PADDLE_ENFORCE_EQ(
-        axis_data.size(),
-        shifts_data.size(),
-        phi::errors::InvalidArgument("When dims.size() != 0, dims.size() "
-                                     "should be equal to "
-                                     "shifts.size(). But received "
-                                     "dims.size() = %d, shifts.size() = %d",
-                                     axis_data.size(),
-                                     shifts_data.size()));
-  } else {
-    PADDLE_ENFORCE_EQ(
-        shifts_data.size(),
-        1,
-        phi::errors::InvalidArgument("When dims.size() == 0, shifts.size() "
-                                     "should be equal to 1, But received "
-                                     "shifts.size() = %d",
-                                     shifts_data.size()));
-  }
-
-  out->set_dims(x.dims());
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
 }
 
 }  // namespace phi
