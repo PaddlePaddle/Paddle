@@ -37,8 +37,42 @@ from ..meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
+from paddle.distributed.fleet.utils.recompute import RecomputeFunction
 
 __all__ = []
+
+_grad_scalar = None
+
+
+class RecomputeModelWrapper(paddle.nn.Layer):
+    def __init__(model, segments=1, preserve_rng_state=True):
+        assert isinstance(model, paddle.nn.Sequential), (
+            "The model passed to RecomputeModelWrapper must be of type "
+            "paddle.nn.Sequential.")
+        self._model = model
+        self._segments = segments
+        self._preserve_rng_state = preserve_rng_state
+        self._layers = list(model.children())
+        self._segment_size = len(self._layers) // segments
+
+    def _run_func(self, begin, end):
+        def do_run(input):
+            for i in range(begin, end):
+                input = self._layers[i](input)
+            return input
+
+        return do_run
+
+    def _checkpoint(self, func, *args, **kwargs):
+        return RecomputeFunction.apply(function, self._preserve_rng_state,
+                                       *args)
+
+    def forward(self, input):
+        for begin in range(0, self._segment_size * (self._segments - 1),
+                           self._segment_size):
+            end = begin + self._segment_size
+            input = self._checkpoint(self._run_func(begin, end), input)
+        return self._run_func(end, len(self._layers))(input)
 
 
 def apply_ir_passes(main_program, startup_program, config):
@@ -166,7 +200,6 @@ class Fleet(object):
         self._runtime_handle = None
         self._util = None
         self._context = {}
-        self.user_defined_optimizer = None
 
     def init(self, role_maker=None, is_collective=False, strategy=None):
         """
@@ -886,9 +919,6 @@ class Fleet(object):
                 if self._user_defined_strategy.heter_ccl_mode == False:
                     return HybridParallelOptimizer(optimizer, self._hcg,
                                                    self._user_defined_strategy)
-                elif self._user_defined_strategy.amp:
-                    return UnifiedOptimizer(optimizer,
-                                            self._user_defined_strategy)
                 else:
                     return HeterParallelOptimizer(optimizer,
                                                   self._user_defined_strategy)
@@ -903,7 +933,6 @@ class Fleet(object):
 
         Args:
             model (Layer): the user-defind model which inherits Layer.
-            optimizer (Optimizer): the optimizer.
 
         Returns:
             distributed data parallel model which inherits Layer.
@@ -954,55 +983,44 @@ class Fleet(object):
 
         """
         assert model is not None, "model should not be None"
-        assert self.user_defined_optimizer, "Please call fleet.distributed_optimizer first."
         if self.worker_num() <= 1:
             return model
 
-        sharding_enable = False
         amp_enable = False
+        recompute_enable = False
         strategy = self._user_defined_strategy
         if strategy.amp == True:
             amp_enable = True
             amp_level = strategy.amp_configs['amp_level']
             if amp_level.upper() == "O2":
-                assert optimizer
-                model, optimizer = paddle.amp.decorate(
+                model = paddle.amp.decorate(
                     models=model,
-                    optimizers=optimizer,
+                    optimizers=None,
                     level="O2",
                     master_weight=None,
                     save_dtype=None)
-                init_loss_scaling = strategy.amp_configs['init_loss_scaling']
-                incr_ratio = strategy.amp_configs['incr_ratio']
-                decr_ratio = strategy.amp_configs['decr_ratio']
-                incr_every_n_steps = strategy.amp_configs['incr_every_n_steps']
-                decr_every_n_nan_or_inf = strategy.amp_configs[
-                    'decr_every_n_nan_or_inf']
-                use_dynamic_loss_scaling = strategy.amp_configs[
-                    'use_dynamic_loss_scalling']
+            init_loss_scaling = strategy.amp_configs['init_loss_scaling']
+            incr_ratio = strategy.amp_configs['incr_ratio']
+            decr_ratio = strategy.amp_configs['decr_ratio']
+            incr_every_n_steps = strategy.amp_configs['incr_every_n_steps']
+            decr_every_n_nan_or_inf = strategy.amp_configs[
+                'decr_every_n_nan_or_inf']
+            use_dynamic_loss_scaling = strategy.amp_configs[
+                'use_dynamic_loss_scalling']
 
-                self._optimizer = optimizer
-                self._optimizer._scalar = paddle.amp.GradScalar(
-                    init_loss_scaling=init_loss_scaling,
-                    incr_ratio=incr_ratio,
-                    decr_ratio=decr_ratio,
-                    incr_every_n_steps=incr_every_n_steps,
-                    decr_every_n_nan_or_inf=decr_every_n_nan_or_inf,
-                    use_dynamic_loss_scaling=use_dynamic_loss_scaling)
+            global _grad_scalar
+            _grad_scalar = paddle.amp.GradScalar(
+                init_loss_scaling=init_loss_scaling,
+                incr_ratio=incr_ratio,
+                decr_ratio=decr_ratio,
+                incr_every_n_steps=incr_every_n_steps,
+                decr_every_n_nan_or_inf=decr_every_n_nan_or_inf,
+                use_dynamic_loss_scaling=use_dynamic_loss_scaling)
 
-        if strategy.sharding == True:
-            sharding_enable = True
-            sharding_level = strategy.sharding_configs['level']
-            if sharding_level == "stage2":
-                optimizer = ShardingOptimizer(
-                    params=model.parameters(), optim=self._optimizer)
-                model = ShardingStage2(model, optimizer)
-                self._optimizer = optimizer
-            elif sharding_level == "stage3":
-                model = ShardingStage3(model, optimizer=self._optimizer)
-            else:
-                raise RuntimeError("Unknown sharding stage: {}".format(
-                    sharding_level))
+        if strategy.recompute == True:
+            recompute_enable = True
+            segments = strategy.recompute_configs['segments']
+            model = RecomputeModelWrapper(model)
 
         if self._user_defined_strategy.heter_ccl_mode == True:
             model = paddle.DataParallel(
