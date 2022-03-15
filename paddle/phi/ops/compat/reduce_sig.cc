@@ -142,7 +142,7 @@ KernelSignature ReduceMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "max_grad",
-      {"X", GradVarName("Out")},
+      {"X", GradVarName("Out"), "Out"},
       {"dim", "keep_dim", "reduce_all", "in_dtype", "out_dtype"},
       {GradVarName("X")});
 }
@@ -151,7 +151,7 @@ KernelSignature ReduceMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
       "min_grad",
-      {"X", GradVarName("Out")},
+      {"X", GradVarName("Out"), "Out"},
       {"dim", "keep_dim", "reduce_all", "in_dtype", "out_dtype"},
       {GradVarName("X")});
 }

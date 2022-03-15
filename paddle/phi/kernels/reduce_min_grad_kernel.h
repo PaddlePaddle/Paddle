@@ -22,6 +22,7 @@ template <typename T, typename Context>
 void ReduceMinGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out_grad,
+                         const DenseTensor& out,
                          const std::vector<int64_t>& dims,
                          bool keep_dim,
                          bool reduce_all,
