@@ -1,0 +1,226 @@
+
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import paddle
+import paddle.fluid as fluid
+import numpy as np
+import unittest
+
+
+def call_TripletMarginDistanceLoss_layer(input,
+                    positive,
+                    negative,
+                    distance_function=None,
+                    margin=0.3,
+                    swap=False,
+                    reduction='mean',):
+    triplet_margin_with_distance_loss = paddle.nn.TripletMarginDistanceLoss(distance_function=distance_function,
+        margin=margin,swap=swap,reduction=reduction)
+    res = triplet_margin_with_distance_loss(input=input,positive=positive,negative=negative,)
+    return res
+
+
+def call_TripletMaginLoss_functional(input,
+                        positive,
+                        negative,
+                        distance_function = None,
+                        margin=0.3,
+                        swap=False,
+                        reduction='mean',):
+    res = paddle.nn.functional.triplet_margin_with_distance_loss(
+        input=input,positive=positive,negative=negative,distance_function=distance_function,
+        margin=margin,swap=swap,reduction=reduction)
+    return res
+
+
+def test_static(place,
+                input_np,
+                positive_np,
+                negative_np,
+                distance_function=None,
+                margin=0.3,
+                swap=False,
+                reduction='mean',
+                functional=False):
+    paddle.enable_static()
+    prog = paddle.static.Program()
+    startup_prog = paddle.static.Program()
+    with paddle.static.program_guard(prog, startup_prog):
+        input = paddle.fluid.data(
+            name='input', shape=input_np.shape, dtype='float64')
+        positive = paddle.fluid.data(
+            name='positive', shape=positive_np.shape, dtype='float64')
+        negative = paddle.fluid.data(
+            name='negative', shape=negative_np.shape, dtype='float64')
+        feed_dict = {"input": input_np, "positive": positive_np, "negative":negative_np}
+
+
+        if functional:
+            res = call_TripletMarginDistanceLoss_layer(input=input,positive=positive,negative=negative,distance_function=distance_function,
+        margin=margin,swap=swap,reduction=reduction)
+        else:
+            res = call_TripletMarginDistanceLoss_layer(input=input,positive=positive,negative=negative,distance_function=distance_function,
+        margin=margin,swap=swap,reduction=reduction)
+
+        exe = paddle.static.Executor(place)
+        static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
+    return static_result
+
+def test_dygraph(place,
+                 input,
+                 positive,
+                 negative,
+                 distance_function=None,
+                 margin=0.3,
+                 swap=False,
+                 reduction='mean',
+                 functional=False):
+    paddle.disable_static()
+    input = paddle.to_tensor(input)
+    positive = paddle.to_tensor(positive)
+    negative = paddle.to_tensor(negative)
+
+    if functional:
+        dy_res = call_TripletMarginDistanceLoss_layer(input=input,positive=positive,negative=negative,distance_function=distance_function,
+        margin=margin,swap=swap,reduction=reduction)
+    else:
+        dy_res = call_TripletMarginDistanceLoss_layer(input=input,positive=positive,negative=negative,distance_function=distance_function,
+        margin=margin,swap=swap,reduction=reduction)
+    dy_result = dy_res.numpy()
+    paddle.enable_static()
+    return dy_result
+
+
+def calc_triplet_margin_loss(input,
+                 positive,
+                 negative,
+                distance_function=None,
+                 margin=0.3,
+                 swap=False,
+                 reduction='mean',):
+    distance_function = distance_function if distance_function is not None else np.linalg.norm
+    positive_dist = distance_function((input - positive), 2, axis=1)
+    negative_dist = distance_function((input - negative), 2, axis=1)
+
+    if swap:
+        swap_dist = np.linalg.norm((positive - negative), 2, axis=1)
+        negative_dist = np.minimum(negative_dist, swap_dist)
+    expected = np.maximum(positive_dist - negative_dist + margin, 0)
+
+    if reduction == 'mean':
+        expected = np.mean(expected)
+    elif reduction == 'sum':
+        expected = np.sum(expected)
+    else:
+        expected = expected
+
+    return expected
+
+
+class TestTripletMarginLoss(unittest.TestCase):
+    def test_TripletMarginLoss(self):
+        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
+        positive = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
+        negative = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
+
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        reductions = ['sum', 'mean', 'none']
+        for place in places:
+            for reduction in reductions:
+                expected = calc_triplet_margin_loss(input=input, positive=positive, negative=negative,
+                                                     reduction=reduction)
+
+                dy_result = test_dygraph(place=place,
+                                         input=input, positive=positive, negative=negative,
+                                         reduction=reduction,)
+
+                static_result = test_static(place=place,
+                                            input_np=input, positive_np=positive, negative_np=negative,
+                                            reduction=reduction,)
+                self.assertTrue(np.allclose(static_result, expected))
+                self.assertTrue(np.allclose(static_result, dy_result))
+                self.assertTrue(np.allclose(dy_result, expected))
+                static_functional = test_static(place=place,
+                                                input_np=input, positive_np=positive, negative_np=negative,
+                                                reduction=reduction,
+                                                functional=True)
+                dy_functional = test_dygraph(
+                    place=place,
+                    input=input, positive=positive, negative=negative,
+                    reduction=reduction,
+                    functional=True)
+                self.assertTrue(np.allclose(static_functional, expected))
+                self.assertTrue(np.allclose(static_functional, dy_functional))
+                self.assertTrue(np.allclose(dy_functional, expected))
+
+    def test_BCEWithLogitsLoss_error(self):
+        paddle.disable_static()
+        self.assertRaises(
+            ValueError,
+            paddle.nn.TripletMarginDistanceLoss,
+            reduction="unsupport reduction")
+        input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
+        positive = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
+        negative = paddle.to_tensor([[0.2, 0.1]], dtype='float32')
+        self.assertRaises(
+            ValueError,
+            paddle.nn.functional.triplet_margin_with_distance_loss,
+            input=input,
+            positive=positive,
+            negative=negative,
+            reduction="unsupport reduction")
+        paddle.enable_static()
+
+    def test_TripletMarginDistanceLoss_distance_function(self):
+        distance_function_1 = lambda x, y: 1.0 - paddle.nn.functional.cosine_similarity(x, y)
+        def distance_function_2(x1,x2):
+            return paddle.max(paddle.abs(x1-x2),axis=1)
+        distance_function_list = [distance_function_1,distance_function_2]
+        input = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
+        positive = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
+        negative = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
+
+        places = [fluid.CPUPlace()]
+        #if fluid.core.is_compiled_with_cuda():
+            #places.append(fluid.CUDAPlace(0))
+        reductions = ['sum', 'mean', 'none']
+        for place in places:
+            for reduction in reductions:
+                for distance_function in distance_function_list:
+                    dy_result = test_dygraph(place=place,
+                                             input=input, positive=positive, negative=negative,distance_function=distance_function,
+                                             reduction=reduction,)
+
+                    static_result = test_static(place=place,
+                                                input_np=input, positive_np=positive, negative_np=negative,distance_function=distance_function,
+                                                reduction=reduction,)
+                    self.assertTrue(np.allclose(static_result, dy_result))
+                    static_functional = test_static(place=place,
+                                                    input_np=input, positive_np=positive, negative_np=negative,distance_function=distance_function,
+                                                    reduction=reduction,
+                                                    functional=True)
+                    dy_functional = test_dygraph(
+                        place=place,
+                        input=input, positive=positive, negative=negative,distance_function=distance_function,
+                        reduction=reduction,
+                        functional=True)
+                    self.assertTrue(np.allclose(static_functional, dy_functional))
+
+
+
+if __name__ == "__main__":
+    unittest.main()
