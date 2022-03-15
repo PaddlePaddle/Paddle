@@ -28,6 +28,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
+#include "paddle/phi/kernels/impl/determinant_grad_kernel_impl.h"
 #include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
 #include "paddle/phi/kernels/math_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
@@ -41,143 +42,6 @@ template <typename T>
 T sign(T val) {
   return static_cast<T>(T(0) < val) - (val < T(0));
 }
-
-template <typename T>
-struct FoundZeroFunctor {
-  FoundZeroFunctor(const T* x, int64_t numel, bool* res)
-      : x_(x), numel_(numel), res_(res) {}
-  HOSTDEVICE void operator()(size_t idx) const {
-    if (*res_ || idx >= static_cast<size_t>(numel_)) {
-      // founded zero number
-      return;
-    }
-    *res_ = (x_[idx] == static_cast<T>(0));
-  }
-  const T* x_;
-  int64_t numel_;
-  bool* res_;
-};
-
-template <typename DeviceContext, typename T>
-inline bool CheckMatrixInvertible(const framework::ExecutionContext& ctx,
-                                  const framework::Tensor* det) {
-  auto& dev_ctx = ctx.template device_context<DeviceContext>();
-  auto numel = det->numel();
-
-  framework::Tensor dev_tensor;
-  auto* data = dev_tensor.mutable_data<bool>({1}, ctx.GetPlace());
-
-  // set false
-  phi::funcs::SetConstant<DeviceContext, bool> zero;
-  zero(dev_ctx, &dev_tensor, false);
-
-  // find whether zero
-  platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-  FoundZeroFunctor<T> functor(det->data<T>(), numel, data);
-  for_range(functor);
-
-  // copy to host
-  dev_ctx.Wait();
-  framework::Tensor cpu_tensor;
-  framework::TensorCopy(dev_tensor, platform::CPUPlace(), &cpu_tensor);
-
-  // if founded zero, the matrix is not invertible
-  // else the matrix is invertible
-  auto* res = cpu_tensor.data<bool>();
-  return !(*res);
-}
-
-template <typename DeviceContext, typename T>
-class DeterminantGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto& orig_dev_ctx = context.template device_context<DeviceContext>();
-    const auto* input = context.Input<framework::Tensor>("Input");
-    const auto* det = context.Input<framework::Tensor>("Out");
-    const auto* grad =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* ddet =
-        context.Output<framework::Tensor>(framework::GradVarName("Input"));
-
-    auto input_dims_size = input->dims().size();
-    if (input_dims_size > 2) {
-      PADDLE_ENFORCE_EQ(
-          grad->dims().size() + 2, input_dims_size,
-          platform::errors::InvalidArgument(
-              "The grad tensor of det dims size should 2 less than"
-              " input tensor's, but here differ %d",
-              input_dims_size - grad->dims().size()));
-    } else if (input_dims_size == 2) {
-      // input dims size 2 and grad dims size 1 is possible
-      PADDLE_ENFORCE_EQ(
-          grad->dims().size(), 1,
-          platform::errors::InvalidArgument(
-              "The grad tensor of det dims size should 2 less than"
-              " input tensor's, but here differ %d",
-              input_dims_size - grad->dims().size()));
-    } else {
-      // checked in forward, pass
-    }
-
-    auto& dev_ctx = static_cast<
-        const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
-        orig_dev_ctx);
-
-    // Check Whether the matrix is invertible
-    // (matrix A not invertible) == (det(A)=0)
-    if (!CheckMatrixInvertible<DeviceContext, T>(context, det)) {
-      // The matrix is not invertible
-      VLOG(3) << "The input matrix not invertible!";
-      ddet->Resize(input->dims());
-      phi::Full<T>(dev_ctx, phi::vectorize(input->dims()), static_cast<T>(0.0f),
-                   ddet);
-      return;
-    }
-
-    // The matrix is invertible
-    // let |A| = Determinant(A)
-    // Ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
-    // we set d|A| = unsqueeze(dA * |A|, [-1, -2]) * inverse(A).transpose(-2,
-    // -1)
-
-    // First: inverse(A)
-    framework::Tensor inverse_A;
-    // A must be square matrices!
-    inverse_A.Resize(input->dims());
-    inverse_A.mutable_data<T>(context.GetPlace());
-
-    phi::funcs::MatrixInverseFunctor<DeviceContext, T> mat_inv;
-    mat_inv(orig_dev_ctx, *input, &inverse_A);
-
-    VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
-
-    // Second: inverse(A).transpose(-2, -1)
-    framework::Tensor transpose_inverse_A =
-        phi::TransposeLast2Dim<T>(dev_ctx, inverse_A);
-
-    VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
-            << transpose_inverse_A.dims();
-
-    // Third: dA * |A|
-    auto mul_dA_detA = phi::Multiply<T>(dev_ctx, *grad, *det);
-    VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
-
-    // Fourth: unsqueeze(dA * |A|, [-1, -2])
-    auto unsqueeze1 = phi::funcs::Unsqueeze(mul_dA_detA, -1);
-    auto unsqueeze2 = phi::funcs::Unsqueeze(unsqueeze1, -2);
-    VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
-
-    // Finally: unsqueeze(dA * |A|) * inverse(A)
-    auto res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
-
-    VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
-
-    framework::TensorCopy(res, context.GetPlace(), ddet);
-
-    ddet->Resize(input->dims());
-    VLOG(3) << "d|A| dims: " << ddet->dims();
-  }
-};
 
 template <typename T>
 struct SlogDeterminantFunctor {
@@ -283,7 +147,9 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     // (matrix A not invertible) == (absslogdet(A)=0)
     auto slogdet_vec = slogdet->Split(1, 0);
     auto absslogdet_val = slogdet_vec[0];
-    if (!CheckMatrixInvertible<DeviceContext, T>(context, &absslogdet_val)) {
+    if (!phi::detail::CheckMatrixInvertible<
+            T, typename framework::ConvertToPhiContext<DeviceContext>::TYPE>(
+            dev_ctx, &absslogdet_val)) {
       // The matrix is not invertible
       VLOG(3) << "The input matrix not invertible!";
       dslogdet->Resize(input->dims());

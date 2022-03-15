@@ -19,11 +19,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
-    determinant_grad,
-    ops::DeterminantGradKernel<plat::CUDADeviceContext, float>,
-    ops::DeterminantGradKernel<plat::CUDADeviceContext, double>);
-
-REGISTER_OP_CUDA_KERNEL(
     slogdeterminant, ops::SlogDeterminantKernel<plat::CUDADeviceContext, float>,
     ops::SlogDeterminantKernel<plat::CUDADeviceContext, double>);
 
