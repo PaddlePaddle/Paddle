@@ -20,6 +20,16 @@
 namespace phi {
 
 template <typename T, typename Context>
+void ProdKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const std::vector<int64_t>& dims,
+                bool keep_dim,
+                DenseTensor* out) {
+  bool reduce_all = false;
+  ProdRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
+}
+
+template <typename T, typename Context>
 void MaxKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
@@ -62,6 +72,9 @@ void AnyKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
+    prod, CPU, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}
+
+PD_REGISTER_KERNEL(
     max, CPU, ALL_LAYOUT, phi::MaxKernel, float, double, int, int64_t) {}
 PD_REGISTER_KERNEL(
     min, CPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t) {}
@@ -69,6 +82,10 @@ PD_REGISTER_KERNEL(all, CPU, ALL_LAYOUT, phi::AllKernel, bool) {}
 PD_REGISTER_KERNEL(any, CPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
+PD_REGISTER_KERNEL(
+    prod, GPU, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}
+
 PD_REGISTER_KERNEL(
     max, GPU, ALL_LAYOUT, phi::MaxKernel, float, double, int, int64_t) {}
 PD_REGISTER_KERNEL(
