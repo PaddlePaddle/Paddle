@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/hierarchical_sigmoid_op.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 namespace paddle {
 namespace operators {
 
@@ -280,14 +280,3 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
                   ops::HierarchicalSigmoidGradOpGradVarTypeInference,
                   ops::HierarchicalSigmoidGradOpNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    hierarchical_sigmoid,
-    ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext,
-                                     double>);
-REGISTER_OP_CPU_KERNEL(
-    hierarchical_sigmoid_grad,
-    ops::HierarchicalSigmoidGradOpKernel<paddle::platform::CPUDeviceContext,
-                                         float>,
-    ops::HierarchicalSigmoidGradOpKernel<paddle::platform::CPUDeviceContext,
-                                         double>);
