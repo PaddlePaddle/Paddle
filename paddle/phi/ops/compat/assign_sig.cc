@@ -17,7 +17,17 @@
 namespace phi {
 
 KernelSignature AssignOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("assign", {"X"}, {}, {"Out"});
+  if (ctx.HasInput("X")) {
+    if (ctx.IsDenseTensorVectorInput("X")) {
+      return KernelSignature("assign_array", {"X"}, {}, {"Out"});
+    } else if (ctx.IsSelectedRowsInput("X")) {
+      return KernelSignature("assign_sr", {"X"}, {}, {"Out"});
+    } else {
+      return KernelSignature("assign", {"X"}, {}, {"Out"});
+    }
+  } else {
+    return KernelSignature("assign", {"X"}, {}, {"Out"});
+  }
 }
 
 }  // namespace phi

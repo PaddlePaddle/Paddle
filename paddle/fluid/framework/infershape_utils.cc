@@ -78,6 +78,11 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_types[0] == proto::VarType::SELECTED_ROWS;
   }
 
+  bool IsDenseTensorVectorInput(const std::string& name) const override {
+    auto var_types = ctx_.GetInputsVarType(name);
+    return var_types[0] == proto::VarType::LOD_TENSOR_ARRAY;
+  }
+
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
     return var_types[0] == proto::VarType::LOD_TENSOR;
