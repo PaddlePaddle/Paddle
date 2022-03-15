@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
 namespace phi {
@@ -553,6 +554,78 @@ void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(DataType::BOOL);
 }
 
+void MaxPoolWithIndexInferMeta(const MetaTensor& x,
+                               const std::vector<int>& kernel_size,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               bool global_pooling,
+                               bool adaptive,
+                               MetaTensor* out,
+                               MetaTensor* mask,
+                               MetaConfig config) {
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> kernel_size_ = kernel_size;
+
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE(
+      x_dims.size() == 4 || x_dims.size() == 5,
+      errors::InvalidArgument(
+          "Pooling intput should be 4-D or 5-D tensor but received %dD-Tensor",
+          x_dims.size()));
+
+  if (global_pooling) {
+    kernel_size_.resize(static_cast<size_t>(x_dims.size()) - 2);
+    for (size_t i = 0; i < kernel_size_.size(); ++i) {
+      paddings_[i] = 0;
+      kernel_size_[i] = static_cast<int>(x_dims[i + 2]);
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() - kernel_size_.size(),
+      2U,
+      errors::InvalidArgument(
+          "The input size %d minus the kernel size %d should equal to 2.",
+          x_dims.size(),
+          kernel_size_.size()));
+  PADDLE_ENFORCE_EQ(
+      kernel_size_.size(),
+      strides.size(),
+      errors::InvalidArgument(
+          "Strides size %d and pooling size %d should be the same.",
+          strides.size(),
+          kernel_size_.size()));
+  PADDLE_ENFORCE_EQ(
+      kernel_size_.size(),
+      paddings_.size(),
+      errors::InvalidArgument(
+          "Paddings size %d and pooling size %d should be the same.",
+          paddings_.size(),
+          kernel_size_.size()));
+
+  std::vector<int64_t> output_shape({x_dims[0], x_dims[1]});
+  if (adaptive) {
+    output_shape.insert(
+        output_shape.end(), kernel_size_.begin(), kernel_size_.end());
+  } else {
+    for (size_t i = 0; i < kernel_size_.size(); ++i) {
+      if ((!config.is_runtime) && (x_dims[i + 2] < 0)) {
+        output_shape.push_back(x_dims[i + 2]);
+      } else {
+        output_shape.push_back(funcs::MaxPoolOutputSize(
+            x_dims[i + 2], kernel_size_[i], paddings_[i], strides[i]));
+      }
+    }
+  }
+
+  out->set_dims(make_ddim(output_shape));
+  out->set_dtype(x.dtype());
+
+  mask->set_dims(make_ddim(output_shape));
+  mask->set_dtype(paddle::experimental::CppTypeToDataType<int>::Type());
+}
+
 void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
@@ -673,6 +746,118 @@ void PixelShuffleInferMeta(const MetaTensor& x,
   }
   out->set_dtype(x.dtype());
   out->set_dims(output_dims);
+}
+
+void PoolInferMeta(const MetaTensor& x,
+                   const std::vector<int>& kernel_size,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   bool ceil_mode,
+                   bool exclusive,
+                   const std::string& data_format,
+                   const std::string& pooling_type,
+                   bool global_pooling,
+                   bool adaptive,
+                   const std::string& padding_algorithm,
+                   MetaTensor* out,
+                   MetaConfig config) {
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> kernel_size_ = kernel_size;
+
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() == 4 || x_dims.size() == 5,
+      true,
+      errors::InvalidArgument(
+          "the input of Op(pool) should be 4-D or 5-D Tensor. But "
+          "received: %u-D Tensor and it's shape is [%s].",
+          x_dims.size(),
+          x_dims));
+
+  PADDLE_ENFORCE_EQ(x_dims.size() - kernel_size_.size(),
+                    2U,
+                    errors::InvalidArgument(
+                        "the dimension of input minus the size of "
+                        "Attr(kernel_size_) must be euqal to 2 in Op(pool). "
+                        "But received: the dimension of input minus the size "
+                        "of Attr(kernel_size_) is %d, the "
+                        "input's dimension is %d, the shape of input "
+                        "is [%s], the Attr(kernel_size_)'s size is %d, the "
+                        "Attr(kernel_size_) is [%s].",
+                        x_dims.size() - kernel_size_.size(),
+                        x_dims.size(),
+                        x_dims,
+                        kernel_size_.size(),
+                        make_ddim(kernel_size_)));
+
+  PADDLE_ENFORCE_EQ(
+      kernel_size_.size(),
+      strides.size(),
+      errors::InvalidArgument(
+          "the size of Attr(kernel_size_) and Attr(strides) in "
+          "Op(pool) must be equal. "
+          "But received: Attr(kernel_size_)'s size is %d, Attr(strides)'s "
+          "size is %d, Attr(kernel_size_) is [%s], Attr(strides)is [%s].",
+          kernel_size_.size(),
+          strides.size(),
+          make_ddim(kernel_size_),
+          make_ddim(strides)));
+
+  // MKL-DNN Kernels are using NCHW order of dims description
+  // so we ignore data_format consideration for MKL-DNN kernel
+  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
+                            (data_format == "NHWC" || data_format == "NDHWC");
+
+  // update paddings if "SAME" or global_pooling
+  DDim data_dims;
+  if (channel_last) {
+    data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
+  } else {
+    data_dims = slice_ddim(x_dims, 2, x_dims.size());
+  }
+  funcs::UpdatePadding(&paddings_,
+                       global_pooling,
+                       adaptive,
+                       padding_algorithm,
+                       data_dims,
+                       strides,
+                       kernel_size_);
+
+  if (global_pooling) {
+    funcs::UpdateKernelSize(&kernel_size_, data_dims);
+  }
+
+  std::vector<int64_t> output_shape;
+  if (adaptive) {
+    output_shape.insert(
+        output_shape.end(), kernel_size_.begin(), kernel_size_.end());
+  } else {
+    for (int i = 0; i < data_dims.size(); ++i) {
+      if ((!config.is_runtime) && (data_dims[i] < 0)) {
+        output_shape.push_back(data_dims[i]);
+      } else {
+        output_shape.push_back(funcs::PoolOutputSize(data_dims[i],
+                                                     kernel_size_[i],
+                                                     paddings_[2 * i],
+                                                     paddings_[2 * i + 1],
+                                                     strides[i],
+                                                     ceil_mode));
+      }
+    }
+  }
+
+  // output_N = input_N
+  output_shape.insert(output_shape.begin(), x_dims[0]);
+  // output_C = input_C
+  if (channel_last) {
+    output_shape.push_back(x_dims[x_dims.size() - 1]);
+  } else {
+    output_shape.insert(output_shape.begin() + 1, x_dims[1]);
+  }
+
+  out->set_dims(make_ddim(output_shape));
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out) {
@@ -1415,6 +1600,43 @@ void UnfoldInferMeta(const MetaTensor& x,
   int output_col_length = output_height * output_width;
   out_dims.push_back(output_col_length);
   out->set_dims(phi::make_ddim(out_dims));
+}
+
+void OneHotRawInferMeta(const MetaTensor& x,
+                        int32_t depth,
+                        DataType dtype,
+                        bool allow_out_of_range,
+                        MetaTensor* out) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      1,
+      phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
+
+  auto out_dims_vec = phi::vectorize(x_dims);
+  out_dims_vec.push_back(depth);
+  auto out_dims = phi::make_ddim(out_dims_vec);
+  out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(dtype);
+}
+
+void OneHotInferMeta(const MetaTensor& x,
+                     const Scalar& depth_t,
+                     MetaTensor* out) {
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_GE(
+      x_dims.size(),
+      1,
+      phi::errors::InvalidArgument("Rank of Input(X) should be at least 1."));
+
+  int depth = depth_t.to<int>();
+  auto out_dims_vec = phi::vectorize(x_dims);
+  out_dims_vec.push_back(depth);
+  auto out_dims = phi::make_ddim(out_dims_vec);
+  out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(phi::DataType::FLOAT32);
 }
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out) {

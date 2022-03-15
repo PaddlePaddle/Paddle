@@ -15,8 +15,8 @@
 #include "paddle/infrt/dialect/tensorrt/trt_op_teller_pass.h"
 
 #include <mlir/IR/Builders.h>
-#include "paddle/infrt/dialect/basic_kernels.h"
-#include "paddle/infrt/dialect/infrt/infrt_dialect.h"
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/pd_ops.h"
 
 namespace infrt {

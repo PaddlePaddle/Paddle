@@ -557,6 +557,7 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dataset)
+  list(REMOVE_ITEM TEST_OPS test_paddle_multiprocessing)
 endif()
 
 if (NOT WITH_GLOO)
@@ -948,6 +949,7 @@ if (WITH_DISTRIBUTE AND NOT APPLE)
 endif()
 
 # setting timeout value as 15S
+set_tests_properties(test_run PROPERTIES TIMEOUT 200)
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_lod_tensor_to_selected_rows PROPERTIES TIMEOUT 200)
@@ -1174,6 +1176,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
             test_collective_global_scatter
             PROPERTIES LABELS "RUN_TYPE=DIST")
     endif()
+    set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
     set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
     set_tests_properties(test_broadcast PROPERTIES TIMEOUT 120)
     set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)

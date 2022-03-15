@@ -37,14 +37,14 @@ TEST(MlirToRuntimeTranslate, basic) {
 
   auto source = R"ROC(
 func @main() -> () {
-  %v0 = Infrt.constant.f32 1.0
-  %v1 = Infrt.constant.f32 2.0
-  %v2 = "Infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
-  %v3 = "Infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
+  %v0 = infrt.constant.f32 1.0
+  %v1 = infrt.constant.f32 2.0
+  %v2 = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v3 = "infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
 
-  "Infrt.print.f32"(%v1) : (f32) -> ()
+  "infrt.print.f32"(%v1) : (f32) -> ()
 
-  Infrt.return
+  infrt.return
 }
 )ROC";
 
@@ -63,14 +63,14 @@ TEST(TestMlir, basic) {
 
   auto source = R"ROC(
 func @main() -> () {
-  %v0 = Infrt.constant.f32 1.0
-  %v1 = Infrt.constant.f32 2.0
-  %v2 = "Infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
-  %v3 = "Infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
+  %v0 = infrt.constant.f32 1.0
+  %v1 = infrt.constant.f32 2.0
+  %v2 = "infrt.add.f32"(%v0, %v1) : (f32, f32) -> f32
+  %v3 = "infrt.mul.f32"(%v2, %v1) : (f32, f32) -> f32
 
-  "Infrt.print.f32"(%v1) : (f32) -> ()
+  "infrt.print.f32"(%v1) : (f32) -> ()
 
-  Infrt.return
+  infrt.return
 }
 )ROC";
 
@@ -101,7 +101,7 @@ func @predict(%a: !infrt.dense_tensor<CPU, FP32, NCHW>, %b: !infrt.dense_tensor<
       "!infrt.dense_tensor<CPU, FP32, NCHW>";
 
   auto end = R"ROC(
-Infrt.return %a0, %b0: !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>
+infrt.return %a0, %b0: !infrt.dense_tensor<CPU, FP32, NCHW>, !infrt.dense_tensor<CPU, FP32, NCHW>
 }
   )ROC";
 
