@@ -147,8 +147,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsX(
 
   patterns::Elementwise elementwise_pattern{pattern, name_scope};
   elementwise_pattern(
-      conv_output,
-      pattern->NewNode(elementwise_pattern.elementwise_y_repr()),
+      conv_output, pattern->NewNode(elementwise_pattern.elementwise_y_repr()),
       "elementwise_add");
   conv_output->AsIntermediate();
 
@@ -215,8 +214,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsY(
 
   patterns::Elementwise elementwise_pattern{pattern, name_scope};
   elementwise_pattern(
-      pattern->NewNode(elementwise_pattern.elementwise_x_repr()),
-      conv_output,
+      pattern->NewNode(elementwise_pattern.elementwise_x_repr()), conv_output,
       "elementwise_add");
   conv_output->AsIntermediate();
 
