@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/phi/pass/phi_op_cvt_pass.h"
+#include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
 
 #include <glog/logging.h>
 #include <llvm/ADT/SetVector.h>
@@ -24,35 +24,52 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/infrt/common/string.h"
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 #include "paddle/infrt/dialect/phi/ir/infrt_phi_tensor.h"
+#include "paddle/infrt/dialect/phi/ir/phi_base.h"
+#include "paddle/infrt/dialect/phi/ir/phi_kernels.h"
 #include "paddle/infrt/dialect/phi/pass/kernel_op_desc.h"
 #include "paddle/infrt/dialect/phi/pass/proto_arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
 namespace {
-class phiOpCvtPass
-    : public mlir::PassWrapper<phiOpCvtPass, mlir::FunctionPass> {
+class PhiOpConvertPass
+    : public mlir::PassWrapper<PhiOpConvertPass, mlir::FunctionPass> {
  public:
-  ::llvm::StringRef getName() const override { return "phiOpCvtPass"; }
+  ::llvm::StringRef getName() const override { return "PhiOpConvertPass"; }
   void runOnFunction() override;
-  explicit phiOpCvtPass(
-      std::vector<infrt::Place> valid_places = std::vector<infrt::Place>())
+  PhiOpConvertPass();
+  explicit PhiOpConvertPass(const std::vector<infrt::Place> &valid_places)
       : valid_places_(valid_places) {}
+
+  PhiOpConvertPass(const PhiOpConvertPass &other)
+      : mlir::PassWrapper<PhiOpConvertPass, mlir::FunctionPass>(*this),
+        valid_places_(other.valid_places_) {}
+
+  ::llvm::StringRef getArgument() const override { return "phi-op-convert"; }
+  void getDependentDialects(mlir::DialectRegistry &registry) const override;
 
  private:
   void convertStage();
-  void diapatchStage();
+  void dispatchStage();
+
+  // Force a specified data format for all layout sensitive operations.
+  Option<std::string> valid_places_options_{
+      *this,
+      "valid-targets",
+      llvm::cl::desc("Set the valid target, [CPU-FP32-NCHW]")};
+
   std::vector<infrt::Place> valid_places_;
 };
-
-// Implementation of the phiOpCvtPass.
-void phiOpCvtPass::runOnFunction() {
+// Implementation of the PhiOpConvertPass.
+void PhiOpConvertPass::runOnFunction() {
   convertStage();
-  diapatchStage();
+  dispatchStage();
 }
-void phiOpCvtPass::convertStage() {
+
+void PhiOpConvertPass::convertStage() {
   mlir::Block &body = getFunction().front();
   std::vector<mlir::Operation *> worklist;
   for (auto &op : body.without_terminator()) {
@@ -62,9 +79,9 @@ void phiOpCvtPass::convertStage() {
   while (!worklist.empty()) {
     auto *op = worklist.back();
     worklist.pop_back();
-    if (op == nullptr) continue;
+    if (!op) continue;
 
-    std::string op_name = op->getName().getIdentifier().str();
+    auto op_name = op->getName().getIdentifier().str();
 
     // only convert op in pd dialect.
     if (op_name.substr(0, 3) != "pd.") continue;
@@ -73,6 +90,7 @@ void phiOpCvtPass::convertStage() {
             pd_dialect_inputs_info_map_.end() ||
         pd_dialect_outputs_info_map_.find(op_name) ==
             pd_dialect_outputs_info_map_.end()) {
+      LOG(WARNING) << "No op info found for " << op_name;
       // Todo: print log
       continue;
     }
@@ -85,7 +103,8 @@ void phiOpCvtPass::convertStage() {
     ::llvm::SmallVector<mlir::Type, 4> output_types;
     for (const std::string &str : std::get<0>(kernel_sign.args)) {
       if (pd_dialect_inputs_info_map_.at(op_name).count(str) == 0) {
-        // Todo: print error log
+        LOG(ERROR) << "No input info for Op " << op_name << " and argument "
+                   << str;
         return;
       }
       uint8_t index = pd_dialect_inputs_info_map_.at(op_name).at(str);
@@ -94,7 +113,8 @@ void phiOpCvtPass::convertStage() {
 
     for (const std::string &str : std::get<2>(kernel_sign.args)) {
       if (pd_dialect_outputs_info_map_.at(op_name).count(str) == 0) {
-        // Todo: print error log
+        LOG(ERROR) << "No output info for Op " << op_name << " and argument "
+                   << str;
         return;
       }
       uint8_t index = pd_dialect_outputs_info_map_.at(op_name).at(str);
@@ -109,14 +129,13 @@ void phiOpCvtPass::convertStage() {
     for (size_t index = 0; index < ori_output.size(); ++index) {
       ori_output[index].replaceAllUsesWith(kernel_op.getResult(index));
     }
-    if (!op->use_empty()) {
-      // Todo: print error log
-      return;
-    }
+
+    CHECK(op->use_empty());
     op->erase();
   }
 }
-void phiOpCvtPass::diapatchStage() {
+
+void PhiOpConvertPass::dispatchStage() {
   std::vector<infrt::KernelOp> worklist;
   mlir::Block &block = getFunction().front();
   for (auto &op : block) {
@@ -129,7 +148,7 @@ void phiOpCvtPass::diapatchStage() {
   for (infrt::KernelOp kernel_op : worklist) {
     std::string kernel_name = kernel_op.name().str();
     std::vector<infrt::PhiKernelDesc> candidates =
-        getCandidateKernels(kernel_name, valid_places_);
+        GetCandidateKernels(kernel_name, valid_places_);
     if (candidates.empty()) {
       LOG(FATAL) << "No candidate kernels for op:" << kernel_name;
       continue;
@@ -140,17 +159,17 @@ void phiOpCvtPass::diapatchStage() {
     const infrt::PhiKernelDesc &phi_kernel_desc = candidates.front();
 
     kernel_name =
-        infrt::getPhiTargetPrefix(phi_kernel_desc.kernelType.target) +
+        infrt::getPhiTargetPrefix(phi_kernel_desc.kernel_type.target) +
         kernel_name +
-        infrt::getPhiPrecisionSuffix(phi_kernel_desc.kernelType.precision) +
-        infrt::getPhiLayoutSuffix(phi_kernel_desc.kernelType.layout);
+        infrt::getPhiPrecisionSuffix(phi_kernel_desc.kernel_type.precision) +
+        infrt::getPhiLayoutSuffix(phi_kernel_desc.kernel_type.layout);
 
     mlir::OperationName operation_name(kernel_name, kernel_op.getContext());
     mlir::OperationState operation_state(kernel_op.getLoc(), operation_name);
 
-    if (phi_context.find(phi_kernel_desc.kernelType.target) ==
+    if (phi_context.find(phi_kernel_desc.kernel_type.target) ==
         phi_context.end()) {
-      switch (phi_kernel_desc.kernelType.target) {
+      switch (phi_kernel_desc.kernel_type.target) {
         case infrt::TargetType::CPU: {
           auto context_value =
               builder
@@ -169,33 +188,36 @@ void phiOpCvtPass::diapatchStage() {
       }
     }
     operation_state.addOperands(
-        phi_context.at(phi_kernel_desc.kernelType.target));
-    for (size_t index = 0; index < phi_kernel_desc.inputsType.size(); ++index) {
+        phi_context.at(phi_kernel_desc.kernel_type.target));
+
+    for (size_t index = 0; index < phi_kernel_desc.input_types.size();
+         ++index) {
       mlir::Value input = kernel_op.getOperand(index);
-      auto cvt_tensor_type_op = builder.create<infrt::CvtTensorOp>(
+      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
           kernel_op.getLoc(),
           infrt::DenseTensorType::get(
               kernel_op.getContext(),
-              phi_kernel_desc.inputsType[index].target,
-              phi_kernel_desc.inputsType[index].precision,
-              phi_kernel_desc.inputsType[index].layout),
+              phi_kernel_desc.input_types[index].target,
+              phi_kernel_desc.input_types[index].precision,
+              phi_kernel_desc.input_types[index].layout),
           input);
       operation_state.addOperands(cvt_tensor_type_op.output());
     }
-    for (size_t index = 0; index < phi_kernel_desc.outputsType.size();
+
+    for (size_t index = 0; index < phi_kernel_desc.output_types.size();
          ++index) {
       operation_state.addTypes(infrt::DenseTensorType::get(
           kernel_op.getContext(),
-          phi_kernel_desc.outputsType[index].target,
-          phi_kernel_desc.outputsType[index].precision,
-          phi_kernel_desc.outputsType[index].layout));
+          phi_kernel_desc.output_types[index].target,
+          phi_kernel_desc.output_types[index].precision,
+          phi_kernel_desc.output_types[index].layout));
     }
     operation_state.addAttributes(kernel_op.attrsAttr().getValue());
     mlir::Operation *phi_operation = builder.createOperation(operation_state);
-    for (size_t index = 0; index < phi_kernel_desc.outputsType.size();
+    for (size_t index = 0; index < phi_kernel_desc.output_types.size();
          ++index) {
       mlir::Value input = phi_operation->getResult(index);
-      auto cvt_tensor_type_op = builder.create<infrt::CvtTensorOp>(
+      auto cvt_tensor_type_op = builder.create<infrt::TensorCastOp>(
           kernel_op.getLoc(), kernel_op.getResultTypes()[index], input);
       kernel_op.getResult(index).replaceAllUsesWith(
           cvt_tensor_type_op.output());
@@ -204,9 +226,35 @@ void phiOpCvtPass::diapatchStage() {
   }
 }
 
+PhiOpConvertPass::PhiOpConvertPass() {
+  if (!valid_places_options_.hasValue()) {
+    valid_places_.emplace_back(infrt::TargetType::CPU,
+                               infrt::PrecisionType::FLOAT32,
+                               infrt::LayoutType::NCHW);
+    return;
+  }
+
+  LOG(FATAL) << "To be done for specifying places in command line";
+}
+
+void PhiOpConvertPass::getDependentDialects(
+    mlir::DialectRegistry &registry) const {
+  registry.insert<infrt::InfrtDialect>();
+  registry.insert<infrt::phi::PHIDialect>();
+  registry.insert<infrt::phi::PHIDenseTensorDialect>();
+  registry.insert<infrt::phi::PHICPUKernelDialect>();
+  registry.insert<infrt::phi::PHIGPUKernelDialect>();
+}
+
 }  // namespace
+
+mlir::PassRegistration<PhiOpConvertPass> phi_op_convert;
 
 std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass(
     std::vector<Place> valid_places) {
-  return std::make_unique<phiOpCvtPass>(valid_places);
+  return std::make_unique<PhiOpConvertPass>(valid_places);
+}
+
+std::unique_ptr<mlir::Pass> infrt::createPhiOpCvtPass() {
+  return std::make_unique<PhiOpConvertPass>();
 }
