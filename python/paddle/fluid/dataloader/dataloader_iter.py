@@ -546,6 +546,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         six.reraise(*sys.exc_info())
                     finally:
                         self._rcvd_idx += 1
+                        self._batches_outstanding -= 1
+                        self._try_put_indices()
 
     def _get_data(self):
         while not self._thread_done_event.is_set():
@@ -729,7 +731,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         data = data[0]
                 else:
                     data = self._reader.read_next()
-            self._on_output_batch()
             return data
         except StopIteration:
             if not self._persistent_workers:
@@ -740,8 +741,3 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     # python2 compatibility
     def next(self):
         return self.__next__()
-
-    def _on_output_batch(self):
-        for _ in range(len(self._places)):
-            self._batches_outstanding -= 1
-            self._try_put_indices()
