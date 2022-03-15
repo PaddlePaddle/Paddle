@@ -44,8 +44,10 @@
 #include "paddle/infrt/host_context/value.h"
 #include "paddle/infrt/tensor/tensor_shape.h"
 
+#ifdef INFRT_WITH_PHI
 #ifdef INFRT_WITH_TRT
 #include "paddle/infrt/kernel/tensorrt/trt_kernels.h"
+#endif
 #include "paddle/phi/core/dense_tensor.h"
 #endif
 
@@ -285,6 +287,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
   VLOG(3) << "processing general op : " << op->getName().getStringRef().str();
   // TODO(wilber): Find a more appropriate way to handle special cases.
   if (op->getName().getStringRef() == "trt.create_engine") {
+#ifdef INFRT_WITH_TRT
     auto* symbols = impl_->runtime->symbol_table();
     ::infrt::kernel::tensorrt::MlirOperationWithInfrtSymbol mlir_operation;
     mlir_operation.operation = op;
@@ -303,6 +306,9 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
         }
       }
     }
+#else
+    CHECK(false) << "should not reach here";
+#endif
   } else {
     // process operands
     for (int i = 0, e = op->getNumOperands(); i < e; i++) {
