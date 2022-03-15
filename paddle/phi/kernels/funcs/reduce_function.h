@@ -754,7 +754,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
         &reduce_var, &reduce_var, reducer, reduce_last_dim);
 
     Ty result = static_cast<Ty>(reduce_var);
-    kps::WriteData<Ty, 1, 1, 1, true>(
+    kps::details::WriteData<Ty>(
         y + store_offset + i, &result, static_cast<int>(need_store));
   }
 }
