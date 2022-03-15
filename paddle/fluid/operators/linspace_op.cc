@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/linspace_op.h"
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -22,33 +26,6 @@ namespace operators {
 class LinspaceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Start"), "Input", "Start", "linspace");
-    OP_INOUT_CHECK(ctx->HasInput("Stop"), "Input", "Stop", "linspace");
-    OP_INOUT_CHECK(ctx->HasInput("Num"), "Input", "Num", "linspace");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "linspace");
-
-    auto s_dims = ctx->GetInputDim("Start");
-    PADDLE_ENFORCE_EQ((s_dims.size() == 1) && (s_dims[0] == 1), true,
-                      platform::errors::InvalidArgument(
-                          "The shape of Input(Start) must be [1],"
-                          "but received input shape is [%s].",
-                          s_dims));
-    auto e_dims = ctx->GetInputDim("Stop");
-    PADDLE_ENFORCE_EQ((e_dims.size() == 1) && (e_dims[0] == 1), true,
-                      platform::errors::InvalidArgument(
-                          "The shape of Input(Stop) must be [1],"
-                          "but received input shape is [%s].",
-                          e_dims));
-    auto step_dims = ctx->GetInputDim("Num");
-    PADDLE_ENFORCE_EQ(
-        (step_dims.size() == 1) && (step_dims[0] == 1), true,
-        platform::errors::InvalidArgument("The shape of Input(Num) must be [1],"
-                                          "but received input shape is [%s].",
-                                          step_dims));
-    ctx->SetOutputDim("Out", {-1});
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -88,11 +65,13 @@ class LinspaceOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(linspace, ops::LinspaceOp, ops::LinspaceOpMaker);
-REGISTER_OP_CPU_KERNEL(linspace, ops::CPULinspaceKernel<float>,
-                       ops::CPULinspaceKernel<int32_t>,
-                       ops::CPULinspaceKernel<int64_t>,
-                       ops::CPULinspaceKernel<double>);
+DECLARE_INFER_SHAPE_FUNCTOR(linspace, LinspaceInferShapeFunctor,
+                            PD_INFER_META(phi::LinspaceInferMeta));
+REGISTER_OPERATOR(
+    linspace, ops::LinspaceOp, ops::LinspaceOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    LinspaceInferShapeFunctor);
 
 REGISTER_OP_VERSION(linspace)
     .AddCheckpoint(
