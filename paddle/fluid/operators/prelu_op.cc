@@ -20,6 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 framework::OpKernelType innerGetKernelTypeForVar(
     const Tensor &tensor, const framework::OpKernelType &expected_kernel_type) {
 #ifdef PADDLE_WITH_MKLDNN
