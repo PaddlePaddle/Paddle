@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
+void AllRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& dims,
                   bool keep_dim,
@@ -27,7 +27,7 @@ void MaxRawKernel(const Context& dev_ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
-void MaxKernel(const Context& dev_ctx,
+void AllKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,

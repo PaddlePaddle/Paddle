@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/reduce_all_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out);
-
-template <typename T, typename Context>
-void MaxKernel(const Context& dev_ctx,
+void AllKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,
-               DenseTensor* out);
+               DenseTensor* out) {
+  bool reduce_all = false;
+  AllRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
+}
+
 }  // namespace phi
+
+PD_REGISTER_KERNEL(all, CPU, ALL_LAYOUT, phi::AllKernel, bool) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(all, GPU, ALL_LAYOUT, phi::AllKernel, bool) {}
+#endif

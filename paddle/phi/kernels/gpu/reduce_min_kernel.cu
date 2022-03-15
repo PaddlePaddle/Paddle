@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/reduce_min_kernel.h"
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
+void MinRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const std::vector<int64_t>& dims,
                   bool keep_dim,
                   bool reduce_all,
-                  DenseTensor* out);
+                  DenseTensor* out) {
+  auto out_dtype = x.dtype();
+  phi::Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
 
-template <typename T, typename Context>
-void MaxKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const std::vector<int64_t>& dims,
-               bool keep_dim,
-               DenseTensor* out);
 }  // namespace phi
+
+PD_REGISTER_KERNEL(
+    min_raw, GPU, ALL_LAYOUT, phi::MinRawKernel, float, double, int, int64_t) {}
