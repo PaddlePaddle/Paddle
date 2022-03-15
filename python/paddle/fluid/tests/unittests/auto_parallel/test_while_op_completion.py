@@ -202,7 +202,7 @@ class TestMLP(unittest.TestCase):
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
             train_program)
-        print_program_with_dist_attr(complete_train_program, dist_context)
+        # print_program_with_dist_attr(complete_train_program, dist_context)
 
 
 if __name__ == "__main__":
