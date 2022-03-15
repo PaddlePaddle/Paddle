@@ -585,7 +585,7 @@ def grad(outputs,
         for each_var in grad_outputs:
             if each_var is not None:
                 assert isinstance(
-                    each_var, core.eager.Tensor
+                    each_var, (core.eager.Tensor, core.VarBase)
                 ), "grad_outputs must be None, a Variable or a list containing None or Variables"
     else:
         grad_outputs = []
