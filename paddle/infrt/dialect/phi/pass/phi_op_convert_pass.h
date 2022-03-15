@@ -21,7 +21,8 @@ namespace infrt {
  * phiOpCvtPass.
  * Convert the general operators from pd Dialect to phi dialect.
  */
-std::unique_ptr<mlir::Pass> createPhiOpCvtPass(
-    std::vector<Place> valid_places = std::vector<Place>());
+std::unique_ptr<mlir::Pass> createPhiOpCvtPass(std::vector<Place> valid_places);
+
+std::unique_ptr<mlir::Pass> createPhiOpCvtPass();
 
 }  // namespace infrt
