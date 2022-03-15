@@ -18,7 +18,6 @@ from ...fluid.contrib.sparsity import decorate  #noqa: F401
 from ...fluid.contrib.sparsity import prune_model  #noqa: F401
 from ...fluid.contrib.sparsity import set_excluded_layers  #noqa: F401
 from ...fluid.contrib.sparsity import reset_excluded_layers  #noqa: F401
-from ...fluid.contrib.sparsity import add_supported_layer  #noqa: F401
 
 __all__ = [     #noqa
     'calculate_density',
