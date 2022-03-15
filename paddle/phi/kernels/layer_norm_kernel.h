@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
