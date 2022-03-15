@@ -1,4 +1,4 @@
-//   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/one_hot_kernel.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 template <typename DeviceContext, typename InT>
 struct OneHotV2OpFunctor {
-  const framework::LoDTensor* in_;
-  framework::LoDTensor* out_;
+  const DenseTensor* in_;
+  DenseTensor* out_;
   int depth_;
   const DeviceContext& ctx_;
   bool allow_out_of_range_;
 
-  OneHotV2OpFunctor(const framework::LoDTensor* in, framework::LoDTensor* out,
-                    int depth, const DeviceContext& ctx,
+  OneHotV2OpFunctor(const DenseTensor* in,
+                    DenseTensor* out,
+                    int depth,
+                    const DeviceContext& ctx,
                     bool allow_out_of_range = false)
       : in_(in),
         out_(out),
@@ -40,8 +42,8 @@ struct OneHotV2OpFunctor {
   void apply() const {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
-    auto* p_out_data = out_->mutable_data<OutT>(ctx_.GetPlace());
-    phi::funcs::set_constant(ctx_, out_, 0.0);
+    auto* p_out_data = ctx_.template Alloc<OutT>(out_);
+    funcs::set_constant(ctx_, out_, 0.0);
 
     if (allow_out_of_range_) {
       for (int i = 0; i < numel; ++i) {
@@ -52,51 +54,46 @@ struct OneHotV2OpFunctor {
     } else {
       for (int i = 0; i < numel; ++i) {
         PADDLE_ENFORCE_GE(
-            p_in_data[i], 0,
-            platform::errors::InvalidArgument(
+            p_in_data[i],
+            0,
+            phi::errors::InvalidArgument(
                 "Illegal index value, Input(input) value should be at least 0, "
                 "but received input (%d) less than 0",
                 p_in_data[i]));
         PADDLE_ENFORCE_LT(
-            p_in_data[i], depth_,
-            platform::errors::InvalidArgument(
+            p_in_data[i],
+            depth_,
+            phi::errors::InvalidArgument(
                 "Illegal index value, Input(input) value should be less than "
                 "Input(depth), "
                 "but received input (%d) not less than depth (%d)",
-                p_in_data[i], depth_));
+                p_in_data[i],
+                depth_));
         *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
       }
     }
   }
 };
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
-template <typename DeviceContext, typename T>
-class OneHotV2Kernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
-    int depth = context.Attr<int>("depth");
-    bool allow_out_of_range = context.Attr<bool>("allow_out_of_range");
-    if (context.HasInput("depth_tensor")) {
-      auto* depth_tensor = context.Input<Tensor>("depth_tensor");
-      auto* depth_data = depth_tensor->data<int32_t>();
-      depth = depth_data[0];
-      auto out_dims = out->dims();
-      out_dims[out_dims.size() - 1] = depth;
-      out->Resize(out_dims);
-    }
-
-    framework::VisitDataType(
-        static_cast<framework::proto::VarType::Type>(
-            context.Attr<int>("dtype")),
-        OneHotV2OpFunctor<DeviceContext, T>(
-            in, out, depth, context.template device_context<DeviceContext>(),
-            allow_out_of_range));
+template <typename T, typename Context>
+void OneHotRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     int32_t depth,
+                     DataType dtype,
+                     bool allow_out_of_range,
+                     DenseTensor* out) {
+  auto out_dims = out->dims();
+  if (out_dims[out_dims.size() - 1] == -1) {
+    out_dims[out_dims.size() - 1] = depth;
+    out->Resize(out_dims);
   }
-};
 
-}  // namespace operators
-}  // namespace paddle
+  phi::VisitDataType(dtype,
+                     OneHotV2OpFunctor<Context, T>(
+                         &x, out, depth, dev_ctx, allow_out_of_range));
+}
+
+}  // namespace phi
+
+PD_REGISTER_KERNEL(
+    one_hot_raw, CPU, ALL_LAYOUT, phi::OneHotRawKernel, int, int64_t) {}

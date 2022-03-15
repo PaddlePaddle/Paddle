@@ -204,6 +204,15 @@
   output : Tensor
   invoke : full_like(x, 0, dtype, place)
 
+
+- api : one_hot
+  args : (Tensor x, Scalar num_classes)
+  output : Tensor
+  infer_meta :
+    func : OneHotInferMeta
+  kernel :
+    func : one_hot
+    
 - api : digamma
   args : (Tensor x)
   output : Tensor
