@@ -217,11 +217,6 @@ REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
                   ops::ROIPoolGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
-    roi_pool,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, int>);
-REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
