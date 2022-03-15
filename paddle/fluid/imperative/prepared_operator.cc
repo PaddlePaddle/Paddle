@@ -247,6 +247,7 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
+  expected_kernel_key.place_ = platform::XPUPlace();
   bool use_xpu_kp_kernel_rt =
       FLAGS_run_kp_kernel &&
       paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);

@@ -54,5 +54,5 @@ TEST(Relu6OpConverter, main) { test_activation("relu6"); }
 
 USE_OP_ITSELF(relu);
 USE_OP(sigmoid);
-USE_OP(tanh);
+USE_OP_ITSELF(tanh);
 USE_OP(relu6);
