@@ -425,6 +425,7 @@ int main(int argc, char* argv[]) {
       "\"paddle/fluid/pybind/op_function_common.h\"",
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"",
+      "\"paddle/fluid/platform/profiler/event_tracing.h\"",
       "\"paddle/fluid/pybind/exception.h\"", "<Python.h>"};
 
   std::ofstream out(argv[1], std::ios::out);
