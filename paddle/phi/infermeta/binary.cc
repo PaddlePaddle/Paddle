@@ -73,6 +73,51 @@ void AllValueCompareInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::BOOL);
 }
 
+void KLDivInferMeta(const MetaTensor& x,
+                    const MetaTensor& label,
+                    const std::string& reduction,
+                    MetaTensor* out,
+                    MetaConfig config) {
+  auto dim_x = x.dims();
+  auto dim_target = label.dims();
+  PADDLE_ENFORCE_EQ(dim_x.size(),
+                    dim_target.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) rank and Input(Target) rank should be "
+                        "same, but received X rank(%d) != Target rank(%d)",
+                        dim_x.size(),
+                        dim_target.size()));
+  for (int i = 0; i < dim_x.size(); i++) {
+    if (config.is_runtime || (dim_x[i] > 0 && dim_target[i] > 0)) {
+      PADDLE_ENFORCE_EQ(
+          dim_x[i],
+          dim_target[i],
+          phi::errors::InvalidArgument(
+              "Input(X) and Input(Target) should in same shape. but received "
+              "X dimension[%d](%d) != Target dimension[%d](%d)",
+              i,
+              dim_x[i],
+              i,
+              dim_target[i]));
+    }
+  }
+
+  auto reduction_valid = "mean" == reduction || "sum" == reduction ||
+                         "batchmean" == reduction || "none" == reduction;
+  PADDLE_ENFORCE_EQ(
+      reduction_valid,
+      true,
+      phi::errors::InvalidArgument(
+          "Attr(reduction) can only be 'none'|'batchmean'|'sum'|'mean'."));
+
+  if ("none" == reduction) {
+    out->set_dims(dim_x);
+  } else {
+    out->set_dims({1});
+  }
+  out->set_dtype(x.dtype());
+}
+
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->share_meta(x);
 }
