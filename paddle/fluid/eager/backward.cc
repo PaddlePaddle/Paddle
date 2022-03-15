@@ -93,7 +93,7 @@ void UpdateGraphInfo(
   // Updated potential_sotp_nodes by depending_nodes,
   // make sure the path from root to target_node is ok
   std::unordered_set<GradNodeBase*> _startup_ops;
-  VLOG(6) << "Update GraphInfo";
+  VLOG(6) << "Running in UpdateGraphInfo";
   std::queue<GradNodeBase*> queue;
   for (auto& target_nodes_inputmeta_pair : *target_nodes_inputmeta_map) {
     queue.emplace(target_nodes_inputmeta_pair.first);
@@ -116,11 +116,21 @@ void UpdateGraphInfo(
       _startup_ops.emplace(target_node);
     }
   }
-  // Purify potential_startup_nodes again
-  for (auto node : *potential_startup_nodes) {
-    if (_startup_ops.count(node) == 0) {
-      VLOG(6) << "Erase potential_startup_ops";
-      potential_startup_nodes->erase(node);
+  // Purify potential_startup_nodes again, remove some
+  // potential startup_nodes that unreach to input target nodes
+  if (!_startup_ops.empty()) {
+    std::unordered_set<GradNodeBase*> potential_startup_nodes_to_be_erased;
+    for (auto node : *potential_startup_nodes) {
+      if (_startup_ops.count(node) == 0) {
+        VLOG(6) << "Set up potential_startup_nodes_to_be_erased";
+        potential_startup_nodes_to_be_erased.emplace(node);
+      }
+    }
+    if (!potential_startup_nodes_to_be_erased.empty()) {
+      for (auto node : *potential_startup_nodes_to_be_erased) {
+        VLOG(6) << "Erase nodes in potential_startup_nodes_to_be_erased";
+        potential_startup_nodes->erase(node);
+      }
     }
   }
 }
@@ -199,7 +209,7 @@ void GetGraphInfoBetweenTargets(
 void GetTargetNodesInfo(const std::vector<paddle::experimental::Tensor>& inputs,
                         std::unordered_map<GradNodeBase*, AutogradMeta*>*
                             target_nodes_inputmeta_map) {
-  VLOG(6) << "Get TargetNodes Info";
+  VLOG(6) << "Running in GetTargetNodesInfo";
   if (!inputs.empty()) {
     VLOG(6) << "Inputs are not empty";
     size_t num_inputs = inputs.size();
@@ -223,7 +233,7 @@ std::vector<paddle::experimental::Tensor> GetResults(
     std::unordered_map<GradNodeBase*, paddle::experimental::Tensor>*
         results_map,
     bool allow_unused, bool create_graph) {
-  VLOG(6) << "Get Results";
+  VLOG(6) << "Running in GetResults";
   if (inputs.empty()) return {};
 
   std::vector<paddle::experimental::Tensor> results;
@@ -256,6 +266,7 @@ std::vector<paddle::experimental::Tensor> GetResults(
 
 // Enforce GradNode has TensorWrappers as Input
 void EnforceGradNodeHasInput(GradNodeBase* node) {
+  VLOG(6) << "Running in EnforceGradNodeHasInput";
   PADDLE_ENFORCE_NE(
       node->IsTensorWrappersCleared(), true,
       paddle::platform::errors::Fatal(
@@ -266,17 +277,24 @@ void EnforceGradNodeHasInput(GradNodeBase* node) {
           node->name()));
 }
 
-// Purify potential_startup_ops, remove nodes those are the same as
+// Purify potential_startup_nodes, remove nodes those are the same as
 // input_target_nodes
 void PurifyPotentialStartUpNodes(
-    std::unordered_set<GradNodeBase*>* potential_startup_ops,
+    std::unordered_set<GradNodeBase*>* potential_startup_nodes,
     std::unordered_map<GradNodeBase*, AutogradMeta* /* InputMeta */>*
         input_target_nodes_inputmeta_map) {
+  VLOG(6) << "Running in PurifyPotentialStartUpNodes";
   if (input_target_nodes_inputmeta_map->empty()) return;
-  for (auto startup_op : *potential_startup_ops) {
+  std::unordered_set<GradNodeBase*> potential_startup_nodes_to_be_erased;
+  for (auto startup_op : *potential_startup_nodes) {
     auto iter = input_target_nodes_inputmeta_map->find(startup_op);
     if (iter != input_target_nodes_inputmeta_map->end()) {
-      potential_startup_ops->erase(iter->first);
+      potential_startup_nodes_to_be_erased.emplace(iter->first);
+    }
+  }
+  if (!potential_startup_nodes_to_be_erased.empty()) {
+    for (auto nodes : potential_startup_nodes_to_be_erased) {
+      potential_startup_nodes->erase(nodes);
     }
   }
 }
