@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
 
 namespace phi {
 
@@ -1122,6 +1123,41 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   out->set_dims({1});
+}
+
+void UnsqueezeInferMeta(const MetaTensor& x,
+                        const ScalarArray& axes,
+                        MetaTensor* xshape,
+                        MetaTensor* out) {
+  const auto& x_dims = x.dims();
+  // Validity Check: input tensor dims (<6).
+  PADDLE_ENFORCE_LE(x_dims.size(),
+                    6,
+                    phi::errors::InvalidArgument(
+                        "Invalid "
+                        "dimensions, the rank of Input(X) "
+                        "should be in the range of [1, 6] (Eigen limit)"));
+  if (!axes.GetData().empty()) {
+    std::vector<int32_t> tmp;
+    tmp.reserve(axes.GetData().size());
+    std::for_each(axes.GetData().begin(),
+                  axes.GetData().end(),
+                  [&tmp](const int64_t& t) { tmp.push_back(t); });
+    auto out_dims = funcs::GetOutputShape(tmp, x_dims);
+    out->set_dims(out_dims);
+    if (x_dims[0] == out_dims[0]) {
+      out->share_lod(x);
+    }
+  }
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(phi::make_ddim(xshape_dims));
+  xshape->share_lod(x);
+  out->set_dtype(x.dtype());
+  xshape->set_dtype(x.dtype());
 }
 
 void PadInferMeta(const MetaTensor& input,

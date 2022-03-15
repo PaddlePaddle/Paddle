@@ -21,6 +21,54 @@
 
 namespace phi {
 namespace funcs {
+inline DDim GetOutputShape(const std::vector<int> unsqz_dims,
+                           const DDim& in_dims) {
+  int output_size = in_dims.size() + static_cast<int>(unsqz_dims.size());
+  int cur_output_size = in_dims.size();
+  std::vector<int64_t> output_shape(output_size, 0);
+
+  // Validity Check: rank range.
+  PADDLE_ENFORCE_LE(
+      output_size,
+      6,
+      phi::errors::InvalidArgument("The output "
+                                   "tensor's rank should be less than 6."));
+
+  for (int axis : unsqz_dims) {
+    int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
+    // Vaildity Check: the axis bound
+    PADDLE_ENFORCE_GE(
+        cur,
+        0,
+        phi::errors::InvalidArgument("The insert dimension value should "
+                                     "not be less than 0"));
+    PADDLE_ENFORCE_LE(cur,
+                      cur_output_size,
+                      phi::errors::InvalidArgument(
+                          "The insert dimension value shoule not be larger "
+                          "than the dimension size of input tensor"));
+    // Move old axis, and insert new axis
+    for (int i = cur_output_size; i >= cur; --i) {
+      if (output_shape[i] == 1) {
+        // Move axis
+        output_shape[i + 1] = 1;
+        output_shape[i] = 0;
+      }
+    }
+    output_shape[cur] = 1;
+    // Add the output size.
+    cur_output_size++;
+  }
+
+  // Make output shape
+  for (int in_idx = 0, out_idx = 0; out_idx < output_size; ++out_idx) {
+    if (output_shape[out_idx] == 0) {
+      output_shape[out_idx] = in_dims[in_idx++];
+    }
+  }
+
+  return phi::make_ddim(output_shape);
+}
 
 inline const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims

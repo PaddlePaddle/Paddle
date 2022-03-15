@@ -31,6 +31,10 @@ class MetaConfig;
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 // Because functions in this file not only can infer shape, but also need
 // infer lod or other useful data.
+void UnsqueezeInferMeta(const MetaTensor& x,
+                        const ScalarArray& axes,
+                        MetaTensor* xshape,
+                        MetaTensor* out);
 
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
