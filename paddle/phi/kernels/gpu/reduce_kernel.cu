@@ -20,6 +20,30 @@
 namespace phi {
 
 template <typename T, typename Context>
+void MeanRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
+  auto out_dtype = x.dtype();
+  phi::Reduce<T, kps::AddFunctor, kps::DivideFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
+void SumRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<int64_t>& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DataType out_dtype,
+                  DenseTensor* out) {
+  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
 void ProdRawKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const std::vector<int64_t>& dims,
@@ -80,6 +104,39 @@ void AnyRawKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
+
+PD_REGISTER_KERNEL(sum_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SumRawKernel,
+                   bool,
+                   float,
+                   double,
+                   float16,
+                   bfloat16,
+                   int16_t,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(mean_raw,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MeanRawKernel,
+                   float,
+                   double,
+                   bool,
+                   float16,
+                   int,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(prod_raw,
                    GPU,

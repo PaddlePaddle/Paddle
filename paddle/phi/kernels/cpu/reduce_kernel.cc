@@ -22,6 +22,30 @@
 namespace phi {
 
 template <typename T, typename Context>
+void MeanRawKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int64_t>& dims,
+                   bool keep_dim,
+                   bool reduce_all,
+                   DenseTensor* out) {
+  auto out_dtype = x.dtype();
+  phi::Reduce<CPUContext, T, phi::funcs::MeanFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
+void SumRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const std::vector<int64_t>& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DataType out_dtype,
+                  DenseTensor* out) {
+  phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
+      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
+}
+
+template <typename T, typename Context>
 void ProdRawKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const std::vector<int64_t>& dims,
@@ -80,6 +104,27 @@ void AnyRawKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
+
+PD_REGISTER_KERNEL(sum_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SumRawKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int16_t,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
+PD_REGISTER_KERNEL(
+    mean_raw, CPU, ALL_LAYOUT, phi::MeanRawKernel, float, double, bool) {}
 
 PD_REGISTER_KERNEL(prod_raw,
                    CPU,
