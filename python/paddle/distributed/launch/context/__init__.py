@@ -39,16 +39,22 @@ class Context(object):
             self._enable_plugin()
 
     def is_legacy_mode(self):
-        if self.args.master:
-            return False
+        if self.args.legacy:
+            return True
 
         if len(self.unknown_args) > 0:
             self.logger.warning("Compatible mode enable with args {}".format(
                 self.unknown_args))
             return True
 
-        if self.args.legacy:
+        if 'PADDLE_ELASTIC_JOB_ID' in self.envs:
             return True
+
+        if 'PADDLE_DISTRI_BACKEND' in self.envs:
+            return True
+
+        if self.args.master:
+            return False
 
         return False
 

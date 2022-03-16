@@ -20,9 +20,9 @@ class JobMode:
 
 
 class Job(object):
-    def __init__(self, id='default', mode=JobMode.COLLECTIVE, nnodes="1"):
+    def __init__(self, jid='default', mode=JobMode.COLLECTIVE, nnodes="1"):
         self._mode = mode
-        self._id = id
+        self._id = jid
 
         self._replicas = 0
         self._replicas_min = self._replicas

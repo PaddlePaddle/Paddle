@@ -23,10 +23,10 @@ env_args_mapping = {
     'PADDLE_MODE': 'mode',
     'PADDLE_LOG_LEVEL': 'log_level',
     'PADDLE_NPROC_PER_NODE': 'nproc_per_node',
-    'PADDLE_JOB_ID': 'id',
+    'PADDLE_JOB_ID': 'job_id',
     'PADDLE_RANK': 'rank',
     'PADDLE_LOG_DIR': 'log_dir',
-    'PADDLE_MAX_RESTlRT': 'max_restart',
+    'PADDLE_MAX_RESTART': 'max_restart',
     'PADDLE_ELASTIC_LEVEL': 'elastic_level',
     'PADDLE_ELASTIC_TIMEOUT': 'elastic_timeout',
     'PADDLE_SERVER_NUM': 'server_num',
@@ -89,7 +89,7 @@ def parse_args():
         help="run mode of the job, collective/ps/ps-heter")
 
     base_group.add_argument(
-        "--id",
+        "--job_id",
         type=str,
         default="default",
         help="unique id of the job. Default default")

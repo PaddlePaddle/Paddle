@@ -41,7 +41,7 @@ class ControllerBase(object):
 
         self.job = Job(nnodes=self.ctx.args.nnodes,
                        mode=self.ctx.args.mode,
-                       id=self.ctx.args.id)
+                       jid=self.ctx.args.job_id)
         self.pod = Pod()
 
         self.join_server = None

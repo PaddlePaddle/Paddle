@@ -118,8 +118,11 @@ class HTTPMaster(Master):
         self._stop_server()
 
     def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
+
         if size < 2:
             return [value], 0
+
+        self.ctx.logger.info("Waiting peer ready...")
 
         self.lazy_init()
 
@@ -177,6 +180,12 @@ class ETCDMaster(Master):
         sync_peers gather all value for key under scope prefix
         result always be sorted either by rank or alphabet of pod.name
         '''
+
+        if size < 2:
+            return [value], 0
+
+        self.ctx.logger.info("Waiting peer ready...")
+
         path = "{}/{}/{}".format(prefix, key, rank)
 
         self.client.delete_prefix(prefix)

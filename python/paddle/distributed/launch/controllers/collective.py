@@ -107,7 +107,8 @@ class CollectiveElasticController(CollectiveController):
     def register(self):
         if self.job.id == 'default':
             self.ctx.logger.warning(
-                'Using default job name may cause conflict, add --id in args')
+                'Using default job name may cause conflict, add --job_id in args'
+            )
 
         self.master.register_heartbeat(self.job.id, self.pod.name)
 

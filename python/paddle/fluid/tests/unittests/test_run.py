@@ -70,7 +70,7 @@ class Collective_Test(unittest.TestCase):
         return proc
 
     def test_collective_1(self):
-        args = "--id test1"
+        args = "--job_id test1"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -79,7 +79,7 @@ class Collective_Test(unittest.TestCase):
         if os.path.exists('./log'):
             shutil.rmtree('./log')
 
-        args = "--id test2 --devices 0,1,2"
+        args = "--job_id test2 --devices 0,1,2"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -92,7 +92,7 @@ class Collective_Test(unittest.TestCase):
             shutil.rmtree('./log')
 
         port = random.randrange(6000, 8000)
-        args = "--id test3 --devices 0,1 --master 127.0.0.1:{} --np 2".format(
+        args = "--job_id test3 --devices 0,1 --master 127.0.0.1:{} --np 2".format(
             port)
         p1 = self.pdrun(args)
         p2 = self.pdrun(args)
@@ -127,7 +127,7 @@ class PS_Test(unittest.TestCase):
         if os.path.exists('./log'):
             shutil.rmtree('./log')
 
-        args = "--id ps2 --server_num=2 --trainer_num=2"
+        args = "--job_id ps2 --server_num=2 --trainer_num=2"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -140,7 +140,7 @@ class PS_Test(unittest.TestCase):
             shutil.rmtree('./log')
 
         port = random.randrange(6000, 8000)
-        args = "--id ps3 --master 127.0.0.1:{} --np 2 --server_num=1 --trainer_num=1".format(
+        args = "--job_id ps3 --master 127.0.0.1:{} --np 2 --server_num=1 --trainer_num=1".format(
             port)
         p1 = self.pdrun(args)
         p2 = self.pdrun(args)
@@ -156,7 +156,7 @@ class PS_Test(unittest.TestCase):
         if os.path.exists('./log'):
             shutil.rmtree('./log')
 
-        args = "--id ps4 --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903"
+        args = "--job_id ps4 --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903"
         p1 = self.pdrun(args)
         p1.wait()
         self.assertTrue(p1.poll() == 0)
