@@ -476,6 +476,33 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void ExpandAsInferMeta(const MetaTensor& x,
+                       paddle::optional<const MetaTensor&> y,
+                       const std::vector<int>& target_shape,
+                       MetaTensor* out) {
+#define MAX_RANK_SUPPORTED 6
+  auto x_dims = x.dims();
+  PADDLE_ENFORCE_GE(
+      target_shape.size(),
+      static_cast<size_t>(x_dims.size()),
+      phi::errors::InvalidArgument(
+          "The rank of target_shape must be greater than or equal "
+          "to the rank of Input(X). But received Input(X): input "
+          "rank %u; received target_shape: rank %u.",
+          x_dims.size(),
+          target_shape.size()));
+  PADDLE_ENFORCE_LE(target_shape.size(),
+                    MAX_RANK_SUPPORTED,
+                    phi::errors::InvalidArgument(
+                        "The rank of target_shape must be less than or equal "
+                        "to %d. But received: rank %u.",
+                        MAX_RANK_SUPPORTED,
+                        target_shape.size()));
+  out->set_dims(phi::make_ddim(target_shape));
+  out->set_dtype(x.dtype());
+#undef MAX_RANK_SUPPORTED
+}
+
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
                      const Scalar& axis,
@@ -643,6 +670,24 @@ void IndexSampleInferMeta(const MetaTensor& x,
   out->share_lod(y);
 }
 
+void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto dim_x = x.dims();
+  auto dim_y = y.dims();
+  auto rank_x = dim_x.size();
+  auto rank_y = dim_y.size();
+  auto rank = (rank_x > rank_y) ? rank_x : rank_y;
+
+  std::vector<int64_t> dim_out;
+  dim_out.reserve(rank);
+  for (int i = 0; i < rank; i++) {
+    int64_t dim_xi = (i < rank - rank_x) ? 1 : dim_x.at(i - (rank - rank_x));
+    int64_t dim_yi = (i < rank - rank_y) ? 1 : dim_y.at(i - (rank - rank_y));
+    dim_out.push_back(dim_xi == -1 || dim_yi == -1 ? -1 : dim_xi * dim_yi);
+  }
+  out->set_dims(phi::make_ddim(dim_out));
+  out->set_dtype(x.dtype());
+}
+
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       float epsilon,
@@ -788,6 +833,60 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   out->share_lod(x);
 }
 
+void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
+                           const MetaTensor& value,
+                           bool out_int32,
+                           bool right,
+                           MetaTensor* out) {
+  auto sequences_dims = sorted_sequence.dims();
+  auto values_dims = value.dims();
+
+  bool flag = true;
+  if (sequences_dims.size() != values_dims.size()) {
+    flag = false;
+  }
+  const auto& sequences_dims_size = sequences_dims.size();
+  for (int64_t dim = 0; dim < sequences_dims_size - 1; ++dim) {
+    if (sequences_dims[dim] != values_dims[dim]) {
+      flag = false;
+      break;
+    }
+  }
+  if (sequences_dims.size() != 1) {
+    PADDLE_ENFORCE_EQ(
+        flag,
+        true,
+        phi::errors::Unavailable(
+            "The dimensions of sorted_sequence tensor ( %s ) and values "
+            "tensor ( %s ) can not match. Because the input sorted_sequence "
+            "tensor must be 1 dimension or the first N-1 dimensions of "
+            "sorted_sequence tensor and input values tensor must match. "
+            "Please input appropriate sorted_sequence and values again! ",
+            sequences_dims,
+            values_dims));
+  }
+
+  if (out_int32) {
+    PADDLE_ENFORCE_LT(
+        sequences_dims[sequences_dims.size() - 1],
+        std::numeric_limits<int>::max(),
+        phi::errors::Unavailable(
+            "The size of sorted_sequence %d exceed the maximum limit d%. "
+            "Because the size of sorted_sequence should be less than the "
+            "output maximum value for int32 bit. Please set appropriate "
+            "sorted_sequence to meet this requirement! ",
+            sequences_dims[sequences_dims.size() - 1],
+            std::numeric_limits<int>::max()));
+  }
+
+  out->set_dims(values_dims);
+  if (out_int32) {
+    out->set_dtype(DataType::INT32);
+  } else {
+    out->set_dtype(DataType::INT64);
+  }
+}
+
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,
                           const std::string& pooltype,
@@ -915,105 +1014,6 @@ void ValueCompareInferMeta(const MetaTensor& x,
 
   out->set_dims(x.dims());
   out->set_dtype(DataType::BOOL);
-}
-
-void ExpandAsInferMeta(const MetaTensor& x,
-                       paddle::optional<const MetaTensor&> y,
-                       const std::vector<int>& target_shape,
-                       MetaTensor* out) {
-#define MAX_RANK_SUPPORTED 6
-  auto x_dims = x.dims();
-  PADDLE_ENFORCE_GE(
-      target_shape.size(),
-      static_cast<size_t>(x_dims.size()),
-      phi::errors::InvalidArgument(
-          "The rank of target_shape must be greater than or equal "
-          "to the rank of Input(X). But received Input(X): input "
-          "rank %u; received target_shape: rank %u.",
-          x_dims.size(),
-          target_shape.size()));
-  PADDLE_ENFORCE_LE(target_shape.size(),
-                    MAX_RANK_SUPPORTED,
-                    phi::errors::InvalidArgument(
-                        "The rank of target_shape must be less than or equal "
-                        "to %d. But received: rank %u.",
-                        MAX_RANK_SUPPORTED,
-                        target_shape.size()));
-  out->set_dims(phi::make_ddim(target_shape));
-  out->set_dtype(x.dtype());
-#undef MAX_RANK_SUPPORTED
-}
-
-void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
-  auto dim_x = x.dims();
-  auto dim_y = y.dims();
-  auto rank_x = dim_x.size();
-  auto rank_y = dim_y.size();
-  auto rank = (rank_x > rank_y) ? rank_x : rank_y;
-
-  std::vector<int64_t> dim_out;
-  dim_out.reserve(rank);
-  for (int i = 0; i < rank; i++) {
-    int64_t dim_xi = (i < rank - rank_x) ? 1 : dim_x.at(i - (rank - rank_x));
-    int64_t dim_yi = (i < rank - rank_y) ? 1 : dim_y.at(i - (rank - rank_y));
-    dim_out.push_back(dim_xi == -1 || dim_yi == -1 ? -1 : dim_xi * dim_yi);
-  }
-  out->set_dims(phi::make_ddim(dim_out));
-  out->set_dtype(x.dtype());
-}
-
-void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
-                           const MetaTensor& value,
-                           bool out_int32,
-                           bool right,
-                           MetaTensor* out) {
-  auto sequences_dims = sorted_sequence.dims();
-  auto values_dims = value.dims();
-
-  bool flag = true;
-  if (sequences_dims.size() != values_dims.size()) {
-    flag = false;
-  }
-  const auto& sequences_dims_size = sequences_dims.size();
-  for (int64_t dim = 0; dim < sequences_dims_size - 1; ++dim) {
-    if (sequences_dims[dim] != values_dims[dim]) {
-      flag = false;
-      break;
-    }
-  }
-  if (sequences_dims.size() != 1) {
-    PADDLE_ENFORCE_EQ(
-        flag,
-        true,
-        phi::errors::Unavailable(
-            "The dimensions of sorted_sequence tensor ( %s ) and values "
-            "tensor ( %s ) can not match. Because the input sorted_sequence "
-            "tensor must be 1 dimension or the first N-1 dimensions of "
-            "sorted_sequence tensor and input values tensor must match. "
-            "Please input appropriate sorted_sequence and values again! ",
-            sequences_dims,
-            values_dims));
-  }
-
-  if (out_int32) {
-    PADDLE_ENFORCE_LT(
-        sequences_dims[sequences_dims.size() - 1],
-        std::numeric_limits<int>::max(),
-        phi::errors::Unavailable(
-            "The size of sorted_sequence %d exceed the maximum limit d%. "
-            "Because the size of sorted_sequence should be less than the "
-            "output maximum value for int32 bit. Please set appropriate "
-            "sorted_sequence to meet this requirement! ",
-            sequences_dims[sequences_dims.size() - 1],
-            std::numeric_limits<int>::max()));
-  }
-
-  out->set_dims(values_dims);
-  if (out_int32) {
-    out->set_dtype(DataType::INT32);
-  } else {
-    out->set_dtype(DataType::INT64);
-  }
 }
 
 }  // namespace phi

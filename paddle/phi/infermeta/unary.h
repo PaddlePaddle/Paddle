@@ -202,6 +202,15 @@ void TileInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void TopKInferMeta(const MetaTensor& x,
+                   const Scalar& k_scalar,
+                   int axis,
+                   bool largest,
+                   bool sorted,
+                   MetaTensor* out,
+                   MetaTensor* indices,
+                   MetaConfig config = MetaConfig());
+
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 
@@ -241,14 +250,5 @@ void OneHotRawInferMeta(const MetaTensor& x,
 void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
-
-void TopKInferMeta(const MetaTensor& x,
-                   const Scalar& k_scalar,
-                   int axis,
-                   bool largest,
-                   bool sorted,
-                   MetaTensor* out,
-                   MetaTensor* indices,
-                   MetaConfig config = MetaConfig());
 
 }  // namespace phi
