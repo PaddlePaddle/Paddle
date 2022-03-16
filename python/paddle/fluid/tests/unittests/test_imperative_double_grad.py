@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -188,15 +188,11 @@ class TestDygraphDoubleGrad(TestCase):
             self.assertTrue(np.all(dx.numpy() == 1))
             self.assertNotEqual(dx.stop_gradient, create_graph)
 
-            if core._in_eager_mode():
-                # NOTE(wuweilong): when Scale GradNode's bias issue is fixed, enable this case
-                pass
-            else:
-                dx_mul_2, = self.grad(
-                    [y, x], [x], create_graph=create_graph, retain_graph=True)
-                self.assertEqual(dx_mul_2.shape, x.shape)
-                self.assertTrue(np.all(dx_mul_2.numpy() == 2))
-                self.assertNotEqual(dx_mul_2.stop_gradient, create_graph)
+            dx_mul_2, = self.grad(
+                [y, x], [x], create_graph=create_graph, retain_graph=True)
+            self.assertEqual(dx_mul_2.shape, x.shape)
+            self.assertTrue(np.all(dx_mul_2.numpy() == 2))
+            self.assertNotEqual(dx_mul_2.stop_gradient, create_graph)
 
             none_grad, = self.grad(
                 [x], [y], create_graph=create_graph, allow_unused=True)
@@ -318,7 +314,7 @@ class TestDygraphDoubleGrad(TestCase):
         self.func_none_one_initial_gradient()
 
     @dygraph_guard
-    def test_example_with_gradient_accumulation_and_create_graph(self):
+    def func_example_with_gradient_accumulation_and_create_graph(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -341,22 +337,30 @@ class TestDygraphDoubleGrad(TestCase):
                        (x_np > 0) * 2).astype('float32')
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-        loss.backward(retain_graph=True)
-
-        x_grad_actual = x.gradient()
-        x_grad_expected = (2.0 / float(numel) *
-                           (x_np + dx_expected *
-                            (x_np > 0) * 2 / float(numel))).astype('float32')
-        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
-
-        for i in range(5):
+        if core._in_eager_mode():
+            pass
+        else:
+            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
             loss.backward(retain_graph=True)
+
             x_grad_actual = x.gradient()
-            x_grad_expected = (i + 2) * (2.0 / float(numel) * (
+            x_grad_expected = (2.0 / float(numel) * (
                 x_np + dx_expected *
                 (x_np > 0) * 2 / float(numel))).astype('float32')
             self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+            for i in range(5):
+                loss.backward(retain_graph=True)
+                x_grad_actual = x.gradient()
+                x_grad_expected = (i + 2) * (2.0 / float(numel) * (
+                    x_np + dx_expected *
+                    (x_np > 0) * 2 / float(numel))).astype('float32')
+                self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+    def test_example_with_gradient_accumulation_and_create_graph(self):
+        with _test_eager_guard():
+            self.func_example_with_gradient_accumulation_and_create_graph()
+        self.func_example_with_gradient_accumulation_and_create_graph()
 
     @dygraph_guard
     def func_example_with_gradient_accumulation_and_no_grad_vars(self):
@@ -401,7 +405,7 @@ class TestDygraphDoubleGrad(TestCase):
         self.func_example_with_gradient_accumulation_and_no_grad_vars()
 
     @dygraph_guard
-    def test_example_with_gradient_accumulation_and_not_create_graph(self):
+    def func_example_with_gradient_accumulation_and_not_create_graph(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -424,12 +428,20 @@ class TestDygraphDoubleGrad(TestCase):
 
         self.assertTrue(np.allclose(dx_actual.numpy(), dx_expected))
 
-        loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
-        loss.backward()
+        if core._in_eager_mode():
+            pass
+        else:
+            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss.backward()
 
-        x_grad_actual = x.gradient()
-        x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
-        self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+            x_grad_actual = x.gradient()
+            x_grad_expected = (2.0 * x_np / float(numel)).astype('float32')
+            self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
+
+    def test_example_with_gradient_accumulation_and_not_create_graph(self):
+        with _test_eager_guard():
+            self.func_example_with_gradient_accumulation_and_not_create_graph()
+        self.func_example_with_gradient_accumulation_and_not_create_graph()
 
 
 class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
