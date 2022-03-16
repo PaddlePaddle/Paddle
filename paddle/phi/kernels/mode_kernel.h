@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/segment_pool_kernel_impl.h"
-#include "paddle/phi/kernels/segment_pool_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
 
-PD_REGISTER_KERNEL(segment_pool,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SegmentPoolKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+namespace phi {
+
+template <typename T, typename Context>
+void ModeKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                int axis,
+                bool keepdim,
+                DenseTensor* out,
+                DenseTensor* indices);
+
+}  // namespace phi
