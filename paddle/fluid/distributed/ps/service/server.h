@@ -70,9 +70,9 @@ class PSServer {
       const std::vector<framework::ProgramDesc> &server_sub_program = {});
 
   // return server_ip
-  virtual std::string ip() { return butil::my_ip_cstr(); }
+  // virtual std::string ip() { return butil::my_ip_cstr(); }
   // return server_port
-  virtual int32_t port() = 0;
+  // virtual int32_t port() = 0;
 
   virtual uint64_t start(const std::string &ip, uint32_t port) = 0;
   virtual int32_t stop() = 0;
@@ -94,14 +94,14 @@ class PSServer {
     return &_table_map;
   }
 
-  typedef std::function<int32_t(int, int, const std::string &)> MsgHandlerFunc;
-  virtual int registe_pserver2pserver_msg_handler(int msg_type,
-                                                  MsgHandlerFunc handler) {
-    _msg_handler_map[msg_type] = handler;
-    return 0;
-  }
+  // typedef std::function<int32_t(int, int, const std::string &)> MsgHandlerFunc;
+  // virtual int registe_pserver2pserver_msg_handler(int msg_type,
+  //                                                 MsgHandlerFunc handler) {
+  //   _msg_handler_map[msg_type] = handler;
+  //   return 0;
+  // }
 
-  paddle::framework::Channel<std::pair<uint64_t, std::string>> _shuffled_ins;
+  // paddle::framework::Channel<std::pair<uint64_t, std::string>> _shuffled_ins;
 
  protected:
   virtual int32_t initialize() = 0;
@@ -111,7 +111,7 @@ class PSServer {
   ServerParameter _config;
   PSEnvironment *_environment;
   std::unordered_map<uint32_t, std::shared_ptr<Table>> _table_map;
-  std::unordered_map<int32_t, MsgHandlerFunc> _msg_handler_map;
+  // std::unordered_map<int32_t, MsgHandlerFunc> _msg_handler_map;
 
  protected:
   std::shared_ptr<framework::Scope> scope_;

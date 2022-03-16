@@ -162,6 +162,8 @@ class BrpcPsClient : public PSClient {
                             const std::string &mode) override;
   std::future<int32_t> load(uint32_t table_id, const std::string &epoch,
                             const std::string &mode) override;
+  
+  std::future<int32_t> Load(const LoadSaveContext& load_context) override;
 
   std::future<int32_t> save(const std::string &epoch,
                             const std::string &mode) override;
@@ -169,6 +171,8 @@ class BrpcPsClient : public PSClient {
   std::future<int32_t> save(uint32_t table_id, const std::string &epoch,
                             const std::string &mode) override;
 
+  virtual std::future<int32_t> Save(const LoadSaveContext& save_context) override;
+  
   std::future<int32_t> clear() override;
 
   std::future<int32_t> clear(uint32_t table_id) override;
@@ -199,6 +203,10 @@ class BrpcPsClient : public PSClient {
                                                  const uint64_t *keys,
                                                  size_t num, bool is_training);
 
+  virtual std::future<int32_t> Pull(RequestContext& pull_context) override;
+
+  virtual std::future<int32_t> Push(RequestContext& push_context) override;
+  
   virtual std::future<int32_t> print_table_stat(uint32_t table_id);
 
   virtual std::future<int32_t> barrier(size_t table_id, uint32_t barrier_type);
