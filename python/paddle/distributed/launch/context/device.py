@@ -38,7 +38,7 @@ class Device(object):
 
     @property
     def count(self):
-        return len(self._labels)
+        return len(self._labels) or 1
 
     @property
     def memory(self):
@@ -58,11 +58,16 @@ class Device(object):
             self._labels = []
 
     def get_selected_flag_key(self):
-        if self._dtype == DeviceType.CPU: return 'FLAGS_selected_cpus'
-        if self._dtype == DeviceType.GPU: return 'FLAGS_selected_gpus'
-        if self._dtype == DeviceType.NPU: return 'FLAGS_selected_npus'
-        if self._dtype == DeviceType.XPU: return 'FLAGS_selected_xpus'
-        if self._dtype == DeviceType.MLU: return 'FLAGS_selected_mlus'
+        if self._dtype == DeviceType.CPU:
+            return 'FLAGS_selected_cpus'
+        if self._dtype == DeviceType.GPU:
+            return 'FLAGS_selected_gpus'
+        if self._dtype == DeviceType.NPU:
+            return 'FLAGS_selected_npus'
+        if self._dtype == DeviceType.XPU:
+            return 'FLAGS_selected_xpus'
+        if self._dtype == DeviceType.MLU:
+            return 'FLAGS_selected_mlus'
         return 'FLAGS_selected_devices'
 
     def get_selected_flag_label(self, idx):

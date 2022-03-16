@@ -65,7 +65,7 @@ class Pod(PodSepc):
 
     @replicas.setter
     def replicas(self, r):
-        self._replicas = r
+        self._replicas = max(r, 1)
 
     @property
     def rank(self):
