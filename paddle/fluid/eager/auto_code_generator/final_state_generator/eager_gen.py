@@ -497,11 +497,12 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
 """
             tensor_wrapper_members_str += PLAIN_TENSOR_MEMBER_TEMPLATE.format(
                 tensor_wrapper_name)
-            
+
             CLEAR_TENSOR_WRAPPERS_TEMPLATE = """
    {}.clear();
 """
-            clear_tensor_wrapper_str += CLEAR_TENSOR_WRAPPERS_TEMPLATE.format(tensor_wrapper_name)
+            clear_tensor_wrapper_str += CLEAR_TENSOR_WRAPPERS_TEMPLATE.format(
+                tensor_wrapper_name)
 
         else:
             assert IsVectorTensorType(ttype)
@@ -520,13 +521,14 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
 """
             tensor_wrapper_members_str += VECTOR_TENSOR_MEMBER_TEMPLATE.format(
                 tensor_wrapper_name)
-        
+
             CLEAR_TENSOR_WRAPPERS_TEMPLATE = """
    for (auto tw: {}) {
      tw.clear();
    };
 """
-            clear_tensor_wrapper_str += CLEAR_TENSOR_WRAPPERS_TEMPLATE.format(tensor_wrapper_name)
+            clear_tensor_wrapper_str += CLEAR_TENSOR_WRAPPERS_TEMPLATE.format(
+                tensor_wrapper_name)
 
     # End: SetTensorWrapper Methods & TensorWrapper Members
 
@@ -536,7 +538,7 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
     for aname, atype, default_val, _ in backward_attrs_list:
         saved_attr_name = GetSavedName(aname)
         SET_ATTR_METHOD_TEMPLATE = """
-   void SetAttribute{}({} {}) {{     
+   void SetAttribute{}({} {}) {{
      {} = {};
    }}
 """
@@ -581,7 +583,7 @@ class {} : public egr::GradNodeBase {{
   {}
 
   bool IsTensorWrappersCleared() override {{
-      return is_tensor_wrappers_cleared;
+      return is_tensor_wrappers_cleared;  
   }}
  private:
   // TensorWrappers
@@ -595,9 +597,9 @@ class {} : public egr::GradNodeBase {{
 """
     node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
         grad_node_name, grad_node_name, grad_node_name, grad_node_name,
-        grad_node_name, clear_tensor_wrapper_str, set_tensor_wrapper_methods_str,
-        set_attribute_methods_str, tensor_wrapper_members_str,
-        attribute_members_str)
+        grad_node_name, clear_tensor_wrapper_str,
+        set_tensor_wrapper_methods_str, set_attribute_methods_str,
+        tensor_wrapper_members_str, attribute_members_str)
 
     return node_declaration_str
 
