@@ -731,6 +731,108 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
   return KernelSignature("unregistered", {}, {}, {});
 }
+
+KernelSignature SetValueGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("StartsTensorList")) {
+    if (ctx.HasInput("EndsTensorList")) {
+      if (ctx.HasInput("StepsTensorList")) {
+        return KernelSignature(
+            "set_value_grad",
+            {GradVarName("Out")},
+            {"StartsTensorList",
+             "EndsTensorList",
+             "StepsTensorList",
+             "axes",
+             "decrease_axes",
+             "none_axes"},
+            {GradVarName("Input"), GradVarName("ValueTensor")});
+      } else {
+        return KernelSignature(
+            "set_value_grad",
+            {GradVarName("Out")},
+            {"StartsTensorList",
+             "EndsTensorList",
+             "steps",
+             "axes",
+             "decrease_axes",
+             "none_axes"},
+            {GradVarName("Input"), GradVarName("ValueTensor")});
+      }
+    } else {
+      if (ctx.HasInput("StepsTensorList")) {
+        return KernelSignature(
+            "set_value_grad",
+            {GradVarName("Out")},
+            {"StartsTensorList",
+             "ends",
+             "StepsTensorList",
+             "axes",
+             "decrease_axes",
+             "none_axes"},
+            {GradVarName("Input"), GradVarName("ValueTensor")});
+      } else {
+        return KernelSignature(
+            "set_value_grad",
+            {GradVarName("Out")},
+            {"StartsTensorList",
+             "ends",
+             "steps",
+             "axes",
+             "decrease_axes",
+             "none_axes"},
+            {GradVarName("Input"), GradVarName("ValueTensor")});
+      }
+    }
+  } else {
+    if (ctx.HasInput("EndsTensorList")) {
+      if (ctx.HasInput("StepsTensorList")) {
+        return KernelSignature(
+            "set_value_grad",
+            {GradVarName("Out")},
+            {"starts",
+             "EndsTensorList",
+             "StepsTensorList",
+             "axes",
+             "decrease_axes",
+             "none_axes"},
+            {GradVarName("Input"), GradVarName("ValueTensor")});
+      } else {
+        return KernelSignature(
+            "set_value_grad",
+            {GradVarName("Out")},
+            {"starts",
+             "EndsTensorList",
+             "steps",
+             "axes",
+             "decrease_axes",
+             "none_axes"},
+            {GradVarName("Input"), GradVarName("ValueTensor")});
+      }
+    } else {
+      if (ctx.HasInput("StepsTensorList")) {
+        return KernelSignature(
+            "set_value_grad",
+            {GradVarName("Out")},
+            {"starts",
+             "ends",
+             "StepsTensorList",
+             "axes",
+             "decrease_axes",
+             "none_axes"},
+            {GradVarName("Input"), GradVarName("ValueTensor")});
+      } else {
+        return KernelSignature(
+            "set_value_grad",
+            {GradVarName("Out")},
+            {"starts", "ends", "steps", "axes", "decrease_axes", "none_axes"},
+            {GradVarName("Input"), GradVarName("ValueTensor")});
+      }
+    }
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(set_value, phi::SetValueOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(set_value_grad, phi::SetValueGradOpArgumentMapping);
