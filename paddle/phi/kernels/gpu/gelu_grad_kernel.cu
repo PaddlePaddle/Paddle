@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gelu_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gelu_kernel.h"
-#include "paddle/phi/kernels/gpu/elementwise_op_broadcast.cu.h"
-#include "paddle/phi/kernels/gpu/gelu_kernel.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#include "paddle/phi/kernels/gpu/gelu_funcs.h"
 
 DECLARE_bool(use_fast_math);
 
@@ -80,10 +81,10 @@ void GeluGradKernel(const Context& dev_ctx,
       }
     }
 #endif
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+    phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
         dev_ctx, ins, &outs, 0, GeluWithApproximateGradFunctor<T>());
   } else {
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+    phi::funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
         dev_ctx, ins, &outs, 0, GeluWithoutApproximateGradFunctor<T>());
   }
 }
