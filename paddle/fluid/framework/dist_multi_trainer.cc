@@ -185,10 +185,10 @@ void DistMultiTrainer::Finalize() {
   root_scope_->DropKids();
 
 // flush local client push queue
-#ifdef PADDLE_WITH_PSLIB
-  auto fleet_ptr_ = FleetWrapper::GetInstance();
-#else
+#ifdef PADDLE_WITH_PSCORE
   auto fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
+#else
+  auto fleet_ptr_ = FleetWrapper::GetInstance();
 #endif
   fleet_ptr_->ClientFlush();
 }
