@@ -47,38 +47,41 @@ std::unordered_map<std::string, std::vector<std::string>>
 static std::unordered_map<std::string, paddle::framework::AttributeMap>
     operators_with_attrs = {};
 
+/* --- Black Ops list that's NO NEED to apply code generation --- */
+static std::unordered_set<std::string> black_ops_list = {"run_program"};
+
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
   std::replace(ret.begin(), ret.end(), '-', '_');  // replace all '-' to '_'
   return ret;
 }
 
-static bool IgnoreGradAttribute(const std::string& op_type,
-                                const std::string& attr_name) {
-  // Attributes in operators_with_attrs are created manually during code
-  // generation
-  // We should ignore these arbitrary attrs when setting up grad attribute map
-  if (operators_with_attrs.count(op_type)) {
-    if (operators_with_attrs[op_type].count(attr_name)) {
-      return true;
-    }
+static std::string HandleDynamicGradAttributes(const std::string& fwd_op_type,
+                                               const std::string& attrs_name) {
+  std::string additional_grad_attrs_str = "";
+
+  if (fwd_op_type == "sum") {
+    const char* GRAD_ATTRS_TEMPLATE = "  %s[\"%s\"] = %s;\n";
+    additional_grad_attrs_str = paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "scale", "float(1.0)");
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias", "float(0.0f)");
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias_after_scale", "bool(true)");
+
+  } else if (fwd_op_type == "scale") {
+    const char* GRAD_ATTRS_TEMPLATE = "  %s[\"%s\"] = %s;\n";
+
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias", "float(0.0f)");
+    additional_grad_attrs_str += paddle::string::Sprintf(
+        GRAD_ATTRS_TEMPLATE, attrs_name, "bias_after_scale", "bool(true)");
   }
 
-  // Only allow SumOp
-  if (op_type != "sum") {
-    return true;
-  }
-
-  return false;
+  return additional_grad_attrs_str;
 }
 
 static void PrepareAttrMapForOps() {
-  // Handle "run_program_op"
-  static framework::ProgramDesc fake_prog;
-  operators_with_attrs["run_program"] = {};
-  operators_with_attrs["run_program"]["global_block"] =
-      fake_prog.MutableBlock(0);
-
   // Handle "fused_elemwise_add_activation"
   std::vector<std::string> functor_list = {"a", "b"};
   operators_with_attrs["fused_elemwise_add_activation"] = {};
@@ -1556,9 +1559,23 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   core_ops_returns_info[op_type] = return_contents;
 
   // [Generation] ComputeRequireGrad -> GradNodeCreation
+
   if (!bwd_info.GenerateForwardOnly()) {
     std::string grad_node_creation_body_str =
         GenerateGradNodeCreationContent(fwd_info, bwd_info);
+
+    // Add event record
+    std::string event_name = op_type + " node_creation";
+    const char* NODE_CREATION_TEMPLATE =
+        "{\n"
+        "   paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
+        "paddle::platform::TracerEventType::Operator, 1);\n"
+        "   %s\n"
+        "}";
+
+    grad_node_creation_body_str = paddle::string::Sprintf(
+        NODE_CREATION_TEMPLATE, event_name, grad_node_creation_body_str);
+
     generated_function_body += grad_node_creation_body_str;
     generated_function_body += "\n";
 
@@ -1617,10 +1634,20 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     if ((*iter) == ',') dygraph_function_args_str.erase(iter);
   }
 
-  const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n\n%s\n}\n\n";
+  const char* DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE =
+      "paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
+      "paddle::platform::TracerEventType::Operator, 1);";
+  std::string event_name = op_type + " dygraph";
+  std::string fwd_record_event_str = paddle::string::Sprintf(
+      DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE, event_name);
+  const char* FWD_FUNCTION_TEMPLATE =
+      "%s %s(%s) {\n\n"
+      " %s\n"
+      " %s\n"
+      "}\n\n";
   std::string fwd_function_str = paddle::string::Sprintf(
       FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name,
-      dygraph_function_args_str, generated_function_body);
+      dygraph_function_args_str, fwd_record_event_str, generated_function_body);
 
   // [Generation] Generate forward functions header
   const char* FWD_HEADER_TEMPLATE = "%s %s(%s);\n";
@@ -1845,18 +1872,9 @@ static std::string GenerateSingleOpBase(
   const char* ATTRS_TEMPLATE = "  auto& %s = this->attr_map_;\n";
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
-  for (const auto& iter : grad_attrs) {
-    if (IgnoreGradAttribute(fwd_op_type, iter.first)) continue;
-    std::pair<std::string, std::string> type_val =
-        GetAttrType(iter.second, false /*is_arg*/);
-    const char* GRAD_ATTRS_TEMPLATE =
-        "  %s %s = %s;\n"
-        "  %s[\"%s\"] = %s;\n";
-    std::string var_name = iter.first + std::to_string(*outs_size);
-    grad_attrs_str += paddle::string::Sprintf(
-        GRAD_ATTRS_TEMPLATE, type_val.first, var_name, type_val.second,
-        attrs_name, iter.first, var_name);
-  }
+
+  // Handle dynamic grad attributes
+  grad_attrs_str += HandleDynamicGradAttributes(fwd_op_type, attrs_name);
   generated_grad_function_body += grad_attrs_str;
 
   const char* TRACE_OP_TEMPLATE =
@@ -2245,8 +2263,9 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "\"paddle/fluid/eager/api/generated/fluid_generated/"
       "dygraph_forward_api.h\"\n"
       "#include "
-      "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n\n"
-      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n";
+      "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n"
+      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
@@ -2351,6 +2370,9 @@ static void DygraphCodeGeneration(const std::string& output_dir) {
 
     if (!CheckOpProto(op_proto)) continue;
     const std::string& op_type = op_proto->type();
+    if (black_ops_list.count(op_type)) {
+      continue;
+    }
 
     /* ----------------------------- */
     /* ---- Collect Information ---- */

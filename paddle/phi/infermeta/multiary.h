@@ -20,6 +20,41 @@ namespace phi {
 
 std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors);
 
+void AdadeltaInferMeta(const MetaTensor& param,
+                       const MetaTensor& grad,
+                       const MetaTensor& avg_squared_grad,
+                       const MetaTensor& avg_squared_update,
+                       float rho,
+                       float epsilon,
+                       MetaTensor* param_out,
+                       MetaTensor* avg_squared_grad_out,
+                       MetaTensor* avg_squared_update_out);
+
+void AdamaxInferMeta(const MetaTensor& param,
+                     const MetaTensor& grad,
+                     const MetaTensor& learning_rate,
+                     const MetaTensor& moment,
+                     const MetaTensor& inf_norm,
+                     const MetaTensor& beta1_pow,
+                     float beta1,
+                     float beta2,
+                     float epsilon,
+                     MetaTensor* param_out,
+                     MetaTensor* moment_out,
+                     MetaTensor* inf_norm_out);
+
+void AucInferMeta(const MetaTensor& input,
+                  const MetaTensor& label,
+                  const MetaTensor& stat_pos,
+                  const MetaTensor& stat_neg,
+                  const std::string& curve,
+                  int num_thresholds,
+                  int slide_steps,
+                  MetaTensor* auc,
+                  MetaTensor* stat_pos_out,
+                  MetaTensor* stat_neg_out,
+                  MetaConfig config = MetaConfig());
+
 void BilinearTensorProductInferMeta(const MetaTensor& x,
                                     const MetaTensor& y,
                                     const MetaTensor& weight,
@@ -35,8 +70,20 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+
+void PsroiPoolInferMeta(const MetaTensor& x,
+                        const MetaTensor& rois,
+                        paddle::optional<const MetaTensor&> rois_num,
+                        int pooled_height,
+                        int pooled_width,
+                        int output_channels,
+                        float spatial_scale,
+                        MetaTensor* out);
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
                     MetaTensor* out);
+
 }  // namespace phi

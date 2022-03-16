@@ -31,7 +31,7 @@
 #include "glog/logging.h"
 
 /**
- * Implementation of GradNodeBase, Edge and InputBuffer.
+ * Implementation of GradNodeBase, Edge and GradTensorHolder.
 **/
 namespace egr {
 
