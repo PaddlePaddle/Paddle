@@ -20,15 +20,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RoiAlignKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& boxes,
-                    paddle::optional<const DenseTensor&> boxes_num,
-                    int pooled_height,
-                    int pooled_width,
-                    float spatial_scale,
-                    int sampling_ratio,
-                    bool aligned,
-                    DenseTensor* out);
+void RoiAlignGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& boxes,
+                        paddle::optional<const DenseTensor&> boxes_num,
+                        const DenseTensor& out_grad,
+                        int pooled_height,
+                        int pooled_width,
+                        float spatial_scale,
+                        int sampling_ratio,
+                        bool aligned,
+                        DenseTensor* dx);
 
 }  // namespace phi
