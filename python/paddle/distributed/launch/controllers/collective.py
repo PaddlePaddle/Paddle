@@ -89,6 +89,7 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINERS_NUM": "{}".format(global_size),
                 "PADDLE_RANK_IN_NODE": str(i),
             }
+            e.update(self.ctx.node.device.selected_flags(i))
             self.add_container(envs=e, log_tag=i)
 
         return True
@@ -114,6 +115,8 @@ class CollectiveElasticController(CollectiveController):
         '''
         watch self and peer status, return true to exit
         '''
+
+        self.ctx.logger.info("Watching {}".format(self.pod))
         while not self.ctx.status.is_done():
             # self status
             status = self.pod.watch(timeout=2)
@@ -171,13 +174,8 @@ class CollectiveElasticController(CollectiveController):
                 continue
 
             self.master.set_status(self.ctx.status.RUNNING)
-            self.ctx.status.run()
 
-            assert len(self.pod.containers) > 0, "No container in the pod"
-            self.ctx.logger.debug("Run {}".format(self.pod))
-            self.ctx.logger.debug("Run {}".format(self.pod.containers[0]))
-
-            self.pod.deploy()
+            self.deploy_pod()
 
             if self.watch():
                 break

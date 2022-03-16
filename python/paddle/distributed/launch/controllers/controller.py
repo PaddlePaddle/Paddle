@@ -46,22 +46,27 @@ class ControllerBase(object):
 
         self.join_server = None
 
-    def run(self):
-        self.build_job()
-        self.build_pod()
+    def deploy_pod(self):
 
-        if len(self.pod.containers) < 1:
-            self.ctx.logger.error("No container in the pod {}".format(self.pod))
-            return
+        assert len(self.pod.containers) > 0, "No container in the pod"
 
         self.ctx.logger.info("Run {}".format(self.pod))
         self.ctx.logger.debug(self.pod.containers[0])
 
+        self.ctx.status.run()
         self.pod.deploy()
+
+    def run(self):
+        self.build_job()
+        self.build_pod()
+
+        self.deploy_pod()
 
         self.watch()
 
     def watch(self) -> bool:
+        self.ctx.logger.info("Watching {}".format(self.pod))
+
         status = self.pod.watch()
 
         if status == self.ctx.status.COMPLETED:

@@ -30,7 +30,6 @@ def process_args(ctx):
     argdev = ctx.args.devices
     if argdev:
         ctx.node.device.labels = argdev.split(',')
-        ctx.node.device.count = len(ctx.node.device.labels)
         ctx.logger.debug('Device reset by args {}'.format(argdev))
 
 

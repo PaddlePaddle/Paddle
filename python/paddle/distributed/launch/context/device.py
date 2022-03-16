@@ -20,36 +20,80 @@ class DeviceType:
     GPU = 'gpu'
     XPU = 'xpu'
     NPU = 'npu'
+    MLU = 'mlu'
 
 
 class Device(object):
-    def __init__(self, dtype=None, count=1, memory="", labels=""):
-        self.dtype = dtype
-        self.count = count
-        self.memory = memory
-        self.labels = labels
+    def __init__(self, dtype=None, memory="", labels=""):
+        self._dtype = dtype
+        self._memory = memory
+        self._labels = labels
 
     def __str__(self):
-        return ",".join(self.labels)
+        return ",".join(self._labels)
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def count(self):
+        return len(self._labels)
+
+    @property
+    def memory(self):
+        return self._memory
+
+    @property
+    def labels(self):
+        return self._labels
+
+    @labels.setter
+    def labels(self, lbs):
+        if isinstance(lbs, str):
+            self._labels = lbs.split(',')
+        elif isinstance(lbs, list):
+            self._labels = lbs
+        else:
+            self._labels = []
+
+    def get_selected_flag_key(self):
+        if self._dtype == DeviceType.CPU: return 'FLAGS_selected_cpus'
+        if self._dtype == DeviceType.GPU: return 'FLAGS_selected_gpus'
+        if self._dtype == DeviceType.NPU: return 'FLAGS_selected_npus'
+        if self._dtype == DeviceType.XPU: return 'FLAGS_selected_xpus'
+        if self._dtype == DeviceType.MLU: return 'FLAGS_selected_mlus'
+        return 'FLAGS_selected_devices'
+
+    def get_selected_flag_label(self, idx):
+        if idx < len(self._labels):
+            return self._labels[idx]
+        else:
+            return '0'
+
+    def selected_flags(self, idx):
+        return {self.get_selected_flag_key(): self.get_selected_flag_label(idx)}
 
     @classmethod
     def parse_device(self):
         dev = Device()
         visible_devices = None
         if 'CUDA_VISIBLE_DEVICES' in os.environ or 'NVIDIA_VISIBLE_DEVICES' in os.environ:
-            dev.dtype = DeviceType.GPU
+            dev._dtype = DeviceType.GPU
             visible_devices = os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv(
                 "NVIDIA_VISIBLE_DEVICES")
         elif 'XPU_VISIBLE_DEVICES' in os.environ:
-            dev.dtype = DeviceType.XPU
+            dev._dtype = DeviceType.XPU
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
         elif 'ASCEND_VISIBLE_DEVICES' in os.environ:
-            dev.dtype = DeviceType.NPU
+            dev._dtype = DeviceType.NPU
             visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
+        elif 'MLU_VISIBLE_DEVICES' in os.environ:
+            dev._dtype = DeviceType.MLU
+            visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
 
         if visible_devices and visible_devices != 'all':
-            dev.labels = visible_devices.split(',')
-            dev.count = len(dev.labels)
+            dev._labels = visible_devices.split(',')
         else:
             return self.detect_device()
 
@@ -63,26 +107,33 @@ class Device(object):
         num = 0
         visible_devices = None
         if fluid.core.is_compiled_with_cuda():
-            dev.dtype = DeviceType.GPU
+            dev._dtype = DeviceType.GPU
             num = fluid.core.get_cuda_device_count()
             visible_devices = os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv(
                 "NVIDIA_VISIBLE_DEVICES")
         elif fluid.core.is_compiled_with_xpu():
-            dev.dtype = DeviceType.XPU
+            dev._dtype = DeviceType.XPU
             num = fluid.core.get_xpu_device_count()
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
         elif fluid.core.is_compiled_with_npu():
-            dev.dtype = DeviceType.NPU
+            dev._dtype = DeviceType.NPU
             num = fluid.core.get_npu_device_count()
             visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
+        elif fluid.core.is_compiled_with_mlu():
+            dev._dtype = DeviceType.MLU
+            num = fluid.core.get_mlu_device_count()
+            visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
 
         if num == 0:
-            dev.dtype = DeviceType.CPU
+            dev._dtype = DeviceType.CPU
         elif visible_devices is None or visible_devices == "all" or visible_devices == "":
-            dev.labels = [str(x) for x in range(0, num)]
-            dev.count = num
+            dev._labels = [str(x) for x in range(0, num)]
         else:
-            dev.labels = visible_devices.split(',')
-            dev.count = len(dev.labels)
+            dev._labels = visible_devices.split(',')
 
         return dev
+
+
+if __name__ == '__main__':
+    d = Device.parse_device()
+    print(d.get_selected_flag())

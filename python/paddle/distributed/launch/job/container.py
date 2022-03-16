@@ -77,6 +77,11 @@ class Container(object):
         kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
         self._env.update(kwargs)
 
+    def _valide_env(self):
+        for k, v in self._env.items():
+            assert isinstance(k, str) and isinstance(
+                v, str), 'env {}:{} must be str'.format(k, v)
+
     def _get_fd(self, pth):
         if not pth:
             return None
@@ -92,6 +97,8 @@ class Container(object):
     def start(self):
         if self._proc and self._proc.alive():
             return True
+
+        self._valide_env()
 
         self._stdout = self._get_fd(self._out) or sys.stdout
         if self._out == self._err:
@@ -114,9 +121,11 @@ class Container(object):
     def wait(self, timeout=None):
         self._proc.wait(timeout)
 
+    @property
     def exit_code(self):
         return self._proc.exit_code() if self._proc else -1
 
+    @property
     def status(self):
         if not self._proc:
             return Status.UNINIT
@@ -130,9 +139,9 @@ class Container(object):
     def __str__(self):
         return 'Container rank {} status {} cmd {} code {} log {} \nenv {}'.format(
             self._rank,
-            self.status(),
+            self.status,
             self._entrypoint,
-            self.exit_code(),
+            self.exit_code,
             self.errfile,
             self._env, )
 

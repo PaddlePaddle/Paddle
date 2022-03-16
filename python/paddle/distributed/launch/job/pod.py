@@ -45,14 +45,13 @@ class Pod(PodSepc):
         super().__init__()
 
     def __str__(self):
-        return "Pod: {}, replicas {}, status {}".format(self.name,
-                                                        self.replicas,
-                                                        self.status())
+        return "Pod: {}, replicas {}, status {}".format(
+            self.name, self.replicas, self.status)
 
     def failed_container(self):
         cs = []
         for c in self._containers:
-            if c.status() == Status.FAILED:
+            if c.status == Status.FAILED:
                 cs.append(c)
         return cs
 
@@ -99,8 +98,8 @@ class Pod(PodSepc):
     @property
     def exit_code(self):
         for c in self._containers:
-            if c.exit_code() != 0:
-                return c.exit_code()
+            if c.exit_code != 0:
+                return c.exit_code
         return 0
 
     def deploy(self):
@@ -123,12 +122,16 @@ class Pod(PodSepc):
         for c in self._containers:
             c.wait(None)
 
+    @property
     def status(self):
         if self.is_failed():
             return Status.FAILED
 
         if self.is_completed():
             return Status.COMPLETED
+
+        if self.is_running():
+            return Status.RUNNING
 
         return Status.READY
 
@@ -138,13 +141,19 @@ class Pod(PodSepc):
 
     def is_failed(self):
         for c in self._containers:
-            if c.status() == Status.FAILED:
+            if c.status == Status.FAILED:
                 return True
         return False
 
     def is_completed(self):
         for c in self._containers:
-            if c.status() != Status.COMPLETED:
+            if c.status != Status.COMPLETED:
+                return False
+        return True
+
+    def is_running(self):
+        for c in self._containers:
+            if c.status != Status.RUNNING:
                 return False
         return True
 
@@ -172,10 +181,10 @@ class Pod(PodSepc):
         end = time.time() + timeout
         while timeout < 0 or time.time() < end:
             for c in self._containers:
-                if c.status() in any_list:
-                    return c.status()
+                if c.status in any_list:
+                    return c.status
 
-            s = [c.status() for c in self._containers]
+            s = [c.status for c in self._containers]
             if len(set(s)) == 1 and s[0] in all_list:
                 return s[0]
 
