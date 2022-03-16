@@ -87,9 +87,6 @@ class Group():
         self.nranks = rank_num
         self.id = id
         self.ranks = ranks
-        assert len(ranks) == rank_num, (
-            "Number of ranks ({}--len:{}) must be "
-            "equal to rank_num ({}).".format(ranks, len(ranks), rank_num))
         self.pg = pg
         self.name = name
 
