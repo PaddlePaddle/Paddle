@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <unsupported/Eigen/SpecialFunctions>
 #include "paddle/phi/kernels/funcs/for_range.h"
 namespace phi {
 template <typename T>
