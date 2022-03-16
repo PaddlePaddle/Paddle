@@ -637,12 +637,36 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
                 self.assertTrue(tensor3.persistable, True)
                 self.assertTrue(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_gpu_place())
+
+                tensor4 = tensor2.cuda(0, True)
+                self.assertTrue(np.array_equal(tensor4.numpy(), arr2))
+                self.assertTrue(tensor4.persistable, True)
+                self.assertTrue(tensor4.stop_gradient, True)
+                self.assertTrue(tensor4.place.is_gpu_place())
+
+                tensor5 = tensor2.cpu()
+                self.assertTrue(np.array_equal(tensor5.numpy(), arr2))
+                self.assertTrue(tensor5.persistable, True)
+                self.assertTrue(tensor5.stop_gradient, True)
+                self.assertTrue(tensor5.place.is_cpu_place())
+
+                tensor6 = tensor2.pin_memory()
+                self.assertTrue(np.array_equal(tensor6.numpy(), arr2))
+                self.assertTrue(tensor6.persistable, True)
+                self.assertTrue(tensor6.stop_gradient, True)
+                self.assertTrue(tensor6.place.is_cuda_pinned_place())
             else:
                 tensor3 = tensor2._copy_to(core.CPUPlace(), True)
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
                 self.assertTrue(tensor3.persistable, True)
                 self.assertTrue(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_cpu_place())
+
+                tensor4 = tensor2.cpu()
+                self.assertTrue(np.array_equal(tensor4.numpy(), arr2))
+                self.assertTrue(tensor4.persistable, True)
+                self.assertTrue(tensor4.stop_gradient, True)
+                self.assertTrue(tensor4.place.is_cpu_place())
 
     def test_share_buffer_to(self):
         with _test_eager_guard():
@@ -779,6 +803,11 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             self.assertTrue(egr_tensor.place._equals(ori_place))
             self.assertEqual(egr_tensor.shape, [4, 16, 16, 32])
             self.assertTrue(np.array_equal(egr_tensor.numpy(), new_arr))
+
+    def test_sharding_related_api(self):
+        arr0 = np.random.rand(4, 16, 16, 32).astype('float32')
+        egr_tensor1 = core.eager.Tensor(arr0, place, True, False,
+                                        "numpy_tensor1", False)
 
 
 class EagerParamBaseUsageTestCase(unittest.TestCase):
