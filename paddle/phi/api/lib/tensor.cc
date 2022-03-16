@@ -46,6 +46,7 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
