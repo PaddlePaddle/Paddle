@@ -86,6 +86,8 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
                           fetch_list=[out_neighbors, out_count])
 
             out_neighbors, out_count = ret
+            out_count_cumsum = np.cumsum(out_count)
+            out_neighbors = np.split(out_neighbors, out_count_cumsum)[:-1]
             for neighbors, node, count in zip(out_neighbors, self.nodes,
                                               out_count):
                 # Ensure the correct sample size.
