@@ -22,7 +22,7 @@
 
 #include "paddle/infrt/common/object.h"
 #include "paddle/infrt/common/shared.h"
-#include "paddle/infrt/dialect/infrt/common_type.h"
+#include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/infrt/host_context/function.h"
 #include "paddle/infrt/support/variant.h"
 #include "paddle/infrt/tensor/dense_host_tensor.h"

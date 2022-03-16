@@ -487,6 +487,28 @@ struct ConvActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+// Elementwise with Activation
+// op: elementwise + activation
+// named nodes:
+// elementwise_a, elementwise_b,
+// elementwise_out, elementwise,
+// activation_out, activation
+struct ElementwiseActivation : public PatternBase {
+  ElementwiseActivation(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "elementwise_add_activation") {}
+
+  PDNode* operator()(PDNode* elementwise_a, const std::string& elementwise_type,
+                     const std::string& activation_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(elementwise);
+  PATTERN_DECL_NODE(activation);
+  // declare variable node's name
+  PATTERN_DECL_NODE(elementwise_b);
+  PATTERN_DECL_NODE(elementwise_out);
+  PATTERN_DECL_NODE(activation_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:

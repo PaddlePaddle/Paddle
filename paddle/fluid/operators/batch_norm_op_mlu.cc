@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 
 namespace paddle {
@@ -20,6 +21,8 @@ namespace operators {
 
 template <typename T>
 class MLUBatchNormOpKernel : public framework::OpKernel<T> {
+  using MPDType = typename details::MPTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto &place = ctx.GetPlace();
@@ -68,10 +71,10 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
 
     // alloc memory
     y->mutable_data<T>(place);
-    mean_out->mutable_data<T>(place);
-    variance_out->mutable_data<T>(place);
-    saved_mean->mutable_data<T>(place);
-    saved_variance->mutable_data<T>(place);
+    mean_out->mutable_data<MPDType>(place);
+    variance_out->mutable_data<MPDType>(place);
+    saved_mean->mutable_data<MPDType>(place);
+    saved_variance->mutable_data<MPDType>(place);
 
     Tensor transformed_x;
     Tensor transformed_y;
@@ -132,6 +135,8 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
 
 template <typename T>
 class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
+  using MPDType = typename details::MPTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
@@ -154,10 +159,10 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<MLUDeviceContext>();
     auto d_x_tmp =
         ctx.AllocateTmpTensor<T, MLUDeviceContext>(x->dims(), dev_ctx);
-    auto scale_grad_tmp =
-        ctx.AllocateTmpTensor<T, MLUDeviceContext>(scale->dims(), dev_ctx);
+    auto scale_grad_tmp = ctx.AllocateTmpTensor<MPDType, MLUDeviceContext>(
+        scale->dims(), dev_ctx);
     auto bias_grad_tmp =
-        ctx.AllocateTmpTensor<T, MLUDeviceContext>(bias->dims(), dev_ctx);
+        ctx.AllocateTmpTensor<MPDType, MLUDeviceContext>(bias->dims(), dev_ctx);
 
     if (d_x == nullptr) {
       d_x = &d_x_tmp;
@@ -171,8 +176,8 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
 
     const auto &place = ctx.GetPlace();
     d_x->mutable_data<T>(place);
-    d_scale->mutable_data<T>(place);
-    d_bias->mutable_data<T>(place);
+    d_scale->mutable_data<MPDType>(place);
+    d_bias->mutable_data<MPDType>(place);
 
     use_global_stats = is_test || use_global_stats;
 
