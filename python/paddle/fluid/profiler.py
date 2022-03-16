@@ -39,7 +39,7 @@ NVPROF_CONFIG = [
 
 
 @deprecated(
-    since="2.2.3",
+    since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
     reason="Please use new profiler tool, this profiler tool is no longer maintained."
@@ -118,7 +118,7 @@ def npu_profiler(output_file, config=None):
 
 
 @deprecated(
-    since="2.2.3",
+    since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
     reason="Please use new profiler tool, this profiler tool is no longer maintained."
@@ -146,7 +146,7 @@ def reset_profiler():
 
 
 @deprecated(
-    since="2.2.3",
+    since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
     reason="Please use new profiler tool, this profiler tool is no longer maintained."
@@ -219,7 +219,7 @@ def start_profiler(state, tracer_option='Default'):
 
 
 @deprecated(
-    since="2.2.3",
+    since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
     reason="Please use new profiler tool, this profiler tool is no longer maintained."
@@ -281,7 +281,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 
 
 @deprecated(
-    since="2.2.3",
+    since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
     reason="Please use new profiler tool, this profiler tool is no longer maintained."
