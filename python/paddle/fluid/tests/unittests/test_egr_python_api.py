@@ -644,6 +644,10 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
                 self.assertTrue(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_cpu_place())
 
+            tesnor4 = paddle.to_tensor([1, 2, 3], place='gpu_pinned')
+            tesnor5 = tesnor4._copy_to(core.CUDAPlace(0), True)
+            self.assertTrue(np.array_equal(tesnor4.numpy(), tesnor5.numpy()))
+
     def test_share_buffer_to(self):
         with _test_eager_guard():
             arr = np.ones([4, 16, 16, 32]).astype('float32')
