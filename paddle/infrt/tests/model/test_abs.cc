@@ -42,7 +42,7 @@
 #include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
 
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
-#include "paddle/infrt/dialect/phi/pass/phi_op_cvt_pass.h"
+#include "paddle/infrt/dialect/phi/pass/phi_op_convert_pass.h"
 #include "paddle/infrt/host_context/paddle_mlir.h"
 
 #include "paddle/infrt/dialect/dense_tensor.h"
