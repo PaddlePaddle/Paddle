@@ -52,7 +52,6 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
 
         out_neighbors, out_count = paddle.incubate.graph_sample_neighbors(
             row, colptr, nodes, self.sample_size)
-
         out_neighbors = paddle.split(out_neighbors, list(out_count))
         for neighbors, node, count in zip(out_neighbors, self.nodes, out_count):
             # Ensure the correct sample size.
@@ -84,7 +83,6 @@ class TestGrapphSampleNeighbors(unittest.TestCase):
                 'nodes': self.nodes
             },
                           fetch_list=[out_neighbors, out_count])
-
             out_neighbors, out_count = ret
             out_count_cumsum = np.cumsum(out_count)
             out_neighbors = np.split(out_neighbors, out_count_cumsum)[:-1]
