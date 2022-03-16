@@ -113,6 +113,11 @@ void IndexSampleInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaConfig config = MetaConfig());
 
+void IndexSelectInferMeta(const MetaTensor& x,
+                          const MetaTensor& index,
+                          int dim,
+                          MetaTensor* output);
+
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       float epsilon,
