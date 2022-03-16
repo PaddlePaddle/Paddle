@@ -70,22 +70,6 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
-void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
-
-void PsroiPoolInferMeta(const MetaTensor& x,
-                        const MetaTensor& rois,
-                        paddle::optional<const MetaTensor&> rois_num,
-                        int pooled_height,
-                        int pooled_width,
-                        int output_channels,
-                        float spatial_scale,
-                        MetaTensor* out);
-
-void WhereInferMeta(const MetaTensor& condition,
-                    const MetaTensor& x,
-                    const MetaTensor& y,
-                    MetaTensor* out);
-
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   const MetaTensor& w,
                                   const MetaTensor& label,
@@ -102,5 +86,21 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
                                   MetaTensor* out,
                                   MetaTensor* pre_out,
                                   MetaTensor* w_out);
+
+void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
+
+void PsroiPoolInferMeta(const MetaTensor& x,
+                        const MetaTensor& rois,
+                        paddle::optional<const MetaTensor&> rois_num,
+                        int pooled_height,
+                        int pooled_width,
+                        int output_channels,
+                        float spatial_scale,
+                        MetaTensor* out);
+
+void WhereInferMeta(const MetaTensor& condition,
+                    const MetaTensor& x,
+                    const MetaTensor& y,
+                    MetaTensor* out);
 
 }  // namespace phi
