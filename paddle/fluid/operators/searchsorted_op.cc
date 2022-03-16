@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/searchsorted_op.h"
-
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -117,10 +116,3 @@ class SearchSortedOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(searchsorted, ops::SearchSortedOp, ops::SearchSortedOpMaker);
-
-REGISTER_OP_CPU_KERNEL(
-    searchsorted,
-    ops::SearchSortedKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SearchSortedKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SearchSortedKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SearchSortedKernel<paddle::platform::CPUDeviceContext, int64_t>);
