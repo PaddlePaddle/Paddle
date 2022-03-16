@@ -132,16 +132,17 @@ void TestConv3dBase(const std::vector<int>& indices,
     f_verify(out.non_zero_elements().data<T>(), correct_out_features);
 
     if (backward) {
-      std::vector<DenseTensor> grads = sparse::Conv3dGrad<T>(dev_ctx_cpu,
-                                                             x_tensor,
-                                                             rulebook,
-                                                             kernel_tensor,
-                                                             out,
-                                                             paddings,
-                                                             dilations,
-                                                             strides,
-                                                             1,
-                                                             subm);
+      std::vector<DenseTensor> grads =
+          sparse::Conv3dGrad<T>(dev_ctx_cpu,
+                                x_tensor,
+                                rulebook,
+                                kernel_tensor,
+                                out.non_zero_elements(),
+                                paddings,
+                                dilations,
+                                strides,
+                                1,
+                                subm);
       f_verify(grads[0].data<T>(), features_grad);
       f_verify(grads[1].data<T>(), kernel_grad);
     }
@@ -231,16 +232,17 @@ void TestConv3dBase(const std::vector<int>& indices,
   f_verify(h_features_tensor.data<T>(), correct_out_features);
 
   if (backward) {
-    std::vector<DenseTensor> grads = sparse::Conv3dGrad<T>(dev_ctx_gpu,
-                                                           d_x_tensor,
-                                                           d_rulebook,
-                                                           d_kernel_tensor,
-                                                           d_out,
-                                                           paddings,
-                                                           dilations,
-                                                           strides,
-                                                           1,
-                                                           subm);
+    std::vector<DenseTensor> grads =
+        sparse::Conv3dGrad<T>(dev_ctx_gpu,
+                              d_x_tensor,
+                              d_rulebook,
+                              d_kernel_tensor,
+                              d_out.non_zero_elements(),
+                              paddings,
+                              dilations,
+                              strides,
+                              1,
+                              subm);
     DenseTensor h_features_grad = phi::Empty(
         dev_ctx_cpu,
         DenseTensorMeta(grads[0].dtype(), grads[0].dims(), grads[0].layout()));
