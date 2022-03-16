@@ -98,6 +98,18 @@ void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
+
+void MaxPoolWithIndexInferMeta(const MetaTensor& x,
+                               const std::vector<int>& kernel_size,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               bool global_pooling,
+                               bool adaptive,
+                               MetaTensor* out,
+                               MetaTensor* mask,
+                               MetaConfig config = MetaConfig());
+
 void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
@@ -113,6 +125,20 @@ void PixelShuffleInferMeta(const MetaTensor& x,
                            int upscale_factor,
                            const std::string& data_format,
                            MetaTensor* out);
+
+void PoolInferMeta(const MetaTensor& x,
+                   const std::vector<int>& kernel_size,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   bool ceil_mode,
+                   bool exclusive,
+                   const std::string& data_format,
+                   const std::string& pooling_type,
+                   bool global_pooling,
+                   bool adaptive,
+                   const std::string& padding_algorithm,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
 
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out);
 
@@ -137,6 +163,8 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* xshape,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
+
+void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void ShardIndexInferMeta(const MetaTensor& in,
                          int index_num,
@@ -203,6 +231,14 @@ void UnfoldInferMeta(const MetaTensor& x,
                      const std::vector<int>& dilations,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void OneHotRawInferMeta(const MetaTensor& x,
+                        int32_t depth,
+                        DataType dtype,
+                        bool allow_out_of_range,
+                        MetaTensor* out);
+
+void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
