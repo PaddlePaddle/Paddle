@@ -2319,7 +2319,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<std::string>))) {
         pt_kernel_context->EmplaceBackAttr(
-            BOOST_GET_CONST(std::vector<std::string>, attr));
+            BOOST_GET_CONST(std::vector<std::string>, attr_it->second));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported cast op attribute `%s` when construct "
