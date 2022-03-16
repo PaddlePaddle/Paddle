@@ -94,9 +94,8 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   /// \param[in] AnalysisConfig config
   ///
   explicit ONNXRuntimePredictor(const AnalysisConfig &config)
-      : config_(config) {
+      : config_(config), env_(ORT_LOGGING_LEVEL_WARNING, "onnx") {
     predictor_id_ = inference::GetUniqueId();
-    env_ = Ort::Env(ORT_LOGGING_LEVEL_INFO, "onnx");
   }
   ///
   /// \brief Destroy the ONNXRuntime Predictor object

@@ -670,8 +670,8 @@ void Tensor::ORTCopyFromCpu(const T *data) {
   const char *device_name = place_ == PlaceType::kCPU ? "Cpu" : "Cuda";
   Ort::MemoryInfo memory_info(device_name, OrtDeviceAllocator, device_,
                               OrtMemTypeDefault);
-  size_t size =
-      std::accumulate(begin(shape_), end(shape_), 1UL, std::multiplies<>());
+  size_t size = std::accumulate(begin(shape_), end(shape_), 1UL,
+                                std::multiplies<size_t>());
   auto ort_value = GetOrtVaule(memory_info, const_cast<T *>(data), size,
                                shape_.data(), shape_.size());
   binding->BindInput(name_.c_str(), ort_value);
