@@ -296,6 +296,11 @@ class TensorShapeTransformer(gast.NodeTransformer):
 
         return False
 
+    def _is_slice_target_node(self, node):
+        if isinstance(node, gast.Subscript) and hasattr(node, 'slice'):
+            return True
+        return False
+
     def _update_name_to_var_shape(self, node):
         def replace_dot(name):
             # replace all '.' into '_'
@@ -366,6 +371,8 @@ class TensorShapeTransformer(gast.NodeTransformer):
                             target_id] = static_shape_var_name
             return update_static_shape_var_node
         else:
+            if self._is_slice_target_node(target_node):
+                return update_static_shape_var_node
             target_id = ast_to_source_code(target_node).strip()
             if isinstance(value_node, gast.Name):
                 if value_node.id in self.name_to_var_shape:
