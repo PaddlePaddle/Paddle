@@ -139,7 +139,7 @@ class TestBfgs(unittest.TestCase):
         def func(x):
             return paddle.sum(scale.multiply(F.square_error_cost(x, minimun)))
 
-        position = paddle.to_tensor([2.0, 3.0])
+        position = paddle.to_tensor([1234.567, -345.9876])
         results = miminize_bfgs(func, position)
         print('num_func_calls: {} \n position: {}\n value: {} \n g: {}\n H: {} \n'.format(results[0], results[1], results[2], results[3],
                                                     results[3]))

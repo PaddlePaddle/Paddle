@@ -25,36 +25,69 @@ def miminize_lbfgs(objective_func,
                    history_size=100,
                    max_iters=50,
                    tolerance_grad=1e-8,
-                   tolerance_change=1e-6,
+                   tolerance_change=1e-8,
                    initial_inverse_hessian_estimate=None,
                    line_search_fn='strong_wolfe',
                    max_line_search_iters=50,
                    initial_step_length=1.0,
                    dtype='float32',
                    name=None):
+    r"""Minimizes a differentiable function `func` using the L-BFGS method.
+    The L-BFGS is simalar as BFGS, the only difference is that L-BFGS use historical
+    sk, yk, rhok rather than H_k-1 to compute Hk.
+    Reference:
+        Jorge Nocedal, Stephen J. Wright, Numerical Optimization,
+        Second Edition, 2006.
+    Args:
+        objective_func: the objective function to minimize. ``func`` accepts
+            a multivariate input and returns a scalar.
+        initial_position (Tensor): the starting point of the iterates.
+        history_size (Scalar): the number of stored vector pairs {si,yi}.
+        max_iters (Scalar): the maximum number of minimization iterations.
+        tolerance_grad (Scalar): terminates if the gradient norm is smaller than
+            this. Currently gradient norm uses inf norm.
+        tolerance_change (Scalar): terminates if the change of function value/position/parameter between 
+            two iterations is smaller than this value.
+        initial_inverse_hessian_estimate (Tensor): the initial inverse hessian approximation.
+        line_search_fn (str): indicate which line search method to use, 'strong wolfe' or 'hager zhang'. 
+            only support 'strong wolfe' right now.
+        max_line_search_iters (Scalar): the maximum number of line search iterations.
+        initial_step_length: step length used in first iteration of line search. different initial_step_length 
+        may cause different optimal result.
+        dtype ('float' | 'float32' | 'float64' | 'double'): the data
+            type to be used.
+    
+    Returns:
+        num_func_calls : number of objective function called.
+        position : the position of the last iteration. If the search converged, this value is the argmin of 
+        the objective function regrading to the initial position.
+        objective_value : objective function value at the `position`.
+        objective_gradient : objective function gradient at the `position`.
+    """
+
     if initial_inverse_hessian_estimate == None:
         initial_inverse_hessian_estimate = paddle.eye(initial_position.shape[0],
                                                       dtype=dtype)
 
     H0 = paddle.assign(initial_inverse_hessian_estimate)
-    x1 = paddle.assign(initial_position)
-    f1, g1 = _value_and_gradient(objective_func, x1)
-
-    ai_vec = [None] * history_size
+    xk = paddle.assign(initial_position)
+    value, g1 = _value_and_gradient(objective_func, xk)
+    num_func_calls = paddle.assign(1)
     if in_dygraph_mode():
         k = 0
         sk_vec = []
         yk_vec = []
         rhok_vec = []
+        ai_vec = [None] * history_size
         while k < max_iters:
             gnorm = paddle.linalg.norm(g1, p=np.inf)
             if gnorm < tolerance_grad:
                 break
-            if paddle.any(paddle.isinf(x1)):
+            if paddle.any(paddle.isinf(xk)):
                 break
 
             vec_len = len(sk_vec)
-            _, q = _value_and_gradient(objective_func, x1)
+            q = g1
             for i in range(vec_len - 1, -1, -1):
                 ai_vec[i] = rhok_vec[i] * paddle.dot(sk_vec[i], q)
                 q = q - ai_vec[i] * yk_vec[i]
@@ -69,12 +102,12 @@ def miminize_lbfgs(objective_func,
             if paddle.linalg.norm(pk, p=np.inf) < tolerance_change:
                 break
 
-            alpha, value, _, _ = strong_wolfe(f=objective_func, xk=x1, pk=pk)
-
-            x2 = x1 + alpha * pk
-            sk = x2 - x1
-            _, g2 = _value_and_gradient(objective_func, x2)
+            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk)
+            num_func_calls += ls_func_calls
+             
+            sk = alpha * pk
             yk = g2 - g1
+
             rhok = 1. / paddle.dot(yk, sk)
 
             if len(sk_vec) > history_size:
@@ -84,12 +117,11 @@ def miminize_lbfgs(objective_func,
             sk_vec.append(sk)
             yk_vec.append(yk)
             rhok_vec.append(rhok)
-            x1 = x2
+            xk = xk + sk
             g1 = g2
-
             k += 1
 
-        return x1, f1, g1
+        return num_func_calls, xk, value, g1
     else:
         shape = initial_position.shape[0]
         k = paddle.full(shape=[1], fill_value=0, dtype='int64')
@@ -97,18 +129,17 @@ def miminize_lbfgs(objective_func,
         head = paddle.full(shape=[1], fill_value=1, dtype='int64')
         tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
         done = paddle.full(shape=[1], fill_value=False, dtype='bool')
-        sk_vec = paddle.zeros((history_size + 1, shape), dtype="float32")
-        yk_vec = paddle.zeros((history_size + 1, shape), dtype="float32")
-        rhok_vec = paddle.zeros((history_size + 1, 1), dtype="float32")
-        ai_vec = paddle.zeros((history_size + 1, 1), dtype="float32")
+        sk_vec = paddle.zeros((history_size + 1, shape), dtype=dtype)
+        yk_vec = paddle.zeros((history_size + 1, shape), dtype=dtype)
+        rhok_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
+        ai_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
 
-        def cond(k, x1, g1, done, sk_vec, yk_vec, rhok_vec, head, tail):
+        def cond(k, done, num_func_calls, value, xk, g1, sk_vec, yk_vec, rhok_vec, head, tail):
             gnorm = paddle.linalg.norm(g1, p=np.inf)
-            done = done | (
-                gnorm < tolerance_grad) | paddle.any(paddle.isinf(x1))
+            done = done | (gnorm < tolerance_grad) | paddle.any(paddle.isinf(xk))
             return (k < max_iters) & ~done
 
-        def body(k, x1, g1, done, sk_vec, yk_vec, rhok_vec, head, tail):
+        def body(k, done, num_func_calls, value, xk, g1, sk_vec, yk_vec, rhok_vec, head, tail):
             q = paddle.assign(g1)
 
             i = paddle.full(
@@ -130,8 +161,6 @@ def miminize_lbfgs(objective_func,
             r = paddle.matmul(H0, q)
 
             i = paddle.full(shape=[1], fill_value=tail + 1, dtype='int64')
-            static_print = paddle.static.Print(i, message="i")
-
             def cond(i, r):
                 return i != head
 
@@ -139,20 +168,16 @@ def miminize_lbfgs(objective_func,
                 beta = rhok_vec[i] * paddle.dot(yk_vec[i], r)
                 r = r + sk_vec[i] * (ai_vec[i] - beta)
                 i = (i + 1).mod(history_size)
-                static_print = paddle.static.Print(beta, message="beta")
                 return i, r
 
             paddle.static.nn.while_loop(cond=cond, body=body, loop_vars=[i, r])
 
             pk = -r
-
             done = paddle.linalg.norm(pk, p=np.inf) < tolerance_change
 
-            alpha, _, _, _ = strong_wolfe(f=objective_func, xk=x1, pk=pk)
-            static_print = paddle.static.Print(alpha, message="alpha")
-            x2 = x1 + alpha * pk
-            sk = x2 - x1
-            _, g2 = _value_and_gradient(objective_func, x2)
+            alpha, value, g2, ls_func_calls = strong_wolfe(f=objective_func, xk=xk, pk=pk)
+
+            sk = alpha * pk
             yk = g2 - g1
 
             yk = paddle.unsqueeze(yk, 0)
@@ -170,14 +195,17 @@ def miminize_lbfgs(objective_func,
 
             paddle.static.nn.cond(head == tail, lambda: true_fn(tail), None)
 
-            paddle.assign(x2, x1)
-            paddle.assign(g2, g1)
-
-            paddle.assign(k + 1, k)
-            return [k, x1, g1, done, sk_vec, yk_vec, rhok_vec, head, tail]
+            def false_fn():
+                paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
+                paddle.assign(xk + sk, xk)
+                paddle.assign(g2, g1)
+            
+            paddle.static.nn.cond(done, None, false_fn)
+            k += 1
+            return [k, done, num_func_calls, value, xk, g1, sk_vec, yk_vec, rhok_vec, head, tail]
 
         paddle.static.nn.while_loop(
             cond=cond,
             body=body,
-            loop_vars=[k, x1, g1, done, sk_vec, yk_vec, rhok_vec, head, tail])
-        return x1, f1, g1
+            loop_vars=[k, done, num_func_calls, value, xk, g1, sk_vec, yk_vec, rhok_vec, head, tail])
+        return num_func_calls, xk, value, g1
