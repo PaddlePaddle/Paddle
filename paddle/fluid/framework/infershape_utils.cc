@@ -277,9 +277,7 @@ class CompatMetaTensor : public phi::MetaTensor {
   void share_meta(const MetaTensor& meta_tensor) override {
     share_dims(meta_tensor);
     set_dtype(meta_tensor.dtype());
-    // VarDesc doesn't contains layout, so we cannot share layout
-    // set_layout(meta_tensor.layout());
-
+    set_layout(meta_tensor.layout());
     // special case: share lod of LoDTensor
     share_lod(meta_tensor);
   }
