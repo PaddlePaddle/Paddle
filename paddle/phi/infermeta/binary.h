@@ -29,6 +29,8 @@ namespace phi {
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
+//
+// The InferMeta Functions in this file are arranged in alphabetic order.
 
 void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
@@ -117,6 +119,11 @@ void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
                           MetaConfig config = MetaConfig());
+
+void IndexSelectInferMeta(const MetaTensor& x,
+                          const MetaTensor& index,
+                          int dim,
+                          MetaTensor* output);
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 

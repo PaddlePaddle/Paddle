@@ -24,6 +24,21 @@ namespace phi {
   void name##Kernel(                      \
       const Context& dev_ctx, const DenseTensor& x, DenseTensor* out);
 
+#define DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(name, attr) \
+  template <typename T, typename Context>                    \
+  void name##Kernel(const Context& dev_ctx,                  \
+                    const DenseTensor& x,                    \
+                    float attr,                              \
+                    DenseTensor* out);
+
+#define DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(name, attr1, attr2) \
+  template <typename T, typename Context>                            \
+  void name##Kernel(const Context& dev_ctx,                          \
+                    const DenseTensor& x,                            \
+                    float attr1,                                     \
+                    float attr2,                                     \
+                    DenseTensor* out);
+
 DECLARE_ACTIVATION_KERNEL(Cos)
 DECLARE_ACTIVATION_KERNEL(Tan)
 DECLARE_ACTIVATION_KERNEL(Acos)
@@ -37,24 +52,15 @@ DECLARE_ACTIVATION_KERNEL(Acosh)
 DECLARE_ACTIVATION_KERNEL(Atanh)
 DECLARE_ACTIVATION_KERNEL(Relu)
 DECLARE_ACTIVATION_KERNEL(Tanh)
+DECLARE_ACTIVATION_KERNEL(TanhShrink)
+DECLARE_ACTIVATION_KERNEL(Silu)
 
-template <typename T, typename Context>
-void BReluKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 float t_min,
-                 float t_max,
-                 DenseTensor* out);
+DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu, alpha)
+DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu, threshold)
+DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(SoftShrink, lambda)
+DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(HardShrink, threshold)
+DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Elu, alpha)
 
-template <typename T, typename Context>
-void LeakyReluKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     float alpha,
-                     DenseTensor* out);
-
-template <typename T, typename Context>
-void ThresholdedReluKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           float threshold,
-                           DenseTensor* out);
+DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(BRelu, t_min, t_max)
 
 }  // namespace phi

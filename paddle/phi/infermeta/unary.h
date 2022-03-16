@@ -31,6 +31,8 @@ class MetaConfig;
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 // Because functions in this file not only can infer shape, but also need
 // infer lod or other useful data.
+//
+// The InferMeta Functions in this file are arranged in alphabetic order.
 
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
@@ -110,6 +112,12 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
 
+void ModeInferMeta(const MetaTensor& x,
+                   int axis,
+                   bool keepdim,
+                   MetaTensor* out,
+                   MetaTensor* indices);
+
 void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
@@ -163,6 +171,11 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* xshape,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
+
+void RollInferMeta(const MetaTensor& x,
+                   const ScalarArray& shifts,
+                   const std::vector<int64_t>& axis,
+                   MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 
