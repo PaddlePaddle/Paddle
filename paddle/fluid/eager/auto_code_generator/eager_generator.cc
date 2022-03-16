@@ -1006,7 +1006,7 @@ static std::string GenerateGradNodeCreationContent(
     // output autograd_meta should be got after running TraceOP.
     if (output.duplicable()) {
       const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
-          "  std::vector<egr::AutogradMeta*> %s = "
+          "    std::vector<egr::AutogradMeta*> %s = "
           "egr::EagerUtils::autograd_meta(&%s);\n";
       get_output_autograd_meta_str += paddle::string::Sprintf(
           GET_MULTI_AUTOGRAD_META_TEMPLATE, output_autograd_name, output_name);
@@ -1018,13 +1018,13 @@ static std::string GenerateGradNodeCreationContent(
         const std::string& inplace_input_autograd_name =
             "p_autograd_" + inplace_input_name;
         const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
-            "  %s = egr::EagerUtils::autograd_meta(&%s);\n";
+            "    %s = egr::EagerUtils::autograd_meta(&%s);\n";
         get_output_autograd_meta_str += paddle::string::Sprintf(
             GET_SINGLE_AUTOGRAD_META_TEMPLATE, inplace_input_autograd_name,
             inplace_input_name);
       } else {
         const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
-            "  egr::AutogradMeta* %s = "
+            "    egr::AutogradMeta* %s = "
             "egr::EagerUtils::autograd_meta(&%s);\n";
         get_output_autograd_meta_str +=
             paddle::string::Sprintf(GET_SINGLE_AUTOGRAD_META_TEMPLATE,
@@ -1286,14 +1286,14 @@ static std::string GenerateGradNodeCreationContent(
   // Add event record
   std::string event_name = op_type + " node_creation";
   const char* GRAD_NODE_CREATION_TEMPLATE =
-      "  %s"
-      "  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(%s);\n\n"
+      "%s"
+      "  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(%s);\n"
       "%s\n"
       "%s"
       "  {\n"
       "    paddle::platform::RecordEvent node_creation_record_event(\"%s\", "
       "paddle::platform::TracerEventType::Operator, 1);\n"
-      "  %s"
+      "%s"
       "    if(require_any_grad) {\n"
       "      VLOG(6) << \" Construct Grad for %s \"; \n"
       "      egr::EagerUtils::PassStopGradient(%s);\n"
@@ -1790,15 +1790,15 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   }
 
   const char* DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE =
-      "paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
+      "  paddle::platform::RecordEvent dygraph_entrance_record_event(\"%s\", "
       "paddle::platform::TracerEventType::Operator, 1);";
   std::string event_name = op_type + " dygraph";
   std::string fwd_record_event_str = paddle::string::Sprintf(
       DYGRAPH_FUNCTION_EVENT_RECORD_FUNCTION_TEMPLATE, event_name);
   const char* FWD_FUNCTION_TEMPLATE =
       "%s %s(%s) {\n\n"
-      " %s\n"
-      " %s\n"
+      "%s\n"
+      "%s\n"
       "}\n\n";
   std::string fwd_function_str = paddle::string::Sprintf(
       FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name,
