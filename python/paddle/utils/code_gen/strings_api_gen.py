@@ -120,10 +120,12 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
         if kernel_param is None:
             kernel_param = input_names + attr_names
         input_tensor_code = ""
+        # set input_tensor_code
         for i, input_name in enumerate(input_names):
             input_tensor_code = input_tensor_code + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToStringTensor({input_name});"""
 
+        # set kernel_args
         kernel_args = "*dev_ctx, "
         for param in kernel_param:
             if param in input_names:
@@ -160,6 +162,7 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
         for out_type in self.outputs['types']:
             kernel_args_type_list.append(out_trans_map[out_type])
 
+        # set kernel_signature
         kernel_signature = "void(*)(" + ", ".join(kernel_args_type_list) + ")"
 
         return input_tensor_code, kernel_args[:-2], kernel_signature
@@ -252,13 +255,9 @@ PADDLE_API {self.outputs['return_type']} {self.get_api_func_name()}({self.args_s
 """
 
             kernel_select_code = kernel_select_code + f"""
-  if (kernel_backend == Backend::UNDEFINED) {{
-    auto kernel_key_set = ParseKernelKeyByInputArgs({kernel_select_args});
-    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-    if (kernel_backend == Backend::UNDEFINED) {{
-      kernel_backend = kernel_key.backend();
-    }}
-  }}"""
+  auto kernel_key_set = ParseKernelKeyByInputArgs({kernel_select_args});
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+  kernel_backend = kernel_key.backend();"""
 
         return kernel_select_code
 
