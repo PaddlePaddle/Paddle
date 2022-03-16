@@ -52,8 +52,7 @@ class ProcessGroupGloo : public ProcessGroup {
 
   class GlooStore : public ::gloo::rendezvous::Store {
    public:
-    explicit GlooStore(
-        const std::shared_ptr<paddle::distributed::TCPStore>& store)
+    explicit GlooStore(const std::shared_ptr<paddle::distributed::Store>& store)
         : _store(store) {}
 
     ~GlooStore() = default;
@@ -87,7 +86,7 @@ class ProcessGroupGloo : public ProcessGroup {
     }
 
    protected:
-    std::shared_ptr<paddle::distributed::TCPStore> _store;
+    std::shared_ptr<paddle::distributed::Store> _store;
   };
 
   class GlooOptions {
@@ -100,7 +99,7 @@ class ProcessGroupGloo : public ProcessGroup {
     std::shared_ptr<::gloo::transport::Device> device;
   };
 
-  explicit ProcessGroupGloo(const std::shared_ptr<GlooStore>& store, int rank,
+  explicit ProcessGroupGloo(const std::shared_ptr<Store>& store, int rank,
                             int world_size,
                             std::shared_ptr<GlooOptions> options);
 
@@ -145,7 +144,7 @@ class ProcessGroupGloo : public ProcessGroup {
  protected:
   uint32_t _tag;
   std::shared_ptr<gloo::rendezvous::Context> _context;
-  std::shared_ptr<GlooStore> _store;
+  std::shared_ptr<::gloo::rendezvous::Store> _store;
 };
 
 }  // namespace distributed
