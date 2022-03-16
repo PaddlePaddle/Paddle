@@ -17,6 +17,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+framework::OpKernelType innerGetKernelTypeForVar(
+    const Tensor &tensor, const framework::OpKernelType &expected_kernel_type) {
+#ifdef PADDLE_WITH_MKLDNN
+  auto isOneDNNKernelChosen =
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN);
+  auto isNotOneDNNTensor = (tensor.layout() != framework::DataLayout::kMKLDNN);
+  auto isModelNHWC =
+      (paddle::platform::MKLDNNDeviceContext::tls()
+           .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC);
+  // All inputs (including alpha) need shape rotating
+  if (isOneDNNKernelChosen && isNotOneDNNTensor && isModelNHWC) {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(),
+                                   framework::DataLayout::kNHWC);
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
+}
+
 class PReluOp : public framework::OperatorWithKernel {
  public:
   PReluOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -53,7 +73,7 @@ class PReluOp : public framework::OperatorWithKernel {
                             "For mode 'channel', data_format must be one of "
                             "NCHW and NHWC. But recevied data_format: %s",
                             data_format_str));
-      if (data_format_str == "NCHW") {
+      if (data_format_str == "NCHW" || ctx->IsRunMKLDNNKernel()) {
         PADDLE_ENFORCE_EQ(
             product(ctx->GetInputDim("Alpha")) == x_dim[1], true,
             platform::errors::InvalidArgument(
@@ -127,6 +147,12 @@ class PReluOp : public framework::OperatorWithKernel {
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
 };
 
@@ -211,6 +237,12 @@ class PReluGradOp : public framework::OperatorWithKernel {
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
 };
 

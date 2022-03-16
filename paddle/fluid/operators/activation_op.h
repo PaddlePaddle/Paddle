@@ -253,6 +253,14 @@ struct SigmoidFunctor : public BaseActivationFunctor<T> {
   template <typename T>                               \
   using name##GradFunctor = phi::funcs::name##GradFunctor<T>;
 
+#define USE_PHI_DOUBLE_GRAD_FUNCTOR(name) \
+  template <typename T>                   \
+  using name##GradGradFunctor = phi::funcs::name##GradGradFunctor<T>;
+
+#define USE_PHI_TRIPLE_GRAD_FUNCTOR(name) \
+  template <typename T>                   \
+  using name##TripleGradFunctor = phi::funcs::name##TripleGradFunctor<T>;
+
 USE_PHI_FUNCTOR(Cos)
 USE_PHI_FUNCTOR(Tan)
 USE_PHI_FUNCTOR(Acos)
@@ -264,6 +272,22 @@ USE_PHI_FUNCTOR(Cosh)
 USE_PHI_FUNCTOR(Asinh)
 USE_PHI_FUNCTOR(Acosh)
 USE_PHI_FUNCTOR(Atanh)
+USE_PHI_FUNCTOR(Tanh)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(Tanh)
+USE_PHI_TRIPLE_GRAD_FUNCTOR(Tanh)
+USE_PHI_FUNCTOR(BRelu)
+USE_PHI_FUNCTOR(ThresholdedRelu)
+USE_PHI_FUNCTOR(LeakyRelu)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(LeakyRelu)
+USE_PHI_FUNCTOR(HardShrink)
+USE_PHI_FUNCTOR(SoftShrink)
+USE_PHI_FUNCTOR(TanhShrink)
+USE_PHI_FUNCTOR(Silu)
+USE_PHI_FUNCTOR(ELU)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(ELU)
+
+template <typename T>
+using ELUGradNegativeAlphaFunctor = phi::funcs::ELUGradNegativeAlphaFunctor<T>;
 
 template <typename T>
 struct SigmoidGradFunctor : public BaseActivationFunctor<T> {
@@ -377,31 +401,6 @@ struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// silu(x) = x / (1 + exp(-x))
-template <typename T>
-struct SiluFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    auto temp = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
-    out.device(d) = x * temp;
-  }
-};
-
-// silu'(x) = (1 / (1 + e^{-x}))  * (1 + out * e^{-x}))
-template <typename T>
-struct SiluGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    auto temp1 = static_cast<T>(1) + (-x).exp();  // 1+e^(-x)
-    auto temp2 = x * (-x).exp();                  // x*e^(-x)
-    dx.device(d) = dout * ((static_cast<T>(1) / temp1) *
-                           (static_cast<T>(1) + (temp2 / temp1)));
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
 // Originally: logsigmoid(x) = -log (1 + exp(-x))
 // For numerical stability, we can use the log-sum-exp trick:
 // https://hips.seas.harvard.edu/blog/2013/01/09/computing-log-sum-exp/
@@ -496,210 +495,6 @@ using ReluGradGradFunctor = phi::funcs::ReluGradGradFunctor<T>;
 
 template <typename T>
 using ReluCUDAFunctor = phi::funcs::ReluCUDAFunctor<T>;
-
-// tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
-template <typename T>
-struct TanhFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.tanh();
-  }
-};
-
-template <typename T>
-struct TanhGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * (static_cast<T>(1) - out * out);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
-struct TanhGradGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device>
-  void operator()(const Device& dev, const framework::Tensor* Out,
-                  const framework::Tensor* ddX, const framework::Tensor* dOut,
-                  framework::Tensor* dOutNew, framework::Tensor* ddOut) const {
-    auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "DDX", "TanhGradGrad"));
-    auto out = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(Out, "Input", "Out", "TanhGradGrad"));
-    // tanh grad grad : ddout = (1 - out^2) * ddx, dout = - (dout_old * 2 * out
-    // * ddx)
-    if (dOutNew) {
-      auto dout = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dOut, "Input", "DOut", "TanhGradGrad"));
-      auto dout_new = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dOutNew, "Output", "DOutNew", "TanhGradGrad"));
-      dout_new.device(*d) =
-          static_cast<T>(-1) * dout * static_cast<T>(2) * out * ddx;
-    }
-    if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "TanhGradGrad"));
-      ddout.device(*d) = (static_cast<T>(1) - out * out) * ddx;
-    }
-  }
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-/*
-    Out
-    DOut                            D_Dout
-    DDx     -> TanhTripleGrad ->    D_DDx
-    D_DDout                         d_OutNew
-    D_Dout_new
-
-    D_Dout = (-2) * Out * DDx * D_Dout_new
-    D_DDx = (1-Out^2)*D_DDout + (-2) * Out * DOut * D_Dout_new
-    D_OutNew = (-2) * Out * DDx * D_DDout + (-2) * DOut * DDx * D_Dout_new
-
-    Out, DDX, DOut, D_DDOut, D_DOut_New   // input
-    D_OutNew, D_DOut, D_DDx               // output
-*/
-template <typename T>
-struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device>
-  void operator()(const Device& dev, const framework::Tensor* Out,
-                  const framework::Tensor* ddX, const framework::Tensor* dOut,
-                  const framework::Tensor* d_DDOut,
-                  const framework::Tensor* d_dOut_New,
-                  framework::Tensor* d_d_Out, framework::Tensor* d_Out_New,
-                  framework::Tensor* d_DDx) const {
-    auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "DDX", "TanhTripleGrad"));
-    auto out = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(Out, "Input", "Out", "TanhTripleGrad"));
-    auto dout = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(dOut, "Input", "DOut", "TanhTripleGrad"));
-    auto d_ddOut = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
-    auto d_dOutNew = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
-
-    if (d_Out_New) {
-      auto d_OutNew = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(d_Out_New, "Output", "D_OutNew", "TanhTripleGrad"));
-      d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut) -
-                            (static_cast<T>(2) * dout * ddx * d_dOutNew);
-    }
-    if (d_d_Out) {
-      auto d_dOut = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(d_d_Out, "Output", "D_DOut", "TanhTripleGrad"));
-      d_dOut.device(*d) = static_cast<T>(-2) * out * ddx * d_dOutNew;
-    }
-    if (d_DDx) {
-      auto d_ddx = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "TanhTripleGrad"));
-      d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut -
-                         static_cast<T>(2) * out * dout * d_dOutNew;
-    }
-  }
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-// tanhshrink(x) = x - tanh(x)
-// where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
-template <typename T>
-struct TanhShrinkFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x - x.tanh();
-  }
-};
-
-template <typename T>
-struct TanhShrinkGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * (x.tanh() * x.tanh());
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-// tanhshrink(x) = x - tanh(x)
-// where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
-template <typename T>
-struct HardShrinkFunctor : public BaseActivationFunctor<T> {
-  float threshold;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);
-    auto temp2 = x > static_cast<T>(threshold);
-    out.device(d) = x * (temp1 || temp2).template cast<T>();
-  }
-};
-
-template <typename T>
-struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
-  float threshold;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);
-    auto temp2 = x > static_cast<T>(threshold);
-    dx.device(d) = dout * (temp1 || temp2).template cast<T>();
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-// softshrink(x) = x - lambda, if x > lambda; x + lambda, if x < -lambda; 0
-// otherwise
-template <typename T>
-struct SoftShrinkFunctor : public BaseActivationFunctor<T> {
-  float lambda;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"lambda", &lambda}};
-  }
-
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    auto lambdaT = static_cast<T>(lambda);
-    auto temp1 = (x > lambdaT).template cast<T>();
-    auto temp2 = (x < -lambdaT).template cast<T>();
-    out.device(d) = temp1 * (x - lambdaT) + temp2 * (x + lambdaT);
-  }
-};
-
-template <typename T>
-struct SoftShrinkGradFunctor : public BaseActivationFunctor<T> {
-  float lambda;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"lambda", &lambda}};
-  }
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    auto lambdaT = static_cast<T>(lambda);
-    auto temp1 = (x > lambdaT).template cast<T>();
-    auto temp2 = (x < -lambdaT).template cast<T>();
-    dx.device(d) = dout * (temp1 + temp2).template cast<T>();
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
 
 // sqrt(x) = x^(1/2)
 template <typename T>
@@ -904,42 +699,6 @@ struct SquareGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) = dout * static_cast<T>(2) * x;
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct BReluFunctor : public BaseActivationFunctor<T> {
-  float t_min;
-  float t_max;
-
-  // NOTE: Explicit hides the `BaseActivationFunctor<T>::GetAttrs`
-  // not polymorphism for speed.
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"t_min", &t_min}, {"t_max", &t_max}};
-  }
-
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) =
-        x.cwiseMax(static_cast<T>(t_min)).cwiseMin(static_cast<T>(t_max));
-  }
-};
-
-template <typename T>
-struct BReluGradFunctor : public BaseActivationFunctor<T> {
-  float t_min;
-  float t_max;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"t_min", &t_min}, {"t_max", &t_max}};
-  }
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout *
-                   ((x > static_cast<T>(t_min)) * (x < static_cast<T>(t_max)))
-                       .template cast<T>();
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -1168,94 +927,6 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T>
-struct LeakyReluFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}};
-  }
-
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    if (alpha < 1.f) {
-      out.device(d) = x.cwiseMax(static_cast<T>(alpha) * x);
-    } else {
-      out.device(d) = x.cwiseMin(static_cast<T>(alpha) * x);
-    }
-  }
-};
-
-template <typename T>
-struct LeakyReluGradFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}};
-  }
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    auto temp1 =
-        static_cast<T>(alpha) * (x < static_cast<T>(0)).template cast<T>();
-    auto temp2 = (x >= static_cast<T>(0)).template cast<T>();
-    dx.device(d) = dout * (temp1 + temp2).template cast<T>();
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct ELUFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}};
-  }
-
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) =
-        (x < static_cast<T>(0))
-            .select(static_cast<T>(alpha) * (x.exp() - static_cast<T>(1)), x);
-  }
-};
-
-template <typename T>
-struct ELUGradFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}};
-  }
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    // case 1: alpha >= 0
-    // dx = dout, if out > 0
-    // dx = dout * (out + alpha), if out <= 0
-    dx.device(d) = (out > static_cast<T>(0))
-                       .select(dout, dout * (out + static_cast<T>(alpha)));
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct ELUGradNegativeAlphaFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}};
-  }
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    // case 2: alpha < 0
-    // dx = dout, if x > 0
-    // dx = dout * (out + alpha), if x <=0
-    dx.device(d) = (x > static_cast<T>(0))
-                       .select(dout, dout * static_cast<T>(alpha) * x.exp());
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
 template <typename DeviceContext, typename T>
 class ELUGradKernel : public framework::OpKernel<T> {
  public:
@@ -1431,37 +1102,6 @@ struct STanhGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
-  float threshold;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    auto th = static_cast<T>(threshold);
-    out.device(d) = (x > th).template cast<T>() * x;
-  }
-};
-
-template <typename T>
-struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
-  float threshold;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    auto th = static_cast<T>(threshold);
-    dx.device(d) = dout * (x > th).template cast<T>();
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
 struct HardSigmoidFunctor : public BaseActivationFunctor<T> {
   float slope;
   float offset;
@@ -1531,121 +1171,6 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-/*
- * in arguments: x, out, ddx
- * out arguments: ddout, dout, dx
- */
-template <ActBwdOpFwdDeps kDepValue>
-inline void ExtractActivationDoubleGradTensor(
-    const framework::ExecutionContext& ctx, const framework::Tensor** X,
-    const framework::Tensor** Out, const framework::Tensor** ddX,
-    framework::Tensor** dX, framework::Tensor** dOut,
-    framework::Tensor** ddOut) {
-  auto ddx_var = ctx.InputVar("DDX");
-  auto ddo_var = ctx.OutputVar("DDOut");
-  PADDLE_ENFORCE_NOT_NULL(
-      ddx_var, platform::errors::NotFound(
-                   "Cannot get input Variable Out, variable name = %s",
-                   ctx.InputName("DDX")));
-  if (CanBeUsedBySelectedRows.count(ctx.Type())) {
-    *ddX = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*ddx_var);
-    if (ddo_var) {
-      *ddOut = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-          ddo_var);
-    }
-  } else {
-    *ddX = ctx.Input<framework::Tensor>("DDX");
-    if (ddo_var) {
-      *ddOut = ctx.Output<framework::Tensor>("DDOut");
-    }
-  }
-  PADDLE_ENFORCE_NOT_NULL(
-      *ddX,
-      platform::errors::NotFound(
-          "Cannot get the tensor from the Variable Output, variable name = %s",
-          ctx.OutputName("DDX")));
-
-  if (static_cast<int>(kDepValue) & static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
-    auto x_var = ctx.InputVar("X");
-    PADDLE_ENFORCE_NOT_NULL(
-        x_var, platform::errors::NotFound(
-                   "Cannot get input Variable Out, variable name = %s",
-                   ctx.InputName("X")));
-    auto dx_var = ctx.OutputVar("DX");
-    if (CanBeUsedBySelectedRows.count(ctx.Type())) {
-      *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
-      if (dx_var) {
-        *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-            dx_var);
-      }
-    } else {
-      *X = ctx.Input<framework::Tensor>("X");
-      if (dx_var) {
-        *dX = ctx.Output<framework::Tensor>("DX");
-      }
-    }
-  } else {
-    VLOG(10) << "Inplace activation of Op: " << ctx.Type();
-    *X = *ddX;
-  }
-  if (static_cast<int>(kDepValue) &
-      static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
-    auto out_var = ctx.InputVar("Out");
-    PADDLE_ENFORCE_NOT_NULL(
-        out_var,
-        platform::errors::NotFound(
-            "Cannot get the tensor from the Variable Out, variable name = %s",
-            ctx.InputName("Out")));
-    auto dout_var = ctx.OutputVar("DOut");
-    if (CanBeUsedBySelectedRows.count(ctx.Type())) {
-      *Out =
-          paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_var);
-      if (dout_var) {
-        *dOut =
-            paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
-                dout_var);
-      }
-    } else {
-      *Out = ctx.Input<framework::Tensor>("Out");
-      if (dout_var) {
-        *dOut = ctx.Output<framework::Tensor>("DOut");
-      }
-    }
-  } else {
-    VLOG(10) << "Inplace activation of Op: " << ctx.Type();
-    *Out = *ddX;
-  }
-}
-
-template <typename DeviceContext, typename Functor>
-class ActivationDoubleGradKernel
-    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
- public:
-  using T = typename Functor::ELEMENT_TYPE;
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Tensor *X, *Out, *ddX;
-    X = Out = ddX = nullptr;
-    framework::Tensor *ddOut, *dOut, *dX;
-    ddOut = dOut = dX = nullptr;
-
-    ExtractActivationDoubleGradTensor<Functor::FwdDeps()>(ctx, &X, &Out, &ddX,
-                                                          &dX, &dOut, &ddOut);
-
-    if (ddOut) ddOut->mutable_data<T>(ctx.GetPlace());
-    if (dOut) dOut->mutable_data<T>(ctx.GetPlace());
-    if (dX) dX->mutable_data<T>(Out->dims(), ctx.GetPlace());
-
-    auto& place = ctx.template device_context<DeviceContext>();
-
-    Functor functor;
-    auto attrs = functor.GetAttrs();
-    for (auto& attr : attrs) {
-      *attr.second = ctx.Attr<float>(attr.first);
-    }
-    functor(place, X, Out, ddX, ddOut, dOut, dX);
-  }
-};
-
 template <typename T>
 struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
@@ -1662,73 +1187,6 @@ struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
       auto ddout = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "AbsGradGrad"));
       ddout.device(*d) = ddx * x.sign();
-    }
-  }
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}};
-  }
-  template <typename Device>
-  void operator()(const Device& dev, const framework::Tensor* X,
-                  const framework::Tensor* Out, const framework::Tensor* ddX,
-                  framework::Tensor* ddOut, framework::Tensor* dOut,
-                  framework::Tensor* dX) const {
-    if (ddOut) {
-      auto* d = dev.eigen_device();
-      auto ddx = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddX, "Input", "DDX", "LeakyReluGradGrad"));
-      auto x = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(X, "Input", "X", "LeakyReluGradGrad"));
-      auto ddout = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DOut", "LeakyReluGradGrad"));
-      ddout.device(*d) =
-          ddx *
-          ((x > static_cast<T>(0)).template cast<T>() +
-           static_cast<T>(alpha) * (x <= static_cast<T>(0)).template cast<T>())
-              .template cast<T>();
-    }
-  }
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
-  float alpha;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"alpha", &alpha}};
-  }
-  template <typename Device>
-  void operator()(const Device& dev, const framework::Tensor* X,
-                  const framework::Tensor* ddX, framework::Tensor* ddOut,
-                  const framework::Tensor* dOut, framework::Tensor* dX) const {
-    auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "DDX", "ELUGradGrad"));
-    auto x = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(X, "Input", "X", "ELUGradGrad"));
-
-    if (dX) {
-      auto dx = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dX, "Output", "DX", "ELUGradGrad"));
-      auto dout = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dOut, "Output", "DOut", "ELUGradGrad"));
-      dx.device(*d) = ddx * dout * static_cast<T>(alpha) * x.exp() *
-                      (x <= static_cast<T>(0)).template cast<T>();
-    }
-
-    if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "ELUGradGrad"));
-      ddout.device(*d) = ddx *
-                         ((x > static_cast<T>(0)).template cast<T>() +
-                          static_cast<T>(alpha) * x.exp() *
-                              (x <= static_cast<T>(0)).template cast<T>())
-                             .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -2493,29 +1951,22 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
 }  // namespace operators
 }  // namespace paddle
 
-#define FOR_EACH_ACTIVATION_OP(__macro)                                       \
-  __macro(silu, Silu, SiluFunctor, SiluGradFunctor);                          \
-  __macro(logsigmoid, LogSigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);  \
-  __macro(softshrink, SoftShrink, SoftShrinkFunctor, SoftShrinkGradFunctor);  \
-  __macro(ceil, Ceil, CeilFunctor, ZeroGradFunctor);                          \
-  __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                       \
-  __macro(round, Round, RoundFunctor, ZeroGradFunctor);                       \
-  __macro(reciprocal, Reciprocal, ReciprocalFunctor, ReciprocalGradFunctor);  \
-  __macro(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);                      \
-  __macro(log2, Log2, Log2Functor, Log2GradFunctor);                          \
-  __macro(log10, Log10, Log10Functor, Log10GradFunctor);                      \
-  __macro(brelu, BRelu, BReluFunctor, BReluGradFunctor);                      \
-  __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);         \
-  __macro(stanh, STanh, STanhFunctor, STanhGradFunctor);                      \
-  __macro(softplus, Softplus, SoftplusFunctor, SoftplusGradFunctor);          \
-  __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor);          \
-  __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);                      \
-  __macro(tanh_shrink, TanhShrink, TanhShrinkFunctor, TanhShrinkGradFunctor); \
-  __macro(hard_shrink, HardShrink, HardShrinkFunctor, HardShrinkGradFunctor); \
-  __macro(hard_sigmoid, HardSigmoid, HardSigmoidFunctor,                      \
-          HardSigmoidGradFunctor);                                            \
-  __macro(swish, Swish, SwishFunctor, SwishGradFunctor);                      \
-  __macro(thresholded_relu, ThresholdedRelu, ThresholdedReluFunctor,          \
-          ThresholdedReluGradFunctor);                                        \
-  __macro(mish, Mish, MishFunctor, MishGradFunctor);                          \
+#define FOR_EACH_ACTIVATION_OP(__macro)                                      \
+  __macro(logsigmoid, LogSigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor); \
+  __macro(ceil, Ceil, CeilFunctor, ZeroGradFunctor);                         \
+  __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                      \
+  __macro(round, Round, RoundFunctor, ZeroGradFunctor);                      \
+  __macro(reciprocal, Reciprocal, ReciprocalFunctor, ReciprocalGradFunctor); \
+  __macro(log1p, Log1p, Log1pFunctor, Log1pGradFunctor);                     \
+  __macro(log2, Log2, Log2Functor, Log2GradFunctor);                         \
+  __macro(log10, Log10, Log10Functor, Log10GradFunctor);                     \
+  __macro(soft_relu, SoftRelu, SoftReluFunctor, SoftReluGradFunctor);        \
+  __macro(stanh, STanh, STanhFunctor, STanhGradFunctor);                     \
+  __macro(softplus, Softplus, SoftplusFunctor, SoftplusGradFunctor);         \
+  __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor);         \
+  __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);                     \
+  __macro(hard_sigmoid, HardSigmoid, HardSigmoidFunctor,                     \
+          HardSigmoidGradFunctor);                                           \
+  __macro(swish, Swish, SwishFunctor, SwishGradFunctor);                     \
+  __macro(mish, Mish, MishFunctor, MishGradFunctor);                         \
   __macro(hard_swish, HardSwish, HardSwishFunctor, HardSwishGradFunctor);

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/infrt/dialect/infrt/common_type.h"
+#include "paddle/infrt/dialect/infrt/common/types.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
@@ -23,16 +23,16 @@
 
 namespace infrt {
 
-phi::Backend cvtTarget2Phi(TargetType target);
-TargetType cvtTargetFromPhi(phi::Backend backend);
+phi::Backend ConvertTargetToPhi(TargetType target);
+TargetType ConvertTargetFromPhi(phi::Backend backend);
 
-phi::DataType cvtPrecision2Phi(PrecisionType precision);
-PrecisionType cvtPrecisionFromPhi(phi::DataType datatype);
+phi::DataType ConvertPrecisionToPhi(PrecisionType precision);
+PrecisionType ConvertPrecisionFromPhi(phi::DataType datatype);
 
-phi::DataLayout cvtLayout2Phi(LayoutType layout);
-LayoutType cvtLayoutFromPhi(phi::DataLayout layout);
+phi::DataLayout ConvertLayoutToPhi(LayoutType layout);
+LayoutType ConvertLayoutFromPhi(phi::DataLayout layout);
 
-phi::KernelKey cvtPlace2Phi(const Place& place);
-Place cvtPlaceFromPhi(phi::TensorArgDef tensor_arg);
+phi::KernelKey ConvertPlaceToPhi(const Place& place);
+Place ConvertPlaceFromPhi(phi::TensorArgDef tensor_arg);
 
 }  // namespace infrt
