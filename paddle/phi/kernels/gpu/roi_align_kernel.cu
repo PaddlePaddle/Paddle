@@ -70,7 +70,7 @@ __device__ T BilinearInterpolate(
 }
 
 template <class T>
-__global__ void GPUROIAlignForward(const int nthreads,
+__global__ void GPURoiAlignForward(const int nthreads,
                                    const T* input_data,
                                    const T* input_rois,
                                    const float spatial_scale,
@@ -136,7 +136,7 @@ __global__ void GPUROIAlignForward(const int nthreads,
 }
 
 template <typename T, typename Context>
-void ROIAlignKernel(const Context& dev_ctx,
+void RoiAlignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& boxes,
                     paddle::optional<const DenseTensor&> boxes_num,
@@ -232,7 +232,7 @@ void ROIAlignKernel(const Context& dev_ctx,
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   paddle::memory::Copy(
       gplace, roi_id_data, cplace, roi_batch_id_data, bytes, dev_ctx.stream());
-  GPUROIAlignForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+  GPURoiAlignForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
       output_size,
       x.data<T>(),
       boxes.data<T>(),
@@ -251,4 +251,4 @@ void ROIAlignKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    roi_align, GPU, ALL_LAYOUT, phi::ROIAlignKernel, float, double) {}
+    roi_align, GPU, ALL_LAYOUT, phi::RoiAlignKernel, float, double) {}
