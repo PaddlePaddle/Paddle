@@ -106,10 +106,10 @@ class ModeGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(mode, ModeInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(mode, ModeInferShapeFunctor,
                             PD_INFER_META(phi::ModeInferMeta));
 REGISTER_OPERATOR(mode, ops::ModeOp, ops::ModeOpMaker,
                   ops::ModeGradOpMaker<paddle::framework::OpDesc>,
                   ops::ModeGradOpMaker<paddle::imperative::OpBase>,
-                  ModeInferMetaFunctor);
+                  ModeInferShapeFunctor);
 REGISTER_OPERATOR(mode_grad, ops::ModeOpGrad);
