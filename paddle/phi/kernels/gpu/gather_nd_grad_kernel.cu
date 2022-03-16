@@ -63,5 +63,5 @@ PD_REGISTER_KERNEL(gather_nd_grad,
                    int64_t,
                    int,
                    phi::dtype::float16) {
-  kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
+  kernel->InputAt(1).SetDataType(phi::DataType::ALL_DTYPE);
 }
