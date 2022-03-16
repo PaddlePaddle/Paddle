@@ -28,7 +28,7 @@
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
 #include "paddle/phi/kernels/math_kernel.h"
-#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_kernel.h"
 
 namespace phi {
 

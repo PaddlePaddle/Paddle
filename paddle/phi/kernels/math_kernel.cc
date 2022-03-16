@@ -20,27 +20,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MeanKernel(const Context& dev_ctx,
-                const DenseTensor& x,
-                const std::vector<int64_t>& dims,
-                bool keep_dim,
-                DenseTensor* out) {
-  bool reduce_all = false;
-  MeanRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
-}
-
-template <typename T, typename Context>
-void SumKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const std::vector<int64_t>& dims,
-               DataType out_dtype,
-               bool keep_dim,
-               DenseTensor* out) {
-  bool reduce_all = false;
-  SumRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
-}
-
-template <typename T, typename Context>
 void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
@@ -80,25 +59,6 @@ void MultiplyKernel(const Context& dev_ctx,
 
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
-
-PD_REGISTER_KERNEL(
-    mean, CPU, ALL_LAYOUT, phi::MeanKernel, float, double, bool) {}
-
-PD_REGISTER_KERNEL(sum,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::SumKernel,
-                   bool,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   int16_t,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
 
 PD_REGISTER_KERNEL(add,
                    CPU,
@@ -147,32 +107,7 @@ PD_REGISTER_KERNEL(multiply,
                    phi::dtype::bfloat16) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(mean,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MeanKernel,
-                   float,
-                   double,
-                   bool,
-                   int,
-                   int64_t,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(sum,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SumKernel,
-                   bool,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   int16_t,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
+
 PD_REGISTER_KERNEL(add,
                    GPU,
                    ALL_LAYOUT,
