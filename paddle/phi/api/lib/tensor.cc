@@ -142,10 +142,11 @@ PlaceType Tensor::place() const {
 }
 
 paddle::platform::Place Tensor::inner_place() const {
-  PADDLE_ENFORCE(impl_ != nullptr,
-                 phi::errors::PermissionDenied(
-                     "Null pointer error, the impl_ of Tensor should not be "
-                     "null when calling Tensor::inner_place()."));
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::PermissionDenied(
+          "Null pointer error, the impl_ of Tensor should not be "
+          "Null when calling Tensor::inner_place()."));
   return impl_->place();
 }
 
