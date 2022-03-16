@@ -242,18 +242,18 @@ void BindDistributed(py::module *m) {
 
   py::class_<GlooStore, std::shared_ptr<GlooStore>>(*m, "GlooStore")
       .def(py::init(
-               [](const std::shared_ptr<paddle::distributed::TCPStore> &store) {
+               [](const std::shared_ptr<paddle::distributed::Store> &store) {
                  return std::make_shared<GlooStore>(store);
                }),
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<ProcessGroupGloo, std::shared_ptr<ProcessGroupGloo>>(
       *m, "ProcessGroupGloo", ProcessGroup)
-      .def(py::init<const std::shared_ptr<GlooStore> &, int, int,
-                    std::shared_ptr<GlooOptions> &>(),
+      .def(py::init<const std::shared_ptr<paddle::distributed::Store> &, int,
+                    int, std::shared_ptr<GlooOptions> &>(),
            py::call_guard<py::gil_scoped_release>())
-      .def(py::init([](const std::shared_ptr<GlooStore> &store, int rank,
-                       int world_size) {
+      .def(py::init([](const std::shared_ptr<paddle::distributed::Store> &store,
+                       int rank, int world_size) {
              auto opts = GlooOptions::create();
              char *ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
              if (ifname && strlen(ifname) > 1) {
