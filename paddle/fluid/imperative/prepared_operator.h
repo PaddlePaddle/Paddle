@@ -353,6 +353,8 @@ void BuildDygraphPhiKernelContext(
               "Unsupported output `%s` type when call pt kernel.",
               framework::ToTypeName(var->Type())));
         }
+      } else {
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
     }
     kernel_ctx->AssignOutputRange(std::make_pair(start_idx, end_idx), i);

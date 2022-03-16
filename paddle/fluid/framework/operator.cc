@@ -2172,6 +2172,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
               "Unsupported output `%s` type when call pt kernel.",
               framework::ToTypeName(var->Type())));
         }
+      } else {
+        pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
     }
     pt_kernel_context->AssignOutputRange(std::make_pair(start_idx, end_idx), i);
