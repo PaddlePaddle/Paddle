@@ -38,6 +38,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 
+#include "paddle/infrt/dialect/infrt/ir/basic_kernels.h"
+#include "paddle/infrt/dialect/infrt/ir/infrt_dialect.h"
+
 #include "paddle/infrt/dialect/infrt/pass/infrt_op_fuse_pass.h"
 #include "paddle/infrt/dialect/phi/pass/phi_op_cvt_pass.h"
 #include "paddle/infrt/host_context/paddle_mlir.h"
@@ -65,7 +68,7 @@ TEST(ABS_MODEL, convert_and_execute) {
   context->allowUnregisteredDialects();
   context->getOrLoadDialect<mlir::StandardOpsDialect>();
 
-  context->getOrLoadDialect<infrt::dialect::INFRTDialect>();
+  context->getOrLoadDialect<infrt::InfrtDialect>();
   context->getOrLoadDialect<infrt::ts::TensorShapeDialect>();
   context->getOrLoadDialect<infrt::InfrtDialect>();
   context->getOrLoadDialect<infrt::dt::DTDialect>();
@@ -83,8 +86,9 @@ TEST(ABS_MODEL, convert_and_execute) {
   std::vector<infrt::Place> valid_places = {{infrt::TargetType::CPU,
                                              infrt::PrecisionType::FLOAT32,
                                              infrt::LayoutType::NCHW}};
-  phi_pass_manager.addPass(std::make_unique<infrt::phiOpCvtPass>(valid_places));
+  phi_pass_manager.addPass(infrt::createPhiOpCvtPass(valid_places));
   phi_pass_manager.addPass(infrt::createInfrtOpFusePass());
+
   if (mlir::failed(pm.run(module_))) {
     std::cout << "\npass failed!\n" << std::endl;
   }
