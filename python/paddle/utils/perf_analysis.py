@@ -40,11 +40,21 @@ def _parse_args():
         help="Tools for analyzing performance. Currently only supports nsys. Default is nsys."
     )
     base_group.add_argument(
+        "--task",
+        type=str,
+        # default="all",
+        # choices=["model", "op", "all"],
+        default="op",
+        choices=["op"],
+        help="Select the task to analyze. [model/op/all] task can be selected. Default is all."
+    )
+    base_group.add_argument(
         "--mode",
         type=str,
-        default="all",
-        choices=["model", "op", "all"],
-        help="Select the mode to analyze. [model/op/all] mode can be selected. Default is all."
+        default="fluid",
+        # choices=["fluid", "eager", "final"],
+        choices=["fluid", "eager"],
+        help="Select the mode to analyze. [fluid/eager/final] mode can be selected. Default is fluid."
     )
     base_group.add_argument(
         "--profile_start_step",
@@ -244,14 +254,15 @@ class NsightRunnerForOpAnalyse(object):
     Use Nsight System tool to analyse performance of OP.
     """
 
-    def run(self, stdout, profile_start_step, profile_end_step):
+    def run(self, stdout, mode, profile_start_step, profile_end_step):
         """
         parse logs to analyse performance and print the report.
         """
         parse_status, op_type_list, scheduling_time_dict = self.parse_logs(
-            stdout.split("\n"), profile_start_step, profile_end_step)
+            stdout.split("\n"), mode, profile_start_step, profile_end_step)
         if parse_status:
-            self._print_scheduling_time(op_type_list, scheduling_time_dict)
+            # self._print_scheduling_time(op_type_list, scheduling_time_dict)
+            self._print_nvtx_time(op_type_list, scheduling_time_dict)
             return
         print("Parse Error:\n {}".format(stdout))
 
@@ -262,6 +273,7 @@ class NsightRunnerForOpAnalyse(object):
         """
         flag_nvtx_time_start = False
         nvtx_time_start_step = 0
+        # init_map = {'ncalls': 0, 'tottime': 0.0, 'tot_percall': 0.0, 'cumtime': 0.0, 'cum_percall': 0.0}
 
         for i in range(len(logs)):
             line = _parse_string(logs[i])
@@ -274,15 +286,44 @@ class NsightRunnerForOpAnalyse(object):
                     op_type = infos[-2]
                     if op_type not in op_type_list and '_grad' not in op_type:
                         op_type_list.append(op_type)
-                        _nvtx_meta_data_dict[op_type +
-                                             ' pybind_imperative_func'] = None
-                        _nvtx_meta_data_dict[op_type] = None
-                        _nvtx_meta_data_dict[op_type + ' compute'] = None
-                        _nvtx_meta_data_dict[op_type + '_grad'] = None
-                        _nvtx_meta_data_dict[op_type + '_grad compute'] = None
+                        for record_type in [
+                                ' pybind_imperative_func', ' dygraph',
+                                ' infer_shape', ' compute', ' node_creation',
+                                '_grad grad_node', '_grad infer_shape',
+                                '_grad compute'
+                        ]:
+                            _nvtx_meta_data_dict[op_type + record_type] = {
+                                'ncalls': 0,
+                                'tottime': 0.0,
+                                'tot_percall': 0.0,
+                                'cumtime': 0.0,
+                                'cum_percall': 0.0
+                            }
             if not flag_nvtx_time_start and 'NVTX Push-Pop Range Statistics:' in line:
                 flag_nvtx_time_start = True
                 nvtx_time_start_step = i
+
+        _nvtx_meta_data_dict['Step'] = {
+            'ncalls': 0,
+            'tottime': 0.0,
+            'tot_percall': 0.0,
+            'cumtime': 0.0,
+            'cum_percall': 0.0
+        }
+        _nvtx_meta_data_dict['backward'] = {
+            'ncalls': 0,
+            'tottime': 0.0,
+            'tot_percall': 0.0,
+            'cumtime': 0.0,
+            'cum_percall': 0.0
+        }
+        _nvtx_meta_data_dict['Accumulation grad_node'] = {
+            'ncalls': 0,
+            'tottime': 0.0,
+            'tot_percall': 0.0,
+            'cumtime': 0.0,
+            'cum_percall': 0.0
+        }
 
         return nvtx_time_start_step
 
@@ -309,6 +350,16 @@ class NsightRunnerForOpAnalyse(object):
         total_time = self._to_float(l[1]) * 1E-6
         max_time = self._to_float(l[5]) * 1E-6
         return (total_time - max_time) / (num_step - 1)
+
+    def _calculate_time(self, l, num_step):
+        total_time = self._to_float(l[1]) * 1E-6
+        max_time = self._to_float(l[5]) * 1E-6
+        num_calls = self._to_float(l[2]) - 1
+        # calculate result
+        ncalls = self._to_float(l[2]) / num_step
+        tot_percall = (total_time - max_time) / num_calls
+        tottime = tot_percall * ncalls
+        return ncalls, tottime, tot_percall
 
     def _calculate_scheduling_time(self, outside_time, inside_time):
         """
@@ -344,7 +395,7 @@ class NsightRunnerForOpAnalyse(object):
                 tmp_op_time_dict['bwd_op_compute_avg_time'])
         return tmp_op_time_dict
 
-    def parse_logs(self, logs, profile_start_step, profile_end_step):
+    def parse_logs(self, logs, mode, profile_start_step, profile_end_step):
         """
         parse logs to analyse performance.
         """
@@ -380,8 +431,22 @@ class NsightRunnerForOpAnalyse(object):
             if not infos:
                 continue
             nvtx_range_type = infos[-1]
-            if nvtx_range_type in ['pybind_imperative_func', 'compute']:
+            if nvtx_range_type in [
+                    'pybind_imperative_func', 'dygraph', 'infer_shape',
+                    'compute', 'node_creation'
+            ]:
                 nvtx_range_type = infos[-2] + ' ' + nvtx_range_type
+            if nvtx_range_type == 'grad_node':
+                if mode == 'eager':
+                    if 'GradNodeAccumulation' in infos[-2]:
+                        nvtx_range_type = 'Accumulation grad_node'
+                    elif 'GradNode' in infos[-2]:
+                        nvtx_range_type = infos[-2].strip().split('GradNode')[
+                            1] + '_grad grad_node'
+                elif mode == 'fluid':
+                    nvtx_range_type = infos[-2] + ' ' + nvtx_range_type
+            if nvtx_range_type == 'trace_op' and mode == 'fluid':
+                nvtx_range_type = infos[-2] + ' dygraph'
 
             # step time
             if nvtx_range_type.isdigit() and int(
@@ -393,29 +458,138 @@ class NsightRunnerForOpAnalyse(object):
 
             # nvtx time
             if nvtx_range_type in _nvtx_meta_data_dict:
-                avg_time = self._calculate_avg_time_per_op(infos)
-                _nvtx_meta_data_dict[nvtx_range_type] = round(avg_time, 6)
+                ncalls, tottime, tot_percall = self._calculate_time(infos,
+                                                                    num_step)
+                _nvtx_meta_data_dict[nvtx_range_type]['ncalls'] = ncalls
+                _nvtx_meta_data_dict[nvtx_range_type]['tottime'] = tottime
+                _nvtx_meta_data_dict[nvtx_range_type][
+                    'tot_percall'] = tot_percall
+                # cumtime will be update later
+                _nvtx_meta_data_dict[nvtx_range_type]['cumtime'] = tottime
+                # avg_time = self._calculate_avg_time_per_op(infos)
+                # _nvtx_meta_data_dict[nvtx_range_type] = round(avg_time, 6)
 
-                if '_grad' in nvtx_range_type and 'compute' not in nvtx_range_type or 'pybind_imperative_func' in nvtx_range_type:
-                    total_op_call_time_per_step += self._calculate_avg_time_per_step(
-                        infos, num_step)
+                # if '_grad' in nvtx_range_type and 'compute' not in nvtx_range_type or 'pybind_imperative_func' in nvtx_range_type:
+                #     total_op_call_time_per_step += self._calculate_avg_time_per_step(
+                #         infos, num_step)
 
-        # analyse scheduling time
-        scheduling_time_dict['step_time'] = round(
-            total_step_time / step_count, 6) if step_count != 0 else None
-        scheduling_time_dict['op_call_time_per_step'] = round(
-            total_op_call_time_per_step, 6)
-        scheduling_time_dict[
-            'python_call_time'] = self._calculate_scheduling_time(
-                scheduling_time_dict['step_time'],
-                scheduling_time_dict['op_call_time_per_step'])
+        _nvtx_meta_data_dict['Step']['ncalls'] = 1
+        _nvtx_meta_data_dict['Step'][
+            'tottime'] = total_step_time / step_count if step_count != 0 else None
+        _nvtx_meta_data_dict['Step']['tot_percall'] = _nvtx_meta_data_dict[
+            'Step']['tottime']
+        _nvtx_meta_data_dict['Step']['cumtime'] = _nvtx_meta_data_dict['Step'][
+            'tottime']
+
+        # calculate cumtime
+        if _nvtx_meta_data_dict['Step']['ncalls']:
+            _nvtx_meta_data_dict['Step']['cumtime'] -= _nvtx_meta_data_dict[
+                'backward']['tottime']
+        if _nvtx_meta_data_dict['backward']['ncalls']:
+            _nvtx_meta_data_dict['backward']['cumtime'] -= _nvtx_meta_data_dict[
+                'Accumulation grad_node']['tottime']
+
         for op_type in op_type_list:
-            scheduling_time_dict[
-                op_type] = self._get_scheduling_time_from_meta_data(
-                    op_type, _nvtx_meta_data_dict)
+            if _nvtx_meta_data_dict['Step']['ncalls']:
+                _nvtx_meta_data_dict['Step']['cumtime'] -= _nvtx_meta_data_dict[
+                    op_type + ' pybind_imperative_func']['tottime']
+            if _nvtx_meta_data_dict[op_type + ' pybind_imperative_func'][
+                    'ncalls']:
+                _nvtx_meta_data_dict[op_type + ' pybind_imperative_func'][
+                    'cumtime'] -= _nvtx_meta_data_dict[op_type + ' dygraph'][
+                        'tottime']
+            for record_type in [' infer_shape', ' compute', ' node_creation']:
+                if _nvtx_meta_data_dict[op_type + ' dygraph']['ncalls']:
+                    _nvtx_meta_data_dict[op_type + ' dygraph'][
+                        'cumtime'] -= _nvtx_meta_data_dict[
+                            op_type + record_type]['tottime']
+            if _nvtx_meta_data_dict['backward']['ncalls']:
+                _nvtx_meta_data_dict['backward'][
+                    'cumtime'] -= _nvtx_meta_data_dict[
+                        op_type + '_grad grad_node']['tottime']
+            for record_type in ['_grad infer_shape', '_grad compute']:
+                if _nvtx_meta_data_dict[op_type + '_grad grad_node']['ncalls']:
+                    _nvtx_meta_data_dict[op_type + '_grad grad_node'][
+                        'cumtime'] -= _nvtx_meta_data_dict[
+                            op_type + record_type]['tottime']
+
+        for value in _nvtx_meta_data_dict.values():
+            if value['ncalls'] > 0:
+                value['cum_percall'] = value['cumtime'] / value['ncalls']
 
         parse_status = True
-        return parse_status, op_type_list, scheduling_time_dict
+        return parse_status, op_type_list, _nvtx_meta_data_dict
+        # # analyse scheduling time
+        # scheduling_time_dict['step_time'] = round(
+        #     total_step_time / step_count, 6) if step_count != 0 else None
+        # scheduling_time_dict['op_call_time_per_step'] = round(
+        #     total_op_call_time_per_step, 6)
+        # scheduling_time_dict[
+        #     'python_call_time'] = self._calculate_scheduling_time(
+        #         scheduling_time_dict['step_time'],
+        #         scheduling_time_dict['op_call_time_per_step'])
+        # for op_type in op_type_list:
+        #     scheduling_time_dict[
+        #         op_type] = self._get_scheduling_time_from_meta_data(
+        #             op_type, _nvtx_meta_data_dict)
+
+        # parse_status = True
+        # return parse_status, op_type_list, scheduling_time_dict
+
+    def _print_nvtx_time(self, op_type_list, time_dict):
+        print(
+            '\n\nrecord items:  ncalls  tottime(ms)  tot_percall(ms)  cumtime(ms)   cum_percall(ms)'
+        )
+        info_types = [
+            'ncalls', 'tottime', 'tot_percall', 'cumtime', 'cum_percall'
+        ]
+        # Step
+        step_str = '\n\nStep:  '
+        for info_type in info_types:
+            step_str += ' {:^20}'.format(time_dict['Step'][info_type])
+        print(step_str)
+
+        for op_type in op_type_list:
+            fwd_op_str = '\n\n    ' + op_type
+            fwd_op_str += '\n    pybind_imperative_func:  '
+            for info_type in info_types:
+                fwd_op_str += ' {:^20}'.format(time_dict[
+                    op_type + ' pybind_imperative_func'][info_type])
+            fwd_op_str += '\n        dygraph:  '
+            for info_type in info_types:
+                fwd_op_str += ' {:^20}'.format(time_dict[op_type + ' dygraph'][
+                    info_type])
+            for record_type in ['infer_shape', 'compute', 'node_creation']:
+                fwd_op_str += '\n            ' + record_type + ':  '
+                for info_type in info_types:
+                    fwd_op_str += ' {:^20}'.format(time_dict[
+                        op_type + ' ' + record_type][info_type])
+            print(fwd_op_str)
+
+        backward_str = '\n\n    backward: '
+        for info_type in info_types:
+            backward_str += ' {:^20}'.format(time_dict['backward'][info_type])
+        print(backward_str)
+
+        for op_type in op_type_list:
+            bwd_op_str = '\n        ' + op_type + '_grad'
+            bwd_op_str += '\n            grad_node:  '
+            for info_type in info_types:
+                bwd_op_str += ' {:^20}'.format(time_dict[
+                    op_type + '_grad grad_node'][info_type])
+            for record_type in ['infer_shape', 'compute']:
+                bwd_op_str += '\n                ' + record_type + ':  '
+                for info_type in info_types:
+                    bwd_op_str += ' {:^20}'.format(time_dict[
+                        op_type + '_grad ' + record_type][info_type])
+            print(bwd_op_str)
+
+        bwd_op_str = '\n        Accumulation grad_node'
+        bwd_op_str += '\n            Accumulation grad_node:  '
+        for info_type in info_types:
+            bwd_op_str += ' {:^20}'.format(time_dict['Accumulation grad_node'][
+                info_type])
+        print(bwd_op_str)
 
     def _print_scheduling_time(self, op_type_list, time_dict):
         print('\n')
@@ -645,13 +819,13 @@ def _perf_analysis():
                                 " ".join(args.running_script_args))
         stdout, exit_code = _nsys_cmd(cmd, args)
         if exit_code == 0:
-            if args.mode in ['model', 'all']:
+            if args.task in ['model', 'all']:
                 runner = NsightRunnerForModelAnalyse()
                 runner.run(stdout, args.profile_start_step,
                            args.profile_end_step)
-            if args.mode in ['op', 'all']:
+            if args.task in ['op', 'all']:
                 runner = NsightRunnerForOpAnalyse()
-                runner.run(stdout, args.profile_start_step,
+                runner.run(stdout, args.mode, args.profile_start_step,
                            args.profile_end_step)
         else:
             print("Running Error:\n {}".format(stdout))
