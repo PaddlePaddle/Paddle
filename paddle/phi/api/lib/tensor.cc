@@ -142,10 +142,11 @@ PlaceType Tensor::place() const {
 }
 
 paddle::platform::Place Tensor::inner_place() const {
-  if (impl_) {
-    return impl_->place();
-  }
-  return ConvertExtPlaceToInnerPlace(place_);
+  PADDLE_ENFORCE(impl_ != nullptr,
+                 phi::errors::PermissionDenied(
+                     "Null pointer error, the impl_ of Tensor should not be "
+                     "null when calling Tensor::inner_place()."));
+  return impl_->place();
 }
 
 bool Tensor::is_cpu() const {
