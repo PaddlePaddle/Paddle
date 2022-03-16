@@ -38,11 +38,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
-#include "paddle/fluid/platform/profiler/event_python.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/platform/profiler/profiler.h"
-#include "paddle/phi/kernels/autotune/kernel_profiler.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -59,9 +54,6 @@ void ConvCudnnKernel(const Context& ctx,
                      int workspace_size_MB,
                      bool exhaustive_search_t,
                      DenseTensor* output) {
-  phi::KernelProfiler profiler;
-  profiler.Start();
-
   output->mutable_data<T>(ctx.GetPlace());
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
@@ -344,10 +336,11 @@ void ConvCudnnKernel(const Context& ctx,
   paddle::operators::ScalingParamType<T> alpha = 1.0f;
   paddle::operators::ScalingParamType<T> beta = 0.0f;
 
-// NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
-// ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
-// VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
-
+  // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+  // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+  // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
+  GpuTimer timer;
+  timer.Start(ctx.stream());
 #ifdef PADDLE_WITH_HIP
   workspace_handle.RunFunc(
       [&](void* workspace_ptr) {
@@ -369,39 +362,34 @@ void ConvCudnnKernel(const Context& ctx,
       },
       workspace_size);
 #else
-  {
-    // auto event = profiler.RecordEvent("conv_forward");
-    for (int i = 0; i < groups; i++) {
-      workspace_handle.RunFunc(
-          [&](void* workspace_ptr) {
-            PADDLE_ENFORCE_GPU_SUCCESS(
-                paddle::platform::dynload::cudnnConvolutionForward(
-                    handle,
-                    &alpha,
-                    args.idesc.desc(),
-                    input_data + i * group_offset_in,
-                    args.wdesc.desc(),
-                    filter_data + i * group_offset_filter,
-                    args.cdesc.desc(),
-                    algo,
-                    workspace_ptr,
-                    workspace_size,
-                    &beta,
-                    args.odesc.desc(),
-                    output_data + i * group_offset_out));
-          },
-          workspace_size);
-    }
-    // event.End();
+  for (int i = 0; i < groups; i++) {
+    workspace_handle.RunFunc(
+        [&](void* workspace_ptr) {
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              paddle::platform::dynload::cudnnConvolutionForward(
+                  handle,
+                  &alpha,
+                  args.idesc.desc(),
+                  input_data + i * group_offset_in,
+                  args.wdesc.desc(),
+                  filter_data + i * group_offset_filter,
+                  args.cdesc.desc(),
+                  algo,
+                  workspace_ptr,
+                  workspace_size,
+                  &beta,
+                  args.odesc.desc(),
+                  output_data + i * group_offset_out));
+        },
+        workspace_size);
   }
 #endif
+  timer.Stop(ctx.stream());
+  std::cout << "======== ElapsedTime ======" << timer.ElapsedTime();
 
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);
   }
-
-  profiler.Stop();
-  // profiler.GetPerfResults();
 }
 
 template <typename T, typename Context>
