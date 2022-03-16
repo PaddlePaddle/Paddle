@@ -57,7 +57,7 @@ void GradNodeBase::AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id) {
     // its pre-ops
     if (meta && !meta->StopGradient()) {
       auto node = meta->GetMutableGradNode();
-      if (!node || node.get()) {
+      if (!node || !node.get()) {
         meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
       }
 
@@ -77,7 +77,7 @@ void GradNodeBase::AddEdges(AutogradMeta* meta, size_t slot_id) {
 
   if (meta && !meta->StopGradient()) {
     auto node = meta->GetMutableGradNode();
-    if (!node) {
+    if (!node || !node.get()) {
       meta->SetGradNode(std::make_shared<egr::GradNodeAccumulation>(meta));
     }
     VLOG(6) << "Add Edges for slot: " << slot_id << ", the Edge is from "
