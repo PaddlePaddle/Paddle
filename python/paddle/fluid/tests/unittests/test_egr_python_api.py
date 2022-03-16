@@ -800,12 +800,13 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             self.assertTrue(np.array_equal(egr_tensor.numpy(), new_arr))
 
     def test_sharding_related_api(self):
-        arr0 = np.random.rand(4, 16, 16, 32).astype('float32')
-        egr_tensor1 = core.eager.Tensor(arr0,
-                                        core.CPUPlace(), True, False,
-                                        "numpy_tensor1", False)
-        self.assertEqual(egr_tensor1._numel(), 32768)
-        self.assertEqual(egr_tensor1._slice(0, 2)._numel(), 16384)
+        with _test_eager_guard():
+            arr0 = np.random.rand(4, 16, 16, 32).astype('float32')
+            egr_tensor1 = core.eager.Tensor(arr0,
+                                            core.CPUPlace(), True, False,
+                                            "numpy_tensor1", False)
+            self.assertEqual(egr_tensor1._numel(), 32768)
+            self.assertEqual(egr_tensor1._slice(0, 2)._numel(), 16384)
 
     def test_copy_gradient_from(self):
         with _test_eager_guard():
