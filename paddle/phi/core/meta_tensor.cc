@@ -72,6 +72,10 @@ void MetaTensor::set_layout(DataLayout layout) {
 }
 
 void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
+  if (meta_tensor.lod().size() == 0) {
+    // no need share
+    return;
+  }
   if (phi::DenseTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))->lod =
         meta_tensor.lod();
