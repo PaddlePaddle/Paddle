@@ -172,8 +172,8 @@ class Tracer {
   }
 
   phi::KernelSignature GetExpectedKernelSignature(
-      const std::string& type, const NameVarBaseMap& ins,
-      const NameVarBaseMap& outs, framework::AttributeMap attrs) const;
+      const std::string& type, const NameTensorMap& ins,
+      const NameTensorMap& outs, framework::AttributeMap attrs) const;
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);

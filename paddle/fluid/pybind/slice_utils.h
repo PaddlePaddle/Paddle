@@ -188,12 +188,14 @@ static void ParseIndexingSlice(
       int start = static_cast<int>(PyLong_AsLong(slice_item));
       auto s_t = start;
       start = start < 0 ? start + dim_len : start;
-      if (start >= dim_len || start < 0) {
-        PADDLE_THROW(paddle::platform::errors::OutOfRange(
-            "The starting index %d of slice is out of bounds in tensor %d-th "
-            "axis, it shound be in the range of [%d, %d)",
-            s_t, dim, -dim_len, dim_len));
-      }
+
+      PADDLE_ENFORCE(
+          0 <= start && start < dim_len,
+          platform::errors::OutOfRange("The starting index %d of slice is out "
+                                       "of bounds in tensor %d-th axis, it "
+                                       "shound be in the range of [%d, %d).",
+                                       s_t, dim, -dim_len, dim_len));
+
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
       slice_ends->push_back(start + 1);

@@ -78,7 +78,7 @@ PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
   auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-  if (meta) {
+  if (meta && meta->Grad().initialized()) {
     return ToPyObject(meta->Grad());
   } else {
     Py_INCREF(Py_None);

@@ -654,10 +654,17 @@ struct GPUContext::Impl {
   }
 
   void AddStreamCallback(const std::function<void()>& callback) const {
-    // TODO(wilber): Do we need ThreadPool?
-    auto* func = new std::function<void()>([this, callback] {
+    // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
+    // launch too
+    // many threads and result in thread oversubscription.
+    auto* callback_func = new std::function<void()>(std::move(callback));
+    auto* func = new std::function<void()>([this, callback_func] {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
-      last_future_ = std::async(std::launch::deferred, [&]() { callback(); });
+      VLOG(4) << "Stream callback";
+      last_future_ = std::async(std::launch::async, [callback_func]() {
+        std::unique_ptr<std::function<void()>> releaser(callback_func);
+        (*callback_func)();
+      });
     });
 
 #ifdef PADDLE_WITH_HIP

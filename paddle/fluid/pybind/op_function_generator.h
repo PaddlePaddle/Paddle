@@ -96,6 +96,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"nce",
      {"Input", "Label", "Weight", "Bias", "SampleWeight", "CustomDistProbs",
       "CustomDistAlias", "CustomDistAliasProbs"}},
+    {"check_finite_and_unscale", {"X", "Scale", "FloatStatus"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
