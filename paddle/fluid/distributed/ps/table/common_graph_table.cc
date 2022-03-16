@@ -1089,6 +1089,7 @@ int32_t GraphTable::initialize(const TableParameter &config,
   return initialize(graph);
 }
 int32_t GraphTable::initialize(const GraphParameter &graph) {
+#ifdef PADDLE_WITH_HETERPS
   if (graph.gpups_mode()) {
     gpups_mode = true;
     if (shard_num == 0) {
@@ -1105,6 +1106,7 @@ int32_t GraphTable::initialize(const GraphParameter &graph) {
     sampler->init(graph.gpu_num(), this, slices);
     graph_sampler.reset(sampler);
   }
+#endif
   task_pool_size_ = graph.task_pool_size();
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
