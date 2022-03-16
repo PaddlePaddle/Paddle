@@ -25,6 +25,9 @@ add_subdirectory(jit)
 if(WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
+if (WITH_GPU AND (${CUDNN_VERSION} VERSION_GREATER_EQUAL 8200))
+    add_subdirectory(mha)
+endif()
 
 
 if(WITH_DISTRIBUTE)
