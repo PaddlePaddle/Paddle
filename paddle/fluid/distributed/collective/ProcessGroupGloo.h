@@ -40,10 +40,7 @@ class ProcessGroupGloo : public ProcessGroup {
     ~GlooTask() = default;
 
     virtual void Run() = 0;
-    bool Wait(
-        std::chrono::milliseconds timeout = kProcessGroupNoTimeout) override {
-      return true;
-    }
+    bool Wait(std::chrono::milliseconds timeout) override { return true; }
     bool IsCompleted() override { return true; }
     void Synchronize() override {}
 

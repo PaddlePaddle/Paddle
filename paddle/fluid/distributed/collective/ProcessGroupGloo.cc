@@ -185,11 +185,7 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
                 "Only CPU place is supported for ProcessGroupGloo."));
   _context(context), _root(root), _inputs(inputs), _tag(tag) {}
 
-  void Run() override {
-    for (auto& t : inputs) {
-      _do_broadcast(t);
-    }
-  }
+  void Run() override { _do_broadcast(_inputs[0]); }
 
  private:
   std::shared_ptr<gloo::Context> _context;
@@ -321,13 +317,11 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
   void _do_allgather(std::vector<Tensor>& in,                  // NOLINT
                      std::vector<std::vector<Tensor>>& out) {  // NOLINT
     const auto& dtype = in[0].type();
-    for (size_t i = 0; i < in.size(); i++) {
-      gloo::AllgatherOptions opts(_context);
-      GENERATE_FUNC(dtype, set_input, opts, in[i]);
-      GENERATE_FUNC(dtype, set_outputs, opts, out[i]);
-      opts.setTag(_tag);
-      gloo::allgather(opts);
-    }
+    gloo::AllgatherOptions opts(_context);
+    GENERATE_FUNC(dtype, set_input, opts, in[0]);
+    GENERATE_FUNC(dtype, set_outputs, opts, out[0]);
+    opts.setTag(_tag);
+    gloo::allgather(opts);
   }
 };
 
@@ -378,15 +372,13 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
 
   void _do_reduce(std::vector<Tensor>& tensors, int dst) {  // NOLINT
     const auto& dtype = tensors[0].type();
-    for (auto& t : tensors) {
-      gloo::ReduceOptions opts(_context);
-      GENERATE_FUNC(dtype, set_input, opts, t);
-      GENERATE_FUNC(dtype, set_output, opts, t);
-      opts.setReduceFunction(_get_function(dtype, _reduce_op));
-      opts.setTag(_tag);
-      opts.setRoot(dst);
-      gloo::reduce(opts);
-    }
+    gloo::ReduceOptions opts(_context);
+    GENERATE_FUNC(dtype, set_input, opts, tensors[0]);
+    GENERATE_FUNC(dtype, set_output, opts, tensors[0]);
+    opts.setReduceFunction(_get_function(dtype, _reduce_op));
+    opts.setTag(_tag);
+    opts.setRoot(dst);
+    gloo::reduce(opts);
   }
 };
 
@@ -428,16 +420,14 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
   void _do_scatter(std::vector<Tensor>& in, std::vector<Tensor>& out,  // NOLINT
                    int src) {
     const auto& dtype = in[0].type();
-    for (size_t i = 0; i < in.size(); i++) {
-      gloo::ScatterOptions opts(_context);
-      if (rank_ == src) {
-        GENERATE_FUNC(dtype, set_inputs, opts, in[i]);
-      }
-      GENERATE_FUNC(dtype, set_output, opts, out[i]);
-      opts.setRoot(src);
-      opts.setTag(_tag);
-      gloo::scatter(opts);
+    gloo::ScatterOptions opts(_context);
+    if (rank_ == src) {
+      GENERATE_FUNC(dtype, set_inputs, opts, in[0]);
     }
+    GENERATE_FUNC(dtype, set_output, opts, out[0]);
+    opts.setRoot(src);
+    opts.setTag(_tag);
+    gloo::scatter(opts);
   }
 };
 

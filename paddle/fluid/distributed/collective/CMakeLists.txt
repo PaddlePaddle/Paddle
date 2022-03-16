@@ -8,7 +8,6 @@ endif()
 if(WITH_NCCL)
     cc_library(processgroup_nccl SRCS ProcessGroupNCCL.cc DEPS place cuda_stream enforce collective_helper device_context phi phi_api eager_api)
 endif()
-
 if(WITH_ASCEND_CL)
     cc_library(processgroup_hccl SRCS ProcessGroupHCCL.cc DEPS place npu_stream enforce collective_helper device_context phi phi_api eager_api)
 endif()

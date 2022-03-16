@@ -31,7 +31,6 @@ namespace paddle {
 namespace distributed {
 
 using Tensor = paddle::experimental::Tensor;
-constexpr auto kProcessGroupNoTimeout = std::chrono::milliseconds::zero();
 
 enum class CommType : std::uint8_t {
   BROADCAST = 0,
@@ -49,8 +48,6 @@ enum class CommType : std::uint8_t {
   UNKNOWN = 100,
 };
 
-std::string commTypeToString(CommType commType);
-
 class ProcessGroup {
  public:
   class Task {
@@ -59,8 +56,7 @@ class ProcessGroup {
 
     virtual ~Task();
     virtual bool IsCompleted();
-    virtual bool Wait(
-        std::chrono::milliseconds timeout = kProcessGroupNoTimeout);
+    virtual bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
     virtual void Synchronize();
 
    protected:
