@@ -12,25 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <string>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <vector>
-#include "paddle/infrt/dialect/infrt/common/types.h"
+
+#include "paddle/infrt/dialect/phi/pass/kernel_op_desc.h"
+#include "paddle/phi/kernels/declarations.h"
 
 namespace infrt {
 
-struct PhiKernelDesc {
-  std::vector<Place> input_types;   // kernel input place
-  std::vector<Place> output_types;  // kernel output place
-  Place kernel_type;                // kernel place
-};
-
-std::string getPhiTargetPrefix(TargetType target);
-std::string getPhiPrecisionSuffix(PrecisionType precision);
-std::string getPhiLayoutSuffix(LayoutType layout);
-
-std::vector<PhiKernelDesc> GetCandidateKernels(
-    std::string name, const std::vector<Place>& valid_palces);
+TEST(phi, get_op_desc) {
+  std::vector<Place> places;
+  places.emplace_back(
+      TargetType::CPU, PrecisionType::FLOAT32, LayoutType::NCHW);
+  auto kernels = GetCandidateKernels("addmm", places);
+  ASSERT_GE(kernels.size(), 1UL);
+}
 
 }  // namespace infrt
