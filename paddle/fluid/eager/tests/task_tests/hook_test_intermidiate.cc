@@ -255,6 +255,6 @@ TEST(Hook_intermidiate, Matmul_v2) {
 }
 }  // namespace egr
 
-USE_OP(sigmoid);
+USE_OP_ITSELF(sigmoid);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_ITSELF(matmul_v2);
