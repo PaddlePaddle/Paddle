@@ -100,13 +100,30 @@ void MaxPoolKernel(const Context& dev_ctx,
   // 2. max pool
   // 2.1 get the min elements of in_features
   const T* result =
-      thrust::min_element(thrust::device,
+#ifdef PADDLE_WITH_HIP
+      thrust::min_element(thrust::hip::par.on(dev_ctx.stream()),
+#else
+      thrust::min_element(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                           in_features_ptr,
                           in_features_ptr + x.non_zero_elements().numel());
   // 2.2 init the out_features with min elements
   T h_result;
-  cudaMemcpy(&h_result, result, sizeof(T), cudaMemcpyDeviceToHost);
-  thrust::fill(thrust::device,
+  phi::backends::gpu::GpuMemcpyAsync(&h_result,
+                                     result,
+                                     sizeof(T),
+#ifdef PADDLE_WITH_HIP
+                                     hipMemcpyDeviceToHost,
+#else
+                                     cudaMemcpyDeviceToHost,
+#endif
+                                     dev_ctx.stream());
+  dev_ctx.Wait();
+#ifdef PADDLE_WITH_HIP
+  thrust::fill(thrust::hip::par.on(dev_ctx.stream()),
+#else
+  thrust::fill(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                out_features_ptr,
                out_features_ptr + out->non_zero_elements().numel(),
                h_result);
