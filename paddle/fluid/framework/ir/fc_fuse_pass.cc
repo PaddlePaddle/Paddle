@@ -85,6 +85,12 @@ FCFusePass::FCFusePass() {
       .End()
       .AddAttr("activation_type")
       .IsStringIn({"relu", ""})
+      .End()
+      .AddAttr("fuse_residual_connection")
+      .IsOptional()
+      .End()
+      .AddAttr("Scale_in_eltwise")
+      .IsOptional()
       .End();
 }
 
