@@ -90,4 +90,11 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
 
+void GraphSampleNeighborsInferMeta(const MetaTensor& row,
+                                   const MetaTensor& col_ptr,
+                                   const MetaTensor& x,
+                                   int sample_size,
+                                   MetaTensor* out,
+                                   MetaTensor* out_count);
+
 }  // namespace phi
