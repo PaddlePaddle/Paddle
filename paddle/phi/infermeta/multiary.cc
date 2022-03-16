@@ -573,6 +573,7 @@ void HierarchicalSigmoidInferMeta(const MetaTensor& x,
   std::vector<int64_t> output_shape({input_dims, 1});
   out->set_dims(phi::make_ddim(output_shape));
   out->share_lod(x);
+  out->dtype(x.dtype());
 }
 
 }  // namespace phi
