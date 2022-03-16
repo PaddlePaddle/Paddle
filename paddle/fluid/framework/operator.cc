@@ -254,7 +254,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           "reinstall Paddle with CustomDevice support.",
           place));
 #else
-      platform::DeviceManager::SetDevice(place);
+      phi::DeviceManager::SetDevice(place);
 #endif
     }
 
@@ -537,6 +537,20 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
 bool ExecutionContext::HasInput(const std::string& name) const {
   auto* var = InputVar(name);
   return var != nullptr;
+}
+
+bool ExecutionContext::HasInputs(const std::string& name) const {
+  const auto& ins = ctx_.inputs;
+  auto it = ins.find(name);
+  if (it == ins.end() || it->second.empty()) {
+    return false;
+  }
+  for (const auto* input : it->second) {
+    if (input == nullptr) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool ExecutionContext::HasOutput(const std::string& name) const {
@@ -1210,6 +1224,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << pt_kernel_name
                 << "` not found.";
       }
+    } else {
+      pt_kernel_name = pt_kernel_signature_->name;
+      pt_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
     }
 #ifdef PADDLE_WITH_XPU
     bool is_xpu_unsupport =
@@ -1439,7 +1456,8 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
     kernel_iter = kernels.find(expected_kernel_key);
   }
 #endif
-#ifdef PADDLE_WITH_XPU
+
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||
        !paddle::platform::is_xpu_support_op(type_, expected_kernel_key) ||
@@ -1453,17 +1471,36 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-  bool use_xpu_kp_kernel_rt =
-      FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_kp_support_op(type_, expected_kernel_key);
-  bool use_xpu_kp_kernel_debug =
-      paddle::platform::is_in_xpu_kpwhite_list(type_);
-  if (platform::is_xpu_place(expected_kernel_key.place_) &&
-      (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug)) {
-    expected_kernel_key.library_type_ = LibraryType::kKP;
-    kernel_iter = kernels.find(expected_kernel_key);
-    VLOG(3) << "using XPU KP kernel: " << type_
-            << ", using_kernel_key:" << expected_kernel_key;
+  if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
+    bool use_xpu_kp_kernel_rt =
+        FLAGS_run_kp_kernel &&
+        paddle::platform::is_xpu_kp_support_op(type_, expected_kernel_key);
+    bool use_xpu_kp_kernel_debug =
+        paddle::platform::is_in_xpu_kpwhite_list(type_);
+    if (use_xpu_kp_kernel_rt) {
+      VLOG(3) << "xpu_kp using rt mode ";
+    }
+    if (use_xpu_kp_kernel_debug) {
+      VLOG(3) << "xpu_kp using debug mode ";
+    }
+    bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
+    if (is_xpu_kp_support) {
+      expected_kernel_key.library_type_ = LibraryType::kKP;
+      kernel_iter = kernels.find(expected_kernel_key);
+      VLOG(3) << "using XPU KP kernel: " << type_
+              << ", using_kernel_key:" << expected_kernel_key;
+    }
+    bool is_xpu_unsupport =
+        (!paddle::platform::is_xpu_support_op(type_, expected_kernel_key) ||
+         paddle::platform::is_in_xpu_black_list(type_));
+    if (!is_xpu_kp_support &&
+        (kernel_iter == kernels.end() || is_xpu_unsupport)) {
+      VLOG(3) << "missing XPU kernel: " << type_
+              << ", expected_kernel_key:" << expected_kernel_key
+              << ", fallbacking to CPU one!";
+      expected_kernel_key.place_ = platform::CPUPlace();
+      kernel_iter = kernels.find(expected_kernel_key);
+    }
   }
 #endif
 
@@ -2048,7 +2085,11 @@ void OperatorWithKernel::BuildPhiKernelContext(
     // deal with optional here
     if ((it == ctx.inputs.end() || it->second.size() == 0) &&
         (input_defs[i].type_index ==
-         std::type_index(typeid(paddle::optional<const phi::DenseTensor&>)))) {
+             std::type_index(
+                 typeid(paddle::optional<const phi::DenseTensor&>)) ||
+         input_defs[i].type_index ==
+             std::type_index(
+                 typeid(paddle::optional<const phi::SelectedRows&>)))) {
       pt_kernel_context->EmplaceBackInputWithoutSetRange(nullptr);
       auto end_idx = start_idx + 1;
       pt_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx),
@@ -2099,15 +2140,19 @@ void OperatorWithKernel::BuildPhiKernelContext(
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       phi::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset];
-      if (var->template IsType<framework::LoDTensor>()) {
-        tensor_out = var->template GetMutable<framework::LoDTensor>();
-      } else if (var->template IsType<phi::SelectedRows>()) {
-        tensor_out = var->template GetMutable<phi::SelectedRows>();
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported output `%s` type when call pt kernel.",
-            framework::ToTypeName(var->Type())));
+
+      if (var) {
+        if (var->template IsType<framework::LoDTensor>()) {
+          tensor_out = var->template GetMutable<framework::LoDTensor>();
+        } else if (var->template IsType<phi::SelectedRows>()) {
+          tensor_out = var->template GetMutable<phi::SelectedRows>();
+        } else {
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Unsupported output `%s` type when call pt kernel.",
+              framework::ToTypeName(var->Type())));
+        }
       }
+
       pt_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
     }
 
@@ -2178,41 +2223,109 @@ void OperatorWithKernel::BuildPhiKernelContext(
             std::move(experimental::MakePhiScalarFromVar(*ins_vector.front())));
       }
 
+    } else if (attr_defs[i].type_index ==
+               std::type_index(typeid(std::vector<phi::Scalar>))) {
+      auto& attr = Attrs().at(attr_names[i]);
+      if (std::type_index(attr.type()) ==
+          std::type_index(typeid(std::vector<int32_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int32_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<int64_t>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<int64_t>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<float>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<float>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+      } else if (std::type_index(attr.type()) ==
+                 std::type_index(typeid(std::vector<double>))) {
+        const auto& vec = BOOST_GET_CONST(std::vector<double>, attr);
+        std::vector<phi::Scalar> scalar_list;
+        scalar_list.reserve(vec.size());
+        for (const auto& val : vec) {
+          scalar_list.emplace_back(val);
+        }
+        pt_kernel_context->EmplaceBackAttr(std::move(scalar_list));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported cast op attribute `%s` to vector<Scalar> when "
+            "construct KernelContext.",
+            attr_names[i]));
+      }
     } else {
       // TODO(chenweihang): support other attrs later
-      auto& attr = Attrs().at(attr_names[i]);
+      auto attr_it = attrs_.find(attr_names[i]);
       if (attr_defs[i].type_index == std::type_index(typeid(int))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(int, attr));
+        if (attr_it == attrs_.end()) {
+          auto in_it = ctx.inputs.find(attr_names[i]);
+          if (in_it != ctx.inputs.end()) {
+            // get data from input
+            auto val = experimental::MakePhiScalarFromVar(*(in_it->second[0]));
+            int32_t val_int = val.template to<int32_t>();
+            pt_kernel_context->EmplaceBackAttr(val_int);
+          } else {
+            PADDLE_THROW(platform::errors::NotFound(
+                "can not find attribute `%s` both in attribute and input ",
+                attr_names[i]));
+          }
+        } else {
+          pt_kernel_context->EmplaceBackAttr(
+              BOOST_GET_CONST(int, attr_it->second));
+        }
       } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(float, attr));
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(float, attr_it->second));
       } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(bool, attr));
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(bool, attr_it->second));
       } else if (attr_defs[i].type_index == std::type_index(typeid(int64_t))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(int64_t, attr));
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(int64_t, attr_it->second));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::string))) {
-        pt_kernel_context->EmplaceBackAttr(BOOST_GET_CONST(std::string, attr));
+        pt_kernel_context->EmplaceBackAttr(
+            BOOST_GET_CONST(std::string, attr_it->second));
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(phi::DataType))) {
         auto data_type = paddle::framework::TransToPhiDataType(
             static_cast<framework::proto::VarType::Type>(
-                BOOST_GET_CONST(int, attr)));
+                BOOST_GET_CONST(int, attr_it->second)));
         pt_kernel_context->EmplaceBackAttr(data_type);
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int64_t>))) {
-        if (std::type_index(attr.type()) ==
-            std::type_index(typeid(std::vector<int>))) {
+        if (std::type_index(attr_it->second.type()) ==
+            std::type_index(typeid(std::vector<int64_t>))) {
+          pt_kernel_context->EmplaceBackAttr(
+              BOOST_GET_CONST(std::vector<int64_t>, attr_it->second));
+        } else if (std::type_index(attr_it->second.type()) ==
+                   std::type_index(typeid(std::vector<int>))) {
           // Emplace Back Attr according to the type of Phi_Kernel args.
-          const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+          const auto& vector_int_attr =
+              BOOST_GET_CONST(std::vector<int>, attr_it->second);
           const std::vector<int64_t> vector_int64_attr(vector_int_attr.begin(),
                                                        vector_int_attr.end());
           pt_kernel_context->EmplaceBackAttr(vector_int64_attr);
         }
-        // TODO(YuanRisheng) Need support vector<int64_t> attr
-
       } else if (attr_defs[i].type_index ==
                  std::type_index(typeid(std::vector<int32_t>))) {
-        const auto& vector_int_attr = BOOST_GET_CONST(std::vector<int>, attr);
+        const auto& vector_int_attr =
+            BOOST_GET_CONST(std::vector<int>, attr_it->second);
         pt_kernel_context->EmplaceBackAttr(vector_int_attr);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(

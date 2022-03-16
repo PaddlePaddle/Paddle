@@ -17,6 +17,7 @@
 #include <iostream>
 #include <set>
 #include <string>
+#include <unordered_set>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -128,6 +129,12 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
 })";
 
 const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, METH_VARARGS | METH_KEYWORDS, "C++ interface function for %s in dygraph."},)";
+
+// These operators will skip automatical code generatrion and
+// need to be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE
+std::unordered_set<std::string> CUSTOM_HANDWRITE_OPS_SET = {"run_program"};
+const char* CUSTOM_HANDWRITE_OP_FUNC_FILE =
+  "#include \"paddle/fluid/pybind/custom_handwrite_op_funcs.h\"\n";
 
 // clang-format on
 static inline bool FindInsMap(const std::string& op_type,
@@ -353,7 +360,7 @@ GenerateOpFunctions() {
 
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
-
+  bool append_custom_head_file = false;
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
@@ -361,7 +368,12 @@ GenerateOpFunctions() {
       continue;
     }
     auto& op_type = op_proto->type();
-    // Skip ooerator which is not inherit form OperatorWithKernel, like while,
+    // Skip operators that will be handwriten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
+    if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
+      append_custom_head_file = true;
+      continue;
+    }
+    // Skip operator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
     // if the phi lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
@@ -403,6 +415,9 @@ GenerateOpFunctions() {
       op_function_list.emplace_back(std::move(inplace_op_function_str));
       bind_function_list.emplace_back(std::move(inplace_bind_function_str));
     }
+  }
+  if (append_custom_head_file) {
+    op_function_list.emplace_back(CUSTOM_HANDWRITE_OP_FUNC_FILE);
   }
   return std::make_tuple(op_function_list, bind_function_list);
 }
@@ -470,6 +485,11 @@ int main(int argc, char* argv[]) {
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
       << "  if (PyModule_AddFunctions(m.ptr(), EagerFinalStateMethods) < 0) {\n"
+      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+         "core.eager.ops failed!\"));\n"
+      << "  }\n\n"
+      << "  if (PyModule_AddFunctions(m.ptr(), CustomEagerFinalStateMethods) < "
+         "0) {\n"
       << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"

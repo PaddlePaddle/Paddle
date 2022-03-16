@@ -86,10 +86,10 @@ class InferMetaContext {
   paddle::SmallVector<std::pair<int, int>> output_range_;
 };
 
-#define PT_INFER_META(...) \
+#define PD_INFER_META(...) \
   ::phi::InferMetaFnImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Call
 
-#define PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(attr_type)           \
+#define PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(attr_type)           \
   template <typename... Tail>                                                  \
   struct InferMetaFnCallHelper<attr_type, Tail...> {                           \
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
@@ -175,24 +175,24 @@ struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
   };
 
   // TODO(chenweihang): support other attr type later
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(float);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::string&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(float);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::string&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<bool>&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<int>&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
       const std::vector<int64_t>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<float>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<double>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<float>&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const std::vector<double>&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(
       const std::vector<std::string>&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataType);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const Scalar&);
-  PT_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataType);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const Scalar&);
+  PD_SPECIALIZE_InferMetaFnCallHelper_FOR_ATTRIBUTE(const ScalarArray&);
 
   // TODO(chenweihang): support vector<MetaTensor> input later
 
@@ -304,11 +304,11 @@ struct InferMetaFnRegistrar {
 };
 
 #define PD_REGISTER_INFER_META_FN(kernel_name_prefix, variadic_infer_meta_fn) \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
       PD_REGISTER_infer_meta_fn_ns_check_##kernel_name_prefix,                \
       "PD_REGISTER_INFER_META_FN must be called in global namespace.");       \
   static const ::phi::InferMetaFnRegistrar                                    \
       __registrar_arg_map_fn_for_##kernel_name_prefix(                        \
-          #kernel_name_prefix, PT_INFER_META(variadic_infer_meta_fn))
+          #kernel_name_prefix, PD_INFER_META(variadic_infer_meta_fn))
 
 }  // namespace phi
