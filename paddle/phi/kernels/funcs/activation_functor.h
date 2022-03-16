@@ -35,6 +35,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
+#ifdef PADDLE_WITH_XPU_KP
+#define __forceinline__ __inline__
+#endif
+
 namespace phi {
 namespace funcs {
 enum ActBwdOpFwdDeps {
