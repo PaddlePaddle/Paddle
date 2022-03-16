@@ -15,6 +15,7 @@ limitations under the License. */
 #include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/kernels/roi_pool_kernel.h"
 
 namespace paddle {
 namespace operators {
