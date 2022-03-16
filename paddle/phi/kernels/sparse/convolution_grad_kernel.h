@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/convolution_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -30,6 +32,7 @@ void Conv3dGradKernel(const Context& dev_ctx,
                       const std::vector<int>& dilations,
                       const std::vector<int>& strides,
                       const int groups,
+                      const bool subm,
                       DenseTensor* x_grad,
                       DenseTensor* kernel_grad);
 
@@ -42,9 +45,13 @@ std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
                                     const std::vector<int>& paddings,
                                     const std::vector<int>& dilations,
                                     const std::vector<int>& strides,
-                                    const int groups) {
-  DenseTensor x_grad = phi::Empty<T, Context>(dev_ctx);
-  DenseTensor kernel_grad = phi::Empty<T, Context>(dev_ctx);
+                                    const int groups,
+                                    const bool subm) {
+  DenseTensor x_grad =
+      phi::Empty<Context>(dev_ctx, DenseTensorMeta(x.dtype(), {1}, x.layout()));
+  DenseTensor kernel_grad = phi::Empty<Context>(
+      dev_ctx, DenseTensorMeta(kernel.dtype(), {1}, kernel.layout()));
+  // TODO(zhangkaihuo): call InferMeta func here
   Conv3dGradKernel<T, Context>(dev_ctx,
                                x,
                                rulebook,
@@ -54,6 +61,7 @@ std::vector<DenseTensor> Conv3dGrad(const Context& dev_ctx,
                                dilations,
                                strides,
                                groups,
+                               subm,
                                &x_grad,
                                &kernel_grad);
   std::vector<DenseTensor> out(2);

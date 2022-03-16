@@ -20,6 +20,7 @@
 #include "paddle/phi/common/scalar_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/infermeta/nullary.h"
 
 namespace phi {
 
@@ -140,25 +141,15 @@ T Erfinv(T x) {
 template <typename T>
 struct TruncatedNormal {
   T mean, std;
-  T a_normal_cdf;
-  T b_normal_cdf;
-  TruncatedNormal(T mean, T std) : mean(mean), std(std) {
-    auto normal_cdf = [](T x) {
-      return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
-    };
-    a_normal_cdf = normal_cdf(-2.0);
-    b_normal_cdf = normal_cdf(2.0);
-  }
-
+  TruncatedNormal(T mean, T std) : mean(mean), std(std) {}
   T operator()(T value) const {
-    auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
-    return std::sqrt(2.0) * Erfinv(2 * p - 1) * std + mean;
+    return std::sqrt(2.0) * Erfinv(value) * std + mean;
   }
 };
 
 template <typename T, typename Context>
-void TruncatedGaussianRandomKernel(const Context& ctx,
-                                   const ScalarArray& shape,
+void TruncatedGaussianRandomKernel(const Context& dev_ctx,
+                                   const std::vector<int>& shape,
                                    float mean,
                                    float std,
                                    int seed,
