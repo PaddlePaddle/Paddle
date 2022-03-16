@@ -70,11 +70,11 @@ class ReduceOp:
             out = data.numpy()
             # [[5, 7, 9], [5, 7, 9]]
     """
-    SUM = core.ReduceOp.SUM
-    AVG = core.ReduceOp.AVG
-    MAX = core.ReduceOp.MAX
-    MIN = core.ReduceOp.MIN
-    PROD = core.ReduceOp.PRODUCT
+    SUM = 0
+    MAX = 1
+    MIN = 2
+    PROD = 3
+    AVG = 4
 
 
 class Group():
