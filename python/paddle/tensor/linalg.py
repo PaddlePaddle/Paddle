@@ -1439,6 +1439,8 @@ def bincount(x, weights=None, minlength=0, name=None):
         raise TypeError("Elements in Input(x) should all be integers")
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_bincount(x, weights, minlength)
         return _C_ops.bincount(x, weights, "minlength", minlength)
 
     helper = LayerHelper('bincount', **locals())
@@ -1748,6 +1750,8 @@ def matrix_power(x, n, name=None):
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_matrix_power(x, n)
         return _C_ops.matrix_power(x, "n", n)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
@@ -2266,6 +2270,8 @@ def eigh(x, UPLO='L', name=None):
 
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_eigh(x, UPLO)
         return _C_ops.eigh(x, 'UPLO', UPLO)
 
     def __check_input(x, UPLO):

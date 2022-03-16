@@ -322,6 +322,8 @@ def subtract(x, y, name=None):
     axis = -1
     act = None
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_subtract( x, y)
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -2344,6 +2346,8 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
     __check_input(input, offset, axis1, axis2)
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_trace( x, offset, axis1, axis2 )
         return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
 
     inputs = {'Input': [x]}
@@ -2566,6 +2570,8 @@ def cumsum(x, axis=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops._final_state_cumsum(x, axis, flatten, False, False)
         if axis is None:
             return _C_ops.cumsum(x, 'flatten', flatten)
         else:
@@ -2816,6 +2822,8 @@ def sign(x, name=None):
           print(out)  # [1.0, 0.0, -1.0, 1.0]
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_model():
+            return _C_op.final_state_sign(x)
         return _C_ops.sign(x)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'sign')
@@ -2897,6 +2905,8 @@ def increment(x, value=1.0, name=None):
 
     """
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_increment( x, value)
         return _C_ops.increment(x, 'step', value)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
@@ -3430,6 +3440,8 @@ def erfinv(x, name=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
 
     if paddle.in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_erfinv( x )
         return _C_ops.erfinv(x)
 
     helper = LayerHelper('erfinv', **locals())

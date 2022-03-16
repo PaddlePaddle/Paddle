@@ -19,6 +19,7 @@ import paddle
 from op_test import OpTest
 import numpy as np
 import os
+from paddle.fluid.framework import _test_eager_guard
 
 
 def output_hist(out):
@@ -32,6 +33,7 @@ def output_hist(out):
 class TestBernoulliOp(OpTest):
     def setUp(self):
         self.op_type = "bernoulli"
+        self.python_api = paddle.bernoulli
         self.inputs = {"X": np.random.uniform(size=(1000, 784))}
         self.attrs = {}
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
@@ -104,8 +106,28 @@ class TestRandomValue(unittest.TestCase):
         expect = [0., 0., 1., 1., 1., 1., 0., 1., 1., 1.]
         self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
 
+        with _test_eager_guard():
+            x = paddle.to_tensor(x_np, dtype='float64')
+            y = paddle.bernoulli(x).numpy()
+            index0, index1, index2 = np.nonzero(y)
+            self.assertEqual(np.sum(index0), 260028995)
+            self.assertEqual(np.sum(index1), 8582429431)
+            self.assertEqual(np.sum(index2), 8581445798)
+            expect = [0., 0., 0., 0., 0., 0., 0., 1., 1., 1.]
+            self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
+
+            x = paddle.to_tensor(x_np, dtype='float32')
+            y = paddle.bernoulli(x).numpy()
+            index0, index1, index2 = np.nonzero(y)
+            self.assertEqual(np.sum(index0), 260092343)
+            self.assertEqual(np.sum(index1), 8583509076)
+            self.assertEqual(np.sum(index2), 8582778540)
+            expect = [0., 0., 1., 1., 1., 1., 0., 1., 1., 1.]
+            self.assertTrue(np.array_equal(y[16, 500, 500:510], expect))
+
         paddle.enable_static()
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

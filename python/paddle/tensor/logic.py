@@ -453,8 +453,6 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
         if binary_op:
             return op(x, y)
         else:
-            if _in_eager_mode():
-                return _C_op.final_state_bitewise_not(x)
             return op(x)
 
     check_variable_and_dtype(
@@ -581,7 +579,8 @@ def bitwise_not(x, out=None, name=None):
             res = paddle.bitwise_not(x)
             print(res) # [4, 0, -2]
     """
-
+    if _in_eager_mode() and out == None:
+        return _C_op.final_state_bitwise_not(x)
     return _bitwise_op(
         op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False)
 

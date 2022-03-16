@@ -57,7 +57,7 @@
 
 # - backward_api : norm_grad
 #   forward : norm (Tensor x, int axis, float epsilon, bool is_test) -> Tensor(out), Tensor(norm)
-#   args : (Tensor out_grad, Tensor x, Tensor norm, int axis, float epsilon, bool is_test)
+#   args : (Tensor x, Tensor norm, Tensor out_grad, int axis, float epsilon, bool is_test)
 #   output : Tensor(x_grad)
 #   infer_meta :
 #     func : UnchangedInferMeta

@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 import unittest
 from paddle.fluid import compiler, Program, program_guard
 import paddle.fluid as fluid
+import paddle
 
 
 class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
@@ -30,6 +31,7 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
         batch_size = 64
         num_classes = 20
         self.inputs = {
@@ -49,10 +51,10 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
@@ -61,6 +63,7 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
         batch_size = 64
         num_classes = 20
         ignore_index = -1
@@ -83,10 +86,10 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
@@ -95,6 +98,7 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
         batch_size = 64
         num_classes = 20
         self.inputs = {
@@ -114,15 +118,16 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestSigmoidCrossEntropyWithNorm(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
         batch_size = 64
         num_classes = 20
         ignore_index = -1
@@ -145,10 +150,10 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
@@ -157,6 +162,7 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
@@ -176,15 +182,16 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestSigmoidCrossEntropyWithNorm2(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
         batch_size = [10, 10]
         num_classes = 20
         ignore_index = -1
@@ -207,10 +214,10 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
@@ -219,6 +226,7 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
@@ -238,10 +246,10 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=False)
 
 
 class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
@@ -271,4 +279,5 @@ class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

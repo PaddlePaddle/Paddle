@@ -289,7 +289,7 @@ class TestBitwiseNot(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         pass

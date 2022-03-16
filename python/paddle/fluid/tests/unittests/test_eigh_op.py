@@ -25,6 +25,7 @@ class TestEighOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "eigh"
+        self.python_api = paddle.linalg.eigh
         self.init_input()
         self.init_config()
         np.random.seed(123)
@@ -42,10 +43,10 @@ class TestEighOp(OpTest):
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Eigenvectors'])
+        self.check_output(no_check_set=['Eigenvectors'], check_eager=True)
 
     def test_grad(self):
-        self.check_grad(["X"], ["Eigenvalues"])
+        self.check_grad(["X"], ["Eigenvalues"], check_eager=True)
 
 
 class TestEighUPLOCase(TestEighOp):
@@ -207,4 +208,5 @@ class TestEighAPIError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

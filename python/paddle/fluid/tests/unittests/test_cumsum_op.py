@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -84,6 +85,9 @@ class TestCumsumOp(unittest.TestCase):
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
         self.run_cases()
+
+        with _test_eager_guard():
+            self.run_cases()
         paddle.enable_static()
 
         self.run_static()
@@ -107,15 +111,16 @@ class TestCumsumOp(unittest.TestCase):
 class TestSumOp1(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
+        self.python_api = paddle.cumsum
         self.attrs = {'axis': 2}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=2)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSumOp2(OpTest):
@@ -306,4 +311,5 @@ class BadInputTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

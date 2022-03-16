@@ -85,10 +85,10 @@ class TestSoftmaxOp(OpTest):
                 place,
                 atol=1e-5,
                 check_dygraph=(self.use_mkldnn == False),
-                check_eager=False)
+                check_eager=True)
         else:
             self.check_output(
-                check_dygraph=(self.use_mkldnn == False), check_eager=False)
+                check_dygraph=(self.use_mkldnn == False), check_eager=True)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode

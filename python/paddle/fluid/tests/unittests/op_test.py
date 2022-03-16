@@ -545,7 +545,6 @@ class OpTest(unittest.TestCase):
             v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
-            print("init her")
             return paddle.to_tensor(value)
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
@@ -1502,14 +1501,14 @@ class OpTest(unittest.TestCase):
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in eager dygraph mode")
-                    if check_eager:
-                        with _test_eager_guard():
-                            self.assertListEqual(
-                                eager_imperative_actual.value().get_tensor()
-                                .recursive_sequence_lengths(), expect[1],
-                                "Output (" + out_name +
-                                ") has different lod at " + str(place) +
-                                " in eager dygraph mode")
+                        with fluid.dygraph.base.guard():
+                            with _test_eager_guard():
+                                self.assertListEqual(
+                                    eager_imperative_actual.value().get_tensor()
+                                    .recursive_sequence_lengths(), expect[1],
+                                    "Output (" + out_name +
+                                    ") has different lod at " + str(place) +
+                                    " in eager dygraph mode")
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.

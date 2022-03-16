@@ -22,6 +22,7 @@ from op_test import OpTest
 class TestSizeOp(OpTest):
     def setUp(self):
         self.op_type = "size"
+        self.python_api = paddle.numel
         self.shape = []
         self.config()
         input = np.zeros(self.shape, dtype='bool')
@@ -32,7 +33,7 @@ class TestSizeOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestRank1Tensor(TestSizeOp):

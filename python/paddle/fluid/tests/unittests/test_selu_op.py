@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 def ref_selu(x,
@@ -113,6 +114,15 @@ class TestSeluAPI(unittest.TestCase):
         out_ref = ref_selu(self.x_np, self.scale, self.alpha)
         for r in [out1, out2]:
             self.assertEqual(np.allclose(out_ref, r.numpy()), True)
+
+        with _test_eager_guard():
+            x = paddle.to_tensor(self.x_np)
+            out1 = F.selu(x, self.scale, self.alpha)
+            selu = paddle.nn.SELU(self.scale, self.alpha)
+            out2 = selu(x)
+            out_ref = ref_selu(self.x_np, self.scale, self.alpha)
+            for r in [out1, out2]:
+                self.assertEqual(np.allclose(out_ref, r.numpy()), True)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -145,4 +155,5 @@ class TestSeluAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

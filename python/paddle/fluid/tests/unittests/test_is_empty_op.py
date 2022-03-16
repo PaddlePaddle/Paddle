@@ -23,11 +23,12 @@ import paddle
 class TestEmpty(OpTest):
     def setUp(self):
         self.op_type = "is_empty"
+        self.python_api = paddle.is_empty
         self.inputs = {'X': np.array([1, 2, 3])}
         self.outputs = {'Out': np.array([False])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestNotEmpty(TestEmpty):
@@ -75,4 +76,5 @@ class TestIsEmptyOpDygraph(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

@@ -267,18 +267,6 @@
     func : diagonal
   backward : diagonal_grad
 
-
-
-# softmax
-- api : softmax
-  args : (Tensor x, int axis)
-  output : Tensor
-  infer_meta :
-    func : SoftmaxInferMeta
-  kernel :
-    func : softmax
-  backward : softmax_grad
-
 # # maxout
 # - api : maxout
 #   args : (Tensor x, int groups, int axis)
@@ -298,6 +286,7 @@
     param : [index]
   kernel :
     func : put_along_axis
+    dtype : x
   backward : put_along_axis_grad
 
 
@@ -310,6 +299,7 @@
     param : [index]
   kernel :
     func : take_along_axis
+    dtype : x
   backward : take_along_axis_grad
 
 # matrix_power
@@ -342,6 +332,7 @@
   kernel :
     func : segment_pool
   backward : segment_pool_grad
+  
 
 # accuracy
 - api : accuracy
@@ -351,6 +342,7 @@
     func : AccuracyInferMeta
   kernel :
     func : accuracy
+    dtype : x
 
 # sin
 - api : sin
@@ -465,19 +457,9 @@
     func : atanh
   backward : atanh_grad
 
-# relu
-- api : relu
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : relu
-  backward : relu_grad
-
 
 # arg_min  # int64 ???? dtype
-- api : arg_min
+- api : argmin
   args : (Tensor x, int64 axis, bool keepdims, bool flatten, int dtype)
   output : Tensor
   infer_meta :
@@ -486,7 +468,7 @@
     func : arg_min
 
 # arg_max  # int64 ???? dtype
-- api : arg_max
+- api : argmax
   args : (Tensor x, int64 axis, bool keepdims, bool flatten, int dtype)
   output : Tensor
   infer_meta :

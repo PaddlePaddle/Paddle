@@ -22,7 +22,7 @@ from ...tensor.math import multiply
 
 import warnings
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import convert_np_dtype_to_dtype_
+from ...fluid.framework import convert_np_dtype_to_dtype_, _in_eager_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, in_dynamic_mode
@@ -783,6 +783,8 @@ def selu(x,
             "The alpha must be no less than zero. Received: {}.".format(alpha))
 
     if in_dynamic_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_selu(x, scale, alpha)
         return _C_ops.selu(x, 'scale', scale, 'alpha', alpha)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'selu')

@@ -21,15 +21,17 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+import paddle
 
 
 class TestWhereIndexOp(OpTest):
     def setUp(self):
         self.op_type = "where_index"
+        self.pythona_api = paddle.fluid.layers.where
         self.init_config()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def init_config(self):
         self.inputs = {'Condition': np.array([True, False, True]), }
@@ -111,4 +113,5 @@ class TestWhereRaiseError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

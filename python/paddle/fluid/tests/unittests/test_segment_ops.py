@@ -93,6 +93,7 @@ class TestSegmentOps(OpTest):
         self.dtype = np.float64
         self.shape = [30, 15]
         self.attrs = {"pooltype": "SUM"}
+        self.python_api = paddle.incubate.segment_sum
 
     def setUp(self):
         self.prepare()
@@ -105,10 +106,10 @@ class TestSegmentOps(OpTest):
         self.outputs = {'Out': result.astype(self.dtype)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_eager=False)
 
 
 class TestSegmentSum2(TestSegmentOps):
@@ -136,6 +137,7 @@ class TestSegmentMax(TestSegmentOps):
         super(TestSegmentMax, self).prepare()
         self.shape = [40, 20]
         self.attrs = {'pooltype': "MAX"}
+        # self.python_api = paddle.incubate.segment_max
 
     def setUp(self):
         self.prepare()
@@ -148,7 +150,8 @@ class TestSegmentMax(TestSegmentOps):
         self.outputs = {'Out': result.astype(self.dtype)}
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", user_defined_grads=[self.gradient])
+        self.check_grad(
+            ["X"], "Out", user_defined_grads=[self.gradient], check_eager=False)
 
 
 class TestSegmentMax2(TestSegmentMax):
@@ -164,6 +167,7 @@ class TestSegmentMin(TestSegmentMax):
     def prepare(self):
         super(TestSegmentMin, self).prepare()
         self.attrs = {'pooltype': "MIN"}
+        #self.python_api = paddle.incubate.segment_min
 
 
 class TestSegmentMin2(TestSegmentMin):
@@ -180,6 +184,7 @@ class TestSegmentMean(TestSegmentOps):
         super(TestSegmentMean, self).prepare()
         self.shape = [40, 20]
         self.attrs = {'pooltype': "MEAN"}
+        #self.python_api = paddle.incubate.segment_mean
 
     def setUp(self):
         self.prepare()
@@ -199,6 +204,7 @@ class TestSegmentMean2(TestSegmentMean):
         self.dtype = np.float32
         self.shape = [30, 20]
         self.attrs = {'pooltype': "MEAN"}
+        #self.python_api = paddle.incubate.segment_mean
 
 
 class API_SegmentOpsTest(unittest.TestCase):
@@ -259,4 +265,5 @@ class API_SegmentOpsTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

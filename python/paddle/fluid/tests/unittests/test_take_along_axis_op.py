@@ -29,6 +29,7 @@ class TestTakeAlongAxisOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "take_along_axis"
+        self.python_api = paddle.take_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.target = np.take_along_axis(self.xnp, self.index, self.axis)
         broadcast_shape_list = list(self.x_shape)
@@ -43,10 +44,10 @@ class TestTakeAlongAxisOp(OpTest):
         self.outputs = {'Result': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Result')
+        self.check_grad(['Input'], 'Result', check_eager=True)
 
     def init_data(self):
         self.x_type = "float64"

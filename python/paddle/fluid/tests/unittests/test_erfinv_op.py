@@ -21,13 +21,13 @@ from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 
-paddle.enable_static()
 np.random.seed(0)
 
 
 class TestErfinv(OpTest):
     def setUp(self):
         self.op_type = "erfinv"
+        self.python_api = paddle.erfinv
         self.init_dtype()
         self.shape = [11, 17]
         self.x = np.random.uniform(-1, 1, size=self.shape).astype(self.dtype)
@@ -42,14 +42,15 @@ class TestErfinv(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             user_defined_grads=[self.gradient],
-            user_defined_grad_outputs=self.grad_out)
+            user_defined_grad_outputs=self.grad_out,
+            check_eager=True)
 
 
 class TestErfinvFP32(TestErfinv):
@@ -108,4 +109,5 @@ class TestErfinvAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

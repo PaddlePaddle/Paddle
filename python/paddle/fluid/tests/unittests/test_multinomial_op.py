@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from op_test import OpTest
 import numpy as np
+from paddle.fluid.framework import _test_eager_guard
 
 
 def sample_output_one_dimension(out, dim):
@@ -46,6 +47,7 @@ class TestMultinomialOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
+        self.python_api = paddle.multinomial
         self.init_data()
         self.inputs = {"X": self.input_np}
 
@@ -113,6 +115,22 @@ class TestMultinomialApi(unittest.TestCase):
                 sample_prob, prob, rtol=0, atol=0.01),
             "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
 
+    def test_eager(self):
+        # input probability is a vector, and replacement is True
+        paddle.disable_static()
+        with _test_eager_guard():
+            x_numpy = np.random.rand(4)
+            x = paddle.to_tensor(x_numpy)
+            out = paddle.multinomial(x, num_samples=100000, replacement=True)
+
+            sample_prob = sample_output_one_dimension(out.numpy(), 4)
+            prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
+            self.assertTrue(
+                np.allclose(
+                    sample_prob, prob, rtol=0, atol=0.01),
+                "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        paddle.enable_static()
+
     def test_dygraph2(self):
         # input probability is a matrix, and replacement is True
         paddle.disable_static()
@@ -126,6 +144,22 @@ class TestMultinomialApi(unittest.TestCase):
             np.allclose(
                 sample_prob, prob, rtol=0, atol=0.01),
             "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        paddle.enable_static()
+
+    def test_eager2(self):
+        # input probability is a matrix, and replacement is True
+        paddle.disable_static()
+        with _test_eager_guard():
+            x_numpy = np.random.rand(3, 4)
+            x = paddle.to_tensor(x_numpy)
+            out = paddle.multinomial(x, num_samples=100000, replacement=True)
+
+            sample_prob = sample_output_two_dimension(out.numpy(), [3, 4])
+            prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
+            self.assertTrue(
+                np.allclose(
+                    sample_prob, prob, rtol=0, atol=0.01),
+                "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
         paddle.enable_static()
 
     def test_dygraph3(self):
@@ -217,4 +251,5 @@ class TestMultinomialError(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

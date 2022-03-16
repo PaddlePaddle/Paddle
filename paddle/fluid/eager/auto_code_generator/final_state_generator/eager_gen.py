@@ -687,6 +687,7 @@ def GenerateNodeCreationCodes(
     pass_stop_gradient_args_list = ["false"]
     num_fwd_outputs = len(forward_outputs_position_map.keys())
     for name, (rtype, pos) in forward_outputs_position_map.items():
+        print("@@@@", fwd_api_name, name, rtype, pos)
         output_autograd_meta_name = GetAutoGradMetaName(name)
         output_autograd_meta_vec_name = GetAutoGradMetaVectorName(name)
         if num_fwd_outputs == 1:
@@ -727,19 +728,27 @@ def GenerateNodeCreationCodes(
 
     # SetTensorWrappers
     set_tensor_wrappers_list = []
+    fwd_api_input_num = 0
     for name, (atype, is_fwd_input, pos) in backward_fwd_input_map.items():
         is_optional = (name in optional_inputs)
 
         if is_fwd_input:
+            fwd_api_input_num += 1
             if is_optional:
                 set_tensor_wrappers = f"        if({name}.is_initialized()) grad_node->SetTensorWrapper{name}({name}, true);"
             else:
                 set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
-            if IsVectorTensorType(atype):
-                tw_name = f"api_result[{pos}]"
+            print("!!!!", fwd_api_name, name, atype, pos)
+            if num_fwd_outputs == 1:
+                if IsVectorTensorType(atype):
+                    tw_name = f"std::get<{pos}>(api_result)"
+                else:
+                    tw_name = f"api_result"
             else:
-                tw_name = f"api_result"
+                assert IsPlainTensorType(atype), atype
+                out_pos = pos - fwd_api_input_num
+                tw_name = f"std::get<{out_pos}>(api_result)"
 
             if is_optional:
                 set_tensor_wrappers = f"        if({tw_name}.is_initialized()) grad_node->SetTensorWrapper{name}({tw_name}, false);"
@@ -779,7 +788,7 @@ def GenerateNodeCreationCodes(
         if num_outputs == 1:
             set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
         else:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result[{pos}]);"
+            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(std::get<{pos}>(api_result));"
         set_retain_grad_list.append(set_retain_grad)
     set_out_rank_str = "\n".join(set_out_rank_list)
     set_history_str = "\n".join(set_history_list)
@@ -902,7 +911,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
             returns_list[0] = f"api_result"
         else:
             # Tuple api_result
-            returns_list[pos] = f"api_result[{pos}]"
+            returns_list[pos] = f"std::get<{pos}>(api_result)"
 
         if IsPlainTensorType(rtype):
             returns_type_list[pos] = "paddle::experimental::Tensor"

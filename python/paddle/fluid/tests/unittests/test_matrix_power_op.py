@@ -31,6 +31,7 @@ class TestMatrixPowerOp(OpTest):
     def setUp(self):
         self.op_type = "matrix_power"
         self.config()
+        self.python_api = paddle.linalg.matrix_power
 
         np.random.seed(123)
         mat = np.random.random(self.matrix_shape).astype(self.dtype)
@@ -41,11 +42,15 @@ class TestMatrixPowerOp(OpTest):
         self.attrs = {"n": self.n}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_grad(self):
         self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-7)
+            ["X"],
+            "Out",
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-7,
+            check_eager=True)
 
 
 class TestMatrixPowerOpN1(TestMatrixPowerOp):

@@ -18,7 +18,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator, in_dygraph_mode, static_only
+from ..framework import Program, Variable, Operator, in_dygraph_mode, static_only, _in_eager_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
@@ -3852,6 +3852,8 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
+        if _in_eager_mode():
+            return _C_ops.final_state_is_empty(x)
         return _C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],

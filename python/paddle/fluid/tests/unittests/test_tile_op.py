@@ -27,6 +27,7 @@ class TestTileOpRank1(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.init_data()
+        self.python_api = paddle.tile
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'repeat_times': self.repeat_times}
@@ -38,10 +39,10 @@ class TestTileOpRank1(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 # with dimension expanding
@@ -85,6 +86,7 @@ class TestTileOpRank4(TestTileOpRank1):
 class TestTileOpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.init_data()
         repeat_times_tensor = []
         for index, ele in enumerate(self.repeat_times):
@@ -160,6 +162,7 @@ class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
 class TestTileOpInteger(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.inputs = {
             'X': np.random.randint(
                 10, size=(4, 4, 5)).astype("int32")
@@ -169,26 +172,28 @@ class TestTileOpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 # Situation 5: input x is Bool
 class TestTileOpBoolean(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 # Situation 56: input x is Integer
 class TestTileOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "tile"
+        self.python_api = paddle.tile
         self.inputs = {
             'X': np.random.randint(
                 10, size=(2, 4, 5)).astype("int64")
@@ -198,7 +203,7 @@ class TestTileOpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestTileError(unittest.TestCase):
@@ -248,4 +253,5 @@ class TestTileAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

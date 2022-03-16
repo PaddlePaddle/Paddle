@@ -95,6 +95,7 @@ class TestUnfoldOp(OpTest):
     def setUp(self):
         self.op_type = 'unfold'
         self.set_data()
+        self.python_api = paddle.nn.functional.unfold
 
     def test_check_output(self):
         self.check_output(check_eager=True)

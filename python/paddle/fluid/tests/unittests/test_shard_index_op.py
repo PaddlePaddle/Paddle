@@ -22,10 +22,12 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.framework import Program, program_guard
+import paddle
 
 
 def common_setup(self, index_num, nshards, shard_id, ignore_value):
     self.op_type = 'shard_index'
+    self.python_api = paddle.shard_index
     x_lod = [[i for i in range(10)]]
     N = sum(x_lod[0])
     x = [np.random.randint(0, index_num - 1) for i in range(N)]
@@ -54,7 +56,7 @@ class TestShardIndexShardId0Op(OpTest):
         common_setup(self, 20, 2, 0, -1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestShardIndexShardId1Op(OpTest):
@@ -62,7 +64,7 @@ class TestShardIndexShardId1Op(OpTest):
         common_setup(self, 20, 2, 1, -1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestShardIndexIgnoreValueOp(OpTest):
@@ -70,7 +72,7 @@ class TestShardIndexIgnoreValueOp(OpTest):
         common_setup(self, 20, 2, 0, -2)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestShardIndexNotEvenlyDividedOp(OpTest):
@@ -78,8 +80,9 @@ class TestShardIndexNotEvenlyDividedOp(OpTest):
         common_setup(self, 15, 2, 1, -1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

@@ -57,4 +57,6 @@ PD_REGISTER_KERNEL(take_along_axis,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(1).SetDataType(phi::DataType::ALL_DTYPE);
+}

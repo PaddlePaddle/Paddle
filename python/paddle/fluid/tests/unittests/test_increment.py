@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestIncrement(unittest.TestCase):
@@ -39,6 +40,14 @@ class TestIncrement(unittest.TestCase):
             output = paddle.tensor.math.increment(input, value=1)
             self.assertEqual((output.numpy() == expected_result).all(), True)
 
+        with fluid.dygraph.guard():
+            with _test_eager_guard():
+                input = paddle.ones(shape=[1], dtype='int64')
+                expected_result = np.array([2], dtype='int64')
+                output = paddle.tensor.math.increment(input, value=1)
+                self.assertEqual((output.numpy() == expected_result).all(),
+                                 True)
+
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):
     def test_increment(self):
@@ -55,4 +64,5 @@ class TestInplaceApiWithDataTransform(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

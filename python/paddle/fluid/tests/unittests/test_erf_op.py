@@ -27,6 +27,7 @@ import paddle.fluid.dygraph as dg
 class TestErfOp(OpTest):
     def setUp(self):
         self.op_type = "erf"
+        self.python_api = paddle.erf
         self.dtype = self._init_dtype()
         self.x_shape = [11, 17]
         x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
@@ -38,10 +39,10 @@ class TestErfOp(OpTest):
         return "float64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestErfLayer(unittest.TestCase):
@@ -67,4 +68,5 @@ class TestErfLayer(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

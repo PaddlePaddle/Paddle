@@ -59,12 +59,17 @@ class TestActivation(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=(hasattr(self, "python_api") and
+                                       self.python_api != None))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_eager=(hasattr(self, "python_api") and
+                         self.python_api != None))
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -356,6 +361,7 @@ class TestTanh(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "tanh"
         self.init_dtype()
+        self.python_api = paddle.tanh
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.tanh(x)
@@ -366,7 +372,7 @@ class TestTanh(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def init_dtype(self):
         #TODO If dtype is float64, the output (Out) has diff at CPUPlace
@@ -449,6 +455,7 @@ class TestAtan(TestActivation, TestParameter):
         self.op_type = "atan"
         self.init_dtype()
 
+        self.python_api = paddle.atan
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.arctan(x)
@@ -459,7 +466,7 @@ class TestAtan(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
@@ -485,6 +492,7 @@ class TestSinh(TestActivation):
     def setUp(self):
         self.op_type = "sinh"
         self.init_dtype()
+        self.python_api = paddle.sinh
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -496,7 +504,7 @@ class TestSinh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
@@ -557,6 +565,7 @@ class TestCosh(TestActivation):
     def setUp(self):
         self.op_type = "cosh"
         self.init_dtype()
+        self.python_api = paddle.cosh
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
@@ -568,7 +577,7 @@ class TestCosh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
@@ -1082,6 +1091,7 @@ class TestCos(TestActivation):
     def setUp(self):
         self.op_type = "cos"
         self.init_dtype()
+        self.python_api = paddle.cos
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
@@ -1093,7 +1103,7 @@ class TestCos(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestTan(TestActivation):
@@ -1151,6 +1161,7 @@ class TestAcos(TestActivation):
     def setUp(self):
         self.op_type = "acos"
         self.init_dtype()
+        self.python_api = paddle.acos
 
         np.random.seed(1024)
         x = np.random.uniform(-0.95, 0.95, [10, 12]).astype(self.dtype)
@@ -1162,13 +1173,14 @@ class TestAcos(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestSin(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sin"
         self.init_dtype()
+        self.python_api = paddle.sin
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
@@ -1180,13 +1192,14 @@ class TestSin(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestAsin(TestActivation):
     def setUp(self):
         self.op_type = "asin"
         self.init_dtype()
+        self.python_api = paddle.asin
 
         np.random.seed(2048)
         x = np.random.uniform(-0.95, 0.95, [10, 12]).astype(self.dtype)
@@ -1198,13 +1211,14 @@ class TestAsin(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestAcosh(TestActivation):
     def setUp(self):
         self.op_type = "acosh"
         self.init_dtype()
+        self.python_api = paddle.acosh
 
         np.random.seed(1024)
         x = np.random.uniform(2, 3, [10, 12]).astype(self.dtype)
@@ -1216,13 +1230,14 @@ class TestAcosh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestAsinh(TestActivation):
     def setUp(self):
         self.op_type = "asinh"
         self.init_dtype()
+        self.python_api = paddle.asinh
 
         np.random.seed(1024)
         x = np.random.uniform(1, 2, [10, 12]).astype(self.dtype)
@@ -1234,13 +1249,14 @@ class TestAsinh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestAtanh(TestActivation):
     def setUp(self):
         self.op_type = "atanh"
         self.init_dtype()
+        self.python_api = paddle.atanh
 
         np.random.seed(400)
         x = np.random.uniform(-0.9, 0.9, [10, 12]).astype(self.dtype)
@@ -1252,7 +1268,7 @@ class TestAtanh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestRound(TestActivation):
@@ -3195,4 +3211,5 @@ def create_test_act_bf16_class(parent,
 create_test_act_bf16_class(TestRelu)
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
