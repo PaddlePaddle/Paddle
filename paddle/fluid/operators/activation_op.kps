@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 
+#include "paddle/phi/kernels/funcs/activation_functor.h"
+
 namespace paddle {
 namespace operators {
 
@@ -1390,13 +1392,14 @@ REGISTER_OP_CUDA_KERNEL(
 FOR_EACH_ACTIVATION_CUDA_OP(REGISTER_ACTIVATION_CUDA_KERNEL)
 
 #ifdef PADDLE_WITH_XPU_KP
-REGISTER_OP_KERNEL(brelu, KP, plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaBReluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    brelu, KP, plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              phi::funcs::CudaBReluFunctor<float>>);
 REGISTER_OP_KERNEL(
     brelu_grad, KP, plat::XPUPlace,
     ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
-                                  ops::CudaBReluGradFunctor<float>>);
+                                  phi::funcs::CudaBReluGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(ceil, KP, plat::XPUPlace,
                    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
@@ -1464,13 +1467,14 @@ REGISTER_OP_KERNEL(
     ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
                                   ops::CudaHardSwishGradFunctor<float>>);
 
-REGISTER_OP_KERNEL(leaky_relu, KP, plat::XPUPlace,
-                   ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                                             ops::CudaLeakyReluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    leaky_relu, KP, plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              phi::funcs::CudaLeakyReluFunctor<float>>);
 REGISTER_OP_KERNEL(
     leaky_relu_grad, KP, plat::XPUPlace,
     ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
-                                  ops::CudaLeakyReluGradFunctor<float>>);
+                                  phi::funcs::CudaLeakyReluGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(log, KP, plat::XPUPlace,
                    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
@@ -1505,6 +1509,15 @@ REGISTER_OP_KERNEL(
     reciprocal_grad, KP, plat::XPUPlace,
     ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
                                   ops::CudaReciprocalGradFunctor<float>>);
+
+REGISTER_OP_KERNEL(
+    relu, KP, plat::XPUPlace,
+    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
+                              phi::funcs::CudaReluFunctor<float>>);
+REGISTER_OP_KERNEL(
+    relu_grad, KP, plat::XPUPlace,
+    ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
+                                  phi::funcs::CudaReluGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(relu6, KP, plat::XPUPlace,
                    ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
