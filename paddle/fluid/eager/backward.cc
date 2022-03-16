@@ -48,8 +48,10 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
     queue.pop();
 
     if (cnt < potential_startup_ops_cnt) {
-      node_in_degree_map[node] = 0;
-      cnt++;
+      if (!node_in_degree_map.count(node)) {
+        node_in_degree_map[node] = 0;
+      }
+      cnt += 1;
     }
 
     if (visited.count(node)) {
