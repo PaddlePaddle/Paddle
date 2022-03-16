@@ -431,6 +431,55 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void GatherInferMeta(const MetaTensor& x,
+                     const MetaTensor& index,
+                     const Scalar& axis,
+                     MetaTensor* out) {
+  auto index_dims = index.dims();
+
+  if (index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(
+        index_dims[1],
+        1,
+        phi::errors::InvalidArgument(
+            "The last dim of index should be 1 when it is 2D, but we get %d",
+            index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        index_dims.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The index should be 1D, when it is not 2D, but we get %d",
+            index_dims.size()));
+  }
+
+  auto input_dim = x.dims();
+  auto axis_v = axis.to<int>();
+  if (axis.FromTensor() || axis_v == 0) {
+    // if axis.FromTensor(), we can not obtain correct shape of output
+    int batch_size = index_dims[0];
+    phi::DDim output_dims(input_dim);
+    output_dims[0] = batch_size;
+    out->set_dims(output_dims);
+    out->set_dtype(x.dtype());
+    out->share_lod(x);
+  } else {
+    int index_size = index_dims[0];
+    std::vector<int> out_dim_vec;
+    for (int i = 0; i < axis_v; i++) {
+      out_dim_vec.push_back(input_dim[i]);
+    }
+    out_dim_vec.push_back(index_size);
+    for (int i = axis_v + 1; i < input_dim.size(); i++) {
+      out_dim_vec.push_back(input_dim[i]);
+    }
+    auto output_dims = phi::make_ddim(out_dim_vec);
+    out->set_dims(output_dims);
+    out->set_dtype(x.dtype());
+    out->share_lod(x);
+  }
+}
+
 void GatherNdInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        MetaTensor* out) {
