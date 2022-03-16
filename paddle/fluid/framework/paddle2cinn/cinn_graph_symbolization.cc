@@ -16,15 +16,18 @@ limitations under the License. */
 
 #include <algorithm>
 #include <queue>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/variable.h"
 
 #include "cinn/frontend/op_mappers/use_op_mappers.h"
 #include "cinn/frontend/var_type_utils.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
@@ -41,26 +44,61 @@ using FeedInfoMap = CinnGraphSymbolization::FeedInfoMap;
 
 namespace utils {
 
-OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(const Tensor& tensor) {
+OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
+    const Tensor& tensor, bool skip_trans_type = false) {
   OpMapperContext::FeedInfo info;
   const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {
     info.shape.emplace_back(static_cast<int>(dim[i]));
   }
 
-  auto cinn_var_type = TransformVarDataTypeToCinn(tensor.type());
+  // use FP32 as default type if skip_trans_type=true to pass CINN
+  // enforce check that is shape and type of each input should be filled,
+  // and we will ensure these feeds doesn't be used in execution on cinn_launch
+  // op
+  auto tensor_type = ::paddle::framework::proto::VarType::FP32;
+  if (!skip_trans_type) {
+    tensor_type = framework::TransToProtoVarType(tensor.dtype());
+  }
+  auto cinn_var_type = TransformVarDataTypeToCinn(tensor_type);
   info.type = ::cinn::frontend::utils::CppVarType2CommonType(cinn_var_type);
   return info;
 }
 }  // namespace utils
 
 FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
+  const std::unordered_set<std::string>* no_need_buffer_feeds = nullptr;
+  if (graph_.Has(kNoNeedBufferFeeds)) {
+    no_need_buffer_feeds =
+        &graph_.Get<std::unordered_set<std::string>>(kNoNeedBufferFeeds);
+  }
+
   FeedInfoMap feed_map;
   for (auto& feed_pair : input_tensors_) {
     const auto& feed_name = feed_pair.first;
     const auto* tensor = feed_pair.second;
+    PADDLE_ENFORCE_NE(tensor, nullptr,
+                      platform::errors::PreconditionNotMet(
+                          "The input variable %s's tensor cannot be NULL,"
+                          "we need the variable's dtype and shape from tensor.",
+                          feed_name.c_str()));
 
-    feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
+    VLOG(4) << "Get feed info from input: " << feed_name;
+    // if this feed declared as no need buffer then we can not access
+    // its type so passing skip_trans_type=true
+    if (no_need_buffer_feeds) {
+      feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(
+          *tensor, no_need_buffer_feeds->count(feed_name) > 0);
+    } else {
+      feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
+    }
+
+    PADDLE_ENFORCE_NE(
+        feed_map[feed_name].shape.size(), 0UL,
+        platform::errors::PreconditionNotMet(
+            "The input variable %s's tensor shape cannot be empty,"
+            "we need the variable's dtype and shape from tensor.",
+            feed_name.c_str()));
   }
   return feed_map;
 }
@@ -95,6 +133,12 @@ CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) {
   auto parameter_names = GetGraphInputParameterNames();
 
   for (const auto& param_name : parameter_names) {
+    PADDLE_ENFORCE_GT(
+        feed_map.count(param_name), 0UL,
+        platform::errors::NotFound("Cannot find parameter %s from input list,"
+                                   "please add the tensor into input.",
+                                   param_name.c_str()));
+
     // if cannot find var in graph input, skip.
     // scope accepte the CINN format name, so here we need transform
     // paddle format name to CINN format.
@@ -206,6 +250,21 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   }
 }
 
+std::unordered_set<std::string> CinnGraphSymbolization::GetFetchIds() const {
+  std::unordered_set<std::string> fetch_names;
+  fetch_names.reserve(fetch_var_names_.size());
+  std::for_each(
+      fetch_var_names_.begin(), fetch_var_names_.end(),
+      [this, &fetch_names](const std::string& name) {
+        PADDLE_ENFORCE_EQ(
+            var_model_to_program_map_.count(name), 1,
+            platform::errors::PreconditionNotMet(
+                "Cannot find %s in var_model_to_program_map_", name.c_str()));
+        fetch_names.insert(var_model_to_program_map_.at(name));
+      });
+  return fetch_names;
+}
+
 ::cinn::frontend::Program CinnGraphSymbolization::operator()() {
   std::string builder_name = "NetBuilder_of_graph_" + std::to_string(graph_id_);
   VLOG(4) << "NetBuilder Name " << builder_name;
@@ -216,7 +275,7 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   auto cinn_scope = CreateCinnScope(feed_map);
 
   OpMapperContext ctx(*cinn_scope, target_, &builder, &var_map_,
-                      &var_model_to_program_map_);
+                      &var_model_to_program_map_, &fetch_var_names_);
   // add all tensor's feed info into context
   for (auto& feed_pair : feed_map) {
     ctx.AddFeedInfo(feed_pair.first, feed_pair.second);

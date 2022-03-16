@@ -16,7 +16,7 @@
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -104,7 +104,7 @@ class InplaceABNActivation {
       auto temp2 = (y * temp / static_cast<T>(alpha) + static_cast<T>(1)).log();
       x.device(d) = (y * temp1 + temp2).template cast<T>();
 
-      ELUGradFunctor<T> functor;
+      ELUGradNegativeAlphaFunctor<T> functor;
       compute(ctx, &functor, d, x, y, dy, dx);
     } else {
       PADDLE_THROW(

@@ -12,8 +12,8 @@
 #include <algorithm>
 #include <string>
 #include "paddle/fluid/operators/interpolate_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -1159,7 +1159,7 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto* input_grad_data = input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  math::SetConstant<platform::CUDADeviceContext, T> zero;
+  phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
@@ -1241,7 +1241,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto* input_grad_data = input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  math::SetConstant<platform::CUDADeviceContext, T> zero;
+  phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
@@ -1348,7 +1348,7 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   }
   auto* input_grad_data = input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto& device_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-  math::SetConstant<platform::CUDADeviceContext, T> zero;
+  phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {

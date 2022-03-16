@@ -269,12 +269,18 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
+          'paddle.distributed.metric',
+          'paddle.distributed.ps',
+          'paddle.distributed.ps.utils',
           'paddle.incubate',
           'paddle.incubate.optimizer',
           'paddle.incubate.checkpoint',
           'paddle.incubate.operators',
           'paddle.incubate.tensor',
           'paddle.incubate.nn',
+          'paddle.incubate.passes',
+          'paddle.distribution',
+          'paddle.distributed.sharding',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
           'paddle.distributed.fleet.elastic',
@@ -290,9 +296,12 @@ packages=['paddle',
           'paddle.distributed.fleet.utils',
           'paddle.distributed.fleet.meta_parallel',
           'paddle.distributed.fleet.meta_parallel.pp_utils',
+          'paddle.distributed.fleet.meta_parallel.sharding',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
           'paddle.distributed.auto_parallel.operators',
+          'paddle.distributed.auto_parallel.tuner',
+          'paddle.distributed.passes',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -334,6 +343,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.amp',
+          'paddle.cost_model',
           'paddle.hapi',
           'paddle.vision',
           'paddle.vision.models',
@@ -357,12 +367,14 @@ packages=['paddle',
           'paddle.static',
           'paddle.static.nn',
           'paddle.static.amp',
+          'paddle.static.sparsity',
           'paddle.tensor',
           'paddle.onnx',
           'paddle.autograd',
           'paddle.device',
           'paddle.device.cuda',
           'paddle.version',
+          'paddle.profiler'
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -403,6 +415,7 @@ if os.name != 'nt':
 else:
     package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
+package_data['paddle.fluid'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
 if '${HAS_NOAVX_CORE}' == 'ON':
     package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
 
@@ -461,6 +474,12 @@ if '${WITH_LITE}' == 'ON':
             shutil.copy('${LITE_NNADAPTER_NPU_LIB}', libs_path)
             package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_name]
 
+if '${WITH_CINN}' == 'ON':
+    shutil.copy('${CINN_LIB_LOCATION}/${CINN_LIB_NAME}', libs_path)
+    shutil.copy('${CINN_INCLUDE_DIR}/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
+    package_data['paddle.libs']+=['libcinnapi.so']
+    package_data['paddle.libs']+=['cinn_cuda_runtime_source.cuh']
+
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):
@@ -487,6 +506,18 @@ if '${WITH_MKLDNN}' == 'ON':
     else:
         package_data['paddle.libs']+=['mkldnn.dll']
 
+if '${WITH_ONNXRUNTIME}' == 'ON':
+    shutil.copy('${ONNXRUNTIME_SHARED_LIB}', libs_path)
+    if os.name == 'nt':
+        shutil.copy('${PADDLE2ONNX_SHARED_LIB}', libs_path)
+        package_data['paddle.libs']+=['paddle2onnx.dll', 'onnxruntime.dll']
+    else:
+        shutil.copy('${PADDLE2ONNX_LIB}', libs_path)
+        if sys.platform == 'darwin':
+            package_data['paddle.libs']+=['libpaddle2onnx.dylib', 'libonnxruntime.1.10.0.dylib']
+        else:
+            package_data['paddle.libs']+=['libpaddle2onnx.so', 'libonnxruntime.so.1.10.0']
+
 if '${WITH_XPU}' == 'ON':
     # only change rpath in Release mode,
     if '${CMAKE_BUILD_TYPE}' == 'Release':
@@ -505,6 +536,10 @@ if '${WITH_XPU}' == 'ON':
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
+
+if '${WITH_IPU}' == 'ON':
+    shutil.copy('${PADDLE_IPU_LIB}', libs_path)
+    package_data['paddle.libs'] += ['libpaddle_ipu' + ext_name]
 
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
@@ -549,13 +584,21 @@ def find_files(pattern, root, recursive=False):
             break
 
 headers = (
+    # paddle level api headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension/include')) +  # extension
-    # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
-    # to `extension/incude`,
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api')) +  # phi unify api header
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/ext')) +  # custom op api
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # phi api
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/common')) +  # phi common headers
+    # phi level api headers (low level api)
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi')) +  # phi extension header
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/include', recursive=True)) +  # phi include headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/backends', recursive=True)) +  # phi backends headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/core', recursive=True)) +  # phi core headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels', recursive=True)) +  # phi kernels headers
+    # utila api headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True)))  # paddle utils headers
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
@@ -569,7 +612,6 @@ class InstallCommand(InstallCommandBase):
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
         self.install_headers = os.path.join(self.install_platlib, 'paddle', 'include')
-        
         return ret
 
 class InstallHeaders(Command):
@@ -601,8 +643,6 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-            if 'fluid' in install_dir or 'utils' in install_dir:
-                install_dir = "paddle/extension/include/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)

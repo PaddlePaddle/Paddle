@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/index_select_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -65,7 +65,8 @@ class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
     }
 
     Tensor casted_index;
-    if (index->type() != framework::proto::VarType::INT32) {
+    if (framework::TransToProtoVarType(index->dtype()) !=
+        framework::proto::VarType::INT32) {
       casted_index.mutable_data<int32_t>(index->dims(), ctx.GetPlace());
       const auto& cast_runner = NpuOpRunner("Cast", {*index}, {casted_index},
                                             {{"dst_type", ACL_INT32}});

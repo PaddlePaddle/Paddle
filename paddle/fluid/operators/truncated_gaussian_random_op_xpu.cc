@@ -32,8 +32,13 @@ class XPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
-    std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
-                                           1.0);
+    auto normal_cdf = [](float x) {
+      return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
+    };
+    float a_normal_cdf = normal_cdf((-2.0 - mean) / std);
+    float b_normal_cdf = normal_cdf((2.0 - mean) / std);
+    std::uniform_real_distribution<float> dist(2.0 * a_normal_cdf - 1.0,
+                                               2.0 * b_normal_cdf - 1.0);
     TruncatedNormal<T> truncated_normal(mean, std);
     int64_t size = tensor->numel();
 
@@ -48,9 +53,8 @@ class XPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
       data_cpu[i] = truncated_normal(dist(*engine));
     }
 
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()), data,
-                 platform::CPUPlace(), reinterpret_cast<void*>(data_cpu.get()),
-                 size * sizeof(T));
+    memory::Copy(context.GetPlace(), data, platform::CPUPlace(),
+                 reinterpret_cast<void*>(data_cpu.get()), size * sizeof(T));
   }
 };
 

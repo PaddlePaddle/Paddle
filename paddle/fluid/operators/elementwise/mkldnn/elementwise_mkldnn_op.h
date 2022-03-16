@@ -26,12 +26,51 @@ namespace operators {
 
 using framework::DataLayout;
 using framework::Tensor;
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::stream;
+using dnnl::memory;
+using dnnl::primitive;
+using dnnl::stream;
 
 template <typename T, dnnl::algorithm BINARY_OP>
 class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
+ private:
+  dnnl::post_ops get_post_ops(const framework::ExecutionContext& ctx) const {
+    dnnl::post_ops post_operations;
+    if (ctx.HasAttr("activation_type")) {
+      const float scale = ctx.HasAttr("activation_scale")
+                              ? ctx.Attr<float>("activation_scale")
+                              : 1.0f;
+      const float alpha = ctx.HasAttr("activation_alpha")
+                              ? ctx.Attr<float>("activation_alpha")
+                              : 0.0f;
+      const float beta = ctx.HasAttr("activation_beta")
+                             ? ctx.Attr<float>("activation_beta")
+                             : 0.0f;
+
+      static std::unordered_map<std::string, dnnl::algorithm> algo_map = {
+          {"relu", dnnl::algorithm::eltwise_relu},
+          {"tanh", dnnl::algorithm::eltwise_tanh},
+          {"leaky_relu", dnnl::algorithm::eltwise_relu},
+          {"swish", dnnl::algorithm::eltwise_swish},
+          {"hardswish", dnnl::algorithm::eltwise_hardswish},
+          {"sqrt", dnnl::algorithm::eltwise_sqrt},
+          {"abs", dnnl::algorithm::eltwise_abs},
+          {"clip", dnnl::algorithm::eltwise_clip},
+          {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+          {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+          {"sigmoid", dnnl::algorithm::eltwise_logistic}};
+
+      const auto& activation_type =
+          algo_map.find(ctx.Attr<std::string>("activation_type"));
+
+      if (activation_type != algo_map.end()) {
+        post_operations.append_eltwise(scale, activation_type->second, alpha,
+                                       beta);
+      }
+    }
+    return post_operations;
+  }
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto& dev_ctx =
@@ -47,9 +86,9 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     float scale_o = ctx.Attr<float>("Scale_out");
     int axis = ctx.Attr<int>("axis");
 
-    platform::BinaryMKLDNNHandler<T> handler(BINARY_OP, axis, mkldnn_engine,
-                                             ctx.GetPlace(), x, y, z, scale_x,
-                                             scale_y, scale_o);
+    platform::BinaryMKLDNNHandler<T> handler(
+        BINARY_OP, axis, mkldnn_engine, ctx.GetPlace(), x, y, z, scale_x,
+        scale_y, scale_o, get_post_ops(ctx));
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
@@ -62,9 +101,22 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     // and they share a buffer (of
     // shape x) then this buffer is not big enough to hold result of elementwise
     // operation.
-    auto dst_memory = (x->numel() == z->numel() && x->IsSharedBufferWith(*z))
-                          ? src_x_memory
-                          : handler.AcquireDstMemory(z);
+    const bool reuse_x_memopry =
+        x->numel() == z->numel() && x->IsSharedBufferWith(*z);
+    std::shared_ptr<dnnl::memory> dst_memory = nullptr;
+    if (reuse_x_memopry) {
+      dst_memory = src_x_memory;
+      // NOTE(chenfeiyu): when the output reuses memory from other tensor rather
+      // than allocate its own, it's still need to take care of its data type.
+      // Unfortunately, paddle's operator only infers the output' shape, but not
+      // the data type. mutable_data<T> takes care of allocation and data type
+      // normally, but if the memory is already allocated and there is no need
+      // to re-allocate, it just set the data type. So this it added there to
+      // get the right data type.
+      z->mutable_data<T>(ctx.GetPlace());
+    } else {
+      dst_memory = handler.AcquireDstMemory(z);
+    }
 
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
@@ -85,8 +137,8 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
 
 inline std::vector<int64_t> CalculateBroadcastedDims(const Tensor* x,
                                                      const Tensor* y) {
-  const auto src_tz = framework::vectorize(x->dims());
-  const auto dst_tz = framework::vectorize(y->dims());
+  const auto src_tz = phi::vectorize(x->dims());
+  const auto dst_tz = phi::vectorize(y->dims());
 
   size_t j = 0;
   std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);

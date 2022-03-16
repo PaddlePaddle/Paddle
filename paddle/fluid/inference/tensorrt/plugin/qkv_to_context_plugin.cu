@@ -22,8 +22,8 @@
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace inference {
@@ -229,7 +229,9 @@ template <typename T>
 __global__ void apply_scale(T *data, T scale, int n) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  data[tid] = data[tid] * scale;
+  if (tid < n) {
+    data[tid] = data[tid] * scale;
+  }
 #endif
 }
 

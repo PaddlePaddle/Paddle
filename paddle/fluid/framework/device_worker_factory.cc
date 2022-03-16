@@ -65,7 +65,12 @@ std::shared_ptr<DeviceWorker> DeviceWorkerFactory::CreateDeviceWorker(
 REGISTER_DEVICE_WORKER_CLASS(HogwildWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorkerOpt);
-#ifdef PADDLE_WITH_PSLIB
+
+#if defined(PADDLE_WITH_PSCORE)
+REGISTER_DEVICE_WORKER_CLASS(HeterSectionWorker);
+#endif
+
+#if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
 #endif
 

@@ -198,29 +198,35 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
     ENDIF()
 
-    if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
+
+    if(WITH_ONNXRUNTIME)
+        SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
+        SET(PROTOBUF_TAG         v3.18.0)
+    elseif(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
         SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
         SET(PROTOBUF_TAG         v3.8.0)
     elseif(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
         SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
         SET(PROTOBUF_TAG         v3.8.0)
+    elseif(WITH_IPU)
+        SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
+        SET(PROTOBUF_TAG         d750fbf648256c7c631f51ffdbf67d7c18b0114e)
+    elseif(WIN32)
+        SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
+        # Change the tag to support building with vs2019
+        SET(PROTOBUF_TAG         01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
     else()
         SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
         SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
     endif()
 
-    cache_third_party(${TARGET_NAME}
-        REPOSITORY    ${PROTOBUF_REPOSITORY}
-        TAG           ${PROTOBUF_TAG}
-        DIR           PROTOBUF_SOURCE_DIR)
-
     ExternalProject_Add(
         ${TARGET_NAME}
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        "${PROTOBUF_DOWNLOAD_CMD}"
+        GIT_REPOSITORY  ${PROTOBUF_REPOSITORY}
+        GIT_TAG         ${PROTOBUF_TAG}
         PREFIX          ${PROTOBUF_PREFIX_DIR}
-        SOURCE_DIR      ${PROTOBUF_SOURCE_DIR}
         UPDATE_COMMAND  ""
         DEPENDS         zlib
         CONFIGURE_COMMAND
@@ -246,8 +252,12 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     )
 ENDFUNCTION()
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
+if(WITH_ONNXRUNTIME)
+    SET(PROTOBUF_VERSION 3.18.0)
+elseif(WITH_ASCEND OR WITH_ASCEND_CL)
     SET(PROTOBUF_VERSION 3.8.0)
+elseif(WITH_IPU)
+    SET(PROTOBUF_VERSION 3.6.1)
 else()
     SET(PROTOBUF_VERSION 3.1.0)
 endif()

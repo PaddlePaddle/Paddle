@@ -21,10 +21,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/cast_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+
+// only can include the headers in paddle/phi/api dirs
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/kernels/cpu/reduce.h"
+
 #if defined(__HIPCC__) || defined(__NVCC__)
-#include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/gpu/reduce_grad.h"
 #endif
 
 namespace paddle {
@@ -32,7 +39,8 @@ namespace operators {
 
 #define HANDLE_DIM(NDIM, RDIM)                                            \
   if (ndim == NDIM && rdim == RDIM) {                                     \
-    ReduceFunctor<DeviceContext, OutT, NDIM, RDIM, Functor>(              \
+    paddle::operators::ReduceFunctor<DeviceContext, OutT, NDIM, RDIM,     \
+                                     Functor>(                            \
         context.template device_context<DeviceContext>(), *input, output, \
         dims, keep_dim);                                                  \
   }
@@ -95,7 +103,7 @@ void GetShuffledInput(const framework::ExecutionContext& context,
   shuffled_input->Resize(shuffled_dims);
   shuffled_input->mutable_data<OutT>(context.GetPlace());
 
-  math::TransposeNormal<DeviceContext, OutT> trans;
+  phi::funcs::TransposeNormal<DeviceContext, OutT> trans;
   trans(context.template device_context<DeviceContext>(), *input,
         shuffled_input, perm_axis);
 }
@@ -126,7 +134,7 @@ void HandleLargeDim(const framework::ExecutionContext& context,
   shuffled_input.Resize({unreduced, reduced});
   DDim output_dim = output->dims();
   output->Resize({unreduced});
-  ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
+  paddle::operators::ReduceFunctor<DeviceContext, OutT, 2, 1, Functor>(
       context.template device_context<DeviceContext>(), shuffled_input, output,
       {1}, keep_dim);
   output->Resize(output_dim);
@@ -137,7 +145,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
                         const framework::Tensor* x,
                         const framework::Tensor* out,
                         const framework::Tensor* dout, framework::Tensor* dx,
-                        const std::vector<int>& dims) {
+                        Functor functor, const std::vector<int>& dims) {
   const int64_t unreduced = out->numel();
   const int64_t reduced = x->numel() / unreduced;
   DDim out_dim(out->dims());
@@ -151,7 +159,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   dx->Resize({unreduced, reduced});
   ReduceGradFunctor<DeviceContext, T, 2, Functor>(
       context.template device_context<DeviceContext>(), shuffled_x, *out, *dout,
-      dx, {1});
+      dx, functor, {1});
   // transpose dX
   std::vector<int> origin_axis(x_dim.size());
   GetOriginDimFromShuffled(x_dim, dims, &origin_axis);
@@ -159,7 +167,7 @@ void HandleLargeDimGrad(const framework::ExecutionContext& context,
   framework::TensorCopy(*dx, context.GetPlace(), &dx_tmp);
   dx_tmp.Resize(shuffled_dim);
   dx->Resize(x_dim);
-  math::TransposeNormal<DeviceContext, T> trans;
+  phi::funcs::TransposeNormal<DeviceContext, T> trans;
   trans(context.template device_context<DeviceContext>(), dx_tmp, dx,
         origin_axis);
 }
@@ -232,43 +240,29 @@ class ReduceKernel : public framework::OpKernel<T> {
     bool keep_dim = context.Attr<bool>("keep_dim");
     int out_dtype = context.Attr<int>("out_dtype");
     framework::proto::VarType::Type cast_out_dtype;
-
-    // The dims has full dim, set the reduce_all is True
-    const auto& input_dim_size = context.Input<Tensor>("X")->dims().size();
-    std::set<int> dims_set(dims.begin(), dims.end());
-    bool full_dim = true;
-    for (auto i = 0; i < input_dim_size; i++) {
-      if (dims_set.find(i) == dims_set.end()) {
-        full_dim = false;
-        break;
-      }
-    }
-    reduce_all = (reduce_all || full_dim);
+    auto* input = context.Input<Tensor>("X");
 
     if (out_dtype < 0) {
-      auto* cast_input = context.Input<Tensor>("X");
-      cast_out_dtype =
-          static_cast<framework::proto::VarType::Type>(cast_input->type());
-      framework::VisitDataType(
-          cast_out_dtype,
-          ReduceKernelFunctor<DeviceContext, T, Functor>(
-              cast_input, output, dims, keep_dim, reduce_all, context));
+      cast_out_dtype = static_cast<framework::proto::VarType::Type>(
+          framework::TransToProtoVarType(input->dtype()));
     } else {
-      Tensor tmp_tensor;
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
-      auto* input = context.Input<Tensor>("X");
-
-      tmp_tensor.Resize(input->dims());
-      framework::VisitDataType(
-          cast_out_dtype,
-          CastOpFunctor<DeviceContext, T>(
-              input, &tmp_tensor,
-              context.template device_context<DeviceContext>()));
-      framework::VisitDataType(
-          cast_out_dtype,
-          ReduceKernelFunctor<DeviceContext, T, Functor>(
-              &tmp_tensor, output, dims, keep_dim, reduce_all, context));
     }
+
+    auto& dev_ctx = context.device_context<DeviceContext>();
+    output->mutable_data(
+        dev_ctx.GetPlace(),
+        static_cast<framework::proto::VarType::Type>(cast_out_dtype));
+
+    std::vector<int64_t> tmp_dims(dims.begin(), dims.end());
+
+    // call new kernel
+    phi::Reduce<typename framework::ConvertToPhiContext<DeviceContext>::TYPE, T,
+                Functor>(
+        static_cast<const typename framework::ConvertToPhiContext<
+            DeviceContext>::TYPE&>(dev_ctx),
+        *input, reduce_all, tmp_dims, keep_dim,
+        framework::TransToPhiDataType(cast_out_dtype), output);
   }
 };
 template <typename DeviceContext, typename OutT, typename Functor>
@@ -333,6 +327,66 @@ class BoolReduceKernel : public framework::OpKernel<OutT> {
   }
 };
 
+template <typename DeviceContext, typename T, typename Functor>
+void LaunchReduceGradKernel(const framework::ExecutionContext& context,
+                            const framework::Tensor* input0,
+                            const framework::Tensor* input1,
+                            const framework::Tensor* input2,
+                            paddle::framework::Tensor* output, Functor functor,
+                            const std::vector<int>& dims,
+                            bool reduce_all = false) {
+  if (reduce_all) {
+    auto x = EigenVector<T>::Flatten(*input0);
+    auto x_reduce = EigenVector<T>::Flatten(*input1);
+    auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
+    auto x_grad = EigenVector<T>::Flatten(*output);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    auto broadcast_dim =
+        Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
+    functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
+            broadcast_dim[0]);
+  } else {
+    int rank = input0->dims().size();
+    switch (rank) {
+      case 1:
+        ReduceGradFunctor<DeviceContext, T, 1, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, functor, dims);
+        break;
+      case 2:
+        ReduceGradFunctor<DeviceContext, T, 2, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, functor, dims);
+        break;
+      case 3:
+        ReduceGradFunctor<DeviceContext, T, 3, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, functor, dims);
+        break;
+      case 4:
+        ReduceGradFunctor<DeviceContext, T, 4, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, functor, dims);
+        break;
+      case 5:
+        ReduceGradFunctor<DeviceContext, T, 5, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, functor, dims);
+        break;
+      case 6:
+        ReduceGradFunctor<DeviceContext, T, 6, Functor>(
+            context.template device_context<DeviceContext>(), *input0, *input1,
+            *input2, output, functor, dims);
+        break;
+      default:
+        HandleLargeDimGrad<DeviceContext, T, Functor>(
+            context, input0, input1, input2, output, functor, dims);
+        break;
+    }
+  }
+}
+
 template <typename DeviceContext, typename T, typename Functor,
           bool kNoNeedBufferX = false, bool kNoNeedBufferY = false>
 class ReduceGradKernel : public framework::OpKernel<T> {
@@ -369,61 +423,15 @@ class ReduceGradKernel : public framework::OpKernel<T> {
       input1 = input2;
     }
 
+    const std::vector<int> const_dims = dims;
+
     // NOTE(dengkaipeng): Out is unnecessary in some reduce kernel and
     // not be set as Input in grad Maker, use Out_grad to replace here
     if (!input1) input1 = input2;
-
-    if (reduce_all) {
-      auto x = EigenVector<T>::Flatten(*input0);
-      auto x_reduce = EigenVector<T>::Flatten(*input1);
-      auto x_reduce_grad = EigenVector<T>::Flatten(*input2);
-      auto x_grad = EigenVector<T>::Flatten(*output);
-      auto& place =
-          *context.template device_context<DeviceContext>().eigen_device();
-      auto broadcast_dim =
-          Eigen::array<int, 1>({{static_cast<int>(input0->numel())}});
-      Functor functor;
-      functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
-              broadcast_dim[0]);
-    } else {
-      int rank = input0->dims().size();
-      switch (rank) {
-        case 1:
-          ReduceGradFunctor<DeviceContext, T, 1, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 2:
-          ReduceGradFunctor<DeviceContext, T, 2, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 3:
-          ReduceGradFunctor<DeviceContext, T, 3, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 4:
-          ReduceGradFunctor<DeviceContext, T, 4, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 5:
-          ReduceGradFunctor<DeviceContext, T, 5, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        case 6:
-          ReduceGradFunctor<DeviceContext, T, 6, Functor>(
-              context.template device_context<DeviceContext>(), *input0,
-              *input1, *input2, output, dims);
-          break;
-        default:
-          HandleLargeDimGrad<DeviceContext, T, Functor>(context, input0, input1,
-                                                        input2, output, dims);
-          break;
-      }
-    }
+    Functor functor;
+    LaunchReduceGradKernel<DeviceContext, T, Functor>(context, input0, input1,
+                                                      input2, output, functor,
+                                                      const_dims, reduce_all);
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
@@ -431,8 +439,9 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     if (in_dtype >= 0) {
       Tensor tmp_tensor;
       auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
-      auto in_kernel_type =
-          framework::OpKernelType(pre_input->type(), context.GetPlace());
+      auto in_kernel_type = framework::OpKernelType(
+          framework::TransToProtoVarType(pre_input->dtype()),
+          context.GetPlace());
       auto out_kernel_type = framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(in_dtype),
           context.GetPlace());
@@ -484,8 +493,8 @@ class ReduceOp : public framework::OperatorWithKernel {
     bool keep_dim = ctx->Attrs().Get<bool>("keep_dim");
     if (reduce_all) {
       if (keep_dim)
-        ctx->SetOutputDim(
-            "Out", framework::make_ddim(std::vector<int64_t>(x_rank, 1)));
+        ctx->SetOutputDim("Out",
+                          phi::make_ddim(std::vector<int64_t>(x_rank, 1)));
       else
         ctx->SetOutputDim("Out", {1});
     } else {
@@ -506,7 +515,7 @@ class ReduceOp : public framework::OperatorWithKernel {
       if (!keep_dim && dims_vector.size() == 0) {
         dims_vector.push_back(1);
       }
-      auto out_dims = framework::make_ddim(dims_vector);
+      auto out_dims = phi::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
       if (dims.size() > 0 && dims[0] != 0) {
         // Only pass LoD when not reducing on the first dim.
@@ -532,11 +541,12 @@ class ReduceOp : public framework::OperatorWithKernel {
 #endif
 
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
-                            platform::is_npu_place(ctx.GetPlace()),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "float16 can only be used on GPU or NPU place"));
+      PADDLE_ENFORCE_EQ(
+          platform::is_gpu_place(ctx.GetPlace()) ||
+              platform::is_npu_place(ctx.GetPlace()) ||
+              platform::is_mlu_place(ctx.GetPlace()),
+          true, platform::errors::InvalidArgument(
+                    "float16 can only be used on GPU or NPU or MLU place"));
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -586,11 +596,12 @@ class ReduceGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    int in_dtype = ctx.Attr<int>("in_dtype");
+    int out_dtype = ctx.Attr<int>("out_dtype");
     auto input_data_type =
-        (in_dtype >= 0) ? static_cast<framework::proto::VarType::Type>(in_dtype)
-                        : OperatorWithKernel::IndicateVarDataType(
-                              ctx, framework::GradVarName("Out"));
+        (out_dtype >= 0)
+            ? static_cast<framework::proto::VarType::Type>(out_dtype)
+            : OperatorWithKernel::IndicateVarDataType(
+                  ctx, framework::GradVarName("Out"));
 #ifdef PADDLE_WITH_MKLDNN
     auto CanMKLDNNReduceGradBeUsed = [&]() {
       auto dx_dims = ctx.Input<Tensor>("X")->dims();
@@ -664,7 +675,8 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 };
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-template <typename T, template <typename, typename> class ReduceOp>
+template <typename T, template <typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
 class ReduceCudaKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -672,20 +684,66 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     const Tensor* input = context.Input<Tensor>("X");
     Tensor* output = context.Output<Tensor>("Out");
     auto out_dtype = context.Attr<int>("out_dtype");
+    auto pt_out_dtype = paddle::framework::TransToPhiDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
     std::vector<int> dims = context.Attr<std::vector<int>>("dim");
 
-    std::vector<int> reduce_dims =
-        GetReduceDim(dims, input->dims().size(), reduce_all);
+    auto& dev_ctx = context.cuda_device_context();
 
-    gpuStream_t stream = context.cuda_device_context().stream();
     if (out_dtype >= 0) {
-      framework::VisitDataTypeSmall(
-          static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
+      output->mutable_data(dev_ctx.GetPlace(), pt_out_dtype);
     } else {
-      TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
-                                              stream);
+      output->mutable_data(dev_ctx.GetPlace(), input->dtype());
     }
+
+    std::vector<int64_t> dims_int64{dims.begin(), dims.end()};
+
+    phi::Reduce<T, ReduceOp, TransformOp>(
+        dev_ctx, *input, reduce_all, dims_int64, false, pt_out_dtype, output);
+  }
+};
+
+template <typename T, template <typename, typename> class TransformOp>
+class ReduceCudaGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    bool reduce_all = context.Attr<bool>("reduce_all");
+    std::vector<int> dims = context.Attr<std::vector<int>>("dim");
+    auto* in_x = context.Input<Tensor>("X");
+    auto* d_out =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_x = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto out_dtype = context.Attr<int>("in_dtype");
+    auto pt_out_dtype = framework::TransToPhiDataType(
+        static_cast<framework::proto::VarType::Type>(out_dtype));
+    // get reduce_dim and reduce_num for reduce_mean_grad
+    int dim_size = in_x->dims().size();
+    std::vector<int> reduce_dims = GetReduceDim(dims, dim_size, reduce_all);
+    auto update_dims = vectorize(d_x->dims());
+    int reduce_num = 1;
+    for (auto i : reduce_dims) {
+      reduce_num *= (in_x->dims())[i];
+      update_dims[i] = 1;
+    }
+    // make new tensor
+    framework::Tensor new_d_out(d_out->type());
+    new_d_out.ShareDataWith(*d_out);
+    new_d_out.Resize(phi::make_ddim(update_dims));
+    auto& dev_ctx = context.cuda_device_context();
+    if (out_dtype > 0) {
+      d_x->mutable_data(dev_ctx.GetPlace(), pt_out_dtype);
+    } else {
+      d_x->mutable_data(dev_ctx.GetPlace(), d_out->dtype());
+    }
+    auto pt_d_out = paddle::experimental::MakePhiDenseTensor(new_d_out);
+    auto pt_d_x = paddle::experimental::MakePhiDenseTensor(*d_x);
+    if (out_dtype <= 0) {
+      pt_out_dtype = d_out->dtype();
+    }
+    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    phi::ReduceGrad<T, TransformOp<T, MPType>>(
+        dev_ctx, pt_d_out.get(), pt_d_x.get(), pt_out_dtype,
+        TransformOp<T, MPType>(reduce_num));
   }
 };
 #endif

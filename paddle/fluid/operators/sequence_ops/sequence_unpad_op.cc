@@ -71,7 +71,7 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
         out_dims_vec.push_back(x_dims[i]);
       }
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims_vec));
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Out", 1);
     }

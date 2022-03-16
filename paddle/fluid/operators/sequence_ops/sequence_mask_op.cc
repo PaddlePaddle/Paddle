@@ -27,14 +27,14 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "SequenceMask");
 
     int maxlen = ctx->Attrs().Get<int>("maxlen");
-    auto dim = framework::vectorize<int>(ctx->GetInputDim("X"));
+    auto dim = phi::vectorize<int>(ctx->GetInputDim("X"));
 
     if (ctx->HasInputs("MaxLenTensor")) {
       dim.push_back(-1);
     } else {
       dim.push_back(maxlen > 0 ? maxlen : -1);
     }
-    ctx->SetOutputDim("Y", framework::make_ddim(dim));
+    ctx->SetOutputDim("Y", phi::make_ddim(dim));
   }
 
  protected:

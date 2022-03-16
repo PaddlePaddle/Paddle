@@ -17,13 +17,20 @@
 #include <math.h>
 #include <algorithm>
 #include <complex>
-#include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/operators/math/lapack_function.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
-#include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/diag_functor.h"
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
+#include "paddle/phi/kernels/math_kernel.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
+
 #define EPSILON 1e-6
 
 namespace paddle {
@@ -87,20 +94,21 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
   int values_stride = values->dims()[values->dims().size() - 1];
 
   Tensor rwork;
-  math::Real<T>* rwork_data = nullptr;
+  phi::dtype::Real<T>* rwork_data = nullptr;
 
-  rwork.Resize(framework::make_ddim({lda * 2}));
-  rwork_data = rwork.mutable_data<math::Real<T>>(context.GetPlace());
+  rwork.Resize(phi::make_ddim({lda * 2}));
+  rwork_data = rwork.mutable_data<phi::dtype::Real<T>>(context.GetPlace());
 
   // call lapackEig once to compute the size of work;
   T computed_work_size;
-  math::lapackEig<T, math::Real<T>>(
+  phi::funcs::lapackEig<T, phi::dtype::Real<T>>(
       jobvl, jobvr, order, input_data, lda, values_data, lvector_data, ldvl,
       rvector_data, ldvr, &computed_work_size, lwork, rwork_data, &info);
 
-  lwork = std::max<int>(1, static_cast<int>(math::Real<T>(computed_work_size)));
+  lwork = std::max<int>(
+      1, static_cast<int>(phi::dtype::Real<T>(computed_work_size)));
   Tensor work;
-  work.Resize(framework::make_ddim({lwork}));
+  work.Resize(phi::make_ddim({lwork}));
   T* work_data = work.mutable_data<T>(context.GetPlace());
 
   for (auto i = 0; i < batch_count; ++i) {
@@ -108,7 +116,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
     T* current_values = &values_data[i * values_stride];
     T* current_rvectors = &rvector_data[i * matrix_stride];
 
-    math::lapackEig<T, math::Real<T>>(
+    phi::funcs::lapackEig<T, phi::dtype::Real<T>>(
         jobvl, jobvr, order, current_matrix, lda, current_values, lvector_data,
         ldvl, current_rvectors, ldvr, work_data, lwork, rwork_data, &info);
     PADDLE_ENFORCE_EQ(
@@ -189,7 +197,7 @@ class EigKernel : public framework::OpKernel<T> {
     auto* out_values = context.Output<Tensor>("Eigenvalues");
     auto* out_vectors = context.Output<Tensor>("Eigenvectors");
 
-    if (!framework::IsComplexType(x->type())) {
+    if (!framework::IsComplexType(framework::TransToProtoVarType(x->dtype()))) {
       out_values->mutable_data<Tout>(context.GetPlace());
       out_vectors->mutable_data<Tout>(context.GetPlace());
 
@@ -200,42 +208,48 @@ class EigKernel : public framework::OpKernel<T> {
       Tensor real_vectors;
       // double the size of real_values, the first half stores the real part,
       // the next half stores the imag part
-      std::vector<int> origin_dim =
-          framework::vectorize<int>(out_values->dims());
+      std::vector<int> origin_dim = phi::vectorize<int>(out_values->dims());
       int last_item = origin_dim.back();
       origin_dim.pop_back();
       origin_dim.push_back(last_item * 2);
-      framework::DDim big_dim = framework::make_ddim(origin_dim);
+      framework::DDim big_dim = phi::make_ddim(origin_dim);
 
-      real_values.mutable_data<math::Real<T>>(big_dim, context.GetPlace());
-      real_vectors.mutable_data<math::Real<T>>(x->dims(), context.GetPlace());
+      real_values.mutable_data<phi::dtype::Real<T>>(big_dim,
+                                                    context.GetPlace());
+      real_vectors.mutable_data<phi::dtype::Real<T>>(x->dims(),
+                                                     context.GetPlace());
 
-      ApplyEigKernel<DeviceContext, math::Real<T>>(*x, &real_values,
-                                                   &real_vectors, context);
-      auto dito =
-          math::DeviceIndependenceTensorOperations<DeviceContext, math::Real<T>,
-                                                   Tout>(context);
+      ApplyEigKernel<DeviceContext, phi::dtype::Real<T>>(
+          *x, &real_values, &real_vectors, context);
+
+      auto& orig_dev_ctx = context.template device_context<DeviceContext>();
+      auto& dev_ctx = static_cast<
+          const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
+          orig_dev_ctx);
 
       // 1. extract real part & imag part from real_values
-      Tensor real_part = dito.Slice(real_values, {-1}, {0}, {order});
-      Tensor imag_part = dito.Slice(real_values, {-1}, {order}, {order * 2});
+      Tensor real_part =
+          phi::funcs::Slice<T>(dev_ctx, real_values, {-1}, {0}, {order});
+      Tensor imag_part = phi::funcs::Slice<T>(dev_ctx, real_values, {-1},
+                                              {order}, {order * 2});
 
       // 2. construct complex values
-      auto* real_part_data = real_part.data<math::Real<T>>();
-      auto* imag_part_data = imag_part.data<math::Real<T>>();
+      auto* real_part_data = real_part.data<phi::dtype::Real<T>>();
+      auto* imag_part_data = imag_part.data<phi::dtype::Real<T>>();
       int out_values_numel = out_values->numel();
       platform::ForRange<DeviceContext> for_range(
           context.template device_context<DeviceContext>(), out_values_numel);
-      math::RealImagToComplexFunctor<Tout> functor(
+      phi::funcs::RealImagToComplexFunctor<Tout> functor(
           real_part_data, imag_part_data,
           out_values->mutable_data<Tout>(context.GetPlace()), out_values_numel);
       for_range(functor);
 
       // 3. construct complex vectors
-      Tensor real_vector_trans = dito.Transpose(real_vectors);
+      Tensor real_vector_trans =
+          phi::TransposeLast2Dim<T>(dev_ctx, real_vectors);
       Tensor out_vectors_trans;
       out_vectors_trans.mutable_data<Tout>(x->dims(), context.GetPlace());
-      ConstructComplexVectors<math::Real<T>, Tout>(
+      ConstructComplexVectors<phi::dtype::Real<T>, Tout>(
           &out_vectors_trans, *out_values, real_vector_trans, context,
           batch_count, order);
       TransposeTwoAxis<DeviceContext, Tout>(out_vectors_trans, out_vectors,
@@ -250,45 +264,48 @@ class EigKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename Tout>
+template <typename DeviceContext, typename T>
 void ComputeBackwardForComplexInput(
     const Tensor& V, const Tensor& L, const Tensor& gL, const Tensor& gV,
-    Tout* x_grad_data, int batch_count, int order,
+    T* x_grad_data, int batch_count, int order,
     const framework::ExecutionContext& context) {
-  auto dito =
-      math::DeviceIndependenceTensorOperations<DeviceContext, Tout, Tout>(
-          context);
+  auto& orig_dev_ctx = context.template device_context<DeviceContext>();
+  auto& dev_ctx = static_cast<
+      const typename framework::ConvertToPhiContext<DeviceContext>::TYPE&>(
+      orig_dev_ctx);
 
-  Tensor trans_v = dito.Transpose(V);
-  Tensor Vh = dito.Conj(trans_v);
-  Tensor Lconj = dito.Conj(L);
-  Tensor Econj = dito.Sub(dito.Unsqueeze(Lconj, -2), dito.Unsqueeze(Lconj, -1));
-  Tensor VhgV = dito.Matmul(Vh, gV);
-  Tensor diag_real = dito.Real(VhgV);
-  Tensor diag_res = dito.BatchDiag(diag_real, batch_count);
-  Tensor diag_unsqueezed = dito.Unsqueeze(diag_res, -2);
+  Tensor trans_v = phi::TransposeLast2Dim<T>(dev_ctx, V);
+  Tensor Vh = phi::Conj<T>(dev_ctx, trans_v);
+  Tensor Lconj = phi::Conj<T>(dev_ctx, L);
+  Tensor Econj = phi::Subtract<T>(dev_ctx, phi::funcs::Unsqueeze(Lconj, -2),
+                                  phi::funcs::Unsqueeze(Lconj, -1));
+  Tensor VhgV = phi::Matmul<T>(dev_ctx, Vh, gV);
+  Tensor diag_real = phi::Real<T>(dev_ctx, VhgV);
+  Tensor diag_res = phi::funcs::BatchDiag<T>(dev_ctx, diag_real, batch_count);
+  Tensor diag_unsqueezed = phi::funcs::Unsqueeze(diag_res, -2);
 
   // turn diag_unsqueezed into complex
   auto numel = diag_unsqueezed.numel();
   Tensor diag_unsqueezed_complex;
-  auto* data_diag_un = diag_unsqueezed.data<math::Real<Tout>>();
-  auto* data_diag_un_com = diag_unsqueezed_complex.mutable_data<Tout>(
+  auto* data_diag_un = diag_unsqueezed.data<phi::dtype::Real<T>>();
+  auto* data_diag_un_com = diag_unsqueezed_complex.mutable_data<T>(
       diag_unsqueezed.dims(), context.GetPlace(),
-      static_cast<size_t>(numel * sizeof(Tout)));
-  auto& dev_ctx = context.template device_context<DeviceContext>();
-  platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-  math::RealToComplexFunctor<Tout> functor(data_diag_un, data_diag_un_com,
-                                           numel);
+      static_cast<size_t>(numel * sizeof(T)));
+
+  platform::ForRange<DeviceContext> for_range(orig_dev_ctx, numel);
+  phi::funcs::RealToComplexFunctor<T> functor(data_diag_un, data_diag_un_com,
+                                              numel);
   for_range(functor);
   // real tensor multiply complex tensor in broadcast manner
-  Tensor res1 = dito.RealMulComplex(V, diag_unsqueezed_complex);
-  Tensor res2 = dito.Matmul(Vh, res1);
-  Tensor result = dito.Sub(VhgV, res2);
+  Tensor res1 = phi::Multiply<T>(dev_ctx, V, diag_unsqueezed_complex);
+  Tensor res2 = phi::Matmul<T>(dev_ctx, Vh, res1);
+  Tensor result = phi::Subtract<T>(dev_ctx, VhgV, res2);
 
-  result.mutable_data<Tout>(V.dims(), context.GetPlace());
-  result = dito.Div(result, Econj);
-  result = dito.DiagFill(order, order, order, 0, gL, result);
-  Tensor rhs = dito.Matmul(result, Vh);
+  result.mutable_data<T>(V.dims(), context.GetPlace());
+  result = phi::Divide<T>(dev_ctx, result, Econj);
+  result =
+      phi::funcs::DiagFill<T, T>(dev_ctx, order, order, order, 0, gL, result);
+  Tensor rhs = phi::Matmul<T>(dev_ctx, result, Vh);
 
   // solve linear system
   // solve(Vh, rhs, out, m, k)
@@ -297,10 +314,10 @@ void ComputeBackwardForComplexInput(
   // x_grad: out
   int m = Vh.dims()[Vh.dims().size() - 1];
   int k = rhs.dims()[rhs.dims().size() - 1];
-  auto* matrix_data = Vh.data<Tout>();
-  auto* rhs_data = rhs.data<Tout>();
-  math::SolveLinearSystem<Tout>(matrix_data, rhs_data, x_grad_data, m, k,
-                                batch_count);
+  auto* matrix_data = Vh.data<T>();
+  auto* rhs_data = rhs.data<T>();
+  math::SolveLinearSystem<T>(matrix_data, rhs_data, x_grad_data, m, k,
+                             batch_count);
 }
 
 template <typename DeviceContext, typename T, typename Tout>

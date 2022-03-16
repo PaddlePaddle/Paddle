@@ -20,8 +20,8 @@ limitations under the License. */
 #include <cmath>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -29,6 +29,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+#define GELU_CONSTANT 0.044715
 
 template <typename T>
 struct GeluFunctor {
@@ -41,14 +43,14 @@ struct GeluFunctor {
         auto casted_x = x.template cast<float>();
         auto temp =
             (static_cast<float>(M_2_SQRTPI * M_SQRT1_2) *
-             (casted_x + static_cast<float>(0.044715) * casted_x.cube()))
+             (casted_x + static_cast<float>(GELU_CONSTANT) * casted_x.cube()))
                 .tanh();
         out.device(d) = (casted_x * static_cast<float>(0.5) *
                          (static_cast<float>(1) + temp))
                             .template cast<T>();
       } else {
         auto temp = (static_cast<T>(M_2_SQRTPI * M_SQRT1_2) *
-                     (x + static_cast<T>(0.044715) * x.cube()))
+                     (x + static_cast<T>(GELU_CONSTANT) * x.cube()))
                         .tanh();
         out.device(d) = x * static_cast<T>(0.5) * (static_cast<T>(1) + temp);
       }
@@ -61,13 +63,13 @@ struct GeluFunctor {
       int n = std::min(x.size(), out.size());
 
       std::memset(out_data, 0, n * sizeof(T));
-      math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, out_data,
-                           1);
-      math::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
+      phi::funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1,
+                                 out_data, 1);
+      phi::funcs::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
       for (int i = 0; i < n; i++) {
         out_data[i] += static_cast<T>(1);
       }
-      math::CBlas<T>::VMUL(n, x_data, out_data, out_data);
+      phi::funcs::CBlas<T>::VMUL(n, x_data, out_data, out_data);
       for (int i = 0; i < n; i++) {
         out_data[i] *= static_cast<T>(0.5);
       }
@@ -101,10 +103,10 @@ struct GeluGradFunctor {
 
         const float kAlpha = static_cast<float>(M_2_SQRTPI * M_SQRT1_2);
         const float kBeta =
-            kAlpha * static_cast<float>(0.044715) * static_cast<float>(3);
+            kAlpha * static_cast<float>(GELU_CONSTANT) * static_cast<float>(3);
         const auto y =
             (kAlpha *
-             ((static_cast<float>(0.044715) * casted_x.cube()) + casted_x))
+             ((static_cast<float>(GELU_CONSTANT) * casted_x.cube()) + casted_x))
                 .tanh();
         dx.device(d) = (static_cast<float>(0.5) * casted_dout *
                         (static_cast<float>(1) + y +
@@ -113,9 +115,10 @@ struct GeluGradFunctor {
                            .template cast<T>();
       } else {
         const T kAlpha = static_cast<T>(M_2_SQRTPI * M_SQRT1_2);
-        const T kBeta = kAlpha * static_cast<T>(0.044715) * static_cast<T>(3);
+        const T kBeta =
+            kAlpha * static_cast<T>(GELU_CONSTANT) * static_cast<T>(3);
         const auto y =
-            (kAlpha * ((static_cast<T>(0.044715) * x.cube()) + x)).tanh();
+            (kAlpha * ((static_cast<T>(GELU_CONSTANT) * x.cube()) + x)).tanh();
         dx.device(d) = static_cast<T>(0.5) * dout *
                        (static_cast<T>(1) + y +
                         (x - x * y.square()) * (kAlpha + kBeta * x.square()));
@@ -135,24 +138,25 @@ struct GeluGradFunctor {
       std::memset(second, 0, n * sizeof(T));
 
       // first = (0.5 * (1 + erf(x / sqrt(2))))
-      math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
-      math::CBlas<T>::VMERF(n, first, first, VML_LA);
+      phi::funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first,
+                                 1);
+      phi::funcs::CBlas<T>::VMERF(n, first, first, VML_LA);
       for (int i = 0; i < n; i++) {
         first[i] += static_cast<T>(1);
       }
-      math::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
+      phi::funcs::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
 
       // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
-      math::CBlas<T>::VSQUARE(n, x_data, second);
-      math::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
-      math::CBlas<T>::VEXP(n, second, second);
-      math::CBlas<T>::VMUL(n, x_data, second, second);
-      math::CBlas<T>::SCAL(n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2),
-                           second, 1);
+      phi::funcs::CBlas<T>::VSQUARE(n, x_data, second);
+      phi::funcs::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
+      phi::funcs::CBlas<T>::VEXP(n, second, second);
+      phi::funcs::CBlas<T>::VMUL(n, x_data, second, second);
+      phi::funcs::CBlas<T>::SCAL(
+          n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2), second, 1);
 
       // dx = dout * (first + second);
-      math::CBlas<T>::VADD(n, first, second, first);
-      math::CBlas<T>::VMUL(n, dout_data, first, dx_data);
+      phi::funcs::CBlas<T>::VADD(n, first, second, first);
+      phi::funcs::CBlas<T>::VMUL(n, dout_data, first, dx_data);
 
       std::free(first);
       std::free(second);

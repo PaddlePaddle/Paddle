@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -87,7 +87,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     const T* weight_data = weight->data<T>();
     T* gate_data = gate->data<T>();
     T* reset_hidden_prev_data = reset_hidden_prev->data<T>();
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     blas.GEMM(false, false, batch_size, 2 * frame_size, frame_size, 1,
               hidden_prev_data, frame_size, weight_data, frame_size * 2, 1,
               gate_data, frame_size * 3);
@@ -204,7 +204,7 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
                      d_g.slice(c_offsets, extents), d_h * u);
     }
     // backward for reset_hidden_prev
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     blas.GEMM(false, true, batch_size, frame_size, frame_size, 1,
               gate_grad_data + frame_size * 2, frame_size * 3,
               weight_data + frame_size * frame_size * 2, frame_size, 0,

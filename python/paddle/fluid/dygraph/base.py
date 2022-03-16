@@ -25,13 +25,24 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
-from ..framework import _get_paddle_place
+from ..framework import _get_paddle_place, _in_eager_mode
 import paddle
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',
     'enabled', 'to_variable'
 ]
+
+# Flag that indicates whether running code under `@declarative`
+_in_declarative_mode_ = False
+
+
+def in_declarative_mode():
+    """
+    Return a bool value that indicates whether running code under `@declarative`
+
+    """
+    return _in_declarative_mode_
 
 
 def _switch_to_static_graph_(func):
@@ -43,6 +54,16 @@ def _switch_to_static_graph_(func):
 
 
 switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
+
+
+@signature_safe_contextmanager
+def _switch_declarative_mode_guard_(is_declarative=True):
+
+    global _in_declarative_mode_
+    original_val = _in_declarative_mode_
+    _in_declarative_mode_ = is_declarative
+    yield
+    _in_declarative_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -63,7 +84,6 @@ _functional_dygraph_context_manager = None
 
 @signature_safe_contextmanager
 def param_guard(parameters):
-    from paddle.fluid.dygraph.dygraph_to_static.program_translator import in_declarative_mode
     # Note: parameters is a reference of self._parameters or self._buffers
     if in_declarative_mode() and not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()
@@ -79,18 +99,19 @@ def param_guard(parameters):
         yield
 
 
-def _convert_into_variable(var_base):
+def _convert_into_variable(tensor):
     """
     Convert Varbase into Variable.
     """
-    if isinstance(var_base, core.VarBase):
+    if isinstance(tensor, (core.eager.Tensor, core.VarBase)):
         # Check whether has been created before.
-        new_var = var_base.block._find_var_recursive(var_base.name)
+        new_var = tensor.block._find_var_recursive(tensor.name)
         if new_var is not None:
             assert isinstance(new_var, framework.Variable)
         # Convert ParamBase into Parameter with same attributes in dy2stat.
-        elif isinstance(var_base, framework.ParamBase):
-            new_var = var_base._to_static_var(to_parameter=True)
+        elif isinstance(tensor,
+                        (framework.EagerParamBase, framework.ParamBase)):
+            new_var = tensor._to_static_var(to_parameter=True)
         else:
             # Note(Aurelius84): Convert VarBase in self._buffers into Variable with
             # same attributes and set persistable=True to allow saving this var.
@@ -100,13 +121,13 @@ def _convert_into_variable(var_base):
 
             # But if its shape is empty while created from `create_variable()`, we consider this buffer
             # non-persistable. See case of `drop_state` in lstm api.
-            is_persistable = len(var_base.shape) > 0
+            is_persistable = len(tensor.shape) > 0
 
-            new_var = var_base._to_static_var(
+            new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable)
         return new_var
     else:
-        return var_base
+        return tensor
 
 
 def enabled():
@@ -700,10 +721,15 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             if value.dtype != dtype:
                 value = value.astype(dtype)
 
-        py_var = core.VarBase(
-            value=value,
-            place=framework._current_expected_place(),
-            persistable=False,
-            zero_copy=zero_copy,
-            name=name if name else '')
-        return py_var
+        if _in_eager_mode():
+            return core.eager.Tensor(value,
+                                     framework._current_expected_place(), False,
+                                     zero_copy, name if name else None, True)
+        else:
+            py_var = core.VarBase(
+                value=value,
+                place=framework._current_expected_place(),
+                persistable=False,
+                zero_copy=zero_copy,
+                name=name if name else '')
+            return py_var

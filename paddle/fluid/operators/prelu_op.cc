@@ -17,6 +17,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+framework::OpKernelType innerGetKernelTypeForVar(
+    const Tensor &tensor, const framework::OpKernelType &expected_kernel_type) {
+#ifdef PADDLE_WITH_MKLDNN
+  auto isOneDNNKernelChosen =
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN);
+  auto isNotOneDNNTensor = (tensor.layout() != framework::DataLayout::kMKLDNN);
+  auto isModelNHWC =
+      (paddle::platform::MKLDNNDeviceContext::tls()
+           .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC);
+  // All inputs (including alpha) need shape rotating
+  if (isOneDNNKernelChosen && isNotOneDNNTensor && isModelNHWC) {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(),
+                                   framework::DataLayout::kNHWC);
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
+}
+
 class PReluOp : public framework::OperatorWithKernel {
  public:
   PReluOp(const std::string &type, const framework::VariableNameMap &inputs,
@@ -32,18 +52,12 @@ class PReluOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     std::string mode = ctx->Attrs().Get<std::string>("mode");
     if (mode == "all") {
-      PADDLE_ENFORCE_EQ(product(ctx->GetInputDim("Alpha")), 1,
+      PADDLE_ENFORCE_EQ(phi::product(ctx->GetInputDim("Alpha")), 1,
                         platform::errors::InvalidArgument(
                             "For mode 'all', size of weight Alpha must be one. "
                             "But recevied alpha's size: %d.",
                             product(ctx->GetInputDim("Alpha"))));
     } else if (mode == "channel") {
-      PADDLE_ENFORCE_EQ(product(ctx->GetInputDim("Alpha")), x_dim[1],
-                        platform::errors::InvalidArgument(
-                            "For mode 'channel', size of weight Alpha must be "
-                            "equal to the number of channels of input(x). But "
-                            "recevied alpha's size: %d, x_dim[1]: %d",
-                            product(ctx->GetInputDim("Alpha")), x_dim[1]));
       auto x_rank = x_dim.size();
       PADDLE_ENFORCE_GE(x_rank, 2,
                         platform::errors::InvalidArgument(
@@ -51,6 +65,33 @@ class PReluOp : public framework::OperatorWithKernel {
                             "equal or larger than 2. But recevied X's "
                             "rank: %d",
                             x_rank));
+      const std::string data_format_str =
+          ctx->Attrs().Get<std::string>("data_format");
+      PADDLE_ENFORCE_EQ(data_format_str == "NCHW" || data_format_str == "NHWC",
+                        true,
+                        platform::errors::InvalidArgument(
+                            "For mode 'channel', data_format must be one of "
+                            "NCHW and NHWC. But recevied data_format: %s",
+                            data_format_str));
+      if (data_format_str == "NCHW" || ctx->IsRunMKLDNNKernel()) {
+        PADDLE_ENFORCE_EQ(
+            product(ctx->GetInputDim("Alpha")) == x_dim[1], true,
+            platform::errors::InvalidArgument(
+                "For mode 'channel', size of weight Alpha must be "
+                "equal to the number of channels of input(x). But "
+                "recevied alpha's size: %d, x_dim[1]: %d",
+                product(ctx->GetInputDim("Alpha")), x_dim[1]));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            product(ctx->GetInputDim("Alpha")) == x_dim[x_rank - 1], true,
+            platform::errors::InvalidArgument(
+                "For mode 'channel', size of weight Alpha must be "
+                "equal to the number of channels of input(x). But "
+                "recevied alpha's size: %d, x_dim[%d]: %d",
+                product(ctx->GetInputDim("Alpha")), x_rank - 1,
+                x_dim[x_rank - 1]));
+      }
+
     } else if (mode == "element") {
       auto alpha_dim = ctx->GetInputDim("Alpha");
       auto alpha_rank = alpha_dim.size();
@@ -107,6 +148,12 @@ class PReluOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    return innerGetKernelTypeForVar(tensor, expected_kernel_type);
+  }
 };
 
 class PReluOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -134,6 +181,9 @@ There are modes:
 )DOC");
     AddAttr<std::string>("mode", "The mode for inputs to share weights.")
         .SetDefault("all");
+    AddAttr<std::string>("data_format",
+                         "Data format that specifies the layout of input")
+        .SetDefault("NCHW");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
@@ -187,6 +237,12 @@ class PReluGradOp : public framework::OperatorWithKernel {
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
 };
 

@@ -20,6 +20,7 @@ import six
 from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
 import paddle.nn as nn
 from paddle.static import InputSpec
+from paddle.autograd import PyLayer
 
 if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
@@ -524,38 +525,37 @@ class TestAmpDecorator(unittest.TestCase):
 
         self.assertRaises(ValueError, func)
 
-    def test_input_formate_exception(self):
-        def test_model_error():
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-                opt = paddle.optimizer.SGD(parameters=model.parameters())
-                paddle.amp.decorate(models=None, optimizers=opt, level='O2')
-
-        self.assertRaises(TypeError, test_model_error)
-
-        def test_optimizer_error():
-            with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-                paddle.amp.decorate(models=model, optimizers=None, level='O2')
-
-        self.assertRaises(TypeError, test_optimizer_error)
-
     def test_input_type_exception(self):
-        def test_error_model_optimizer():
+        def test_error_model():
             class MyModel(object):
                 def __init__(self):
                     print("A fake Model")
 
+            model = MyModel()
+            with fluid.dygraph.guard():
+                paddle.amp.decorate(models=model, optimizers=None, level='O2')
+
+        self.assertRaises(TypeError, test_error_model)
+
+        def test_error_distributed_model():
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            model = paddle.DataParallel(model)
+            with fluid.dygraph.guard():
+                model = paddle.amp.decorate(models=model, level='O2')
+
+        self.assertRaises(RuntimeError, test_error_distributed_model)
+
+        def test_error_optimizer():
             class MyOptimizer(object):
                 def __init__(self):
                     print("A fake Optimizer")
 
-            model = MyModel()
+            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
             opt = MyOptimizer()
             with fluid.dygraph.guard():
                 paddle.amp.decorate(models=model, optimizers=opt, level='O2')
 
-        self.assertRaises(TypeError, test_error_model_optimizer)
+        self.assertRaises(TypeError, test_error_optimizer)
 
     def test_set_master_weight(self):
         model1 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
@@ -563,32 +563,75 @@ class TestAmpDecorator(unittest.TestCase):
             learning_rate=0.0001,
             parameters=model1.parameters(),
             multi_precision=True)
-        model1, opt1 = paddle.amp.decorate(
-            models=model1, optimizers=opt1, level='O2', master_weight=None)
-        self.assertEqual(opt1._multi_precision, True)
 
         model2 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt2 = paddle.optimizer.Adam(
             learning_rate=0.0001,
             parameters=model2.parameters(),
             multi_precision=False)
-        model2, opt2 = paddle.amp.decorate(
-            models=model2, optimizers=opt2, level='O2', master_weight=None)
+
+        model1, opt1 = paddle.amp.decorate(
+            models=model1, optimizers=opt1, level='O2', master_weight=None)
+        self.assertEqual(opt1._multi_precision, True)
+
+        models, opt2 = paddle.amp.decorate(
+            models=[model1, model2],
+            optimizers=opt2,
+            level='O2',
+            master_weight=None)
         self.assertEqual(opt2._multi_precision, True)
 
         model3 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt3 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model3.parameters())
-        model3, opt3 = paddle.amp.decorate(
-            models=model3, optimizers=opt3, level='O2', master_weight=True)
-        self.assertEqual(opt3._multi_precision, True)
 
         model4 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt4 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model4.parameters())
-        model4, opt4 = paddle.amp.decorate(
-            models=model4, optimizers=opt4, level='O2', master_weight=False)
-        self.assertEqual(opt4._multi_precision, False)
+
+        model3, opts = paddle.amp.decorate(
+            models=model3,
+            optimizers=[opt3, opt4],
+            level='O2',
+            master_weight=True)
+        self.assertEqual(opts[0]._multi_precision, True)
+        self.assertEqual(opts[1]._multi_precision, True)
+
+        models = [model3, model4]
+        optimizers = [opt3, opt4]
+        models, optimizers = paddle.amp.decorate(
+            models=models,
+            optimizers=optimizers,
+            level='O2',
+            master_weight=False)
+        self.assertEqual(optimizers[0]._multi_precision, False)
+        self.assertEqual(optimizers[1]._multi_precision, False)
+
+    def test_skip_BatchNorm_Layer_norm(self):
+        model = paddle.nn.LayerNorm(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm1D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm2D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
+
+        model = paddle.nn.BatchNorm3D(1)
+        model = paddle.amp.decorate(models=model, level='O2')
+        for param in model.parameters():
+            self.assertEqual((param.dtype == paddle.float32), True)
 
 
 class TestPureFp16SaveLoad(unittest.TestCase):
@@ -818,7 +861,6 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
-
         self.assertTrue(np.allclose(pred.numpy(), results, atol=1.e-5))
 
 
@@ -893,8 +935,7 @@ class TestResnet2(unittest.TestCase):
             train_reader = train_loader
 
         if enable_amp and (level == 'O2'):
-            resnet, optimizer = paddle.amp.decorate(
-                models=resnet, optimizers=optimizer, level='O2')
+            resnet = paddle.amp.decorate(models=resnet, level='O2')
 
         for batch_id, data in enumerate(train_reader()):
             if batch_id >= batch_num:
@@ -1083,6 +1124,96 @@ class TestLayerNormFp16(unittest.TestCase):
                     out = layer_norm(x)
 
                 self.assertTrue(out.dtype == fluid.core.VarDesc.VarType.FP16)
+
+
+class TestBf16(unittest.TestCase):
+    '''
+    test amp for BF16 
+    '''
+
+    def train(self, enable_amp=True, amp_level='O1'):
+        paddle.seed(100)
+        input = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+        conv = paddle.nn.Conv2D(4, 6, (3, 3))
+        with paddle.amp.auto_cast(
+                enable=enable_amp, level=amp_level, dtype='bfloat16'):
+            output = conv(input)
+        output = output.cast('float32')
+        return output.numpy()
+
+    def test_bf16(self):
+        if fluid.core.is_compiled_with_cuda():
+            cudnn_version = paddle.device.get_cudnn_version()
+            if cudnn_version is not None and cudnn_version >= 8100:
+                out_fp32 = self.train(enable_amp=False)
+                out_bf16_O1 = self.train(enable_amp=True, amp_level='O1')
+                out_bf16_O2 = self.train(enable_amp=True, amp_level='O2')
+                self.assertTrue(
+                    np.allclose(
+                        out_fp32, out_bf16_O1, rtol=1.e-3, atol=1.e-1))
+                self.assertTrue(
+                    np.allclose(
+                        out_fp32, out_bf16_O2, rtol=1.e-3, atol=1.e-1))
+
+
+class TestAmpWithPyLyer(unittest.TestCase):
+    def test_pylayer(self):
+        class MyMM(PyLayer):
+            @staticmethod
+            def forward(ctx, a, b):
+                ctx.save_for_backward(a, b)
+                return a.mm(b)
+
+            @staticmethod
+            def backward(ctx, grad):
+                a, b = ctx.saved_tensor()
+                # NOTE(zhiqiu): a and b is float32 now, while grad is fp16 when forward runs with auto_cast()
+                # thus, the mm operation raise errors because of the dtype of inputs are inconsistent before.
+                return grad.mm(b.t()), a.t().mm(grad)
+
+        x = paddle.rand([10, 10])
+        y = paddle.rand([10, 10])
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        with paddle.amp.auto_cast():
+            res = MyMM.apply(x, y)
+            loss = paddle.mean(res)
+        loss.backward()
+
+
+class TestAmpWithHook(unittest.TestCase):
+    def test_hook_change_dtype(self):
+        with paddle.fluid.dygraph.guard():
+            v = paddle.rand([3, 3])
+            v.stop_gradient = False
+
+            def foo(grad):
+                print('grad', grad, grad.dtype)  # grad's dtype is float32
+                res = paddle.mm(grad, grad)  # mm runs in fp16
+                print('res', res, res.dtype)  # res's dtype is float16
+                return res
+
+            v.register_hook(foo)
+            with paddle.amp.auto_cast():
+                a = paddle.mm(v, v)
+                loss = a.sum()
+                self.assertRaises(RuntimeError, loss.backward)
+
+    def test_hook_change_place(self):
+        with paddle.fluid.dygraph.guard():
+            v = paddle.rand([3, 3])
+            v.stop_gradient = False
+
+            def foo(grad):
+                res = grad.cpu()  # change place
+                return res
+
+            v.register_hook(foo)
+            with paddle.amp.auto_cast():
+                a = paddle.mm(v, v)
+                loss = a.sum()
+                self.assertRaises(RuntimeError, loss.backward)
 
 
 if __name__ == '__main__':

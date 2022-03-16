@@ -140,6 +140,19 @@ def create_paddle_case(op_type, callback):
                 self.assertEqual((out.numpy() == self.real_result).all(), True)
                 paddle.enable_static()
 
+        def test_not_equal(self):
+            if self.op_type == "not_equal":
+                paddle.disable_static()
+                x = paddle.to_tensor(
+                    np.array([1.2e-8, 2, 2, 1]), dtype="float32")
+                y = paddle.to_tensor(
+                    np.array([1.1e-8, 2, 2, 1]), dtype="float32")
+                op = eval("paddle.%s" % (self.op_type))
+                out = op(x, y)
+                self.real_result = np.array([0, 0, 0, 0]).astype(np.int64)
+                self.assertEqual((out.numpy() == self.real_result).all(), True)
+                paddle.enable_static()
+
         def test_assert(self):
             def test_dynamic_api_string(self):
                 if self.op_type == "equal":

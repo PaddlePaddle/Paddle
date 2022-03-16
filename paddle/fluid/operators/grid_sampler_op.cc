@@ -12,17 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/grid_sampler_op.h"
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
@@ -233,15 +228,6 @@ REGISTER_OPERATOR(grid_sampler, ops::GridSampleOp, ops::GridSampleOpMaker,
                   ops::GridSampleGradMaker<paddle::framework::OpDesc>,
                   ops::GridSampleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    grid_sampler,
-    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GridSampleOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    grid_sampler_grad,
-    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GridSampleGradOpKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_VERSION(grid_sampler)
     .AddCheckpoint(

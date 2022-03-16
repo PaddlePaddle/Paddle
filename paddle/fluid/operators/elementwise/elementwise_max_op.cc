@@ -27,7 +27,6 @@ class OpBase;
 }  // namespace imperative
 namespace platform {
 class CPUDeviceContext;
-struct CPUPlace;
 }  // namespace platform
 }  // namespace paddle
 
@@ -53,6 +52,27 @@ class ElementwiseMaxOpMaker : public ElementwiseOpMaker {
   }
 };
 
+class ElementwiseFMaxOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "FMax"; }
+  std::string GetEquation() const override { return "Out = fmax(X, Y)"; }
+
+  void AddInputX() override {
+    AddInput("X", "The first tensor holding the elements to be compared.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y", "The second tensor holding the elements to be compared.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Compare two tensors and returns a new tensor containing the "
+           "element-wise maxima. If the element of one tensor is nan, "
+           "return the element value of the other tensor, if both are nan, "
+           "return the first nan";
+  }
+};
+
 template <typename T>
 class ElementwiseMaxGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -61,6 +81,23 @@ class ElementwiseMaxGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_max_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+template <typename T>
+class ElementwiseFMaxGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elementwise_fmax_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
@@ -87,13 +124,17 @@ REGISTER_OP_CPU_KERNEL(
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     elementwise_max_grad,
     ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseMaxGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::bfloat16>);
 
 REGISTER_OP_VERSION(elementwise_max)
     .AddCheckpoint(
@@ -103,3 +144,10 @@ REGISTER_OP_VERSION(elementwise_max)
             "In order to support the function of scaling the input Y when "
             "using the operator of elementwise_max.",
             1.0f));
+
+REGISTER_OPERATOR(elementwise_fmax, ops::ElementwiseOp,
+                  ops::ElementwiseFMaxOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseFMaxGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseFMaxGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(elementwise_fmax_grad, ops::ElementwiseOpGrad);

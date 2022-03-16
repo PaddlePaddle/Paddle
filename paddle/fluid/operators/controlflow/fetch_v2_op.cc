@@ -26,11 +26,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-struct CPUPlace;
-struct CUDAPlace;
-struct float16;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -52,12 +47,13 @@ static void DeepCopy(const framework::LoDTensor &src_item,
                                  : paddle::platform::MKLDNNDeviceContext::tls()
                                        .get_cur_paddle_data_layout(),
           src_item, &out, platform::CPUPlace());
-      TensorCopySync(out, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
-      TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(src_item, platform::CPUPlace(),
+                                        dst_item);
     }
 #else
-    TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+    paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
 #endif
   } else {
     // Not copy, if the src tensor is empty.
@@ -77,22 +73,38 @@ class FetchV2Op : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
+    if (!tensor.IsInitialized()) {
+      return expected_kernel_type;
+    }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    auto *fetch_var = ctx.InputVar("X");
+    if (fetch_var == nullptr) {
+      return framework::OpKernelType(framework::proto::VarType::FP32,
+                                     platform::CPUPlace());
+    }
+
+    if (fetch_var->IsType<framework::LoDTensor>()) {
+      auto &src_item = fetch_var->Get<framework::LoDTensor>();
+      if (!src_item.IsInitialized()) {
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
+      }
+    } else {
+      auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
+      if (src_item.empty() || !src_item[0].IsInitialized()) {
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       platform::CPUPlace());
+      }
+    }
+
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         platform::CPUPlace());
-  }
-};
-
-class FetchV2InferVarType : public framework::VarTypeInference {
- public:
-  void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 
@@ -127,6 +139,9 @@ class FetchV2Kernel {
 
     if (fetch_var->IsType<framework::LoDTensor>()) {
       auto &src_item = fetch_var->Get<framework::LoDTensor>();
+      if (!src_item.IsInitialized()) {
+        return;
+      }
       auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
       bool check_place = platform::is_cpu_place(src_item.place()) ||
                          platform::is_cuda_pinned_place(src_item.place());
@@ -138,6 +153,7 @@ class FetchV2Kernel {
         DeepCopy(src_item, fetch_var_name, dst_item);
       } else {
         dst_item->ShareDataWith(src_item);
+        dst_item->set_lod(src_item.lod());
       }
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
@@ -153,6 +169,7 @@ class FetchV2Kernel {
           DeepCopy(src_item[i], fetch_var_name, &dst_item[i]);
         } else {
           dst_item[i].ShareDataWith(src_item[i]);
+          dst_item[i].set_lod(src_item[i].lod());
         }
       }
     }
@@ -173,9 +190,7 @@ class FetchV2OpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddComment(R"DOC(
 FetchV2 Operator.
-
 It should not be configured by users directly.
-
 )DOC");
   }
 };
@@ -187,7 +202,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     fetch_v2, ops::FetchV2Op, ops::FetchV2OpProtoMaker,
-    ops::FetchV2InferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

@@ -15,8 +15,7 @@
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers.layer_function_generator import templatedoc
-from .. import fluid
-from ..fluid.framework import in_dygraph_mode, Variable
+from ..static import Variable
 from ..framework import VarBase as Tensor
 
 # TODO: define logic functions of a tensor  
@@ -25,8 +24,7 @@ from ..fluid.layers import logical_and  # noqa: F401
 from ..fluid.layers import logical_not  # noqa: F401
 from ..fluid.layers import logical_or  # noqa: F401
 from ..fluid.layers import logical_xor  # noqa: F401
-
-from paddle.common_ops_import import core
+import paddle
 from paddle import _C_ops
 from paddle.tensor.creation import full
 
@@ -61,7 +59,7 @@ def equal_all(x, y, name=None):
           result2 = paddle.equal_all(x, z)
           print(result2) # result2 = [False ]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.equal_all(x, y)
 
     helper = LayerHelper("equal_all", **locals())
@@ -124,7 +122,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           # [True]
     """
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.allclose(x, y, 'rtol',
                                str(rtol), 'atol',
                                str(atol), 'equal_nan', equal_nan)
@@ -182,7 +180,7 @@ def equal(x, y, name=None):
     if not isinstance(y, Variable):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.equal(x, y)
 
     check_variable_and_dtype(
@@ -224,7 +222,7 @@ def greater_equal(x, y, name=None):
             result1 = paddle.greater_equal(x, y)
             print(result1)  # result1 = [True False True]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.greater_equal(x, y)
 
     check_variable_and_dtype(x, "x",
@@ -270,7 +268,7 @@ def greater_than(x, y, name=None):
             result1 = paddle.greater_than(x, y)
             print(result1)  # result1 = [False False True]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.greater_than(x, y)
 
     check_variable_and_dtype(x, "x",
@@ -317,7 +315,7 @@ def less_equal(x, y, name=None):
             result1 = paddle.less_equal(x, y)
             print(result1)  # result1 = [True True False]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.less_equal(x, y)
 
     check_variable_and_dtype(
@@ -360,7 +358,7 @@ def less_than(x, y, name=None):
             result1 = paddle.less_than(x, y)
             print(result1)  # result1 = [False True False]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.less_than(x, y)
 
     check_variable_and_dtype(
@@ -403,7 +401,7 @@ def not_equal(x, y, name=None):
             result1 = paddle.not_equal(x, y)
             print(result1)  # result1 = [False True True]
     """
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         return _C_ops.not_equal(x, y)
 
     check_variable_and_dtype(
@@ -449,7 +447,7 @@ def is_tensor(x):
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         op = getattr(_C_ops, op_name)
         if binary_op:
             return op(x, y)
@@ -583,3 +581,77 @@ def bitwise_not(x, out=None, name=None):
 
     return _bitwise_op(
         op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False)
+
+
+@templatedoc()
+def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(Tensor): ${input_comment}.
+        y(Tensor): ${other_comment}.
+        rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan(equalnantype, optional): ${equal_nan_comment}.
+        name (str, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Tensor: ${out_comment}.
+
+    Raises:
+        TypeError: The data type of ``x`` must be one of float32, float64.
+        TypeError: The data type of ``y`` must be one of float32, float64.
+        TypeError: The type of ``rtol`` must be float.
+        TypeError: The type of ``atol`` must be float.
+        TypeError: The type of ``equal_nan`` must be bool.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+
+          x = paddle.to_tensor([10000., 1e-07])
+          y = paddle.to_tensor([10000.1, 1e-08])
+          result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                  equal_nan=False, name="ignore_nan")
+          np_result1 = result1.numpy()
+          # [True, False]
+          result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                      equal_nan=True, name="equal_nan")
+          np_result2 = result2.numpy()
+          # [True, False]
+
+          x = paddle.to_tensor([1.0, float('nan')])
+          y = paddle.to_tensor([1.0, float('nan')])
+          result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                  equal_nan=False, name="ignore_nan")
+          np_result1 = result1.numpy()
+          # [True, False]
+          result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+                                      equal_nan=True, name="equal_nan")
+          np_result2 = result2.numpy()
+          # [True, True]
+    """
+
+    if paddle.in_dynamic_mode():
+        return _C_ops.isclose(x, y, 'rtol',
+                              str(rtol), 'atol',
+                              str(atol), 'equal_nan', equal_nan)
+
+    check_variable_and_dtype(x, "input", ['float32', 'float64'], 'isclose')
+    check_variable_and_dtype(y, "input", ['float32', 'float64'], 'isclose')
+    check_type(rtol, 'rtol', float, 'isclose')
+    check_type(atol, 'atol', float, 'isclose')
+    check_type(equal_nan, 'equal_nan', bool, 'isclose')
+
+    helper = LayerHelper("isclose", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+
+    inputs = {'Input': x, 'Other': y}
+    outputs = {'Out': out}
+    attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
+    helper.append_op(
+        type='isclose', inputs=inputs, outputs=outputs, attrs=attrs)
+    return out

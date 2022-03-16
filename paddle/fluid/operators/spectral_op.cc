@@ -25,9 +25,10 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 
 #if defined(PADDLE_WITH_ONEMKL)
-#include "paddle/fluid/platform/dynload/mklrt.h"
+#include "paddle/phi/backends/dynload/mklrt.h"
 #elif defined(PADDLE_WITH_POCKETFFT)
 #include "extern_pocketfft/pocketfft_hdronly.h"
 #endif
@@ -357,12 +358,12 @@ FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
 // FFT Functors
 #if defined(PADDLE_WITH_ONEMKL)
 
-#define MKL_DFTI_CHECK(expr)                                       \
-  do {                                                             \
-    MKL_LONG status = (expr);                                      \
-    if (!platform::dynload::DftiErrorClass(status, DFTI_NO_ERROR)) \
-      PADDLE_THROW(platform::errors::External(                     \
-          platform::dynload::DftiErrorMessage(status)));           \
+#define MKL_DFTI_CHECK(expr)                                                   \
+  do {                                                                         \
+    MKL_LONG status = (expr);                                                  \
+    if (!phi::dynload::DftiErrorClass(status, DFTI_NO_ERROR))                  \
+      PADDLE_THROW(                                                            \
+          platform::errors::External(phi::dynload::DftiErrorMessage(status))); \
   } while (0);
 
 namespace {
@@ -370,7 +371,7 @@ namespace {
 struct DftiDescriptorDeleter {
   void operator()(DFTI_DESCRIPTOR_HANDLE handle) {
     if (handle != nullptr) {
-      MKL_DFTI_CHECK(platform::dynload::DftiFreeDescriptor(&handle));
+      MKL_DFTI_CHECK(phi::dynload::DftiFreeDescriptor(&handle));
     }
   }
 };
@@ -385,7 +386,7 @@ class DftiDescriptor {
                           "DftiDescriptor has already been initialized."));
 
     DFTI_DESCRIPTOR* raw_desc;
-    MKL_DFTI_CHECK(platform::dynload::DftiCreateDescriptorX(
+    MKL_DFTI_CHECK(phi::dynload::DftiCreateDescriptorX(
         &raw_desc, precision, signal_type, signal_ndim, sizes));
     desc_.reset(raw_desc);
   }
@@ -437,21 +438,21 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
   descriptor.init(precision, domain, signal_ndim, fft_sizes.data() + 1);
 
   // placement inplace or not inplace
-  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
-      descriptor.get(), DFTI_PLACEMENT, DFTI_NOT_INPLACE));
+  MKL_DFTI_CHECK(phi::dynload::DftiSetValue(descriptor.get(), DFTI_PLACEMENT,
+                                            DFTI_NOT_INPLACE));
 
   // number of transformations
   const MKL_LONG batch_size = fft_sizes[0];
-  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+  MKL_DFTI_CHECK(phi::dynload::DftiSetValue(
       descriptor.get(), DFTI_NUMBER_OF_TRANSFORMS, batch_size));
 
   // input & output distance
   const MKL_LONG idist = in_strides[0];
   const MKL_LONG odist = out_strides[0];
-  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(descriptor.get(),
-                                                 DFTI_INPUT_DISTANCE, idist));
-  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(descriptor.get(),
-                                                 DFTI_OUTPUT_DISTANCE, odist));
+  MKL_DFTI_CHECK(
+      phi::dynload::DftiSetValue(descriptor.get(), DFTI_INPUT_DISTANCE, idist));
+  MKL_DFTI_CHECK(phi::dynload::DftiSetValue(descriptor.get(),
+                                            DFTI_OUTPUT_DISTANCE, odist));
 
   // input & output stride
   std::vector<MKL_LONG> mkl_in_stride(1 + signal_ndim, 0);
@@ -460,14 +461,14 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
     mkl_in_stride[i] = in_strides[i];
     mkl_out_stride[i] = out_strides[i];
   }
-  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+  MKL_DFTI_CHECK(phi::dynload::DftiSetValue(
       descriptor.get(), DFTI_INPUT_STRIDES, mkl_in_stride.data()));
-  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+  MKL_DFTI_CHECK(phi::dynload::DftiSetValue(
       descriptor.get(), DFTI_OUTPUT_STRIDES, mkl_out_stride.data()));
 
   // conjugate even storage
   if (!(fft_type == FFTTransformType::C2C)) {
-    MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+    MKL_DFTI_CHECK(phi::dynload::DftiSetValue(
         descriptor.get(), DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX));
   }
 
@@ -489,12 +490,12 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
         return DFTI_BACKWARD_SCALE;
       }
     }();
-    MKL_DFTI_CHECK(platform::dynload::DftiSetValue(descriptor.get(),
-                                                   scale_direction, scale));
+    MKL_DFTI_CHECK(
+        phi::dynload::DftiSetValue(descriptor.get(), scale_direction, scale));
   }
 
   // commit the descriptor
-  MKL_DFTI_CHECK(platform::dynload::DftiCommitDescriptor(descriptor.get()));
+  MKL_DFTI_CHECK(phi::dynload::DftiCommitDescriptor(descriptor.get()));
   return descriptor;
 }
 
@@ -524,7 +525,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   // transpose input according to that permutation
   framework::DDim transposed_input_shape = in_sizes.transpose(dim_permute);
   std::vector<int64_t> transposed_input_shape_ =
-      framework::vectorize(transposed_input_shape);
+      phi::vectorize(transposed_input_shape);
   framework::Tensor transposed_input;
   transposed_input.Resize(transposed_input_shape);
   const auto place = ctx.GetPlace();
@@ -541,7 +542,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   std::copy(transposed_input_shape_.begin() + batch_ndim,
             transposed_input_shape_.end(), collapsed_input_shape_.begin() + 1);
   const framework::DDim collapsed_input_shape =
-      framework::make_ddim(collapsed_input_shape_);
+      phi::make_ddim(collapsed_input_shape_);
   transposed_input.Resize(collapsed_input_shape);
   framework::Tensor& collapsed_input = transposed_input;
 
@@ -552,7 +553,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
     collapsed_output_shape_[1 + i] = out_sizes[axes[i]];
   }
   const framework::DDim collapsed_output_shape =
-      framework::make_ddim(collapsed_output_shape_);
+      phi::make_ddim(collapsed_output_shape_);
   framework::Tensor collapsed_output;
   collapsed_output.Resize(collapsed_output_shape);
   collapsed_output.mutable_data(place, out->type());
@@ -566,51 +567,49 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   }
 
   // input & output stride
-  const framework::DDim input_stride = framework::stride(collapsed_input_shape);
-  const framework::DDim output_stride =
-      framework::stride(collapsed_output_shape);
+  const framework::DDim input_stride = phi::stride(collapsed_input_shape);
+  const framework::DDim output_stride = phi::stride(collapsed_output_shape);
 
   // make a DFTI_DESCRIPTOR
   DftiDescriptor desc =
-      _plan_mkl_fft(x->type(), out->type(), input_stride, output_stride,
-                    signal_sizes, normalization, forward);
+      _plan_mkl_fft(framework::TransToProtoVarType(x->dtype()),
+                    framework::TransToProtoVarType(out->dtype()), input_stride,
+                    output_stride, signal_sizes, normalization, forward);
 
-  const FFTTransformType fft_type = GetFFTTransformType(x->type(), out->type());
+  const FFTTransformType fft_type =
+      GetFFTTransformType(framework::TransToProtoVarType(x->dtype()),
+                          framework::TransToProtoVarType(out->type()));
   if (fft_type == FFTTransformType::C2R && forward) {
-    framework::Tensor collapsed_input_conj(collapsed_input.type());
+    framework::Tensor collapsed_input_conj(collapsed_input.dtype());
     collapsed_input_conj.mutable_data<Ti>(collapsed_input.dims(),
                                           ctx.GetPlace());
     // conjugate the input
     platform::ForRange<DeviceContext> for_range(ctx, collapsed_input.numel());
-    math::ConjFunctor<Ti> functor(collapsed_input.data<Ti>(),
-                                  collapsed_input.numel(),
-                                  collapsed_input_conj.data<Ti>());
+    phi::funcs::ConjFunctor<Ti> functor(collapsed_input.data<Ti>(),
+                                        collapsed_input.numel(),
+                                        collapsed_input_conj.data<Ti>());
     for_range(functor);
-    MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
-        desc.get(), collapsed_input_conj.data<void>(),
-        collapsed_output.data<void>()));
+    MKL_DFTI_CHECK(phi::dynload::DftiComputeBackward(
+        desc.get(), collapsed_input_conj.data(), collapsed_output.data()));
   } else if (fft_type == FFTTransformType::R2C && !forward) {
-    framework::Tensor collapsed_output_conj(collapsed_output.type());
+    framework::Tensor collapsed_output_conj(collapsed_output.dtype());
     collapsed_output_conj.mutable_data<To>(collapsed_output.dims(),
                                            ctx.GetPlace());
-    MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(
-        desc.get(), collapsed_input.data<void>(),
-        collapsed_output_conj.data<void>()));
+    MKL_DFTI_CHECK(phi::dynload::DftiComputeForward(
+        desc.get(), collapsed_input.data(), collapsed_output_conj.data()));
     // conjugate the output
     platform::ForRange<DeviceContext> for_range(ctx, collapsed_output.numel());
-    math::ConjFunctor<To> functor(collapsed_output_conj.data<To>(),
-                                  collapsed_output.numel(),
-                                  collapsed_output.data<To>());
+    phi::funcs::ConjFunctor<To> functor(collapsed_output_conj.data<To>(),
+                                        collapsed_output.numel(),
+                                        collapsed_output.data<To>());
     for_range(functor);
   } else {
     if (forward) {
-      MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(
-          desc.get(), collapsed_input.data<void>(),
-          collapsed_output.data<void>()));
+      MKL_DFTI_CHECK(phi::dynload::DftiComputeForward(
+          desc.get(), collapsed_input.data(), collapsed_output.data()));
     } else {
-      MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
-          desc.get(), collapsed_input.data<void>(),
-          collapsed_output.data<void>()));
+      MKL_DFTI_CHECK(phi::dynload::DftiComputeBackward(
+          desc.get(), collapsed_input.data(), collapsed_output.data()));
     }
   }
 
@@ -700,10 +699,9 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x->dims();
-    const std::vector<size_t> in_sizes =
-        framework::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = phi::vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
     const int64_t data_size = sizeof(C);
     std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
                    [&](std::ptrdiff_t s) { return s * data_size; });
@@ -733,10 +731,9 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x->dims();
-    const std::vector<size_t> in_sizes =
-        framework::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = phi::vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
@@ -744,10 +741,9 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
     }
 
     const auto& output_dim = out->dims();
-    const std::vector<size_t> out_sizes =
-        framework::vectorize<size_t>(output_dim);
+    const std::vector<size_t> out_sizes = phi::vectorize<size_t>(output_dim);
     std::vector<std::ptrdiff_t> out_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(output_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(output_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(out_strides.begin(), out_strides.end(),
@@ -780,10 +776,9 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x->dims();
-    const std::vector<size_t> in_sizes =
-        framework::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = phi::vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
@@ -791,10 +786,9 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
     }
 
     const auto& output_dim = out->dims();
-    const std::vector<size_t> out_sizes =
-        framework::vectorize<size_t>(output_dim);
+    const std::vector<size_t> out_sizes = phi::vectorize<size_t>(output_dim);
     std::vector<std::ptrdiff_t> out_strides =
-        framework::vectorize<std::ptrdiff_t>(framework::stride(output_dim));
+        phi::vectorize<std::ptrdiff_t>(phi::stride(output_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(out_strides.begin(), out_strides.end(),

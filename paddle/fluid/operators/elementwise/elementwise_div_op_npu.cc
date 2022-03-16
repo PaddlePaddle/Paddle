@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -85,13 +85,13 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("ZerosLike", {*x}, {tensor_zeros}, {});
       runner_tensor_zeros.Run(stream);
 
-      Tensor x_zero(paddle::framework::proto::VarType::BOOL);
+      Tensor x_zero(experimental::DataType::BOOL);
       x_zero.mutable_data<bool>(x->dims(), place);
       const auto& runner_x_zero =
           NpuOpRunner("Equal", {*x, tensor_zeros}, {x_zero}, {});
       runner_x_zero.Run(stream);
 
-      Tensor x_nozero(paddle::framework::proto::VarType::BOOL);
+      Tensor x_nozero(experimental::DataType::BOOL);
       x_nozero.mutable_data<bool>(x->dims(), place);
       const auto& runner_x_nonzero =
           NpuOpRunner("LogicalNot", {x_zero}, {x_nozero}, {});

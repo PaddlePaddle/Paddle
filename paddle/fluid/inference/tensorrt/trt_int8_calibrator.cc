@@ -35,7 +35,7 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     std::string input_name = it.first;
     int data_size = it.second;
     int num_ele = data_size / sizeof(int16_t);
-    framework::DDim data_shape = framework::make_ddim({num_ele});
+    framework::DDim data_shape = phi::make_ddim({num_ele});
     temp_tensor.Resize(data_shape);
     data_tensors_.push_back(temp_tensor);
     data_buffers_[input_name] = std::pair<void*, size_t>(
@@ -85,7 +85,7 @@ bool TRTInt8Calibrator::setBatch(
           engine_name_, it.first));
     }
     const auto& d = dataptr->second;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
+    PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpy(d.first, it.second, d.second, cudaMemcpyDeviceToDevice));
   }
 

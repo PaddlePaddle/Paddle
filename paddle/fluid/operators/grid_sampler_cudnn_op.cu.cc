@@ -16,13 +16,11 @@ limitations under the License. */
 // HIP not support cudnnSpatialTfGridGeneratorForward
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace operators {
@@ -66,11 +64,11 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor input_desc;
     ScopedTensorDescriptor output_desc;
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        DataLayout::kNCHW, framework::vectorize<int>(input->dims()));
+        DataLayout::kNCHW, phi::vectorize<int>(input->dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        DataLayout::kNCHW, framework::vectorize<int>(output->dims()));
+        DataLayout::kNCHW, phi::vectorize<int>(output->dims()));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSpatialTfSamplerForward(
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSpatialTfSamplerForward(
         handle, cudnn_st_desc, CudnnDataType<T>::kOne(), cudnn_input_desc,
         input_data, grid_data, CudnnDataType<T>::kZero(), cudnn_output_desc,
         output_data));
@@ -115,21 +113,20 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor input_grad_desc;
     ScopedTensorDescriptor output_grad_desc;
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        DataLayout::kNCHW, framework::vectorize<int>(input->dims()));
+        DataLayout::kNCHW, phi::vectorize<int>(input->dims()));
     cudnnTensorDescriptor_t cudnn_input_grad_desc =
-        input_grad_desc.descriptor<T>(
-            DataLayout::kNCHW, framework::vectorize<int>(input_grad->dims()));
+        input_grad_desc.descriptor<T>(DataLayout::kNCHW,
+                                      phi::vectorize<int>(input_grad->dims()));
     cudnnTensorDescriptor_t cudnn_output_grad_desc =
         output_grad_desc.descriptor<T>(
-            DataLayout::kNCHW, framework::vectorize<int>(output_grad->dims()));
+            DataLayout::kNCHW, phi::vectorize<int>(output_grad->dims()));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnSpatialTfSamplerBackward(
-            handle, cudnn_st_dest, CudnnDataType<T>::kOne(), cudnn_input_desc,
-            input_data, CudnnDataType<T>::kZero(), cudnn_input_grad_desc,
-            input_grad_data, CudnnDataType<T>::kOne(), cudnn_output_grad_desc,
-            output_grad_data, grid_data, CudnnDataType<T>::kZero(),
-            grid_grad_data));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSpatialTfSamplerBackward(
+        handle, cudnn_st_dest, CudnnDataType<T>::kOne(), cudnn_input_desc,
+        input_data, CudnnDataType<T>::kZero(), cudnn_input_grad_desc,
+        input_grad_data, CudnnDataType<T>::kOne(), cudnn_output_grad_desc,
+        output_grad_data, grid_data, CudnnDataType<T>::kZero(),
+        grid_grad_data));
   }
 };
 

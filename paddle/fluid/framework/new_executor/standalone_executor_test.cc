@@ -12,75 +12,75 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gtest/gtest.h>
+#include <chrono>
 #include <iostream>
 #include <string>
-
-#include <chrono>
-#include <map>
-#include <memory>
-#include <unordered_map>
-#include <vector>
 
 // #include "gperftools/profiler.h"
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
-USE_OP(fill_constant);
+USE_OP_ITSELF(fill_constant);
 USE_OP(uniform_random);
 USE_OP(lookup_table);
 USE_OP(transpose2);
-USE_OP(reshape2);
+USE_OP_ITSELF(reshape2);
 USE_OP(split);
 USE_OP(slice);
 USE_OP(concat);
 USE_OP(matmul);
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP(sigmoid);
-USE_OP(tanh);
+USE_OP_ITSELF(tanh);
 USE_OP(elementwise_mul);
 USE_OP(softmax_with_cross_entropy);
-USE_OP(reduce_mean);
-USE_OP(reduce_sum);
-USE_OP(reduce_sum_grad);
+USE_OP_ITSELF(reduce_mean);
+USE_OP_ITSELF(reduce_sum);
+USE_OP_ITSELF(reduce_sum_grad);
 USE_OP(reduce_mean_grad);
-USE_OP(reshape2_grad);
+USE_OP_ITSELF(reshape2_grad);
 USE_OP(softmax_with_cross_entropy_grad);
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(elementwise_add_grad);
 USE_OP(matmul_grad);
 USE_OP(square);
 USE_OP(transpose2_grad);
 USE_OP(concat_grad);
-USE_OP(elementwise_mul_grad);
+USE_OP_ITSELF(elementwise_mul_grad);
 USE_OP(sigmoid_grad);
-USE_OP(tanh_grad);
+USE_OP_ITSELF(tanh_grad);
 USE_OP(sum);
 USE_OP(slice_grad);
 USE_OP(lookup_table_grad);
 USE_OP(sqrt);
 USE_OP(elementwise_max);
-USE_OP(elementwise_div);
+USE_OP_ITSELF(elementwise_div);
 USE_OP(sgd);
 USE_OP(squared_l2_norm);
+USE_OP(memcpy_h2d);
+USE_OP(memcpy_d2h);
+DECLARE_double(eager_delete_tensor_gb);
 
-paddle::framework::ProgramDesc load_from_file(const std::string& file_name) {
+namespace paddle {
+namespace framework {
+
+ProgramDesc load_from_file(const std::string& file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
   fin.read(&buffer[0], buffer.size());
   fin.close();
-
-  paddle::framework::ProgramDesc program_desc(buffer);
+  ProgramDesc program_desc(buffer);
   return program_desc;
 }
 
-int main(int argc, char* argv[]) {
-  std::cout << "main" << std::endl;
-  int64_t batch_size = std::stoi(argv[1]);
-  paddle::framework::InitDevices();
-  auto place = paddle::platform::CUDAPlace(0);
-  auto test_prog = load_from_file("lm_startup_program");
+TEST(StandaloneExecutor, run) {
+  FLAGS_eager_delete_tensor_gb = 0.1;
+  int64_t batch_size = 20;
 
+  auto place = platform::CUDAPlace(0);
+  auto test_prog = load_from_file("lm_startup_program");
   auto main_prog = load_from_file("lm_main_program");
 
   auto& global_block = main_prog.Block(0);
@@ -100,12 +100,13 @@ int main(int argc, char* argv[]) {
   shape3[0] = batch_size;
   op3->SetAttr("shape", shape3);
 
-  paddle::framework::Scope scope;
-  paddle::framework::StandaloneExecutor exec(place, test_prog, main_prog,
-                                             &scope);
-
+  Scope scope;
+  StandaloneExecutor exec(place, test_prog, main_prog, &scope);
+  exec.Run({}, {}, {});
   auto start = std::chrono::steady_clock::now();
+
   // ProfilerStart("new_executor.prof");
+
   for (size_t i = 0; i < 2320; ++i) {
     if (i % 200 == 0) {
       std::cout << i << std::endl;
@@ -113,11 +114,15 @@ int main(int argc, char* argv[]) {
 
     exec.Run({}, {}, {});
   }
+
   // ProfilerStop();
+
   auto end = std::chrono::steady_clock::now();
   std::chrono::duration<double> diff = end - start;
 
   std::cout << "time cost " << diff.count() << std::endl;
-
-  return 1;
+  // ASSERT_LT(diff.count(), 30);
 }
+
+}  // namespace framework
+}  // namespace paddle

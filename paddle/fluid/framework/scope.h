@@ -26,9 +26,9 @@ extern "C" {
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/utils/rw_lock.h"
 
 namespace paddle {
 namespace framework {
@@ -50,6 +50,22 @@ class ScopeBase {
 };
 
 class Scope;
+
+class ScopeListener {
+  // NOTE(xiongkun03) Abstract Class, doesn't have any attributes.
+  // Used by VariableScope. If we modify the original scope, we
+  // need synchronize changes to VariableScope. So we add listerer
+  // in original Scope.
+ public:
+  virtual ~ScopeListener() {}
+  virtual void onCreateVariable(const std::string& name, Variable* v) {}
+  virtual void onDeleteVariable(const std::string& name) {}
+  virtual void onRenameVariable(const std::string& old_name,
+                                const std::string& new_name) {}
+  virtual void onCreateScope(Scope* Scope) {}
+  virtual void onDeleteScope(Scope* Scope) {}
+  virtual void onClear() {}
+};
 
 /**
  * @brief Scope that manage all variables.
@@ -118,8 +134,11 @@ class Scope : public ScopeBase {
 
   const std::list<Scope*>& kids() const { return kids_; }
 
-  // enumerate all the variables current contains.
+  // enumerate all the variable names current contains.
   std::vector<std::string> LocalVarNames() const;
+
+  // enumerate all the variables current contains.
+  std::vector<Variable*> LocalVars();
 
   // Rename variable to a new name
   void Rename(const std::string& origin_name,
@@ -127,6 +146,10 @@ class Scope : public ScopeBase {
 
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
+
+  void AddListener(const std::shared_ptr<ScopeListener>& listener);
+
+  void DelListener(const std::shared_ptr<ScopeListener>& listener);
 
  protected:
   struct KeyHasher {
@@ -164,14 +187,15 @@ class Scope : public ScopeBase {
   // Scope in `kids_` are owned by this class.
   mutable std::list<Scope*> kids_;
   const Scope* parent_{nullptr};
+  std::list<std::shared_ptr<ScopeListener>> listeners_;
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
 #ifndef PADDLE_ON_INFERENCE
 
  private:
-  mutable RWLock kids_lock_;
-  mutable RWLock vars_lock_;
+  mutable phi::RWLock kids_lock_;
+  mutable phi::RWLock vars_lock_;
 #endif
 };
 
