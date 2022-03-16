@@ -14,23 +14,15 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-#include "paddle/infrt/dialect/infrt/common/types.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace infrt {
+namespace phi {
 
-struct PhiKernelDesc {
-  std::vector<Place> input_types;   // kernel input place
-  std::vector<Place> output_types;  // kernel output place
-  Place kernel_type;                // kernel place
-};
+template <typename T, typename Context>
+void DeterminantGradKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& out,
+                           const DenseTensor& out_grad,
+                           DenseTensor* x_grad);
 
-std::string getPhiTargetPrefix(TargetType target);
-std::string getPhiPrecisionSuffix(PrecisionType precision);
-std::string getPhiLayoutSuffix(LayoutType layout);
-
-std::vector<PhiKernelDesc> GetCandidateKernels(
-    std::string name, const std::vector<Place>& valid_palces);
-
-}  // namespace infrt
+}  // namespace phi

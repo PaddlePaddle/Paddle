@@ -12,25 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include <string>
-#include <vector>
-#include "paddle/infrt/dialect/infrt/common/types.h"
+namespace phi {
 
-namespace infrt {
+KernelSignature DeterminantGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("determinant_grad",
+                         {"Input", "Out", GradVarName("Out")},
+                         {},
+                         {GradVarName("Input")});
+}
 
-struct PhiKernelDesc {
-  std::vector<Place> input_types;   // kernel input place
-  std::vector<Place> output_types;  // kernel output place
-  Place kernel_type;                // kernel place
-};
+}  // namespace phi
 
-std::string getPhiTargetPrefix(TargetType target);
-std::string getPhiPrecisionSuffix(PrecisionType precision);
-std::string getPhiLayoutSuffix(LayoutType layout);
-
-std::vector<PhiKernelDesc> GetCandidateKernels(
-    std::string name, const std::vector<Place>& valid_palces);
-
-}  // namespace infrt
+PD_REGISTER_ARG_MAPPING_FN(determinant_grad,
+                           phi::DeterminantGradOpArgumentMapping);
