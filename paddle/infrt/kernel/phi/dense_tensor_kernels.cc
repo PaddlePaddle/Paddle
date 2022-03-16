@@ -13,28 +13,33 @@
 // limitations under the License.
 
 #include "paddle/infrt/kernel/phi/dense_tensor_kernels.h"
-#include <iostream>
+#include "paddle/infrt/dialect/phi/data_type.h"
+#include "paddle/infrt/kernel/phi/context_kernels.h"
+
 namespace infrt {
 namespace kernel {
 namespace phi {
 
-::phi::DenseTensor CreateDenseTensorCpuF32Nchw(
-    backends::CpuPhiAllocator* allocator,
+::phi::DenseTensor CreateDenseTensor(
+    const ::phi::CPUContext& context,
     host_context::Attribute<std::vector<int64_t>> dims,
-    host_context::Attribute<std::vector<int64_t>> lod) {
-  return ::phi::DenseTensor(allocator,
-                            ::phi::DenseTensorMeta(::phi::DataType::FLOAT32,
-                                                   ::phi::make_ddim(dims.get()),
-                                                   ::phi::DataLayout::NCHW,
-                                                   {}));
+    host_context::Attribute<std::vector<int64_t>> lod,
+    host_context::Attribute<::infrt::LayoutType> layout,
+    host_context::Attribute<::infrt::PrecisionType> precision) {
+  return ::phi::DenseTensor(
+      const_cast<::phi::Allocator*>(&context.GetAllocator()),
+      ::phi::DenseTensorMeta(ConvertPrecisionToPhi(precision.get()),
+                             ::phi::make_ddim(dims.get()),
+                             ConvertLayoutToPhi(layout.get()),
+                             {}));
 }
 
 void FillDenseTensorF32(::phi::DenseTensor* dense_tensor,
-                        host_context::Attribute<std::vector<float>> values) {
+                        host_context::Attribute<std::vector<float>> value) {
   auto place = ::phi::CPUPlace();
   float* a_data = dense_tensor->mutable_data<float>(place);
   for (int64_t i = 0; i < dense_tensor->numel(); ++i) {
-    a_data[i] = (values.get())[i];
+    a_data[i] = (value.get())[i];
   }
 }
 
@@ -52,7 +57,7 @@ void PrintDenseTensor(::phi::DenseTensor* dense_tensor) {
 
   ::phi::DDim dims = dense_tensor->dims();
   std::cout << "dense_tensor: shape=shape" << dims.to_str() << ","
-            << " values=[";
+            << " value=[";
   switch (dense_tensor->dtype()) {
     PRINT_META_DATA(FLOAT32, float);
     PRINT_META_DATA(INT32, int32_t);
