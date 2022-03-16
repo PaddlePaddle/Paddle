@@ -82,6 +82,7 @@ static void ShareVarInfoToCinnLaunch(
                           "MemOptVarInfo of var[%s] not found", var_name));
     dst_varinfo_map.emplace(var_name, it->second);
   }
+  followed_eager_deletion_op->SetSkipRunning(true);
 }
 
 static void TakeVarInfoFromMainGraph(
