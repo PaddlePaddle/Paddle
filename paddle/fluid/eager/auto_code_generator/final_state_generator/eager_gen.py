@@ -28,6 +28,7 @@ namespace = ""
 yaml_types_mapping = {
     'int' : 'int', 'int32' : 'int32_t', 'int64' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
+    'str' : 'std::string', \
     'Backend' : 'paddle::experimental::Backend', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
@@ -212,7 +213,8 @@ def ParseYamlArgs(string):
         default_value = m.group(3).split("=")[1].strip() if len(
             m.group(3).split("=")) > 1 else None
 
-        assert arg_type in yaml_types_mapping.keys()
+        assert arg_type in yaml_types_mapping.keys(
+        ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
         arg_type = yaml_types_mapping[arg_type]
 
         arg_name = RemoveSpecialSymbolsInName(arg_name)
@@ -247,7 +249,8 @@ def ParseYamlReturns(string):
         else:
             ret_type = ret.strip()
 
-        assert ret_type in yaml_types_mapping.keys()
+        assert ret_type in yaml_types_mapping.keys(
+        ), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
         ret_type = yaml_types_mapping[ret_type]
 
         assert "Tensor" in ret_type
