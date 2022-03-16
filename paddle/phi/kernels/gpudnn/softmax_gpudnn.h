@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
@@ -30,54 +31,6 @@ namespace phi {
 
 using ScopedTensorDescriptor = paddle::platform::ScopedTensorDescriptor;
 using GPUDNNDataLayout = paddle::platform::DataLayout;
-
-// Vectorization trait 4 * sizeof(T)
-template <typename T>
-class VecT4 {};
-template <>
-class VecT4<double> {
- public:
-  using Type = long4;
-};
-template <>
-class VecT4<float> {
- public:
-  using Type = int4;
-};
-template <>
-class VecT4<phi::dtype::float16> {
- public:
-  using Type = int2;
-};
-template <>
-class VecT4<phi::dtype::bfloat16> {
- public:
-  using Type = int2;
-};
-
-// Vectorization trait 2 * sizeof(T)
-template <typename T>
-class VecT2 {};
-template <>
-class VecT2<double> {
- public:
-  using Type = int4;
-};
-template <>
-class VecT2<float> {
- public:
-  using Type = int2;
-};
-template <>
-class VecT2<phi::dtype::float16> {
- public:
-  using Type = int;
-};
-template <>
-class VecT2<phi::dtype::bfloat16> {
- public:
-  using Type = int;
-};
 
 static inline int Log2Ceil(int value) {
   int log2_value = 0;
@@ -263,8 +216,8 @@ For reduction max (sum), firstly compute max (sum) to one warp, then use shuffle
 api to compute max (sum) in one warp.
 */
 template <typename T,
-          typename VecT,
           typename AccT,
+          int VecSize,
           int Log2Elements,
           bool LogMode = false>
 __global__ void WarpSoftmaxForward(T* softmax,
@@ -272,15 +225,16 @@ __global__ void WarpSoftmaxForward(T* softmax,
                                    const int batch_size,
                                    const int stride,
                                    const int element_count) {
+  using VecT = phi::AlignedVector<T, VecSize>;
+
   constexpr int kDimCeil = 1 << Log2Elements;
   constexpr int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
-  constexpr int kVSize = sizeof(VecT) / sizeof(T);
   constexpr int kLoops = kDimCeil / kWarpSize;
-  constexpr int kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
+  constexpr int kLoopsV = (kLoops >= VecSize) ? (kLoops / kVSize) : 1;
   constexpr int kBatchSize = (kDimCeil <= 32) ? 2 : 1;
   int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
-  constexpr int kStep = kBatchSize * kLoopsV * kVSize;
-  constexpr int kVItem = kLoopsV * kVSize;
+  constexpr int kStep = kBatchSize * kLoopsV * VecSize;
+  constexpr int kVItem = kLoopsV * VecSize;
   constexpr AccT kLowInf = -std::numeric_limits<AccT>::infinity();
   using kMode = kps::details::ReduceMode;
 
@@ -289,17 +243,17 @@ __global__ void WarpSoftmaxForward(T* softmax,
 #pragma unroll
   for (int i = 0; i < kBatchSize; i++) {
     int idx_max = ((i + first_batch) < batch_size) ? element_count : 0;
-    idx_max_v[i] = idx_max / kVSize;
+    idx_max_v[i] = idx_max / VecSize;
   }
 
   // data src
-  AccT srcdata[kBatchSize][kLoopsV][kVSize];
-  T src_tmp[kBatchSize][kLoopsV][kVSize];
+  AccT srcdata[kBatchSize][kLoopsV][VecSize];
+  T src_tmp[kBatchSize][kLoopsV][VecSize];
   kps::Init<AccT, kStep>(&srcdata[0][0][0], kLowInf);
   kps::Init<T, kStep>(&src_tmp[0][0][0], -std::numeric_limits<T>::infinity());
 
   // data dst
-  T out_tmp[kBatchSize][kLoopsV][kVSize];
+  T out_tmp[kBatchSize][kLoopsV][VecSize];
 
   // max value
   AccT max[kBatchSize];
@@ -315,7 +269,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
         reinterpret_cast<const VecT*>(&src[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&src_tmp[i][0][0]);
     kps::ReadData<VecT, VecT, kLoopsV, 1, 1, true>(
-        &reg_v[0], &src_v[0], idx_max_v[i], 0, kWarpSize, 1);
+        reg_v, src_v, idx_max_v[i], 0, kWarpSize, 1);
     kps::ElementwiseUnary<T, AccT, kVItem, 1, 1, DataTransFunctor<T, AccT>>(
         &srcdata[i][0][0], &src_tmp[i][0][0], DataTransFunctor<T, AccT>());
   }
@@ -363,7 +317,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
           &out_tmp[i][0][0], &srcdata[i][0][0], UnaryDivFunctor<AccT>(sum[i]));
     }
     kps::WriteData<VecT, VecT, kLoopsV, 1, 1, true>(
-        &softmax_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize, 1);
+        softmax_v, reg_v, idx_max_v[i], 0, kWarpSize, 1);
   }
 }
 
@@ -377,8 +331,8 @@ For reduction max (sum), firstly compute max (sum) to one warp, then use shuffle
 api to compute max (sum) in one warp.
 */
 template <typename T,
-          typename VecT,
           typename AccT,
+          int VecSize,
           int Log2Elements,
           bool LogMode = false>
 __global__ void WarpSoftmaxBackward(T* dst,
@@ -387,13 +341,14 @@ __global__ void WarpSoftmaxBackward(T* dst,
                                     int batch_size,
                                     int stride,
                                     int element_count) {
-  constexpr int kVSize = sizeof(VecT) / sizeof(T);
+  using VecT = phi::AlignedVector<T, VecSize>;
+
   constexpr int kDimCeil = 1 << Log2Elements;
   constexpr int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
   constexpr int kLoops = kDimCeil / kWarpSize;
   constexpr int kBatchSize = (kDimCeil <= 128) ? 2 : 1;
-  constexpr int kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
-  int element_count_v = element_count / kVSize;
+  constexpr int kLoopsV = (kLoops >= VecSize) ? (kLoops / kVSize) : 1;
+  int element_count_v = element_count / VecSize;
   int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
   int local_batches = min(batch_size - first_batch, kBatchSize);
 
@@ -402,16 +357,15 @@ __global__ void WarpSoftmaxBackward(T* dst,
 #pragma unroll
   for (int i = 0; i < kBatchSize; i++) {
     int idx_max = ((i + first_batch) < batch_size) ? element_count : 0;
-    idx_max_v[i] = idx_max / kVSize;
+    idx_max_v[i] = idx_max / VecSize;
   }
 
   // read data from global memory
   VecT src_reg[kBatchSize][kLoopsV];
   VecT grad_reg[kBatchSize][kLoopsV];
   VecT k_value;
-  for (int s = 0; s < kVSize; s++) {
-    reinterpret_cast<T*>(&k_value)[s] = 0.0;
-  }
+  k_value.Fill(0.0);
+
   kps::Init<VecT, kBatchSize * kLoopsV>(&src_reg[0][0], k_value);
   kps::Init<VecT, kBatchSize * kLoopsV>(&grad_reg[0][0], k_value);
 #pragma unroll
@@ -421,18 +375,18 @@ __global__ void WarpSoftmaxBackward(T* dst,
     const VecT* src_v = reinterpret_cast<const VecT*>(&src[ptr]);
     const VecT* grad_v = reinterpret_cast<const VecT*>(&grad[ptr]);
     kps::ReadData<VecT, VecT, kLoopsV, 1, 1, true>(
-        &src_reg[i][0], &src_v[0], idx_max_v[i], 0, kWarpSize, flag);
+        &src_reg[i][0], src_v, idx_max_v[i], 0, kWarpSize, flag);
     kps::ReadData<VecT, VecT, kLoopsV, 1, 1, true>(
-        &grad_reg[i][0], &grad_v[0], idx_max_v[i], 0, kWarpSize, flag);
+        &grad_reg[i][0], grad_v, idx_max_v[i], 0, kWarpSize, flag);
   }
 
   // change T to AccT
-  AccT src_tmp[kBatchSize][kLoopsV][kVSize];
-  AccT grad_tmp[kBatchSize][kLoopsV][kVSize];
+  AccT src_tmp[kBatchSize][kLoopsV][VecSize];
+  AccT grad_tmp[kBatchSize][kLoopsV][VecSize];
   const T* src_ptr = reinterpret_cast<const T*>(&src_reg[0][0]);
   const T* grad_ptr = reinterpret_cast<const T*>(&grad_reg[0][0]);
-  constexpr int kStep = kBatchSize * kLoopsV * kVSize;
-  constexpr int kVItem = kLoopsV * kVSize;
+  constexpr int kStep = kBatchSize * kLoopsV * VecSize;
+  constexpr int kVItem = kLoopsV * VecSize;
   kps::ElementwiseUnary<T, AccT, kStep, 1, 1, DataTransFunctor<T, AccT>>(
       &src_tmp[0][0][0], &src_ptr[0], DataTransFunctor<T, AccT>());
   kps::ElementwiseUnary<T, AccT, kStep, 1, 1, DataTransFunctor<T, AccT>>(
@@ -440,7 +394,7 @@ __global__ void WarpSoftmaxBackward(T* dst,
 
   // compute sum
   AccT sum[kBatchSize]{0.0};
-  AccT sum_tmp[kBatchSize][kLoopsV][kVSize];
+  AccT sum_tmp[kBatchSize][kLoopsV][VecSize];
   AccT* gradptr = reinterpret_cast<AccT*>(&grad_tmp[0][0][0]);
   AccT* srcptr = reinterpret_cast<AccT*>(&src_tmp[0][0][0]);
   if (LogMode) {
@@ -465,8 +419,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
   // write result to global memory
-  AccT out[kBatchSize][kLoopsV][kVSize];
-  T out_tmp[kBatchSize][kLoopsV][kVSize];
+  AccT out[kBatchSize][kLoopsV][VecSize];
+  T out_tmp[kBatchSize][kLoopsV][VecSize];
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
     if (i >= local_batches) break;
@@ -492,15 +446,15 @@ __global__ void WarpSoftmaxBackward(T* dst,
     VecT* dst_v = reinterpret_cast<VecT*>(&dst[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
     kps::WriteData<VecT, VecT, kLoopsV, 1, 1, true>(
-        &dst_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize, 1);
+        dst_v, reg_v, idx_max_v[i], 0, kWarpSize, 1);
   }
 }
 
 #define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, AccT)                      \
   case Log2Elements:                                                       \
     WarpSoftmaxForward<T,                                                  \
-                       VecT,                                               \
                        AccT,                                               \
+                       VecSize,                                            \
                        Log2Elements,                                       \
                        LogMode><<<blocks, threads, 0, dev_ctx.stream()>>>( \
         dst, src, batch_size, stride, element_count);                      \
@@ -509,7 +463,7 @@ __global__ void WarpSoftmaxBackward(T* dst,
 /*
   Wrapper of softmax formward with template instantiation on size of input.
 */
-template <typename T, typename VecT, bool LogMode>
+template <typename T, int VecSize, bool LogMode>
 void SwitchWarpSoftmaxForward(const int blocks,
                               const dim3 threads,
                               const GPUContext& dev_ctx,
@@ -539,8 +493,8 @@ void SwitchWarpSoftmaxForward(const int blocks,
 #define SOFTMAX_WARP_BACKWARD_CASE(Log2Elements, AccT)                      \
   case Log2Elements:                                                        \
     WarpSoftmaxBackward<T,                                                  \
-                        VecT,                                               \
                         AccT,                                               \
+                        VecSize,                                            \
                         Log2Elements,                                       \
                         LogMode><<<blocks, threads, 0, dev_ctx.stream()>>>( \
         dst, grad, src, batch_size, stride, element_count);                 \
@@ -549,7 +503,7 @@ void SwitchWarpSoftmaxForward(const int blocks,
 /*
 Wrapper of softmax backward with template instantiation on size of input.
 */
-template <typename T, typename VecT, bool LogMode>
+template <typename T, int VecSize, bool LogMode>
 void SwitchWarpSoftmaxBackward(const int blocks,
                                const dim3 threads,
                                const GPUContext& dev_ctx,
@@ -961,32 +915,28 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
     int blocks = (N + batches_per_block - 1) / batches_per_block;
     dim3 threads(warp_size, warps_per_block, 1);
 
-    // vectorization read/write
-    using T4 = typename VecT4<T>::Type;
-    using T2 = typename VecT2<T>::Type;
-
     if (dim % 4 == 0) {
-      SwitchWarpSoftmaxForward<T, T4, LogMode>(blocks,
-                                               threads,
-                                               dev_ctx,
-                                               out_data,
-                                               x.data<T>(),
-                                               N,
-                                               dim,
-                                               dim,
-                                               dim_log2);
+      SwitchWarpSoftmaxForward<T, 4, LogMode>(blocks,
+                                              threads,
+                                              dev_ctx,
+                                              out_data,
+                                              x.data<T>(),
+                                              N,
+                                              dim,
+                                              dim,
+                                              dim_log2);
     } else if (dim % 2 == 0) {
-      SwitchWarpSoftmaxForward<T, T2, LogMode>(blocks,
-                                               threads,
-                                               dev_ctx,
-                                               out_data,
-                                               x.data<T>(),
-                                               N,
-                                               dim,
-                                               dim,
-                                               dim_log2);
+      SwitchWarpSoftmaxForward<T, 2, LogMode>(blocks,
+                                              threads,
+                                              dev_ctx,
+                                              out_data,
+                                              x.data<T>(),
+                                              N,
+                                              dim,
+                                              dim,
+                                              dim_log2);
     } else {
-      SwitchWarpSoftmaxForward<T, T, LogMode>(blocks,
+      SwitchWarpSoftmaxForward<T, 1, LogMode>(blocks,
                                               threads,
                                               dev_ctx,
                                               out_data,
@@ -1035,33 +985,30 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
     int blocks = (N + batches_per_block - 1) / batches_per_block;
     dim3 threads(warp_size, warps_per_block, 1);
 
-    // vectorization read/write
-    using T4 = typename VecT4<T>::Type;
-    using T2 = typename VecT2<T>::Type;
     if (dim % 4 == 0) {
-      SwitchWarpSoftmaxBackward<T, T4, LogMode>(blocks,
-                                                threads,
-                                                dev_ctx,
-                                                dx_data,
-                                                dout.data<T>(),
-                                                out.data<T>(),
-                                                N,
-                                                dim,
-                                                dim,
-                                                dim_log2);
+      SwitchWarpSoftmaxBackward<T, 4, LogMode>(blocks,
+                                               threads,
+                                               dev_ctx,
+                                               dx_data,
+                                               dout.data<T>(),
+                                               out.data<T>(),
+                                               N,
+                                               dim,
+                                               dim,
+                                               dim_log2);
     } else if (dim % 2 == 0) {
-      SwitchWarpSoftmaxBackward<T, T2, LogMode>(blocks,
-                                                threads,
-                                                dev_ctx,
-                                                dx_data,
-                                                dout.data<T>(),
-                                                out.data<T>(),
-                                                N,
-                                                dim,
-                                                dim,
-                                                dim_log2);
+      SwitchWarpSoftmaxBackward<T, 2, LogMode>(blocks,
+                                               threads,
+                                               dev_ctx,
+                                               dx_data,
+                                               dout.data<T>(),
+                                               out.data<T>(),
+                                               N,
+                                               dim,
+                                               dim,
+                                               dim_log2);
     } else {
-      SwitchWarpSoftmaxBackward<T, T, LogMode>(blocks,
+      SwitchWarpSoftmaxBackward<T, 1, LogMode>(blocks,
                                                threads,
                                                dev_ctx,
                                                dx_data,

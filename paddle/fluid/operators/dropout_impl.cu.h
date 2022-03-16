@@ -33,7 +33,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 
