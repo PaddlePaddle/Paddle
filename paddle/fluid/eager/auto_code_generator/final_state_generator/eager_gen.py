@@ -697,7 +697,7 @@ def GenerateNodeCreationCodes(
         else:
             # Tuple api_result
             if IsPlainTensorType(rtype):
-                output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);"
+                output_autograd_meta = f"    egr::AutogradMeta* {output_autograd_meta_name} = egr::EagerUtils::autograd_meta(&std::get<{pos}>(api_result));"
             else:
                 assert IsVectorTensorType(rtype)
                 output_autograd_meta = f"    std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&api_result[{pos}]);\n"
@@ -734,8 +734,11 @@ def GenerateNodeCreationCodes(
             else:
                 set_tensor_wrappers = f"        grad_node->SetTensorWrapper{name}({name}, true);"
         else:
-            if IsVectorTensorType(atype):
-                tw_name = f"api_result[{pos}]"
+            if num_fwd_outputs > 1:
+                # Aligned with forward output position
+                assert name in forward_outputs_position_map.keys()
+                fwd_output_pos = forward_outputs_position_map[name][1]
+                tw_name = f"std::get<{fwd_output_pos}>(api_result)"
             else:
                 tw_name = f"api_result"
 
@@ -777,7 +780,7 @@ def GenerateNodeCreationCodes(
         if num_outputs == 1:
             set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result);"
         else:
-            set_retain_grad = f"        egr::EagerUtils::CheckAndRetainGrad(api_result[{pos}]);"
+            set_retain_grad = f"egr::EagerUtils::CheckAndRetainGrad(std::get<{pos}>(api_result));"
         set_retain_grad_list.append(set_retain_grad)
     set_out_rank_str = "\n".join(set_out_rank_list)
     set_history_str = "\n".join(set_history_list)
@@ -900,7 +903,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
             returns_list[0] = f"api_result"
         else:
             # Tuple api_result
-            returns_list[pos] = f"api_result[{pos}]"
+            returns_list[pos] = f"std::get<{pos}>(api_result)"
 
         if IsPlainTensorType(rtype):
             returns_type_list[pos] = "paddle::experimental::Tensor"
@@ -1038,7 +1041,8 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
-#include "paddle/phi/api/include/sparse_api.h"
+//#include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/api/backward/sparse_bw_api.h"
 """
     file_contents += node_definition_str
     with open(filepath, 'a') as f:

@@ -133,7 +133,8 @@ static PyObject * eager_final_state_api_{}(PyObject *self, PyObject *args, PyObj
     if is_forward_only:
         fwd_function_name = "paddle::experimental::" + namespace_str + fwd_api_name
     else:
-        fwd_function_name = namespace_str + GetForwardFunctionName(fwd_api_name)
+        fwd_function_name = "::" + namespace_str + GetForwardFunctionName(
+            fwd_api_name)
 
     python_c_function_str = PYTHON_C_FUNCTION_TEMPLATE.format(
         fwd_api_name, fwd_api_name, get_eager_tensor_str, parse_attributes_str,

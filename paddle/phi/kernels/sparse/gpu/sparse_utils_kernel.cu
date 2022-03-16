@@ -15,6 +15,7 @@ limitations under the License. */
 #include <thrust/execution_policy.h>
 #include <thrust/remove.h>
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -93,6 +94,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const int64_t sparse_dim,
                             SparseCooTensor* out) {
+  VLOG(6) << "enter DenseToSparseCooKernel.";
   const T* x_data = x.data<T>();
   const auto& x_dims = x.dims();
   auto dims_2d = flatten_to_2d(x_dims, sparse_dim);
@@ -123,6 +125,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
       phi::DenseTensorMeta(DataType::INT32, {rows}, phi::DataLayout::NCHW);
   DenseTensor temp_indexs = phi::Empty(dev_ctx, std::move(temp_indexs_meta));
   int* temp_indexs_ptr = temp_indexs.mutable_data<int>(place);
+  VLOG(6) << "get the number of non-zero elements.";
   GetNonZeroNums<<<config.block_per_grid.x,
                    config.thread_per_block.x,
                    0,
@@ -171,6 +174,8 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
 
   dev_ctx.Wait();  // wait the copy
 
+  VLOG(6) << "alloc SparseCooTensor";
+
   const auto values_dims =
       phi::funcs::sparse::InferDenseDims(x_dims, sparse_dim, non_zero_num);
   DenseTensorMeta indices_meta(DataType::INT64,
@@ -189,6 +194,7 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
   T* sparse_data = values.mutable_data<T>(place);
 
   // 3. calc indices by indexs and get values by indexs
+  VLOG(6) << "calc indices..";
   config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
   GetNonZeroElementsAndIndices<<<config.block_per_grid.x,
                                  config.thread_per_block.x,
@@ -201,7 +207,9 @@ void DenseToSparseCooKernel(const Context& dev_ctx,
                                                      temp_indexs_ptr,
                                                      indices_data,
                                                      sparse_data);
+  VLOG(6) << "set member";
   out->SetMember(indices, values, x_dims, true);
+  VLOG(6) << "leave DenseToSparseCoo";
 }
 
 __global__ void GetBatchSizes(const int64_t* crows,
