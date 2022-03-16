@@ -254,26 +254,18 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void DisableGpu();
   ///
-  /// \brief Turn on GPU fp16 precision.
-  ///
-  ///
-  void EnableUseGpuFp16();
-  ///
-  /// \brief Specify the operator type list to keep original calculation
-  /// precision.
+  /// \brief Enable GPU fp16 precision computation, in experimental state.
   ///
   /// \param op_list The operator type list.
   ///
-  void SetGpuFp16DisabledOp(std::unordered_set<std::string> op_list) {
-    gpu_fp16_disabled_op_types_.insert(op_list.begin(), op_list.end());
-  }
+  void Exp_EnableUseGpuFp16(std::unordered_set<std::string> op_list = {});
   ///
   /// \brief A boolean state telling whether the GPU fp16 precision is turned
   /// on.
   ///
   /// \return bool Whether the GPU fp16 precision is turned on.
   ///
-  bool use_gpu_fp16() const { return use_gpu_fp16_; }
+  bool gpu_fp16_enabled() const { return use_gpu_fp16_; }
 
   ///
   /// \brief Turn on XPU.

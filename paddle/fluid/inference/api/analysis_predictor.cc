@@ -872,7 +872,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
   }
 
-  if (config_.use_gpu_fp16()) {
+  if (config_.gpu_fp16_enabled()) {
     argument_.SetUseGPUFp16(true);
     argument_.SetGpuFp16DisabledOpTypes(config_.gpu_fp16_disabled_op_types_);
   }

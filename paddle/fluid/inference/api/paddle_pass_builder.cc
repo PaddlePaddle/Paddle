@@ -172,7 +172,7 @@ void GpuPassStrategy::EnableCUDNN() {
   use_cudnn_ = true;
 }
 
-void GpuPassStrategy::EnableUseGpuFp16() {
+void GpuPassStrategy::Exp_EnableUseGpuFp16() {
   passes_.assign({
     "is_test_pass",                               //
         "simplify_with_basic_ops_pass",           //

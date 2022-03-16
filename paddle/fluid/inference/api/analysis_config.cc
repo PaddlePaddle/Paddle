@@ -105,11 +105,13 @@ void AnalysisConfig::DisableGpu() {
   Update();
 }
 
-void AnalysisConfig::EnableUseGpuFp16() {
+void AnalysisConfig::Exp_EnableUseGpuFp16(
+    std::unordered_set<std::string> op_list) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_fp16_ = true;
+  gpu_fp16_disabled_op_types_.insert(op_list.begin(), op_list.end());
 #else
-  LOG(ERROR) << "Please compile with gpu to EnableUseGpuFp16()";
+  LOG(ERROR) << "Please compile with gpu to Exp_EnableUseGpuFp16()";
   use_gpu_fp16_ = false;
 #endif
 
@@ -591,12 +593,13 @@ void AnalysisConfig::Update() {
   if (use_gpu_fp16_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableUseGpuFp16() only works when IR optimization is enabled.";
+      LOG(ERROR) << "Exp_EnableUseGpuFp16() only works when IR optimization is "
+                    "enabled.";
     } else if (!use_gpu()) {
-      LOG(ERROR) << "EnableUseGpuFp16() only works when use_gpu is enabled.";
+      LOG(ERROR)
+          << "Exp_EnableUseGpuFp16() only works when use_gpu is enabled.";
     } else {
-      pass_builder()->EnableUseGpuFp16();
+      pass_builder()->Exp_EnableUseGpuFp16();
     }
 #endif
   }

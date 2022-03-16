@@ -126,7 +126,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   virtual void EnableCUDNN() {}
 
   /// \brief Enable use gpu fp16 kernel.
-  virtual void EnableUseGpuFp16() {}
+  virtual void Exp_EnableUseGpuFp16() {}
 
   /// \brief Enable the use of MKLDNN.
   /// The MKLDNN control exists in both CPU and GPU mode, because there can
@@ -232,7 +232,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   void EnableCUDNN() override;
 
   /// \brief Enable the use of gpu fp16 kernel.
-  void EnableUseGpuFp16() override;
+  void Exp_EnableUseGpuFp16() override;
 
   /// \brief Not supported in GPU mode yet.
   void EnableMKLDNN() override;
