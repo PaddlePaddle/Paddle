@@ -24,6 +24,10 @@ limitations under the License. */
 
 namespace phi {
 
+// Common InferMeta Functions for backward operators.
+//
+// NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
+
 void BilinearTensorProductGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& y,
                                         const MetaTensor& weight,
