@@ -634,38 +634,33 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 tensor3 = tensor2._copy_to(core.CUDAPlace(0), True)
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
-                self.assertTrue(tensor3.persistable, True)
-                self.assertTrue(tensor3.stop_gradient, True)
+                self.assertEqual(tensor3.persistable, True)
+                self.assertEqual(tensor3.stop_gradient, True)
                 self.assertTrue(tensor3.place.is_gpu_place())
 
                 tensor4 = tensor2.cuda(0, True)
                 self.assertTrue(np.array_equal(tensor4.numpy(), arr2))
-                self.assertTrue(tensor4.persistable, True)
-                self.assertTrue(tensor4.stop_gradient, True)
+                self.assertEqual(tensor4.persistable, True)
+                self.assertEqual(tensor4.stop_gradient, False)
                 self.assertTrue(tensor4.place.is_gpu_place())
 
                 tensor5 = tensor2.cpu()
                 self.assertTrue(np.array_equal(tensor5.numpy(), arr2))
-                self.assertTrue(tensor5.persistable, True)
-                self.assertTrue(tensor5.stop_gradient, True)
+                self.assertEqual(tensor5.persistable, True)
+                self.assertEqual(tensor5.stop_gradient, False)
                 self.assertTrue(tensor5.place.is_cpu_place())
 
-                tensor6 = tensor2.pin_memory()
-                self.assertTrue(np.array_equal(tensor6.numpy(), arr2))
-                self.assertTrue(tensor6.persistable, True)
-                self.assertTrue(tensor6.stop_gradient, True)
-                self.assertTrue(tensor6.place.is_cuda_pinned_place())
             else:
                 tensor3 = tensor2._copy_to(core.CPUPlace(), True)
                 self.assertTrue(np.array_equal(tensor3.numpy(), arr2))
-                self.assertTrue(tensor3.persistable, True)
-                self.assertTrue(tensor3.stop_gradient, True)
+                self.assertEqual(tensor3.persistable, True)
+                self.assertEqual(tensor3.stop_gradient, False)
                 self.assertTrue(tensor3.place.is_cpu_place())
 
                 tensor4 = tensor2.cpu()
                 self.assertTrue(np.array_equal(tensor4.numpy(), arr2))
-                self.assertTrue(tensor4.persistable, True)
-                self.assertTrue(tensor4.stop_gradient, True)
+                self.assertEqual(tensor4.persistable, True)
+                self.assertEqual(tensor4.stop_gradient, False)
                 self.assertTrue(tensor4.place.is_cpu_place())
 
     def test_share_buffer_to(self):
@@ -806,8 +801,30 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
 
     def test_sharding_related_api(self):
         arr0 = np.random.rand(4, 16, 16, 32).astype('float32')
-        egr_tensor1 = core.eager.Tensor(arr0, place, True, False,
+        egr_tensor1 = core.eager.Tensor(arr0,
+                                        core.CPUPlace(), True, False,
                                         "numpy_tensor1", False)
+        self.assertEqual(egr_tensor1._numel(), 32768)
+        self.assertEqual(egr_tensor1._slice(0, 2)._numel(), 16384)
+
+    def test_copy_gradient_from(self):
+        with _test_eager_guard():
+            np_x = np.random.random((2, 2))
+            np_y = np.random.random((2, 2))
+            x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
+            y = paddle.to_tensor(np_y, dtype="float64")
+            out = x + x
+            out.backward()
+            x._copy_gradient_from(y)
+            self.assertTrue(np.array_equal(x.grad.numpy(), np_y))
+
+    def test_clear(self):
+        with _test_eager_guard():
+            np_x = np.random.random((3, 8, 8))
+            x = paddle.to_tensor(np_x, dtype="float64")
+            self.assertTrue(x._is_initialized())
+            x._clear()
+            self.assertFalse(x._is_initialized())
 
 
 class EagerParamBaseUsageTestCase(unittest.TestCase):
