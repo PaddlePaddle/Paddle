@@ -36,10 +36,50 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+struct RandomGeneratorDstValFunctor {
+  const float dropout_prob_;
+  const bool is_upscale_in_train_;
+  HOSTDEVICE inline RandomGeneratorDstValFunctor(const float dropout_prob,
+                                                 const bool is_upscale_in_train)
+      : dropout_prob_(dropout_prob),
+        is_upscale_in_train_(is_upscale_in_train) {}
+
+  HOSTDEVICE inline T operator()(const T src_val, const T rand) const {
+    using MT = typename details::MPTypeTrait<T>::Type;
+    MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob_));
+    if ((rand) < dropout_prob_) {
+      return 0;
+    } else {
+      return is_upscale_in_train_
+                 ? static_cast<T>(static_cast<MT>(src_val) * factor)
+                 : src_val;
+    }
+  }
+};
+
+template <typename T>
+struct RandomGeneratorMaskValFunctor {
+  const float dropout_prob_;
+  HOSTDEVICE inline RandomGeneratorMaskValFunctor(const float dropout_prob)
+      : dropout_prob_(dropout_prob) {}
+
+  HOSTDEVICE inline T operator()(const T src_val, const T rand) const {
+    // rand = static_cast<float4>(rand);
+    using MT = typename details::MPTypeTrait<T>::Type;
+    if (rand < dropout_prob_) {
+      return 0;
+    } else {
+      return 1;
+    }
+  }
+};
 
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
@@ -89,45 +129,61 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   using LoadT = phi::AlignedVector<T, VecSize>;
   using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
 
+  size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
+
 #ifdef PADDLE_WITH_HIP
-  int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
   hiprandStatePhilox4_32_10_t state;
-  hiprand_init(seed, idx, increment, &state);
+  hiprand_init(seed, idx + THREAD_ID_X, increment, &state);
+  using SType = hiprandStatePhilox4_32_10_t;
 #else
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, increment, &state);
+  curand_init(seed, idx + THREAD_ID_X, increment, &state);
+  using SType = curandStatePhilox4_32_10_t;
 #endif
 
-  MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
-  for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
-    LoadT src_val;
-    phi::Load<T, VecSize>(&src[i], &src_val);
-
-#ifdef PADDLE_WITH_HIP
-    float4 rand = hiprand_uniform4(&state);
-#else
-    float4 rand = curand_uniform4(&state);
-#endif
-
-    LoadT dst_val;
-    MaskLoadT mask_val;
-
-#pragma unroll
-    for (int j = 0; j < VecSize; j++) {
-      if ((&rand.x)[j] < dropout_prob) {
-        dst_val[j] = 0;
-        mask_val[j] = 0;
-      } else {
-        dst_val[j] = is_upscale_in_train
-                         ? static_cast<T>(static_cast<MT>(src_val[j]) * factor)
-                         : src_val[j];
-        mask_val[j] = 1;
-      }
+  constexpr int kCount = VecSize;
+  MT rands[kCount];
+  MaskType mask_result[kCount];
+  T dst_result[kCount];
+  for (int i = idx * VecSize; i < n; i += BLOCK_NUM_X * GRID_NUM_X * VecSize) {
+    T src_val[kCount];
+    bool is_boundary = n - i > BLOCK_NUM_X * VecSize;
+    if (is_boundary) {
+      kps::ReadData<T, kCount, 1, 1, true>(
+          src_val, &src[i], static_cast<int>(BLOCK_NUM_X * VecSize));
+    } else {
+      kps::ReadData<T, kCount, 1, 1, false>(src_val, &src[i], n - i);
     }
+    MT src_mt[kCount];
+    kps::ElementwiseUnary<T, MT, kCount, 1, 1, kps::IdentityFunctor<T>>(
+        src_mt, src_val, kps::IdentityFunctor<T>());
+    kps::ElementwiseRandom<SType, MT, kCount, 1,
+                           phi::funcs::normal_distribution<float>>(
+        rands, phi::funcs::normal_distribution<float>(), &state);
 
-    phi::Store<T, VecSize>(dst_val, &dst[i]);
-    phi::Store<MaskType, VecSize>(mask_val, &mask[i]);
+    T dst_val[kCount];
+    MaskType mask_val[kCount];
+
+    auto dst_val_functor =
+        RandomGeneratorDstValFunctor<MT>(dropout_prob, is_upscale_in_train);
+    auto mask_val_functor = RandomGeneratorMaskValFunctor<MT>(dropout_prob);
+
+    kps::ElementwiseBinary<MT, T, kCount, 1, 1,
+                           RandomGeneratorDstValFunctor<MT>>(
+        dst_result, src_mt, rands, dst_val_functor);
+    kps::ElementwiseBinary<MT, MaskType, kCount, 1, 1,
+                           RandomGeneratorMaskValFunctor<MT>>(
+        mask_result, src_mt, rands, mask_val_functor);
+    if (is_boundary) {
+      kps::WriteData<T, kCount, 1, 1, true>(
+          dst_val, dst_result, static_cast<int>(BLOCK_NUM_X * VecSize));
+      kps::WriteData<MaskType, kCount, 1, 1, true>(
+          mask_val, &mask_result[0], static_cast<int>(BLOCK_NUM_X * VecSize));
+    } else {
+      kps::WriteData<T, kCount, 1, 1, false>(dst_val, dst_result, n - i);
+      kps::WriteData<MaskType, kCount, 1, 1, false>(mask_val, &mask_result[0],
+                                                    n - i);
+    }
   }
 }
 
