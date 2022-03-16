@@ -1721,8 +1721,10 @@ void TopKInferMeta(const MetaTensor& x,
   dims[axis] = k;
   out->set_dims(dims);
   out->share_lod(x);
+  out->set_dtype(x.dtype());
   indices->set_dims(dims);
   indices->share_lod(x);
+  indices->set_dtype(DataType::INT64);
 }
 
 }  // namespace phi

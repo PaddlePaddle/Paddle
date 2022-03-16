@@ -940,6 +940,7 @@ void ExpandAsInferMeta(const MetaTensor& x,
                         MAX_RANK_SUPPORTED,
                         target_shape.size()));
   out->set_dims(phi::make_ddim(target_shape));
+  out->set_dtype(x.dtype());
 #undef MAX_RANK_SUPPORTED
 }
 
@@ -958,6 +959,7 @@ void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
     dim_out.push_back(dim_xi == -1 || dim_yi == -1 ? -1 : dim_xi * dim_yi);
   }
   out->set_dims(phi::make_ddim(dim_out));
+  out->set_dtype(x.dtype());
 }
 
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
@@ -1007,6 +1009,11 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   }
 
   out->set_dims(values_dims);
+  if (out_int32) {
+    out->set_dtype(DataType::INT32);
+  } else {
+    out->set_dtype(DataType::INT64);
+  }
 }
 
 }  // namespace phi
