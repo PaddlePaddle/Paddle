@@ -202,4 +202,24 @@ void TanhTripleGradKernel(const Context& dev_ctx,
           d_ddx);  // output
 }
 
+template <typename T, typename Context>
+void EluDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         float alpha,
+                         DenseTensor* dx,
+                         DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+  funcs::ELUGradGradFunctor<T> functor;
+  functor.alpha = alpha;
+  functor(dev_ctx, &x, &ddx, ddout, &dout, dx);
+}
+
 }  // namespace phi

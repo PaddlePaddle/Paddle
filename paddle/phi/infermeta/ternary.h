@@ -30,6 +30,8 @@ namespace phi {
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
 //
+// The InferMeta Functions in this file are arranged in alphabetic order.
+
 void AccuracyInferMeta(const MetaTensor& out,
                        const MetaTensor& indice,
                        const MetaTensor& label,
@@ -70,6 +72,17 @@ void NllLossRawInferMeta(const MetaTensor& input,
                          MetaTensor* out,
                          MetaTensor* total_weight,
                          MetaConfig config = MetaConfig());
+
+void RoiAlignInferMeta(const MetaTensor& x,
+                       const MetaTensor& boxes,
+                       paddle::optional<const MetaTensor&> boxes_num,
+                       int pooled_height,
+                       int pooled_width,
+                       float spatial_scale,
+                       int sampling_ratio,
+                       bool aligned,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
 
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -28,11 +29,19 @@ namespace phi {
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 //   Because functions in this file not only can infer shape, but also need
 //   infer lod or other useful data.
+//
+// The InferMeta Functions in this file are arranged in alphabetic order.
 
 void AllValueCompareInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
+
+void KLDivInferMeta(const MetaTensor& x,
+                    const MetaTensor& label,
+                    const std::string& reduction,
+                    MetaTensor* out,
+                    MetaConfig config = MetaConfig());
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
@@ -95,6 +104,11 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              int axis,
                              MetaTensor* out);
 
+void GatherInferMeta(const MetaTensor& x,
+                     const MetaTensor& index,
+                     const Scalar& axis,
+                     MetaTensor* out);
+
 void GatherNdInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        MetaTensor* out);
@@ -114,6 +128,11 @@ void IndexSampleInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out,
                           MetaConfig config = MetaConfig());
+
+void IndexSelectInferMeta(const MetaTensor& x,
+                          const MetaTensor& index,
+                          int dim,
+                          MetaTensor* output);
 
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
@@ -167,5 +186,10 @@ void YoloBoxInferMeta(const MetaTensor& x,
                       MetaTensor* boxes,
                       MetaTensor* scores,
                       MetaConfig config = MetaConfig());
+                      
+void ValueCompareInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
 
 }  // namespace phi
