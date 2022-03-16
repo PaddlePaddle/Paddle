@@ -179,7 +179,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             if not var.persistable or var.desc.type(
             ) != core.VarDesc.VarType.LOD_TENSOR:
                 continue
-            set_var_lod_type(var)
             param_memory_size += get_var_mem_size(var)
             processed_var_names.add(varname)
 
@@ -209,9 +208,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                         data_count *= (-x)
                     else:
                         data_count *= x
-                program_tmp_vars[var_name] = (
-                    data_count, neg_dim_count,
-                    vars_metatools.dtype_to_size[var.dtype])
+                program_tmp_vars[var_name] = (data_count, neg_dim_count,
+                                              dtype_to_size[var.dtype])
 
         for varname in program_tmp_vars:
             data_count, neg_dim_count, type_size = program_tmp_vars[varname]

@@ -33,7 +33,6 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto table_id = context.Attr<int>("table_id");
     auto emb_dim = context.Attr<int>("size");
     auto use_cvm_op = context.Attr<bool>("use_cvm_op");
-    std::cout << "debug zcb use_cvm_op: " << use_cvm_op << "\n";
 
     auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
     auto shows = context.Input<framework::LoDTensor>("Shows");

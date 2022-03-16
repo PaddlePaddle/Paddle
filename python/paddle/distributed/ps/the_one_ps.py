@@ -799,11 +799,11 @@ class PsDescBuilder(object):
         return text_format.MessageToString(self.ps_desc)
 
     def build_server_desc(self):
+        self.sparse_table_maps = {}
         for table in self.tables:
             table_proto = self.ps_desc.server_param.downpour_server_param.downpour_table_param.add(
             )
             table._set(table_proto)
-            self.sparse_table_maps = {}
             if table_proto.type == ps_pb2.PS_SPARSE_TABLE and table_proto.common is not None:
                 self.sparse_table_maps[
                     table_proto.common.table_name] = table_proto.table_id
@@ -822,6 +822,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._worker = fluid.core.DistFleetWrapper()
         self._server_sub_program = []
         self._heter_client = None
+        self._send_ctx = None
 
     def _set_basic_info(self, context):
         self.context = context
@@ -920,6 +921,7 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.is_heter_ps_mode,
             use_origin_program=self.is_heter_ps_mode,
             ep_list=self.endpoints)
+        self._send_ctx = send_ctx
         trainer_config = self.context['trainer']
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
@@ -944,14 +946,16 @@ class TheOnePSRuntime(RuntimeBase):
 
         print("communicator config:", trainer_config.get_communicator_flags())
 
-        # self._communicator = Communicator(
-        #     trainer_config.mode, kwargs,
-        #     trainer_config.get_communicator_flags())
-        # self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
-        #                                  self.string_hosts,
-        #                                  fluid.global_scope())
         role_id = get_role_id(self.role_maker)
         self._worker.init_worker(proto_txt, self.string_hosts, role_id)
+
+        if self.context['ps_mode'] == DistributedMode.GEO:
+            self._communicator = Communicator(
+                trainer_config.mode, kwargs,
+                trainer_config.get_communicator_flags())
+            self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
+                                             self.string_hosts,
+                                             fluid.global_scope())
         fleet.util.barrier()
 
         # info = self._communicator.get_client_info()
@@ -975,12 +979,13 @@ class TheOnePSRuntime(RuntimeBase):
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
 
-        # if self.role_maker._is_first_worker() and self.is_heter_ps_mode:
-        #     # for ps-heter mode load all parameters on first_worker
-        #     init_params = get_the_one_recv_context(
-        #         self.context, split_dense_table=True, use_origin_program=True)
-        # else:
-        #     init_params = dense_map
+        # for GEO
+        if self.role_maker._is_first_worker() and self.is_heter_ps_mode:
+            # for ps-heter mode load all parameters on first_worker
+            init_params = get_the_one_recv_context(
+                self.context, split_dense_table=True, use_origin_program=True)
+        else:
+            init_params = dense_map
 
         # if not is_test:
         #     self._communicator.init_params(init_params)
@@ -999,16 +1004,21 @@ class TheOnePSRuntime(RuntimeBase):
 
         self.scopes = scopes
         if not is_test:
-            if role_id == 0:
-                self._init_params(scopes, send_ctx, dense_map)
+            if self.context['ps_mode'] == DistributedMode.GEO:
+                self._communicator.init_params(init_params)
+            else:
+                if role_id == 0:
+                    self._init_params(scopes, send_ctx, dense_map)
+
             fleet.util.barrier()
         self._pull_all_dense(scopes, send_ctx, dense_map)
         fleet.util.barrier()
 
-        # if not self._communicator.is_running():
-        #     self._communicator.start()
-        # else:
-        #     warnings.warn("communicator has been initialized, skip")
+        if self.context['ps_mode'] == DistributedMode.GEO:
+            if not self._communicator.is_running():
+                self._communicator.start()
+            else:
+                warnings.warn("communicator has been initialized, skip")
 
         launch_barrier = dist_strategy.a_sync_configs["launch_barrier"]
         launch_barrier_flag = int(os.getenv("FLAGS_LAUNCH_BARRIER", "1"))
@@ -1074,6 +1084,8 @@ class TheOnePSRuntime(RuntimeBase):
         self._server.run_server(host, int(port))
 
     def _stop_worker(self):
+        if self.context['ps_mode'] == DistributedMode.GEO:
+            self._communicator.stop()
         self._worker.stop_worker()
         if self.is_heter_ps_mode:
             assert self._heter_client != None, "heter client should not be None in heterps mode"

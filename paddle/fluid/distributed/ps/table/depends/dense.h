@@ -285,11 +285,9 @@ class DSummary : public DenseOptimizer {
     //    begin,
     //                          param + begin);
 
-    //    std::cout << "debug zcb " << (*(param + begin)) << " " <<
     //    (*(update_values+begin)) << " " << summary_decay_rate[0] << "\n";
     //    float a = (*(param + begin)) * summary_decay_rate[0] +
     //    (*(update_values + begin));
-    //    std::cout << "debug zcb " << a << '\n';
     Eigen::Map<Eigen::MatrixXf> mat_w(param + begin, 1, update_numel);
     Eigen::Map<const Eigen::MatrixXf> mat_grad(update_values + begin, 1,
                                                update_numel);

@@ -1737,8 +1737,6 @@ void BrpcPsClient::push_dense_task_consume() {
     auto wait_ms = FLAGS_pserver_async_push_dense_interval_ms -
                    (butil::gettimeofday_ms() - async_start_time_ms);
     // timeline.ElapsedMS());
-    // VLOG(0) << "debug zcb push dense consume wait_ms: " << wait_ms << " " <<
-    // butil::gettimeofday_ms() << " " << async_start_time_ms ;
     if (wait_ms > 0) {
       usleep(wait_ms * 1000);
     }
