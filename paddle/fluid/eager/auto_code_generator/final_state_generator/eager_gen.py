@@ -1041,7 +1041,6 @@ def GenerateNodeCCFile(filepath, node_definition_str):
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 
-//#include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 """
     file_contents += node_definition_str

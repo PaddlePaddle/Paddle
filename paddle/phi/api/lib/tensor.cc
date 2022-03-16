@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -130,6 +132,12 @@ bool Tensor::is_dense_tensor() const {
 }
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());
+}
+bool Tensor::is_sparse_coo_tensor() const {
+  return phi::SparseCooTensor::classof(impl_.get());
+}
+bool Tensor::is_sparse_csr_tensor() const {
+  return phi::SparseCsrTensor::classof(impl_.get());
 }
 /* Part 3: Device and Backend methods */
 

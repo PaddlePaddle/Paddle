@@ -225,6 +225,22 @@ class PADDLE_API Tensor final {
    */
   bool is_selected_rows() const;
 
+  /**
+   * @brief Determine whether tensor is SparseCooTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_sparse_coo_tensor() const;
+
+  /**
+   * @brief Determine whether tensor is SparseCsrTensor
+   *
+   * @return true
+   * @return false
+   */
+  bool is_sparse_csr_tensor() const;
+
   /* Part 3: Device and Backend methods */
 
   /**
