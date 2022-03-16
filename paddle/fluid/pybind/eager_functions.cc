@@ -355,6 +355,7 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
   ins_auto_grad_metas.resize(ctx.InputRange().size());
   VLOG(7) << "We got slot num of outs is: " << ctx.OutputRange().size();
   outs_auto_grad_metas.resize(ctx.OutputRange().size());
+
   for (size_t i = 0; i < ctx.InputRange().size(); i++) {
     ins_auto_grad_metas[i] =
         egr::EagerUtils::nullable_autograd_meta(ctx.InputsBetween(
@@ -384,11 +385,15 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
     // Prepare Grad outputs
     size_t no_grad_cnt = 0;
     for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
+      const std::vector<paddle::experimental::Tensor>& in_tensors =
+          ctx.InputsBetween(ctx.InputRangeAt(i).first,
+                            ctx.InputRangeAt(i).second);
+
       if (slot_map[0].find(i) != slot_map[0].end()) {
-        grad_node->SetGradOutMeta(&ins_auto_grad_metas[i], slot_map[0][i]);
+        grad_node->SetGradOutMeta(in_tensors, slot_map[0][i]);
         grad_node->AddEdges(&ins_auto_grad_metas[i], slot_map[0][i]);
       } else {
-        grad_node->SetGradOutMeta(&ins_auto_grad_metas[i],
+        grad_node->SetGradOutMeta(in_tensors,
                                   ins_auto_grad_metas.size() - 1 - no_grad_cnt);
         grad_node->AddEdges(&ins_auto_grad_metas[i],
                             ins_auto_grad_metas.size() - 1 - no_grad_cnt);
@@ -397,11 +402,14 @@ static PyObject* eager_api_run_costum_op(PyObject* self, PyObject* args,
     }
     // Prepare Grad inputs with grad of fwd outputs
     for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
+      const std::vector<paddle::experimental::Tensor>& out_tensors =
+          ctx.OutputsBetweeen(ctx.OutputRangeAt(i).first,
+                              ctx.OutputRangeAt(i).second);
+
       egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
       egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
-      grad_node->SetGradInMeta(&(outs_auto_grad_metas[i]), i);
-      egr::EagerUtils::CheckAndRetainGrad(ctx.OutputsBetweeen(
-          ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second));
+      grad_node->SetGradInMeta(out_tensors, i);
+      egr::EagerUtils::CheckAndRetainGrad(out_tensors);
     }
 
     // Prepare Grad inputs with fwd outputs
