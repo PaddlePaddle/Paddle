@@ -29,11 +29,6 @@ namespace experimental {
 inline bool NeedTransformDataType(const DataType& input,
                                   const DataType& target,
                                   const TransformFlag& transform_flag) {
-  if (target == DataType::INT_DTYPE) {
-    if (input == DataType::INT32 || input == DataType::INT64) {
-      return false;
-    }
-  }
   return input != target &&
          (transform_flag.need_trans_data_type() ||
           target == DataType::COMPLEX64 || target == DataType::COMPLEX128);

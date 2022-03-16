@@ -117,5 +117,5 @@ PD_REGISTER_KERNEL(index_sample,
                    double,
                    int,
                    int64_t) {
-  kernel->InputAt(1).SetDataType(phi::DataType::INT_DTYPE);
+  kernel->InputAt(1).SetDataType(phi::DataType::ALL_DTYPE);
 }

@@ -48,7 +48,6 @@ enum class DataType {
   NUM_DATA_TYPES,
   // See Note [ Why we need ALL in baisc kernel key member? ]
   ALL_DTYPE = UNDEFINED,
-  INT_DTYPE = 51,
 };
 
 inline size_t SizeOf(DataType data_type) {
@@ -76,7 +75,6 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::UNDEFINED:
       return 0;
     case DataType::NUM_DATA_TYPES:
-    case DataType::INT_DTYPE:
       PD_THROW("Data type `",
                static_cast<int>(data_type),
                "` is not supported by tensor.");
@@ -176,9 +174,6 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
       break;
     case DataType::COMPLEX128:
       os << "complex128";
-      break;
-    case DataType::INT_DTYPE:
-      os << "INTERGE";
       break;
     default:
       PD_THROW("Invalid enum data type `", static_cast<int>(dtype), "`.");
