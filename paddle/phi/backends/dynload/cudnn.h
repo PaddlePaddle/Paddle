@@ -1,4 +1,5 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -191,6 +192,21 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnSetFusedOpsVariantParamPackAttribute); \
   __macro(cudnnMakeFusedOpsPlan);
 CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
+#if CUDNN_VERSION >= 8200
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R8(__macro) \
+  __macro(cudnnCreateSeqDataDescriptor);             \
+  __macro(cudnnDestroySeqDataDescriptor);            \
+  __macro(cudnnSetSeqDataDescriptor);                \
+  __macro(cudnnCreateAttnDescriptor);                \
+  __macro(cudnnDestroyAttnDescriptor);               \
+  __macro(cudnnSetAttnDescriptor);                   \
+  __macro(cudnnGetMultiHeadAttnBuffers);             \
+  __macro(cudnnMultiHeadAttnForward);                \
+  __macro(cudnnMultiHeadAttnBackwardData);           \
+  __macro(cudnnMultiHeadAttnBackwardWeights);
+CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 }  // namespace dynload

@@ -1,4 +1,5 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,6 +44,10 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DEFINE_WRAP);
 
 #ifdef CUDNN_DNN_ROUTINE_EACH_R8
 CUDNN_DNN_ROUTINE_EACH_R8(DEFINE_WRAP);
+#endif
+
+#ifdef CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R8
+CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R8(DEFINE_WRAP);
 #endif
 
 bool HasCUDNN() {
