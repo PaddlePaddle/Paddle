@@ -20,7 +20,7 @@ import os
 import six
 import sys
 
-import paddle.utils.deprecated as deprecated
+from paddle.utils.deprecated import deprecated
 
 __all__ = [
     'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',
