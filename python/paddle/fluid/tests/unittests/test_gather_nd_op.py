@@ -22,7 +22,7 @@ import paddle
 
 
 class TestGatherNdOpWithEmptyIndex(OpTest):
-    #Index has empty element, which means copy entire tensor
+    # Index has empty element, which means copy entire tensor
 
     def setUp(self):
         self.op_type = "gather_nd"
@@ -82,7 +82,7 @@ class TestGatherNdOpIndex1(OpTest):
         self.op_type = "gather_nd"
         self.python_api = paddle.gather_nd
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
-        index = np.array([1, 2]).astype("int64")
+        index = np.array([1, 2]).astype("int32")
 
         self.inputs = {'X': xnp, 'Index': index}
 

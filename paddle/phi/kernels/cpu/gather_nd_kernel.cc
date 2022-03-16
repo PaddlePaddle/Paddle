@@ -57,4 +57,6 @@ PD_REGISTER_KERNEL(gather_nd,
                    int,
                    int16_t,
                    bool,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT_DTYPE);
+}

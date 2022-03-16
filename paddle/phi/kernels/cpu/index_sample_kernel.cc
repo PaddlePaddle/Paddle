@@ -41,7 +41,7 @@ void IndexSampleInner(const Context &context,
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
   paddle::framework::TensorToVector(input, context, &input_vec);
-  paddle::framework::TensorToVector(index, context, &index_vec);
+  paddle::framework::TensorToVector<IndexT>(index, context, &index_vec);
 
   std::vector<T> res(index_ids_num);
   for (int i = 0; i < index_ids_num; i++) {
@@ -115,4 +115,6 @@ PD_REGISTER_KERNEL(index_sample,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT_DTYPE);
+}

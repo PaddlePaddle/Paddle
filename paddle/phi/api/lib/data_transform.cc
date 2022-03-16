@@ -29,6 +29,11 @@ namespace experimental {
 inline bool NeedTransformDataType(const DataType& input,
                                   const DataType& target,
                                   const TransformFlag& transform_flag) {
+  if (target == DataType::INT_DTYPE) {
+    if (input == DataType::INT32 || input == DataType::INT64) {
+      return false;
+    }
+  }
   return input != target &&
          (transform_flag.need_trans_data_type() ||
           target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
@@ -183,6 +188,7 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   const auto& tensor_in = input.impl();
+  VLOG(6) << tensor_in->dtype() << "\t" << target_args_def.dtype;
   if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
       (!NeedTransformPlace(
            tensor_in->place(), target_args_def.backend, transform_flag) &&

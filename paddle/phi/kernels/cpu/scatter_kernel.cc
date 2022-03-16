@@ -60,4 +60,5 @@ void ScatterKernel(const Context &ctx,
 
 PD_REGISTER_KERNEL(
     scatter, CPU, ALL_LAYOUT, phi::ScatterKernel, float, double, int, int64_t) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT_DTYPE);
 }

@@ -317,6 +317,7 @@
   output : Tensor
   infer_meta :
     func : ScatterInferMeta
+    dtype : x
   kernel :
     func : scatter
   backward : scatter_grad
@@ -327,6 +328,7 @@
   output : Tensor
   infer_meta :
     func : ScatterNdAddInferMeta
+    dtype : x
   kernel :
     func : scatter_nd_add
   backward : scatter_nd_add_grad
@@ -457,6 +459,7 @@
     func : IndexSampleInferMeta
   kernel :
     func : index_sample
+    data_type : x
   backward : index_sample_grad
 
 
@@ -507,6 +510,7 @@
     func : GatherNdInferMeta
   kernel :
     func : gather_nd
+    data_type : x
   backward : gather_nd_grad
 
 - api : gather_tree

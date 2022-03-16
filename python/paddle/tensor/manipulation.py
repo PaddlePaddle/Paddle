@@ -1568,7 +1568,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
     """
     if paddle.in_dynamic_mode():
         if _in_eager_mode():
-            return _C_ops.scatter(x, index, updates, overwrite)
+            return _C_ops.final_state_scatter(x, index, updates, overwrite)
         return _C_ops.scatter(x, index, updates, 'overwrite', overwrite)
 
     check_variable_and_dtype(
