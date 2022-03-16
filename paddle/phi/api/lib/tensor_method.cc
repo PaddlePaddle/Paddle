@@ -20,39 +20,10 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace experimental {
-
-static void copy__impl(const phi::KernelKey &kernel_key,
-                       const phi::DenseTensor &src,
-                       phi::DenseTensor *dst,
-                       bool blocking) {
-  auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "copy", kernel_key);
-
-  VLOG(6) << "copy API kernel key: " << kernel_key;
-  VLOG(6) << "copy API kernel: " << kernel;
-
-  auto *dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-
-  using kernel_signature = void (*)(const platform::DeviceContext &,
-                                    const phi::DenseTensor &,
-                                    phi::Place,
-                                    bool,
-                                    phi::DenseTensor *);
-
-  auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  if (!dst->initialized()) {
-    (*kernel_fn)(*dev_ctx,
-                 src,
-                 phi::TransToPhiPlace(kernel_key.backend()),
-                 blocking,
-                 dst);
-  } else {
-    (*kernel_fn)(*dev_ctx, src, dst->place(), blocking, dst);
-  }
-}
-
 // declare cast api
 Tensor cast(const Tensor &x, DataType out_dtype);
 Tensor copy_to(const Tensor &x, Backend backend, bool blocking);
@@ -99,14 +70,15 @@ template PADDLE_API Tensor
 Tensor::copy_to<phi::dtype::float16>(const PlaceType &target_place) const;
 
 void Tensor::copy_(const Tensor &src,
-                   bool blocking,
-                   const phi::Place &target_place) {
+                   const phi::Place &target_place,
+                   bool blocking) {
   if (!src.is_initialized()) {
     VLOG(8) << "Src is empty, skip copy";
     return;
   }
   // Prepare copy kernel key and outputs
   auto kernel_key_set = ParseKernelKeyByInputArgs(src);
+  KernelType kernel_type = ParseKernelTypeByInputArgs(src);
   VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
   if (is_initialized()) {
     PADDLE_ENFORCE_EQ(dtype(),
@@ -135,60 +107,74 @@ void Tensor::copy_(const Tensor &src,
         kernel_key_set.backend_set |
         BackendSet(phi::TransToPhiBackend(inner_place()));
   } else {
-    if (src.is_dense_tensor()) {
-      set_impl(std::make_shared<phi::DenseTensor>(
-          phi::make_intrusive<SharedStorage>(target_place),
-          phi::DenseTensorMeta()));
-    } else if (src.is_selected_rows()) {
-      set_impl(std::make_shared<phi::SelectedRows>());
-    }
-    phi::MetaTensor meta_out(impl_.get());
-    meta_out.share_meta(phi::MetaTensor(src.impl_.get()));
     // Deep Copy AutoGrad info from src to self.
     *autograd_meta_ = *(src.autograd_meta_);
   }
 
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+  auto *dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
 
-  if (src.is_dense_tensor()) {
-    PADDLE_ENFORCE_EQ(
-        is_dense_tensor(),
-        true,
-        paddle::platform::errors::InvalidArgument(
-            "We can only copy same tensor, but we got phi::DenseTensor from "
-            "src and %s from dst impl, please check this first",
-            impl_->type_info().name()));
-    paddle::experimental::copy__impl(
-        kernel_key,
-        *(std::static_pointer_cast<phi::DenseTensor>(src.impl_)),
-        static_cast<phi::DenseTensor *>(impl_.get()),
-        blocking);
-  } else if (src.is_selected_rows()) {
-    PADDLE_ENFORCE_EQ(
-        is_selected_rows(),
-        true,
-        paddle::platform::errors::InvalidArgument(
-            "We can only copy same tensor, but we got phi::SelectedRows from "
-            "src and %s from dst impl, please check this first",
-            impl_->type_info().name()));
-    auto src_selected_rows =
-        std::static_pointer_cast<phi::SelectedRows>(src.impl_);
-    auto dst_selected_rows = std::static_pointer_cast<phi::SelectedRows>(impl_);
-    auto &src_tensor = src_selected_rows->value();
-    auto *dst_tensor = dst_selected_rows->mutable_value();
-    if (dst_tensor && dst_tensor->IsInitialized()) {
-      PADDLE_ENFORCE_EQ(dst_tensor->dims(),
-                        src_tensor.dims(),
-                        platform::errors::PreconditionNotMet(
-                            "Tensor %s has different dims with Tensor %s, "
-                            "Tensor Copy cannot be performed!",
-                            name(),
-                            src.name()));
-    } else {
-      dst_tensor->Resize(src_tensor.dims());
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
     }
-    paddle::experimental::copy__impl(
-        kernel_key, src_tensor, dst_tensor, blocking);
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
+
+  if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
+    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "copy", {kernel_backend, kernel_layout, kernel_data_type});
+    VLOG(6) << "copy API kernel key: " << kernel_key;
+    VLOG(6) << "copy API kernel: " << kernel;
+    using kernel_signature = void (*)(const platform::DeviceContext &,
+                                      const phi::DenseTensor &,
+                                      phi::Place,
+                                      bool,
+                                      phi::DenseTensor *);
+    SetKernelOutput(kernel_backend, this);
+    phi::MetaTensor meta_out(impl_.get());
+    phi::UnchangedInferMeta(
+        MakeMetaTensor(
+            *(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
+        &meta_out);
+    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx,
+                 (*(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
+                 target_place,
+                 blocking,
+                 static_cast<phi::DenseTensor *>(impl_.get()));
+  } else if (kernel_type == KernelType::SELECTED_ROWS_KENREL) {
+    auto kernel = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "copy_sr", {kernel_backend, kernel_layout, kernel_data_type});
+    VLOG(6) << "copy API kernel key: " << kernel_key;
+    VLOG(6) << "copy API kernel: " << kernel;
+    using kernel_signature = void (*)(const platform::DeviceContext &,
+                                      const phi::SelectedRows &,
+                                      phi::Place,
+                                      bool,
+                                      phi::SelectedRows *);
+    SetSelectedRowsKernelOutput(kernel_backend, this);
+    phi::MetaTensor meta_out(impl_.get());
+    phi::UnchangedInferMeta(
+        MakeMetaTensor(
+            *(std::static_pointer_cast<phi::SelectedRows>(src.impl_))),
+        &meta_out);
+    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    (*kernel_fn)(*dev_ctx,
+                 (*(std::static_pointer_cast<phi::SelectedRows>(src.impl_))),
+                 target_place,
+                 blocking,
+                 static_cast<phi::SelectedRows *>(impl_.get()));
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "We currently only support dense tensor copy for now and if u need to "

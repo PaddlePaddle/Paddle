@@ -398,8 +398,8 @@ class PADDLE_API Tensor final {
    * @return void
    */
   void copy_(const Tensor& src,
-             const bool blocking,
-             const phi::Place& target_place);
+             const phi::Place& target_place,
+             const bool blocking);
   /**
    * @brief Cast datatype from one to another
    *
