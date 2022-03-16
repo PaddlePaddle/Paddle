@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/gather_op.h"
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -198,15 +198,7 @@ REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
                   ops::GatherGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(gather_grad, ops::GatherGradOp,
                   ops::GatherGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
-                       ops::GatherOpKernel<double>, ops::GatherOpKernel<int>,
-                       ops::GatherOpKernel<uint8_t>,
-                       ops::GatherOpKernel<int64_t>);
-REGISTER_OP_CPU_KERNEL(gather_grad, ops::GatherGradientOpKernel<float>,
-                       ops::GatherGradientOpKernel<double>,
-                       ops::GatherGradientOpKernel<int>,
-                       ops::GatherGradientOpKernel<uint8_t>,
-                       ops::GatherGradientOpKernel<int64_t>);
+
 REGISTER_OP_VERSION(gather)
     .AddCheckpoint(R"ROC(upgrad gather, add a new input [Axis])ROC",
                    paddle::framework::compatible::OpVersionDesc().NewInput(

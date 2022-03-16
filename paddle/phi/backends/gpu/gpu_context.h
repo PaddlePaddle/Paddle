@@ -1,4 +1,5 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -92,6 +93,9 @@ class GPUContext : public DeviceContext {
 
   /*! \brief  Return cublas handle in the device context. */
   blasHandle_t cublas_handle() const;
+
+  /*! \brief  Return cublasLt handle in the device context. */
+  blasLtHandle_t cublaslt_handle() const;
 
   /*! \brief  Return cusolver handle in the device context. */
   solverHandle_t cusolver_dn_handle() const;
@@ -193,6 +197,8 @@ class GPUContext : public DeviceContext {
 
   void SetBlasHandle(blasHandle_t);
 
+  void SetBlasLtHandle(blasLtHandle_t);
+
   void SetDnnHandle(dnnHandle_t);
 
   void SetSolverHandle(solverHandle_t);
@@ -226,5 +232,13 @@ class GPUContext : public DeviceContext {
 // and GPUDNN kernel function, so if we using GPUDNNContext = GPUContext, we
 // must use different function name for cudnn kernel
 using GPUDNNContext = GPUContext;
+
+// KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,
+// because we want to implement a KPS-based kernel and make it run
+// on GPU and XPU at the same time, so we need KPSContext when registering
+// KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+using KPSContext = GPUContext;
+#endif
 
 }  // namespace phi

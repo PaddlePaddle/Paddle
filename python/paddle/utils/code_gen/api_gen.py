@@ -23,7 +23,8 @@ from api_base import BaseAPI
 class ForwardAPI(BaseAPI):
     def __init__(self, api_item_yaml):
         super(ForwardAPI, self).__init__(api_item_yaml)
-        self.is_dygraph_api = self.parse_intermediate(api_item_yaml)
+        self.is_dygraph_api, self.intermediate_outs = self.parse_intermediate(
+            api_item_yaml)
 
     def get_api_func_name(self):
         if self.is_dygraph_api:
@@ -33,14 +34,46 @@ class ForwardAPI(BaseAPI):
 
     def parse_intermediate(self, api_item_yaml):
         if 'intermediate' in api_item_yaml:
-            return True
+            intermediate_outs = [
+                item.strip()
+                for item in api_item_yaml['intermediate'].split(',')
+            ]
+            return True, intermediate_outs
         else:
-            return False
+            return False, []
 
     def get_return_type(self, out_type_list):
         return out_type_list[0] if len(
             out_type_list) == 1 else "std::tuple<" + ",".join(
                 out_type_list) + ">"
+
+    def gene_return_type_code(self):
+        if self.is_dygraph_api or len(self.intermediate_outs) == 0:
+            return self.outputs['return_type']
+        else:
+            return_out_list = []
+            for i, name in enumerate(self.outputs['names']):
+                if name not in self.intermediate_outs:
+                    return_out_list.append(self.outputs['types'][i])
+            return return_out_list[0] if len(
+                return_out_list) == 1 else "std::tuple<" + ",".join(
+                    return_out_list) + ">"
+
+    def gene_return_code(self):
+        if self.is_dygraph_api or len(self.intermediate_outs) == 0:
+            return "api_output"
+        else:
+            return_out_list = []
+            for i, name in enumerate(self.outputs['names']):
+                if name not in self.intermediate_outs:
+                    return_out_list.append(i)
+            if len(return_out_list) == 1:
+                return f"std::get<{return_out_list[0]}>(api_output)"
+            else:
+                selected_code = [
+                    f"std::get<{i}>(api_output)" for i in return_out_list
+                ]
+            return '{' + ", ".join(selected_code) + '}'
 
     def gene_output(self,
                     output_type_list,
@@ -58,12 +91,12 @@ class ForwardAPI(BaseAPI):
                 0]] if inplace_flag and self.inplace_map is not None and self.outputs[
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out{inplace_assign};
-{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &out);"""
+{code_indent}  {self.outputs['return_type']} api_output{inplace_assign};
+{code_indent}  auto kernel_out = {set_out_func}(kernel_backend, &api_output);"""
 
         elif len(output_type_list) > 1:
             output_create = f"""
-{code_indent}  {self.outputs['return_type']} out;"""
+{code_indent}  {self.outputs['return_type']} api_output;"""
 
             for i in range(len(output_type_list)):
                 kernel_output = kernel_output + f'kernel_out_{i}, '
@@ -71,10 +104,10 @@ class ForwardAPI(BaseAPI):
                 if inplace_flag and self.inplace_map is not None and self.outputs[
                         'names'][i] in self.inplace_map:
                     output_create = output_create + f"""
-{code_indent}  std::get<{i}>(out) = {self.inplace_map[self.outputs['names'][i]]};"""
+{code_indent}  std::get<{i}>(api_output) = {self.inplace_map[self.outputs['names'][i]]};"""
 
                 output_create = output_create + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(out));"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}(kernel_backend, &std::get<{i}>(api_output));"""
 
             kernel_output = kernel_output[:-2]
         else:
@@ -92,6 +125,7 @@ def header_include():
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/scalar_array.h"
+#include "paddle/utils/optional.h"
 """
 
 
@@ -104,7 +138,7 @@ def source_include(header_file_path):
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_registry.h"
-#include "paddle/phi/api/lib/api_utils.h"
+#include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/storage.h"
@@ -114,6 +148,8 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/declarations.h"
+
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 """
 
 
@@ -168,6 +204,10 @@ def generate_api(api_yaml_path, header_file_path, source_file_path,
         if foward_api.is_dygraph_api:
             dygraph_header_file.write(foward_api.gene_api_declaration())
             dygraph_source_file.write(foward_api.gene_api_code())
+
+            foward_api.is_dygraph_api = False
+            header_file.write(foward_api.gene_api_declaration())
+            source_file.write(foward_api.gene_api_code())
         else:
             header_file.write(foward_api.gene_api_declaration())
             source_file.write(foward_api.gene_api_code())

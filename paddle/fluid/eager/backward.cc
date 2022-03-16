@@ -19,6 +19,8 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/grad_tensor_holder.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -48,12 +50,16 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
     }
     visited.insert(node);
 
+    PADDLE_ENFORCE_NOT_NULL(
+        node,
+        paddle::platform::errors::Fatal(
+            "We got null node when we traverse the backward graph, and this "
+            "should not happened please check your code and contact us."));
     // Find and append next nodes
     const std::vector<std::vector<Edge>>& edges = node->GetEdges();
     for (const auto& edge_list : edges) {
       for (const Edge& edge : edge_list) {
         GradNodeBase* next_node = edge.GetMutableGradNode().get();
-
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs
@@ -67,13 +73,15 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
       }
     }
   }
-
   return node_in_degree_map;
 }
 
 void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
                  const std::vector<paddle::experimental::Tensor>& grad_tensors,
                  bool retain_graph) {
+  paddle::platform::RecordEvent backward_record_event(
+      "backward", paddle::platform::TracerEventType::Operator, 1);
+
   VLOG(6) << "Start Backward";
   // *Gradient Hook should happen at node-level
   // *Inplace version check should perform at node-level
@@ -109,7 +117,8 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
-      VLOG(6) << "Create Value for grad input tensor " << i;
+      VLOG(6) << "Create Value for grad input tensor " << i
+              << " of grad node: " << grad_node->name();
       node_input_buffers_dict[grad_node] =
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
@@ -155,28 +164,36 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
   VLOG(6) << "Run Backward";
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
-    queue.pop();
 
+    paddle::platform::RecordEvent node_record_event(
+        std::string(typeid(*node).name()) + " grad_node",
+        paddle::platform::TracerEventType::Operator, 1);
+
+    if (queue.size() > 1 && node_in_degree_map[node] != 0) {
+      queue.pop();
+      continue;
+    }
+    queue.pop();
     // Run node: This is where Hook happens
     PADDLE_ENFORCE(
         node_input_buffers_dict.count(node),
         paddle::platform::errors::Fatal(
-            "Unable to find next node in the InputBuufer"
+            "Unable to find next node in the GradTensorHolder \n"
             "Trying to run Node without configuring its GradTensorHolder"));
 
     std::unique_ptr<GradTensorHolder> node_input_buffer =
         std::move(node_input_buffers_dict[node]);
 
-    VLOG(6) << "Run Backward Kernel with input_buffer";
+    VLOG(6) << "Run Backward Kernel with GradTensorHolder";
     // Run Pre Backward Node and get outputs
     std::vector<std::vector<paddle::experimental::Tensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers());
     // TODO(jiabin): Should we erase it or find a more efficient way.
+
     node_input_buffers_dict.erase(node);
 
     // Prepare GradTensorHolder for next node
     const std::vector<std::vector<Edge>>& edges = node->GetEdges();
-
     PADDLE_ENFORCE(edges.size() == grad_output_tensors.size() || edges.empty(),
                    paddle::platform::errors::Fatal(
                        "Number of edges should be either empty ( for leaf node "
@@ -187,6 +204,7 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
     for (size_t i = 0; i < edges.size(); i++) {
       for (size_t j = 0; j < edges[i].size(); j++) {
         const Edge& edge = edges[i][j];
+
         auto edge_rank = edge.GetEdgeRankInfo();
         // Since we make edge has as same rank as bwd outputs, we indexing them
         // with
@@ -200,6 +218,7 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
             grad_output_tensors[i].empty()) {
           continue;
         }
+
         PADDLE_ENFORCE_LT(
             j, grad_output_tensors[i].size(),
             paddle::platform::errors::Fatal(
@@ -212,19 +231,21 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
         if ((!grad_output_tensor.defined() ||
              !grad_output_tensor.initialized())) {
-          VLOG(6)
-              << "We get grad_output_tensor with slot: " << i << ", rank: " << j
-              << " as uninitialized or undefined in both tensor and variable";
+          VLOG(6) << "We get grad_output_tensor with slot: " << i
+                  << ", rank: " << j << " as uninitialized or undefined tensor";
         }
         VLOG(6) << "Get Edge and grad_output_tensor with slot: " << i
                 << ", rank: " << j
                 << " 's name is: " << grad_output_tensor.name();
 
         auto* next_node = next_node_shared.get();
-
         if (!node_input_buffers_dict.count(next_node)) {
-          node_input_buffers_dict[next_node] =
-              std::make_unique<GradTensorHolder>(next_node->InputMeta());
+          const auto& input_meta = next_node->InputMeta();
+          auto grad_tensor_holder =
+              std::make_unique<GradTensorHolder>(input_meta);
+          VLOG(6) << "Construct GradTensorHolder for grad node: "
+                  << next_node->name();
+          node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
         }
         VLOG(6) << "Sum grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;
@@ -233,10 +254,12 @@ void RunBackward(const std::vector<paddle::experimental::Tensor>& tensors,
 
         // Update queue
         node_in_degree_map[next_node]--;
-        PADDLE_ENFORCE(node_in_degree_map[next_node] >= 0,
-                       paddle::platform::errors::Fatal(
-                           "Detected in-degree value smaller than zero."
-                           "Node's in-degree cannot be negative"));
+        PADDLE_ENFORCE(
+            node_in_degree_map[next_node] >= 0,
+            paddle::platform::errors::Fatal(
+                "Detected in-degree value smaller than zero. For Node: %s"
+                "Node's in-degree cannot be negative",
+                next_node->name()));
         if (node_in_degree_map[next_node] == 0) {
           queue.emplace(std::move(next_node));
         }

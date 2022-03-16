@@ -70,12 +70,12 @@ OpSupportedInfos(const std::string& place,
     }
   }
 
-  auto pten_kernels = phi::KernelFactory::Instance().kernels();
-  for (auto& kernel_pair : pten_kernels) {
+  auto phi_kernels = phi::KernelFactory::Instance().kernels();
+  for (auto& kernel_pair : phi_kernels) {
     auto op_type = phi::TransToFluidOpName(kernel_pair.first);
     for (auto& info_pair : kernel_pair.second) {
       framework::OpKernelType kernel_type =
-          framework::TransPtenKernelKeyToOpKernelType(info_pair.first);
+          framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
       if (is_target_place[query_place](kernel_type.place_) &&
           kernel_type.data_type_ == dtype && all_ops.count(op_type)) {
         VLOG(4) << op_type << " " << supported_ops.size();
@@ -209,7 +209,9 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   auto data_type = GetDataType<VarType>(var);
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
-      paddle::platform::is_xpu_place(place)) {
+      paddle::platform::is_xpu_place(place) ||
+      paddle::platform::is_npu_place(place) ||
+      paddle::platform::is_npu_pinned_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
         data_type == paddle::framework::proto::VarType::FP16 ||
@@ -273,8 +275,9 @@ static inline std::shared_ptr<VarType> CastToBF16(
 
 template <typename VarType>
 static inline framework::proto::VarType::Type GetPromoteType(
-    const std::string& op_type, const NameVarMap<VarType>& ins) {
-  auto dst_type = framework::proto::VarType::FP16;
+    const std::string& op_type, const NameVarMap<VarType>& ins,
+    const framework::proto::VarType::Type amp_dtype) {
+  auto dst_type = amp_dtype;
   for (const auto& pair : ins) {
     for (const auto& var : pair.second) {
       if (GetDataType<VarType>(var) == framework::proto::VarType::FP32) {
@@ -337,7 +340,8 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
     }
     return new_ins;
   } else {
-    auto dst_type = GetPromoteType<VarType>(op_type, ins);
+    auto dst_type =
+        GetPromoteType<VarType>(op_type, ins, framework::proto::VarType::FP16);
 
     // NOTE(zhiqiu): if the op has op fp16 kernel, fall back to fp32.
     if (dst_type == framework::proto::VarType::FP16 &&
@@ -435,12 +439,32 @@ NameVarMap<VarType> AutoCastBF16Inputs(const std::string& op_type,
       }
     }
     return new_ins;
-  } else {
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
     for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";
       for (auto& var : pair.second) {
         var = CastToFP32<VarType>(var);
+      }
+    }
+    return new_ins;
+  } else {
+    auto dst_type =
+        GetPromoteType<VarType>(op_type, ins, framework::proto::VarType::BF16);
+    // NOTE(zhangbo): if the op has op fp16 kernel, fall back to fp32.
+    if (dst_type == framework::proto::VarType::BF16 &&
+        AmpOperators::Instance().GetMutableUnsupportedBf16Ops()->count(
+            op_type)) {
+      dst_type = framework::proto::VarType::FP32;
+    }
+    for (auto& pair : new_ins) {
+      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+              << GetDtypeStr(*pair.second.cbegin()) << " to "
+              << framework::DataTypeToString(dst_type);
+      for (auto& var : pair.second) {
+        var = (dst_type == framework::proto::VarType::FP32
+                   ? CastToFP32<VarType>(var)
+                   : CastToBF16<VarType>(var));
       }
     }
     return new_ins;

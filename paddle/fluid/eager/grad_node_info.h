@@ -57,37 +57,36 @@ class AutogradMeta;
 class GradSlotMeta {
  public:
   GradSlotMeta() = default;
-  void Init(size_t size) {
-    size_ = static_cast<int>(size);
-    stop_gradient_.resize(size, false);
-    meta_.resize(size);
+  bool IsStopGradient() const { return stop_gradient_; }
+  void SetStopGradient(bool stop_gradient = true) {
+    stop_gradient_ = stop_gradient;
   }
 
-  bool IsInitialized() const { return size_ != -1; }
-  bool IsStopGradient(size_t rank) const { return stop_gradient_[rank]; }
-  int Size() const { return size_; }
-  void SetStopGradient(size_t rank, bool stop_gradient = true) {
-    stop_gradient_.at(rank) = stop_gradient;
+  void SetTensorMeta(const phi::DenseTensorMeta& meta) {
+    meta_ = std::make_shared<phi::DenseTensorMeta>(meta);
   }
-  void SetTensorMeta(size_t rank, const phi::DenseTensorMeta& meta) {
-    meta_.at(rank) = meta;
-  }
-  const phi::DenseTensorMeta& GetTensorMeta(size_t rank) const {
-    return meta_[rank];
+  bool HasTensorMeta() const { return meta_ && meta_.get(); }
+  const phi::DenseTensorMeta& GetTensorMeta() const {
+    if (!HasTensorMeta()) {
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "meta_ of GradSlotMeta has not been initialized yet."
+          "You're expected to check Edge availability with HasTensorMeta()"
+          "before calling GetTensorMeta() interface."));
+    }
+    return *meta_.get();
   }
 
  private:
-  int size_{-1};
-  std::vector<bool> stop_gradient_{false};
-  std::vector<phi::DenseTensorMeta> meta_;
+  bool stop_gradient_{false};
+  std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
 };
 
 class GradNodeBase {
  public:
-  GradNodeBase() = default;
+  GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
   GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
-  virtual ~GradNodeBase() = default;
+  virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
 
   /**
    * operator() designed to contian the real backward execution logic, it should
@@ -116,16 +115,17 @@ class GradNodeBase {
   void AddEdges(std::vector<AutogradMeta*>* metas, size_t slot_id);
   void AddEdges(AutogradMeta* meta, size_t slot_id);
 
-  /**
-   * GetEdges is designed to get all edges of current node**/
-  const std::vector<std::vector<Edge>>& GetEdges() const;
+  // adj_edges were moved inside OutputMeta(), so no available direct access
+  // from GradNodeBase.
+  // To access Edges, get GradSlotMeta by calling OutputMeta(), then use
+  // slot_meta.GetEdge()
 
   /**
    * Get Input Meta of current Grad node**/
-  const std::vector<GradSlotMeta>& InputMeta() const;
+  const std::vector<std::vector<GradSlotMeta>>& InputMeta() const;
   /**
    * Get Output Meta of current Grad node**/
-  const std::vector<GradSlotMeta>& OutputMeta() const;
+  const std::vector<std::vector<GradSlotMeta>>& OutputMeta() const;
   /**
    * Set bwd ins and outs info with forward vars
    * **/
@@ -179,20 +179,19 @@ class GradNodeBase {
 
   virtual std::string name() { return "GradNodeBase"; }
 
+  /**
+       * GetEdges is designed to get all edges of current node**/
+  const std::vector<std::vector<Edge>>& GetEdges() const;
+
  private:
   // TODO(jiabin): Use SmallVector instead after merge PR from develop
-
-  // Edges recorded the backward related node info, which indicate all edges
-  // linked
-  // by this Grad Node.
-  // Why we need vector<vector<Edge>>: Edges is as same rank as bwd output.
   std::vector<std::vector<Edge>> adj_edges_;
 
   // bwd_out_meta_ is used to record Grad output info for backward
-  std::vector<GradSlotMeta> bwd_out_meta_;
+  std::vector<std::vector<GradSlotMeta>> bwd_out_meta_;
 
   // bwd_in_meta_ used to record Grad input info for backward
-  std::vector<GradSlotMeta> bwd_in_meta_;
+  std::vector<std::vector<GradSlotMeta>> bwd_in_meta_;
   // Gradient Hooks
   // Customer may register a list of hooks which will be called in order during
   // backward

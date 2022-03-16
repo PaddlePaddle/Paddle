@@ -46,6 +46,10 @@ def _build_saved_state_dict(state_dict):
             if value.type == core.VarDesc.VarType.VOCAB:
                 save_dict[key] = value.value().get_map_tensor()
             else:
+                if not value.value().get_tensor()._is_initialized():
+                    raise ValueError(
+                        "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
+                    )
                 save_dict[key] = value.numpy()
             name_table[key] = value.name
         else:
@@ -466,7 +470,9 @@ def _parse_load_result(obj, return_numpy):
 
 def _save_lod_tensor(tensor, file_name):
     if not tensor._is_initialized():
-        raise ValueError("The saved tensor is not initialized.")
+        raise ValueError(
+            "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model firstly."
+        )
     if _is_file_path(file_name):
         _seek = core.save_lod_tensor(tensor, file_name)
         # '_seek' is the end position of this tensor in the file.

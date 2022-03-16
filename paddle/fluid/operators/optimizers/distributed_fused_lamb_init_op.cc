@@ -61,30 +61,31 @@ class DistributedFusedLambInitOpMaker
               "The fp32 beta1 power accumulator tensor. Its shape is [1].");
     AddOutput("Beta2Pow",
               "The fp32 beta2 power accumulator tensor. Its shape is [1].");
-    AddOutput("FusedIndices",
-              "The param index of each element in FP32FusedParam. Its shape is "
-              "[M1+M2]. It is like [0,0,0,1,1,1,1,2,2,...].");
     AddOutput(
         "FusedParamOffsets",
         "The numel offset of each parameter inside the FP32FusedParam. Its "
         "shape is [param_num + 1]. It is like [0, n_0, n_0 + n_1, n_0 + n_1 "
-        "+ n_2, ...].");
-    AddOutput("FP32ShardFusedParamOffsets",
-              "The sharded numel offset of each parameter in the local rank. "
-              "Its shape is [fp32_local_param_num + 1].");
-    AddOutput("FP16ShardFusedParamOffsets",
-              "The sharded numel offset of each parameter in the local rank. "
-              "Its shape is [fp16_local_param_num + 1].");
+        "+ n_2, ...]. It should be in CPUPlace.");
     AddOutput(
-        "WeightDecay",
-        "The sharded fp32 weight decay tensor. Its shape is [(M1+M2)/N].");
+        "FP32ShardFusedParamOffsets",
+        "The sharded numel offset of each parameter in the local rank. "
+        "Its shape is [fp32_local_param_num + 1]. It should be in CPUPlace.");
+    AddOutput(
+        "FP16ShardFusedParamOffsets",
+        "The sharded numel offset of each parameter in the local rank. "
+        "Its shape is [fp16_local_param_num + 1]. It should be in CPUPlace.");
     AddOutput("ParamInfo",
               "The param info. It should be in CPUPlace, and its shape is [6]"
-              "CPUPlace, and its shape is [6]. It is "
+              "CPUPlace, and its shape is [8]. It is "
               "[fp32_shard_param_start_idx, fp32_local_param_num, "
-              "fp32_global_param_num, fp16_shard_param_start_idx, "
-              "fp16_local_param_num, fp16_global_param_num].");
-
+              "fp32_global_param_num, fp32_weight_decay_end_idx, "
+              "fp16_shard_param_start_idx, "
+              "fp16_local_param_num, fp16_global_param_num, "
+              "fp16_weight_decay_end_idx].");
+    AddOutput("ParamOrder",
+              "The reordered parameter order. Inside this op, "
+              "the parameter would be reordered by data type and weight decay "
+              "value.");
     AddOutput("ParamOut", "The output parameter list.").AsDuplicable();
     AddOutput("MasterParamOut",
               "The output master parameter list. It would share the memory of "
@@ -96,10 +97,8 @@ class DistributedFusedLambInitOpMaker
 
     AddAttr<float>("beta1", "The initial value of Beta1Pow.");
     AddAttr<float>("beta2", "The initial value of Beta2Pow.");
-    AddAttr<std::vector<float>>(
-        "weight_decay",
-        "The weight decay for each parameter. Its "
-        "shape is equal to the global parameter number.");
+    AddAttr<std::vector<int>>("apply_weight_decay",
+                              "Whether to apply weight decay.");
     AddAttr<int>("alignment", "The alignment in bytes for the fused tensors.");
     AddAttr<int>("rank", "The global rank of the current process.");
     AddAttr<int>("nranks", "The global world size.");

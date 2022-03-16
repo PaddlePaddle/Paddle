@@ -33,7 +33,7 @@ limitations under the License. */
  *
  * We hope to organize the basic implementation of Tensor and the logic related
  * to Tensor computation into an independent library, which we call
- * [Tensor Operation Library, pten], so we extract or rewrite the original
+ * [Tensor Operation Library, phi], so we extract or rewrite the original
  * Kernels.
  *
  * In the future, the training library, inference library and custom operators
@@ -111,8 +111,8 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
                   "touching underlying data, this requires the total size of "
                   "the tensor to remain constant.";
   if (is_dense_tensor()) {
-    std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->set_meta(
-        phi::DenseTensorMeta(dtype(), phi::make_ddim(shape)));
+    std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->Resize(
+        phi::make_ddim(shape));
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support reshape operation on DenseTensor now."));

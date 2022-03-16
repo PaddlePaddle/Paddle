@@ -19,6 +19,16 @@ limitations under the License. */
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(copy, GPU, ALL_LAYOUT);
+#endif
 
 namespace paddle {
 namespace tests {
@@ -83,7 +93,7 @@ TEST(Tensor, data_transform_diff_place) {
   ASSERT_EQ(out.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(out.initialized(), true);
   ASSERT_EQ(out.impl()->place(),
-            phi::TransToPtenPlace(experimental::Backend::GPU));
+            phi::TransToPhiPlace(experimental::Backend::GPU));
 
   auto ref_out = experimental::copy_to(out, experimental::Backend::CPU, true);
 
