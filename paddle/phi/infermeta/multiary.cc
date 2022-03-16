@@ -542,4 +542,37 @@ void WhereInferMeta(const MetaTensor& condition,
   out->share_meta(x);
 }
 
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  paddle::optional<const MetaTensor&> path,
+                                  paddle::optional<const MetaTensor&> code,
+                                  paddle::optional<const MetaTensor&> bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out) {
+  const int64_t input_dims = x.dims()[0];
+  const int64_t label_dims = label.dims()[0];
+  PADDLE_ENFORCE_EQ(input_dims,
+                    label_dims,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of "
+                        "input and label is expected to be the same. "
+                        "But received input's first dimension is %d; "
+                        "label's first dimension is %d.",
+                        input_dims,
+                        label_dims));
+
+  std::vector<int64_t> output_shape({input_dims, 1});
+  out->set_dims(phi::make_ddim(output_shape));
+  out->share_lod(x);
+}
+
 }  // namespace phi

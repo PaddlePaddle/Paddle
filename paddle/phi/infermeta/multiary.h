@@ -86,4 +86,21 @@ void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& y,
                     MetaTensor* out);
 
+void HierarchicalSigmoidInferMeta(const MetaTensor& x,
+                                  const MetaTensor& w,
+                                  const MetaTensor& label,
+                                  paddle::optional<const MetaTensor&> path,
+                                  paddle::optional<const MetaTensor&> code,
+                                  paddle::optional<const MetaTensor&> bias,
+                                  int num_classes,
+                                  bool remote_prefetch,
+                                  int trainer_id,
+                                  const std::vector<int64_t>& height_sections,
+                                  const std::vector<std::string>& epmap,
+                                  const std::vector<std::string>& table_names,
+                                  bool is_sparse,
+                                  MetaTensor* out,
+                                  MetaTensor* pre_out,
+                                  MetaTensor* w_out);
+
 }  // namespace phi
