@@ -153,4 +153,17 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaConfig config = MetaConfig());
 
+void ExpandAsInferMeta(const MetaTensor& x,
+                       paddle::optional<const MetaTensor&> y,
+                       const std::vector<int>& target_shape,
+                       MetaTensor* out);
+
+void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
+                           const MetaTensor& value,
+                           bool out_int32,
+                           bool right,
+                           MetaTensor* out);
+
 }  // namespace phi

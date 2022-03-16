@@ -242,4 +242,13 @@ void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
 
+void TopKInferMeta(const MetaTensor& x,
+                   const Scalar& k_scalar,
+                   int axis,
+                   bool largest,
+                   bool sorted,
+                   MetaTensor* out,
+                   MetaTensor* indices,
+                   MetaConfig config = MetaConfig());
+
 }  // namespace phi
