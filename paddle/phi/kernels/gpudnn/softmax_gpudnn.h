@@ -121,17 +121,12 @@ struct ReduceMaxFunctor {
 };
 
 template <typename Tx, typename Ty = Tx>
-struct ExpSubFunctor {
-  HOSTDEVICE inline ExpSubFunctor() { y = static_cast<Tx>(0.0f); }
-
-  HOSTDEVICE explicit inline ExpSubFunctor(Tx y) : y((Tx)(y)) {}
+struct ExpFunctor {
+  HOSTDEVICE explicit inline ExpFunctor() {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(std::exp(x - y));
+    return static_cast<Ty>(std::exp(x));
   }
-
- private:
-  Tx y;
 };
 
 template <typename Tx, typename Ty = Tx>
@@ -293,9 +288,10 @@ __global__ void WarpSoftmaxForward(T* softmax,
   }
 
   // data src
+  AccT srcdata_raw[kBatchSize][kLoopsV][kVSize];
   AccT srcdata[kBatchSize][kLoopsV][kVSize];
   T src_tmp[kBatchSize][kLoopsV][kVSize];
-  kps::Init<AccT, kStep>(&srcdata[0][0][0], kLowInf);
+  kps::Init<AccT, kStep>(&srcdata_raw[0][0][0], kLowInf);
   kps::Init<T, kStep>(&src_tmp[0][0][0], -std::numeric_limits<T>::infinity());
 
   // data dst
@@ -317,7 +313,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
     kps::ReadData<VecT, VecT, kLoopsV, 1, 1, true>(
         &reg_v[0], &src_v[0], idx_max_v[i], 0, kWarpSize, 1);
     kps::ElementwiseUnary<T, AccT, kVItem, 1, 1, DataTransFunctor<T, AccT>>(
-        &srcdata[i][0][0], &src_tmp[i][0][0], DataTransFunctor<T, AccT>());
+        &srcdata_raw[i][0][0], &src_tmp[i][0][0], DataTransFunctor<T, AccT>());
   }
 
   // compute max
@@ -327,14 +323,18 @@ __global__ void WarpSoftmaxForward(T* softmax,
               1,
               ReduceMaxFunctor<AccT>,
               kMode::kLocalMode>(
-      &max[0], &srcdata[0][0][0], ReduceMaxFunctor<AccT>(), true);
+      &max[0], &srcdata_raw[0][0][0], ReduceMaxFunctor<AccT>(), true);
   WarpReduceMax<AccT, kBatchSize, kWarpSize>(max);
 
 // compute sum
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
-    kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, ExpSubFunctor<AccT>>(
-        &srcdata[i][0][0], &srcdata[i][0][0], ExpSubFunctor<AccT>(max[i]));
+    kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, UnarySubFunctor<AccT>>(
+        &srcdata_raw[i][0][0],
+        &srcdata_raw[i][0][0],
+        UnarySubFunctor<AccT>(max[i]));
+    kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, ExpFunctor<AccT>>(
+        &srcdata[i][0][0], &srcdata_raw[i][0][0], ExpFunctor<AccT>());
   }
   kps::Reduce<AccT,
               kVItem,
@@ -352,11 +352,9 @@ __global__ void WarpSoftmaxForward(T* softmax,
         reinterpret_cast<VecT*>(&softmax[(first_batch + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
     if (LogMode) {
-      kps::ElementwiseUnary<AccT, AccT, kVItem, 1, 1, UnaryLogFunctor<AccT>>(
-          &srcdata[i][0][0], &srcdata[i][0][0], UnaryLogFunctor<AccT>());
       kps::ElementwiseUnary<AccT, T, kVItem, 1, 1, UnarySubFunctor<AccT>>(
           &out_tmp[i][0][0],
-          &srcdata[i][0][0],
+          &srcdata_raw[i][0][0],
           UnarySubFunctor<AccT>(std::log(sum[i])));
     } else {
       kps::ElementwiseUnary<AccT, T, kVItem, 1, 1, UnaryDivFunctor<AccT>>(
