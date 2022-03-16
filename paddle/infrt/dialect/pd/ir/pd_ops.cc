@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/infrt/dialect/pd_ops.h"
+#include "paddle/infrt/dialect/pd/ir/pd_ops.h"
 
 #include <mlir/IR/Matchers.h>
 #include <mlir/IR/PatternMatch.h>
