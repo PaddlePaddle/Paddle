@@ -161,5 +161,5 @@ void RoiPoolGradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     roi_pool_grad, GPU, ALL_LAYOUT, phi::RoiPoolGradKernel, float, double) {
-  kernel->InputAt(2).SetDataType(phi::DataType::INT64);
+  kernel->InputAt(3).SetDataType(phi::DataType::INT64);
 }

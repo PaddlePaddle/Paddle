@@ -104,5 +104,5 @@ PD_REGISTER_KERNEL(roi_pool_grad,
                    float,
                    double,
                    int) {
-  kernel->InputAt(2).SetDataType(phi::DataType::INT64);
+  kernel->InputAt(3).SetDataType(phi::DataType::INT64);
 }
