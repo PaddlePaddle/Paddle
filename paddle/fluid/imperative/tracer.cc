@@ -18,12 +18,14 @@
 #include <utility>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
+#include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/common/place.h"
 
 DECLARE_bool(use_mkldnn);
 DECLARE_string(tracer_mkldnn_ops_on);
@@ -175,7 +177,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
                      paddle::framework::AttributeMap* passed_default_attrs_,
                      bool use_default_attr_map) {
   platform::RecordEvent op_type_record_event(
-      type, platform::TracerEventType::Operator, 1);
+      type + " trace_op", platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
@@ -253,7 +255,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
 #endif
     } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      platform::DeviceManager::SetDevice(place);
+      phi::DeviceManager::SetDevice(place);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with CustomDevice if use "
@@ -295,19 +297,24 @@ void Tracer::TraceOp(const std::string& type, const NameVarMap<VarType>& ins,
     program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
   }
 
-  if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
-    PADDLE_ENFORCE_EQ(
-        passed_default_attrs_, nullptr,
-        paddle::platform::errors::PermissionDenied(
-            "We expect passed_default_attrs_ is nullptr while "
-            "use_default_attr_map is true, however we got not null "
-            "passed_default_attrs_. Please check your usage of trace_op. "));
-    CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
-                     inplace_map);
-  } else {
-    VLOG(3) << "No Grad to track for Op: " << type;
+  {
+    platform::RecordEvent node_creation_record_event(
+        type + " node_creation", platform::TracerEventType::Operator, 1);
+
+    if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
+      PADDLE_ENFORCE_EQ(
+          passed_default_attrs_, nullptr,
+          paddle::platform::errors::PermissionDenied(
+              "We expect passed_default_attrs_ is nullptr while "
+              "use_default_attr_map is true, however we got not null "
+              "passed_default_attrs_. Please check your usage of trace_op. "));
+      CreateGradOpNode(*op, new_ins, outs, attrs, default_attrs, place,
+                       inplace_map);
+    } else {
+      VLOG(3) << "No Grad to track for Op: " << type;
+    }
+    VLOG(6) << "Finish Trace Op: " << type;
   }
-  VLOG(6) << "Finish Trace Op: " << type;
 }
 
 template void Tracer::TraceOp<VarBase>(
@@ -380,6 +387,37 @@ bool Tracer::ComputeRequiredGrad(const NameTensorMap& ins,
                                  const NameTensorMap& outs,
                                  bool trace_backward) {
   return false;
+}
+
+phi::KernelSignature Tracer::GetExpectedKernelSignature(
+    const std::string& type, const NameTensorMap& ins,
+    const NameTensorMap& outs, framework::AttributeMap attrs) const {
+  auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
+  framework::RuntimeContext ctx({}, {});
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
+  const auto& op_info = op->Info();
+  auto* attr_checker = op_info.Checker();
+  if (attr_checker) {
+    attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
+  }
+  static paddle::framework::AttributeMap empty_attrs_map = {};
+  const paddle::framework::AttributeMap& default_attrs =
+      attr_checker == nullptr ? empty_attrs_map
+                              : attr_checker->GetDefaultAttrMap();
+  auto dygraph_exe_ctx =
+      imperative::DygraphExecutionContext<egr::EagerVariable>(
+          *op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs,
+          default_attrs);
+  auto* opbase_with_kernel =
+      dynamic_cast<framework::OperatorWithKernel*>(op.get());
+  PADDLE_ENFORCE_NE(opbase_with_kernel, nullptr,
+                    platform::errors::InvalidArgument(
+                        "This op type:`%s` is not a OperatorWithKernel, only "
+                        "OperatorWithKernel can get KernelSignature",
+                        type));
+  return phi::KernelSignature(
+      std::move(opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx)));
 }
 
 }  // namespace imperative

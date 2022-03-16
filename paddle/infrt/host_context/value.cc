@@ -24,14 +24,6 @@ ValueRef::ValueRef(int64_t val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(float val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(double val) : Shared<Value>(new Value(val)) {}
 ValueRef::ValueRef(bool val) : Shared<Value>(new Value(val)) {}
-ValueRef::ValueRef(backends::CpuPhiContext&& val)
-    : Shared<Value>(new Value(std::move(val))) {}
-ValueRef::ValueRef(::phi::CPUContext&& val)
-    : Shared<Value>(new Value(std::move(val))) {}
-ValueRef::ValueRef(::phi::DenseTensor&& val)
-    : Shared<Value>(new Value(std::move(val))) {}
-ValueRef::ValueRef(::phi::MetaTensor&& val)
-    : Shared<Value>(new Value(std::move(val))) {}
 
 const char* Value::type_info() const { return __type_info__; }
 
@@ -67,6 +59,10 @@ void CopyTo(const Value& from, Value* to) {
           to->data = reinterpret_cast<std::vector<int64_t> const&>(arg);
         else if (std::is_same<T, tensor::TensorMap>::value)
           to->data = reinterpret_cast<tensor::TensorMap const&>(arg);
+#ifdef INFRT_WITH_PHI
+        else if (std::is_same<T, ::phi::DenseTensor>::value)
+          to->data = reinterpret_cast<::phi::DenseTensor const&>(arg);
+#endif
         else
           LOG(FATAL) << "Not supported Value copy: " << typeid(T).name();
       },
