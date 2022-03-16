@@ -24,7 +24,7 @@ class CinnInstructionRunOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs(kX), "Input", kX, "CinnInstructionRun");
+    // OP_INOUT_CHECK(ctx->HasInputs(kX), "Input", kX, "CinnInstructionRun");
     OP_INOUT_CHECK(ctx->HasOutputs(kOutputs), "Output", kOutputs,
                    "CinnInstructionRun");
     const CinnCompiledObject& compiled_object =
@@ -42,6 +42,46 @@ class CinnInstructionRunOp : public framework::OperatorWithKernel {
                      return framework::DDim(buffer->dims, buffer->dimensions);
                    });
     ctx->SetOutputsDim(kOutputs, output_dims);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    if (ctx.InputSize(kX)) {
+      // if the instruction has input, infer kernel type by input date type
+      return OperatorWithKernel::GetExpectedKernelType(ctx);
+    }
+
+    // else infer kernel type by output date type
+    const framework::Variable* var = ctx.OutputVar(kOutputs);
+    PADDLE_ENFORCE_NE(
+        var, nullptr,
+        platform::errors::InvalidArgument(
+            "The cinn_instruction_run Op's Output Variable should not empty."));
+
+    const framework::Tensor* tensor = nullptr;
+    if (var->IsType<framework::Tensor>()) {
+      tensor = &var->Get<framework::Tensor>();
+    } else if (var->IsType<framework::LoDTensor>()) {
+      tensor = &var->Get<framework::LoDTensor>();
+    } else if (var->IsType<phi::SelectedRows>()) {
+      tensor = &(var->Get<phi::SelectedRows>().value());
+    } else if (var->IsType<framework::LoDTensorArray>()) {
+      auto t_arr = &var->Get<framework::LoDTensorArray>();
+      PADDLE_ENFORCE_EQ(t_arr->size(), 1UL,
+                        platform::errors::InvalidArgument(
+                            "The cinn_instruction_run Op should just has One "
+                            "Output when Input empty."));
+      tensor = &(t_arr->front());
+    }
+
+    PADDLE_ENFORCE_NE(
+        tensor, nullptr,
+        platform::errors::InvalidArgument(
+            "The cinn_instruction_run Op's Output Tensor should not empty."));
+
+    auto output_type = paddle::framework::TransToProtoVarType(tensor->dtype());
+    return framework::OpKernelType(output_type, ctx.device_context());
   }
 };
 
