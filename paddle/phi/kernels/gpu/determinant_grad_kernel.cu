@@ -12,25 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/determinant_grad_kernel.h"
 
-#include <string>
-#include <vector>
-#include "paddle/infrt/dialect/infrt/common/types.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/determinant_grad_kernel_impl.h"
 
-namespace infrt {
-
-struct PhiKernelDesc {
-  std::vector<Place> input_types;   // kernel input place
-  std::vector<Place> output_types;  // kernel output place
-  Place kernel_type;                // kernel place
-};
-
-std::string getPhiTargetPrefix(TargetType target);
-std::string getPhiPrecisionSuffix(PrecisionType precision);
-std::string getPhiLayoutSuffix(LayoutType layout);
-
-std::vector<PhiKernelDesc> GetCandidateKernels(
-    std::string name, const std::vector<Place>& valid_palces);
-
-}  // namespace infrt
+PD_REGISTER_KERNEL(determinant_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DeterminantGradKernel,
+                   float,
+                   double) {}

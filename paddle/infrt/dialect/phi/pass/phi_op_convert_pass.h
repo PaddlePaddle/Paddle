@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,24 +13,16 @@
 // limitations under the License.
 
 #pragma once
-
-#include <string>
-#include <vector>
+#include <mlir/Pass/Pass.h>
 #include "paddle/infrt/dialect/infrt/common/types.h"
 
 namespace infrt {
+/*
+ * phiOpCvtPass.
+ * Convert the general operators from pd Dialect to phi dialect.
+ */
+std::unique_ptr<mlir::Pass> createPhiOpCvtPass(std::vector<Place> valid_places);
 
-struct PhiKernelDesc {
-  std::vector<Place> input_types;   // kernel input place
-  std::vector<Place> output_types;  // kernel output place
-  Place kernel_type;                // kernel place
-};
-
-std::string getPhiTargetPrefix(TargetType target);
-std::string getPhiPrecisionSuffix(PrecisionType precision);
-std::string getPhiLayoutSuffix(LayoutType layout);
-
-std::vector<PhiKernelDesc> GetCandidateKernels(
-    std::string name, const std::vector<Place>& valid_palces);
+std::unique_ptr<mlir::Pass> createPhiOpCvtPass();
 
 }  // namespace infrt

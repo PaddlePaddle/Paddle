@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <mlir/Pass/Pass.h>
-#include "paddle/infrt/dialect/infrt/common/types.h"
+#include "paddle/phi/kernels/determinant_kernel.h"
 
-namespace infrt {
-/*
- * phiOpCvtPass.
- * Convert the general operators from pd Dialect to phi dialect.
- */
-std::unique_ptr<mlir::Pass> createPhiOpCvtPass(
-    std::vector<Place> valid_places = std::vector<Place>());
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
 
-}  // namespace infrt
+PD_REGISTER_KERNEL(
+    determinant, CPU, ALL_LAYOUT, phi::DeterminantKernel, float, double) {}

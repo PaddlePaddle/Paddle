@@ -12,22 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/shape_kernel.h"
-#include "paddle/phi/kernels/impl/shape_kernel_impl.h"
+#include "paddle/phi/kernels/determinant_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
 
-PD_REGISTER_KERNEL(shape,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ShapeKernel,
-                   bool,
-                   int,
-                   int8_t,
-                   uint8_t,
-                   int64_t,
-                   float,
-                   double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(
+    determinant, GPU, ALL_LAYOUT, phi::DeterminantKernel, float, double) {}
