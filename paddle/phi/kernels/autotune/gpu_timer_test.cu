@@ -54,7 +54,7 @@ void Algo(float *d_in, float *d_out, size_t N) {
 #endif
 }
 
-TEST(GpuTimer, Copy) {
+TEST(GpuTimer, Sum) {
   float *in1, *in2, *out;
   float *d_in1, *d_in2;
   size_t N = 1 << 20;
@@ -83,9 +83,10 @@ TEST(GpuTimer, Copy) {
 #endif
 
   using Functor = std::function<void(float *, float *, size_t)>;
-  Functor alog0 = Algo<1, 256, 8>;
+  Functor alog0 = Algo<4, 256, 1024>;
   Functor algo1 = Algo<1, 256, 1024>;
-  Functor alog2 = Algo<4, 256, 1024>;
+  Functor alog2 = Algo<1, 256, 8>;
+
   std::vector<Functor> algos = {alog0, algo1, alog2};
 
   for (int j = 0; j < algos.size(); ++j) {

@@ -336,11 +336,10 @@ void ConvCudnnKernel(const Context& ctx,
   paddle::operators::ScalingParamType<T> alpha = 1.0f;
   paddle::operators::ScalingParamType<T> beta = 0.0f;
 
-  // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
-  // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
-  // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
-  GpuTimer timer;
-  timer.Start(ctx.stream());
+// NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+// ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+// VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
+
 #ifdef PADDLE_WITH_HIP
   workspace_handle.RunFunc(
       [&](void* workspace_ptr) {
@@ -384,8 +383,6 @@ void ConvCudnnKernel(const Context& ctx,
         workspace_size);
   }
 #endif
-  timer.Stop(ctx.stream());
-  std::cout << "======== ElapsedTime ======" << timer.ElapsedTime();
 
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);

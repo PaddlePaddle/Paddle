@@ -14,16 +14,11 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
 namespace phi {
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-__global__ void WarmupKernel(int *a) { a[0] = 0; }
-#endif
 
 class GpuTimer {
  public:
@@ -35,56 +30,25 @@ class GpuTimer {
     cudaEventCreate(&start_);
     cudaEventCreate(&stop_);
 #endif
-    Init();
+    PADDLE_ENFORCE_NOT_NULL(
+        start_, phi::errors::PreconditionNotMet("Start Event is not ready."));
+    PADDLE_ENFORCE_NOT_NULL(
+        stop_, phi::errors::PreconditionNotMet("Stop Event is not ready."));
   }
 
   ~GpuTimer() {
 #ifdef PADDLE_WITH_HIP
     hipEventDestroy(start_);
-    hipEventDestroy(stop_)
+    hipEventDestroy(stop_);
 #else
     cudaEventDestroy(start_);
     cudaEventDestroy(stop_);
 #endif
   }
 
-  void Init() {
-    PADDLE_ENFORCE_NE(
-        start_,
-        nullptr,
-        phi::errors::PreconditionNotMet("Start Event is not ready."));
-    PADDLE_ENFORCE_NE(
-        stop_,
-        nullptr,
-        phi::errors::PreconditionNotMet("Stop Event is not ready."));
-#ifdef PADDLE_WITH_HIP
-    for (int i = 0; i < 5; i++) {
-      int *ptr;
-      PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&ptr, sizeof(int)));
-      Start(0);
-      hipLaunchKernelGGL(WarmupKernel, dim3(1), dim3(1), 0, 0, ptr);
-      Stop(0);
-      float cost = ElapsedTime();
-      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(0));
-      PADDLE_ENFORCE_GPU_SUCCESS(hipFree(ptr));
-    }
-#else
-    for (int i = 0; i < 5; i++) {
-      int *ptr;
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&ptr, sizeof(int)));
-      Start(0);
-      WarmupKernel<<<1, 1>>>(ptr);
-      Stop(0);
-      float cost = ElapsedTime();
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(0));
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(ptr));
-    }
-#endif
-  }
-
   void Start(gpuStream_t stream) {
 #ifdef PADDLE_WITH_HIP
-    hipEventRecord(start_, stream)
+    hipEventRecord(start_, stream);
 #else
     cudaEventRecord(start_, stream);
 #endif
