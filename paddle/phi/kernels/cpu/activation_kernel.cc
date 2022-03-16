@@ -74,21 +74,23 @@ DEFINE_CPU_ACTIVATION_KERNEL(Reciprocal, funcs::ReciprocalFunctor<T>)
 DEFINE_CPU_ACTIVATION_KERNEL(Square, funcs::SquareFunctor<T>)
 DEFINE_CPU_ACTIVATION_KERNEL(Sqrt, funcs::SqrtFunctor<T>)
 DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, funcs::RsqrtFunctor<T>)
+
 DEFINE_CPU_ACTIVATION_KERNEL(Softsign, funcs::SoftsignFunctor<T>)
+
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, funcs::LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      funcs::ThresholdedReluFunctor,
                                      threshold)
-DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, funcs::MishFunctor, threshold)
+// DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, funcs::MishFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, funcs::BReluFunctor, t_min, t_max)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh,
                                      funcs::STanhFunctor,
                                      scale_a,
                                      scale_b)
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
-                                     funcs::SoftplusFunctor,
-                                     beta,
-                                     threshold)
+// DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
+//                                      funcs::SoftplusFunctor,
+//                                      beta,
+//                                      threshold)
 
 }  // namespace phi
 PD_REGISTER_KERNEL(relu, CPU, ALL_LAYOUT, phi::ReluKernel, float, double) {}
@@ -111,12 +113,12 @@ PD_REGISTER_ACTIVATION_KERNEL(tanh, Tanh)
 PD_REGISTER_ACTIVATION_KERNEL(brelu, BRelu)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyRelu)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedRelu)
-PD_REGISTER_ACTIVATION_KERNEL(mish, Mish)
+// PD_REGISTER_ACTIVATION_KERNEL(mish, Mish)
 PD_REGISTER_ACTIVATION_KERNEL(stanh, STanh)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, Reciprocal)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, Sqrt)
 PD_REGISTER_ACTIVATION_KERNEL(rsqrt, Rsqrt)
-PD_REGISTER_ACTIVATION_KERNEL(softplus, Softplus)
+// PD_REGISTER_ACTIVATION_KERNEL(softplus, Softplus)
 PD_REGISTER_ACTIVATION_KERNEL(softsign, Softsign)
 
 PD_REGISTER_KERNEL(

@@ -39,6 +39,7 @@ DECLARE_ACTIVATION_KERNEL(Relu)
 DECLARE_ACTIVATION_KERNEL(Tanh)
 DECLARE_ACTIVATION_KERNEL(Exp)
 DECLARE_ACTIVATION_KERNEL(Expm1)
+DECLARE_ACTIVATION_KERNEL(Softsign)
 
 template <typename T, typename Context>
 void BReluKernel(const Context& dev_ctx,
