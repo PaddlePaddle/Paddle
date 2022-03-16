@@ -22,11 +22,12 @@ limitations under the License. */
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/string_tensor.h"
 
 namespace paddle {
 namespace experimental {
 
-enum class TensorType { DENSE_TENSOR, SPARSE_CSR, SPARSE_COO };
+enum class TensorType { DENSE_TENSOR, SPARSE_CSR, SPARSE_COO, STRING_TENSOR };
 
 /* ------------------ for input ----------------------- */
 
@@ -43,6 +44,8 @@ std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(const Tensor& tensor);
 std::shared_ptr<phi::SelectedRows> TensorToSelectedRows(
     const paddle::optional<Tensor>& tensor);
 
+std::shared_ptr<phi::StringTensor> TensorToStringTensor(const Tensor& tensor);
+
 /* ----------------- for infer_meta --------------------- */
 
 phi::MetaTensor MakeMetaTensor(const phi::DenseTensor& tensor);
@@ -58,6 +61,8 @@ phi::MetaTensor MakeMetaTensor(const phi::SelectedRows& tensor);
 paddle::optional<phi::MetaTensor> MakeMetaTensor(
     const paddle::optional<const phi::SelectedRows&>& tensor);
 
+phi::MetaTensor MakeMetaTensor(const phi::StringTensor& tensor);
+
 /* ------------------ for output ----------------------- */
 
 phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out);
@@ -69,6 +74,10 @@ std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
 phi::SelectedRows* SetSelectedRowsKernelOutput(Backend backend, Tensor* out);
 
 phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type);
+
+phi::TensorBase* SetStringsKernelOutput(Backend backend,
+                                        Tensor* out,
+                                        TensorType type);
 
 }  // namespace experimental
 }  // namespace paddle

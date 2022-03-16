@@ -56,6 +56,14 @@ set(sparse_bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_bw_a
 set(sparse_bw_api_header_file_tmp ${sparse_bw_api_header_file}.tmp)
 set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
 
+# strings api file
+set(strings_api_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/strings_api_gen.py)
+set(strings_api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/strings_api.yaml)
+set(strings_api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/strings_api.h)
+set(strings_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/strings_api.cc)
+set(strings_api_header_file_tmp ${strings_api_header_file}.tmp)
+set(strings_api_source_file_tmp ${strings_api_source_file}.tmp)
+
 # wrapped infermeta file
 set(wrapped_infermeta_gen_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/wrapped_infermeta_gen.py)
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/python/paddle/utils/code_gen/api.yaml)
@@ -123,6 +131,19 @@ add_custom_command(
   DEPENDS ${sparse_bw_api_yaml_file} ${sparse_bw_api_gen_file} ${api_gen_base} ${api_gen_file} ${sparse_api_gen_file} ${bw_api_gen_file}
   VERBATIM)
 
+# generate strings api
+add_custom_command(
+  OUTPUT ${strings_api_header_file} ${strings_api_source_file}
+  COMMAND ${PYTHON_EXECUTABLE} ${strings_api_gen_file}
+                 --api_yaml_path ${strings_api_yaml_file}
+                 --api_header_path ${strings_api_header_file_tmp}
+                 --api_source_path ${strings_api_source_file_tmp}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${strings_api_header_file_tmp} ${strings_api_header_file}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${strings_api_source_file_tmp} ${strings_api_source_file}
+  COMMENT "copy_if_different ${strings_api_header_file} ${strings_strings_api_source_file}"
+  DEPENDS ${strings_api_yaml_file} ${strings_api_gen_file} ${api_gen_base} ${api_gen_file}
+  VERBATIM)
+
 # generate wrapped infermeta
 add_custom_command(
   OUTPUT ${wrapped_infermeta_header_file} ${wrapped_infermeta_source_file}
@@ -149,4 +170,4 @@ cc_library(sparse_api SRCS ${sparse_api_source_file} DEPS phi_tensor_raw phi ker
 cc_library(sparse_bw_api SRCS ${sparse_bw_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api sparse_api_custom_impl)
 cc_library(phi_tensor SRCS tensor_method.cc DEPS phi_tensor_raw phi_function_api)
 
-cc_library(strings_api SRCS strings_api.cc DEPS phi_tensor_raw phi kernel_dispatch phi_data_transform)
+cc_library(strings_api SRCS ${strings_api_source_file} DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform)
