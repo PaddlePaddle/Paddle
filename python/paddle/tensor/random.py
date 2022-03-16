@@ -81,7 +81,7 @@ def bernoulli(x, name=None):
 
 
 def poisson(x, name=None):
-    """
+    r"""
     This OP returns a tensor filled with random number from a Poisson Distribution.
 
     .. math::
@@ -984,7 +984,7 @@ def rand(shape, dtype=None, name=None):
 
 
 def exponential_(x, lam=1.0, name=None):
-    """
+    r"""
     This inplace OP fill input Tensor ``x`` with random number from a Exponential Distribution.
 
     ``lam`` is :math:`\lambda` parameter of Exponential Distribution. 

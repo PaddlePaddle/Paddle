@@ -33,5 +33,45 @@ struct MeanFunctor {
   }
 };
 
+//////// Prod Functor ///////
+struct ProdFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->prod(dim);
+  }
+};
+
+//////// Max Functor ///////
+struct MaxFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->maximum(dim);
+  }
+};
+
+//////// Min Functor ///////
+struct MinFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->minimum(dim);
+  }
+};
+
+//////// All Functor ///////
+struct AllFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->all(dim);
+  }
+};
+
+//////// Any Functor ///////
+struct AnyFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->any(dim);
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi

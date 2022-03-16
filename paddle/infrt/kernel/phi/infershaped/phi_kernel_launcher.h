@@ -14,7 +14,9 @@
 #pragma once
 
 #include <llvm/ADT/SmallVector.h>
+#include <iostream>
 
+#include "paddle/infrt/backends/host/phi_context.h"
 #include "paddle/infrt/host_context/kernel_utils.h"
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_kernel_launcher.h"
 #include "paddle/infrt/kernel/phi/infershaped/infershaped_utils.h"
@@ -31,10 +33,17 @@ class KernelLauncher : public InferShapedKernelLauncher {
   static const uint16_t num_input_tensors{InferShapeHelper<KernelFunc>::count};
   static const bool turn_on_infer_shape_cache{true};
   void Invoke(host_context::KernelFrame* frame) override {
+#ifndef NDEBUG
+    LOG(INFO) << "Kernel.frame: " << frame->DumpArgTypes();
+#endif
     // Build the infershape KernelFrame if needed.
     // TODO(Superjomn) add unlikely here.
     if (infershape_kernel_frame_builder.IsEmpty()) {
       CreateKernelFrameForInferShape(frame);
+#ifndef NDEBUG
+      LOG(INFO) << "infershape.frame: "
+                << infershape_kernel_frame_builder.DumpArgTypes();
+#endif
     }
     if (turn_on_infer_shape_cache) {
       if (!turn_on_infer_shape_cache || IsShapeChanged(num_input_tensors)) {

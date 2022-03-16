@@ -45,21 +45,19 @@ void PrintTensor(const DenseHostTensor &tensor) {
 }
 
 template <typename T>
-void FillTensorWithConstant(DenseHostTensor *tensor, Attribute<T> v) {
+void FillTensorWithConstant(Attribute<T> v, DenseHostTensor *tensor) {
   MutableDTArrayView<T>(tensor).Fill(v.get());
 }
 
-TensorMap LoadParams(const std::string &path) {
-  return *(infrt::tensor::LoadParams(path));
+TensorMap LoadParams(Attribute<std::string> path) {
+  return *(infrt::tensor::LoadParams(path.get()));
 }
 
-void TensorMapGetTensor(TensorMap map,
-                        DenseHostTensor *out,
-                        Attribute<std::string> name) {
+DenseHostTensor TensorMapGetTensor(TensorMap map, Attribute<std::string> name) {
   auto it = map.find(name.get());
   CHECK(it != map.end()) << "No tensor called " << name.get()
                          << " in the TensorMap";
-  *out = *it->second;
+  return *it->second;
 }
 
 int32_t TensorMapGetSize(TensorMap map) { return map.size(); }
@@ -113,9 +111,9 @@ void NaiveMatmul(const DenseHostTensor &x,
 /// ===== Kernel end ====
 
 void RegisterTensorKernels(host_context::KernelRegistry *registry) {
-  registry->AddKernel("dt.create_uninit_tensor.f32",
-                      INFRT_KERNEL(CreateUninitTensor<float>));
-  registry->AddKernelAttrNameList("dt.create_uninit_tensor.f32", {"shape"});
+  registry->AddKernelWithAttrs("dt.create_uninit_tensor.f32",
+                               INFRT_KERNEL(CreateUninitTensor<float>),
+                               {"shape"});
   registry->AddKernel("dt.print_tensor", INFRT_KERNEL(PrintTensor));
   registry->AddKernel("dt.fill_tensor_with_constant.f32",
                       INFRT_KERNEL(FillTensorWithConstant<float>));

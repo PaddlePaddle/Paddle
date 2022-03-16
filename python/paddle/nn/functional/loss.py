@@ -1113,7 +1113,7 @@ def margin_cross_entropy(logits,
                          group=None,
                          return_softmax=False,
                          reduction='mean'):
-    """
+    r"""
     .. math::
 
         L=-\\frac{1}{N}\sum^N_{i=1}\log\\frac{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}}{e^{s(cos(m_{1}\\theta_{y_i}+m_{2})-m_{3})}+\sum^n_{j=1,j\\neq y_i} e^{scos\\theta_{y_i}}}
@@ -1667,11 +1667,11 @@ def cross_entropy(input,
             label_min = paddle.min(valid_label)
             label_max = paddle.max(valid_label)
             if label_min < 0:
-                raise ValueError("label should not out of bound, but got{}".
-                                 format(label_min))
+                raise ValueError("Target {} is out of lower bound.".format(
+                    label_min.item()))
             if label_max >= input.shape[axis]:
-                raise ValueError("label should not out of bound, but got{}".
-                                 format(label_max))
+                raise ValueError("Target {} is out of upper bound.".format(
+                    label_max.item()))
         if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
             _, _, out = _C_ops.softmax_with_cross_entropy(
                 input, label, 'soft_label', soft_label, 'ignore_index',

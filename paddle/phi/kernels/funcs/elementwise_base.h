@@ -14,19 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/aligned_vector.h"
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/fluid/platform/function_traits.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
+#define HOSTDEVICE __host__ __device__
 namespace kps = phi::kps;
 
 #endif
@@ -42,28 +44,6 @@ using ConditionalT =
 
 namespace funcs {
 using DDim = phi::DDim;
-
-template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
-struct ElemwiseGradNoBroadcast {
-  const T *x_;
-  const T *y_;
-  const Tout *out_;
-  const Tout *dout_;
-
-  HOSTDEVICE void operator()(size_t i) {
-    if (dx_ != nullptr) {
-      dx_[i] = dx_op_(x_[i], y_[i], out_[i], dout_[i]);
-    }
-    if (dy_ != nullptr) {
-      dy_[i] = dy_op_(x_[i], y_[i], out_[i], dout_[i]);
-    }
-  }
-
-  DX_OP dx_op_;
-  DY_OP dy_op_;
-  T *dx_;
-  T *dy_;
-};
 
 template <typename T, typename DeviceContext>
 class RowwiseTransformIterator;
@@ -292,73 +272,172 @@ class TransformFunctor {
   bool is_xsize_larger_;
 };
 
-inline DDim trim_trailing_singular_dims(const DDim &dims) {
-  // Remove trailing dimensions of size 1 for y
-  auto actual_dims_size = dims.size();
-  for (; actual_dims_size != 0; --actual_dims_size) {
-    if (dims[actual_dims_size - 1] != 1) break;
+template <typename Functor, typename T, typename OutType = T>
+void CommonForwardBroadcastCPU(const DenseTensor &x,
+                               const DenseTensor &y,
+                               DenseTensor *z,
+                               int *x_dims_array,
+                               int *y_dims_array,
+                               int *out_dims_array,
+                               int max_dim,
+                               const CPUContext &ctx,
+                               Functor func,
+                               const bool is_xsize_larger = true) {
+  std::vector<int> index_array(max_dim, 0);
+  const T *x_data = x.data<T>();
+  const T *y_data = y.data<T>();
+  PADDLE_ENFORCE_NOT_NULL(
+      x_data, errors::InvalidArgument("The input X should not be empty."));
+  PADDLE_ENFORCE_NOT_NULL(
+      y_data, errors::InvalidArgument("The input Y should not be empty."));
+  OutType *out_data = ctx.Alloc<OutType>(z);
+
+  const int out_size = std::accumulate(
+      out_dims_array, out_dims_array + max_dim, 1, std::multiplies<int>());
+  int x_index, y_index;
+  for (int out_index = 0; out_index < out_size; ++out_index) {
+    x_index = GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
+    y_index = GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
+    if (is_xsize_larger) {
+      out_data[out_index] = func(x_data[x_index], y_data[y_index]);
+    } else {
+      out_data[out_index] = func(y_data[y_index], x_data[x_index]);
+    }
+
+    UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array.data());
   }
-  if (actual_dims_size == dims.size()) return dims;
-  std::vector<int> trim_dims;
-  trim_dims.resize(actual_dims_size);
-  for (int i = 0; i < actual_dims_size; ++i) {
-    trim_dims[i] = dims[i];
-  }
-  if (trim_dims.size() == 0) {
-    return DDim(phi::make_dim());
-  }
-  DDim actual_dims = phi::make_ddim(trim_dims);
-  return actual_dims;
 }
 
-/*
- * Out = X ⊙ Y
- * If Y's shape does not match X' shape, they will be reshaped.
- * For example:
- * 1. shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
- *    pre=2, n=3*4, post=5
- *    x.shape(2, 12, 5) * y.shape(1, 12, 1).broadcast(2, 12, 5)
- * 2. shape(X) = (2, 3, 4, 5), shape(Y) = (4,5)
- *    pre=2*3, n=4*5, post=1
- *    x.shape(6, 20, 1) * y.shape(1, 20, 1).broadcast(6, 20, 1)
- *
- * New parameter: *is_run_common_broadcast* is a flag to record whether to run
- * common broadcast code.
- */
-inline void get_mid_dims(const DDim &x_dims,
-                         const DDim &y_dims,
-                         const int axis,
-                         int *pre,
-                         int *n,
-                         int *post,
-                         int *is_run_common_broadcast) {
-  *pre = 1;
-  *n = 1;
-  *post = 1;
-  *is_run_common_broadcast = 0;
-  for (int i = 0; i < axis; ++i) {
-    (*pre) *= x_dims[i];
+template <typename Functor, typename T, typename OutType = T>
+void CommonElementwiseBroadcastForward(const CPUContext &dev_ctx,
+                                       const DenseTensor &x,
+                                       const DenseTensor &y,
+                                       DenseTensor *z,
+                                       const DDim &x_dims,
+                                       const DDim &y_dims,
+                                       Functor func,
+                                       int axis,
+                                       const bool is_xsize_larger = true) {
+  int max_dim = (std::max)(x_dims.size(), y_dims.size());
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  PADDLE_ENFORCE_GE(
+      axis,
+      0,
+      phi::errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
+                    phi::errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim,
+                        axis));
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  GetBroadcastDimsArrays(x_dims,
+                         y_dims,
+                         x_dims_array.data(),
+                         y_dims_array.data(),
+                         out_dims_array.data(),
+                         max_dim,
+                         axis);
+
+  CommonForwardBroadcastCPU<Functor, T, OutType>(x,
+                                                 y,
+                                                 z,
+                                                 x_dims_array.data(),
+                                                 y_dims_array.data(),
+                                                 out_dims_array.data(),
+                                                 max_dim,
+                                                 dev_ctx,
+                                                 func,
+                                                 is_xsize_larger);
+}
+
+// It is a common CPU implementation to compute binary calculation with the
+// support of broadcast. Note:
+// 1. CPU implementation cannot support the case when x needs broadcast, thus
+//    this function need to be called with XxxFunctor and XxxInverseFunctor,
+//    like AddFunctor and InverseAddFunctor.
+// 2. The corresponding GPU implementation supports all the broadcast cases,
+//    thus there is no need to define and call with XxxInverseFunctor.
+// TODO(liuyiqun): optimize the CPU implementation to support all broadcast
+// cases and avoid the need of XxxInverseFunctor.
+template <typename Functor, typename T, typename OutType = T>
+void ElementwiseCompute(const CPUContext &dev_ctx,
+                        const DenseTensor &x,
+                        const DenseTensor &y,
+                        int axis,
+                        Functor func,
+                        DenseTensor *z) {
+  dev_ctx.Alloc<OutType>(z);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  bool is_xsize_larger = true;
+  int max_dim = x_dims.size();
+  if (x_dims.size() < y_dims.size()) {
+    is_xsize_larger = false;
+    max_dim = y_dims.size();
   }
-  for (int i = 0; i < y_dims.size(); ++i) {
-    if (x_dims[i + axis] != y_dims[i]) {
-      PADDLE_ENFORCE_EQ(y_dims[i] == 1 || x_dims[i + axis] == 1,
-                        true,
-                        phi::errors::InvalidArgument(
-                            "Broadcast dimension mismatch. Operands "
-                            "could not be broadcast together with the shape of "
-                            "X = [%s] and the shape of Y = [%s]. Received [%d] "
-                            "in X is not equal to [%d] in Y.",
-                            x_dims,
-                            y_dims,
-                            x_dims[i + axis],
-                            y_dims[i]));
-      *is_run_common_broadcast = 1;
-      return;
-    }
-    (*n) *= y_dims[i];
+  TransformFunctor<Functor, T, CPUContext, OutType> functor(
+      x, y, z, dev_ctx, func, is_xsize_larger);
+  if (x_dims == y_dims) {
+    functor.Run();
+    return;
   }
-  for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
-    (*post) *= x_dims[i];
+
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  PADDLE_ENFORCE_GE(
+      axis,
+      0,
+      errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LT(axis,
+                    max_dim,
+                    errors::InvalidArgument(
+                        "Axis should be less than %d, but received axis is %d.",
+                        max_dim,
+                        axis));
+
+  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  if (is_xsize_larger) {
+    auto y_dims_trimed = TrimTrailingSingularDims(y_dims);
+    axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
+    GetMidDims(x_dims,
+               y_dims_trimed,
+               axis_trim,
+               &pre,
+               &n,
+               &post,
+               &is_run_common_broadcast);
+  } else {
+    auto x_dims_trimed = TrimTrailingSingularDims(x_dims);
+    axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
+    GetMidDims(y_dims,
+               x_dims_trimed,
+               axis_trim,
+               &pre,
+               &n,
+               &post,
+               &is_run_common_broadcast);
+  }
+  // special case for common implementation.
+  // case 1: x=[2,3,1,5], y=[2,1,4,1]
+  // case 2: x=[2,3,4], y=[1,1,4]
+  if (is_run_common_broadcast == 1) {
+    CommonElementwiseBroadcastForward<Functor, T, OutType>(
+        dev_ctx, x, y, z, x_dims, y_dims, func, axis, is_xsize_larger);
+    return;
+  }
+
+  if (post == 1) {
+    functor.RunRowWise(n, pre);
+    return;
+  } else {
+    functor.RunMidWise(n, pre, post);
+    return;
   }
 }
 
@@ -394,39 +473,9 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
     auto meta = phi::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
     *ddx_safe = phi::Empty(dev_ctx, std::move(meta));
     ddx_safe->mutable_data(dev_ctx.GetPlace());
-    phi::funcs::SetConstant<DeviceContext, T> set_zero;
+    SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
   }
-}
-
-template <typename DeviceContext,
-          typename T,
-          typename DX_OP,
-          typename DY_OP,
-          typename Tout = T>
-void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
-                                    const DDim &x_dim,
-                                    const DDim &y_dim,
-                                    const DenseTensor &x,
-                                    const DenseTensor &y,
-                                    const DenseTensor &out,
-                                    const DenseTensor &dout,
-                                    int axis,
-                                    DenseTensor *dx,
-                                    DenseTensor *dy,
-                                    DX_OP dx_op,
-                                    DY_OP dy_op) {
-  size_t N = static_cast<size_t>(phi::product(x_dim));
-  paddle::platform::ForRange<DeviceContext> for_range(dev_ctx, N);
-  for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
-      x.data<T>(),
-      y.data<T>(),
-      out.data<Tout>(),
-      dout.data<Tout>(),
-      dx_op,
-      dy_op,
-      dx == nullptr ? nullptr : dev_ctx.template Alloc<T>(dx),
-      dy == nullptr ? nullptr : dev_ctx.template Alloc<T>(dy)});
 }
 
 inline void ElementwiseGradPreProcess(const DenseTensor &dout,
@@ -436,7 +485,7 @@ inline void ElementwiseGradPreProcess(const DenseTensor &dout,
   }
 }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
 // static unroller
 template <template <int Index, int VecSize> typename Func,
@@ -469,10 +518,14 @@ struct Loader {
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
     if (is_boundary) {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, true>(
-          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     } else {
       kps::ReadData<Type, VecSize, 1, 1, ArgsT, Index, false>(
-          args, reinterpret_cast<const Type *>(in[Index]) + data_offset, num);
+          args,
+          reinterpret_cast<const _ptr_ Type *>(in[Index]) + data_offset,
+          num);
     }
   }
 };
@@ -482,8 +535,7 @@ struct InputSetter {
   template <typename Array>
   static HOSTDEVICE void Apply(
       const std::vector<const DenseTensor *> &ins_tensor, Array *ins_data) {
-    (*ins_data)[Index] =
-        reinterpret_cast<const _ptr_ char *>(ins_tensor[Index]->data());
+    (*ins_data)[Index] = (const _ptr_ char *)(ins_tensor[Index]->data());
   }
 };
 
@@ -494,9 +546,8 @@ struct VecSizeGetter {
                                const ArgsT &args,
                                int *vec_size) {
     using Type = std::tuple_element_t<Index, ArgsT>;
-    *vec_size = std::min<int>(
-        *vec_size,
-        paddle::platform::GetVectorizedSize(ins[Index]->data<Type>()));
+    *vec_size = std::min<int>(*vec_size,
+                              phi::GetVectorizedSize(ins[Index]->data<Type>()));
   }
 };
 
@@ -511,8 +562,8 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
   // The Arg VecSize=1 is to match the Unroller template.
   Unroller<VecSizeGetter, 1, Arity>::step(ins, arg, &vec_size);
   for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
-    vec_size = std::min<int>(
-        vec_size, paddle::platform::GetVectorizedSize((*iter)->data<OutT>()));
+    vec_size =
+        std::min<int>(vec_size, phi::GetVectorizedSize((*iter)->data<OutT>()));
   }
   return vec_size;
 }
@@ -718,9 +769,9 @@ void ElementwiseCudaKernel(const KPDevice &ctx,
 
   Unroller<InputSetter, VecSize, Arity>::step(ins, &ins_data);
   for (int i = 0; i < NumOuts; ++i) {
-    outs_data[i] = ctx.Alloc<OutT>((*outs)[i]);
+    outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
-#ifdef PADDLE_WITH_XPU2
+#ifdef PADDLE_WITH_XPU_KP
   int block_size = 64;
   int grid_size = 8;
   auto stream = ctx.x_context()->xpu_stream;
@@ -802,6 +853,7 @@ void ElementwiseKernel(const KPDevice &ctx,
     }
   }
 }
+
 #endif
 
 }  // namespace funcs

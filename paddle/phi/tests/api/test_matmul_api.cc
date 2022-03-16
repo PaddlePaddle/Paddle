@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/include/api.h"
 
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -25,6 +26,15 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_double_grad, CPU, ALL_LAYOUT);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_DECLARE_KERNEL(matmul, GPU, ALL_LAYOUT);
+#endif
+
 namespace paddle {
 namespace tests {
 
@@ -127,8 +137,8 @@ TEST(API, matmul_cuda) {
   auto place = paddle::platform::CUDAPlace();
   auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
 
-  phi::Copy(*dev_ctx, *ref_x.get(), false, dense_x.get());
-  phi::Copy(*dev_ctx, *ref_y.get(), false, dense_y.get());
+  phi::Copy(*dev_ctx, *ref_x.get(), phi::GPUPlace(), false, dense_x.get());
+  phi::Copy(*dev_ctx, *ref_y.get(), phi::GPUPlace(), false, dense_y.get());
 
   paddle::experimental::Tensor x(dense_x);
   paddle::experimental::Tensor y(dense_y);
@@ -152,7 +162,7 @@ TEST(API, matmul_cuda) {
       phi::DenseTensorMeta(
           phi::DataType::FLOAT32, out.dims(), phi::DataLayout::NCHW));
 
-  phi::Copy(*dev_ctx, *dense_out.get(), false, ref_out.get());
+  phi::Copy(*dev_ctx, *dense_out.get(), phi::CPUPlace(), false, ref_out.get());
 
   for (size_t i = 0; i < 9; i++) {
     ASSERT_NEAR(sum[i], ref_out->data<float>()[i], 1e-6f);
@@ -160,6 +170,32 @@ TEST(API, matmul_cuda) {
 }
 
 #endif
+
+TEST(API, matmul_double_grad) {
+  // 1. create tensor
+  auto x = paddle::experimental::full({3, 3}, 1.0);
+  auto y = paddle::experimental::full({3, 3}, 2.0);
+  auto out_grad = paddle::experimental::full({3, 3}, 2.0);
+  auto dx_grad = paddle::experimental::full({3, 3}, 2.0);
+
+  // 2. test API
+  const auto out = paddle::experimental::matmul_double_grad(
+      x, y, out_grad, dx_grad, {}, false, false);
+
+  // 3. check result
+  ASSERT_EQ(out.size(), 3UL);
+  ASSERT_EQ(out[0].size(), 1UL);
+  ASSERT_EQ(out[1].size(), 1UL);
+  ASSERT_EQ(out[2].size(), 1UL);
+  ASSERT_EQ(out[0][0].dims()[1], 3);
+  ASSERT_EQ(out[0][0].numel(), 9);
+  ASSERT_EQ(out[1][0].numel(), 9);
+  ASSERT_EQ(out[2][0].numel(), 9);
+  ASSERT_EQ(out[0][0].type(), phi::DataType::FLOAT32);
+  ASSERT_EQ(out[0][0].layout(), phi::DataLayout::NCHW);
+  ASSERT_EQ(out[1][0].initialized(), true);
+  ASSERT_EQ(out[2][0].initialized(), true);
+}
 
 }  // namespace tests
 }  // namespace paddle

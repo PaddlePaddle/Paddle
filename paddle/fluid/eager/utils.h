@@ -102,6 +102,8 @@ class EagerUtils {
 
   static std::shared_ptr<GradNodeBase> grad_node(
       const paddle::experimental::Tensor& target);
+  static paddle::experimental::Tensor* mutable_grad(
+      const paddle::experimental::Tensor& target);
 
   // Set history is used to set backward info during forward process, it will
   // set forward var's autograd meta's grad node as current backward node.

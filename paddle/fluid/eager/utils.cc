@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -21,9 +22,8 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/pten_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
 PADDLE_DEFINE_EXPORTED_bool(retain_grad_for_all_tensor, true,
@@ -109,15 +109,35 @@ std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
   }
 }
 
+paddle::experimental::Tensor* EagerUtils::mutable_grad(
+    const paddle::experimental::Tensor& target) {
+  auto* meta = nullable_autograd_meta(target);
+  if (meta) {
+    return meta->MutableGrad();
+  } else {
+    return nullptr;
+  }
+}
+
 void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
   for (const auto& autograd_meta : *autograd_metas) {
+    if (autograd_meta->GradNode()) {
+      VLOG(7) << "Should not set grad node twice, original node is:"
+              << autograd_meta->GradNode()->name()
+              << "current is: " << grad_node->name();
+    }
     autograd_meta->SetGradNode(grad_node);
   }
 }
 
 void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
+  if (autograd_meta->GradNode()) {
+    VLOG(7) << "Should not set grad node twice, original node is:"
+            << autograd_meta->GradNode()->name()
+            << "current is: " << grad_node->name();
+  }
   autograd_meta->SetGradNode(grad_node);
 }
 
@@ -342,7 +362,8 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
   } else {
     if (!autograd_ptr->StopGradient()) {
       VLOG(6) << "Add GradNodeAccumulation for tensor: " << tensor.name();
-      autograd_ptr->SetGradNode(std::make_shared<egr::GradNodeAccumulation>());
+      autograd_ptr->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(autograd_ptr));
       return autograd_ptr->GetMutableGradNode();
     } else {
       return nullptr;

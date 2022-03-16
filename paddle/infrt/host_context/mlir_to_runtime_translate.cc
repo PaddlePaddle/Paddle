@@ -31,6 +31,7 @@
 
 #include "boost/optional.hpp"
 #include "paddle/infrt/common/string.h"
+#include "paddle/infrt/dialect/dense_tensor.h"
 #include "paddle/infrt/dialect/mlir_loader.h"
 #include "paddle/infrt/dialect/tensor_shape.h"
 #include "paddle/infrt/host_context/core_runtime.h"
@@ -74,7 +75,7 @@ struct MlirToRuntimeTranslator::Impl {
 };
 
 bool MlirToRuntimeTranslator::EmitConstantOp(mlir::Operation* op) {
-  if (!infrt::Startswith(op->getName().getStringRef().str(), "Infrt.constant"))
+  if (!infrt::Startswith(op->getName().getStringRef().str(), "infrt.constant"))
     return false;
   VLOG(3) << "Emitting constant op [" << op->getName().getStringRef().str()
           << "]";
@@ -151,12 +152,53 @@ boost::optional<float> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 template <>
+boost::optional<bool> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<mlir::BoolAttr>()) return boost::none;
+  if (attr.isa<mlir::BoolAttr>()) {
+    auto val = attr.cast<mlir::BoolAttr>();
+    return val.getValue();
+  }
+  return boost::none;
+}
+
+template <>
 boost::optional<double> MlirToRuntimeTranslator::EmitAttribute(
     const mlir::Attribute& attr) {
   if (!attr.isa<mlir::FloatAttr>()) return boost::none;
   if (attr.isa<mlir::FloatAttr>()) {
     auto val = attr.cast<mlir::FloatAttr>();
     if (val.getType().isF64()) return val.getValueAsDouble();
+  }
+  return boost::none;
+}
+
+template <>
+boost::optional<::infrt::TargetType> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<::infrt::TargetAttr>()) return boost::none;
+  if (attr.isa<::infrt::TargetAttr>()) {
+    return attr.cast<::infrt::TargetAttr>().getTarget();
+  }
+  return boost::none;
+}
+
+template <>
+boost::optional<::infrt::LayoutType> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<::infrt::LayoutAttr>()) return boost::none;
+  if (attr.isa<::infrt::LayoutAttr>()) {
+    return attr.cast<::infrt::LayoutAttr>().getLayout();
+  }
+  return boost::none;
+}
+
+template <>
+boost::optional<::infrt::PrecisionType> MlirToRuntimeTranslator::EmitAttribute(
+    const mlir::Attribute& attr) {
+  if (!attr.isa<::infrt::PrecisionAttr>()) return boost::none;
+  if (attr.isa<::infrt::PrecisionAttr>()) {
+    return attr.cast<::infrt::PrecisionAttr>().getPrecision();
   }
   return boost::none;
 }
@@ -187,6 +229,7 @@ boost::optional<std::string> MlirToRuntimeTranslator::EmitAttribute(
     return res;                                                                \
   }
 
+PROCESS_ARRAY_INT(bool, 1);
 PROCESS_ARRAY_INT(int16_t, 16);
 PROCESS_ARRAY_INT(int32_t, 32);
 PROCESS_ARRAY_INT(int64_t, 64);
@@ -224,10 +267,11 @@ boost::optional<std::vector<double>> MlirToRuntimeTranslator::EmitAttribute(
 }
 
 static bool IsReturn(mlir::Operation* op) {
-  return op->getName().getStringRef() == "Infrt.return";
+  return op->getName().getStringRef() == "infrt.return";
 }
 
-bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
+bool MlirToRuntimeTranslator::EmitGeneralOp(
+    mlir::Operation* op, const KernelRegistry& kernel_registry) {
   CHECK(impl_->runtime);
   impl_->cur_op =
       impl_->runtime->NewOpExecutable(op->getName().getStringRef().str());
@@ -262,11 +306,96 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
             << GetValue(operand) << " vs " << arg_value;
   }
 
+  // process attributes
+  auto attrs = op->getAttrs();
+
+  // MLIR's underlying attr storage type is `Builtin_Dictionary`, and its
+  // elements
+  // are sorted by name. The following code adapts the order of function
+  // signatures
+  // of the phi operator library.
+  llvm::SmallVector<Value*, 4> tmp;
+  tmp.resize(attrs.size());
+  const std::string& kernel_name = op->getName().getStringRef().str();
+  const auto& attr_names = kernel_registry.GetAttrNameList(kernel_name);
+  if (attrs.size() && attr_names.empty()) {
+    LOG(WARNING) << "The kernel `" << kernel_name
+                 << "` has no specified attr order.";
+  }
+  auto get_offset = [](const char* attr,
+                       const std::vector<const char*>& names,
+                       const std::string& kernel_name) -> int {
+    for (size_t i = 0; i < names.size(); ++i) {
+      if (!std::strcmp(attr, names[i])) {
+        return i;
+      }
+    }
+    LOG(WARNING) << "The attribute `" << attr << "` of kernel `" << kernel_name
+                 << "` is not properly registered with "
+                    "`KernelRegistry::AddKernelWithAttrs()`.";
+    return -1;
+  };
+
+  for (size_t i = 0; i < attrs.size(); i++) {
+    auto& attr = attrs[i];
+    int offset{};
+    if (attr_names.size()) {
+      offset = get_offset(attr.getName().data(), attr_names, kernel_name);
+    } else {
+      offset = i;
+    }
+    CHECK_NE(offset, -1);
+    if (auto v = EmitAttribute<int32_t>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
+    } else if (auto v = EmitAttribute<int64_t>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
+    } else if (auto v = EmitAttribute<float>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
+    } else if (auto v = EmitAttribute<double>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
+    } else if (auto v = EmitAttribute<std::string>(attr.getValue())) {
+      tmp[offset] = new Value(std::move(*v));
+    } else if (auto v = EmitAttribute<bool>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
+    } else if (auto v = EmitAttribute<::infrt::TargetType>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
+    } else if (auto v =
+                   EmitAttribute<::infrt::PrecisionType>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
+    } else if (auto v = EmitAttribute<::infrt::LayoutType>(attr.getValue())) {
+      tmp[offset] = new Value(*v);
+    } else if (auto v = EmitAttribute<std::vector<int16_t>>(attr.getValue())) {
+      tmp[offset] = new Value(std::move(*v));
+    } else if (auto v = EmitAttribute<std::vector<int32_t>>(attr.getValue())) {
+      tmp[offset] = new Value(std::move(*v));
+    } else if (auto v = EmitAttribute<std::vector<int64_t>>(attr.getValue())) {
+      tmp[offset] = new Value(std::move(*v));
+    } else if (auto v = EmitAttribute<std::vector<float>>(attr.getValue())) {
+      tmp[offset] = new Value(std::move(*v));
+    } else if (auto v = EmitAttribute<std::vector<double>>(attr.getValue())) {
+      tmp[offset] = new Value(std::move(*v));
+    } else {
+      LOG(FATAL) << "Not supported attribute type";
+    }
+  }
+
+  for (size_t i = 0; i < tmp.size(); i++) {
+    impl_->cur_op->AppendAttribute(tmp[i]);
+  }
+
   // process results
   llvm::SmallVector<Value*, 4> res_values;
   for (int i = 0, e = op->getNumResults(); i < e; i++) {
     auto res = op->getResult(i);
-    res_values.push_back(AddValue(res));
+    if (res.getType().isa<::infrt::DenseTensorType>()) {
+      auto r = impl_->value_map.try_emplace(
+          res, ValueRef(new Value{::phi::DenseTensor()}));
+      CHECK(r.second) << "Duplicate add mlir value [" << DumpToString(res)
+                      << "]";
+      res_values.push_back(r.first->second.get());
+    } else {
+      res_values.push_back(AddValue(res));
+    }
 
     VLOG(3) << "* op mlir res: " << DumpToString(res) << " " << GetValue(res);
   }
@@ -280,36 +409,6 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
     }
   }
 #endif
-
-  // process attributes
-  auto attrs = op->getAttrs();
-
-  for (size_t i = 0; i < attrs.size(); i++) {
-    auto& attr = attrs[i];
-    if (auto v = EmitAttribute<int32_t>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
-    } else if (auto v = EmitAttribute<int64_t>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
-    } else if (auto v = EmitAttribute<float>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
-    } else if (auto v = EmitAttribute<double>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(*v));
-    } else if (auto v = EmitAttribute<std::string>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
-    } else if (auto v = EmitAttribute<std::vector<int16_t>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
-    } else if (auto v = EmitAttribute<std::vector<int32_t>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
-    } else if (auto v = EmitAttribute<std::vector<int64_t>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
-    } else if (auto v = EmitAttribute<std::vector<float>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
-    } else if (auto v = EmitAttribute<std::vector<double>>(attr.getValue())) {
-      impl_->cur_op->AppendAttribute(new Value(std::move(*v)));
-    } else {
-      LOG(FATAL) << "Not supported attribute type";
-    }
-  }
 
   // process regions, we treat regions as attribute.
   auto num_regions = op->getNumRegions();
@@ -345,7 +444,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(mlir::Operation* op) {
 bool MlirToRuntimeTranslator::EmitReturnOp(
     mlir::Operation* op, llvm::SmallVectorImpl<mlir::Value>* results) {
   CHECK(results);
-  if (op->getName().getStringRef() == "Infrt.return") {
+  if (op->getName().getStringRef() == "infrt.return") {
     for (size_t i = 0; i < op->getNumOperands(); i++) {
       results->push_back(op->getOperand(i));
     }
@@ -418,7 +517,7 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
                                          function_defs_t* function_table) {
   CHECK(op);
   CHECK(function_table);
-  if (op->getName().getStringRef() != "Infrt.call") return false;
+  if (op->getName().getStringRef() != "infrt.call") return false;
 
   impl_->cur_op =
       impl_->runtime->NewOpExecutable(op->getName().getStringRef().str());
@@ -440,14 +539,6 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
     impl_->cur_op->AppendArgument(arg_value);
   }
 
-  // process results
-  llvm::SmallVector<Value*, 4> res_values;
-  for (int i = 0, e = op->getNumResults(); i < e; i++) {
-    auto res = op->getResult(i);
-    res_values.push_back(AddValue(res));
-  }
-  impl_->cur_op->SetResults(res_values);
-
   // process attribute
   auto& table = function_table ? *function_table : impl_->func_defs;
   {
@@ -459,6 +550,14 @@ bool MlirToRuntimeTranslator::EmitCallOp(mlir::Operation* op,
         impl_->cur_op->CreateFunctionExecutable(it->second, &impl_->func_defs);
     impl_->cur_op->AppendAttribute(new Value(function));
   }
+
+  // process results
+  llvm::SmallVector<Value*, 4> res_values;
+  for (int i = 0, e = op->getNumResults(); i < e; i++) {
+    auto res = op->getResult(i);
+    res_values.push_back(AddValue(res));
+  }
+  impl_->cur_op->SetResults(res_values);
 
   VLOG(3) << "Emit call " << callee_name.getValue().str() << " "
           << impl_->cur_op->frame();
@@ -538,7 +637,7 @@ class MlirProgramTestExecutor : public MlirToRuntimeTranslator {
         llvm::SmallVector<mlir::Value, 3> results;
         if (EmitReturnOp(&op, &results)) continue;
         if (EmitCallOp(&op, &impl_->func_defs)) continue;
-        if (EmitGeneralOp(&op)) continue;
+        if (EmitGeneralOp(&op, *registry)) continue;
         LOG(FATAL) << "Not supported op: " << DumpToString(op);
       }
 

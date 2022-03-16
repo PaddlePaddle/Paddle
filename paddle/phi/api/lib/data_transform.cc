@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/utils/storage.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
@@ -38,7 +39,7 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
                                const TransformFlag& transform_flag) {
   bool ret = transform_flag.need_trans_backend() &&
              target != Backend::ALL_BACKEND &&
-             !platform::is_same_place(input, phi::TransToPtenPlace(target));
+             !platform::is_same_place(input, phi::TransToPhiPlace(target));
   return ret;
 }
 
@@ -168,10 +169,10 @@ phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
           out.place(), target_args_def.backend, transform_flag)) {
     phi::DenseTensor result(
         phi::make_intrusive<paddle::experimental::SharedStorage>(
-            phi::TransToPtenPlace(target_args_def.backend)),
+            phi::TransToPhiPlace(target_args_def.backend)),
         {out.dtype(), out.dims(), out.layout()});
     framework::TransDataDevice(
-        out, phi::TransToPtenPlace(target_args_def.backend), &result);
+        out, phi::TransToPhiPlace(target_args_def.backend), &result);
     out = result;
   }
   return out;
@@ -197,6 +198,16 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
                     target_args_def,
                     transform_flag);
   return std::make_shared<phi::DenseTensor>(out);
+}
+
+std::shared_ptr<phi::DenseTensor> PrepareData(
+    const paddle::optional<Tensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  if (input) {
+    return PrepareData(*input, target_args_def, transform_flag);
+  }
+  return {nullptr};
 }
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
