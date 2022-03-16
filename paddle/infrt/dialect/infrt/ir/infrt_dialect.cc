@@ -90,7 +90,7 @@ mlir::Type InfrtDialect::parseType(::mlir::DialectAsmParser &parser) const {
     return LoDTensorType::get(
         parser.getContext(), shape, elementType, lod_level);
   }
-  if(keyword == "dense_tensor_map") {
+  if (keyword == "dense_tensor_map") {
     return DenseTensorMapType::get(parser.getContext());
   }
   if (keyword == "dense_tensor") {
@@ -161,7 +161,6 @@ void InfrtDialect::printType(::mlir::Type type,
     os << "dense_tensor_map";
     return;
   }
-
 
   // print DenseTensorType, for example: !infrt.dense_tensor<CPU, FP32, NCHW>
   if (type.isa<infrt::DenseTensorType>()) {
