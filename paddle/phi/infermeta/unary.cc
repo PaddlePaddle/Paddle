@@ -554,6 +554,28 @@ void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(DataType::BOOL);
 }
 
+void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
+  auto dims = x.dims();
+  auto n_dim = dims.size();
+  PADDLE_ENFORCE_GE(n_dim,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The Input(X) should have at least 2 dimensions. But "
+                        "received a %d dimension tensor.",
+                        n_dim));
+  PADDLE_ENFORCE_EQ(dims[n_dim - 2],
+                    dims[n_dim - 1],
+                    phi::errors::InvalidArgument(
+                        "The inner-most 2 dimensions of Input(X) all should "
+                        "be square matrices "
+                        "But received X's shape[-2] = %d and shape[-1] = %d.",
+                        dims[n_dim - 2],
+                        dims[n_dim - 1]));
+  out->set_dims(dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& kernel_size,
                                const std::vector<int>& strides,
@@ -992,6 +1014,43 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   xshape->set_dims(phi::make_ddim(xshape_dims));
   xshape->share_lod(x);
   ReshapeInferMeta(x, shape, out, config);
+}
+
+void RollInferMeta(const MetaTensor& x,
+                   const ScalarArray& shifts,
+                   const std::vector<int64_t>& axis,
+                   MetaTensor* out) {
+  auto shifts_data = shifts.GetData();
+
+  if (axis.size() != 0) {
+    PADDLE_ENFORCE_EQ(
+        axis.size(),
+        shifts_data.size(),
+        phi::errors::InvalidArgument("When dims.size() != 0, dims.size() "
+                                     "should be equal to "
+                                     "shifts.size(). But received "
+                                     "dims.size() = %d, shifts.size() = %d",
+                                     axis.size(),
+                                     shifts_data.size()));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        shifts_data.size(),
+        1,
+        phi::errors::InvalidArgument("When dims.size() == 0, shifts.size() "
+                                     "should be equal to 1, But received "
+                                     "shifts.size() = %d",
+                                     shifts_data.size()));
+  }
+
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
+  auto in_dim = input.dims();
+  out->set_dims(phi::make_ddim({in_dim.size()}));
+  out->set_dtype(DataType::INT32);
 }
 
 void ShardIndexInferMeta(const MetaTensor& in,
