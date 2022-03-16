@@ -1649,7 +1649,7 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     std::for_each(axes.GetData().begin(),
                   axes.GetData().end(),
                   [&tmp](const int64_t& t) { tmp.push_back(t); });
-    auto out_dims = funcs::GetOutputShape(tmp, x_dims);
+    auto out_dims = funcs::GetUnsqueezeShape(tmp, x_dims);
     out->set_dims(out_dims);
     if (x_dims[0] == out_dims[0]) {
       out->share_lod(x);

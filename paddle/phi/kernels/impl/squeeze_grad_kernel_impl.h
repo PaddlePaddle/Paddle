@@ -15,28 +15,19 @@
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/copy_kernel.h"
-#include "paddle/phi/kernels/funcs/unsqueeze.h"
 
 namespace phi {
 template <typename T, typename Context>
-void UnsqueezeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const ScalarArray& axes,
-                     DenseTensor* xshape,
-                     DenseTensor* out) {
-  auto x_dims = x.dims();
-  auto out_dims = out->dims();
-  if (axes.FromTensor()) {
-    std::vector<int32_t> tmp;
-    tmp.reserve(axes.GetData().size());
-    std::for_each(axes.GetData().begin(),
-                  axes.GetData().end(),
-                  [&tmp](const int64_t& t) { tmp.push_back(t); });
-    out_dims = funcs::GetUnsqueezeShape(tmp, x_dims);
-  }
-  out->Resize(out_dims);
-  dev_ctx.template Alloc<T>(out);
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-  out->Resize(out_dims);  // copy will reset the dims.
+void SqueezeGradKernel(const Context& dev_ctx,
+                       const DenseTensor& xshape,
+                       const DenseTensor& dout,
+                       const std::vector<int>& axes,
+                       DenseTensor* dx) {
+  auto xshape_dims = xshape.dims();
+  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+
+  dev_ctx.template Alloc<T>(dx);
+  phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+  dx->Resize(x_dims);
 }
 }  // namespace phi

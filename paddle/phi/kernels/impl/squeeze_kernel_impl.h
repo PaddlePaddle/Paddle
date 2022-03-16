@@ -19,24 +19,16 @@
 
 namespace phi {
 template <typename T, typename Context>
-void UnsqueezeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const ScalarArray& axes,
-                     DenseTensor* xshape,
-                     DenseTensor* out) {
+void SqueezeKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const std::vector<int>& axes,
+                   DenseTensor* xshape,
+                   DenseTensor* out) {
   auto x_dims = x.dims();
-  auto out_dims = out->dims();
-  if (axes.FromTensor()) {
-    std::vector<int32_t> tmp;
-    tmp.reserve(axes.GetData().size());
-    std::for_each(axes.GetData().begin(),
-                  axes.GetData().end(),
-                  [&tmp](const int64_t& t) { tmp.push_back(t); });
-    out_dims = funcs::GetUnsqueezeShape(tmp, x_dims);
-  }
-  out->Resize(out_dims);
+  auto out_dims = funcs::GetOutputSqueezeShape(axes, x_dims, true);
+
   dev_ctx.template Alloc<T>(out);
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-  out->Resize(out_dims);  // copy will reset the dims.
+  out->Resize(out_dims);
 }
 }  // namespace phi

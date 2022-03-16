@@ -60,44 +60,5 @@ class SqueezeGradKernel : public framework::OpKernel<T> {
     d_x->Resize(in_dims);
   }
 };
-
-template <typename DeviceContext, typename T>
-class Squeeze2Kernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *out = context.Output<framework::LoDTensor>("Out");
-    auto *in = context.Input<framework::LoDTensor>("X");
-
-    auto &axes = context.Attr<std::vector<int>>("axes");
-
-    auto x_dims = in->dims();
-    auto out_dims = GetOutputShape(axes, x_dims, true);
-
-    out->mutable_data(context.GetPlace(), in->type());
-    framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
-    out->Resize(out_dims);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class Squeeze2GradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    // auto in_dims = d_x->dims();
-
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-
-    d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
-    d_x->Resize(x_dims);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
