@@ -89,7 +89,10 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINERS_NUM": "{}".format(global_size),
                 "PADDLE_RANK_IN_NODE": str(i),
             }
-            e.update(self.ctx.node.device.selected_flags(i))
+            if self.pod.replicas == 1:
+                e.update(self.ctx.node.device.selected_flags())
+            else:
+                e.update(self.ctx.node.device.selected_flags(i))
             self.add_container(envs=e, log_tag=i)
 
         return True

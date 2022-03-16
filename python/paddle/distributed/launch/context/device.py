@@ -76,8 +76,13 @@ class Device(object):
         else:
             return '0'
 
-    def selected_flags(self, idx):
-        return {self.get_selected_flag_key(): self.get_selected_flag_label(idx)}
+    def selected_flags(self, idx=None):
+        if idx is None:
+            return {self.get_selected_flag_key(): ','.join(self._labels)}
+        else:
+            return {
+                self.get_selected_flag_key(): self.get_selected_flag_label(idx)
+            }
 
     @classmethod
     def parse_device(self):
@@ -97,7 +102,7 @@ class Device(object):
             dev._dtype = DeviceType.MLU
             visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
 
-        if visible_devices and visible_devices != 'all':
+        if visible_devices is not None and visible_devices != 'all':
             dev._labels = visible_devices.split(',')
         else:
             return self.detect_device()
@@ -131,7 +136,7 @@ class Device(object):
 
         if num == 0:
             dev._dtype = DeviceType.CPU
-        elif visible_devices is None or visible_devices == "all" or visible_devices == "":
+        elif visible_devices is None or visible_devices == "all":
             dev._labels = [str(x) for x in range(0, num)]
         else:
             dev._labels = visible_devices.split(',')

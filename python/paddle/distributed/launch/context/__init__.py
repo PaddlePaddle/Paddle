@@ -51,6 +51,11 @@ class Context(object):
             return True
 
         if 'PADDLE_DISTRI_BACKEND' in self.envs:
+            self.logger.warning("ENV PADDLE_DISTRI_BACKEND is deprecated")
+            return True
+
+        if 'FLAGS_START_PORT' in self.envs:
+            self.logger.warning("ENV FLAGS_START_PORT is deprecated")
             return True
 
         if self.args.master:
