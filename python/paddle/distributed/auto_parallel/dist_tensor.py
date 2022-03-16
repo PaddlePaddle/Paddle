@@ -184,7 +184,9 @@ class DistributedTensor:
 
     def _init_default_dist_attr(self):
         if self._dist_attr.dims_mapping is None:
-            if self.serial_tensor.type == core.VarDesc.VarType.READER:
+            if self.serial_tensor.type == core.VarDesc.VarType.READER \
+                or self.serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+                or self.serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
                 tensor_shape = []
             else:
                 tensor_shape = self._serial_tensor.shape
@@ -192,7 +194,9 @@ class DistributedTensor:
             self._dist_attr.dims_mapping = tensor_dims_mapping
 
     def validate_dist_attr(self):
-        if self.serial_tensor.type == core.VarDesc.VarType.READER:
+        if self.serial_tensor.type == core.VarDesc.VarType.READER \
+            or self.serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
+            or self.serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
             return True
         tensor_shape = self.serial_tensor.shape
         if len(tensor_shape) != len(self.dist_attr.dims_mapping):
