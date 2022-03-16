@@ -24,4 +24,6 @@ PD_REGISTER_KERNEL(segment_pool_grad,
                    ALL_LAYOUT,
                    phi::SegmentPoolGradKernel,
                    float,
-                   double) {}
+                   double,
+                   int,
+                   int64_t) {}
