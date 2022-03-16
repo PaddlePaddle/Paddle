@@ -243,14 +243,6 @@ REGISTER_OPERATOR(set_value, ops::SetValue, ops::SetValueMaker,
 
 REGISTER_OPERATOR(set_value_grad, ops::SetValueGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    set_value_grad,
-    ops::SetValueGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SetValueGradKernel<plat::CPUDeviceContext, int64_t>,
-    ops::SetValueGradKernel<plat::CPUDeviceContext, float>,
-    ops::SetValueGradKernel<plat::CPUDeviceContext, double>,
-    ops::SetValueGradKernel<plat::CPUDeviceContext, bool>);
-
 REGISTER_OP_VERSION(set_value)
     .AddCheckpoint(
         R"ROC(
