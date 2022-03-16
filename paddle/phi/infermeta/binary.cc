@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -70,6 +71,51 @@ void AllValueCompareInferMeta(const MetaTensor& x,
 
   out->set_dims(phi::make_ddim({1}));
   out->set_dtype(DataType::BOOL);
+}
+
+void KLDivInferMeta(const MetaTensor& x,
+                    const MetaTensor& label,
+                    const std::string& reduction,
+                    MetaTensor* out,
+                    MetaConfig config) {
+  auto dim_x = x.dims();
+  auto dim_target = label.dims();
+  PADDLE_ENFORCE_EQ(dim_x.size(),
+                    dim_target.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) rank and Input(Target) rank should be "
+                        "same, but received X rank(%d) != Target rank(%d)",
+                        dim_x.size(),
+                        dim_target.size()));
+  for (int i = 0; i < dim_x.size(); i++) {
+    if (config.is_runtime || (dim_x[i] > 0 && dim_target[i] > 0)) {
+      PADDLE_ENFORCE_EQ(
+          dim_x[i],
+          dim_target[i],
+          phi::errors::InvalidArgument(
+              "Input(X) and Input(Target) should in same shape. but received "
+              "X dimension[%d](%d) != Target dimension[%d](%d)",
+              i,
+              dim_x[i],
+              i,
+              dim_target[i]));
+    }
+  }
+
+  auto reduction_valid = "mean" == reduction || "sum" == reduction ||
+                         "batchmean" == reduction || "none" == reduction;
+  PADDLE_ENFORCE_EQ(
+      reduction_valid,
+      true,
+      phi::errors::InvalidArgument(
+          "Attr(reduction) can only be 'none'|'batchmean'|'sum'|'mean'."));
+
+  if ("none" == reduction) {
+    out->set_dims(dim_x);
+  } else {
+    out->set_dims({1});
+  }
+  out->set_dtype(x.dtype());
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
@@ -428,6 +474,55 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
+}
+
+void GatherInferMeta(const MetaTensor& x,
+                     const MetaTensor& index,
+                     const Scalar& axis,
+                     MetaTensor* out) {
+  auto index_dims = index.dims();
+
+  if (index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(
+        index_dims[1],
+        1,
+        phi::errors::InvalidArgument(
+            "The last dim of index should be 1 when it is 2D, but we get %d",
+            index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        index_dims.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The index should be 1D, when it is not 2D, but we get %d",
+            index_dims.size()));
+  }
+
+  auto input_dim = x.dims();
+  auto axis_v = axis.to<int>();
+  if (axis.FromTensor() || axis_v == 0) {
+    // if axis.FromTensor(), we can not obtain correct shape of output
+    int batch_size = index_dims[0];
+    phi::DDim output_dims(input_dim);
+    output_dims[0] = batch_size;
+    out->set_dims(output_dims);
+    out->set_dtype(x.dtype());
+    out->share_lod(x);
+  } else {
+    int index_size = index_dims[0];
+    std::vector<int> out_dim_vec;
+    for (int i = 0; i < axis_v; i++) {
+      out_dim_vec.push_back(input_dim[i]);
+    }
+    out_dim_vec.push_back(index_size);
+    for (int i = axis_v + 1; i < input_dim.size(); i++) {
+      out_dim_vec.push_back(input_dim[i]);
+    }
+    auto output_dims = phi::make_ddim(out_dim_vec);
+    out->set_dims(output_dims);
+    out->set_dtype(x.dtype());
+    out->share_lod(x);
+  }
 }
 
 void GatherNdInferMeta(const MetaTensor& x,
@@ -812,4 +907,16 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->share_lod(y);
 }
 
+void ValueCompareInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  detail::BinarySameInputDimsCheck(x, y, config);
+
+  out->set_dims(x.dims());
+  out->set_dtype(DataType::BOOL);
+}
+
 }  // namespace phi
+
+PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
