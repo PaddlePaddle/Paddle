@@ -3053,7 +3053,8 @@ def corrcoef(x, rowvar=True, ddof=False, name=None):
 
     # Clip to [-1, 1].  This does not guarantee
     if paddle.is_complex(c):
-        return paddle.complex(paddle.clip(c.real(), -1, 1), paddle.clip(c.imag(), -1, 1))
+        return paddle.complex(
+            paddle.clip(c.real(), -1, 1), paddle.clip(c.imag(), -1, 1))
     else:
         c = paddle.clip(c, -1, 1)
 
