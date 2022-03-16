@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <csignal>
 #include <fstream>
+#include <set>
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -55,6 +56,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/custom_kernel.h"
 
 DECLARE_int32(paddle_num_threads);
@@ -83,6 +86,38 @@ namespace framework {
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
 std::once_flag npu_init_flag;
+std::once_flag phi_dev_ctx_pool_init_flag;
+
+// platform::DeviceContextPool has no const Get method, so use pointer
+static void InitPhiDeviceContextPool(const std::vector<platform::Place> &places,
+                                     platform::DeviceContextPool *pool) {
+  std::call_once(phi_dev_ctx_pool_init_flag, [&]() {
+    std::set<platform::Place> place_set;
+    for (const auto &p : places) {
+      place_set.insert(p);
+    }
+    auto &context_pool = paddle::experimental::DeviceContextPool::Instance();
+    for (const auto &p : place_set) {
+      // only get CPU and GPU DeviceContext now, add other DeviceContext type
+      // later if needed
+      if (platform::is_cpu_place(p)) {
+        context_pool.Insert(
+            static_cast<platform::Place>(p),
+            static_cast<const typename framework::ConvertToPhiContext<
+                platform::CPUDeviceContext>::TYPE *>(pool->Get(p)));
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      } else if (platform::is_gpu_place(p)) {
+        context_pool.Insert(
+            static_cast<platform::Place>(p),
+            static_cast<const typename framework::ConvertToPhiContext<
+                platform::CUDADeviceContext>::TYPE *>(pool->Get(p)));
+#endif
+      } else {
+        // skip other places now, do nothing
+      }
+    }
+  });
+}
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -274,6 +309,7 @@ void InitDevices(const std::vector<int> devices) {
   }
 #endif
   platform::DeviceContextPool::Init(places);
+  InitPhiDeviceContextPool(places, &platform::DeviceContextPool::Instance());
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
