@@ -128,6 +128,12 @@ class FCPrimitiveFactory {
     // Store weights and bias in the mkldnn cache
     CacheWeightsAndBias(dev_ctx, ctx);
 
+    if(ctx.Attr<bool>("fuse_residual_connection"))
+    {
+      auto* residual_param = ctx.Input<Tensor>("ResidualData");
+      output->ShareDataWith(*residual_param);
+    }
+
     // Based on format determined by inner_product, create output in desired
     // memory format
     output_ = CreateDstMemory(*fc_prim_desc, ctx, output);
@@ -597,8 +603,9 @@ GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
 // output type (uint8, int8 or float).
 template <typename T_in, typename T_w>
 static void ExecuteFc(const ExecutionContext& ctx, const LoDTensor* input,
-                      const Tensor* w, const Tensor* bias, LoDTensor* output,
-                      bool fuse_relu, bool force_fp32_output) {
+                      const Tensor* w, const Tensor* bias, const Tensor* residual_param,
+                      LoDTensor* output, bool fuse_relu, bool force_fp32_output,
+                      bool fuse_residual_conn) {
   auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
   std::string prim_key = platform::CreateKey(
       dev_ctx, input->format(), input->dims()[0],
@@ -634,13 +641,15 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
     auto input = ctx.Input<LoDTensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
+    auto residual_data = ctx.Input<Tensor>("ResidualData");
     auto output = ctx.Output<LoDTensor>("Out");
 
+    bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
-    ExecuteFc<T_in, T_w>(ctx, input, w, bias, output, fuse_relu,
-                         force_fp32_output);
+    ExecuteFc<T_in, T_w>(ctx, input, w, bias, residual_data,
+                 output, fuse_relu, force_fp32_output, fuse_residual_conn);
 
     output->set_layout(DataLayout::kMKLDNN);
   }
