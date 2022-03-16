@@ -56,8 +56,7 @@ class DistributedSaver:
     def __init__(self):
         self._logger = get_logger(logging.INFO)
 
-    def save(self, path, serial_program, dist_main_program, dist_context,
-             **kwargs):
+    def save(self, path, serial_program, dist_main_program, dist_context):
 
         dirname, filename = _process_path(path)
 
@@ -177,7 +176,7 @@ class DistributedSaver:
         for idx, op in enumerate(ops):
             if op.attr(op_role_key) != op_role_forward:
                 continue
-            if op.type == "read" or op.type == "feed":
+            if op.type == "read" or op.type == "feed" or op.type == 'recv_v2':
                 feed_vars_names += op.output("Out")
             if op.type == "send_v2":
                 fetch_vars_names += op.input("X")
@@ -186,13 +185,15 @@ class DistributedSaver:
                 if out_name in fetch_vars_names:
                     last_idx = max(idx, last_idx)
 
+        used_inputs = []
         used_outputs = []
         for idx, op in enumerate(ops):
             if idx > last_idx:
                 break
+            used_inputs += op.input_arg_names
             used_outputs += op.output_arg_names
 
-        dist_feed_vars_names = list(set(feed_vars_names))
+        dist_feed_vars_names = list(set(feed_vars_names) & set(used_inputs))
         dist_fetch_vars_names = list(set(fetch_vars_names) & set(used_outputs))
 
         dist_feed_vars = [

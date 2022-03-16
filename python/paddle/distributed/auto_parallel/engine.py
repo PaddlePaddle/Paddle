@@ -86,31 +86,13 @@ class Engine:
         # TODO: check loss type
         self._loss = loss
         self._metrics = to_list(metrics)
+        for m in ['train', 'eval', 'predict']:
+            self.mode = m
+            self._build(m)  # build forward program
+            self._plan(m)  # completion & planner
+            self._parallel(m, all_ranks)  # parallel
+            self._initialize(m)  # init comm and startup program
         self.mode = mode
-        for mode in ['train', 'eval', 'predict']:
-            self._build(mode)  # build forward program
-            self._plan(mode)  # completion
-            self._build_dist_program(mode, all_ranks)  # parallel
-            self._initialize(mode)  # init comm and startup program
-
-    def _initialize(self, mode):
-        self._place = _get_device()
-        if isinstance(self._place, fluid.CUDAPlace):
-            self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
-        if self._executor is None:
-            self._executor = paddle.static.Executor(self._place)
-        self._init_communication()
-        dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
-        self._executor.run(dist_startup_prog)
-
-    def _build_dist_program(self, mode, all_ranks=False):
-        if not all_ranks:
-            self._parallel(mode, self._cur_rank)
-        else:
-            world_process_group = get_world_process_group()
-            all_ranks = world_process_group.ranks
-            for rank in all_ranks:
-                self._parallel(mode, rank)
 
     def _build(self, mode):
         serial_main_prog = self._serial_main_progs.get(mode, None)
@@ -158,7 +140,34 @@ class Engine:
         self._dist_contexts[mode].block_state.parse_forward_blocks(
             serial_main_prog)
 
-    def _parallel(self, mode, rank):
+    def _parallel(self, mode, all_ranks=False):
+        if not all_ranks:
+            self._parallel_program(mode, self._cur_rank)
+        else:
+            world_process_group = get_world_process_group()
+            all_ranks = world_process_group.ranks
+            for rank in all_ranks:
+                self._parallel_program(mode, rank)
+
+    def _initialize(self, mode):
+        # Traverse different rank programs and traverse each op of them,
+        # instantiate communication by process_mapping.
+        all_process_groups = get_all_process_groups()
+        for process_group in all_process_groups:
+            if self._cur_rank not in process_group.ranks:
+                continue
+            process_group.instantiate()
+
+        # initialize
+        self._place = _get_device()
+        if isinstance(self._place, fluid.CUDAPlace):
+            self._place = fluid.CUDAPlace(ParallelEnv().dev_id)
+        if self._executor is None:
+            self._executor = paddle.static.Executor(self._place)
+        dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
+        self._executor.run(dist_startup_prog)
+
+    def _parallel_program(self, mode, rank):
         serial_main_program = self._serial_main_progs[mode]
         serial_startup_program = self._serial_startup_progs[mode]
         dist_context = self._dist_contexts[mode]
@@ -361,7 +370,6 @@ class Engine:
     def _predict_step(self, data, use_program_cache=False, return_numpy=True):
         logs = {}
         dist_main_prog = self._dist_main_progs[self.mode][self._cur_rank]
-        # print(dist_main_prog)
         fetch_var = self._fetch_vars[self.mode]["outputs"]
         if fetch_var[0].name not in dist_main_prog.global_block().vars:
             outs = self._executor.run(dist_main_prog,
@@ -426,15 +434,6 @@ class Engine:
         dist_main_block._sync_with_cpp()
         return dataloader
 
-    def _init_communication(self):
-        # Traverse different rank programs and traverse each op of them,
-        # instantiate communication by process_mapping.
-        all_process_groups = get_all_process_groups()
-        for process_group in all_process_groups:
-            if self._cur_rank not in process_group.ranks:
-                continue
-            process_group.instantiate()
-
     def _validate_spec(self, specs):
         specs = to_list(specs)
         if specs is not None:
@@ -470,7 +469,7 @@ class Engine:
                 feed_vars,
                 fetch_vars,
                 self._executor,
-                dist_main_program=dist_main_prog)
+                program=dist_main_prog)
 
     def load(self, path, strict=True, load_optimizer=True, mode=None):
         if not mode:

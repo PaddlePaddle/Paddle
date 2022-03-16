@@ -42,6 +42,12 @@ class TestEngineAPI(unittest.TestCase):
         log_path = os.path.join(file_dir, "log")
         if os.path.exists(log_path):
             shutil.rmtree(log_path)
+        files_path = [path for path in os.listdir('.') if '.pd' in path]
+        for path in files_path:
+            if os.path.exists(path):
+                os.remove(path)
+        if os.path.exists('rank_mapping.csv'):
+            os.remove('rank_mapping.csv')
 
 
 if __name__ == "__main__":
