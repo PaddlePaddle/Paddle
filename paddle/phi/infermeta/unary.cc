@@ -1715,7 +1715,6 @@ void TransposeGradInferMeta(const MetaTensor& x,
   TransposeInferMeta(x, reversed_axis, out);
 }
 
-
 void OneHotRawInferMeta(const MetaTensor& x,
                         int32_t depth,
                         DataType dtype,
@@ -1750,6 +1749,7 @@ void OneHotInferMeta(const MetaTensor& x,
   auto out_dims = phi::make_ddim(out_dims_vec);
   out->set_dims(out_dims);
   out->share_lod(x);
+
   out->set_dtype(phi::DataType::FLOAT32);
 }
 

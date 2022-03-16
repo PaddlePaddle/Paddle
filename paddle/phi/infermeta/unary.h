@@ -248,7 +248,7 @@ void UnfoldInferMeta(const MetaTensor& x,
 void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out);
-                            
+
 void OneHotRawInferMeta(const MetaTensor& x,
                         int32_t depth,
                         DataType dtype,
