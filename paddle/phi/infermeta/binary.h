@@ -186,7 +186,7 @@ void YoloBoxInferMeta(const MetaTensor& x,
                       MetaTensor* boxes,
                       MetaTensor* scores,
                       MetaConfig config = MetaConfig());
-                      
+
 void ValueCompareInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            MetaTensor* out,
