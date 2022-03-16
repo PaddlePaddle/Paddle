@@ -1271,6 +1271,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       paddle::string::Sprintf(FORWARD_FUNCTION_TEMPLATE, op_type);
 
   std::string dygraph_function_args_str = "";
+  std::string amp_function_call_args_str = "";
   core_ops_args_info[op_type] = {};
   core_ops_args_type_info[op_type] = {};
   core_ops_args_info[op_type].resize(in_vars.size());
@@ -1283,6 +1284,9 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   // [Generation] Get Ins Map
   std::string ins_contents_str = "";
   std::vector<std::string> input_args_str_list(in_vars.size());
+  std::vector<std::string> amp_function_call_args_str_list(in_vars.size());
+  std::string amp_name_tensors_map_str = "";
+  std::string amp_auto_cast_str = "";
   for (const proto::OpProto::Var& input : in_vars) {
     const std::string& input_name = input.name();
     size_t input_position = fwd_inputs_name_pos_map.at(input_name);
@@ -1292,6 +1296,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
           "const std::vector<paddle::experimental::Tensor>& %s";
       input_args_str_list[input_position] =
           paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
+      amp_function_call_args_str_list[input_position] = " NEW_" + input_name;
 
       core_ops_args_type_info[op_type][input_position] = "list";
     } else {
@@ -1299,6 +1304,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
           "const paddle::experimental::Tensor& %s";
       input_args_str_list[input_position] =
           paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
+      amp_function_call_args_str_list[input_position] = " NEW_" + input_name;
 
       core_ops_args_type_info[op_type][input_position] = "tensor";
     }
@@ -1310,9 +1316,34 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         "{ \"%s\", egr::EagerUtils::TrySyncToVars(%s) },";
     ins_contents_str += paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE,
                                                 input_name, input_name);
+    if (input.duplicable()) {
+      // amp_name_tensors_map_str
+      const char* AMP_NAME_TENSORS_MAP_TEMPLATE = "{ \"%s\", %s },";
+      amp_name_tensors_map_str += paddle::string::Sprintf(
+          AMP_NAME_TENSORS_MAP_TEMPLATE, input_name, input_name);
+      // amp_auto_cast_str
+      const char* AMP_AUTO_CAST_TEMPLATE =
+          "    auto NEW_%s = egr::AmpAutoCasts(\"%s\", %s, amp_dst_dtype, "
+          "\"%s\");\n";
+      amp_auto_cast_str += paddle::string::Sprintf(
+          AMP_AUTO_CAST_TEMPLATE, input_name, input_name, input_name, op_type);
+    } else {
+      // amp_name_tensors_map_str
+      const char* AMP_NAME_TENSORS_MAP_TEMPLATE = "{ \"%s\", {%s} },";
+      amp_name_tensors_map_str += paddle::string::Sprintf(
+          AMP_NAME_TENSORS_MAP_TEMPLATE, input_name, input_name);
+      // amp_auto_cast_str
+      const char* AMP_AUTO_CAST_TEMPLATE =
+          "    auto NEW_%s = egr::AmpAutoCast(\"%s\", %s, amp_dst_dtype, "
+          "\"%s\");\n";
+      amp_auto_cast_str += paddle::string::Sprintf(
+          AMP_AUTO_CAST_TEMPLATE, input_name, input_name, input_name, op_type);
+    }
   }
   if (ins_contents_str.size() > 0)
     ins_contents_str.pop_back();  // // Remove trailing ","
+
+  if (amp_name_tensors_map_str.size() > 0) amp_name_tensors_map_str.pop_back();
 
   for (const std::string& arg : input_args_str_list) {
     dygraph_function_args_str += arg;
@@ -1321,16 +1352,17 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   if (dygraph_function_args_str.size() > 0)
     dygraph_function_args_str.pop_back();
 
-  const char* FWD_INS_MAP_TEMPLATE =
-      "  std::map<std::string, "
-      "std::vector<std::shared_ptr<egr::EagerVariable>>> ins = { "
-      "%s };\n";
-  std::string ins_map_str =
-      paddle::string::Sprintf(FWD_INS_MAP_TEMPLATE, ins_contents_str);
-  generated_function_body += ins_map_str;
-  generated_function_body += "\n";
+  for (const std::string& arg : amp_function_call_args_str_list) {
+    amp_function_call_args_str += arg;
+    amp_function_call_args_str += ",";
+  }
+  if (amp_function_call_args_str.size() > 0)
+    amp_function_call_args_str.pop_back();
 
   // Handle Dispensable Inputs
+  std::string dispensable_ins_contents_str = "";
+  std::string dispensable_amp_name_tensors_map_str = "";
+  std::string dispensable_amp_auto_cast_str = "";
   std::set<std::string> input_names;
   for (const proto::OpProto::Var& input : in_vars) {
     const std::string& input_name = input.name();
@@ -1340,14 +1372,43 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         const char* FWD_INS_CONTENT_TEMPLATE =
             "  if(%s.size() > 0) "
             "ins[\"%s\"] = egr::EagerUtils::TrySyncToVars(%s);\n";
-        generated_function_body += paddle::string::Sprintf(
+        dispensable_ins_contents_str += paddle::string::Sprintf(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
+        // dispensable_amp_name_tensors_map_str
+        const char* FWD_AMP_NAME_TENSORS_MAP_TEMPLATE =
+            "    if(%s.size() > 0) "
+            "amp_name_tensors_map[\"%s\"] = %s;\n";
+        dispensable_amp_name_tensors_map_str +=
+            paddle::string::Sprintf(FWD_AMP_NAME_TENSORS_MAP_TEMPLATE,
+                                    input_name, input_name, input_name);
+        // dispensable_amp_auto_cast_str
+        const char* DISPENSABLE_AMP_AUTO_CAST_TEMPLATE =
+            "    auto NEW_%s = ((%s.size() > 0) ? egr::AmpAutoCasts(\"%s\", "
+            "%s, amp_dst_dtype, \"%s\") : %s);\n";
+        dispensable_amp_auto_cast_str += paddle::string::Sprintf(
+            DISPENSABLE_AMP_AUTO_CAST_TEMPLATE, input_name, input_name,
+            input_name, input_name, op_type, input_name);
       } else {
+        // dispensable_ins_contents_str
         const char* FWD_INS_CONTENT_TEMPLATE =
             "  if(%s.initialized()) "
             "ins[\"%s\"] = egr::EagerUtils::TrySyncToVars(%s);\n";
-        generated_function_body += paddle::string::Sprintf(
+        dispensable_ins_contents_str += paddle::string::Sprintf(
             FWD_INS_CONTENT_TEMPLATE, input_name, input_name, input_name);
+        // dispensable_amp_name_tensors_map_str
+        const char* FWD_AMP_NAME_TENSORS_MAP_TEMPLATE =
+            "    if(%s.initialized()) "
+            "amp_name_tensors_map[\"%s\"] = { %s };\n";
+        dispensable_amp_name_tensors_map_str +=
+            paddle::string::Sprintf(FWD_AMP_NAME_TENSORS_MAP_TEMPLATE,
+                                    input_name, input_name, input_name);
+        // dispensable_amp_auto_cast_str
+        const char* DISPENSABLE_AMP_AUTO_CAST_TEMPLATE =
+            "    auto NEW_%s = ((%s.initialized()) ? egr::AmpAutoCast(\"%s\", "
+            "%s, amp_dst_dtype, \"%s\") : %s);\n";
+        dispensable_amp_auto_cast_str += paddle::string::Sprintf(
+            DISPENSABLE_AMP_AUTO_CAST_TEMPLATE, input_name, input_name,
+            input_name, input_name, op_type, input_name);
       }
     }
   }
@@ -1371,6 +1432,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
+        amp_function_call_args_str += (", " + output_var_name);
 
         core_ops_args_type_info[op_type].push_back("list");
       } else {
@@ -1378,6 +1440,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, output_var_name);
         dygraph_function_args_str += arg_str;
+        amp_function_call_args_str += (", " + output_var_name);
 
         core_ops_args_type_info[op_type].push_back("tensor");
       }
@@ -1406,6 +1469,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         std::string arg_str =
             paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, outnum);
         dygraph_function_args_str += arg_str;
+        amp_function_call_args_str += (", " + outnum);
         const char* FWD_OUTS_CONTENT_TEMPLATE =
             "{ \"%s\", egr::EagerUtils::CreateVars(%s) },";
         outs_contents_str += paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE,
@@ -1425,6 +1489,77 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   if (outs_contents_str.size() > 0)
     outs_contents_str.pop_back();  // Remove trailing ","
 
+  /* ------ amp logic generation ------ */
+  if (op_type != "cast") {
+    VLOG(6) << "Generating Dygraph Forward AMP";
+    const char* AMP_LOGIC_CONTEXT =
+        "  if (egr::Controller::Instance().GetAMPLevel() != "
+        "paddle::imperative::AmpLevel::O0) {\n"
+        "    VLOG(5) << \"Check and Prepare For AMP\";\n"
+        "  \n"
+        "%s\n"
+        "  }\n";
+    std::string amp_logic_str = "";
+    if (in_vars.size() != 0) {
+      // amp_name_tensors_map
+      const char* AMP_NAME_TENSORS_MAP_TEMPLATE =
+          "    std::map<std::string, "
+          "std::vector<paddle::experimental::Tensor>> amp_name_tensors_map = { "
+          "%s };\n";
+      std::string amp_name_tensors_map = paddle::string::Sprintf(
+          AMP_NAME_TENSORS_MAP_TEMPLATE, amp_name_tensors_map_str);
+      amp_name_tensors_map += dispensable_amp_name_tensors_map_str;
+      amp_logic_str += amp_name_tensors_map;
+      amp_logic_str += "\n";
+      // GetAmpDestDtype
+      const char* GET_AMP_GET_DST_DTYPE_CONTEXT =
+          "    auto amp_dst_dtype = "
+          "egr::GetAmpDestDtype(egr::Controller::Instance().GetCurrentTracer()-"
+          ">GetAmpDtype(), "
+          "egr::Controller::Instance().GetAMPLevel(), \"%s\", "
+          "amp_name_tensors_map);\n";
+      amp_logic_str +=
+          paddle::string::Sprintf(GET_AMP_GET_DST_DTYPE_CONTEXT, op_type);
+      amp_logic_str += "\n";
+      // auto_cast
+      amp_logic_str += amp_auto_cast_str;
+      amp_logic_str += dispensable_amp_auto_cast_str;
+      amp_logic_str += "\n";
+    }
+    // call back
+    const char* CALL_BACK_TEMPLATE =
+        "    {\n"
+        "      paddle::imperative::AutoCastGuard "
+        "guard(egr::Controller::Instance().GetCurrentTracer(), "
+        "paddle::imperative::AmpLevel::O0);\n"
+        "      return %s_dygraph_function(%s);\n"
+        "    }";
+    amp_function_call_args_str += ", attr_map ";
+    if (amp_function_call_args_str.size() > 0) {
+      auto iter = amp_function_call_args_str.begin();
+      if ((*iter) == ',') amp_function_call_args_str.erase(iter);
+    }
+    std::string call_back_str = paddle::string::Sprintf(
+        CALL_BACK_TEMPLATE, op_type, amp_function_call_args_str);
+    amp_logic_str += call_back_str;
+    amp_logic_str += "\n";
+    // amp logic insert
+    std::string amp_context =
+        paddle::string::Sprintf(AMP_LOGIC_CONTEXT, amp_logic_str);
+    generated_function_body += amp_context;
+    generated_function_body += "\n";
+  }
+  // forward ins insert
+  const char* FWD_INS_MAP_TEMPLATE =
+      "  std::map<std::string, "
+      "std::vector<std::shared_ptr<egr::EagerVariable>>> ins = { "
+      "%s };\n";
+  std::string ins_map_str =
+      paddle::string::Sprintf(FWD_INS_MAP_TEMPLATE, ins_contents_str);
+  ins_map_str += dispensable_ins_contents_str;
+  generated_function_body += ins_map_str;
+  generated_function_body += "\n";
+  // forward outs insert
   const char* FWD_OUTS_MAP_TEMPLATE =
       "  std::map<std::string, "
       "std::vector<std::shared_ptr<egr::EagerVariable>>> outs = { "
@@ -1842,6 +1977,15 @@ static std::string GenerateSingleOpBase(
   const char* ATTRS_TEMPLATE = "  auto& %s = this->attr_map_;\n";
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
+  if (fwd_op_type == "cast") {
+    // swtich in out dtype
+    const char* CAST_GRAD =
+        "  auto temp_type = %s[\"in_dtype\"];\n"
+        "  %s[\"in_dtype\"] = %s[\"out_dtype\"];\n"
+        "  %s[\"out_dtype\"] = temp_type;\n";
+    grad_attrs_str += paddle::string::Sprintf(CAST_GRAD, attrs_name, attrs_name,
+                                              attrs_name, attrs_name);
+  }
   for (const auto& iter : grad_attrs) {
     if (IgnoreGradAttribute(fwd_op_type, iter.first)) continue;
     std::pair<std::string, std::string> type_val =
@@ -2241,7 +2385,8 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "dygraph_forward_api.h\"\n"
       "#include "
       "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n\n"
-      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n";
+      "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
+      "#include \"paddle/fluid/eager/amp_utils.h\"\n";
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
