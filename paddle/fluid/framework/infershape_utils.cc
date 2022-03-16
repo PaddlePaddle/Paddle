@@ -136,7 +136,8 @@ class CompatMetaTensor : public phi::MetaTensor {
         return phi::make_ddim({static_cast<int64_t>(tensor_array.size())});
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
-            "Currently, only can get dims from DenseTensor or SelectedRows."));
+            "Currently, only can get dims from DenseTensor or SelectedRows or "
+            "DenseTensorArray."));
       }
     } else {
       auto* var = BOOST_GET_CONST(VarDesc*, var_);
@@ -170,7 +171,19 @@ class CompatMetaTensor : public phi::MetaTensor {
   DataLayout layout() const override {
     if (is_runtime_) {
       auto* var = BOOST_GET_CONST(Variable*, var_);
-      return var->Get<LoDTensor>().layout();
+      if (var->IsType<phi::DenseTensor>()) {
+        return var->Get<phi::DenseTensor>().layout();
+      } else if (var->IsType<phi::SelectedRows>()) {
+        return var->Get<phi::SelectedRows>().layout();
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // NOTE(chenweihang): do nothing
+        // Unsupported get layout from LoDTensorArray now
+        return phi::DataLayout::UNDEFINED;
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Currently, only can get layout from DenseTensor or "
+            "SelectedRows."));
+      }
     } else {
       // NOTE(chenweihang): do nothing
       // Unsupported get layout for VarDesc now
@@ -232,10 +245,20 @@ class CompatMetaTensor : public phi::MetaTensor {
   void set_layout(DataLayout layout) override {
     if (is_runtime_) {
       auto* var = BOOST_GET(Variable*, var_);
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(
-          static_cast<phi::DenseTensor*>(tensor))
-          ->layout = layout;
+      if (var->IsType<phi::DenseTensor>()) {
+        auto* tensor = var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      } else if (var->IsType<phi::SelectedRows>()) {
+        auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
+        phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+      } else if (var->IsType<framework::LoDTensorArray>()) {
+        // NOTE(chenweihang): do nothing
+        // Unsupported set dtype for LoDTensorArray now
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Currently, only can set layout from DenseTensor or "
+            "SelectedRows."));
+      }
     } else {
       // NOTE(chenweihang): do nothing
       // Unsupported set layout for VarDesc now
