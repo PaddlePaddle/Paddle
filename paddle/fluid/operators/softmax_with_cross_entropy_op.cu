@@ -1395,13 +1395,20 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
     const Tensor* softmax = context.Input<Tensor>("Softmax");
+    auto stream = context.cuda_device_context().stream();
+    auto ignore_index = context.Attr<int>("ignore_index");
+    auto use_softmax = context.Attr<bool>("use_softmax");
+
+    T* logit_grad_data = nullptr;
     bool copy_flag = (logit_grad != softmax && (!use_softmax || soft_label));
     if (copy_flag) {
       framework::TensorCopy(*softmax, context.GetPlace(),
                             context.device_context(), logit_grad);
+      logit_grad_data = logit_grad->template data<T>();
+    } else {
+      logit_grad_data =
+          logit_grad->template mutable_data<T>(context.GetPlace());
     }
-    T* logit_grad_data =
-        logit_grad->template mutable_data<T>(context.GetPlace());
 
     const int rank = logit_grad->dims().size();
     const int axis = phi::funcs::CanonicalAxis(context.Attr<int>("axis"), rank);
@@ -1416,9 +1423,6 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 #else
     int block = 512;
 #endif
-    auto stream = context.cuda_device_context().stream();
-    auto ignore_index = context.Attr<int>("ignore_index");
-    auto use_softmax = context.Attr<bool>("use_softmax");
 
     // do not with softmax op, and input is softmax
     if (!use_softmax) {
