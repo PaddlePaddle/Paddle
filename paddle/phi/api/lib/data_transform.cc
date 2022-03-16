@@ -167,10 +167,7 @@ phi::DenseTensor TransformData(const phi::DenseTensor& tensor,
 
   if (NeedTransformPlace(
           out.place(), target_args_def.backend, transform_flag)) {
-    phi::DenseTensor result(
-        phi::make_intrusive<paddle::experimental::SharedStorage>(
-            phi::TransToPhiPlace(target_args_def.backend)),
-        {out.dtype(), out.dims(), out.layout()});
+    phi::DenseTensor result;
     framework::TransDataDevice(
         out, phi::TransToPhiPlace(target_args_def.backend), &result);
     out = result;

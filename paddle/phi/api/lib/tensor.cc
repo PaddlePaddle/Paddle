@@ -289,10 +289,14 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   }
 }
 
-std::shared_ptr<phi::TensorBase> Tensor::impl() const { return impl_; }
+const std::shared_ptr<phi::TensorBase> &Tensor::impl() const { return impl_; }
 
 void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
   impl_ = impl;
+}
+
+void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
+  impl_ = std::move(impl);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

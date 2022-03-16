@@ -95,7 +95,7 @@ paddle::optional<phi::MetaTensor> MakeMetaTensor(
 /* ------------------ for output ----------------------- */
 
 phi::DenseTensor* SetKernelOutput(Backend backend, Tensor* out) {
-  if (!out->initialized()) {
+  if (out->impl() == nullptr) {
     out->set_impl(std::make_shared<phi::DenseTensor>());
   }
   return static_cast<phi::DenseTensor*>(out->impl().get());
