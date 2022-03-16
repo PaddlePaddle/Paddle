@@ -58,7 +58,7 @@ class ROIPoolOp : public framework::OperatorWithKernel {
             "%d-dimensional LoDTensor",
             rois_dims.size()));
     PADDLE_ENFORCE_EQ(
-        rois_dims[1], kROISize,
+        rois_dims[1], phi::kROISize,
         platform::errors::InvalidArgument(
             "ROIs should be a 2-D LoDTensor with shape (num_rois, 4)"
             "given as [[x1, y1, x2, y2], ...]. But the second dimension of  "
