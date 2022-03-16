@@ -155,6 +155,7 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Cosh, CudaCoshGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Asinh, CudaAsinhGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Acosh, CudaAcoshGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, CudaAtanhGradFunctor);
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DepOut(Exp, CudaExpGradFunctor);
 
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(LeakyRelu,
                                                CudaLeakyReluGradFunctor,
@@ -234,3 +235,12 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_double_grad,
                                    LeakyReluDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(thresholded_relu_grad,
                                    ThresholdedReluGradKernel)
+
+PD_REGISTER_KERNEL(exp_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ExpGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

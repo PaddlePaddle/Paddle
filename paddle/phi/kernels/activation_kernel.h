@@ -37,6 +37,8 @@ DECLARE_ACTIVATION_KERNEL(Acosh)
 DECLARE_ACTIVATION_KERNEL(Atanh)
 DECLARE_ACTIVATION_KERNEL(Relu)
 DECLARE_ACTIVATION_KERNEL(Tanh)
+DECLARE_ACTIVATION_KERNEL(Exp)
+DECLARE_ACTIVATION_KERNEL(Expm1)
 
 template <typename T, typename Context>
 void BReluKernel(const Context& dev_ctx,
@@ -56,5 +58,17 @@ void ThresholdedReluKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            float threshold,
                            DenseTensor* out);
+
+template <typename T, typename Context>
+void LogitKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 float eps,
+                 DenseTensor* out);
+
+template <typename T, typename Context>
+void MishKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                float threshold,
+                DenseTensor* out);
 
 }  // namespace phi

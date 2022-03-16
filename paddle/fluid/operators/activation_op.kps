@@ -193,14 +193,6 @@ struct CudaZeroGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // reciprocal(x) = 1 / x
-  __device__ __forceinline__ T operator()(const T x) const { return one / x; }
-};
-
-template <typename T>
 struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
   // dx = -dout * out^2
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
@@ -209,40 +201,6 @@ struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
-struct CudaExpFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-
-  // exp(x) = exp(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(exp(x));
-  }
-};
-
-template <typename T>
-struct CudaExpGradFunctor : public BaseActivationFunctor<T> {
-  // dx = dout * out
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return dout * out;
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
-struct CudaExpm1Functor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-
-  // expm1(x) = expm1(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(expm1(x));
   }
 };
 
@@ -280,12 +238,6 @@ struct CudaLogGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaSquareFunctor : public BaseActivationFunctor<T> {
-  // square(x) = x * x
-  __device__ __forceinline__ T operator()(const T x) const { return x * x; }
-};
-
-template <typename T>
 struct CudaSquareGradFunctor : public BaseActivationFunctor<T> {
   T two = static_cast<T>(2.0f);
 
@@ -295,17 +247,6 @@ struct CudaSquareGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct CudaSqrtFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-
-  // sqrt(x) = sqrt(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(sqrt(x));
-  }
 };
 
 template <typename T>
@@ -319,17 +260,6 @@ struct CudaSqrtGradFunctor : public BaseActivationFunctor<T> {
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
-struct CudaRsqrtFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-
-  // rsqrt(x) = rsqrt(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(rsqrt(x));
   }
 };
 
@@ -467,25 +397,6 @@ struct CudaSoftReluGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaSTanhFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  float scale_a;
-  float scale_b;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"scale_a", &scale_a}, {"scale_b", &scale_b}};
-  }
-
-  // stanh(x) = b * tanh(a * x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType a = static_cast<MPType>(scale_a);
-    MPType b = static_cast<MPType>(scale_b);
-    return static_cast<T>(b * tanh(a * x));
-  }
-};
-
-template <typename T>
 struct CudaSTanhGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
@@ -511,27 +422,6 @@ struct CudaSTanhGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaSoftplusFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
-  float beta;
-  float threshold;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"beta", &beta}, {"threshold", &threshold}};
-  }
-
-  // softplus(x) = beta * x > threshold ? x : log(1 + exp(beta * x)) / beta
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType b = static_cast<MPType>(beta);
-    MPType t = static_cast<MPType>(threshold);
-    MPType x_beta = x * beta;
-    return static_cast<T>(x_beta > t ? x : log(one + exp(x_beta)) / b);
-  }
-};
-
-template <typename T>
 struct CudaSoftplusGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename details::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
@@ -554,16 +444,6 @@ struct CudaSoftplusGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
-  T one = static_cast<T>(1.0f);
-
-  // softsign(x) = x / (1 + abs(x))
-  __device__ __forceinline__ T operator()(const T x) const {
-    return x / (one + abs(x));
-  }
 };
 
 template <typename T>
@@ -760,27 +640,6 @@ struct CudaSwishGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct CudaMishFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
-  float threshold;
-
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-
-  // mish(x) = x * tanh(softplus(x))
-  // softplus(x) = x, if x > threshold
-  //             = ln(1 + exp(x)), otherwise
-  // Inputs: args[0], the input x
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType sp = (x > static_cast<MPType>(threshold)) ? x : log(one + exp(x));
-    return static_cast<T>(x * tanh(sp));
-  }
 };
 
 template <typename T>
@@ -1292,11 +1151,6 @@ REGISTER_OP_CUDA_KERNEL(
 
 /* ==========================   logit register  ============================ */
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    logit, ops::LogitKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::LogitKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::LogitKernel<paddle::platform::CUDADeviceContext,
-                     paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     logit_grad,
     ops::LogitGradKernel<paddle::platform::CUDADeviceContext, float>,

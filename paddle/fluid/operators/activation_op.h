@@ -273,6 +273,7 @@ USE_PHI_FUNCTOR(Asinh)
 USE_PHI_FUNCTOR(Acosh)
 USE_PHI_FUNCTOR(Atanh)
 USE_PHI_FUNCTOR(Tanh)
+USE_PHI_FUNCTOR(Exp)
 USE_PHI_DOUBLE_GRAD_FUNCTOR(Tanh)
 USE_PHI_TRIPLE_GRAD_FUNCTOR(Tanh)
 USE_PHI_FUNCTOR(BRelu)
@@ -455,37 +456,6 @@ struct LogSigmoidGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-// exp(x) = e^x
-template <typename T>
-struct ExpFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.exp();
-  }
-};
-
-template <typename T>
-struct ExpGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * out;
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-// expm1(x) = e^x - 1
-template <typename T>
-struct Expm1Functor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.expm1();
-  }
-};
-
 template <typename T>
 struct Expm1GradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
@@ -605,15 +575,6 @@ struct SoftShrinkGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-// sqrt(x) = x^(1/2)
-template <typename T>
-struct SqrtFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.sqrt();
-  }
-};
-
 template <typename T>
 struct SqrtGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
@@ -624,15 +585,6 @@ struct SqrtGradFunctor : public BaseActivationFunctor<T> {
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-// rsqrt(x) = x^(-1/2)
-template <typename T>
-struct RsqrtFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.rsqrt();
   }
 };
 
@@ -686,15 +638,6 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.round();
-  }
-};
-
-// reciprocal(x) = 1 / x
-template <typename T>
-struct ReciprocalFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = static_cast<T>(1) / x;
   }
 };
 
@@ -793,15 +736,6 @@ struct Log1pGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-// square(x) = x^2
-template <typename T>
-struct SquareFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.square();
-  }
-};
-
 template <typename T>
 struct SquareGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
@@ -894,27 +828,6 @@ struct HardSwishGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-// For numerical stability, using the following formula instead of softplus(x) =
-// log(1 + exp(x))
-// softplus(x) = log(1 + exp(beta * x)) / beta when beta * x <= threshold(beta =
-// 1, threshold = 20 by default), otherwise x
-template <typename T>
-struct SoftplusFunctor : public BaseActivationFunctor<T> {
-  float beta;
-  float threshold;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"beta", &beta}, {"threshold", &threshold}};
-  }
-
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) {
-    auto x_beta = static_cast<T>(beta) * x;
-    out.device(d) = (x_beta > static_cast<T>(threshold))
-                        .select(x, (static_cast<T>(1) + x_beta.exp()).log() /
-                                       static_cast<T>(beta));
-  }
-};
-
 // For numerical stability, using the following formula instead of
 // d(softplus(x))/dx = 1 / (1 + exp(-x))
 // d(softplus(x))/dx = 1 / (1 + exp(-beta * x)) when beta * x <= threshold(beta
@@ -939,24 +852,6 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
-// mish(x) = x * tanh(softplus(x))
-// softplus(x) = x, if x > threshold
-//             = ln(1 + exp(x)), otherwise
-template <typename T>
-struct MishFunctor : public BaseActivationFunctor<T> {
-  float threshold;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
-
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) {
-    auto sp = (x > static_cast<T>(threshold))
-                  .select(x, (static_cast<T>(1) + x.exp()).log());
-    out.device(d) = x * sp.tanh();
-  }
-};
-
 // dx = dout * (tanh(sp) + x * (1 - tanh(sp) ** 2) * (1 - exp(-sp)))
 // sp = softplus(x)
 template <typename T>
@@ -977,15 +872,6 @@ struct MishGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-// softsign(x) = x / (1 + |x|)
-template <typename T>
-struct SoftsignFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) {
-    out.device(d) = x / (static_cast<T>(1) + x.abs());
-  }
 };
 
 // d(softsign(x))/dx = 1 / (1 + |x|)^2
@@ -1199,24 +1085,6 @@ struct PowGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct LogitFunctor {
-  template <typename Device, typename X, typename Out, typename P>
-  void operator()(Device d, X x, Out out, P p, float eps) const {
-    // logit(x) = ln(x/(1-x))
-    auto tmp_x =
-        (x.cwiseMin(static_cast<T>(1.0 - eps))).cwiseMax(static_cast<T>(eps));
-
-    if (!eps) {
-      out.device(d) = (x < static_cast<T>(0.0) || x > static_cast<T>(1.0))
-                          .select(p.constant(static_cast<T>(NAN)),
-                                  (tmp_x / (static_cast<T>(1) - tmp_x)).log());
-    } else {
-      out.device(d) = (tmp_x / (static_cast<T>(1) - tmp_x)).log();
-    }
-  }
-};
-
-template <typename T>
 struct LogitGradFunctor {
   template <typename Device, typename X, typename dOut, typename dX, typename P>
   void operator()(Device d, X x, dOut dout, dX dx, P p, float eps) const {
@@ -1225,21 +1093,6 @@ struct LogitGradFunctor {
         (x < static_cast<T>(eps) || x > static_cast<T>(1.0 - eps))
             .select(p.constant(static_cast<T>(0)),
                     dout * (static_cast<T>(1) / ((static_cast<T>(1) - x) * x)));
-  }
-};
-
-template <typename T>
-struct STanhFunctor : public BaseActivationFunctor<T> {
-  float scale_a;
-  float scale_b;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"scale_a", &scale_a}, {"scale_b", &scale_b}};
-  }
-
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) =
-        static_cast<T>(scale_b) * (static_cast<T>(scale_a) * x).tanh();
   }
 };
 
@@ -2072,26 +1925,6 @@ class PowGradKernel
       }
     }
     functor(*place, x, out, dout, dx);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class LogitKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* out = context.Output<framework::Tensor>("Out");
-    auto* in = context.Input<framework::Tensor>("X");
-    auto eps = context.Attr<float>("eps");
-    out->mutable_data<T>(in->place());
-
-    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    auto eigen_p = framework::EigenVector<T>::Flatten(*out);
-
-    LogitFunctor<T> functor;
-    functor(place, eigen_in, eigen_out, eigen_p, eps);
   }
 };
 

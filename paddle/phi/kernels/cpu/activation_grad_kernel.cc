@@ -104,6 +104,7 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepX(Atanh, funcs::AtanhGradFunctor);
 
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepOut(Relu, funcs::ReluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepOut(Tanh, funcs::TanhGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DepOut(Exp, funcs::ExpGradFunctor);
 
 DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(LeakyRelu,
                                                funcs::LeakyReluGradFunctor,
@@ -159,3 +160,12 @@ PD_REGISTER_KERNEL(tanh_triple_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(exp_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ExpGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

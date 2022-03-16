@@ -40,16 +40,16 @@ void ClipByNormKernel<phi::dtype::float16, phi::GPUContext>(
   DenseTensor tmp;
   tmp.Resize({1});
   dev_ctx.template Alloc<float>(&tmp);
-  kernels::TensorReduceImpl<dtype::float16,
-                            float,
-                            kps::AddFunctor,
-                            kps::SquareFunctor<dtype::float16, float>>(
+
+  phi::funcs::ReduceKernel<dtype::float16,
+                           float,
+                           kps::AddFunctor,
+                           kps::SquareFunctor<dtype::float16, float>>(
       dev_ctx,
       x_in,
       &tmp,
       kps::SquareFunctor<dtype::float16, float>(),
-      reduce_dims,
-      dev_ctx.stream());
+      reduce_dims);
 
   auto tmp_eigen = EigenVector<float>::Flatten(tmp);
   auto x_norm = tmp_eigen.sqrt();

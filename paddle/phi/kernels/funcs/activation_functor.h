@@ -100,6 +100,15 @@ struct SinFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// reciprocal(x) = 1 / x
+template <typename T>
+struct ReciprocalFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = static_cast<T>(1) / x;
+  }
+};
+
 // cosine'(x) = -sin(x)
 template <typename T>
 struct CosGradFunctor : public BaseActivationFunctor<T> {
@@ -121,6 +130,57 @@ struct CosFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.unaryExpr(Cosine<T>());
+  }
+};
+
+template <typename T>
+struct LogitFunctor {
+  template <typename Device, typename X, typename Out, typename P>
+  void operator()(Device d, X x, Out out, P p, float eps) const {
+    // logit(x) = ln(x/(1-x))
+    auto tmp_x =
+        (x.cwiseMin(static_cast<T>(1.0 - eps))).cwiseMax(static_cast<T>(eps));
+
+    if (!eps) {
+      out.device(d) = (x < static_cast<T>(0.0) || x > static_cast<T>(1.0))
+                          .select(p.constant(static_cast<T>(NAN)),
+                                  (tmp_x / (static_cast<T>(1) - tmp_x)).log());
+    } else {
+      out.device(d) = (tmp_x / (static_cast<T>(1) - tmp_x)).log();
+    }
+  }
+};
+
+// mish(x) = x * tanh(softplus(x))
+// softplus(x) = x, if x > threshold
+//             = ln(1 + exp(x)), otherwise
+template <typename T>
+struct MishFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) {
+    auto sp = (x > static_cast<T>(threshold))
+                  .select(x, (static_cast<T>(1) + x.exp()).log());
+    out.device(d) = x * sp.tanh();
+  }
+};
+
+template <typename T>
+struct STanhFunctor : public BaseActivationFunctor<T> {
+  float scale_a;
+  float scale_b;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"scale_a", &scale_a}, {"scale_b", &scale_b}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) =
+        static_cast<T>(scale_b) * (static_cast<T>(scale_a) * x).tanh();
   }
 };
 
@@ -149,6 +209,55 @@ struct TanGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+// square(x) = x^2
+template <typename T>
+struct SquareFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.square();
+  }
+};
+
+// sqrt(x) = x^(1/2)
+template <typename T>
+struct SqrtFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.sqrt();
+  }
+};
+
+// rsqrt(x) = x^(-1/2)
+template <typename T>
+struct RsqrtFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.rsqrt();
+  }
+};
+
+// For numerical stability, using the following formula instead of softplus(x) =
+// log(1 + exp(x))
+// softplus(x) = log(1 + exp(beta * x)) / beta when beta * x <= threshold(beta =
+// 1, threshold = 20 by default), otherwise x
+template <typename T>
+struct SoftplusFunctor : public BaseActivationFunctor<T> {
+  float beta;
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) {
+    auto x_beta = static_cast<T>(beta) * x;
+    out.device(d) = (x_beta > static_cast<T>(threshold))
+                        .select(x,
+                                (static_cast<T>(1) + x_beta.exp()).log() /
+                                    static_cast<T>(beta));
+  }
 };
 
 // Tangent(x) = tan(x)
@@ -452,6 +561,41 @@ struct AtanhGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+// exp functor
+// exp(x) = e^x
+template <typename T>
+struct ExpFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.exp();
+  }
+};
+
+template <typename T>
+struct ExpGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+// expm1(x) = e^x - 1
+template <typename T>
+struct Expm1Functor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.expm1();
+  }
+};
+
 // relu(x) = max(x, 0)
 template <typename T>
 struct ReluCPUFunctor : public BaseActivationFunctor<T> {
@@ -672,6 +816,15 @@ struct BReluGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+// softsign(x) = x / (1 + |x|)
+template <typename T>
+struct SoftsignFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) {
+    out.device(d) = x / (static_cast<T>(1) + x.abs());
+  }
+};
+
 template <typename T>
 struct LeakyReluFunctor : public BaseActivationFunctor<T> {
   float alpha;
@@ -828,6 +981,54 @@ struct CudaCosGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaExpFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // exp(x) = exp(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(exp(x));
+  }
+};
+
+template <typename T>
+struct CudaSquareFunctor : public BaseActivationFunctor<T> {
+  // square(x) = x * x
+  __device__ __forceinline__ T operator()(const T x) const { return x * x; }
+};
+
+template <typename T>
+struct CudaExpGradFunctor : public BaseActivationFunctor<T> {
+  // dx = dout * out
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    return dout * out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // reciprocal(x) = 1 / x
+  __device__ __forceinline__ T operator()(const T x) const { return one / x; }
+};
+
+template <typename T>
+struct CudaExpm1Functor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // expm1(x) = expm1(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(expm1(x));
+  }
+};
+
+template <typename T>
 struct CudaSinFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
@@ -835,6 +1036,16 @@ struct CudaSinFunctor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
     return static_cast<T>(sin(x));
+  }
+};
+
+template <typename T>
+struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // softsign(x) = x / (1 + abs(x))
+  __device__ __forceinline__ T operator()(const T x) const {
+    return x / (one + abs(x));
   }
 };
 
@@ -1050,6 +1261,46 @@ struct CudaAtanhFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaSTanhFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  float scale_a;
+  float scale_b;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"scale_a", &scale_a}, {"scale_b", &scale_b}};
+  }
+
+  // stanh(x) = b * tanh(a * x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType a = static_cast<MPType>(scale_a);
+    MPType b = static_cast<MPType>(scale_b);
+    return static_cast<T>(b * tanh(a * x));
+  }
+};
+
+template <typename T>
+struct CudaSoftplusFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+  float beta;
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+
+  // softplus(x) = beta * x > threshold ? x : log(1 + exp(beta * x)) / beta
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType b = static_cast<MPType>(beta);
+    MPType t = static_cast<MPType>(threshold);
+    MPType x_beta = x * beta;
+    return static_cast<T>(x_beta > t ? x : log(one + exp(x_beta)) / b);
+  }
+};
+
+template <typename T>
 struct CudaAtanhGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
@@ -1062,6 +1313,28 @@ struct CudaAtanhGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSqrtFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // sqrt(x) = sqrt(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(sqrt(x));
+  }
+};
+
+template <typename T>
+struct CudaRsqrtFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // rsqrt(x) = rsqrt(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(rsqrt(x));
+  }
 };
 
 template <typename T>
@@ -1128,6 +1401,27 @@ struct CudaBReluFunctor : public BaseActivationFunctor<T> {
     T temp_max = x > t_min_cast ? x : t_min_cast;
     T temp_min = temp_max < t_max_cast ? temp_max : t_max_cast;
     return temp_min;
+  }
+};
+
+template <typename T>
+struct CudaMishFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // mish(x) = x * tanh(softplus(x))
+  // softplus(x) = x, if x > threshold
+  //             = ln(1 + exp(x)), otherwise
+  // Inputs: args[0], the input x
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    MPType sp = (x > static_cast<MPType>(threshold)) ? x : log(one + exp(x));
+    return static_cast<T>(x * tanh(sp));
   }
 };
 

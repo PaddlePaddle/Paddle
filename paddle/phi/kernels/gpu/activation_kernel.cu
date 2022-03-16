@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
+#include "paddle/phi/kernels/impl/activation_impl.h"
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 
@@ -88,13 +89,27 @@ DEFINE_GPU_ACTIVATION_KERNEL(Acosh, funcs::CudaAcoshFunctor<T>)
 DEFINE_GPU_ACTIVATION_KERNEL(Atanh, funcs::CudaAtanhFunctor<T>)
 DEFINE_GPU_ACTIVATION_KERNEL(Relu, funcs::CudaReluFunctor<T>)
 DEFINE_GPU_ACTIVATION_KERNEL(Tanh, funcs::CudaTanhFunctor<T>)
+DEFINE_GPU_ACTIVATION_KERNEL(Exp, funcs::CudaExpFunctor<T>)
+DEFINE_GPU_ACTIVATION_KERNEL(Expm1, funcs::CudaExpm1Functor<T>)
+DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, funcs::CudaReciprocalFunctor<T>)
+DEFINE_GPU_ACTIVATION_KERNEL(Square, funcs::CudaSquareFunctor<T>)
+DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, funcs::CudaSqrtFunctor<T>)
+DEFINE_GPU_ACTIVATION_KERNEL(Rsqrt, funcs::CudaRsqrtFunctor<T>)
+DEFINE_GPU_ACTIVATION_KERNEL(Softsign, funcs::CudaSoftsignFunctor<T>)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      CudaThresholdedReluFunctor,
                                      threshold)
 
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
+
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, CudaBReluFunctor, t_min, t_max)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Stanh, CudaSTanhFunctor, scale_a, scale_b)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
+                                     CudaSoftplusFunctor,
+                                     beta,
+                                     threshold)
 
 }  // namespace phi
 
@@ -142,3 +157,23 @@ PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(brelu, BReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(stanh, StanhKernel)
+PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
+PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
+PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)
+PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
+PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
+
+PD_REGISTER_KERNEL(
+    exp, GPU, ALL_LAYOUT, phi::ExpKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(expm1,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Expm1Kernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(logit, GPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    square, GPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}

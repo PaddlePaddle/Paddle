@@ -1651,9 +1651,6 @@ REGISTER_OPERATOR(logit, ops::LogitOp, ops::LogitOpMaker,
                   ops::LogitGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(logit_grad, ops::LogitGradOp);
 REGISTER_OP_CPU_KERNEL(
-    logit, ops::LogitKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LogitKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
     logit_grad, ops::LogitGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LogitGradKernel<paddle::platform::CPUDeviceContext, double>);
 /* ========================================================================== */
@@ -1830,24 +1827,6 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(exp_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(exp,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::ExpFunctor<float>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::ExpFunctor<double>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::ExpFunctor<int>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::ExpFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
-    exp_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                        ops::ExpGradFunctor<float>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::ExpGradFunctor<double>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::ExpGradFunctor<int>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::ExpGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================   expm1 register  ============================ */
@@ -1862,13 +1841,6 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(expm1_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(expm1,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::Expm1Functor<float>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::Expm1Functor<double>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::Expm1Functor<plat::float16>>);
 REGISTER_OP_CPU_KERNEL(
     expm1_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                                           ops::Expm1GradFunctor<float>>,
