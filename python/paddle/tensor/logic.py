@@ -503,6 +503,9 @@ def bitwise_and(x, y, out=None, name=None):
             res = paddle.bitwise_and(x, y)
             print(res)  # [0, 2, 1]
     """
+    if _in_eager_mode() and out == None:
+        return _C_ops.final_state_bitwise_and(x, y)
+
     return _bitwise_op(
         op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -529,6 +532,9 @@ def bitwise_or(x, y, out=None, name=None):
             res = paddle.bitwise_or(x, y)
             print(res)  # [-1, -1, -3]
     """
+    if _in_eager_mode() and out == None:
+        return _C_ops.final_state_bitwise_or(x, y)
+
     return _bitwise_op(
         op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -555,6 +561,9 @@ def bitwise_xor(x, y, out=None, name=None):
             res = paddle.bitwise_xor(x, y)
             print(res) # [-1, -3, -4]
     """
+    if _in_eager_mode() and out == None:
+        return _C_ops.final_state_bitwise_xor(x, y)
+
     return _bitwise_op(
         op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True)
 
@@ -580,7 +589,7 @@ def bitwise_not(x, out=None, name=None):
             print(res) # [4, 0, -2]
     """
     if _in_eager_mode() and out == None:
-        return _C_op.final_state_bitwise_not(x)
+        return _C_ops.final_state_bitwise_not(x)
     return _bitwise_op(
         op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False)
 
