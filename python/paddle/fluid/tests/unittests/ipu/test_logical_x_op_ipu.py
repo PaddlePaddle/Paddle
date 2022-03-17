@@ -22,7 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, ExecutionMod
 
 @unittest.skipIf(not paddle.is_compiled_with_ipu(),
                  "core is not compiled with IPU")
-class TestGreaterThan(IPUOpTest):
+class TestLogicalAnd(IPUOpTest):
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -30,10 +30,10 @@ class TestGreaterThan(IPUOpTest):
 
     @property
     def fp16_enabled(self):
-        return True
+        return False
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.greater_than
+        self.op = paddle.fluid.layers.logical_and
 
     def set_op_attrs(self):
         self.attrs = {}
@@ -50,15 +50,15 @@ class TestGreaterThan(IPUOpTest):
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
-                    dtype='float32')
+                    dtype=self.feed_dtype[0])
                 y = paddle.static.data(
                     name=self.feed_list[1],
                     shape=self.feed_shape[1],
-                    dtype='float32')
+                    dtype=self.feed_dtype[1])
 
                 out = self.op(x, y, **self.attrs)
 
-                fetch_list = [out.name]
+            fetch_list = [out.name]
 
             if exec_mode == ExecutionMode.CPU_FP32:
                 place = paddle.CPUPlace()
@@ -80,11 +80,7 @@ class TestGreaterThan(IPUOpTest):
             else:
                 program = main_prog
 
-            feed = self.feed_fp32
-            if exec_mode > ExecutionMode.IPU_FP32:
-                feed = self.feed_fp16
-
-            result = exe.run(program, feed=feed, fetch_list=fetch_list)
+            result = exe.run(program, feed=self.feed, fetch_list=fetch_list)
             return result[0]
 
     def run_test_base(self):
@@ -92,46 +88,22 @@ class TestGreaterThan(IPUOpTest):
         for mode in ExecutionMode:
             if mode > ExecutionMode.IPU_FP32 and not self.fp16_enabled:
                 break
-            output_dict[mode] = self._test_base(mode).flatten().astype(np.int32)
+            output_dict[mode] = self._test_base(mode).astype(np.int32)
 
-        self.check(output_dict)
+        self.check(output_dict, check_shape=True)
 
     def set_feed_attr(self):
-        self.feed_shape = [x.shape for x in self.feed_fp32.values()]
-        self.feed_list = list(self.feed_fp32.keys())
+        self.feed_shape = [x.shape for x in self.feed.values()]
+        self.feed_list = list(self.feed.keys())
+        self.feed_dtype = ['bool', 'bool']
 
     def set_data_feed0(self):
-        x = np.random.randn(3, 4, 5)
-        y = np.random.randn(3, 4, 5)
-        self.feed_fp32 = {
-            "x": x.astype(np.float32),
-            "y": y.astype(np.float32),
+        x = np.random.choice([True, False], size=(1, 3, 5, 5))
+        y = np.random.choice([True, False], size=(1, 3, 5, 5))
+        self.feed = {
+            "x": x.astype('bool'),
+            "y": y.astype('bool'),
         }
-        self.feed_fp16 = {
-            "x": x.astype(np.float16),
-            "y": y.astype(np.float16),
-        }
-        self.set_feed_attr()
-
-    def set_data_feed1(self):
-        x = np.ones([1, 10])
-        y = np.ones([10])
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
-        self.set_feed_attr()
-
-    def set_data_feed2(self):
-        x = np.ones([1, 10])
-        y = np.zeros([1, 10])
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
-        self.set_feed_attr()
-
-    def set_data_feed3(self):
-        x = np.zeros([1, 10])
-        y = np.ones([1, 10])
-        self.feed_fp32 = {"x": x.astype(np.float32), "y": y.astype(np.float32)}
-        self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
         self.set_feed_attr()
 
     def test_case0(self):
@@ -139,30 +111,10 @@ class TestGreaterThan(IPUOpTest):
         self.set_op_attrs()
         self.run_test_base()
 
-    def test_case1(self):
-        self.set_data_feed1()
-        self.set_op_attrs()
-        self.run_test_base()
 
-    def test_case2(self):
-        self.set_data_feed2()
-        self.set_op_attrs()
-        self.run_test_base()
-
-    def test_case3(self):
-        self.set_data_feed3()
-        self.set_op_attrs()
-        self.run_test_base()
-
-
-class TestLessThan(TestGreaterThan):
+class TestLogicalOr(TestLogicalAnd):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.less_than
-
-
-class TestLessThan(TestGreaterThan):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.equal
+        self.op = paddle.fluid.layers.logical_or
 
 
 if __name__ == "__main__":
