@@ -37,8 +37,8 @@ platform::Place ConvertExtPlaceToInnerPlace(PlaceType p) {
 PlaceType ConvertInnerPlaceToExtPlace(const platform::Place& p) {
   if (platform::is_cpu_place(p)) {
     return PlaceType::kCPU;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (platform::is_gpu_place(p)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     return PlaceType::kGPU;
 #endif
   } else {
