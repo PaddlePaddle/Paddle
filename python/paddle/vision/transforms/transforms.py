@@ -338,7 +338,6 @@ class ToTensor(BaseTransform):
     
             print(tensor.dtype)
             # paddle.float32
-
     """
 
     def __init__(self, data_format='CHW', keys=None):
