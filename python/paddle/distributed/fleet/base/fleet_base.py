@@ -1558,13 +1558,13 @@ class Fleet(object):
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
 
         if meta_optimizer:
-            print("before minimize program id:", id(loss.block.program))
+            #            print("before minimize program id:", id(loss.block.program))
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
-            print("after minimize program id:", id(loss.block.program))
+            #            print("after minimize program id:", id(loss.block.program))
 
             default_program = paddle.static.default_main_program()
-            print("default program id:", id(default_program))
+            #            print("default program id:", id(default_program))
 
             if id(default_program) != id(loss.block.program):
                 paddle.fluid.framework.switch_main_program(loss.block.program)

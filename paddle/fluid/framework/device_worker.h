@@ -361,10 +361,7 @@ class DownpourLiteWorker : public HogwildWorker {
  protected:
   std::shared_ptr<paddle::distributed::FleetWrapper> fleet_ptr_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
-  void FillSparseValue(size_t table_id);
   void PushGradients();
-  void CollectLabelInfo(size_t table_id);
-  void AdjustInsWeight();
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();

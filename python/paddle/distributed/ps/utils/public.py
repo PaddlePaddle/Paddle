@@ -1258,8 +1258,8 @@ def build_var_distributed(context):
     context["merged_variable_map"] = {}
     for origin_program in origin_programs:
         sparse_pairs, dense_pairs = get_param_grads(origin_program)
-        print("public build_var_distributed sparse_pairs:", sparse_pairs)
-        print("public build_var_distributed dense_pairs:", dense_pairs)
+        #        print("public build_var_distributed sparse_pairs:", sparse_pairs)
+        #        print("public build_var_distributed dense_pairs:", dense_pairs)
         origin_for_sparse = []
         origin_for_dense = []
         merged_sparse_pairs = []
