@@ -98,6 +98,14 @@ void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void KthvalueInferMeta(const MetaTensor& x,
+                       int k,
+                       int axis,
+                       bool keepdim,
+                       MetaTensor* out,
+                       MetaTensor* indices,
+                       MetaConfig = MetaConfig());
+
 void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& kernel_size,
                                const std::vector<int>& strides,
