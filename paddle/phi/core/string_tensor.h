@@ -22,9 +22,8 @@ limitations under the License. */
 
 namespace phi {
 
-/// \brief The Dense tensor store values in a contiguous sequential block
-/// of memory where all values are represented. Tensors or multi-dimensional
-/// arrays are used in math operators.
+/// \brief In Paddle 2.3, we add a new type of Tensor, StringTensor,
+/// which is designed for string data management.
 /// During the entire life cycle of a StringTensor, its device type and key
 /// metadata are set unchanged.
 class StringTensorUtils;
@@ -32,20 +31,20 @@ class StringTensorUtils;
 class StringTensor : public TensorBase,
                      public TypeInfoTraits<TensorBase, StringTensor> {
  public:
-  /// \brief Construct a dense tensor and allocate space.
+  /// \brief Construct a string tensor and allocate space.
   /// \param a The allocator used to allocate space.
-  /// \param meta The meta data of dense tensor.
+  /// \param meta The meta data of string tensor.
   StringTensor(Allocator* a, const StringTensorMeta& meta);
 
-  /// \brief Construct a dense tensor and allocate space.
+  /// \brief Construct a string tensor and allocate space.
   /// \param a The allocator used to allocate space.
-  /// \param meta The meta data of dense tensor.
+  /// \param meta The meta data of string tensor.
   StringTensor(Allocator* a, StringTensorMeta&& meta);
 
   StringTensor(const std::shared_ptr<phi::Allocation>& holder,
                const StringTensorMeta& meta);
 
-  /// \brief Because dense tensor is a resource handle, we provide a default
+  /// \brief Because string tensor is a resource handle, we provide a default
   /// move constructor to support move semantics.
   StringTensor(StringTensor&& other) = default;
 

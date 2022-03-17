@@ -47,6 +47,11 @@ enum class DataType {
   FLOAT64,
   COMPLEX64,
   COMPLEX128,
+  // In Paddle 2.3, we add a new type of Tensor, StringTensor, which is designed
+  // for
+  // string data management. We design the dtype of StringTensor, pstring. In
+  // order
+  // to express a unique data dtype of StringTensor, we add DataType::PSTRING.
   PSTRING,
   NUM_DATA_TYPES,
   // See Note [ Why we need ALL in baisc kernel key member? ]

@@ -24,12 +24,17 @@ limitations under the License. */
 namespace phi {
 namespace dtype {
 
+// Pstring is an only dtype of StringTensor, which is
+// used to manage string data. It provides almost same
+// interfaces compared to std::string, including data(),
+// length() and so on. Besides, pstring data can be
+// manipulated in GPU.
+
 class pstring {
   PD_PString pstr_;
 
  public:
   enum Type {
-    // See cstring.h
     SMALL = PD_PSTR_SMALL,
     LARGE = PD_PSTR_LARGE,
     OFFSET = PD_PSTR_OFFSET,
