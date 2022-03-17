@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .comm_op_cost import COMM_OP_TYPE
-from .base_cost import Cost, register_op_cost, check_op_type
+from .base_cost import Cost, register_op_cost
 
 
 @register_op_cost

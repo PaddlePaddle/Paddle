@@ -57,5 +57,6 @@ class TensorCost:
 
         memory = total_count * dtype_factor
         assert memory > 0
-
         cost = Cost(memory=memory)
+
+        return cost
