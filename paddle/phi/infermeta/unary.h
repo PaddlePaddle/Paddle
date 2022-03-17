@@ -31,6 +31,8 @@ class MetaConfig;
 // NOTE: The name "InferShape" may be not appropriate. "InferMeta" may be good.
 // Because functions in this file not only can infer shape, but also need
 // infer lod or other useful data.
+//
+// The InferMeta Functions in this file are arranged in alphabetic order.
 
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         int64_t axis,
@@ -110,6 +112,12 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
 
+void ModeInferMeta(const MetaTensor& x,
+                   int axis,
+                   bool keepdim,
+                   MetaTensor* out,
+                   MetaTensor* indices);
+
 void MultinomialInferMeta(const MetaTensor& x,
                           int num_samples,
                           bool replacement,
@@ -164,6 +172,13 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
 
+void RollInferMeta(const MetaTensor& x,
+                   const ScalarArray& shifts,
+                   const std::vector<int64_t>& axis,
+                   MetaTensor* out);
+
+void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void ShardIndexInferMeta(const MetaTensor& in,
@@ -200,6 +215,15 @@ void SumRawInferMeta(const MetaTensor& x,
 void TileInferMeta(const MetaTensor& x,
                    const ScalarArray& repeat_times,
                    MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
+void TopKInferMeta(const MetaTensor& x,
+                   const Scalar& k_scalar,
+                   int axis,
+                   bool largest,
+                   bool sorted,
+                   MetaTensor* out,
+                   MetaTensor* indices,
                    MetaConfig config = MetaConfig());
 
 void TraceInferMeta(
