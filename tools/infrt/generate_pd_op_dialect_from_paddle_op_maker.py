@@ -265,11 +265,6 @@ def convert_op_proto_into_mlir(op_descs):
                             ARGUMENTS = ARGUMENTS + " PD_Tensor:$" + input_ + ","
                         else:
                             ARGUMENTS = ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
-                    else:
-                        if op_proto[INPUTS][input_][DUPLICABLE] != True:
-                            ARGUMENTS = ARGUMENTS + " Optional<PD_Tensor>:$" + input_ + ","
-                        else:
-                            ARGUMENTS = ARGUMENTS + " Optional<PD_Tensor_Array>:$" + input_ + ","
 
             # unsupported:   BLOCK = 8;  BLOCKS = 10;
             attr_mlir_converter = {
