@@ -534,8 +534,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(batch_norm, BatchNormInferShapeFunctor,
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::BatchNormGradMaker<paddle::framework::OpDesc>,
-                  ops::BatchNormGradMaker<paddle::imperative::OpBase>,
-                  BatchNormInferShapeFunctor);
+                  ops::BatchNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp,
                   ops::BatchNormDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::BatchNormDoubleGradMaker<paddle::imperative::OpBase>);
