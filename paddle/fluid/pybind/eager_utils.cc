@@ -492,20 +492,26 @@ PyObject* ToPyObject(const std::vector<double>& value) {
   return result;
 }
 
-PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value) {
+PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
+                     bool return_py_none_if_not_initialize) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {
-    PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
-    if (obj) {
-      auto v = reinterpret_cast<TensorObject*>(obj);
-      new (&(v->tensor)) paddle::experimental::Tensor();
-      v->tensor = value[i];
+    if (!value[i].initialized() && return_py_none_if_not_initialize) {
+      Py_INCREF(Py_None);
+      PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), Py_None);
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
-          "tp_alloc return null, can not new a PyObject."));
+      PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
+      if (obj) {
+        auto v = reinterpret_cast<TensorObject*>(obj);
+        new (&(v->tensor)) paddle::experimental::Tensor();
+        v->tensor = value[i];
+      } else {
+        PADDLE_THROW(platform::errors::Fatal(
+            "tp_alloc return null, can not new a PyObject."));
+      }
+      PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
     }
-    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
   }
 
   return result;
