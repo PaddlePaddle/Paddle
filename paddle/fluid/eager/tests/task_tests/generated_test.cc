@@ -57,7 +57,7 @@ TEST(Generated, Sigmoid) {
 
   std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
   VLOG(6) << "Runing Backward";
-  Backward(target_tensors, {});
+  RunBackward(target_tensors, {});
 
   VLOG(6) << "Finish Backward";
   eager_test::CompareGradTensorWithValue<float>(tensor, 0.25);
@@ -89,7 +89,7 @@ TEST(Generated, Matmul_v2) {
   eager_test::CompareTensorWithValue<float>(output_tensor, 96);
 
   std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
-  Backward(target_tensors, {});
+  RunBackward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 2.0 * 20);
   eager_test::CompareGradTensorWithValue<float>(Y, 3.0 * 4);
@@ -120,7 +120,7 @@ TEST(Generated, ElementwiseAdd) {
   eager_test::CompareTensorWithValue<float>(output_tensor, 5);
 
   std::vector<paddle::experimental::Tensor> target_tensors = {output_tensor};
-  Backward(target_tensors, {});
+  RunBackward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 1.0);
   eager_test::CompareGradTensorWithValue<float>(Y, 1.0);

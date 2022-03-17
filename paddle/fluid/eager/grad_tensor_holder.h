@@ -56,8 +56,6 @@ class GradTensorHolder {
     return buffer_;
   }
 
-  void SetBufferSlotRankZeros(size_t slot_id, size_t rank);
-
  private:
   std::vector<std::vector<paddle::experimental::Tensor>> buffer_;
 };

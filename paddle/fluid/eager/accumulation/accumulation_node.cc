@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/errors.h"
 
 #include "glog/logging.h"
-DECLARE_bool(retain_grad_for_all_tensor);
+
 namespace egr {
 
 static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
@@ -39,8 +39,8 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
 }
 
 std::vector<std::vector<paddle::experimental::Tensor>> GradNodeAccumulation::
-operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
-           bool create_graph) {
+operator()(
+    const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {
   VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
@@ -62,7 +62,7 @@ operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads,
     grad_out = grads[0][0];
   }
 
-  if (!weak_grad_.expired() && FLAGS_retain_grad_for_all_tensor) {
+  if (!weak_grad_.expired()) {
     auto grad = weak_grad_.lock();
     CopyOrAddTensor(grad.get(), grad_out);
   }

@@ -122,30 +122,10 @@ static PyObject* eager_api_run_backward(PyObject* self, PyObject* args,
   EAGER_TRY
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
-  egr::Backward(tensors, grad_tensors,
-                CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
+  egr::RunBackward(tensors, grad_tensors,
+                   CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
   Py_INCREF(Py_None);
   return Py_None;
-  EAGER_CATCH_AND_THROW_RETURN_NULL
-}
-
-static PyObject* eager_api_run_partial_grad(PyObject* self, PyObject* args,
-                                            PyObject* kwargs) {
-  EAGER_TRY
-  auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
-  auto inputs = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
-  auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 2), 2);
-  auto retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
-  auto create_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
-  auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
-  auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
-  auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
-
-  std::vector<paddle::experimental::Tensor> result =
-      egr::Grad(tensors, inputs, grad_tensors, retain_graph, create_graph,
-                only_inputs, allow_unused, no_grad_vars);
-  VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
-  return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -471,9 +451,6 @@ PyMethodDef variable_functions[] = {
      (PyCFunction)(void (*)(void))eager_api_get_expected_place,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"run_backward", (PyCFunction)(void (*)(void))eager_api_run_backward,
-     METH_VARARGS | METH_KEYWORDS, NULL},
-    {"run_partial_grad",
-     (PyCFunction)(void (*)(void))eager_api_run_partial_grad,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {"_run_custom_op", (PyCFunction)(void (*)(void))eager_api_run_costum_op,
      METH_VARARGS | METH_KEYWORDS, NULL},

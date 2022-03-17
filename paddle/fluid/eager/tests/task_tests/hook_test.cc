@@ -132,7 +132,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
         leaf_tensor);  // result: 4.0*5.0 + 3.0 = 23.0
   }
 
-  Backward(target_tensors, {});
+  RunBackward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 4.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
@@ -199,7 +199,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
         leaf_tensor, std::make_shared<egr::CppTensorHook>(hook_function));
   }
 
-  Backward(target_tensors, {});
+  RunBackward(target_tensors, {});
   eager_test::CompareGradTensorWithValue<float>(target_tensor, 1.0);
   eager_test::CompareGradTensorWithValue<float>(leaf_tensor, 23.0);
 }

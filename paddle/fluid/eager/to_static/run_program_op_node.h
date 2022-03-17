@@ -370,8 +370,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   ~GradNodeRunProgram() override = default;
   // Functor: perform backward computations
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>> &grads,
-      bool create_graph) override {
+      const std::vector<std::vector<paddle::experimental::Tensor>> &grads)
+      override {
     VLOG(3) << "Running Eager Backward Node: GradNodeRunProgram";
     PADDLE_ENFORCE_EQ(
         grads.size(), 1,
@@ -413,12 +413,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
     return {x_grad, params_grad};
     // return {x_grad, details::DereferenceTensors(params_grad_ptr)};
-  }
-
-  void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
-  bool IsTensorWrappersCleared() override {
-    VLOG(6) << "Do nothing here now";
-    return false;
   }
 
   // SetAttrMap

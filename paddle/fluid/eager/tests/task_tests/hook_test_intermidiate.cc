@@ -108,7 +108,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   }
 
   VLOG(6) << "Runing Backward";
-  Backward(target_tensors, {});
+  RunBackward(target_tensors, {});
   VLOG(6) << "Finish Backward";
 
   eager_test::CompareGradTensorWithValue<float>(
@@ -166,7 +166,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
     grad_node_tmp->RemoveGradientHook(hook_id);
   }
 
-  Backward(target_tensors, {});
+  RunBackward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 1.0);
   eager_test::CompareGradTensorWithValue<float>(
@@ -224,7 +224,7 @@ void test_matmul(bool is_remove_gradient_hook) {
     grad_node_tmp->RemoveGradientHook(hook_id);
   }
 
-  Backward(target_tensors, {});
+  RunBackward(target_tensors, {});
 
   eager_test::CompareGradTensorWithValue<float>(X, 2.0 * 20);
   eager_test::CompareGradTensorWithValue<float>(

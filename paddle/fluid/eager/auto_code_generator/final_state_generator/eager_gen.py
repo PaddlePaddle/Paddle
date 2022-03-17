@@ -478,7 +478,6 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
     # SetTensorWrapper Methods & TensorWrapper Members
     set_tensor_wrapper_methods_str = ""
     tensor_wrapper_members_str = ""
-    clear_tensor_wrapper_str = ""
     for tname, (ttype, is_fwd_input, _) in backward_fwd_input_map.items():
         if tname in no_need_buffer_set:
             no_need_buffer = "true"
@@ -500,13 +499,6 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
 """
             tensor_wrapper_members_str += PLAIN_TENSOR_MEMBER_TEMPLATE.format(
                 tensor_wrapper_name)
-
-            CLEAR_TENSOR_WRAPPERS_TEMPLATE = """
-   {}.clear();
-"""
-            clear_tensor_wrapper_str += CLEAR_TENSOR_WRAPPERS_TEMPLATE.format(
-                tensor_wrapper_name)
-
         else:
             assert IsVectorTensorType(ttype)
             SET_VECTOR_TENSOR_WRAPPER_TEMPLATE = """
@@ -524,15 +516,6 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
 """
             tensor_wrapper_members_str += VECTOR_TENSOR_MEMBER_TEMPLATE.format(
                 tensor_wrapper_name)
-
-            CLEAR_TENSOR_WRAPPERS_TEMPLATE = """
-   for (auto tw: {}) {
-     tw.clear();
-   };
-"""
-            clear_tensor_wrapper_str += CLEAR_TENSOR_WRAPPERS_TEMPLATE.format(
-                tensor_wrapper_name)
-
     # End: SetTensorWrapper Methods & TensorWrapper Members
 
     # SetAttributes & Attribute Members
@@ -541,7 +524,7 @@ def GenerateNodeDeclaration(fwd_api_name, backward_fwd_input_map,
     for aname, atype, default_val, _ in backward_attrs_list:
         saved_attr_name = GetSavedName(aname)
         SET_ATTR_METHOD_TEMPLATE = """
-   void SetAttribute{}({} {}) {{
+   void SetAttribute{}({} {}) {{     
      {} = {};
    }}
 """
@@ -572,27 +555,15 @@ class {} : public egr::GradNodeBase {{
   ~{}() override = default;
 
   virtual std::vector<std::vector<paddle::experimental::Tensor>> operator()(
-      const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph = false) override;
+      const std::vector<std::vector<paddle::experimental::Tensor>>& grads) override;
   std::string name() override {{ return \" {} \"; }}
-  
-  void ClearTensorWrappers() override {{
-      {}
-    is_tensor_wrappers_cleared = true;
-  }}
-  
   // SetTensorWrapperX, SetTensorWrapperY, ...
   {}
   // SetAttributes
   {}
-
-  bool IsTensorWrappersCleared() override {{
-      return is_tensor_wrappers_cleared;  
-  }}
  private:
   // TensorWrappers
   {}
-
-  bool is_tensor_wrappers_cleared = false;
 
   // Attributes
   {}
@@ -600,9 +571,9 @@ class {} : public egr::GradNodeBase {{
 """
     node_declaration_str = NODE_DECLARATION_TEMPLATE.format(
         grad_node_name, grad_node_name, grad_node_name, grad_node_name,
-        grad_node_name, clear_tensor_wrapper_str,
-        set_tensor_wrapper_methods_str, set_attribute_methods_str,
-        tensor_wrapper_members_str, attribute_members_str)
+        grad_node_name, set_tensor_wrapper_methods_str,
+        set_attribute_methods_str, tensor_wrapper_members_str,
+        attribute_members_str)
 
     return node_declaration_str
 
@@ -666,7 +637,7 @@ def GenerateNodeDefinition(fwd_api_name, bwd_api_name, backward_fwd_input_map,
         grad_api_namespace = f"paddle::experimental"
 
     FUNCTION_TEMPLATE = """
-std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads, bool create_graph) {{
+std::vector<std::vector<paddle::experimental::Tensor>> {}::operator()(const std::vector<std::vector<paddle::experimental::Tensor>>& grads) {{
     // Call grad_api function
     auto grad_api_returns = {}::{}({});
     {}
