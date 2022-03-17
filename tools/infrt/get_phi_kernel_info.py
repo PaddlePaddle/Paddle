@@ -215,40 +215,37 @@ def gen_dtype(vals: List[str]):
 
 
 # Note: Now only process CPUContext and GPUContext.
-def gen_register_info(resources: List[List[str]],
-                      attr_data: Dict[str, List[str]]):
+
+
+def gen_register_code_info(item: List[str], attr_data: Dict[str, List[str]]):
     """
-    resources: [['add', 'CPU', 'ALL_LAYOUT', 'AddKernel', 'float', 'double', '...'(varaidic types), 'ElementwiseInferMeta'], ...]
+    item: ['add', 'CPU', 'ALL_LAYOUT', 'AddKernel', 'float', 'double', '...'(varaidic types), 'ElementwiseInferMeta']
     attr_data: {'phi_cpu.arg_min.float32.any': ['axisBool', 'keepdimsBool', 'flatten', 'dtype']}
     """
-    res = "void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {"
-    for item in resources:
-        # The output string is polluted by C++ macros, here the \ is removed
-        update_item = [v.strip('\\') for v in item]
+    ctx_name, ir_ctx_name = gen_context(item[1])
+    if (ctx_name == ""):
+        return ""
+    item[2] = gen_layout(item[2])
+    ir_dtypes, origin_dtypes = gen_dtype(item[4:-1])
+    infer_shape_func = "&phi::" + item[-1]
 
-        ctx_name, ir_ctx_name = gen_context(update_item[1])
-        if (ctx_name == ""):
-            continue
-        update_item[2] = gen_layout(update_item[2])
-        ir_dtypes, origin_dtypes = gen_dtype(update_item[4:-1])
-        infer_shape_func = "&phi::" + update_item[-1]
+    res = ""
 
-        if update_item[-1] == "unknown":
-            # TODO(wilber): handle the unknown inferShape func.
-            continue
+    if item[-1] == "unknown":
+        # TODO(wilber): handle the unknown inferShape func.
+        return ""
 
-        for ir_dtype, origin_dtype in zip(ir_dtypes, origin_dtypes):
-            kernel_func = gen_kernel_func(update_item[3], ctx_name,
-                                          origin_dtype)
-            ir_name = ir_ctx_name + '.' + update_item[0].lower(
-            ) + '.' + ir_dtype + '.' + update_item[2].lower()
-            if ir_name in attr_data.keys() and attr_data[ir_name] is not None:
-                attr_names = ', '.join(
-                    ["\"" + a + "\"" for a in attr_data[ir_name]])
-                res += f"""
-  registry->AddKernelWithAttrs("{ir_name}","""
+    for ir_dtype, origin_dtype in zip(ir_dtypes, origin_dtypes):
+        kernel_func = gen_kernel_func(item[3], ctx_name, origin_dtype)
+        ir_name = ir_ctx_name + '.' + item[0].lower(
+        ) + '.' + ir_dtype + '.' + item[2].lower()
+        if ir_name in attr_data.keys() and attr_data[ir_name] is not None:
+            attr_names = ', '.join(
+                ["\"" + a + "\"" for a in attr_data[ir_name]])
+            res += f"""
+registry->AddKernelWithAttrs("{ir_name}","""
 
-                res += f"""
+            res += f"""
     std::bind(&KernelLauncherFunc<decltype({kernel_func}),
                                   {kernel_func},
                                   decltype({infer_shape_func}),
@@ -261,11 +258,11 @@ def gen_register_info(resources: List[List[str]],
     {{{attr_names}}});
 """
 
-            else:
-                res += f"""
-  registry->AddKernel("{ir_name}","""
+        else:
+            res += f"""
+registry->AddKernel("{ir_name}","""
 
-                res += f"""
+            res += f"""
     std::bind(&KernelLauncherFunc<decltype({kernel_func}),
                                   {kernel_func},
                                   decltype({infer_shape_func}),
@@ -276,6 +273,41 @@ def gen_register_info(resources: List[List[str]],
                                   {infer_shape_func}>(),
               std::placeholders::_1));
 """
+
+    return res
+
+
+def gen_register_info(resources: List[List[str]],
+                      attr_data: Dict[str, List[str]]):
+    """
+    resources: [['add', 'CPU', 'ALL_LAYOUT', 'AddKernel', 'float', 'double', '...'(varaidic types), 'ElementwiseInferMeta'], ...]
+    attr_data: {'phi_cpu.arg_min.float32.any': ['axisBool', 'keepdimsBool', 'flatten', 'dtype']}
+    """
+    res = "void RegisterInferShapeLaunchers(host_context::KernelRegistry* registry) {"
+
+    # register cpu kernels.
+    for item in resources:
+        # The output string is polluted by C++ macros, here the \ is removed
+        update_item = [v.strip('\\') for v in item]
+        if update_item[1] != "CPU":
+            continue
+        code = gen_register_code_info(item, attr_data)
+        if (code == ""):
+            continue
+        res += code
+
+    # register gpu kernels.
+    res += "\n#ifdef INFRT_WITH_GPU"
+    for item in resources:
+        # The output string is polluted by C++ macros, here the \ is removed
+        update_item = [v.strip('\\') for v in item]
+        if update_item[1] != "GPU":
+            continue
+        code = gen_register_code_info(item, attr_data)
+        if (code == ""):
+            continue
+        res += code
+    res += "#endif // INFRT_WITH_GPU"
 
     res += "\n}"
     return res
