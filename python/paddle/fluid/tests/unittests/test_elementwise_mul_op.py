@@ -23,7 +23,7 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, compiler, program_guard
 from paddle.fluid.op import Operator
 
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 
 
 class ElementwiseMulOp(OpTest):

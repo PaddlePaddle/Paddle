@@ -71,7 +71,8 @@ PyObject* ToPyObject(const std::vector<int>& value);
 PyObject* ToPyObject(const std::vector<int64_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
-PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value);
+PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
+                     bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const framework::LoDTensor* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);

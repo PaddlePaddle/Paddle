@@ -18,6 +18,23 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 namespace phi {
 
+// Common InferMeta Functions for multiary operators, The format like:
+//
+//   1. The number of input MetaTensor is more than 3:
+//      void [FunctionDesc|OpName]InferMeta(const MetaTensor& x,
+//                                          const MetaTensor& y,
+//                                          const MetaTensor& z,
+//                                          const MetaTensor& w,
+//                                          ...,
+//                                          MetaTensor* out) {}
+//
+//   2. There are `const vector<MetaTensor*>&` in params:
+//      void [FunctionDesc|OpName]InferMeta(const vector<MetaTensor*>& x,
+//                                          ...,
+//                                          MetaTensor* out) {}
+//
+// NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
+
 std::vector<DDim> GetMetaTensorsDim(const std::vector<MetaTensor*>& tensors);
 
 void AdadeltaInferMeta(const MetaTensor& param,
@@ -69,6 +86,8 @@ void ConcatInferMeta(const std::vector<MetaTensor*>& x,
                      const Scalar& axis_scalar,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void MultiDotInferMeta(const std::vector<MetaTensor*>& x, MetaTensor* out);
 
 void PsroiPoolInferMeta(const MetaTensor& x,
                         const MetaTensor& rois,

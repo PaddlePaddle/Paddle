@@ -26,11 +26,36 @@ namespace phi {
                         const DenseTensor& dout,  \
                         DenseTensor* dx);
 
+#define DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(name, attr) \
+  template <typename T, typename Context>                       \
+  void name##GradKernel(const Context& dev_ctx,                 \
+                        const DenseTensor& x,                   \
+                        const DenseTensor& dout,                \
+                        float attr,                             \
+                        DenseTensor* dx);
+
+#define DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DepX(name, attr1, attr2) \
+  template <typename T, typename Context>                               \
+  void name##GradKernel(const Context& dev_ctx,                         \
+                        const DenseTensor& x,                           \
+                        const DenseTensor& dout,                        \
+                        float attr1,                                    \
+                        float attr2,                                    \
+                        DenseTensor* dx);
+
 #define DECLARE_ACTIVATION_GRAD_KERNEL_DepOut(name) \
   template <typename T, typename Context>           \
   void name##GradKernel(const Context& dev_ctx,     \
                         const DenseTensor& out,     \
                         const DenseTensor& dout,    \
+                        DenseTensor* dx);
+
+#define DECLARE_ACTIVATION_GRAD_KERNEL_WITH_ONE_ATTRS_DepOut(name, attr) \
+  template <typename T, typename Context>                                \
+  void name##GradKernel(const Context& dev_ctx,                          \
+                        const DenseTensor& out,                          \
+                        const DenseTensor& dout,                         \
+                        float attr,                                      \
                         DenseTensor* dx);
 
 template <typename T, typename Context>
@@ -59,21 +84,6 @@ void TanhTripleGradKernel(const Context& dev_ctx,
                           DenseTensor* d_ddx);
 
 template <typename T, typename Context>
-void BReluGradKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& dout,
-                     float t_min,
-                     float t_max,
-                     DenseTensor* dx);
-
-template <typename T, typename Context>
-void LeakyReluGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& dout,
-                         float alpha,
-                         DenseTensor* dx);
-
-template <typename T, typename Context>
 void LeakyReluDoubleGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& ddx,
@@ -81,11 +91,21 @@ void LeakyReluDoubleGradKernel(const Context& dev_ctx,
                                DenseTensor* ddout);
 
 template <typename T, typename Context>
-void ThresholdedReluGradKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& dout,
-                               float threshold,
-                               DenseTensor* dx);
+void EluGradKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& out,
+                   const DenseTensor& dout,
+                   float alpha,
+                   DenseTensor* dx);
+
+template <typename T, typename Context>
+void EluDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         float alpha,
+                         DenseTensor* dx,
+                         DenseTensor* ddout);
 
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Cos);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Tan);
@@ -98,7 +118,17 @@ DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Cosh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Asinh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Acosh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Atanh);
+DECLARE_ACTIVATION_GRAD_KERNEL_DepX(TanhShrink);
+DECLARE_ACTIVATION_GRAD_KERNEL_DepX(Silu);
+
 DECLARE_ACTIVATION_GRAD_KERNEL_DepOut(Relu);
 DECLARE_ACTIVATION_GRAD_KERNEL_DepOut(Tanh);
+
+DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(LeakyRelu, alpha)
+    DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(ThresholdedRelu, threshold)
+        DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(SoftShrink, lambda)
+            DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DepX(HardShrink, threshold)
+
+                DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DepX(BRelu, t_min, t_max)
 
 }  // namespace phi
