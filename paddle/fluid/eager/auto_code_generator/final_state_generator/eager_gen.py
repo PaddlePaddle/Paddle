@@ -28,6 +28,7 @@ namespace = ""
 yaml_types_mapping = {
     'int' : 'int', 'int32' : 'int32_t', 'int64' : 'int64_t',  'size_t' : 'size_t', \
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
+    'str' : 'std::string', \
     'Backend' : 'paddle::experimental::Backend', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
@@ -212,7 +213,8 @@ def ParseYamlArgs(string):
         default_value = m.group(3).split("=")[1].strip() if len(
             m.group(3).split("=")) > 1 else None
 
-        assert arg_type in yaml_types_mapping.keys()
+        assert arg_type in yaml_types_mapping.keys(
+        ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
         arg_type = yaml_types_mapping[arg_type]
 
         arg_name = RemoveSpecialSymbolsInName(arg_name)
@@ -247,7 +249,8 @@ def ParseYamlReturns(string):
         else:
             ret_type = ret.strip()
 
-        assert ret_type in yaml_types_mapping.keys()
+        assert ret_type in yaml_types_mapping.keys(
+        ), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
         ret_type = yaml_types_mapping[ret_type]
 
         assert "Tensor" in ret_type
@@ -926,8 +929,20 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
         backward_fwd_input_map, backward_grad_input_map,
         backward_grad_output_map, backward_attrs_list, optional_inputs)
 
+    node_event_name = fwd_api_name + " node_creation"
+    NODE_CREATION_TEMPLATE = """{{\n
+           paddle::platform::RecordEvent node_creation_record_event(\"{}\", paddle::platform::TracerEventType::Operator, 1);\n
+           {}\n
+        }}"""
+    node_creation_str = NODE_CREATION_TEMPLATE.format(node_event_name,
+                                                      node_creation_str)
+
+    dygraph_event_str = f"paddle::platform::RecordEvent dygraph_entrance_record_event(\"{fwd_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);"
+
     FORWARD_FUNCTION_TEMPLATE = """
 {} {}({}) {{
+    {}
+
     // Forward API Call
     {}
     
@@ -941,7 +956,7 @@ def GenerateForwardDefinition(fwd_api_name, bwd_api_name,
     forward_function_name = GetForwardFunctionName(fwd_api_name)
     forward_function_str = FORWARD_FUNCTION_TEMPLATE.format(
         returns_type_str, forward_function_name, inputs_args_definition_str,
-        forward_call_str, node_creation_str, returns_str)
+        dygraph_event_str, forward_call_str, node_creation_str, returns_str)
     forward_function_declaration_str = f"{returns_type_str} {forward_function_name}({inputs_args_declaration_str});"
 
     return forward_function_str, forward_function_declaration_str
@@ -1068,6 +1083,8 @@ def GenerateForwardCCFile(filepath, forward_definition_str):
 
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+
 """
 
     file_contents += GenerateCoreOpInfoDefinition()
@@ -1234,7 +1251,7 @@ if __name__ == "__main__":
             # Node Definition Generation
             definition_declaration_pair = GenerateForwardDefinition(
                 fwd_api_name, bwd_api_name, forward_inputs_position_map,
-                forward_outputs_position_map, forward_attrs_list,
+                forward_outputs_position_map, orig_forward_attrs_list,
                 backward_fwd_input_map, backward_grad_input_map,
                 backward_grad_output_map, backward_attrs_list, optional_inputs,
                 intermediate_outputs)
@@ -1246,7 +1263,7 @@ if __name__ == "__main__":
             # For python-level API dispatch
             CollectCoreOpsInformation(fwd_api_name, forward_inputs_position_map,
                                       forward_outputs_position_map,
-                                      forward_attrs_list)
+                                      orig_forward_attrs_list)
 
         if len(namespace) > 0:
             forward_definition_str += f"""namespace {namespace} {{

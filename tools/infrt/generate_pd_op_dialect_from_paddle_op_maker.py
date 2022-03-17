@@ -186,7 +186,7 @@ def generate_all_ops_inputs_outputs_map(op_descs):
     cpp_style_ops_outputs_map_str = start_ + ops_outputs_str + "\n};"
 
     # 3. Write to header file
-    dst_head_file = "../../paddle/infrt/dialect/pd_ops_info.h"
+    dst_head_file = "../../paddle/infrt/dialect/pd/common/pd_ops_info.h"
     with open(dst_head_file, 'w') as ops_inputs_outputs_head_file:
         ops_inputs_outputs_head_file.write(cpp_style_ops_inputs_map_str)
         ops_inputs_outputs_head_file.write("\n\n")
